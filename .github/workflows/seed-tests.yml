@@ -1,0 +1,112 @@
+name: Seed System Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  seed-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_DB: timetiles_test
+          POSTGRES_USER: timetiles_user
+          POSTGRES_PASSWORD: timetiles_password
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Setup test database
+        run: |
+          psql -h localhost -U timetiles_user -d timetiles_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+          psql -h localhost -U timetiles_user -d timetiles_test -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
+          psql -h localhost -U timetiles_user -d timetiles_test -c "CREATE SCHEMA IF NOT EXISTS payload;"
+        env:
+          PGPASSWORD: timetiles_password
+
+      - name: Build project
+        run: pnpm build
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
+          PAYLOAD_SECRET: test-secret-key
+          NODE_ENV: test
+          CI: true
+
+      - name: Run Payload migrations
+        run: |
+          cd apps/web
+          pnpm run payload:migrate
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
+          PAYLOAD_SECRET: test-secret-key
+          NODE_ENV: test
+          CI: true
+
+      - name: Run seed data validation tests
+        run: |
+          cd apps/web
+          npx tsx __tests__/seed-validation.ts
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
+          PAYLOAD_SECRET: test-secret-key
+          NODE_ENV: test
+          CI: true
+
+      - name: Test seed operations with Turborepo
+        run: pnpm seed:test
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
+          PAYLOAD_SECRET: test-secret-key
+          NODE_ENV: test
+          CI: true
+
+      - name: Test truncate operations with Turborepo
+        run: pnpm seed:truncate
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
+          PAYLOAD_SECRET: test-secret-key
+          NODE_ENV: test
+          CI: true
+
+      - name: Test seed with specific collections
+        run: pnpm turbo seed -- test users catalogs
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
+          PAYLOAD_SECRET: test-secret-key
+          NODE_ENV: test
+          CI: true
+
+      - name: Run seed integration tests
+        run: pnpm seed:integration
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
+          PAYLOAD_SECRET: test-secret-key
+          NODE_ENV: test
+          CI: true

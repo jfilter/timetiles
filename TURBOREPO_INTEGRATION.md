@@ -1,0 +1,338 @@
+# Turborepo + Make Integration Guide
+
+## Overview
+
+The seed system is fully integrated with your existing Turborepo and Make setup. This ensures consistency with your development workflow while providing powerful seeding capabilities.
+
+## 🏗️ Architecture Integration
+
+### Turborepo Tasks
+
+The seed system is integrated into `turbo.json` with proper task dependencies:
+
+```json
+{
+  "tasks": {
+    "seed": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "cache": false
+    },
+    "seed:dev": { "dependsOn": ["^build"], "cache": false },
+    "seed:test": { "dependsOn": ["^build"], "cache": false },
+    "seed:truncate": { "dependsOn": ["^build"], "cache": false }
+  }
+}
+```
+
+### Make Targets
+
+New seed-related Make targets are available:
+
+```makefile
+seed:           # Seed development data
+seed-test:      # Seed test data
+seed-truncate:  # Truncate all data
+seed-integration: # Run integration tests
+seed-setup:     # Full setup with infrastructure
+```
+
+## 🚀 Usage with Your Existing Workflow
+
+### Quick Start
+
+```bash
+# Start infrastructure and seed system
+make seed-setup
+
+# Or manually step by step
+make up           # Start PostgreSQL
+make seed         # Seed development data
+make dev          # Start development server
+```
+
+### Development Workflow
+
+```bash
+# Daily development
+make dev          # Auto-starts infrastructure + dev server
+
+# Reset and reseed when needed
+make seed-truncate
+make seed
+
+# Run tests
+make test
+make seed-integration
+```
+
+### Using Turborepo Commands
+
+```bash
+# Via Turborepo directly
+pnpm turbo seed                    # Seed development data
+pnpm turbo seed:test               # Seed test data
+pnpm turbo seed -- test users      # Seed specific collections
+pnpm turbo seed:truncate           # Truncate all data
+```
+
+### Using Make Commands
+
+```bash
+# Via Make (recommended)
+make seed                  # Seed development data
+make seed-test            # Seed test data
+make seed-truncate        # Truncate all data
+make seed-integration     # Run integration tests
+```
+
+## 🔧 Integration Details
+
+### Docker Integration
+
+The seed system works seamlessly with your existing Docker setup:
+
+```bash
+# PostgreSQL from docker-compose.dev.yml
+services:
+  postgres:
+    image: postgis/postgis:17-3.5
+    # ... your existing config
+```
+
+### Database Setup
+
+The system automatically uses your existing database configuration:
+
+```bash
+# Uses your existing environment
+DATABASE_URL=postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+```
+
+### Project Structure Respect
+
+The seed system respects your monorepo structure:
+
+```
+timetiles/
+├── Makefile                  # Integration points
+├── turbo.json               # Task definitions
+├── docker-compose.dev.yml   # Infrastructure
+├── apps/web/
+│   ├── lib/seed/            # Seed system
+│   └── scripts/             # CLI scripts
+└── scripts/
+    └── setup-seed-system.sh # Setup script
+```
+
+## 📋 Available Commands
+
+### Make Commands (Recommended)
+
+| Command                 | Description                    | Infrastructure      |
+| ----------------------- | ------------------------------ | ------------------- |
+| `make seed-setup`       | Full setup with infrastructure | ✅ Auto-starts      |
+| `make seed`             | Seed development data          | ⚠️ Requires running |
+| `make seed-test`        | Seed test data                 | ⚠️ Requires running |
+| `make seed-truncate`    | Truncate all data              | ⚠️ Requires running |
+| `make seed-integration` | Run integration tests          | ✅ Auto-starts      |
+
+### Turborepo Commands
+
+| Command                     | Description           | Workspace |
+| --------------------------- | --------------------- | --------- |
+| `pnpm turbo seed`           | Seed development data | Root      |
+| `pnpm turbo seed:test`      | Seed test data        | Root      |
+| `pnpm turbo seed:truncate`  | Truncate all data     | Root      |
+| `pnpm turbo seed -- [args]` | Seed with arguments   | Root      |
+
+### Direct Commands
+
+| Command                             | Description         | Location |
+| ----------------------------------- | ------------------- | -------- |
+| `cd apps/web && pnpm seed`          | Direct seed command | apps/web |
+| `cd apps/web && pnpm seed:test`     | Direct test seed    | apps/web |
+| `cd apps/web && pnpm seed:truncate` | Direct truncate     | apps/web |
+
+## 🧪 Testing Integration
+
+### CI/CD Pipeline
+
+The GitHub Actions workflow integrates with your setup:
+
+```yaml
+# Uses your PostgreSQL version
+services:
+  postgres:
+    image: postgis/postgis:17-3.5  # Matches your docker-compose.dev.yml
+
+# Uses Turborepo for efficiency
+- name: Test seed operations with Turborepo
+  run: pnpm seed:test
+
+- name: Run seed integration tests
+  run: pnpm seed:integration
+```
+
+### Local Testing
+
+```bash
+# Test the complete system
+make seed-integration
+
+# Or run specific tests
+cd apps/web && pnpm test
+cd apps/web && npx tsx __tests__/seed-validation.ts
+```
+
+## 🔄 Development Lifecycle
+
+### 1. Initial Setup
+
+```bash
+# One-time setup
+make seed-setup
+```
+
+### 2. Daily Development
+
+```bash
+# Start everything
+make dev
+
+# Reset data when needed
+make seed-truncate
+make seed
+```
+
+### 3. Testing
+
+```bash
+# Run tests
+make test
+make seed-integration
+```
+
+### 4. CI/CD
+
+```bash
+# Runs automatically on push/PR
+# Uses Turborepo for efficiency
+# Integrates with existing infrastructure
+```
+
+## 📊 Performance Considerations
+
+### Turborepo Benefits
+
+- **Caching**: Build artifacts are cached
+- **Parallelization**: Tasks run in parallel when possible
+- **Dependency Management**: Proper task ordering
+- **Incremental Builds**: Only rebuild what changed
+
+### Make Benefits
+
+- **Simple Interface**: Easy-to-remember commands
+- **Infrastructure Integration**: Automatic Docker management
+- **Developer Experience**: Consistent with existing workflow
+
+## 🛠️ Customization
+
+### Adding New Seed Tasks
+
+1. **Add to turbo.json**:
+
+```json
+{
+  "tasks": {
+    "seed:custom": {
+      "dependsOn": ["^build"],
+      "cache": false
+    }
+  }
+}
+```
+
+2. **Add to Makefile**:
+
+```makefile
+seed-custom:
+	pnpm turbo seed:custom
+```
+
+3. **Add to package.json** (apps/web):
+
+```json
+{
+  "scripts": {
+    "seed:custom": "tsx scripts/seed.ts custom"
+  }
+}
+```
+
+### Environment-Specific Configurations
+
+```bash
+# Development
+make seed              # Uses development data
+
+# Test
+make seed-test         # Uses test data
+
+# Custom environments
+pnpm turbo seed -- staging
+pnpm turbo seed -- production
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **Infrastructure Not Running**
+
+   ```bash
+   # Check Docker status
+   make up
+
+   # Or use auto-setup
+   make seed-setup
+   ```
+
+2. **Turborepo Cache Issues**
+
+   ```bash
+   # Clear cache
+   pnpm turbo prune
+
+   # Or force rebuild
+   pnpm turbo build --force
+   ```
+
+3. **Migration Issues**
+   ```bash
+   # Run migrations manually
+   cd apps/web
+   pnpm run payload:migrate
+   ```
+
+### Debug Mode
+
+```bash
+# Enable verbose output
+NODE_ENV=development make seed
+
+# Check Docker logs
+make logs
+
+# Check database connection
+make db-shell
+```
+
+## 📚 Next Steps
+
+1. **Try the integration**: `make seed-setup`
+2. **Test your workflow**: `make dev`
+3. **Run tests**: `make seed-integration`
+4. **Customize as needed**: Add project-specific seed data
+
+The seed system is now fully integrated with your existing Turborepo and Make workflow, providing a seamless development experience while maintaining the power and flexibility of a comprehensive seeding system.

@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "payload build && next build",
+    "build": "payload generate:types && next build",
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
@@ -13,7 +13,16 @@
     "payload": "payload",
     "payload:generate": "payload generate:types",
     "payload:migrate": "payload migrate",
-    "payload:migrate:create": "payload migrate:create"
+    "payload:migrate:create": "payload migrate:create",
+    "seed": "tsx scripts/seed.ts",
+    "seed:dev": "tsx scripts/seed.ts development",
+    "seed:test": "tsx scripts/seed.ts test",
+    "seed:validate": "tsx __tests__/seed-validation.ts",
+    "seed:truncate": "tsx scripts/seed.ts truncate",
+    "seed:integration": "./scripts/test-seed-system.sh",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest",
+    "test:watch": "NODE_OPTIONS='--experimental-vm-modules' npx jest --watch",
+    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' npx jest --coverage"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.46.0",
@@ -29,6 +38,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sharp": "^0.34.2",
+    "tsx": "^4.17.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
@@ -38,6 +48,9 @@
     "@types/react-dom": "^19",
     "@workspace/eslint-config": "workspace:^",
     "@workspace/typescript-config": "workspace:*",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.12",
+    "ts-jest": "^29.1.2",
     "typescript": "^5.7.3"
   }
 }
