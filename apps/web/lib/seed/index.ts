@@ -96,7 +96,8 @@ export class SeedManager {
         console.log(`✅ Created ${collection} item: ${displayName}`);
       } catch (error) {
         hasErrors = true;
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         errors.push(errorMessage);
         console.error(`❌ Failed to create ${collection} item:`, error);
       }
@@ -104,7 +105,9 @@ export class SeedManager {
 
     // If there were errors, throw to fail the overall process
     if (hasErrors) {
-      throw new Error(`Failed to seed ${collection} collection: ${errors.join(', ')}`);
+      throw new Error(
+        `Failed to seed ${collection} collection: ${errors.join(", ")}`,
+      );
     }
   }
 

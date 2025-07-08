@@ -1,0 +1,114 @@
+# API Reference
+
+The TimeTiles API provides programmatic access to all time tracking functionality. This RESTful API allows you to integrate TimeTiles with other applications and build custom workflows.
+
+## Base URL
+
+```
+https://your-domain.com/api
+```
+
+## Authentication
+
+All API requests require authentication using API tokens. See the [Authentication](/api/authentication) section for details.
+
+## Rate Limiting
+
+The API implements rate limiting to ensure fair usage:
+
+- **100 requests per minute** for authenticated users
+- **10 requests per minute** for unauthenticated requests
+
+Rate limit headers are included in all responses:
+
+```http
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1640995200
+```
+
+## Response Format
+
+All API responses use JSON format with consistent structure:
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "data": {
+    // Response data
+  },
+  "meta": {
+    "timestamp": "2024-01-01T00:00:00Z",
+    "version": "1.0"
+  }
+}
+```
+
+### Error Response
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid input data",
+    "details": {
+      // Error details
+    }
+  },
+  "meta": {
+    "timestamp": "2024-01-01T00:00:00Z",
+    "version": "1.0"
+  }
+}
+```
+
+## Available Endpoints
+
+### Time Entries
+
+- `GET /api/time-entries` - List time entries
+- `POST /api/time-entries` - Create time entry
+- `GET /api/time-entries/{id}` - Get time entry
+- `PUT /api/time-entries/{id}` - Update time entry
+- `DELETE /api/time-entries/{id}` - Delete time entry
+
+### Projects
+
+- `GET /api/projects` - List projects
+- `POST /api/projects` - Create project
+- `GET /api/projects/{id}` - Get project
+- `PUT /api/projects/{id}` - Update project
+- `DELETE /api/projects/{id}` - Delete project
+
+### Categories
+
+- `GET /api/categories` - List categories
+- `POST /api/categories` - Create category
+- `GET /api/categories/{id}` - Get category
+- `PUT /api/categories/{id}` - Update category
+- `DELETE /api/categories/{id}` - Delete category
+
+### Reports
+
+- `GET /api/reports/summary` - Get time summary
+- `GET /api/reports/detailed` - Get detailed report
+- `GET /api/reports/export` - Export data
+
+## SDKs and Libraries
+
+Official SDKs are available for popular programming languages:
+
+- **JavaScript/TypeScript**: `@timetiles/js-sdk`
+- **Python**: `timetiles-python`
+- **Go**: `github.com/timetiles/go-sdk`
+
+## Getting Started
+
+1. [Generate an API token](/api/authentication)
+2. Make your first API call
+3. Explore the [interactive API documentation](/api/endpoints)
+
+For detailed information about each endpoint, see the [API Endpoints](/api/endpoints) documentation.

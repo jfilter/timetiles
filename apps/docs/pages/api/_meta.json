@@ -1,0 +1,7 @@
+{
+  "index": "Overview",
+  "authentication": "Authentication",
+  "endpoints": "API Endpoints",
+  "websockets": "WebSocket API",
+  "errors": "Error Handling"
+}
