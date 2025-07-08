@@ -1,0 +1,77 @@
+name: Seed System Tests
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "apps/docs/**"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "apps/docs/**"
+      - ".github/workflows/docs.yml"
+
+jobs:
+  seed-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_DB: timetiles_test
+          POSTGRES_USER: timetiles_user
+          POSTGRES_PASSWORD: timetiles_password
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
+      PAYLOAD_SECRET: test-secret-key
+      NODE_ENV: test
+      CI: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - run: pnpm install
+
+      - name: Setup test database
+        run: |
+          psql -h localhost -U timetiles_user -d timetiles_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+          psql -h localhost -U timetiles_user -d timetiles_test -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
+          psql -h localhost -U timetiles_user -d timetiles_test -c "CREATE SCHEMA IF NOT EXISTS payload;"
+        env:
+          PGPASSWORD: timetiles_password
+
+      - run: pnpm build
+
+      - name: Run Payload migrations
+        run: pnpm run payload:migrate
+        working-directory: apps/web
+
+      - name: Run seed data validation tests
+        run: npx tsx __tests__/seed-validation.ts
+        working-directory: apps/web
+
+      - run: pnpm seed:test
+
+      - run: pnpm seed:truncate
+
+      - run: pnpm turbo seed -- test users catalogs
+
+      - run: pnpm seed:integration

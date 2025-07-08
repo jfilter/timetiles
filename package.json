@@ -16,6 +16,7 @@
     "docs:dev": "turbo docs:dev",
     "docs:build": "turbo docs:build",
     "docs:export": "turbo docs:export",
+    "export": "turbo docs:export",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
