@@ -1,0 +1,75 @@
+export interface UserSeed {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role: "user" | "admin" | "analyst";
+  isActive: boolean;
+}
+
+export function userSeeds(environment: string): UserSeed[] {
+  const baseUsers: UserSeed[] = [
+    {
+      email: "admin@example.com",
+      password: "admin123",
+      firstName: "Admin",
+      lastName: "User",
+      role: "admin",
+      isActive: true,
+    },
+    {
+      email: "analyst@example.com",
+      password: "analyst123",
+      firstName: "Data",
+      lastName: "Analyst",
+      role: "analyst",
+      isActive: true,
+    },
+  ];
+
+  if (environment === "test") {
+    return [
+      ...baseUsers,
+      {
+        email: "testuser@example.com",
+        password: "test123",
+        firstName: "Test",
+        lastName: "User",
+        role: "user",
+        isActive: true,
+      },
+    ];
+  }
+
+  if (environment === "development") {
+    return [
+      ...baseUsers,
+      {
+        email: "john.doe@example.com",
+        password: "password123",
+        firstName: "John",
+        lastName: "Doe",
+        role: "user",
+        isActive: true,
+      },
+      {
+        email: "jane.smith@example.com",
+        password: "password123",
+        firstName: "Jane",
+        lastName: "Smith",
+        role: "user",
+        isActive: true,
+      },
+      {
+        email: "inactive.user@example.com",
+        password: "password123",
+        firstName: "Inactive",
+        lastName: "User",
+        role: "user",
+        isActive: false,
+      },
+    ];
+  }
+
+  return baseUsers;
+}
