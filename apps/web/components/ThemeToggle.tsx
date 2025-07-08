@@ -32,21 +32,17 @@ export function ThemeToggle() {
   return (
     <div className="relative w-28" ref={ref}>
       <button
-        className="flex w-full items-center gap-1 rounded px-3 py-2 hover:bg-accent/50 justify-between"
+        className="hover:bg-accent/50 flex w-full items-center justify-between gap-1 rounded px-3 py-2"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className="flex items-center gap-2 min-w-0">
+        <span className="flex min-w-0 items-center gap-2">
           <span>{current?.icon}</span>
-          <span className="hidden md:inline truncate">{current?.label}</span>
+          <span className="hidden truncate md:inline">{current?.label}</span>
         </span>
-        <span className="flex-shrink-0 ml-1 h-3 w-3">
-          <svg
-            viewBox="0 0 10 6"
-            fill="none"
-            className="h-3 w-3"
-          >
+        <span className="ml-1 h-3 w-3 flex-shrink-0">
+          <svg viewBox="0 0 10 6" fill="none" className="h-3 w-3">
             <path
               d="M1 1l4 4 4-4"
               stroke="currentColor"
@@ -58,13 +54,13 @@ export function ThemeToggle() {
       </button>
       {open && (
         <ul
-          className="absolute right-0 z-10 mt-2 w-28 rounded border bg-popover p-1 shadow-lg dark:bg-neutral-900"
+          className="bg-popover absolute right-0 z-10 mt-2 w-28 rounded border p-1 shadow-lg dark:bg-neutral-900"
           role="listbox"
         >
           {options.map((o) => (
             <li key={o.value}>
               <button
-                className={`flex w-full items-center gap-2 rounded px-3 py-2 text-left hover:bg-accent/30 ${
+                className={`hover:bg-accent/30 flex w-full items-center gap-2 rounded px-3 py-2 text-left ${
                   theme === o.value ? "font-bold" : ""
                 }`}
                 onClick={() => {

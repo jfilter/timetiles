@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgis/postgis:17-3.5
+    platform: linux/amd64 # Force x86_64 emulation for PostGIS
+    container_name: timetiles-postgres
+    environment:
+      POSTGRES_DB: timetiles
+      POSTGRES_USER: timetiles_user
+      POSTGRES_PASSWORD: timetiles_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U timetiles_user -d timetiles"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - timetiles-network
+
+volumes:
+  postgres_data:
+
+networks:
+  timetiles-network:
+    driver: bridge

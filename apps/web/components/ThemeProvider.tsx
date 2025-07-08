@@ -7,7 +7,9 @@ const ThemeContext = createContext({
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<"light" | "dark" | "system">("system");
+  const [theme, setThemeState] = useState<"light" | "dark" | "system">(
+    "system",
+  );
 
   useEffect(() => {
     // Load from localStorage
