@@ -1,0 +1,9 @@
+{
+  "index": "Overview",
+  "setup": "Development Setup",
+  "architecture": "Architecture",
+  "seed-system": "Seed System",
+  "turborepo-integration": "Turborepo Integration",
+  "contributing": "Contributing",
+  "testing": "Testing"
+}

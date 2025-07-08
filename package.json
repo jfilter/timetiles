@@ -13,6 +13,9 @@
     "seed:truncate": "turbo seed:truncate",
     "seed:integration": "turbo seed:integration",
     "test": "turbo test",
+    "docs:dev": "turbo docs:dev",
+    "docs:build": "turbo docs:build",
+    "docs:export": "turbo docs:export",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
