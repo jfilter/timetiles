@@ -1,5 +1,5 @@
+import { TopMenuBar } from "@/components/TopMenuBar";
 import { Button } from "@workspace/ui/components/button";
-import { TopMenuBar } from "../components/TopMenuBar";
 
 export default function Page() {
   return (
