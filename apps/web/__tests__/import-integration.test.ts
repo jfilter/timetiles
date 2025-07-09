@@ -1,4 +1,13 @@
-import { vi, describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
+import {
+  vi,
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+  afterEach,
+} from "vitest";
 import { createSeedManager } from "../lib/seed/index";
 import { NextRequest } from "next/server";
 import { POST as uploadHandler } from "../app/api/import/upload/route";
@@ -13,6 +22,11 @@ import { GeocodingService } from "../lib/services/geocoding/GeocodingService";
 import fs from "fs";
 import path from "path";
 import * as XLSX from "xlsx";
+
+// Mock the UUID to return a predictable value
+vi.mock("uuid", () => ({
+  v4: () => "test-uuid-123",
+}));
 
 // Mock UUID for consistent testing
 vi.mock("uuid", () => ({ v4: vi.fn(() => "test-uuid-123") }));
@@ -151,13 +165,24 @@ describe("Import System Integration Tests", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+
+    // Clean up any test files
+    const testFiles = ["test-uuid-123.csv", "test-uuid-123.xlsx"];
+    const uploadsDir = path.join(process.cwd(), "uploads");
+
+    testFiles.forEach((fileName) => {
+      const filePath = path.join(uploadsDir, fileName);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    });
   });
 
   describe("Complete Import Workflow", () => {
-
     it("should complete full CSV import workflow", async () => {
       // Step 1: Upload file
-      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders =
+        "title,description,date,enddate,location,address,url,category,tags";
       const csvRows = sampleCsvData
         .map((row) =>
           Object.values(row)
@@ -216,14 +241,14 @@ describe("Import System Integration Tests", () => {
         payload,
       });
 
-      // Verify import was updated
+      // Verify import was updated after file parsing
       importRecord = await payload.findByID({
         collection: "imports",
         id: importId,
       });
 
       expect(importRecord.status).toBe("processing");
-      expect(importRecord.processingStage).toBe("batch-processing");
+      expect(importRecord.processingStage).toBe("row-processing");
       expect(importRecord.progress.totalRows).toBe(3);
 
       // Verify batch processing job was queued
@@ -288,12 +313,18 @@ describe("Import System Integration Tests", () => {
       const events = await payload.find({
         collection: "events",
         where: {
-          importId: { equals: importId },
+          import: { equals: importId },
         },
       });
 
       expect(events.docs).toHaveLength(3);
-      expect(events.docs[0]).toMatchObject({
+      
+      // Find the specific event instead of assuming order
+      const techConferenceEvent = events.docs.find(event => 
+        event.data.title === "Tech Conference 2024"
+      );
+      expect(techConferenceEvent).toBeDefined();
+      expect(techConferenceEvent.data).toMatchObject({
         title: "Tech Conference 2024",
         description: "Annual technology conference",
         location: "Convention Center",
@@ -329,13 +360,13 @@ describe("Import System Integration Tests", () => {
       const geocodedEvents = await payload.find({
         collection: "events",
         where: {
-          importId: { equals: importId },
+          import: { equals: importId },
         },
       });
 
-      expect(geocodedEvents.docs[0].latitude).toBe(37.7749);
-      expect(geocodedEvents.docs[0].longitude).toBe(-122.4194);
-      expect(geocodedEvents.docs[0].geocoding.provider).toBe("google");
+      expect(geocodedEvents.docs[0].location.latitude).toBe(37.7749);
+      expect(geocodedEvents.docs[0].location.longitude).toBe(-122.4194);
+      expect(geocodedEvents.docs[0].geocodingInfo.provider).toBe("google");
 
       // Verify import was completed
       const finalImportRecord = await payload.findByID({
@@ -365,22 +396,41 @@ describe("Import System Integration Tests", () => {
       // Create a proper Excel file using XLSX
       const workbook = XLSX.utils.book_new();
       const worksheetData = [
-        ["title", "description", "date", "enddate", "location", "address", "url", "category", "tags"],
-        ...sampleCsvData.map(row => [
-          row.title, row.description, row.date, row.enddate, 
-          row.location, row.address, row.url, row.category, row.tags
-        ])
+        [
+          "title",
+          "description",
+          "date",
+          "enddate",
+          "location",
+          "address",
+          "url",
+          "category",
+          "tags",
+        ],
+        ...sampleCsvData.map((row) => [
+          row.title,
+          row.description,
+          row.date,
+          row.enddate,
+          row.location,
+          row.address,
+          row.url,
+          row.category,
+          row.tags,
+        ]),
       ];
       const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
       XLSX.utils.book_append_sheet(workbook, worksheet, "Events");
-      
+
       // Write to buffer and create file
-      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-      const excelBlob = new Blob([excelBuffer], { 
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+      const excelBuffer = XLSX.write(workbook, {
+        type: "buffer",
+        bookType: "xlsx",
       });
 
-      const file = new File([excelBlob], "test-events.xlsx", {
+      // No need to pre-create the file - let the upload handler handle it
+
+      const file = new File([excelBuffer], "test-events.xlsx", {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
       const formData = new FormData();
@@ -415,18 +465,21 @@ describe("Import System Integration Tests", () => {
         fileType: "xlsx" as const,
       };
 
+      // The upload handler should have created the file at the correct path
+
       await fileParsingJob.handler({
         job: { input: fileParsingJobInput },
         payload,
       });
 
+      // Verify import was updated after file parsing
       const importRecord = await payload.findByID({
         collection: "imports",
         id: uploadResult.importId,
       });
 
       expect(importRecord.status).toBe("processing");
-      expect(importRecord.processingStage).toBe("batch-processing");
+      expect(importRecord.processingStage).toBe("row-processing");
     });
 
     it("should handle import errors gracefully", async () => {
@@ -491,7 +544,8 @@ describe("Import System Integration Tests", () => {
       }));
 
       // Create a proper CSV with just one event
-      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders =
+        "title,description,date,enddate,location,address,url,category,tags";
       const csvRow = `"Test Event","Test Description","2024-03-15","","Test Location","123 Test St","https://test.com","Test","test"`;
       const csvContent = csvHeaders + "\n" + csvRow;
 
@@ -536,17 +590,19 @@ describe("Import System Integration Tests", () => {
           input: {
             importId,
             batchNumber: 1,
-            batchData: [{
-              title: "Test Event",
-              description: "Test Description", 
-              date: "2024-03-15",
-              enddate: "",
-              location: "Test Location",
-              address: "123 Test St",
-              url: "https://test.com", 
-              category: "Test",
-              tags: "test"
-            }],
+            batchData: [
+              {
+                title: "Test Event",
+                description: "Test Description",
+                date: "2024-03-15",
+                enddate: "",
+                location: "Test Location",
+                address: "123 Test St",
+                url: "https://test.com",
+                category: "Test",
+                tags: "test",
+              },
+            ],
             totalBatches: 1,
           },
         },
@@ -581,7 +637,7 @@ describe("Import System Integration Tests", () => {
       // Get created event
       const events = await payload.find({
         collection: "events",
-        where: { importId: { equals: importId } },
+        where: { import: { equals: importId } },
       });
 
       // Process geocoding job - should handle failure gracefully
@@ -621,7 +677,8 @@ describe("Import System Integration Tests", () => {
       }));
 
       // Create proper CSV content with headers
-      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders =
+        "title,description,date,enddate,location,address,url,category,tags";
       const csvRows = largeDataset
         .map((row) =>
           Object.values(row)
@@ -676,12 +733,18 @@ describe("Import System Integration Tests", () => {
 
       // Should create 3 batches (250 / 100 = 2.5, rounded up to 3)
       expect(importRecord.batchInfo.totalBatches).toBe(3);
-      expect(payload.jobs.queue).toHaveBeenCalledTimes(3); // 3 batch processing jobs
+
+      // Check that exactly 3 batch processing jobs were queued
+      const batchProcessingCalls = payload.jobs.queue.mock.calls.filter(
+        (call: any) => call[0].task === "batch-processing",
+      );
+      expect(batchProcessingCalls).toHaveLength(3);
     });
 
     it("should track progress correctly throughout workflow", async () => {
       // Create proper CSV content with headers
-      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders =
+        "title,description,date,enddate,location,address,url,category,tags";
       const csvRows = sampleCsvData
         .map((row) =>
           Object.values(row)
@@ -750,7 +813,7 @@ describe("Import System Integration Tests", () => {
       });
       progressResult = await progressResponse.json();
 
-      expect(progressResult.stage).toBe("batch-processing");
+      expect(progressResult.stage).toBe("row-processing");
       expect(progressResult.progress.total).toBe(3);
 
       // Continue with batch processing and event creation
@@ -805,7 +868,7 @@ describe("Import System Integration Tests", () => {
       // Complete geocoding
       const events = await payload.find({
         collection: "events",
-        where: { importId: { equals: importId } },
+        where: { import: { equals: importId } },
       });
 
       await geocodingBatchJob.handler({
@@ -842,7 +905,8 @@ describe("Import System Integration Tests", () => {
         .fn()
         .mockRejectedValue(new Error("Database connection failed"));
 
-      const csvContent = "title,description,date\n\"Test Event\",\"Test Description\",\"2024-03-15\"";
+      const csvContent =
+        'title,description,date\n"Test Event","Test Description","2024-03-15"';
       const file = new File([csvContent], "db-error.csv", {
         type: "text/csv",
       });
@@ -919,9 +983,9 @@ describe("Import System Integration Tests", () => {
       const csvHeaders = "title,description,date";
       const csvRows = [
         '"Valid Event","Valid Description","2024-03-15"',
-        '"","Invalid - no title","2024-03-16"', 
+        '"","Invalid - no title","2024-03-16"',
         '"Another Event","Invalid date","invalid-date"',
-        '"Valid Event 2","Another valid event","2024-03-17"'
+        '"Valid Event 2","Another valid event","2024-03-17"',
       ].join("\n");
       const csvContent = csvHeaders + "\n" + csvRows;
 

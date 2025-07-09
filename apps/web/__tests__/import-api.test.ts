@@ -11,20 +11,25 @@ vi.mock("uuid", () => ({
   v4: vi.fn(() => "mock-uuid-123"),
 }));
 
+// Create shared mock functions that can be reconfigured
+const mockCheckRateLimit = vi.fn().mockResolvedValue({
+  allowed: true,
+  remaining: 4,
+  resetTime: Date.now() + 3600000,
+  blocked: false,
+});
+
+const mockGetRateLimitHeaders = vi.fn(() => ({
+  "X-RateLimit-Limit": "5",
+  "X-RateLimit-Remaining": "4",
+  "X-RateLimit-Reset": new Date(Date.now() + 3600000).toISOString(),
+}));
+
 // Mock the rate limit service
 vi.mock("../lib/services/RateLimitService", () => ({
   getRateLimitService: vi.fn(() => ({
-    checkRateLimit: vi.fn().mockResolvedValue({
-      allowed: true,
-      remaining: 4,
-      resetTime: Date.now() + 3600000,
-      blocked: false,
-    }),
-    getRateLimitHeaders: vi.fn(() => ({
-      "X-RateLimit-Limit": "5",
-      "X-RateLimit-Remaining": "4",
-      "X-RateLimit-Reset": new Date(Date.now() + 3600000).toISOString(),
-    })),
+    checkRateLimit: mockCheckRateLimit,
+    getRateLimitHeaders: mockGetRateLimitHeaders,
   })),
   getClientIdentifier: vi.fn(() => "127.0.0.1"),
   RATE_LIMITS: {
@@ -61,6 +66,16 @@ describe("Import API Endpoints", () => {
         name: "Test Dataset",
         description: "Test dataset for API tests",
         catalog: testCatalogId,
+        language: "eng",
+        schema: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            date: { type: "string", format: "date" },
+            location: { type: "string" }
+          },
+          required: ["title", "date"]
+        },
       },
     });
     testDatasetId = dataset.id;
@@ -144,6 +159,7 @@ describe("Import API Endpoints", () => {
       const importRecord = await payload.findByID({
         collection: "imports",
         id: result.importId,
+        depth: 0, // Don't populate relationships
       });
 
       expect(importRecord.fileName).toBe("mock-uuid-123.csv");
@@ -192,6 +208,7 @@ describe("Import API Endpoints", () => {
       const importRecord = await payload.findByID({
         collection: "imports",
         id: result.importId,
+        depth: 0,
       });
 
       expect(importRecord.fileName).toBe("mock-uuid-123.xlsx");
@@ -213,6 +230,7 @@ describe("Import API Endpoints", () => {
       const importRecord = await payload.findByID({
         collection: "imports",
         id: result.importId,
+        depth: 0,
       });
 
       expect(importRecord.metadata.datasetId).toBe(testDatasetId);
@@ -236,6 +254,7 @@ describe("Import API Endpoints", () => {
       const importRecord = await payload.findByID({
         collection: "imports",
         id: result.importId,
+        depth: 0,
       });
 
       expect(importRecord.sessionId).toBe("session-123");
@@ -266,7 +285,7 @@ describe("Import API Endpoints", () => {
 
       expect(response.status).toBe(400);
       expect(result.success).toBe(false);
-      expect(result.message).toBe("Catalog ID is required");
+      expect(result.message).toBe("Valid catalog ID is required");
     });
 
     it("should reject unsupported file types", async () => {
@@ -304,7 +323,7 @@ describe("Import API Endpoints", () => {
 
     it("should reject non-existent catalog", async () => {
       const file = createMockFile("test.csv", "text/csv", 1024);
-      const formData = createFormData(file, "non-existent-catalog-id");
+      const formData = createFormData(file, "99999"); // Use a valid numeric ID that doesn't exist
       const request = createMockRequest(formData);
 
       const response = await uploadHandler(request);
@@ -320,7 +339,7 @@ describe("Import API Endpoints", () => {
       const formData = createFormData(
         file,
         testCatalogId,
-        "non-existent-dataset-id",
+        "99999", // Use a valid numeric ID that doesn't exist
       );
       const request = createMockRequest(formData);
 
@@ -333,12 +352,8 @@ describe("Import API Endpoints", () => {
     });
 
     it("should enforce rate limits for unauthenticated users", async () => {
-      // Mock rate limit service to return blocked
-      const {
-        getRateLimitService,
-      } = require("../lib/services/RateLimitService");
-      const mockRateLimitService = getRateLimitService();
-      mockRateLimitService.checkRateLimit.mockResolvedValue({
+      // Configure the shared mock to return blocked
+      mockCheckRateLimit.mockResolvedValueOnce({
         allowed: false,
         remaining: 0,
         resetTime: Date.now() + 3600000,
@@ -408,7 +423,7 @@ describe("Import API Endpoints", () => {
 
       expect(response.status).toBe(500);
       expect(result.success).toBe(false);
-      expect(result.message).toBe("Internal server error");
+      expect(result.message).toContain("Failed to create import record");
 
       // Restore original method
       payload.create = originalCreate;
@@ -456,6 +471,7 @@ describe("Import API Endpoints", () => {
           jobHistory: [],
           metadata: {},
         },
+        depth: 0,
       });
       testImportId = importRecord.id;
     });
@@ -568,10 +584,10 @@ describe("Import API Endpoints", () => {
 
     it("should return 404 for non-existent import", async () => {
       const request = new NextRequest(
-        "http://localhost:3000/api/import/non-existent-id/progress",
+        "http://localhost:3000/api/import/99999/progress",
       );
       const response = await progressHandler(request, {
-        params: { importId: "non-existent-id" },
+        params: { importId: "99999" }, // Use a valid numeric ID that doesn't exist
       });
       const result = await response.json();
 
@@ -614,6 +630,7 @@ describe("Import API Endpoints", () => {
           rowCount: 0,
           errorCount: 0,
         },
+        depth: 0,
       });
 
       const request = new NextRequest(

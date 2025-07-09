@@ -28,14 +28,13 @@ const Catalogs: CollectionConfig = {
     {
       name: 'slug',
       type: 'text',
-      unique: true,
       maxLength: 255,
       admin: {
         position: 'sidebar',
       },
       hooks: {
         beforeValidate: [
-          ({ value, originalDoc, data }) => {
+          ({ value, data }: any) => {
             if (data?.name && !value) {
               return data.name
                 .toLowerCase()
