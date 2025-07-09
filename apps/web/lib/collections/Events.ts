@@ -1,4 +1,5 @@
 import type { CollectionConfig } from "payload";
+import { createSlugHook } from "../utils/slug";
 
 const Events: CollectionConfig = {
   slug: "events",
@@ -142,6 +143,22 @@ const Events: CollectionConfig = {
       ],
       admin: {
         description: "Geocoding metadata and information",
+      },
+    },
+    {
+      name: "slug",
+      type: "text",
+      maxLength: 255,
+      unique: true,
+      admin: {
+        position: "sidebar",
+        description:
+          "URL-friendly identifier (auto-generated from event title if not provided)",
+      },
+      hooks: {
+        beforeValidate: [
+          createSlugHook("events", { sourceField: "data.title" }),
+        ],
       },
     },
   ],

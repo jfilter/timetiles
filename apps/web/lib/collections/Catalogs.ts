@@ -1,11 +1,12 @@
-import type { CollectionConfig } from 'payload'
-import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import type { CollectionConfig } from "payload";
+import { lexicalEditor } from "@payloadcms/richtext-lexical";
+import { createSlugHook } from "../utils/slug";
 
 const Catalogs: CollectionConfig = {
-  slug: 'catalogs',
+  slug: "catalogs",
   admin: {
-    useAsTitle: 'name',
-    defaultColumns: ['name', 'status', 'createdAt'],
+    useAsTitle: "name",
+    defaultColumns: ["name", "status", "createdAt"],
   },
   access: {
     read: () => true,
@@ -15,57 +16,50 @@ const Catalogs: CollectionConfig = {
   },
   fields: [
     {
-      name: 'name',
-      type: 'text',
+      name: "name",
+      type: "text",
       required: true,
       maxLength: 255,
     },
     {
-      name: 'description',
-      type: 'richText',
+      name: "description",
+      type: "richText",
       editor: lexicalEditor({}),
     },
     {
-      name: 'slug',
-      type: 'text',
+      name: "slug",
+      type: "text",
       maxLength: 255,
+      unique: true,
       admin: {
-        position: 'sidebar',
+        position: "sidebar",
+        description:
+          "URL-friendly identifier (auto-generated from name if not provided)",
       },
       hooks: {
-        beforeValidate: [
-          ({ value, data }: any) => {
-            if (data?.name && !value) {
-              return data.name
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/(^-|-$)/g, '')
-            }
-            return value
-          },
-        ],
+        beforeValidate: [createSlugHook("catalogs")],
       },
     },
     {
-      name: 'status',
-      type: 'select',
+      name: "status",
+      type: "select",
       options: [
         {
-          label: 'Active',
-          value: 'active',
+          label: "Active",
+          value: "active",
         },
         {
-          label: 'Archived',
-          value: 'archived',
+          label: "Archived",
+          value: "archived",
         },
       ],
-      defaultValue: 'active',
+      defaultValue: "active",
       admin: {
-        position: 'sidebar',
+        position: "sidebar",
       },
     },
   ],
   timestamps: true,
-}
+};
 
-export default Catalogs
+export default Catalogs;

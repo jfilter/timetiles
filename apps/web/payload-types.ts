@@ -156,6 +156,9 @@ export interface Catalog {
     };
     [k: string]: unknown;
   } | null;
+  /**
+   * URL-friendly identifier (auto-generated from name if not provided)
+   */
   slug?: string | null;
   status?: ('active' | 'archived') | null;
   updatedAt: string;
@@ -502,6 +505,10 @@ export interface Event {
      */
     normalizedAddress?: string | null;
   };
+  /**
+   * URL-friendly identifier (auto-generated from event title if not provided)
+   */
+  slug?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -925,6 +932,7 @@ export interface EventsSelect<T extends boolean = true> {
         confidence?: T;
         normalizedAddress?: T;
       };
+  slug?: T;
   updatedAt?: T;
   createdAt?: T;
 }
