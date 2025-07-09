@@ -10,12 +10,37 @@ import Imports from "./lib/collections/Imports";
 import Events from "./lib/collections/Events";
 import Users from "./lib/collections/Users";
 import Media from "./lib/collections/Media";
+import LocationCache from "./lib/collections/LocationCache";
+
+// Import job definitions
+import {
+  fileParsingJob,
+  batchProcessingJob,
+  eventCreationJob,
+  geocodingBatchJob,
+} from "./lib/jobs/import-jobs";
 
 export default buildConfig({
   admin: {
     user: Users.slug,
   },
-  collections: [Catalogs, Datasets, Imports, Events, Users, Media],
+  collections: [
+    Catalogs,
+    Datasets,
+    Imports,
+    Events,
+    Users,
+    Media,
+    LocationCache,
+  ],
+  jobs: {
+    tasks: [
+      fileParsingJob,
+      batchProcessingJob,
+      eventCreationJob,
+      geocodingBatchJob,
+    ],
+  },
   editor: lexicalEditor({}),
   secret: process.env.PAYLOAD_SECRET || "your-secret-key",
   serverURL: process.env.NEXT_PUBLIC_PAYLOAD_URL || "http://localhost:3000",

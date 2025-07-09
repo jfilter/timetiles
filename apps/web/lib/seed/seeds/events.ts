@@ -85,8 +85,8 @@ export function eventSeeds(environment: string): EventSeed[] {
   ];
 
   if (environment === "test") {
+    // Only return test-specific events, do NOT include baseEvents
     return [
-      ...baseEvents,
       {
         dataset: "test-dataset",
         data: {

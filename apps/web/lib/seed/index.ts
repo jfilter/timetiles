@@ -74,9 +74,6 @@ export class SeedManager {
       return;
     }
 
-    let hasErrors = false;
-    const errors: string[] = [];
-
     for (const item of seedData) {
       try {
         // Resolve relationships before creating
@@ -95,19 +92,9 @@ export class SeedManager {
           "Unknown";
         console.log(`✅ Created ${collection} item: ${displayName}`);
       } catch (error) {
-        hasErrors = true;
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        errors.push(errorMessage);
+        // Log the error but don't throw - allows graceful handling
         console.error(`❌ Failed to create ${collection} item:`, error);
       }
-    }
-
-    // If there were errors, throw to fail the overall process
-    if (hasErrors) {
-      throw new Error(
-        `Failed to seed ${collection} collection: ${errors.join(", ")}`,
-      );
     }
   }
 

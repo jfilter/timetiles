@@ -73,6 +73,8 @@ export interface Config {
     events: Event;
     users: User;
     media: Media;
+    'location-cache': LocationCache;
+    'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -85,6 +87,8 @@ export interface Config {
     events: EventsSelect<false> | EventsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    'location-cache': LocationCacheSelect<false> | LocationCacheSelect<true>;
+    'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -99,7 +103,16 @@ export interface Config {
     collection: 'users';
   };
   jobs: {
-    tasks: unknown;
+    tasks: {
+      'file-parsing': TaskFileParsing;
+      'batch-processing': TaskBatchProcessing;
+      'event-creation': TaskEventCreation;
+      'geocoding-batch': TaskGeocodingBatch;
+      inline: {
+        input: unknown;
+        output: unknown;
+      };
+    };
     workflows: unknown;
   };
 }
@@ -228,7 +241,19 @@ export interface Import {
    * MIME type of the uploaded file
    */
   mimeType?: string | null;
+  /**
+   * User who initiated the import (null for unauthenticated)
+   */
+  user?: (number | null) | User;
+  /**
+   * Session ID for unauthenticated users
+   */
+  sessionId?: string | null;
   status?: ('pending' | 'processing' | 'completed' | 'failed') | null;
+  /**
+   * Current processing stage
+   */
+  processingStage?: ('file-parsing' | 'row-processing' | 'geocoding' | 'event-creation' | 'completed') | null;
   importedAt?: string | null;
   completedAt?: string | null;
   /**
@@ -244,6 +269,125 @@ export interface Import {
    */
   errorLog?: string | null;
   /**
+   * Processing progress tracking
+   */
+  progress?: {
+    /**
+     * Total number of rows to process
+     */
+    totalRows?: number | null;
+    /**
+     * Number of rows processed
+     */
+    processedRows?: number | null;
+    /**
+     * Number of rows geocoded
+     */
+    geocodedRows?: number | null;
+    /**
+     * Number of events created
+     */
+    createdEvents?: number | null;
+    /**
+     * Overall completion percentage
+     */
+    percentage?: number | null;
+  };
+  /**
+   * Batch processing information
+   */
+  batchInfo?: {
+    /**
+     * Number of rows per batch
+     */
+    batchSize?: number | null;
+    /**
+     * Current batch being processed
+     */
+    currentBatch?: number | null;
+    /**
+     * Total number of batches
+     */
+    totalBatches?: number | null;
+  };
+  /**
+   * Geocoding statistics
+   */
+  geocodingStats?: {
+    /**
+     * Total addresses to geocode
+     */
+    totalAddresses?: number | null;
+    /**
+     * Successfully geocoded addresses
+     */
+    successfulGeocodes?: number | null;
+    /**
+     * Failed geocoding attempts
+     */
+    failedGeocodes?: number | null;
+    /**
+     * Results from cache
+     */
+    cachedResults?: number | null;
+    /**
+     * Google Maps API calls made
+     */
+    googleApiCalls?: number | null;
+    /**
+     * Nominatim API calls made
+     */
+    nominatimApiCalls?: number | null;
+  };
+  /**
+   * Rate limiting information for this import
+   */
+  rateLimitInfo?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Current Payload job ID being processed
+   */
+  currentJobId?: string | null;
+  /**
+   * History of all jobs for this import
+   */
+  jobHistory?:
+    | {
+        /**
+         * Payload job ID
+         */
+        jobId: string;
+        jobType: 'file-parsing' | 'batch-processing' | 'geocoding-batch' | 'event-creation';
+        status: 'queued' | 'running' | 'completed' | 'failed';
+        startedAt?: string | null;
+        completedAt?: string | null;
+        /**
+         * Error message if job failed
+         */
+        error?: string | null;
+        /**
+         * Job result data
+         */
+        result?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
    * Additional import context and metadata
    */
   metadata?:
@@ -257,6 +401,35 @@ export interface Import {
     | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "users".
+ */
+export interface User {
+  id: number;
+  firstName?: string | null;
+  lastName?: string | null;
+  role?: ('user' | 'admin' | 'analyst') | null;
+  isActive?: boolean | null;
+  lastLoginAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -308,37 +481,29 @@ export interface Event {
     | number
     | boolean
     | null;
+  /**
+   * Geocoding metadata and information
+   */
+  geocodingInfo?: {
+    /**
+     * Original address string from import
+     */
+    originalAddress?: string | null;
+    /**
+     * Geocoding provider used
+     */
+    provider?: ('google' | 'nominatim' | 'manual') | null;
+    /**
+     * Geocoding confidence score (0-1)
+     */
+    confidence?: number | null;
+    /**
+     * Normalized address returned by geocoder
+     */
+    normalizedAddress?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "users".
- */
-export interface User {
-  id: number;
-  firstName?: string | null;
-  lastName?: string | null;
-  role?: ('user' | 'admin' | 'analyst') | null;
-  isActive?: boolean | null;
-  lastLoginAt?: string | null;
-  updatedAt: string;
-  createdAt: string;
-  email: string;
-  resetPasswordToken?: string | null;
-  resetPasswordExpiration?: string | null;
-  salt?: string | null;
-  hash?: string | null;
-  loginAttempts?: number | null;
-  lockUntil?: string | null;
-  sessions?:
-    | {
-        id: string;
-        createdAt?: string | null;
-        expiresAt: string;
-      }[]
-    | null;
-  password?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -390,6 +555,180 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "location-cache".
+ */
+export interface LocationCache {
+  id: number;
+  /**
+   * Original address string
+   */
+  address: string;
+  /**
+   * Normalized address for better matching
+   */
+  normalizedAddress: string;
+  /**
+   * Latitude coordinate (WGS84)
+   */
+  latitude: number;
+  /**
+   * Longitude coordinate (WGS84)
+   */
+  longitude: number;
+  /**
+   * Geocoding provider used
+   */
+  provider: 'google' | 'nominatim';
+  /**
+   * Confidence score (0-1)
+   */
+  confidence?: number | null;
+  /**
+   * Number of times this cached result was used
+   */
+  hitCount?: number | null;
+  /**
+   * Last time this cached result was accessed
+   */
+  lastUsed?: string | null;
+  /**
+   * Parsed address components
+   */
+  components?: {
+    /**
+     * Street number
+     */
+    streetNumber?: string | null;
+    /**
+     * Street name
+     */
+    streetName?: string | null;
+    /**
+     * City name
+     */
+    city?: string | null;
+    /**
+     * State/Region/Province
+     */
+    region?: string | null;
+    /**
+     * Postal/ZIP code
+     */
+    postalCode?: string | null;
+    /**
+     * Country name
+     */
+    country?: string | null;
+  };
+  /**
+   * Additional provider-specific metadata
+   */
+  metadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-jobs".
+ */
+export interface PayloadJob {
+  id: number;
+  /**
+   * Input data provided to the job
+   */
+  input?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  taskStatus?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  completedAt?: string | null;
+  totalTried?: number | null;
+  /**
+   * If hasError is true this job will not be retried
+   */
+  hasError?: boolean | null;
+  /**
+   * If hasError is true, this is the error that caused it
+   */
+  error?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Task execution log
+   */
+  log?:
+    | {
+        executedAt: string;
+        completedAt: string;
+        taskSlug: 'inline' | 'file-parsing' | 'batch-processing' | 'event-creation' | 'geocoding-batch';
+        taskID: string;
+        input?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        output?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        state: 'failed' | 'succeeded';
+        error?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  taskSlug?: ('inline' | 'file-parsing' | 'batch-processing' | 'event-creation' | 'geocoding-batch') | null;
+  queue?: string | null;
+  waitUntil?: string | null;
+  processing?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
@@ -418,6 +757,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'location-cache';
+        value: number | LocationCache;
+      } | null)
+    | ({
+        relationTo: 'payload-jobs';
+        value: number | PayloadJob;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -500,12 +847,55 @@ export interface ImportsSelect<T extends boolean = true> {
   catalog?: T;
   fileSize?: T;
   mimeType?: T;
+  user?: T;
+  sessionId?: T;
   status?: T;
+  processingStage?: T;
   importedAt?: T;
   completedAt?: T;
   rowCount?: T;
   errorCount?: T;
   errorLog?: T;
+  progress?:
+    | T
+    | {
+        totalRows?: T;
+        processedRows?: T;
+        geocodedRows?: T;
+        createdEvents?: T;
+        percentage?: T;
+      };
+  batchInfo?:
+    | T
+    | {
+        batchSize?: T;
+        currentBatch?: T;
+        totalBatches?: T;
+      };
+  geocodingStats?:
+    | T
+    | {
+        totalAddresses?: T;
+        successfulGeocodes?: T;
+        failedGeocodes?: T;
+        cachedResults?: T;
+        googleApiCalls?: T;
+        nominatimApiCalls?: T;
+      };
+  rateLimitInfo?: T;
+  currentJobId?: T;
+  jobHistory?:
+    | T
+    | {
+        jobId?: T;
+        jobType?: T;
+        status?: T;
+        startedAt?: T;
+        completedAt?: T;
+        error?: T;
+        result?: T;
+        id?: T;
+      };
   metadata?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -527,6 +917,14 @@ export interface EventsSelect<T extends boolean = true> {
   eventTimestamp?: T;
   isValid?: T;
   validationErrors?: T;
+  geocodingInfo?:
+    | T
+    | {
+        originalAddress?: T;
+        provider?: T;
+        confidence?: T;
+        normalizedAddress?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -611,6 +1009,64 @@ export interface MediaSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "location-cache_select".
+ */
+export interface LocationCacheSelect<T extends boolean = true> {
+  address?: T;
+  normalizedAddress?: T;
+  latitude?: T;
+  longitude?: T;
+  provider?: T;
+  confidence?: T;
+  hitCount?: T;
+  lastUsed?: T;
+  components?:
+    | T
+    | {
+        streetNumber?: T;
+        streetName?: T;
+        city?: T;
+        region?: T;
+        postalCode?: T;
+        country?: T;
+      };
+  metadata?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-jobs_select".
+ */
+export interface PayloadJobsSelect<T extends boolean = true> {
+  input?: T;
+  taskStatus?: T;
+  completedAt?: T;
+  totalTried?: T;
+  hasError?: T;
+  error?: T;
+  log?:
+    | T
+    | {
+        executedAt?: T;
+        completedAt?: T;
+        taskSlug?: T;
+        taskID?: T;
+        input?: T;
+        output?: T;
+        state?: T;
+        error?: T;
+        id?: T;
+      };
+  taskSlug?: T;
+  queue?: T;
+  waitUntil?: T;
+  processing?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents_select".
  */
 export interface PayloadLockedDocumentsSelect<T extends boolean = true> {
@@ -640,6 +1096,38 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskFile-parsing".
+ */
+export interface TaskFileParsing {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskBatch-processing".
+ */
+export interface TaskBatchProcessing {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskEvent-creation".
+ */
+export interface TaskEventCreation {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskGeocoding-batch".
+ */
+export interface TaskGeocodingBatch {
+  input?: unknown;
+  output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

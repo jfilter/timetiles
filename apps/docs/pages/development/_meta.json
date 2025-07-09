@@ -2,6 +2,7 @@
   "index": "Overview",
   "setup": "Development Setup",
   "architecture": "Architecture",
+  "import-system": "Import System Development",
   "seed-system": "Seed System",
   "turborepo-integration": "Turborepo Integration",
   "contributing": "Contributing",

@@ -9,9 +9,19 @@ module.exports = {
     "**/?(*.)+(spec|test).ts",
   ],
   transform: {
-    "^.+\\.ts$": ["ts-jest", { useESM: true }],
+    "^.+\\.(ts|js)$": [
+      "ts-jest",
+      {
+        useESM: true,
+      },
+    ],
   },
   moduleFileExtensions: ["ts", "js", "json"],
+  moduleNameMapper: {
+    "^@payload-config$": "<rootDir>/payload.config.ts",
+    "^@/(.*)$": "<rootDir>/$1",
+    "^@workspace/ui/(.*)$": "<rootDir>/../../packages/ui/src/$1",
+  },
   collectCoverageFrom: [
     "lib/**/*.ts",
     "scripts/**/*.ts",
@@ -20,6 +30,7 @@ module.exports = {
   ],
   coverageDirectory: "coverage",
   coverageReporters: ["text", "lcov", "html"],
+  setupFiles: ["<rootDir>/__tests__/jest.d.ts"],
   setupFilesAfterEnv: ["<rootDir>/__tests__/setup.ts"],
   testTimeout: 30000,
   verbose: true,

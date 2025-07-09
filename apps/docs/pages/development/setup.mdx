@@ -88,15 +88,57 @@ The project uses Payload CMS with PostgreSQL + PostGIS for spatial data manageme
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and adjust as needed:
+Copy `.env.example` to `.env.local` and adjust as needed:
 
 ```bash
-cp .env.example .env
+cp apps/web/.env.example apps/web/.env.local
 ```
 
-Key variables:
+### Core Variables
 
 - `DATABASE_URL`: PostgreSQL connection string
+- `PAYLOAD_SECRET`: Secret key for Payload CMS
+- `NEXT_PUBLIC_PAYLOAD_URL`: Public URL for the application
+
+### Import System Variables
+
+For the Event Data Import System, additional variables are available:
+
+```bash
+# Geocoding Services (optional but recommended)
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+
+# File Upload Configuration
+MAX_FILE_SIZE_AUTHENTICATED=104857600   # 100MB for authenticated users
+MAX_FILE_SIZE_UNAUTHENTICATED=10485760  # 10MB for unauthenticated users
+
+# Rate Limiting (for unauthenticated users)
+RATE_LIMIT_FILE_UPLOAD=5               # 5 uploads per hour
+RATE_LIMIT_PROGRESS_CHECK=100           # 100 progress checks per hour
+RATE_LIMIT_WINDOW_MS=3600000            # 1 hour window
+
+# Job Processing Configuration
+BATCH_SIZE=100                          # Rows processed per batch
+GEOCODING_BATCH_SIZE=10                 # Addresses geocoded per batch
+GEOCODING_DELAY_MS=1000                 # Delay between geocoding batches
+
+# Cache Configuration
+GEOCODING_CACHE_CLEANUP_DAYS=90         # Cache cleanup threshold
+GEOCODING_CACHE_MIN_HITS=3              # Minimum hits to keep cache entry
+```
+
+### Google Maps API Setup
+
+For full geocoding functionality in the import system:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing one
+3. Enable the **Geocoding API**
+4. Create credentials (API Key)
+5. Restrict the API key to Geocoding API for security
+6. Add the key to your `.env.local` file
+
+**Note**: The system will fall back to OpenStreetMap Nominatim if Google Maps API is not configured.
 
 ## Troubleshooting
 
