@@ -1,28 +1,28 @@
-import { jest } from "@jest/globals";
-
 // Mock dependencies
+import { vi } from "vitest";
+
 const mockFs = {
-  readFileSync: jest.fn(),
+  readFileSync: vi.fn(),
 };
 
 const mockPapa = {
-  parse: jest.fn(),
+  parse: vi.fn(),
 };
 
 const mockXLSX = {
-  readFile: jest.fn(),
+  readFile: vi.fn(),
   utils: {
-    sheet_to_json: jest.fn(),
+    sheet_to_json: vi.fn(),
   },
 };
 
-jest.mock("papaparse", () => mockPapa);
-jest.mock("xlsx", () => mockXLSX);
-jest.mock("fs", () => mockFs);
+vi.mock("papaparse", () => mockPapa);
+vi.mock("xlsx", () => mockXLSX);
+vi.mock("fs", () => mockFs);
 
 describe("File Parsing", () => {
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("CSV Parsing", () => {

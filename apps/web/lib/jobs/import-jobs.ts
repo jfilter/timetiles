@@ -45,7 +45,11 @@ export const fileParsingJob: JobConfig = {
       // Update import status
       await payload.update({
         collection: "imports",
-        id: importId,
+        where: {
+          id: {
+            equals: importId,
+          },
+        },
         data: {
           status: "processing",
           processingStage: "file-parsing",
@@ -112,7 +116,11 @@ export const fileParsingJob: JobConfig = {
       // Update progress
       await payload.update({
         collection: "imports",
-        id: importId,
+        where: {
+          id: {
+            equals: importId,
+          },
+        },
         data: {
           "progress.totalRows": totalRows,
           "progress.processedRows": 0,
@@ -126,7 +134,11 @@ export const fileParsingJob: JobConfig = {
 
       await payload.update({
         collection: "imports",
-        id: importId,
+        where: {
+          id: {
+            equals: importId,
+          },
+        },
         data: {
           "batchInfo.totalBatches": totalBatches,
           "batchInfo.batchSize": batchSize,
@@ -159,7 +171,11 @@ export const fileParsingJob: JobConfig = {
 
       await payload.update({
         collection: "imports",
-        id: importId,
+        where: {
+          id: {
+            equals: importId,
+          },
+        },
         data: {
           status: "failed",
           "errors.0": {
@@ -187,7 +203,11 @@ export const batchProcessingJob: JobConfig = {
       // Update current batch
       await payload.update({
         collection: "imports",
-        id: importId,
+        where: {
+          id: {
+            equals: importId,
+          },
+        },
         data: {
           "batchInfo.currentBatch": batchNumber,
         },
@@ -231,7 +251,11 @@ export const batchProcessingJob: JobConfig = {
 
       await payload.update({
         collection: "imports",
-        id: importId,
+        where: {
+          id: {
+            equals: importId,
+          },
+        },
         data: {
           "errors.0": {
             message: `Batch ${batchNumber} processing failed: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -302,7 +326,11 @@ export const eventCreationJob = {
 
       await payload.update({
         collection: "imports",
-        id: importId,
+        where: {
+          id: {
+            equals: importId,
+          },
+        },
         data: {
           "progress.createdEvents":
             currentCreatedEvents + createdEventIds.length,
@@ -345,7 +373,11 @@ export const eventCreationJob = {
       if (currentBatch >= totalBatches) {
         await payload.update({
           collection: "imports",
-          id: importId,
+          where: {
+            id: {
+              equals: importId,
+            },
+          },
           data: {
             processingStage: "geocoding",
           },
@@ -356,7 +388,11 @@ export const eventCreationJob = {
 
       await payload.update({
         collection: "imports",
-        id: importId,
+        where: {
+          id: {
+            equals: importId,
+          },
+        },
         data: {
           "errors.0": {
             message: `Event creation batch ${batchNumber} failed: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -399,7 +435,11 @@ export const geocodingBatchJob = {
           if (geocodingResult) {
             await payload.update({
               collection: "events",
-              id: eventId,
+              where: {
+                id: {
+                  equals: eventId,
+                },
+              },
               data: {
                 latitude: geocodingResult.latitude,
                 longitude: geocodingResult.longitude,

@@ -81,7 +81,9 @@ describe("Seed System", () => {
 
       expect(devEvents.length).toBeGreaterThan(prodEvents.length);
       expect(prodEvents.length).toBeGreaterThan(testEvents.length);
-      expect(devEvents.every((event) => event.dataset && event.data)).toBe(true);
+      expect(devEvents.every((event) => event.dataset && event.data)).toBe(
+        true,
+      );
     });
 
     it("should generate import seeds for different environments", () => {

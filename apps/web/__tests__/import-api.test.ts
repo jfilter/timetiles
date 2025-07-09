@@ -1,32 +1,32 @@
+import { vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as uploadHandler } from "../app/api/import/upload/route";
 import { GET as progressHandler } from "../app/api/import/[importId]/progress/route";
 import { createSeedManager } from "../lib/seed/index";
-import { jest } from "@jest/globals";
 
 // Mock external dependencies
-jest.mock("fs/promises");
-jest.mock("xlsx");
-jest.mock("uuid", () => ({
-  v4: jest.fn(() => "mock-uuid-123"),
+vi.mock("fs/promises");
+vi.mock("xlsx");
+vi.mock("uuid", () => ({
+  v4: vi.fn(() => "mock-uuid-123"),
 }));
 
 // Mock the rate limit service
-jest.mock("../lib/services/RateLimitService", () => ({
-  getRateLimitService: jest.fn(() => ({
-    checkRateLimit: jest.fn().mockResolvedValue({
+vi.mock("../lib/services/RateLimitService", () => ({
+  getRateLimitService: vi.fn(() => ({
+    checkRateLimit: vi.fn().mockResolvedValue({
       allowed: true,
       remaining: 4,
       resetTime: Date.now() + 3600000,
       blocked: false,
     }),
-    getRateLimitHeaders: jest.fn(() => ({
+    getRateLimitHeaders: vi.fn(() => ({
       "X-RateLimit-Limit": "5",
       "X-RateLimit-Remaining": "4",
       "X-RateLimit-Reset": new Date(Date.now() + 3600000).toISOString(),
     })),
   })),
-  getClientIdentifier: jest.fn(() => "127.0.0.1"),
+  getClientIdentifier: vi.fn(() => "127.0.0.1"),
   RATE_LIMITS: {
     FILE_UPLOAD: { limit: 5, windowMs: 3600000 },
     PROGRESS_CHECK: { limit: 100, windowMs: 3600000 },
@@ -76,17 +76,17 @@ describe("Import API Endpoints", () => {
 
     // Mock payload.jobs.queue
     payload.jobs = {
-      queue: jest.fn().mockResolvedValue({}),
+      queue: vi.fn().mockResolvedValue({}),
     };
 
     // Mock fs/promises
     const fsPromises = require("fs/promises");
-    fsPromises.mkdir = jest.fn().mockResolvedValue(undefined);
-    fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
+    fsPromises.mkdir = vi.fn().mockResolvedValue(undefined);
+    fsPromises.writeFile = vi.fn().mockResolvedValue(undefined);
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("Upload Endpoint", () => {
@@ -173,12 +173,12 @@ describe("Import API Endpoints", () => {
 
       // Mock XLSX parsing
       const XLSX = require("xlsx");
-      XLSX.read = jest.fn().mockReturnValue({
+      XLSX.read = vi.fn().mockReturnValue({
         SheetNames: ["Sheet1"],
         Sheets: { Sheet1: {} },
       });
       XLSX.utils = {
-        sheet_to_json: jest
+        sheet_to_json: vi
           .fn()
           .mockReturnValue([{ title: "Test Event", date: "2024-03-15" }]),
       };
@@ -397,7 +397,7 @@ describe("Import API Endpoints", () => {
     it("should handle internal server errors", async () => {
       // Mock payload.create to throw error
       const originalCreate = payload.create;
-      payload.create = jest.fn().mockRejectedValue(new Error("Database error"));
+      payload.create = vi.fn().mockRejectedValue(new Error("Database error"));
 
       const file = createMockFile("test.csv", "text/csv", 1024);
       const formData = createFormData(file, testCatalogId);
@@ -582,9 +582,7 @@ describe("Import API Endpoints", () => {
     it("should handle database errors", async () => {
       // Mock payload.findByID to throw error
       const originalFindByID = payload.findByID;
-      payload.findByID = jest
-        .fn()
-        .mockRejectedValue(new Error("Database error"));
+      payload.findByID = vi.fn().mockRejectedValue(new Error("Database error"));
 
       const request = new NextRequest(
         `http://localhost:3000/api/import/${testImportId}/progress`,

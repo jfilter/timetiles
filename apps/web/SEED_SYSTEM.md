@@ -187,8 +187,8 @@ interface SeedOptions {
 __tests__/
 ├── setup.ts              # Test environment setup
 ├── seed-validation.ts     # Seed data validation tests
-├── seed.test.ts          # Full integration tests (Jest)
-└── jest.d.ts             # Type definitions
+├── seed.test.ts          # Full integration tests (Vitest)
+└── vitest.d.ts           # Type definitions
 ```
 
 ### Test Categories

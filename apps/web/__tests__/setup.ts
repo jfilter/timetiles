@@ -1,4 +1,4 @@
-// Jest setup file for seed tests
+// Vitest setup file for seed tests
 import { destroyRateLimitService } from "../lib/services/RateLimitService";
 
 // Set test environment
@@ -20,7 +20,7 @@ afterAll(async () => {
 
   // Force close any remaining connections
   if (process.env.NODE_ENV === "test") {
-    // Give Jest time to clean up
+    // Give Vitest time to clean up
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 });

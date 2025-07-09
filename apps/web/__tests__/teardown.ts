@@ -1,4 +1,4 @@
-// Global teardown for Jest tests
+// Global teardown for Vitest tests
 export default async function teardown() {
   // Force close any remaining database connections
   if (global.gc) {

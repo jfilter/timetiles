@@ -20,9 +20,9 @@
     "seed:validate": "tsx __tests__/seed-validation.ts",
     "seed:truncate": "tsx scripts/seed.ts truncate",
     "seed:integration": "./scripts/test-seed-system.sh",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest",
-    "test:watch": "NODE_OPTIONS='--experimental-vm-modules' npx jest --watch",
-    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' npx jest --coverage"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.46.0",
@@ -48,16 +48,14 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
-    "@jest/globals": "^30.0.4",
-    "@types/jest": "^29.5.12",
     "@types/node": "^20",
     "@types/pg": "^8.15.4",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
+    "@vitest/coverage-v8": "^2.1.8",
     "@workspace/eslint-config": "workspace:^",
     "@workspace/typescript-config": "workspace:*",
-    "jest": "^29.7.0",
-    "ts-jest": "^29.1.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
   }
 }

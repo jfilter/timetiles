@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import { createSeedManager } from "../lib/seed/index";
 import { NextRequest } from "next/server";
 import { POST as uploadHandler } from "../app/api/import/upload/route";
@@ -11,27 +12,26 @@ import {
 import { GeocodingService } from "../lib/services/geocoding/GeocodingService";
 import fs from "fs";
 import path from "path";
-import { jest } from "@jest/globals";
 
 // Mock external dependencies
-jest.mock("fs");
-jest.mock("fs/promises");
-jest.mock("papaparse");
-jest.mock("xlsx");
-jest.mock("uuid", () => ({ v4: jest.fn(() => "test-uuid-123") }));
+vi.mock("fs");
+vi.mock("fs/promises");
+vi.mock("papaparse");
+vi.mock("xlsx");
+vi.mock("uuid", () => ({ v4: vi.fn(() => "test-uuid-123") }));
 
 // Mock rate limiting
-jest.mock("../lib/services/RateLimitService", () => ({
-  getRateLimitService: jest.fn(() => ({
-    checkRateLimit: jest.fn().mockResolvedValue({
+vi.mock("../lib/services/RateLimitService", () => ({
+  getRateLimitService: vi.fn(() => ({
+    checkRateLimit: vi.fn().mockResolvedValue({
       allowed: true,
       remaining: 4,
       resetTime: Date.now() + 3600000,
       blocked: false,
     }),
-    getRateLimitHeaders: jest.fn(() => ({})),
+    getRateLimitHeaders: vi.fn(() => ({})),
   })),
-  getClientIdentifier: jest.fn(() => "127.0.0.1"),
+  getClientIdentifier: vi.fn(() => "127.0.0.1"),
   RATE_LIMITS: {
     FILE_UPLOAD: { limit: 5, windowMs: 3600000 },
     PROGRESS_CHECK: { limit: 100, windowMs: 3600000 },
@@ -39,7 +39,7 @@ jest.mock("../lib/services/RateLimitService", () => ({
 }));
 
 // Mock geocoding service
-jest.mock("../lib/services/geocoding/GeocodingService");
+vi.mock("../lib/services/geocoding/GeocodingService");
 
 describe("Import System Integration Tests", () => {
   let seedManager: any;
@@ -52,23 +52,35 @@ describe("Import System Integration Tests", () => {
     await seedManager.initialize();
     payload = seedManager.payload;
 
-    // Create test catalog
+    // Create test catalog with unique slug
+    const timestamp = Date.now();
     const catalog = await payload.create({
       collection: "catalogs",
       data: {
-        name: "Integration Test Catalog",
+        name: `Integration Test Catalog ${timestamp}`,
+        slug: `integration-test-catalog-${timestamp}`,
         description: "Catalog for integration testing",
       },
     });
     testCatalogId = catalog.id;
 
-    // Create test dataset
+    // Create test dataset with unique slug
     const dataset = await payload.create({
       collection: "datasets",
       data: {
-        name: "Integration Test Dataset",
+        name: `Integration Test Dataset ${timestamp}`,
+        slug: `integration-test-dataset-${timestamp}`,
         description: "Dataset for integration testing",
         catalog: testCatalogId,
+        language: "eng",
+        schema: {
+          fields: [
+            { name: "title", type: "text", required: true },
+            { name: "description", type: "text", required: false },
+            { name: "date", type: "date", required: true },
+            { name: "location", type: "text", required: false },
+          ],
+        },
       },
     });
     testDatasetId = dataset.id;
@@ -86,40 +98,40 @@ describe("Import System Integration Tests", () => {
 
     // Mock payload.jobs.queue
     payload.jobs = {
-      queue: jest.fn().mockResolvedValue({}),
+      queue: vi.fn().mockResolvedValue({}),
     };
 
     // Mock file system operations
     const fsPromises = require("fs/promises");
-    fsPromises.mkdir = jest.fn().mockResolvedValue(undefined);
-    fsPromises.writeFile = jest.fn().mockResolvedValue(undefined);
-    (fs.readFileSync as jest.Mock).mockReturnValue("");
-    (fs.unlinkSync as jest.Mock).mockImplementation(() => {});
+    fsPromises.mkdir = vi.fn().mockResolvedValue(undefined);
+    fsPromises.writeFile = vi.fn().mockResolvedValue(undefined);
+    (fs.readFileSync as any).mockReturnValue("");
+    (fs.unlinkSync as any).mockImplementation(() => {});
 
     // Mock Papa.parse
     const Papa = require("papaparse");
-    Papa.parse = jest.fn().mockReturnValue({
+    Papa.parse = vi.fn().mockReturnValue({
       data: [],
       errors: [],
     });
 
     // Mock XLSX
     const XLSX = require("xlsx");
-    XLSX.readFile = jest.fn().mockReturnValue({
+    XLSX.readFile = vi.fn().mockReturnValue({
       SheetNames: ["Sheet1"],
       Sheets: { Sheet1: {} },
     });
     XLSX.utils = {
-      sheet_to_json: jest.fn().mockReturnValue([]),
+      sheet_to_json: vi.fn().mockReturnValue([]),
     };
-    XLSX.read = jest.fn().mockReturnValue({
+    XLSX.read = vi.fn().mockReturnValue({
       SheetNames: ["Sheet1"],
       Sheets: { Sheet1: {} },
     });
 
     // Mock GeocodingService
-    (GeocodingService as jest.Mock).mockImplementation(() => ({
-      geocode: jest.fn().mockResolvedValue({
+    (GeocodingService as any).mockImplementation(() => ({
+      geocode: vi.fn().mockResolvedValue({
         latitude: 37.7749,
         longitude: -122.4194,
         confidence: 0.9,
@@ -130,7 +142,7 @@ describe("Import System Integration Tests", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("Complete Import Workflow", () => {
@@ -490,8 +502,8 @@ describe("Import System Integration Tests", () => {
 
     it("should handle geocoding failures gracefully", async () => {
       // Mock geocoding service to fail
-      (GeocodingService as jest.Mock).mockImplementation(() => ({
-        geocode: jest.fn().mockRejectedValue(new Error("Geocoding failed")),
+      (GeocodingService as any).mockImplementation(() => ({
+        geocode: vi.fn().mockRejectedValue(new Error("Geocoding failed")),
       }));
 
       const Papa = require("papaparse");
@@ -806,7 +818,7 @@ describe("Import System Integration Tests", () => {
     it("should handle database connection issues", async () => {
       // Mock payload.create to fail
       const originalCreate = payload.create;
-      payload.create = jest
+      payload.create = vi
         .fn()
         .mockRejectedValue(new Error("Database connection failed"));
 
