@@ -52,15 +52,18 @@ export async function POST(request: NextRequest) {
     const catalogIdRaw = formData.get("catalogId");
     const datasetIdRaw = formData.get("datasetId");
     const sessionIdRaw = formData.get("sessionId");
-    
+
     console.log("Raw form data:", { catalogIdRaw, datasetIdRaw, sessionIdRaw });
-    
+
     const catalogIdStr = (catalogIdRaw as string)?.trim();
     const catalogId = catalogIdStr ? parseInt(catalogIdStr, 10) : null;
     const datasetIdStr = (datasetIdRaw as string | null)?.trim();
-    const datasetId = datasetIdStr && datasetIdStr !== "null" ? parseInt(datasetIdStr, 10) : null;
+    const datasetId =
+      datasetIdStr && datasetIdStr !== "null"
+        ? parseInt(datasetIdStr, 10)
+        : null;
     const sessionId = (sessionIdRaw as string | null)?.trim() || null;
-    
+
     console.log("Parsed form data:", { catalogId, datasetId, sessionId });
 
     // Validate required fields
@@ -137,12 +140,13 @@ export async function POST(request: NextRequest) {
 
     // Verify catalog exists
     console.log("Looking for catalog with ID:", catalogId);
-    const catalog = await payload.findByID({
-      collection: "catalogs",
-      id: catalogId,
-    });
-
-    if (!catalog) {
+    let catalog;
+    try {
+      catalog = await payload.findByID({
+        collection: "catalogs",
+        id: catalogId,
+      });
+    } catch (error) {
       console.log("Catalog not found for ID:", catalogId);
       return NextResponse.json(
         { success: false, message: "Catalog not found" },
@@ -154,12 +158,12 @@ export async function POST(request: NextRequest) {
 
     // Verify dataset exists if provided
     if (datasetId) {
-      const dataset = await payload.findByID({
-        collection: "datasets",
-        id: datasetId,
-      });
-
-      if (!dataset) {
+      try {
+        await payload.findByID({
+          collection: "datasets",
+          id: datasetId,
+        });
+      } catch (error) {
         return NextResponse.json(
           { success: false, message: "Dataset not found" },
           { status: 404 },
@@ -204,7 +208,7 @@ export async function POST(request: NextRequest) {
     try {
       console.log("Creating import record with catalogId:", catalogId);
       console.log("catalogId type:", typeof catalogId);
-      
+
       const importData = {
         fileName: uniqueFileName,
         originalName: file.name,
@@ -251,9 +255,12 @@ export async function POST(request: NextRequest) {
           datasetId,
         },
       };
-      
-      console.log("Import data to create:", JSON.stringify(importData, null, 2));
-      
+
+      console.log(
+        "Import data to create:",
+        JSON.stringify(importData, null, 2),
+      );
+
       importRecord = await payload.create({
         collection: "imports",
         data: importData,
@@ -262,7 +269,10 @@ export async function POST(request: NextRequest) {
       console.error("Failed to create import record:", error);
       console.error("Error details:", error.data);
       return NextResponse.json(
-        { success: false, message: `Failed to create import record: ${error.message}` },
+        {
+          success: false,
+          message: `Failed to create import record: ${error.message}`,
+        },
         { status: 500 },
       );
     }

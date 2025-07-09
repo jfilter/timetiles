@@ -15,6 +15,7 @@ interface ProgressResponse {
     current: number;
     total: number;
     percentage: number;
+    createdEvents: number;
   };
   stageProgress: {
     stage: string;
@@ -43,13 +44,19 @@ export async function GET(
     const rateLimitService = getRateLimitService(payload);
 
     // Find the import record
-    const importRecord = await payload.findByID({
-      collection: "imports",
-      id: importId,
-    });
-
-    if (!importRecord) {
-      return NextResponse.json({ error: "Import not found" }, { status: 404 });
+    let importRecord;
+    try {
+      importRecord = await payload.findByID({
+        collection: "imports",
+        id: importId,
+      });
+    } catch (error) {
+      // Check if it's a NotFound error or a different error
+      if (error instanceof Error && (error.message.includes("Not Found") || error.name === "NotFound")) {
+        return NextResponse.json({ error: "Import not found" }, { status: 404 });
+      }
+      // For other errors, throw to be caught by the outer try-catch
+      throw error;
     }
 
     // Calculate overall progress
@@ -93,6 +100,7 @@ export async function GET(
         total: totalRows,
         percentage:
           totalRows > 0 ? Math.round((processedRows / totalRows) * 100) : 0,
+        createdEvents: createdEvents,
       },
       stageProgress,
       batchInfo: {

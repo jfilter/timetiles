@@ -28,7 +28,6 @@ const Datasets: CollectionConfig = {
     {
       name: 'slug',
       type: 'text',
-      unique: true,
       maxLength: 255,
       admin: {
         position: 'sidebar',
