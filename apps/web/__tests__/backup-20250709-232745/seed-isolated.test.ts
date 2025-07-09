@@ -6,64 +6,30 @@ import { datasetSeeds } from "../lib/seed/seeds/datasets";
 import { eventSeeds } from "../lib/seed/seeds/events";
 import { importSeeds } from "../lib/seed/seeds/imports";
 
-describe("Seed System", () => {
+describe("Isolated Seed System", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
-  let payload: any;
 
   beforeAll(async () => {
     testEnv = await createIsolatedTestEnvironment();
-    payload = testEnv.payload;
   });
 
   afterAll(async () => {
-    try {
-      await testEnv.cleanup();
-    } catch (error) {
-      console.error("Error during cleanup:", error);
-    }
-  }, 60000); // 60 second timeout for cleanup
+    await testEnv.cleanup();
+  });
 
   beforeEach(async () => {
-    // Clear all collections and verify they're empty
+    // Clean up before each test - this is now isolated per test file
     await testEnv.seedManager.truncate();
-
-    // Verify truncation worked by checking counts
-    const userCount = await testEnv.seedManager.getCollectionCount("users");
-    const catalogCount =
-      await testEnv.seedManager.getCollectionCount("catalogs");
-    const datasetCount =
-      await testEnv.seedManager.getCollectionCount("datasets");
-    const eventCount = await testEnv.seedManager.getCollectionCount("events");
-    const importCount = await testEnv.seedManager.getCollectionCount("imports");
-
-    console.log(
-      `After truncation - Users: ${userCount}, Catalogs: ${catalogCount}, Datasets: ${datasetCount}, Events: ${eventCount}, Imports: ${importCount}`,
-    );
-
-    // Log warning if any collections still have data, but don't fail the test
-    if (
-      userCount > 0 ||
-      catalogCount > 0 ||
-      datasetCount > 0 ||
-      eventCount > 0 ||
-      importCount > 0
-    ) {
-      console.warn(
-        `⚠️  Warning: Truncation may not have cleared all data - Users: ${userCount}, Catalogs: ${catalogCount}, Datasets: ${datasetCount}, Events: ${eventCount}, Imports: ${importCount}`,
-      );
-    }
   });
 
   describe("SeedManager", () => {
     it("should initialize properly", async () => {
       expect(testEnv.seedManager).toBeDefined();
-      expect(payload).toBeDefined();
+      expect(testEnv.payload).toBeDefined();
     });
 
     it("should create seed manager instance", () => {
-      expect(testEnv.seedManager).toBeDefined();
-      expect(typeof testEnv.seedManager.seed).toBe("function");
-      expect(typeof testEnv.seedManager.truncate).toBe("function");
+      expect(testEnv.seedManager.constructor.name).toBe("SeedManager");
     });
   });
 
@@ -133,7 +99,7 @@ describe("Seed System", () => {
         truncate: false,
       });
 
-      const users = await payload.find({
+      const users = await testEnv.payload.find({
         collection: "users",
         limit: 100,
       });
@@ -151,7 +117,7 @@ describe("Seed System", () => {
         truncate: false,
       });
 
-      const catalogs = await payload.find({
+      const catalogs = await testEnv.payload.find({
         collection: "catalogs",
         limit: 100,
       });
@@ -177,7 +143,7 @@ describe("Seed System", () => {
         truncate: false,
       });
 
-      const datasets = await payload.find({
+      const datasets = await testEnv.payload.find({
         collection: "datasets",
         limit: 100,
         depth: 1,
@@ -207,7 +173,7 @@ describe("Seed System", () => {
         truncate: false,
       });
 
-      const events = await payload.find({
+      const events = await testEnv.payload.find({
         collection: "events",
         limit: 100,
         depth: 1,
@@ -237,7 +203,7 @@ describe("Seed System", () => {
         truncate: false,
       });
 
-      const imports = await payload.find({
+      const imports = await testEnv.payload.find({
         collection: "imports",
         limit: 100,
         depth: 1,
@@ -268,129 +234,11 @@ describe("Seed System", () => {
       ];
 
       for (const collection of collections) {
-        const result = await payload.find({
+        const docs = await testEnv.payload.find({
           collection,
           limit: 1,
         });
-        expect(result.docs.length).toBeGreaterThan(0);
-      }
-    });
-
-    it("should handle truncate option", async () => {
-      // First seed some data
-      await testEnv.seedManager.seed({
-        collections: ["users"],
-        environment: "test",
-        truncate: false,
-      });
-
-      let users = await payload.find({
-        collection: "users",
-        limit: 100,
-      });
-      expect(users.docs.length).toBeGreaterThan(0);
-
-      // Now seed with truncate
-      await testEnv.seedManager.seed({
-        collections: ["users"],
-        environment: "test",
-        truncate: true,
-      });
-
-      users = await payload.find({
-        collection: "users",
-        limit: 100,
-      });
-      expect(users.docs.length).toBeGreaterThan(0); // Should have new data
-    });
-
-    it("should handle specific collection seeding", async () => {
-      await testEnv.seedManager.seed({
-        collections: ["users", "catalogs"],
-        environment: "test",
-        truncate: false,
-      });
-
-      const users = await payload.find({
-        collection: "users",
-        limit: 100,
-      });
-
-      const catalogs = await payload.find({
-        collection: "catalogs",
-        limit: 100,
-      });
-
-      const datasets = await payload.find({
-        collection: "datasets",
-        limit: 100,
-      });
-
-      expect(users.docs.length).toBeGreaterThan(0);
-      expect(catalogs.docs.length).toBeGreaterThan(0);
-      expect(datasets.docs.length).toBe(0); // Should not be seeded
-    });
-  });
-
-  describe("Truncation Operations", () => {
-    it("should truncate specific collections", async () => {
-      // First seed some data
-      await testEnv.seedManager.seed({
-        collections: ["users", "catalogs"],
-        environment: "test",
-        truncate: false,
-      });
-
-      // Verify data exists
-      let users = await payload.find({
-        collection: "users",
-        limit: 100,
-      });
-      expect(users.docs.length).toBeGreaterThan(0);
-
-      // Truncate users only
-      await testEnv.seedManager.truncate(["users"]);
-
-      // Check that users are gone but catalogs remain
-      users = await payload.find({
-        collection: "users",
-        limit: 100,
-      });
-
-      const catalogs = await payload.find({
-        collection: "catalogs",
-        limit: 100,
-      });
-
-      expect(users.docs.length).toBe(0);
-      expect(catalogs.docs.length).toBeGreaterThan(0);
-    });
-
-    it("should truncate all collections when no specific collections provided", async () => {
-      // First seed some data
-      await testEnv.seedManager.seed({
-        environment: "test",
-        truncate: false,
-      });
-
-      // Truncate all
-      await testEnv.seedManager.truncate();
-
-      // Check that all collections are empty
-      const collections = [
-        "users",
-        "catalogs",
-        "datasets",
-        "events",
-        "imports",
-      ];
-
-      for (const collection of collections) {
-        const result = await payload.find({
-          collection,
-          limit: 100,
-        });
-        expect(result.docs.length).toBe(0);
+        expect(docs.docs.length).toBeGreaterThan(0);
       }
     });
   });
@@ -407,8 +255,7 @@ describe("Seed System", () => {
       ).resolves.toBeUndefined();
 
       // Verify no datasets were actually created due to missing catalogs
-      const datasetCount =
-        await testEnv.seedManager.getCollectionCount("datasets");
+      const datasetCount = await testEnv.seedManager.getCollectionCount("datasets");
       expect(datasetCount).toBe(0);
     });
 

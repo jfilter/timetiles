@@ -1,13 +1,13 @@
 export interface DatasetSeed {
   name: string;
-  description?: any;
+  description?: Record<string, unknown>;
   slug?: string;
   catalog: string; // This will be resolved to catalog ID during seeding
   language: string;
   status: "draft" | "active" | "archived";
   isPublic: boolean;
-  schema: any;
-  metadata?: any;
+  schema: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
 }
 
 export function datasetSeeds(environment: string): DatasetSeed[] {

@@ -22,7 +22,11 @@
     "seed:integration": "./scripts/test-seed-system.sh",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:parallel": "vitest run --reporter=verbose --pool=forks --poolOptions.forks.singleFork=false",
+    "test:parallel:watch": "vitest --reporter=verbose --pool=forks --poolOptions.forks.singleFork=false",
+    "test:isolated": "vitest run __tests__/seed-isolated.test.ts --reporter=verbose",
+    "test:sequential": "vitest run --no-file-parallelism --pool=forks --poolOptions.forks.singleFork=true"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.46.0",

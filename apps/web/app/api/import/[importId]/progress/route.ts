@@ -26,9 +26,39 @@ interface ProgressResponse {
     totalBatches: number;
     batchSize: number;
   };
-  geocodingStats: any;
-  currentJob?: any;
+  geocodingStats: Record<string, unknown>;
+  currentJob?: {
+    id: string;
+    status: string;
+    progress: number;
+  };
   estimatedTimeRemaining?: number;
+}
+
+interface ProgressCounts {
+  totalRows: number;
+  processedRows: number;
+  geocodedRows: number;
+  createdEvents: number;
+}
+
+interface ImportRecord {
+  progress?: {
+    totalRows?: number;
+    processedRows?: number;
+    geocodedRows?: number;
+    createdEvents?: number;
+  };
+  processingStage?: string;
+  currentJobId?: string;
+  status?: string;
+  batchInfo?: {
+    currentBatch?: number;
+    totalBatches?: number;
+    batchSize?: number;
+  };
+  geocodingStats?: Record<string, unknown>;
+  importedAt?: string;
 }
 
 export async function GET(
@@ -44,7 +74,7 @@ export async function GET(
     const rateLimitService = getRateLimitService(payload);
 
     // Find the import record
-    let importRecord;
+    let importRecord: ImportRecord;
     try {
       importRecord = await payload.findByID({
         collection: "imports",
@@ -76,7 +106,7 @@ export async function GET(
     );
 
     // Get current job status if available
-    let currentJobStatus = null;
+    let currentJobStatus: { id: string; status: string; progress: number } | null = null;
     if (importRecord.currentJobId) {
       try {
         // In a real implementation, you would query the job queue
@@ -109,7 +139,7 @@ export async function GET(
         batchSize: Number(importRecord.batchInfo?.batchSize) || 100,
       },
       geocodingStats: importRecord.geocodingStats || {},
-      currentJob: currentJobStatus,
+      currentJob: currentJobStatus || undefined,
       estimatedTimeRemaining: calculateEstimatedTime(importRecord),
     };
 
@@ -129,7 +159,7 @@ export async function GET(
   }
 }
 
-function calculateStageProgress(stage: string, counts: any) {
+function calculateStageProgress(stage: string, counts: ProgressCounts) {
   switch (stage) {
     case "file-parsing":
       return { stage: "Parsing file...", percentage: 10 };
@@ -155,7 +185,7 @@ function calculateStageProgress(stage: string, counts: any) {
   }
 }
 
-function calculateEstimatedTime(importRecord: any): number | undefined {
+function calculateEstimatedTime(importRecord: ImportRecord): number | undefined {
   // Simple estimation based on processing speed
   const totalRows = importRecord.progress?.totalRows || 0;
   const processedRows = importRecord.progress?.processedRows || 0;

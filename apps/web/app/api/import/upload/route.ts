@@ -11,21 +11,7 @@ import {
   RATE_LIMITS,
 } from "../../../../lib/services/RateLimitService";
 
-interface UploadRequest {
-  catalogId: string;
-  datasetId?: string;
-  sessionId?: string;
-}
 
-interface UploadResponse {
-  success: boolean;
-  importId?: string;
-  message: string;
-  rateLimitInfo?: {
-    remaining: number;
-    resetTime: number;
-  };
-}
 
 const ALLOWED_MIME_TYPES = [
   "text/csv",
@@ -146,7 +132,7 @@ export async function POST(request: NextRequest) {
         collection: "catalogs",
         id: catalogId,
       });
-    } catch (error) {
+    } catch (_: unknown) {
       console.log("Catalog not found for ID:", catalogId);
       return NextResponse.json(
         { success: false, message: "Catalog not found" },
@@ -163,7 +149,7 @@ export async function POST(request: NextRequest) {
           collection: "datasets",
           id: datasetId,
         });
-      } catch (error) {
+      } catch (_: unknown) {
         return NextResponse.json(
           { success: false, message: "Dataset not found" },
           { status: 404 },
@@ -198,8 +184,8 @@ export async function POST(request: NextRequest) {
         const jsonData = XLSX.utils.sheet_to_json(worksheet!);
         rowCount = jsonData.length;
       }
-    } catch (error) {
-      console.warn("Failed to parse file for row count:", error);
+    } catch (_: unknown) {
+      console.warn("Failed to parse file for row count:", _);
       rowCount = 0;
     }
 
@@ -215,7 +201,7 @@ export async function POST(request: NextRequest) {
         catalog: catalogId,
         fileSize: file.size,
         mimeType: file.type,
-        user: (user as any)?.id || null,
+        user: user?.id || null,
         sessionId: sessionId || null,
         status: "pending" as const,
         processingStage: "file-parsing" as const,
@@ -265,13 +251,13 @@ export async function POST(request: NextRequest) {
         collection: "imports",
         data: importData,
       });
-    } catch (error: any) {
-      console.error("Failed to create import record:", error);
-      console.error("Error details:", error.data);
+    } catch (_: unknown) {
+      console.error("Failed to create import record:", _);
+      console.error("Error details:", (_ as { data?: unknown }).data);
       return NextResponse.json(
         {
           success: false,
-          message: `Failed to create import record: ${error.message}`,
+          message: `Failed to create import record: ${(_ as Error).message}`,
         },
         { status: 500 },
       );
@@ -305,8 +291,8 @@ export async function POST(request: NextRequest) {
       },
       { headers },
     );
-  } catch (error) {
-    console.error("Upload error:", error);
+  } catch (__) {
+    console.error("Upload error:", __);
     return NextResponse.json(
       {
         success: false,
@@ -317,7 +303,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getUserFromToken(authHeader: string) {
+async function getUserFromToken(_: string) {
   // This would implement JWT token validation
   // For now, return null (unauthenticated)
   return null;

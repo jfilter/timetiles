@@ -242,10 +242,15 @@ export class RateLimitService {
   }
 }
 
-// Singleton instance
+// Singleton instance - but allow per-test isolation
 let rateLimitService: RateLimitService | null = null;
 
 export function getRateLimitService(payload: Payload): RateLimitService {
+  // In test environment, always create a new instance for isolation
+  if (process.env.NODE_ENV === "test") {
+    return new RateLimitService(payload);
+  }
+
   if (!rateLimitService) {
     rateLimitService = new RateLimitService(payload);
   }

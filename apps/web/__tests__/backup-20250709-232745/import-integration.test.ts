@@ -8,7 +8,7 @@ import {
   beforeEach,
   afterEach,
 } from "vitest";
-import { createIsolatedTestEnvironment } from "./test-helpers";
+import { createSeedManager } from "../lib/seed/index";
 import { NextRequest } from "next/server";
 import { POST as uploadHandler } from "../app/api/import/upload/route";
 import { GET as progressHandler } from "../app/api/import/[importId]/progress/route";
@@ -53,7 +53,7 @@ vi.mock("../lib/services/RateLimitService", () => ({
 vi.mock("../lib/services/geocoding/GeocodingService");
 
 describe("Import System Integration Tests", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let seedManager: any;
   let payload: any;
   let testCatalogId: string;
   let testDatasetId: string;
@@ -96,8 +96,9 @@ describe("Import System Integration Tests", () => {
   ];
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
-    payload = testEnv.payload;
+    seedManager = createSeedManager();
+    await seedManager.initialize();
+    payload = seedManager.payload;
 
     // Create test catalog with unique slug
     const timestamp = Date.now();
@@ -134,12 +135,14 @@ describe("Import System Integration Tests", () => {
   });
 
   afterAll(async () => {
-    await testEnv.cleanup();
+    await seedManager.cleanup();
   });
 
   beforeEach(async () => {
-    // Clean up before each test - this is now isolated per test file
-    await testEnv.seedManager.truncate();
+    // Clear all collections
+    await payload.delete({ collection: "imports", where: {} });
+    await payload.delete({ collection: "events", where: {} });
+    await payload.delete({ collection: "location-cache", where: {} });
 
     // Mock payload.jobs.queue
     payload.jobs = {
@@ -163,11 +166,12 @@ describe("Import System Integration Tests", () => {
   afterEach(() => {
     vi.clearAllMocks();
 
-    // Clean up any test files in the isolated temp directory
+    // Clean up any test files
     const testFiles = ["test-uuid-123.csv", "test-uuid-123.xlsx"];
+    const uploadsDir = path.join(process.cwd(), "uploads");
 
     testFiles.forEach((fileName) => {
-      const filePath = path.join(testEnv.tempDir, fileName);
+      const filePath = path.join(uploadsDir, fileName);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
@@ -233,13 +237,7 @@ describe("Import System Integration Tests", () => {
       };
 
       await fileParsingJob.handler({
-        job: {
-          id: "test-job-1",
-          input: fileParsingJobInput,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        job: { input: fileParsingJobInput },
         payload,
       });
 
@@ -273,13 +271,7 @@ describe("Import System Integration Tests", () => {
       };
 
       await batchProcessingJob.handler({
-        job: {
-          id: "test-job-2",
-          input: batchProcessingJobInput,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        job: { input: batchProcessingJobInput },
         payload,
       });
 
@@ -313,13 +305,7 @@ describe("Import System Integration Tests", () => {
       };
 
       await eventCreationJob.handler({
-        job: {
-          id: 3,
-          input: eventCreationJobInput,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        job: { input: eventCreationJobInput },
         payload,
       });
 
@@ -332,10 +318,10 @@ describe("Import System Integration Tests", () => {
       });
 
       expect(events.docs).toHaveLength(3);
-
+      
       // Find the specific event instead of assuming order
-      const techConferenceEvent = events.docs.find(
-        (event: any) => event.data.title === "Tech Conference 2024",
+      const techConferenceEvent = events.docs.find(event => 
+        event.data.title === "Tech Conference 2024"
       );
       expect(techConferenceEvent).toBeDefined();
       expect(techConferenceEvent.data).toMatchObject({
@@ -366,13 +352,7 @@ describe("Import System Integration Tests", () => {
       };
 
       await geocodingBatchJob.handler({
-        job: {
-          id: 4,
-          input: geocodingJobInput,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        job: { input: geocodingJobInput },
         payload,
       });
 
@@ -488,13 +468,7 @@ describe("Import System Integration Tests", () => {
       // The upload handler should have created the file at the correct path
 
       await fileParsingJob.handler({
-        job: {
-          id: "test-job-5",
-          input: fileParsingJobInput,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        job: { input: fileParsingJobInput },
         payload,
       });
 
@@ -548,13 +522,7 @@ describe("Import System Integration Tests", () => {
 
       await expect(
         fileParsingJob.handler({
-          job: {
-            id: "test-job-6",
-            input: fileParsingJobInput,
-            taskStatus: "running" as any,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
+          job: { input: fileParsingJobInput },
           payload,
         }),
       ).rejects.toThrow();
@@ -607,23 +575,18 @@ describe("Import System Integration Tests", () => {
       // Process through to geocoding
       await fileParsingJob.handler({
         job: {
-          id: "test-job-7",
           input: {
             importId,
             filePath: geocodingImportRecord.metadata.filePath,
             fileName: "test.csv",
             fileType: "csv" as const,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
 
       await batchProcessingJob.handler({
         job: {
-          id: "test-job-8",
           input: {
             importId,
             batchNumber: 1,
@@ -642,9 +605,6 @@ describe("Import System Integration Tests", () => {
             ],
             totalBatches: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -665,15 +625,11 @@ describe("Import System Integration Tests", () => {
 
       await eventCreationJob.handler({
         job: {
-          id: 9,
           input: {
             importId,
             processedData,
             batchNumber: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -687,15 +643,11 @@ describe("Import System Integration Tests", () => {
       // Process geocoding job - should handle failure gracefully
       await geocodingBatchJob.handler({
         job: {
-          id: 10,
           input: {
             importId,
             eventIds: [events.docs[0].id],
             batchNumber: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -764,16 +716,12 @@ describe("Import System Integration Tests", () => {
       // Process file parsing
       await fileParsingJob.handler({
         job: {
-          id: "test-job-11",
           input: {
             importId,
             filePath: largeImportRecord.metadata.filePath,
             fileName: "large.csv",
             fileType: "csv" as const,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -846,16 +794,12 @@ describe("Import System Integration Tests", () => {
       // Process file parsing
       await fileParsingJob.handler({
         job: {
-          id: "test-job-12",
           input: {
             importId,
             filePath: progressImportRecord.metadata.filePath,
             fileName: "progress-test.csv",
             fileType: "csv" as const,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -875,16 +819,12 @@ describe("Import System Integration Tests", () => {
       // Continue with batch processing and event creation
       await batchProcessingJob.handler({
         job: {
-          id: "test-job-13",
           input: {
             importId,
             batchNumber: 1,
             batchData: sampleCsvData,
             totalBatches: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -903,15 +843,11 @@ describe("Import System Integration Tests", () => {
 
       await eventCreationJob.handler({
         job: {
-          id: 14,
           input: {
             importId,
             processedData,
             batchNumber: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -937,15 +873,11 @@ describe("Import System Integration Tests", () => {
 
       await geocodingBatchJob.handler({
         job: {
-          id: 15,
           input: {
             importId,
             eventIds: events.docs.map((e: any) => e.id),
             batchNumber: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -1085,16 +1017,12 @@ describe("Import System Integration Tests", () => {
       // Process the import
       await fileParsingJob.handler({
         job: {
-          id: "test-job-16",
           input: {
             importId,
             filePath: malformedImportRecord.metadata.filePath,
             fileName: "malformed.csv",
             fileType: "csv" as const,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });

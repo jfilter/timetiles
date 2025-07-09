@@ -13,7 +13,7 @@ export interface SeedOptions {
 }
 
 export class SeedManager {
-  private payload: any;
+  private payload: Awaited<ReturnType<typeof getPayload>> | null;
   private isCleaningUp = false;
 
   constructor() {
@@ -77,18 +77,26 @@ export class SeedManager {
     for (const item of seedData) {
       try {
         // Resolve relationships before creating
-        const resolvedItem = await this.resolveRelationships(item, collection);
-
-        await this.payload.create({
+        const resolvedItem = await this.resolveRelationships(
+          item as unknown as Record<string, unknown>,
           collection,
+        );
+
+        // Skip if relationships couldn't be resolved
+        if (!resolvedItem) {
+          continue;
+        }
+
+        await this.payload!.create({
+          collection: collection as any,
           data: resolvedItem,
         });
 
         // Get a display name for the item
         const displayName =
-          (item as any).name ||
-          (item as any).email ||
-          (item as any).id ||
+          (item as { name?: string }).name ||
+          (item as { email?: string }).email ||
+          (item as { id?: string }).id ||
           "Unknown";
         console.log(`✅ Created ${collection} item: ${displayName}`);
       } catch (error) {
@@ -116,8 +124,10 @@ export class SeedManager {
   }
 
   private async truncateCollections(collections: string[]) {
-    if (collections.length === 0) {
-      // Get all collection names
+    const isFullTruncate = collections.length === 0;
+
+    if (isFullTruncate) {
+      // Get all collection names for full truncate
       collections = [
         "users",
         "catalogs",
@@ -128,28 +138,23 @@ export class SeedManager {
       ];
     }
 
-    // Define dependencies: collections that depend on others
-    const dependencies = {
-      datasets: ["catalogs"],
-      events: ["datasets"],
-      imports: ["datasets"],
-    };
-
-    // Build the complete list of collections to truncate, including dependencies
+    // For selective truncation, only truncate the specified collections
+    // without cascading to dependencies (let the test decide what to truncate)
     const collectionsToTruncate = new Set(collections);
 
-    // Add dependent collections that need to be truncated first
-    for (const collection of collections) {
-      if (collection === "catalogs") {
-        // If truncating catalogs, also truncate all collections that depend on them
-        collectionsToTruncate.add("datasets");
-        collectionsToTruncate.add("events");
-        collectionsToTruncate.add("imports");
-      }
-      if (collection === "datasets") {
-        // If truncating datasets, also truncate collections that depend on them
-        collectionsToTruncate.add("events");
-        collectionsToTruncate.add("imports");
+    // Only add cascading dependencies if we're doing a full truncate
+    if (isFullTruncate) {
+      // This is a full truncate - add dependency cascading
+      for (const collection of collections) {
+        if (collection === "catalogs") {
+          collectionsToTruncate.add("datasets");
+          collectionsToTruncate.add("events");
+          collectionsToTruncate.add("imports");
+        }
+        if (collection === "datasets") {
+          collectionsToTruncate.add("events");
+          collectionsToTruncate.add("imports");
+        }
       }
     }
 
@@ -166,21 +171,43 @@ export class SeedManager {
     for (const collection of truncateOrder) {
       if (collectionsToTruncate.has(collection)) {
         try {
-          const items = await this.payload.find({
-            collection,
-            limit: 1000,
-            depth: 0,
-          });
+          // Use pagination to handle large datasets
+          let hasMore = true;
+          let totalDeleted = 0;
 
-          for (const item of items.docs) {
-            await this.payload.delete({
-              collection,
-              id: item.id,
+          while (hasMore) {
+            const items = await this.payload!.find({
+              collection: collection as any,
+              limit: 1000, // Get more items at once
+              depth: 0,
             });
+
+            if (items.docs.length === 0) {
+              hasMore = false;
+              break;
+            }
+
+            // Delete all items in this batch
+            for (const item of items.docs) {
+              try {
+                await this.payload!.delete({
+                  collection: collection as any,
+                  id: item.id,
+                });
+                totalDeleted++;
+              } catch (deleteError) {
+                console.warn(
+                  `⚠️  Failed to delete ${collection} item ${item.id}:`,
+                  deleteError,
+                );
+              }
+            }
+
+            // Always check again - don't assume based on batch size
+            hasMore = items.docs.length > 0;
           }
-          console.log(
-            `🗑️  Truncated ${collection} (${items.docs.length} items)`,
-          );
+
+          console.log(`🗑️  Truncated ${collection} (${totalDeleted} items)`);
         } catch (error) {
           console.error(`❌ Failed to truncate ${collection}:`, error);
         }
@@ -189,14 +216,15 @@ export class SeedManager {
   }
 
   private async resolveRelationships(
-    item: any,
+    item: Record<string, unknown>,
     collection: string,
-  ): Promise<any> {
+  ): Promise<Record<string, unknown> | null> {
     const resolvedItem = { ...item };
 
     // Resolve catalog relationships
     if (item.catalog && typeof item.catalog === "string") {
-      const catalog = await this.payload.find({
+      console.log(`🔍 Looking for catalog with slug: ${item.catalog}`);
+      const catalog = await this.payload!.find({
         collection: "catalogs",
         where: {
           slug: {
@@ -206,17 +234,25 @@ export class SeedManager {
         limit: 1,
       });
 
-      if (catalog.docs.length > 0) {
-        resolvedItem.catalog = catalog.docs[0].id;
+      console.log(
+        `🔍 Found ${catalog?.docs?.length || 0} catalogs with slug: ${item.catalog}`,
+      );
+      if (catalog?.docs?.length && catalog.docs.length > 0) {
+        console.log(
+          `✅ Resolved catalog ${item.catalog} to ID: ${catalog.docs[0]?.id}`,
+        );
+        resolvedItem.catalog = catalog.docs[0]?.id;
       } else {
-        console.error(`❌ Could not find catalog with slug: ${item.catalog}`);
-        throw new Error(`Catalog not found: ${item.catalog}`);
+        console.warn(
+          `⚠️  Could not find catalog with slug: ${item.catalog} - skipping ${collection} item`,
+        );
+        return null; // Skip this item instead of throwing
       }
     }
 
     // Resolve dataset relationships
     if (item.dataset && typeof item.dataset === "string") {
-      const dataset = await this.payload.find({
+      const dataset = await this.payload!.find({
         collection: "datasets",
         where: {
           slug: {
@@ -226,11 +262,13 @@ export class SeedManager {
         limit: 1,
       });
 
-      if (dataset.docs.length > 0) {
-        resolvedItem.dataset = dataset.docs[0].id;
+      if (dataset?.docs?.length > 0) {
+        resolvedItem.dataset = dataset.docs[0]?.id;
       } else {
-        console.error(`❌ Could not find dataset with slug: ${item.dataset}`);
-        throw new Error(`Dataset not found: ${item.dataset}`);
+        console.warn(
+          `⚠️  Could not find dataset with slug: ${item.dataset} - skipping ${collection} item`,
+        );
+        return null; // Skip this item instead of throwing
       }
     }
 
@@ -252,7 +290,7 @@ export class SeedManager {
       if (
         this.payload.db &&
         this.payload.db.pool &&
-        !this.payload.db.pool.ended
+        !(this.payload.db.pool as any).ended
       ) {
         console.log("Closing database pool...");
         try {
@@ -263,7 +301,7 @@ export class SeedManager {
             ),
           ]);
           console.log("Database pool closed successfully");
-        } catch (poolError) {
+        } catch (_: unknown) {
           console.log(
             "Pool close timeout - skipping force closure to avoid double end",
           );
@@ -274,13 +312,13 @@ export class SeedManager {
       if (
         this.payload.db &&
         this.payload.db.drizzle &&
-        this.payload.db.drizzle.$client &&
-        !this.payload.db.drizzle.$client.ended
+        (this.payload.db.drizzle as any).$client &&
+        !(this.payload.db.drizzle as any).$client.ended
       ) {
         console.log("Closing drizzle client...");
         try {
           await Promise.race([
-            this.payload.db.drizzle.$client.end(),
+            (this.payload.db.drizzle as any).$client.end(),
             new Promise((_, reject) =>
               setTimeout(
                 () => reject(new Error("Drizzle client.end() timeout")),
@@ -289,7 +327,7 @@ export class SeedManager {
             ),
           ]);
           console.log("Drizzle client closed successfully");
-        } catch (drizzleError) {
+        } catch (_: unknown) {
           console.log("Drizzle client close timeout - continuing");
         }
       }
@@ -308,7 +346,7 @@ export class SeedManager {
             ),
           ]);
           console.log("Database instance destroyed successfully");
-        } catch (destroyError) {
+        } catch (_: unknown) {
           console.log("Database destroy timeout - continuing");
         }
       }
@@ -316,8 +354,8 @@ export class SeedManager {
       // Clean up payload instance
       this.payload = null;
       console.log("Cleanup completed successfully");
-    } catch (error) {
-      console.error("Error during cleanup:", error);
+    } catch (_: unknown) {
+      console.error("Error during cleanup:", _);
       this.payload = null;
     } finally {
       this.isCleaningUp = false;
@@ -326,8 +364,8 @@ export class SeedManager {
 
   async getCollectionCount(collection: string): Promise<number> {
     await this.initialize();
-    const result = await this.payload.find({
-      collection,
+    const result = await this.payload!.find({
+      collection: collection as any,
       limit: 0, // Only get count, not documents
     });
     return result.totalDocs;

@@ -1,13 +1,13 @@
 export interface EventSeed {
   dataset: string; // This will be resolved to dataset ID during seeding
-  data: any;
+  data: Record<string, unknown>;
   location?: {
     latitude?: number;
     longitude?: number;
   };
   eventTimestamp: Date;
   isValid: boolean;
-  validationErrors?: any;
+  validationErrors?: Record<string, unknown>;
 }
 
 export function eventSeeds(environment: string): EventSeed[] {

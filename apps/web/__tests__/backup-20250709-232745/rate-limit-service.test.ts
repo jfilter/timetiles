@@ -1,33 +1,24 @@
 import {
-  vi,
-  describe,
-  it,
-  expect,
-  beforeAll,
-  afterAll,
-  beforeEach,
-  afterEach,
-} from "vitest";
-import {
   RateLimitService,
   getRateLimitService,
   getClientIdentifier,
   RATE_LIMITS,
 } from "../lib/services/RateLimitService";
-import { createIsolatedTestEnvironment } from "./test-helpers";
+import { createSeedManager } from "../lib/seed/index";
 
 describe("RateLimitService", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let seedManager: any;
   let payload: any;
   let rateLimitService: RateLimitService;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
-    payload = testEnv.payload;
+    seedManager = createSeedManager();
+    await seedManager.initialize();
+    payload = seedManager.payload;
   });
 
   afterAll(async () => {
-    await testEnv.cleanup();
+    await seedManager.cleanup();
   });
 
   beforeEach(() => {
@@ -433,16 +424,17 @@ describe("RateLimitService", () => {
 });
 
 describe("getRateLimitService", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let seedManager: any;
   let payload: any;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
-    payload = testEnv.payload;
+    seedManager = createSeedManager();
+    await seedManager.initialize();
+    payload = seedManager.payload;
   });
 
   afterAll(async () => {
-    await testEnv.cleanup();
+    await seedManager.cleanup();
   });
 
   it("should return singleton instance", () => {
