@@ -11,7 +11,7 @@ export default defineConfig({
       "__tests__/**/*.{test,spec}.{js,ts}",
     ],
     setupFiles: ["__tests__/setup.ts"],
-    testTimeout: 30000,
+    testTimeout: 20000,
     coverage: {
       provider: "v8",
       include: ["lib/**/*.ts", "scripts/**/*.ts"],

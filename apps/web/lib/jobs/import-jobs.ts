@@ -78,18 +78,17 @@ export const fileParsingJob: JobConfig = {
       } else if (fileType === "xlsx") {
         const workbook = XLSX.readFile(filePath);
         const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        parsedData = XLSX.utils.sheet_to_json(worksheet, {
+        const worksheet = workbook.Sheets[sheetName!];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet!, {
           header: 1,
           defval: "",
         });
 
-        // Convert to object format with headers
-        if (parsedData.length > 0) {
-          const headers = (parsedData[0] as string[]).map((h) =>
+        if (jsonData.length > 0) {
+          const headers = (jsonData[0] as string[]).map((h) =>
             h.toString().trim().toLowerCase(),
           );
-          parsedData = parsedData.slice(1).map((row: any[]) => {
+          parsedData = jsonData.slice(1).map((row: any[]) => {
             const obj: any = {};
             headers.forEach((header, index) => {
               obj[header] = row[index] || "";
@@ -122,9 +121,14 @@ export const fileParsingJob: JobConfig = {
           },
         },
         data: {
-          "progress.totalRows": totalRows,
-          "progress.processedRows": 0,
-          processingStage: "batch-processing",
+          progress: {
+            totalRows: totalRows,
+            processedRows: 0,
+            geocodedRows: 0,
+            createdEvents: 0,
+            percentage: 0,
+          },
+          processingStage: "row-processing",
         },
       });
 
@@ -140,9 +144,11 @@ export const fileParsingJob: JobConfig = {
           },
         },
         data: {
-          "batchInfo.totalBatches": totalBatches,
-          "batchInfo.batchSize": batchSize,
-          "batchInfo.currentBatch": 0,
+          batchInfo: {
+            totalBatches: totalBatches,
+            batchSize: batchSize,
+            currentBatch: 0,
+          },
         },
       });
 
@@ -178,11 +184,8 @@ export const fileParsingJob: JobConfig = {
         },
         data: {
           status: "failed",
-          "errors.0": {
-            message:
-              error instanceof Error ? error.message : "File parsing failed",
-            timestamp: new Date().toISOString(),
-          },
+          errorCount: 1,
+          errorLog: error instanceof Error ? error.message : "File parsing failed",
           completedAt: new Date().toISOString(),
         },
       });
@@ -200,6 +203,12 @@ export const batchProcessingJob: JobConfig = {
       job.input as BatchProcessingJobPayload;
 
     try {
+      // Get current import to preserve other batchInfo fields
+      const currentImport = await payload.findByID({
+        collection: "imports",
+        id: importId,
+      });
+      
       // Update current batch
       await payload.update({
         collection: "imports",
@@ -209,7 +218,10 @@ export const batchProcessingJob: JobConfig = {
           },
         },
         data: {
-          "batchInfo.currentBatch": batchNumber,
+          batchInfo: {
+            ...currentImport.batchInfo,
+            currentBatch: batchNumber,
+          },
         },
       });
 
@@ -257,10 +269,8 @@ export const batchProcessingJob: JobConfig = {
           },
         },
         data: {
-          "errors.0": {
-            message: `Batch ${batchNumber} processing failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-            timestamp: new Date().toISOString(),
-          },
+          errorCount: 1,
+          errorLog: `Batch ${batchNumber} processing failed: ${error instanceof Error ? error.message : "Unknown error"}`,
         },
       });
 
@@ -277,6 +287,33 @@ export const eventCreationJob = {
       job.input as EventCreationJobPayload;
 
     try {
+      // Get the import record to find the dataset
+      const currentImport = await payload.findByID({
+        collection: "imports",
+        id: importId,
+      });
+
+      // Get the catalog ID (it might be a relationship object)
+      const catalogId = typeof currentImport.catalog === 'object' 
+        ? currentImport.catalog.id 
+        : currentImport.catalog;
+
+      // Get the dataset from the import's catalog
+      const datasets = await payload.find({
+        collection: "datasets",
+        where: {
+          catalog: {
+            equals: catalogId,
+          },
+        },
+        limit: 1,
+      });
+
+      const dataset = datasets.docs[0];
+      if (!dataset) {
+        throw new Error(`No dataset found for catalog ${catalogId}`);
+      }
+
       const createdEventIds: string[] = [];
 
       // Create events
@@ -285,23 +322,15 @@ export const eventCreationJob = {
           const event = await payload.create({
             collection: "events",
             data: {
-              title: eventData.title,
-              description: eventData.description,
-              date: eventData.date,
-              endDate: eventData.endDate,
-              location: eventData.location,
-              url: eventData.url,
-              category: eventData.category,
-              tags: eventData.tags,
-              importId,
-              // Geocoding fields will be populated later
-              geocoding: {
+              dataset: dataset.id,
+              import: importId,
+              data: eventData.originalData || eventData,
+              eventTimestamp: eventData.date,
+              geocodingInfo: {
                 originalAddress: eventData.address,
-                needsGeocoding: !!eventData.address,
                 provider: null,
                 confidence: null,
                 normalizedAddress: null,
-                geocodedAt: null,
               },
             },
           });
@@ -332,9 +361,11 @@ export const eventCreationJob = {
           },
         },
         data: {
-          "progress.createdEvents":
-            currentCreatedEvents + createdEventIds.length,
-          "progress.processedRows": currentProcessedRows + processedData.length,
+          progress: {
+            ...importRecord.progress,
+            createdEvents: currentCreatedEvents + createdEventIds.length,
+            processedRows: currentProcessedRows + processedData.length,
+          },
         },
       });
 
@@ -345,7 +376,7 @@ export const eventCreationJob = {
           collection: "events",
           id: eventId,
         });
-        if (event.geocoding?.needsGeocoding) {
+        if (event.geocodingInfo?.originalAddress) {
           eventsNeedingGeocoding.push(eventId);
         }
       }
@@ -394,10 +425,8 @@ export const eventCreationJob = {
           },
         },
         data: {
-          "errors.0": {
-            message: `Event creation batch ${batchNumber} failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-            timestamp: new Date().toISOString(),
-          },
+          errorCount: 1,
+          errorLog: `Event creation batch ${batchNumber} failed: ${error instanceof Error ? error.message : "Unknown error"}`,
         },
       });
 
@@ -424,12 +453,12 @@ export const geocodingBatchJob = {
             id: eventId,
           });
 
-          if (!event.geocoding?.originalAddress) {
+          if (!event.geocodingInfo?.originalAddress) {
             continue;
           }
 
           const geocodingResult = await geocodingService.geocode(
-            event.geocoding.originalAddress,
+            event.geocodingInfo.originalAddress,
           );
 
           if (geocodingResult) {
@@ -441,14 +470,16 @@ export const geocodingBatchJob = {
                 },
               },
               data: {
-                latitude: geocodingResult.latitude,
-                longitude: geocodingResult.longitude,
-                "geocoding.provider": geocodingResult.provider,
-                "geocoding.confidence": geocodingResult.confidence,
-                "geocoding.normalizedAddress":
-                  geocodingResult.normalizedAddress,
-                "geocoding.geocodedAt": new Date().toISOString(),
-                "geocoding.needsGeocoding": false,
+                location: {
+                  latitude: geocodingResult.latitude,
+                  longitude: geocodingResult.longitude,
+                },
+                geocodingInfo: {
+                  ...event.geocodingInfo,
+                  provider: geocodingResult.provider,
+                  confidence: geocodingResult.confidence,
+                  normalizedAddress: geocodingResult.normalizedAddress,
+                },
               },
             });
             geocodedCount++;
@@ -472,7 +503,10 @@ export const geocodingBatchJob = {
         collection: "imports",
         id: importId,
         data: {
-          "progress.geocodedRows": currentGeocodedRows + geocodedCount,
+          progress: {
+            ...importRecord.progress,
+            geocodedRows: currentGeocodedRows + geocodedCount,
+          },
         },
       });
 
@@ -503,10 +537,8 @@ export const geocodingBatchJob = {
         collection: "imports",
         id: importId,
         data: {
-          "errors.0": {
-            message: `Geocoding batch ${batchNumber} failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-            timestamp: new Date().toISOString(),
-          },
+          errorCount: 1,
+          errorLog: `Geocoding batch ${batchNumber} failed: ${error instanceof Error ? error.message : "Unknown error"}`,
         },
       });
 

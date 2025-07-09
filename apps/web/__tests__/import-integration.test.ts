@@ -1,4 +1,4 @@
-import { vi } from "vitest";
+import { vi, describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import { createSeedManager } from "../lib/seed/index";
 import { NextRequest } from "next/server";
 import { POST as uploadHandler } from "../app/api/import/upload/route";
@@ -12,12 +12,9 @@ import {
 import { GeocodingService } from "../lib/services/geocoding/GeocodingService";
 import fs from "fs";
 import path from "path";
+import * as XLSX from "xlsx";
 
-// Mock external dependencies
-vi.mock("fs");
-vi.mock("fs/promises");
-vi.mock("papaparse");
-vi.mock("xlsx");
+// Mock UUID for consistent testing
 vi.mock("uuid", () => ({ v4: vi.fn(() => "test-uuid-123") }));
 
 // Mock rate limiting
@@ -46,6 +43,43 @@ describe("Import System Integration Tests", () => {
   let payload: any;
   let testCatalogId: string;
   let testDatasetId: string;
+
+  // Sample CSV data for testing
+  const sampleCsvData = [
+    {
+      title: "Tech Conference 2024",
+      description: "Annual technology conference",
+      date: "2024-03-15",
+      enddate: "2024-03-17",
+      location: "Convention Center",
+      address: "123 Main St, San Francisco, CA",
+      url: "https://techconf2024.com",
+      category: "Technology",
+      tags: "tech,conference,networking",
+    },
+    {
+      title: "Art Gallery Opening",
+      description: "Contemporary art exhibition",
+      date: "2024-03-20",
+      enddate: "",
+      location: "Modern Art Gallery",
+      address: "456 Art Ave, New York, NY",
+      url: "https://modernart.gallery",
+      category: "Arts",
+      tags: "art,gallery,exhibition",
+    },
+    {
+      title: "Music Festival",
+      description: "Three-day outdoor music festival",
+      date: "2024-04-01",
+      enddate: "2024-04-03",
+      location: "Central Park",
+      address: "Central Park, New York, NY",
+      url: "https://musicfest.com",
+      category: "Music",
+      tags: "music,festival,outdoor",
+    },
+  ];
 
   beforeAll(async () => {
     seedManager = createSeedManager();
@@ -101,33 +135,7 @@ describe("Import System Integration Tests", () => {
       queue: vi.fn().mockResolvedValue({}),
     };
 
-    // Mock file system operations
-    const fsPromises = require("fs/promises");
-    fsPromises.mkdir = vi.fn().mockResolvedValue(undefined);
-    fsPromises.writeFile = vi.fn().mockResolvedValue(undefined);
-    (fs.readFileSync as any).mockReturnValue("");
-    (fs.unlinkSync as any).mockImplementation(() => {});
-
-    // Mock Papa.parse
-    const Papa = require("papaparse");
-    Papa.parse = vi.fn().mockReturnValue({
-      data: [],
-      errors: [],
-    });
-
-    // Mock XLSX
-    const XLSX = require("xlsx");
-    XLSX.readFile = vi.fn().mockReturnValue({
-      SheetNames: ["Sheet1"],
-      Sheets: { Sheet1: {} },
-    });
-    XLSX.utils = {
-      sheet_to_json: vi.fn().mockReturnValue([]),
-    };
-    XLSX.read = vi.fn().mockReturnValue({
-      SheetNames: ["Sheet1"],
-      Sheets: { Sheet1: {} },
-    });
+    // No need to mock fs, papaparse, or xlsx - use real implementations
 
     // Mock GeocodingService
     (GeocodingService as any).mockImplementation(() => ({
@@ -146,65 +154,28 @@ describe("Import System Integration Tests", () => {
   });
 
   describe("Complete Import Workflow", () => {
-    const sampleCsvData = [
-      {
-        title: "Tech Conference 2024",
-        description: "Annual technology conference",
-        date: "2024-03-15",
-        enddate: "2024-03-17",
-        location: "Convention Center",
-        address: "123 Main St, San Francisco, CA",
-        url: "https://techconf2024.com",
-        category: "Technology",
-        tags: "tech,conference,networking",
-      },
-      {
-        title: "Art Gallery Opening",
-        description: "Contemporary art exhibition",
-        date: "2024-03-20",
-        enddate: "",
-        location: "Modern Art Gallery",
-        address: "456 Art Ave, New York, NY",
-        url: "https://modernart.gallery",
-        category: "Arts",
-        tags: "art,gallery,exhibition",
-      },
-      {
-        title: "Music Festival",
-        description: "Three-day outdoor music festival",
-        date: "2024-04-01",
-        enddate: "2024-04-03",
-        location: "Central Park",
-        address: "Central Park, New York, NY",
-        url: "https://musicfest.com",
-        category: "Music",
-        tags: "music,festival,outdoor",
-      },
-    ];
 
     it("should complete full CSV import workflow", async () => {
       // Step 1: Upload file
-      const csvContent = sampleCsvData
+      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
+      const csvRows = sampleCsvData
         .map((row) =>
           Object.values(row)
             .map((val) => `"${val}"`)
             .join(","),
         )
         .join("\n");
+      const csvContent = csvHeaders + "\n" + csvRows;
 
-      const Papa = require("papaparse");
-      Papa.parse.mockReturnValue({
-        data: sampleCsvData,
-        errors: [],
-      });
+      // Use real Papa.parse - no mocking needed
 
       const file = new File([csvContent], "test-events.csv", {
         type: "text/csv",
       });
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("catalogId", testCatalogId);
-      formData.append("datasetId", testDatasetId);
+      formData.append("catalogId", String(testCatalogId));
+      formData.append("datasetId", String(testDatasetId));
 
       const uploadRequest = new NextRequest(
         "http://localhost:3000/api/import/upload",
@@ -235,7 +206,7 @@ describe("Import System Integration Tests", () => {
       // Step 2: Process file parsing job
       const fileParsingJobInput = {
         importId,
-        filePath: "/tmp/test-events.csv",
+        filePath: importRecord.metadata.filePath,
         fileName: "test-events.csv",
         fileType: "csv" as const,
       };
@@ -342,7 +313,7 @@ describe("Import System Integration Tests", () => {
       });
 
       // Step 5: Process geocoding job
-      const eventIds = events.docs.map((event) => event.id);
+      const eventIds = events.docs.map((event: any) => event.id);
       const geocodingJobInput = {
         importId,
         eventIds,
@@ -391,25 +362,30 @@ describe("Import System Integration Tests", () => {
     });
 
     it("should handle Excel file import workflow", async () => {
-      // Mock Excel parsing
-      const XLSX = require("xlsx");
-      XLSX.utils.sheet_to_json.mockReturnValue([
-        ["title", "description", "date", "location", "address"],
-        ...sampleCsvData.map((row) => [
-          row.title,
-          row.description,
-          row.date,
-          row.location,
-          row.address,
-        ]),
-      ]);
+      // Create a proper Excel file using XLSX
+      const workbook = XLSX.utils.book_new();
+      const worksheetData = [
+        ["title", "description", "date", "enddate", "location", "address", "url", "category", "tags"],
+        ...sampleCsvData.map(row => [
+          row.title, row.description, row.date, row.enddate, 
+          row.location, row.address, row.url, row.category, row.tags
+        ])
+      ];
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Events");
+      
+      // Write to buffer and create file
+      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      const excelBlob = new Blob([excelBuffer], { 
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+      });
 
-      const file = new File(["mock excel content"], "test-events.xlsx", {
+      const file = new File([excelBlob], "test-events.xlsx", {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("catalogId", testCatalogId);
+      formData.append("catalogId", String(testCatalogId));
 
       const uploadRequest = new NextRequest(
         "http://localhost:3000/api/import/upload",
@@ -425,10 +401,16 @@ describe("Import System Integration Tests", () => {
       expect(uploadResponse.status).toBe(200);
       expect(uploadResult.success).toBe(true);
 
+      // Get import record to access file path
+      const xlsxImportRecord = await payload.findByID({
+        collection: "imports",
+        id: uploadResult.importId,
+      });
+
       // Process file parsing job
       const fileParsingJobInput = {
         importId: uploadResult.importId,
-        filePath: "/tmp/test-events.xlsx",
+        filePath: xlsxImportRecord.metadata.filePath,
         fileName: "test-events.xlsx",
         fileType: "xlsx" as const,
       };
@@ -448,19 +430,15 @@ describe("Import System Integration Tests", () => {
     });
 
     it("should handle import errors gracefully", async () => {
-      // Mock Papa.parse to return errors
-      const Papa = require("papaparse");
-      Papa.parse.mockReturnValue({
-        data: [],
-        errors: [{ message: "Parse error", row: 1 }],
-      });
+      // Create a CSV with invalid content (missing required fields)
+      const invalidCsvContent = "invalid,csv,content\nno,headers,here";
 
-      const file = new File(["invalid,csv,content"], "invalid.csv", {
+      const file = new File([invalidCsvContent], "invalid.csv", {
         type: "text/csv",
       });
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("catalogId", testCatalogId);
+      formData.append("catalogId", String(testCatalogId));
 
       const uploadRequest = new NextRequest(
         "http://localhost:3000/api/import/upload",
@@ -475,10 +453,16 @@ describe("Import System Integration Tests", () => {
 
       expect(uploadResponse.status).toBe(200);
 
+      // Get import record to access file path
+      const errorImportRecord = await payload.findByID({
+        collection: "imports",
+        id: uploadResult.importId,
+      });
+
       // Process file parsing job - should fail
       const fileParsingJobInput = {
         importId: uploadResult.importId,
-        filePath: "/tmp/invalid.csv",
+        filePath: errorImportRecord.metadata.filePath,
         fileName: "invalid.csv",
         fileType: "csv" as const,
       };
@@ -497,7 +481,7 @@ describe("Import System Integration Tests", () => {
       });
 
       expect(importRecord.status).toBe("failed");
-      expect(importRecord.errors).toBeDefined();
+      expect(importRecord.errorLog).toBeDefined();
     });
 
     it("should handle geocoding failures gracefully", async () => {
@@ -506,17 +490,15 @@ describe("Import System Integration Tests", () => {
         geocode: vi.fn().mockRejectedValue(new Error("Geocoding failed")),
       }));
 
-      const Papa = require("papaparse");
-      Papa.parse.mockReturnValue({
-        data: [sampleCsvData[0]], // Single event
-        errors: [],
-      });
+      // Create a proper CSV with just one event
+      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
+      const csvRow = `"Test Event","Test Description","2024-03-15","","Test Location","123 Test St","https://test.com","Test","test"`;
+      const csvContent = csvHeaders + "\n" + csvRow;
 
-      // Complete upload and processing steps
-      const file = new File(["test content"], "test.csv", { type: "text/csv" });
+      const file = new File([csvContent], "test.csv", { type: "text/csv" });
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("catalogId", testCatalogId);
+      formData.append("catalogId", String(testCatalogId));
 
       const uploadRequest = new NextRequest(
         "http://localhost:3000/api/import/upload",
@@ -530,12 +512,18 @@ describe("Import System Integration Tests", () => {
       const uploadResult = await uploadResponse.json();
       const importId = uploadResult.importId;
 
+      // Get import record to access file path
+      const geocodingImportRecord = await payload.findByID({
+        collection: "imports",
+        id: importId,
+      });
+
       // Process through to geocoding
       await fileParsingJob.handler({
         job: {
           input: {
             importId,
-            filePath: "/tmp/test.csv",
+            filePath: geocodingImportRecord.metadata.filePath,
             fileName: "test.csv",
             fileType: "csv" as const,
           },
@@ -548,7 +536,17 @@ describe("Import System Integration Tests", () => {
           input: {
             importId,
             batchNumber: 1,
-            batchData: [sampleCsvData[0]],
+            batchData: [{
+              title: "Test Event",
+              description: "Test Description", 
+              date: "2024-03-15",
+              enddate: "",
+              location: "Test Location",
+              address: "123 Test St",
+              url: "https://test.com", 
+              category: "Test",
+              tags: "test"
+            }],
             totalBatches: 1,
           },
         },
@@ -557,15 +555,15 @@ describe("Import System Integration Tests", () => {
 
       const processedData = [
         {
-          title: sampleCsvData[0].title,
-          description: sampleCsvData[0].description,
-          date: new Date(sampleCsvData[0].date).toISOString(),
+          title: "Test Event",
+          description: "Test Description",
+          date: new Date("2024-03-15").toISOString(),
           endDate: null,
-          location: sampleCsvData[0].location,
-          address: sampleCsvData[0].address,
-          url: sampleCsvData[0].url,
-          category: sampleCsvData[0].category,
-          tags: sampleCsvData[0].tags.split(",").map((t) => t.trim()),
+          location: "Test Location",
+          address: "123 Test St",
+          url: "https://test.com",
+          category: "Test",
+          tags: ["test"],
         },
       ];
 
@@ -622,18 +620,23 @@ describe("Import System Integration Tests", () => {
         tags: "test,event",
       }));
 
-      const Papa = require("papaparse");
-      Papa.parse.mockReturnValue({
-        data: largeDataset,
-        errors: [],
-      });
+      // Create proper CSV content with headers
+      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
+      const csvRows = largeDataset
+        .map((row) =>
+          Object.values(row)
+            .map((val) => `"${val}"`)
+            .join(","),
+        )
+        .join("\n");
+      const csvContent = csvHeaders + "\n" + csvRows;
 
-      const file = new File(["large csv content"], "large.csv", {
+      const file = new File([csvContent], "large.csv", {
         type: "text/csv",
       });
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("catalogId", testCatalogId);
+      formData.append("catalogId", String(testCatalogId));
 
       const uploadRequest = new NextRequest(
         "http://localhost:3000/api/import/upload",
@@ -647,12 +650,18 @@ describe("Import System Integration Tests", () => {
       const uploadResult = await uploadResponse.json();
       const importId = uploadResult.importId;
 
+      // Get import record to access file path
+      const largeImportRecord = await payload.findByID({
+        collection: "imports",
+        id: importId,
+      });
+
       // Process file parsing
       await fileParsingJob.handler({
         job: {
           input: {
             importId,
-            filePath: "/tmp/large.csv",
+            filePath: largeImportRecord.metadata.filePath,
             fileName: "large.csv",
             fileType: "csv" as const,
           },
@@ -671,18 +680,23 @@ describe("Import System Integration Tests", () => {
     });
 
     it("should track progress correctly throughout workflow", async () => {
-      const Papa = require("papaparse");
-      Papa.parse.mockReturnValue({
-        data: sampleCsvData,
-        errors: [],
-      });
+      // Create proper CSV content with headers
+      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
+      const csvRows = sampleCsvData
+        .map((row) =>
+          Object.values(row)
+            .map((val) => `"${val}"`)
+            .join(","),
+        )
+        .join("\n");
+      const csvContent = csvHeaders + "\n" + csvRows;
 
-      const file = new File(["test content"], "progress-test.csv", {
+      const file = new File([csvContent], "progress-test.csv", {
         type: "text/csv",
       });
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("catalogId", testCatalogId);
+      formData.append("catalogId", String(testCatalogId));
 
       const uploadRequest = new NextRequest(
         "http://localhost:3000/api/import/upload",
@@ -695,6 +709,12 @@ describe("Import System Integration Tests", () => {
       const uploadResponse = await uploadHandler(uploadRequest);
       const uploadResult = await uploadResponse.json();
       const importId = uploadResult.importId;
+
+      // Get import record to access file path
+      const progressImportRecord = await payload.findByID({
+        collection: "imports",
+        id: importId,
+      });
 
       // Check initial progress
       let progressRequest = new NextRequest(
@@ -713,7 +733,7 @@ describe("Import System Integration Tests", () => {
         job: {
           input: {
             importId,
-            filePath: "/tmp/progress-test.csv",
+            filePath: progressImportRecord.metadata.filePath,
             fileName: "progress-test.csv",
             fileType: "csv" as const,
           },
@@ -792,7 +812,7 @@ describe("Import System Integration Tests", () => {
         job: {
           input: {
             importId,
-            eventIds: events.docs.map((e) => e.id),
+            eventIds: events.docs.map((e: any) => e.id),
             batchNumber: 1,
           },
         },
@@ -822,12 +842,13 @@ describe("Import System Integration Tests", () => {
         .fn()
         .mockRejectedValue(new Error("Database connection failed"));
 
-      const file = new File(["test content"], "db-error.csv", {
+      const csvContent = "title,description,date\n\"Test Event\",\"Test Description\",\"2024-03-15\"";
+      const file = new File([csvContent], "db-error.csv", {
         type: "text/csv",
       });
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("catalogId", testCatalogId);
+      formData.append("catalogId", String(testCatalogId));
 
       const uploadRequest = new NextRequest(
         "http://localhost:3000/api/import/upload",
@@ -848,20 +869,15 @@ describe("Import System Integration Tests", () => {
     });
 
     it("should handle concurrent imports", async () => {
-      const Papa = require("papaparse");
-      Papa.parse.mockReturnValue({
-        data: [sampleCsvData[0]],
-        errors: [],
-      });
-
-      // Create multiple concurrent uploads
+      // Create multiple concurrent uploads with proper CSV content
       const uploads = Array.from({ length: 3 }, (_, i) => {
-        const file = new File([`content ${i}`], `concurrent-${i}.csv`, {
+        const csvContent = `title,description,date\n"Event ${i}","Description ${i}","2024-03-15"`;
+        const file = new File([csvContent], `concurrent-${i}.csv`, {
           type: "text/csv",
         });
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("catalogId", testCatalogId);
+        formData.append("catalogId", String(testCatalogId));
 
         return new NextRequest("http://localhost:3000/api/import/upload", {
           method: "POST",
@@ -899,18 +915,22 @@ describe("Import System Integration Tests", () => {
         { title: "Valid Event 2", date: "2024-03-17" },
       ];
 
-      const Papa = require("papaparse");
-      Papa.parse.mockReturnValue({
-        data: malformedData,
-        errors: [],
-      });
+      // Create CSV content with some valid and some invalid rows
+      const csvHeaders = "title,description,date";
+      const csvRows = [
+        '"Valid Event","Valid Description","2024-03-15"',
+        '"","Invalid - no title","2024-03-16"', 
+        '"Another Event","Invalid date","invalid-date"',
+        '"Valid Event 2","Another valid event","2024-03-17"'
+      ].join("\n");
+      const csvContent = csvHeaders + "\n" + csvRows;
 
-      const file = new File(["malformed content"], "malformed.csv", {
+      const file = new File([csvContent], "malformed.csv", {
         type: "text/csv",
       });
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("catalogId", testCatalogId);
+      formData.append("catalogId", String(testCatalogId));
 
       const uploadRequest = new NextRequest(
         "http://localhost:3000/api/import/upload",
@@ -924,12 +944,18 @@ describe("Import System Integration Tests", () => {
       const uploadResult = await uploadResponse.json();
       const importId = uploadResult.importId;
 
+      // Get import record to access file path
+      const malformedImportRecord = await payload.findByID({
+        collection: "imports",
+        id: importId,
+      });
+
       // Process the import
       await fileParsingJob.handler({
         job: {
           input: {
             importId,
-            filePath: "/tmp/malformed.csv",
+            filePath: malformedImportRecord.metadata.filePath,
             fileName: "malformed.csv",
             fileType: "csv" as const,
           },

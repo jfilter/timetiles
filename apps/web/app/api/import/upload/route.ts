@@ -49,9 +49,19 @@ export async function POST(request: NextRequest) {
     // Parse form data
     const formData = await request.formData();
     const file = formData.get("file") as File;
-    const catalogId = formData.get("catalogId") as string;
-    const datasetId = formData.get("datasetId") as string | null;
-    const sessionId = formData.get("sessionId") as string | null;
+    const catalogIdRaw = formData.get("catalogId");
+    const datasetIdRaw = formData.get("datasetId");
+    const sessionIdRaw = formData.get("sessionId");
+    
+    console.log("Raw form data:", { catalogIdRaw, datasetIdRaw, sessionIdRaw });
+    
+    const catalogIdStr = (catalogIdRaw as string)?.trim();
+    const catalogId = catalogIdStr ? parseInt(catalogIdStr, 10) : null;
+    const datasetIdStr = (datasetIdRaw as string | null)?.trim();
+    const datasetId = datasetIdStr && datasetIdStr !== "null" ? parseInt(datasetIdStr, 10) : null;
+    const sessionId = (sessionIdRaw as string | null)?.trim() || null;
+    
+    console.log("Parsed form data:", { catalogId, datasetId, sessionId });
 
     // Validate required fields
     if (!file) {
@@ -61,9 +71,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!catalogId) {
+    if (!catalogId || isNaN(catalogId)) {
       return NextResponse.json(
-        { success: false, message: "Catalog ID is required" },
+        { success: false, message: "Valid catalog ID is required" },
         { status: 400 },
       );
     }
@@ -126,17 +136,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify catalog exists
+    console.log("Looking for catalog with ID:", catalogId);
     const catalog = await payload.findByID({
       collection: "catalogs",
       id: catalogId,
     });
 
     if (!catalog) {
+      console.log("Catalog not found for ID:", catalogId);
       return NextResponse.json(
         { success: false, message: "Catalog not found" },
         { status: 404 },
       );
     }
+    console.log("Found catalog:", catalog.name, catalog.slug);
+    console.log("Catalog validation passed, catalog object:", catalog);
 
     // Verify dataset exists if provided
     if (datasetId) {
@@ -186,18 +200,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Create import record
-    const importRecord = await payload.create({
-      collection: "imports",
-      data: {
+    let importRecord;
+    try {
+      console.log("Creating import record with catalogId:", catalogId);
+      console.log("catalogId type:", typeof catalogId);
+      
+      const importData = {
         fileName: uniqueFileName,
         originalName: file.name,
-        catalog: catalogId as any,
+        catalog: catalogId,
         fileSize: file.size,
         mimeType: file.type,
         user: (user as any)?.id || null,
         sessionId: sessionId || null,
-        status: "pending",
-        processingStage: "file-parsing",
+        status: "pending" as const,
+        processingStage: "file-parsing" as const,
         importedAt: new Date().toISOString(),
         rowCount: rowCount,
         errorCount: 0,
@@ -233,8 +250,22 @@ export async function POST(request: NextRequest) {
           filePath,
           datasetId,
         },
-      },
-    });
+      };
+      
+      console.log("Import data to create:", JSON.stringify(importData, null, 2));
+      
+      importRecord = await payload.create({
+        collection: "imports",
+        data: importData,
+      });
+    } catch (error: any) {
+      console.error("Failed to create import record:", error);
+      console.error("Error details:", error.data);
+      return NextResponse.json(
+        { success: false, message: `Failed to create import record: ${error.message}` },
+        { status: 500 },
+      );
+    }
 
     // Queue the file parsing job
     await payload.jobs.queue({

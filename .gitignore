@@ -34,6 +34,11 @@ npm-debug.log*
 .DS_Store
 *.pem
 
+# Uploads directory (temporary files)
+uploads/
+
 # JF
 mise.toml
 .github/chatmodes
+CLAUDE.md
+.claude/settings.local.json
