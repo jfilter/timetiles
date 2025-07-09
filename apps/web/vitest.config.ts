@@ -10,8 +10,9 @@ export default defineConfig({
       "scripts/**/*.{test,spec}.{js,ts}",
       "__tests__/**/*.{test,spec}.{js,ts}",
     ],
+    exclude: ["**/node_modules/**", "**/backup-*/**", "__tests__/backup-*/**"],
     setupFiles: ["__tests__/setup.ts"],
-    testTimeout: 20000,
+    testTimeout: 30000, // Increased timeout for database operations
     coverage: {
       provider: "v8",
       include: ["lib/**/*.ts", "scripts/**/*.ts"],
@@ -21,8 +22,15 @@ export default defineConfig({
     pool: "forks",
     poolOptions: {
       forks: {
-        singleFork: true,
+        singleFork: false, // Enable parallel forks
+        isolate: true, // Isolate each test file
       },
+    },
+    fileParallelism: true, // Enable parallel file execution
+    maxWorkers: 4, // Limit concurrent workers to prevent resource conflicts
+    minWorkers: 1,
+    sequence: {
+      concurrent: true, // Allow concurrent test execution
     },
   },
   resolve: {

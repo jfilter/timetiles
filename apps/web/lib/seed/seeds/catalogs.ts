@@ -1,6 +1,6 @@
 export interface CatalogSeed {
   name: string;
-  description?: any;
+  description?: Record<string, unknown>;
   slug?: string;
   status: "active" | "archived";
 }

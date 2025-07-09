@@ -1,25 +1,20 @@
-import type { JobConfig } from "payload";
-import { getPayload } from "payload";
-import config from "@payload-config";
+import type { Job, JobConfig, Payload } from "payload";
 import { GeocodingService } from "../services/geocoding/GeocodingService";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import fs from "fs";
-import path from "path";
 
 // Job payload types
 interface FileParsingJobPayload {
   importId: string;
   filePath: string;
-  fileName: string;
   fileType: "csv" | "xlsx";
 }
 
 interface BatchProcessingJobPayload {
   importId: string;
   batchNumber: number;
-  batchData: any[];
-  totalBatches: number;
+  batchData: Record<string, unknown>[];
 }
 
 interface GeocodingBatchJobPayload {
@@ -30,7 +25,7 @@ interface GeocodingBatchJobPayload {
 
 interface EventCreationJobPayload {
   importId: string;
-  processedData: any[];
+  processedData: Record<string, unknown>[];
   batchNumber: number;
 }
 
@@ -38,7 +33,7 @@ interface EventCreationJobPayload {
 export const fileParsingJob: JobConfig = {
   slug: "file-parsing",
   handler: async ({ job, payload }) => {
-    const { importId, filePath, fileName, fileType } =
+    const { importId, filePath, fileType } =
       job.input as FileParsingJobPayload;
 
     try {
@@ -57,7 +52,7 @@ export const fileParsingJob: JobConfig = {
         },
       });
 
-      let parsedData: any[] = [];
+      let parsedData: Record<string, unknown>[] = [];
       let totalRows = 0;
 
       if (fileType === "csv") {
@@ -70,11 +65,11 @@ export const fileParsingJob: JobConfig = {
 
         if (parseResult.errors.length > 0) {
           throw new Error(
-            `CSV parsing errors: ${parseResult.errors.map((e: any) => e.message).join(", ")}`,
+            `CSV parsing errors: ${parseResult.errors.map((e: Papa.ParseError) => e.message).join(", ")}`,
           );
         }
 
-        parsedData = parseResult.data;
+        parsedData = parseResult.data as Record<string, unknown>[];
       } else if (fileType === "xlsx") {
         // Read as buffer to avoid file access issues
         const fileBuffer = fs.readFileSync(filePath);
@@ -90,8 +85,8 @@ export const fileParsingJob: JobConfig = {
           const headers = (jsonData[0] as string[]).map((h) =>
             h.toString().trim().toLowerCase(),
           );
-          parsedData = jsonData.slice(1).map((row: any[]) => {
-            const obj: any = {};
+          parsedData = jsonData.slice(1).map((row: unknown[]) => {
+            const obj: Record<string, unknown> = {};
             headers.forEach((header, index) => {
               obj[header] = row[index] || "";
             });
@@ -106,7 +101,7 @@ export const fileParsingJob: JobConfig = {
       const requiredFields = ["title", "date"];
       const validRows = parsedData.filter((row) => {
         return requiredFields.every(
-          (field) => row[field] && row[field].toString().trim(),
+          (field) => row[field] && (row[field] as string).toString().trim(),
         );
       });
 
@@ -163,7 +158,6 @@ export const fileParsingJob: JobConfig = {
             importId,
             batchNumber: i + 1,
             batchData,
-            totalBatches,
           } as BatchProcessingJobPayload,
         });
       }
@@ -202,7 +196,7 @@ export const fileParsingJob: JobConfig = {
 export const batchProcessingJob: JobConfig = {
   slug: "batch-processing",
   handler: async ({ job, payload }) => {
-    const { importId, batchNumber, batchData, totalBatches } =
+    const { importId, batchNumber, batchData } =
       job.input as BatchProcessingJobPayload;
 
     try {
@@ -231,16 +225,16 @@ export const batchProcessingJob: JobConfig = {
       const processedData = batchData.map((row) => {
         // Normalize and validate data
         const processedRow = {
-          title: row.title?.toString().trim(),
-          description: row.description?.toString().trim() || "",
+          title: (row.title as string)?.toString().trim(),
+          description: (row.description as string)?.toString().trim() || "",
           date: parseDate(row.date),
           endDate: row.enddate ? parseDate(row.enddate) : null,
-          location: row.location?.toString().trim() || "",
-          address: row.address?.toString().trim() || "",
-          url: row.url?.toString().trim() || "",
-          category: row.category?.toString().trim() || "",
-          tags: row.tags
-            ? row.tags
+          location: (row.location as string)?.toString().trim() || "",
+          address: (row.address as string)?.toString().trim() || "",
+          url: (row.url as string)?.toString().trim() || "",
+          category: (row.category as string)?.toString().trim() || "",
+          tags: (row.tags as string)
+            ? (row.tags as string)
                 .toString()
                 .split(",")
                 .map((t: string) => t.trim())
@@ -285,7 +279,7 @@ export const batchProcessingJob: JobConfig = {
 // Event creation job
 export const eventCreationJob = {
   slug: "event-creation",
-  handler: async ({ job, payload }: { job: any; payload: any }) => {
+  handler: async ({ job, payload }: { job: Job; payload: Payload }) => {
     const { importId, processedData, batchNumber } =
       job.input as EventCreationJobPayload;
 
@@ -329,9 +323,9 @@ export const eventCreationJob = {
               dataset: dataset.id,
               import: importId,
               data: eventData.originalData || eventData,
-              eventTimestamp: eventData.date,
+              eventTimestamp: eventData.date as string,
               geocodingInfo: {
-                originalAddress: eventData.address,
+                originalAddress: eventData.address as string,
                 provider: null,
                 confidence: null,
                 normalizedAddress: null,
@@ -442,7 +436,7 @@ export const eventCreationJob = {
 // Geocoding batch job
 export const geocodingBatchJob = {
   slug: "geocoding-batch",
-  handler: async ({ job, payload }: { job: any; payload: any }) => {
+  handler: async ({ job, payload }: { job: Job; payload: Payload }) => {
     const { importId, eventIds, batchNumber } =
       job.input as GeocodingBatchJobPayload;
 
@@ -523,7 +517,6 @@ export const geocodingBatchJob = {
         id: importId,
       });
 
-      const totalEvents = Number(updatedImport.progress?.createdEvents) || 0;
       const geocodedEvents = Number(updatedImport.progress?.geocodedRows) || 0;
 
       // Complete the import if we've processed all events (regardless of geocoding success)
@@ -558,7 +551,7 @@ export const geocodingBatchJob = {
 };
 
 // Utility function to parse dates
-function parseDate(dateString: any): string {
+function parseDate(dateString: string | number | Date): string {
   if (!dateString) return new Date().toISOString();
 
   const date = new Date(dateString.toString());

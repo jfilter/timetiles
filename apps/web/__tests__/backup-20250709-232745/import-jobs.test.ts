@@ -1,23 +1,15 @@
-import {
-  vi,
-  describe,
-  it,
-  expect,
-  beforeAll,
-  afterAll,
-  beforeEach,
-  afterEach,
-} from "vitest";
+import { vi } from "vitest";
 import {
   fileParsingJob,
   batchProcessingJob,
   eventCreationJob,
   geocodingBatchJob,
 } from "../lib/jobs/import-jobs";
-import { createIsolatedTestEnvironment } from "./test-helpers";
+import { createSeedManager } from "../lib/seed/index";
 import fs from "fs";
 import path from "path";
-import { writeFile } from "fs/promises";
+import os from "os";
+import { writeFile, mkdir, mkdtemp, rm } from "fs/promises";
 import * as XLSX from "xlsx";
 
 // Only mock the geocoding service
@@ -42,16 +34,21 @@ vi.mock("../lib/services/geocoding/GeocodingService", () => ({
 }));
 
 describe("Import Jobs", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let seedManager: any;
   let payload: any;
   let mockJob: any;
   let testImportId: string;
   let testCatalogId: string;
   let testDatasetId: string;
+  let tempDir: string; // Temporary directory for test files
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
-    payload = testEnv.payload;
+    seedManager = createSeedManager();
+    await seedManager.initialize();
+    payload = seedManager.payload;
+
+    // Create a temporary directory for test files
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "timetiles-test-"));
 
     // Create test catalog
     const timestamp = Date.now();
@@ -88,12 +85,21 @@ describe("Import Jobs", () => {
   });
 
   afterAll(async () => {
-    await testEnv.cleanup();
+    // Clean up temporary directory
+    try {
+      await rm(tempDir, { recursive: true, force: true });
+    } catch (error) {
+      console.warn("Failed to clean up temporary directory:", error);
+    }
+
+    await seedManager.cleanup();
   });
 
   beforeEach(async () => {
-    // Clear collections before each test - this is now isolated per test file
-    await testEnv.seedManager.truncate();
+    // Clear collections before each test
+    await payload.delete({ collection: "imports", where: {} });
+    await payload.delete({ collection: "events", where: {} });
+    await payload.delete({ collection: "location-cache", where: {} });
 
     // Create test import record
     const importRecord = await payload.create({
@@ -158,8 +164,8 @@ describe("Import Jobs", () => {
     let testFilePath: string;
 
     beforeEach(async () => {
-      // Create a real test file in the isolated temp directory
-      testFilePath = path.join(testEnv.tempDir, `test-file-${Date.now()}.csv`);
+      // Create a real test file in the temp directory
+      testFilePath = path.join(tempDir, `test-file-${Date.now()}.csv`);
       await writeFile(testFilePath, testCsvContent);
 
       mockJob.input = {
@@ -182,16 +188,7 @@ describe("Import Jobs", () => {
     });
 
     it("should successfully parse CSV file", async () => {
-      await fileParsingJob.handler({
-        job: {
-          id: 1,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await fileParsingJob.handler({ job: mockJob, payload });
 
       // Verify import status was updated
       const updatedImport = await payload.findByID({
@@ -217,11 +214,8 @@ describe("Import Jobs", () => {
     });
 
     it("should handle Excel files", async () => {
-      // Create real Excel test file in isolated temp directory
-      const testExcelPath = path.join(
-        testEnv.tempDir,
-        `test-file-${Date.now()}.xlsx`,
-      );
+      // Create real Excel test file in temp directory
+      const testExcelPath = path.join(tempDir, `test-file-${Date.now()}.xlsx`);
 
       // Create a simple workbook using XLSX library
       const workbook = XLSX.utils.book_new();
@@ -257,16 +251,7 @@ describe("Import Jobs", () => {
       mockJob.input.fileName = "test-file.xlsx";
       mockJob.input.filePath = testExcelPath;
 
-      await fileParsingJob.handler({
-        job: {
-          id: 2,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await fileParsingJob.handler({ job: mockJob, payload });
 
       const updatedImport = await payload.findByID({
         collection: "imports",
@@ -282,7 +267,7 @@ describe("Import Jobs", () => {
     it("should handle CSV parsing errors", async () => {
       // Create invalid CSV content that will cause parsing errors
       const invalidCsvPath = path.join(
-        testEnv.tempDir,
+        tempDir,
         `invalid-file-${Date.now()}.csv`,
       );
       // Create a CSV with malformed quotes that Papa.parse will reject
@@ -293,16 +278,7 @@ describe("Import Jobs", () => {
       mockJob.input.filePath = invalidCsvPath;
 
       await expect(
-        fileParsingJob.handler({
-          job: {
-            id: 3,
-            ...mockJob,
-            taskStatus: "running" as any,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          payload,
-        }),
+        fileParsingJob.handler({ job: mockJob, payload }),
       ).rejects.toThrow();
 
       const updatedImport = await payload.findByID({
@@ -320,10 +296,7 @@ describe("Import Jobs", () => {
 
     it("should filter out invalid rows", async () => {
       // Create CSV with mix of valid and invalid rows
-      const mixedCsvPath = path.join(
-        testEnv.tempDir,
-        `mixed-file-${Date.now()}.csv`,
-      );
+      const mixedCsvPath = path.join(tempDir, `mixed-file-${Date.now()}.csv`);
       const mixedCsvContent = `title,description,date,location,address
 "Valid Event","Description 1","2024-03-15","Location 1","123 Main St"
 "","Description 2","2024-03-16","Location 2","456 Oak Ave"
@@ -333,16 +306,7 @@ describe("Import Jobs", () => {
 
       mockJob.input.filePath = mixedCsvPath;
 
-      await fileParsingJob.handler({
-        job: {
-          id: 4,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await fileParsingJob.handler({ job: mockJob, payload });
 
       const updatedImport = await payload.findByID({
         collection: "imports",
@@ -366,7 +330,7 @@ describe("Import Jobs", () => {
     it("should handle no valid rows", async () => {
       // Create CSV with no valid rows
       const noValidCsvPath = path.join(
-        testEnv.tempDir,
+        tempDir,
         `no-valid-file-${Date.now()}.csv`,
       );
       const noValidCsvContent = `title,description,date,location,address
@@ -377,16 +341,7 @@ describe("Import Jobs", () => {
       mockJob.input.filePath = noValidCsvPath;
 
       await expect(
-        fileParsingJob.handler({
-          job: {
-            id: 5,
-            ...mockJob,
-            taskStatus: "running" as any,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          payload,
-        }),
+        fileParsingJob.handler({ job: mockJob, payload }),
       ).rejects.toThrow("No valid rows found");
 
       // File cleanup is handled by the job itself
@@ -394,10 +349,7 @@ describe("Import Jobs", () => {
 
     it("should create multiple batches for large datasets", async () => {
       // Create large CSV file
-      const largeCsvPath = path.join(
-        testEnv.tempDir,
-        `large-file-${Date.now()}.csv`,
-      );
+      const largeCsvPath = path.join(tempDir, `large-file-${Date.now()}.csv`);
       let largeCsvContent = "title,description,date,location,address\n";
 
       // Generate 250 rows
@@ -408,16 +360,7 @@ describe("Import Jobs", () => {
       await writeFile(largeCsvPath, largeCsvContent);
       mockJob.input.filePath = largeCsvPath;
 
-      await fileParsingJob.handler({
-        job: {
-          id: 6,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await fileParsingJob.handler({ job: mockJob, payload });
 
       const updatedImport = await payload.findByID({
         collection: "imports",
@@ -434,16 +377,7 @@ describe("Import Jobs", () => {
       const initialPath = testFilePath;
       const fileExisted = fs.existsSync(initialPath);
 
-      await fileParsingJob.handler({
-        job: {
-          id: 7,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await fileParsingJob.handler({ job: mockJob, payload });
 
       // File should be deleted after processing
       expect(fs.existsSync(initialPath)).toBe(false);
@@ -453,25 +387,12 @@ describe("Import Jobs", () => {
     it("should handle file cleanup errors gracefully", async () => {
       // Create a test that uses a non-existent file path
       // This should cause cleanup to fail but not crash the job
-      const nonExistentPath = path.join(
-        testEnv.tempDir,
-        "nonexistent",
-        "file.csv",
-      );
+      const nonExistentPath = path.join(tempDir, "nonexistent", "file.csv");
       mockJob.input.filePath = nonExistentPath;
 
       // Should not throw despite cleanup error
       await expect(
-        fileParsingJob.handler({
-          job: {
-            id: 8,
-            ...mockJob,
-            taskStatus: "running" as any,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          payload,
-        }),
+        fileParsingJob.handler({ job: mockJob, payload }),
       ).rejects.toThrow(); // Will throw because file doesn't exist for parsing, not cleanup
 
       // The main point is that cleanup errors don't crash the application
@@ -513,16 +434,7 @@ describe("Import Jobs", () => {
     });
 
     it("should process batch data correctly", async () => {
-      await batchProcessingJob.handler({
-        job: {
-          id: 9,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await batchProcessingJob.handler({ job: mockJob, payload });
 
       // Verify batch info was updated
       const updatedImport = await payload.findByID({
@@ -575,16 +487,7 @@ describe("Import Jobs", () => {
 
       mockJob.input.batchData = minimalData;
 
-      await batchProcessingJob.handler({
-        job: {
-          id: 10,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await batchProcessingJob.handler({ job: mockJob, payload });
 
       expect(payload.jobs.queue).toHaveBeenCalledWith({
         task: "event-creation",
@@ -615,16 +518,7 @@ describe("Import Jobs", () => {
 
       mockJob.input.batchData = dataWithTags;
 
-      await batchProcessingJob.handler({
-        job: {
-          id: 11,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await batchProcessingJob.handler({ job: mockJob, payload });
 
       expect(payload.jobs.queue).toHaveBeenCalledWith({
         task: "event-creation",
@@ -644,16 +538,7 @@ describe("Import Jobs", () => {
       payload.update = vi.fn().mockRejectedValue(new Error("Database error"));
 
       await expect(
-        batchProcessingJob.handler({
-          job: {
-            id: 12,
-            ...mockJob,
-            taskStatus: "running" as any,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          payload,
-        }),
+        batchProcessingJob.handler({ job: mockJob, payload }),
       ).rejects.toThrow();
 
       // Restore original method
@@ -696,16 +581,7 @@ describe("Import Jobs", () => {
     });
 
     it("should create events successfully", async () => {
-      await eventCreationJob.handler({
-        job: {
-          id: 13,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await eventCreationJob.handler({ job: mockJob, payload });
 
       // Verify events were created
       const events = await payload.find({
@@ -718,7 +594,7 @@ describe("Import Jobs", () => {
       expect(events.docs).toHaveLength(2);
 
       // Check that both events exist (order might vary)
-      const eventTitles = events.docs.map((e: any) => e.data.title);
+      const eventTitles = events.docs.map((e) => e.data.title);
       expect(eventTitles).toContain("Test Event 1");
       expect(eventTitles).toContain("Test Event 2");
 
@@ -733,16 +609,7 @@ describe("Import Jobs", () => {
     });
 
     it("should queue geocoding for events with addresses", async () => {
-      await eventCreationJob.handler({
-        job: {
-          id: 14,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await eventCreationJob.handler({ job: mockJob, payload });
 
       // Should queue geocoding job for events with addresses
       expect(payload.jobs.queue).toHaveBeenCalledWith({
@@ -768,16 +635,7 @@ describe("Import Jobs", () => {
         return originalCreate(args);
       });
 
-      await eventCreationJob.handler({
-        job: {
-          id: 15,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await eventCreationJob.handler({ job: mockJob, payload });
 
       // Should continue processing despite one failure
       const events = await payload.find({
@@ -804,16 +662,7 @@ describe("Import Jobs", () => {
         },
       });
 
-      await eventCreationJob.handler({
-        job: {
-          id: 16,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await eventCreationJob.handler({ job: mockJob, payload });
 
       const updatedImport = await payload.findByID({
         collection: "imports",
@@ -881,16 +730,7 @@ describe("Import Jobs", () => {
     });
 
     it("should geocode events successfully", async () => {
-      await geocodingBatchJob.handler({
-        job: {
-          id: 17,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await geocodingBatchJob.handler({ job: mockJob, payload });
 
       // Verify events were updated with geocoding results
       const updatedEvent1 = await payload.findByID({
@@ -930,16 +770,7 @@ describe("Import Jobs", () => {
         },
       });
 
-      await geocodingBatchJob.handler({
-        job: {
-          id: 18,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await geocodingBatchJob.handler({ job: mockJob, payload });
 
       // First event should be geocoded, second should remain unchanged
       const updatedEvent1 = await payload.findByID({
@@ -982,16 +813,7 @@ describe("Import Jobs", () => {
         },
       });
 
-      await geocodingBatchJob.handler({
-        job: {
-          id: 19,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await geocodingBatchJob.handler({ job: mockJob, payload });
 
       const updatedImport = await payload.findByID({
         collection: "imports",
@@ -1021,16 +843,7 @@ describe("Import Jobs", () => {
         },
       });
 
-      await geocodingBatchJob.handler({
-        job: {
-          id: 20,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      });
+      await geocodingBatchJob.handler({ job: mockJob, payload });
 
       const updatedImport = await payload.findByID({
         collection: "imports",

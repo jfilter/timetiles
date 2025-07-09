@@ -1,17 +1,8 @@
-import {
-  vi,
-  describe,
-  it,
-  expect,
-  beforeAll,
-  afterAll,
-  beforeEach,
-  afterEach,
-} from "vitest";
+import { vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as uploadHandler } from "../app/api/import/upload/route";
 import { GET as progressHandler } from "../app/api/import/[importId]/progress/route";
-import { createIsolatedTestEnvironment } from "./test-helpers";
+import { createSeedManager } from "../lib/seed/index";
 
 // Mock external dependencies
 vi.mock("fs/promises");
@@ -48,14 +39,15 @@ vi.mock("../lib/services/RateLimitService", () => ({
 }));
 
 describe("Import API Endpoints", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let seedManager: any;
   let payload: any;
   let testCatalogId: string;
   let testDatasetId: string;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
-    payload = testEnv.payload;
+    seedManager = createSeedManager();
+    await seedManager.initialize();
+    payload = seedManager.payload;
 
     // Create test catalog
     const catalog = await payload.create({
@@ -80,9 +72,9 @@ describe("Import API Endpoints", () => {
           properties: {
             title: { type: "string" },
             date: { type: "string", format: "date" },
-            location: { type: "string" },
+            location: { type: "string" }
           },
-          required: ["title", "date"],
+          required: ["title", "date"]
         },
       },
     });
@@ -90,12 +82,12 @@ describe("Import API Endpoints", () => {
   });
 
   afterAll(async () => {
-    await testEnv.cleanup();
+    await seedManager.cleanup();
   });
 
   beforeEach(async () => {
-    // Clear collections before each test - this is now isolated per test file
-    await testEnv.seedManager.truncate();
+    // Clear imports before each test
+    await payload.delete({ collection: "imports", where: {} });
 
     // Mock payload.jobs.queue
     payload.jobs = {

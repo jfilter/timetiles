@@ -1,14 +1,5 @@
 // Create mock geocoder instances with proper typing - must be defined before mocking
-import {
-  vi,
-  describe,
-  it,
-  expect,
-  beforeAll,
-  afterAll,
-  beforeEach,
-  afterEach,
-} from "vitest";
+import { vi } from "vitest";
 
 const mockGoogleGeocoder = {
   geocode: vi.fn() as any,
@@ -35,25 +26,29 @@ import {
   GeocodingService,
   GeocodingError,
 } from "../lib/services/geocoding/GeocodingService";
-import { createIsolatedTestEnvironment } from "./test-helpers";
+import { createSeedManager } from "../lib/seed/index";
 
 describe("GeocodingService", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let seedManager: any;
   let payload: any;
   let geocodingService: GeocodingService;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
-    payload = testEnv.payload;
+    seedManager = createSeedManager();
+    await seedManager.initialize();
+    payload = seedManager.payload;
   });
 
   afterAll(async () => {
-    await testEnv.cleanup();
+    await seedManager.cleanup();
   });
 
   beforeEach(async () => {
-    // Clear collections before each test - this is now isolated per test file
-    await testEnv.seedManager.truncate();
+    // Clear location cache before each test
+    await payload.delete({
+      collection: "location-cache",
+      where: {},
+    });
 
     // Reset environment variables
     delete process.env.GOOGLE_MAPS_API_KEY;

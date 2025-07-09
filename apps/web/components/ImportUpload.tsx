@@ -20,8 +20,12 @@ interface ImportProgress {
     totalBatches: number;
     batchSize: number;
   };
-  geocodingStats: any;
-  currentJob?: any;
+  geocodingStats: Record<string, unknown>;
+  currentJob?: {
+    id: string;
+    status: string;
+    progress: number;
+  };
   estimatedTimeRemaining?: number;
 }
 

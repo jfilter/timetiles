@@ -10,7 +10,7 @@ export interface ImportSeed {
   rowCount: number;
   errorCount: number;
   errorLog?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export function importSeeds(environment: string): ImportSeed[] {
