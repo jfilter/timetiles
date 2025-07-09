@@ -60,8 +60,8 @@ export function importSeeds(environment: string): ImportSeed[] {
   ];
 
   if (environment === "test") {
+    // Only return test-specific imports, do NOT include baseImports
     return [
-      ...baseImports,
       {
         fileName: "test_data.csv",
         originalName: "Test Data File",

@@ -1,0 +1,640 @@
+---
+title: "Event Import API Documentation"
+description: "A comprehensive REST API for importing event data with real-time progress tracking and automatic geocoding."
+---
+
+# Event Import API Documentation
+
+A comprehensive REST API for importing event data with real-time progress tracking and automatic geocoding.
+
+## Overview
+
+The Event Import API provides endpoints for uploading event data files and tracking their processing progress. The system supports CSV and Excel files with automatic geocoding and batch processing for optimal performance.
+
+### Base URL
+
+```
+http://localhost:3000/api/import
+```
+
+### Authentication
+
+- **Authenticated Users**: Higher rate limits and file size limits
+- **Unauthenticated Users**: Public access with rate limiting (5 uploads/hour, 10MB max file size)
+
+### Rate Limiting
+
+All endpoints include rate limiting headers in responses:
+
+- `X-RateLimit-Limit`: Maximum requests allowed
+- `X-RateLimit-Remaining`: Remaining requests in current window
+- `X-RateLimit-Reset`: When the rate limit resets (ISO 8601)
+- `X-RateLimit-Blocked`: Whether the client is currently blocked
+
+## Endpoints
+
+### POST /api/import/upload
+
+Upload a CSV or Excel file for processing.
+
+#### Request
+
+**Content-Type**: `multipart/form-data`
+
+**Parameters**:
+
+- `file` (required): CSV or Excel file (.csv, .xlsx, .xls)
+- `catalogId` (required): Target catalog ID
+- `datasetId` (optional): Target dataset ID
+- `sessionId` (optional): Session identifier for rate limiting
+
+**File Size Limits**:
+
+- Authenticated users: 100MB
+- Unauthenticated users: 10MB
+
+**Rate Limits**:
+
+- Unauthenticated users: 5 uploads per hour
+
+#### Example Request
+
+```bash
+curl -X POST http://localhost:3000/api/import/upload \
+  -F "file=@events.csv" \
+  -F "catalogId=catalog_123" \
+  -F "datasetId=dataset_456" \
+  -F "sessionId=session_789"
+```
+
+#### Response
+
+**Success (200)**:
+
+```json
+{
+  "success": true,
+  "importId": "import_abc123",
+  "message": "File uploaded successfully and processing started"
+}
+```
+
+**Error Responses**:
+
+**400 Bad Request**:
+
+```json
+{
+  "success": false,
+  "message": "No file provided"
+}
+```
+
+**400 Bad Request - Invalid File Type**:
+
+```json
+{
+  "success": false,
+  "message": "Unsupported file type. Allowed types: text/csv, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+}
+```
+
+**400 Bad Request - File Too Large**:
+
+```json
+{
+  "success": false,
+  "message": "File too large. Maximum size: 10MB"
+}
+```
+
+**404 Not Found - Invalid Catalog**:
+
+```json
+{
+  "success": false,
+  "message": "Catalog not found"
+}
+```
+
+**429 Rate Limited**:
+
+```json
+{
+  "success": false,
+  "message": "Rate limit exceeded. Please try again later.",
+  "resetTime": "2024-03-15T14:30:00.000Z"
+}
+```
+
+**500 Internal Server Error**:
+
+```json
+{
+  "success": false,
+  "message": "Internal server error"
+}
+```
+
+### GET /api/import/[importId]/progress
+
+Get real-time progress information for an import.
+
+#### Request
+
+**Method**: GET
+**URL**: `/api/import/{importId}/progress`
+
+**Rate Limits**:
+
+- 100 requests per hour (unauthenticated)
+
+#### Example Request
+
+```bash
+curl http://localhost:3000/api/import/import_abc123/progress
+```
+
+#### Response
+
+**Success (200)**:
+
+```json
+{
+  "importId": "import_abc123",
+  "status": "processing",
+  "stage": "geocoding",
+  "progress": {
+    "current": 150,
+    "total": 500,
+    "percentage": 30
+  },
+  "stageProgress": {
+    "stage": "Geocoding addresses...",
+    "percentage": 65
+  },
+  "batchInfo": {
+    "currentBatch": 2,
+    "totalBatches": 5,
+    "batchSize": 100
+  },
+  "geocodingStats": {
+    "totalAddresses": 450,
+    "successfulGeocodes": 120,
+    "failedGeocodes": 5,
+    "cachedResults": 80,
+    "googleApiCalls": 40,
+    "nominatimApiCalls": 0
+  },
+  "currentJob": {
+    "id": "job_xyz789",
+    "status": "running",
+    "progress": 65
+  },
+  "estimatedTimeRemaining": 180
+}
+```
+
+**Status Values**:
+
+- `pending`: Import queued for processing
+- `processing`: Currently being processed
+- `completed`: Successfully completed
+- `failed`: Processing failed
+
+**Stage Values**:
+
+- `file-parsing`: Parsing uploaded file
+- `row-processing`: Processing data rows
+- `geocoding`: Geocoding addresses
+- `event-creation`: Creating event records
+- `completed`: All processing complete
+
+**Error Responses**:
+
+**404 Not Found**:
+
+```json
+{
+  "error": "Import not found"
+}
+```
+
+**500 Internal Server Error**:
+
+```json
+{
+  "error": "Failed to fetch progress"
+}
+```
+
+## File Format Requirements
+
+### Required Fields
+
+All uploaded files must contain these fields:
+
+- **title**: Event name/title (string, required)
+- **date**: Event date (string, required, multiple formats supported)
+
+### Optional Fields
+
+- **description**: Event description (string)
+- **enddate**: Event end date (string, same formats as date)
+- **location**: Venue name (string)
+- **address**: Full address for geocoding (string)
+- **url**: Event website URL (string)
+- **category**: Event category (string)
+- **tags**: Comma-separated tags (string)
+
+### Supported Date Formats
+
+- ISO 8601: `2024-03-15`
+- US Format: `03/15/2024`
+- Alternative: `03-15-2024`
+
+### CSV Format Example
+
+```csv
+title,description,date,enddate,location,address,url,category,tags
+"Tech Conference 2024","Annual technology conference","2024-03-15","2024-03-17","Convention Center","123 Main St, San Francisco, CA 94102","https://techconf2024.com","Technology","tech,conference,networking"
+"Art Gallery Opening","Contemporary art exhibition","2024-03-20",,"Modern Art Gallery","456 Art Ave, New York, NY 10001","https://modernart.gallery","Arts","art,gallery,exhibition"
+```
+
+### Excel Format
+
+- **Single Sheet**: Data should be in the first sheet
+- **Multi-Sheet**: Each sheet is treated as a separate data catalog
+- **Headers**: First row should contain field names
+- **Data Types**: All data is converted to strings during processing
+
+## Integration Examples
+
+### JavaScript/Fetch
+
+```javascript
+// Upload file
+async function uploadFile(file, catalogId, datasetId = null) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("catalogId", catalogId);
+  if (datasetId) formData.append("datasetId", datasetId);
+  formData.append("sessionId", `session_${Date.now()}`);
+
+  try {
+    const response = await fetch("/api/import/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "Upload failed");
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Upload error:", error);
+    throw error;
+  }
+}
+
+// Track progress
+async function trackProgress(importId) {
+  try {
+    const response = await fetch(`/api/import/${importId}/progress`);
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch progress");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Progress tracking error:", error);
+    throw error;
+  }
+}
+
+// Usage example
+const fileInput = document.getElementById("file-input");
+const file = fileInput.files[0];
+
+uploadFile(file, "catalog_123")
+  .then((result) => {
+    console.log("Upload successful:", result.importId);
+
+    // Poll for progress
+    const pollProgress = setInterval(async () => {
+      const progress = await trackProgress(result.importId);
+      console.log("Progress:", progress.stageProgress.percentage + "%");
+
+      if (progress.status === "completed" || progress.status === "failed") {
+        clearInterval(pollProgress);
+        console.log("Import finished:", progress.status);
+      }
+    }, 2000);
+  })
+  .catch((error) => {
+    console.error("Upload failed:", error);
+  });
+```
+
+### Python/Requests
+
+```python
+import requests
+import time
+
+def upload_file(file_path, catalog_id, dataset_id=None):
+    """Upload a file for import processing."""
+    url = 'http://localhost:3000/api/import/upload'
+
+    files = {'file': open(file_path, 'rb')}
+    data = {
+        'catalogId': catalog_id,
+        'sessionId': f'session_{int(time.time())}'
+    }
+
+    if dataset_id:
+        data['datasetId'] = dataset_id
+
+    try:
+        response = requests.post(url, files=files, data=data)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f'Upload error: {e}')
+        raise
+    finally:
+        files['file'].close()
+
+def track_progress(import_id):
+    """Get progress information for an import."""
+    url = f'http://localhost:3000/api/import/{import_id}/progress'
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f'Progress tracking error: {e}')
+        raise
+
+# Usage example
+try:
+    # Upload file
+    result = upload_file('events.csv', 'catalog_123')
+    import_id = result['importId']
+    print(f'Upload successful: {import_id}')
+
+    # Poll for progress
+    while True:
+        progress = track_progress(import_id)
+        print(f'Progress: {progress["stageProgress"]["percentage"]}% - {progress["stageProgress"]["stage"]}')
+
+        if progress['status'] in ['completed', 'failed']:
+            print(f'Import finished: {progress["status"]}')
+            break
+
+        time.sleep(2)
+
+except Exception as e:
+    print(f'Error: {e}')
+```
+
+### cURL Examples
+
+```bash
+# Upload CSV file
+curl -X POST http://localhost:3000/api/import/upload \
+  -F "file=@events.csv" \
+  -F "catalogId=catalog_123" \
+  -F "sessionId=session_$(date +%s)"
+
+# Upload Excel file with dataset
+curl -X POST http://localhost:3000/api/import/upload \
+  -F "file=@events.xlsx" \
+  -F "catalogId=catalog_123" \
+  -F "datasetId=dataset_456"
+
+# Check progress
+curl http://localhost:3000/api/import/import_abc123/progress
+
+# Check progress with rate limit headers
+curl -i http://localhost:3000/api/import/import_abc123/progress
+```
+
+## Error Handling Best Practices
+
+### Retry Logic
+
+```javascript
+async function uploadWithRetry(file, catalogId, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await uploadFile(file, catalogId);
+    } catch (error) {
+      if (error.status === 429) {
+        // Rate limited - wait and retry
+        const retryAfter = error.headers?.["retry-after"] || 60;
+        console.log(`Rate limited. Retrying in ${retryAfter} seconds...`);
+        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+        continue;
+      }
+
+      if (attempt === maxRetries) {
+        throw error;
+      }
+
+      // Exponential backoff for other errors
+      const delay = Math.pow(2, attempt) * 1000;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+```
+
+### Progress Polling
+
+```javascript
+function pollProgress(importId, onProgress, onComplete) {
+  const poll = async () => {
+    try {
+      const progress = await trackProgress(importId);
+      onProgress(progress);
+
+      if (progress.status === "completed") {
+        onComplete(null, progress);
+      } else if (progress.status === "failed") {
+        onComplete(new Error("Import failed"), progress);
+      } else {
+        // Continue polling
+        setTimeout(poll, 2000);
+      }
+    } catch (error) {
+      onComplete(error, null);
+    }
+  };
+
+  poll();
+}
+```
+
+## Rate Limiting Details
+
+### Limits by User Type
+
+**Unauthenticated Users**:
+
+- File uploads: 5 per hour
+- Progress checks: 100 per hour
+- General API requests: 50 per hour
+
+**Authenticated Users**:
+
+- No rate limits (or much higher limits)
+- Larger file size allowance (100MB vs 10MB)
+
+### Rate Limit Headers
+
+Every response includes rate limiting information:
+
+```http
+X-RateLimit-Limit: 5
+X-RateLimit-Remaining: 3
+X-RateLimit-Reset: 2024-03-15T15:00:00.000Z
+X-RateLimit-Blocked: false
+```
+
+### Handling Rate Limits
+
+When you receive a `429 Too Many Requests` response:
+
+1. Check the `X-RateLimit-Reset` header for when limits reset
+2. Implement exponential backoff
+3. Consider implementing authentication for higher limits
+4. Cache progress responses to reduce API calls
+
+## Geocoding Behavior
+
+### Provider Fallback
+
+1. **Primary**: Google Maps Geocoding API (if `GOOGLE_MAPS_API_KEY` is configured)
+2. **Fallback**: OpenStreetMap Nominatim (free, no API key required)
+
+### Caching Strategy
+
+- Results are cached to reduce API calls
+- Cache key is normalized address
+- Cache entries include confidence scores and hit counts
+- Automatic cleanup of unused entries (90+ days old, <3 hits)
+
+### Confidence Scoring
+
+Geocoding results include confidence scores (0.0 to 1.0):
+
+- **0.9+**: High confidence (exact address match)
+- **0.7-0.9**: Good confidence (street-level match)
+- **0.5-0.7**: Medium confidence (city-level match)
+- **0.3-0.5**: Low confidence (region-level match)
+- **<0.3**: Very low confidence (may be rejected)
+
+## Performance Considerations
+
+### Batch Processing
+
+- Files are processed in batches (default: 100 rows)
+- Configurable batch size via environment variables
+- Prevents memory issues with large files
+- Enables progress tracking
+
+### Geocoding Optimization
+
+- 1-second delay between geocoding batches
+- Intelligent caching reduces API calls
+- Provider fallback ensures reliability
+- Batch geocoding for efficiency
+
+### File Size Recommendations
+
+- **Small files** (<1MB): Process immediately
+- **Medium files** (1-10MB): Normal batch processing
+- **Large files** (10MB+): Consider splitting or authenticated upload
+
+## Security Features
+
+### Input Validation
+
+- File type validation (MIME type checking)
+- File size limits
+- Required field validation
+- Data sanitization during processing
+
+### Rate Limiting
+
+- IP-based rate limiting for unauthenticated users
+- Session-based tracking
+- Automatic blocking for abuse
+- Configurable limits per endpoint
+
+### Data Protection
+
+- Uploaded files are cleaned up after processing
+- No persistent storage of raw file data
+- SQL injection prevention
+- XSS protection in frontend components
+
+## Monitoring and Debugging
+
+### Import Status Tracking
+
+Monitor import progress through the progress endpoint:
+
+- Real-time status updates
+- Detailed error information
+- Performance metrics
+- Geocoding statistics
+
+### Common Issues
+
+1. **File parsing errors**: Check file format and required fields
+2. **Geocoding failures**: Verify API key configuration
+3. **Rate limit exceeded**: Implement proper retry logic
+4. **Large file timeouts**: Consider splitting files or authentication
+
+### Health Checks
+
+```bash
+# Check if API is responding
+curl http://localhost:3000/api/import/health
+
+# Monitor rate limit status
+curl -i http://localhost:3000/api/import/status
+```
+
+## Future Enhancements
+
+### Planned Features
+
+- **WebSocket Support**: Real-time progress updates without polling
+- **Webhook Notifications**: Callbacks on import completion
+- **Advanced Validation**: Custom validation rules per catalog
+- **Bulk Operations**: Mass import management tools
+- **Analytics Dashboard**: Import statistics and performance metrics
+
+### API Versioning
+
+Future API versions will be available at:
+
+- `/api/v2/import/...`
+- Backward compatibility maintained for v1
+- Migration guides provided for breaking changes
+
+---
+
+For more detailed technical information, see:
+
+- [Import System Overview](../features/import-system)
+- [Development Guide](../development/import-system)
+- [Troubleshooting Guide](../guides/troubleshooting)

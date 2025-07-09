@@ -1,137 +1,438 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig } from "payload";
 
 const Imports: CollectionConfig = {
-  slug: 'imports',
+  slug: "imports",
   admin: {
-    useAsTitle: 'originalName',
-    defaultColumns: ['originalName', 'catalog', 'status', 'rowCount', 'errorCount', 'importedAt'],
+    useAsTitle: "originalName",
+    defaultColumns: [
+      "originalName",
+      "catalog",
+      "status",
+      "processingStage",
+      "progress",
+      "createdAt",
+    ],
   },
   access: {
-    read: () => true,
+    read: () => true, // Will be handled in API endpoints
     create: () => true,
     update: () => true,
     delete: () => true,
   },
   fields: [
     {
-      name: 'fileName',
-      type: 'text',
+      name: "fileName",
+      type: "text",
       required: true,
       maxLength: 255,
       admin: {
-        description: 'System file name',
+        description: "System file name",
       },
     },
     {
-      name: 'originalName',
-      type: 'text',
+      name: "originalName",
+      type: "text",
       maxLength: 255,
       admin: {
-        description: 'Original user-friendly file name',
+        description: "Original user-friendly file name",
       },
     },
     {
-      name: 'catalog',
-      type: 'relationship',
-      relationTo: 'catalogs',
+      name: "catalog",
+      type: "relationship",
+      relationTo: "catalogs",
       required: true,
       hasMany: false,
     },
     {
-      name: 'fileSize',
-      type: 'number',
+      name: "fileSize",
+      type: "number",
       admin: {
-        description: 'File size in bytes',
+        description: "File size in bytes",
       },
     },
     {
-      name: 'mimeType',
-      type: 'text',
+      name: "mimeType",
+      type: "text",
       maxLength: 100,
       admin: {
-        description: 'MIME type of the uploaded file',
+        description: "MIME type of the uploaded file",
       },
     },
     {
-      name: 'status',
-      type: 'select',
+      name: "user",
+      type: "relationship",
+      relationTo: "users",
+      admin: {
+        description: "User who initiated the import (null for unauthenticated)",
+      },
+    },
+    {
+      name: "sessionId",
+      type: "text",
+      admin: {
+        description: "Session ID for unauthenticated users",
+      },
+    },
+    {
+      name: "status",
+      type: "select",
       options: [
         {
-          label: 'Pending',
-          value: 'pending',
+          label: "Pending",
+          value: "pending",
         },
         {
-          label: 'Processing',
-          value: 'processing',
+          label: "Processing",
+          value: "processing",
         },
         {
-          label: 'Completed',
-          value: 'completed',
+          label: "Completed",
+          value: "completed",
         },
         {
-          label: 'Failed',
-          value: 'failed',
+          label: "Failed",
+          value: "failed",
         },
       ],
-      defaultValue: 'pending',
+      defaultValue: "pending",
       admin: {
-        position: 'sidebar',
+        position: "sidebar",
       },
     },
     {
-      name: 'importedAt',
-      type: 'date',
+      name: "processingStage",
+      type: "select",
+      options: [
+        {
+          label: "File Parsing",
+          value: "file-parsing",
+        },
+        {
+          label: "Row Processing",
+          value: "row-processing",
+        },
+        {
+          label: "Geocoding",
+          value: "geocoding",
+        },
+        {
+          label: "Event Creation",
+          value: "event-creation",
+        },
+        {
+          label: "Completed",
+          value: "completed",
+        },
+      ],
+      defaultValue: "file-parsing",
+      admin: {
+        position: "sidebar",
+        description: "Current processing stage",
+      },
+    },
+    {
+      name: "importedAt",
+      type: "date",
       admin: {
         date: {
-          pickerAppearance: 'dayAndTime',
+          pickerAppearance: "dayAndTime",
         },
-        position: 'sidebar',
+        position: "sidebar",
       },
     },
     {
-      name: 'completedAt',
-      type: 'date',
+      name: "completedAt",
+      type: "date",
       admin: {
         date: {
-          pickerAppearance: 'dayAndTime',
+          pickerAppearance: "dayAndTime",
         },
-        position: 'sidebar',
-        condition: (data) => data.status === 'completed',
+        position: "sidebar",
+        condition: (data) => data.status === "completed",
       },
     },
     {
-      name: 'rowCount',
-      type: 'number',
+      name: "rowCount",
+      type: "number",
       required: true,
       admin: {
-        description: 'Total number of rows processed',
+        description: "Total number of rows processed",
       },
     },
     {
-      name: 'errorCount',
-      type: 'number',
+      name: "errorCount",
+      type: "number",
       defaultValue: 0,
       admin: {
-        description: 'Number of rows that failed processing',
+        description: "Number of rows that failed processing",
       },
     },
     {
-      name: 'errorLog',
-      type: 'textarea',
+      name: "errorLog",
+      type: "textarea",
       admin: {
-        description: 'Detailed error information',
+        description: "Detailed error information",
         condition: (data) => data.errorCount > 0,
       },
     },
     {
-      name: 'metadata',
-      type: 'json',
+      name: "progress",
+      type: "group",
+      fields: [
+        {
+          name: "totalRows",
+          type: "number",
+          defaultValue: 0,
+          admin: {
+            description: "Total number of rows to process",
+          },
+        },
+        {
+          name: "processedRows",
+          type: "number",
+          defaultValue: 0,
+          admin: {
+            description: "Number of rows processed",
+          },
+        },
+        {
+          name: "geocodedRows",
+          type: "number",
+          defaultValue: 0,
+          admin: {
+            description: "Number of rows geocoded",
+          },
+        },
+        {
+          name: "createdEvents",
+          type: "number",
+          defaultValue: 0,
+          admin: {
+            description: "Number of events created",
+          },
+        },
+        {
+          name: "percentage",
+          type: "number",
+          defaultValue: 0,
+          admin: {
+            description: "Overall completion percentage",
+          },
+        },
+      ],
       admin: {
-        description: 'Additional import context and metadata',
+        description: "Processing progress tracking",
+      },
+    },
+    {
+      name: "batchInfo",
+      type: "group",
+      fields: [
+        {
+          name: "batchSize",
+          type: "number",
+          defaultValue: 100,
+          admin: {
+            description: "Number of rows per batch",
+          },
+        },
+        {
+          name: "currentBatch",
+          type: "number",
+          defaultValue: 0,
+          admin: {
+            description: "Current batch being processed",
+          },
+        },
+        {
+          name: "totalBatches",
+          type: "number",
+          defaultValue: 0,
+          admin: {
+            description: "Total number of batches",
+          },
+        },
+      ],
+      admin: {
+        description: "Batch processing information",
+      },
+    },
+    {
+      name: "geocodingStats",
+      type: "group",
+      fields: [
+        {
+          name: "totalAddresses",
+          type: "number",
+          defaultValue: 0,
+          admin: {
+            description: "Total addresses to geocode",
+          },
+        },
+        {
+          name: "successfulGeocodes",
+          type: "number",
+          defaultValue: 0,
+          admin: {
+            description: "Successfully geocoded addresses",
+          },
+        },
+        {
+          name: "failedGeocodes",
+          type: "number",
+          defaultValue: 0,
+          admin: {
+            description: "Failed geocoding attempts",
+          },
+        },
+        {
+          name: "cachedResults",
+          type: "number",
+          defaultValue: 0,
+          admin: {
+            description: "Results from cache",
+          },
+        },
+        {
+          name: "googleApiCalls",
+          type: "number",
+          defaultValue: 0,
+          admin: {
+            description: "Google Maps API calls made",
+          },
+        },
+        {
+          name: "nominatimApiCalls",
+          type: "number",
+          defaultValue: 0,
+          admin: {
+            description: "Nominatim API calls made",
+          },
+        },
+      ],
+      admin: {
+        description: "Geocoding statistics",
+      },
+    },
+    {
+      name: "rateLimitInfo",
+      type: "json",
+      admin: {
+        description: "Rate limiting information for this import",
+      },
+    },
+    {
+      name: "currentJobId",
+      type: "text",
+      admin: {
+        description: "Current Payload job ID being processed",
+      },
+    },
+    {
+      name: "jobHistory",
+      type: "array",
+      fields: [
+        {
+          name: "jobId",
+          type: "text",
+          required: true,
+          admin: {
+            description: "Payload job ID",
+          },
+        },
+        {
+          name: "jobType",
+          type: "select",
+          options: [
+            {
+              label: "File Parsing",
+              value: "file-parsing",
+            },
+            {
+              label: "Batch Processing",
+              value: "batch-processing",
+            },
+            {
+              label: "Geocoding Batch",
+              value: "geocoding-batch",
+            },
+            {
+              label: "Event Creation",
+              value: "event-creation",
+            },
+          ],
+          required: true,
+        },
+        {
+          name: "status",
+          type: "select",
+          options: [
+            {
+              label: "Queued",
+              value: "queued",
+            },
+            {
+              label: "Running",
+              value: "running",
+            },
+            {
+              label: "Completed",
+              value: "completed",
+            },
+            {
+              label: "Failed",
+              value: "failed",
+            },
+          ],
+          required: true,
+        },
+        {
+          name: "startedAt",
+          type: "date",
+          admin: {
+            date: {
+              pickerAppearance: "dayAndTime",
+            },
+          },
+        },
+        {
+          name: "completedAt",
+          type: "date",
+          admin: {
+            date: {
+              pickerAppearance: "dayAndTime",
+            },
+          },
+        },
+        {
+          name: "error",
+          type: "textarea",
+          admin: {
+            description: "Error message if job failed",
+          },
+        },
+        {
+          name: "result",
+          type: "json",
+          admin: {
+            description: "Job result data",
+          },
+        },
+      ],
+      admin: {
+        description: "History of all jobs for this import",
+      },
+    },
+    {
+      name: "metadata",
+      type: "json",
+      admin: {
+        description: "Additional import context and metadata",
       },
     },
   ],
   timestamps: true,
-}
+};
 
-export default Imports
+export default Imports;

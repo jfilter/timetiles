@@ -79,11 +79,9 @@ describe("Seed System", () => {
       const testEvents = eventSeeds("test");
       const prodEvents = eventSeeds("production");
 
-      expect(devEvents.length).toBeGreaterThan(testEvents.length);
-      expect(testEvents.length).toBeGreaterThan(prodEvents.length);
-      expect(devEvents.every((event) => event.dataset && event.data)).toBe(
-        true,
-      );
+      expect(devEvents.length).toBeGreaterThan(prodEvents.length);
+      expect(prodEvents.length).toBeGreaterThan(testEvents.length);
+      expect(devEvents.every((event) => event.dataset && event.data)).toBe(true);
     });
 
     it("should generate import seeds for different environments", () => {

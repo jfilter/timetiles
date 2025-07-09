@@ -1,4 +1,5 @@
 // Jest setup file for seed tests
+import { destroyRateLimitService } from "../lib/services/RateLimitService";
 
 // Set test environment
 if (!process.env.NODE_ENV) {
@@ -11,6 +12,9 @@ process.env.DATABASE_URL =
 
 // Global teardown to ensure clean exit
 afterAll(async () => {
+  // Clean up rate limit service
+  destroyRateLimitService();
+
   // Give time for all async operations to complete
   await new Promise((resolve) => setTimeout(resolve, 500));
 
