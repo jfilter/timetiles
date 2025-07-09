@@ -1,11 +1,19 @@
-import type { CollectionConfig } from 'payload'
-import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import type { CollectionConfig } from "payload";
+import { lexicalEditor } from "@payloadcms/richtext-lexical";
+import { createSlugHook } from "../utils/slug";
 
 const Datasets: CollectionConfig = {
-  slug: 'datasets',
+  slug: "datasets",
   admin: {
-    useAsTitle: 'name',
-    defaultColumns: ['name', 'catalog', 'language', 'status', 'isPublic', 'createdAt'],
+    useAsTitle: "name",
+    defaultColumns: [
+      "name",
+      "catalog",
+      "language",
+      "status",
+      "isPublic",
+      "createdAt",
+    ],
   },
   access: {
     read: () => true,
@@ -15,22 +23,23 @@ const Datasets: CollectionConfig = {
   },
   fields: [
     {
-      name: 'name',
-      type: 'text',
+      name: "name",
+      type: "text",
       required: true,
       maxLength: 255,
     },
     {
-      name: 'description',
-      type: 'richText',
+      name: "description",
+      type: "richText",
       editor: lexicalEditor({}),
     },
     {
-      name: 'slug',
-      type: 'text',
+      name: "slug",
+      type: "text",
       maxLength: 255,
+      unique: true,
       admin: {
-        position: 'sidebar',
+        position: "sidebar",
       },
       hooks: {
         beforeValidate: [
@@ -38,77 +47,77 @@ const Datasets: CollectionConfig = {
             if (data?.name && !value) {
               return data.name
                 .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/(^-|-$)/g, '')
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/(^-|-$)/g, "");
             }
-            return value
+            return value;
           },
         ],
       },
     },
     {
-      name: 'catalog',
-      type: 'relationship',
-      relationTo: 'catalogs',
+      name: "catalog",
+      type: "relationship",
+      relationTo: "catalogs",
       required: true,
       hasMany: false,
     },
     {
-      name: 'language',
-      type: 'text',
+      name: "language",
+      type: "text",
       required: true,
       maxLength: 3,
       admin: {
-        description: 'ISO-639 3 letter code (e.g., eng, deu, fra)',
+        description: "ISO-639 3 letter code (e.g., eng, deu, fra)",
       },
     },
     {
-      name: 'status',
-      type: 'select',
+      name: "status",
+      type: "select",
       options: [
         {
-          label: 'Draft',
-          value: 'draft',
+          label: "Draft",
+          value: "draft",
         },
         {
-          label: 'Active',
-          value: 'active',
+          label: "Active",
+          value: "active",
         },
         {
-          label: 'Archived',
-          value: 'archived',
+          label: "Archived",
+          value: "archived",
         },
       ],
-      defaultValue: 'active',
+      defaultValue: "active",
       admin: {
-        position: 'sidebar',
+        position: "sidebar",
       },
     },
     {
-      name: 'isPublic',
-      type: 'checkbox',
+      name: "isPublic",
+      type: "checkbox",
       defaultValue: false,
       admin: {
-        position: 'sidebar',
+        position: "sidebar",
       },
     },
     {
-      name: 'schema',
-      type: 'json',
+      name: "schema",
+      type: "json",
       required: true,
       admin: {
-        description: 'JSON schema definition for this dataset',
+        description: "JSON schema definition for this dataset",
       },
     },
     {
-      name: 'metadata',
-      type: 'json',
+      name: "metadata",
+      type: "json",
       admin: {
-        description: 'Additional metadata for the dataset',
+        description: "Additional metadata for the dataset",
       },
     },
   ],
   timestamps: true,
-}
+};
 
-export default Datasets
+export default Datasets;
