@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import {
   fileParsingJob,
   batchProcessingJob,
@@ -8,13 +9,12 @@ import { createSeedManager } from "../lib/seed/index";
 import fs from "fs";
 import path from "path";
 import { writeFile, mkdir } from "fs/promises";
-import { jest } from "@jest/globals";
 
 // Mock external dependencies
-jest.mock("fs");
-jest.mock("fs/promises");
-jest.mock("papaparse");
-jest.mock("xlsx");
+vi.mock("fs");
+vi.mock("fs/promises");
+vi.mock("papaparse");
+vi.mock("xlsx");
 
 describe("Import Jobs", () => {
   let seedManager: any;
@@ -96,12 +96,12 @@ describe("Import Jobs", () => {
 
     // Mock payload.jobs.queue
     payload.jobs = {
-      queue: jest.fn().mockResolvedValue({}),
+      queue: vi.fn().mockResolvedValue({}),
     };
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("fileParsingJob", () => {
@@ -118,14 +118,14 @@ describe("Import Jobs", () => {
       };
 
       // Mock fs.readFileSync
-      (fs.readFileSync as jest.Mock).mockReturnValue(mockCsvContent);
+      (fs.readFileSync as any).mockReturnValue(mockCsvContent);
 
       // Mock fs.unlinkSync
-      (fs.unlinkSync as jest.Mock).mockImplementation(() => {});
+      (fs.unlinkSync as any).mockImplementation(() => {});
 
       // Mock Papa.parse
       const Papa = require("papaparse");
-      Papa.parse = jest.fn().mockReturnValue({
+      Papa.parse = vi.fn().mockReturnValue({
         data: [
           {
             title: "Test Event 1",
@@ -177,14 +177,14 @@ describe("Import Jobs", () => {
       mockJob.input.fileName = "test-file.xlsx";
 
       const XLSX = require("xlsx");
-      XLSX.readFile = jest.fn().mockReturnValue({
+      XLSX.readFile = vi.fn().mockReturnValue({
         SheetNames: ["Sheet1"],
         Sheets: {
           Sheet1: {},
         },
       });
       XLSX.utils = {
-        sheet_to_json: jest.fn().mockReturnValue([
+        sheet_to_json: vi.fn().mockReturnValue([
           ["title", "description", "date", "location", "address"],
           [
             "Test Event 1",
@@ -313,7 +313,7 @@ describe("Import Jobs", () => {
     });
 
     it("should handle file cleanup errors gracefully", async () => {
-      (fs.unlinkSync as jest.Mock).mockImplementation(() => {
+      (fs.unlinkSync as any).mockImplementation(() => {
         throw new Error("File deletion failed");
       });
 
@@ -459,7 +459,7 @@ describe("Import Jobs", () => {
     it("should handle processing errors", async () => {
       // Mock payload.update to throw error
       const originalUpdate = payload.update;
-      payload.update = jest.fn().mockRejectedValue(new Error("Database error"));
+      payload.update = vi.fn().mockRejectedValue(new Error("Database error"));
 
       await expect(
         batchProcessingJob.handler({ job: mockJob, payload }),
@@ -553,7 +553,7 @@ describe("Import Jobs", () => {
       // Mock payload.create to fail for first event
       const originalCreate = payload.create;
       let callCount = 0;
-      payload.create = jest.fn().mockImplementation((args) => {
+      payload.create = vi.fn().mockImplementation((args) => {
         if (args.collection === "events" && callCount === 0) {
           callCount++;
           throw new Error("Event creation failed");
@@ -655,7 +655,7 @@ describe("Import Jobs", () => {
     it("should geocode events successfully", async () => {
       // Mock GeocodingService
       const mockGeocodingService = {
-        geocode: jest.fn().mockResolvedValue({
+        geocode: vi.fn().mockResolvedValue({
           latitude: 37.7749,
           longitude: -122.4194,
           confidence: 0.9,
@@ -668,7 +668,7 @@ describe("Import Jobs", () => {
       const originalGeocodingService =
         require("../lib/services/geocoding/GeocodingService").GeocodingService;
       require("../lib/services/geocoding/GeocodingService").GeocodingService =
-        jest.fn().mockImplementation(() => mockGeocodingService);
+        vi.fn().mockImplementation(() => mockGeocodingService);
 
       await geocodingBatchJob.handler({ job: mockJob, payload });
 
@@ -699,7 +699,7 @@ describe("Import Jobs", () => {
 
     it("should handle geocoding failures gracefully", async () => {
       const mockGeocodingService = {
-        geocode: jest
+        geocode: vi
           .fn()
           .mockResolvedValueOnce({
             latitude: 37.7749,
@@ -714,7 +714,7 @@ describe("Import Jobs", () => {
       const originalGeocodingService =
         require("../lib/services/geocoding/GeocodingService").GeocodingService;
       require("../lib/services/geocoding/GeocodingService").GeocodingService =
-        jest.fn().mockImplementation(() => mockGeocodingService);
+        vi.fn().mockImplementation(() => mockGeocodingService);
 
       await geocodingBatchJob.handler({ job: mockJob, payload });
 
@@ -756,7 +756,7 @@ describe("Import Jobs", () => {
       });
 
       const mockGeocodingService = {
-        geocode: jest.fn().mockResolvedValue({
+        geocode: vi.fn().mockResolvedValue({
           latitude: 37.7749,
           longitude: -122.4194,
           confidence: 0.9,
@@ -768,7 +768,7 @@ describe("Import Jobs", () => {
       const originalGeocodingService =
         require("../lib/services/geocoding/GeocodingService").GeocodingService;
       require("../lib/services/geocoding/GeocodingService").GeocodingService =
-        jest.fn().mockImplementation(() => mockGeocodingService);
+        vi.fn().mockImplementation(() => mockGeocodingService);
 
       await geocodingBatchJob.handler({ job: mockJob, payload });
 
@@ -797,7 +797,7 @@ describe("Import Jobs", () => {
       });
 
       const mockGeocodingService = {
-        geocode: jest.fn().mockResolvedValue({
+        geocode: vi.fn().mockResolvedValue({
           latitude: 37.7749,
           longitude: -122.4194,
           confidence: 0.9,
@@ -809,7 +809,7 @@ describe("Import Jobs", () => {
       const originalGeocodingService =
         require("../lib/services/geocoding/GeocodingService").GeocodingService;
       require("../lib/services/geocoding/GeocodingService").GeocodingService =
-        jest.fn().mockImplementation(() => mockGeocodingService);
+        vi.fn().mockImplementation(() => mockGeocodingService);
 
       await geocodingBatchJob.handler({ job: mockJob, payload });
 

@@ -19,7 +19,7 @@
       }
     ],
     "types": [
-      "jest",
+      "vitest",
       "node"
     ]
   },
