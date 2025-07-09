@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import {
+  getRateLimitService,
+  getClientIdentifier,
+  RATE_LIMITS,
+} from "../../../../../lib/services/RateLimitService";
 
 interface ProgressResponse {
   importId: string;
@@ -32,6 +37,10 @@ export async function GET(
   try {
     const payload = await getPayload({ config });
     const importId = params.importId;
+
+    // Set up rate limiting
+    const clientId = getClientIdentifier(request);
+    const rateLimitService = getRateLimitService(payload);
 
     // Find the import record
     const importRecord = await payload.findByID({
