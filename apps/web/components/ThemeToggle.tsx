@@ -64,7 +64,7 @@ export function ThemeToggle() {
                   theme === o.value ? "font-bold" : ""
                 }`}
                 onClick={() => {
-                  setTheme(o.value as Theme);
+                  setTheme(o.value as "light" | "dark" | "system");
                   setOpen(false);
                 }}
                 role="option"

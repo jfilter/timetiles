@@ -117,7 +117,7 @@ export class GeocodingService {
         throw error;
       }
       throw new GeocodingError(
-        `Geocoding error: ${error.message}`,
+        `Geocoding error: ${(error as Error).message}`,
         "UNKNOWN_ERROR",
         true,
       );
@@ -192,16 +192,18 @@ export class GeocodingService {
 
       if (exactMatch.docs.length > 0) {
         const cached = exactMatch.docs[0];
-        return {
-          id: cached.id,
-          latitude: cached.latitude,
-          longitude: cached.longitude,
-          confidence: cached.confidence,
+        if (cached) {
+          return {
+            id: cached.id,
+            latitude: cached.latitude,
+            longitude: cached.longitude,
+            confidence: cached.confidence,
           provider: cached.provider,
           normalizedAddress: cached.normalizedAddress,
           components: cached.components || {},
           metadata: cached.metadata,
         };
+        }
       }
 
       return null;

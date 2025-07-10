@@ -12,7 +12,7 @@ async function main() {
     const collections = ["users", "catalogs", "datasets", "events", "imports"];
 
     for (const collection of collections) {
-      const result = await payload.find({ collection, limit: 1 });
+      const result = await payload.find({ collection: collection as any, limit: 1 });
       if (result.docs.length === 0) {
         throw new Error(`No data found in ${collection}`);
       }
@@ -26,7 +26,7 @@ async function main() {
       depth: 1,
     });
 
-    if (datasets.docs.length > 0 && !datasets.docs[0].catalog) {
+    if (datasets.docs.length > 0 && !datasets.docs[0]?.catalog) {
       throw new Error("Dataset catalog relationship not resolved");
     }
 

@@ -80,7 +80,7 @@ async function checkSlugUniqueness(
   }
 
   const result = await req.payload.find({
-    collection,
+    collection: collection as any,
     where,
     limit: 1,
   });

@@ -169,7 +169,7 @@ Event 2,2024-03-16
       const readWorkbook = XLSX.read(excelBuffer, { type: 'buffer' });
       const sheetName = readWorkbook.SheetNames[0];
       const readWorksheet = readWorkbook.Sheets[sheetName!];
-      const jsonData = XLSX.utils.sheet_to_json(readWorksheet, {
+      const jsonData = XLSX.utils.sheet_to_json(readWorksheet!, {
         header: 1,
         defval: "",
       });
@@ -265,7 +265,7 @@ Event 2,2024-03-16
       const readWorkbook = XLSX.read(excelBuffer, { type: 'buffer' });
       const sheetName = readWorkbook.SheetNames[0];
       const readWorksheet = readWorkbook.Sheets[sheetName!];
-      const jsonData = XLSX.utils.sheet_to_json(readWorksheet, {
+      const jsonData = XLSX.utils.sheet_to_json(readWorksheet!, {
         header: 1,
         defval: "",
       });
