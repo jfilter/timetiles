@@ -11,6 +11,7 @@
     "lint": {
       "dependsOn": ["^lint"]
     },
+    "format": {},
     "check-types": {
       "dependsOn": ["^check-types"]
     },
@@ -21,17 +22,7 @@
     "test": {
       "dependsOn": ["^build"]
     },
-    "seed": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "cache": false
-    },
-    "seed:dev": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "cache": false
-    },
-    "seed:truncate": {
+    "seed:*": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "cache": false
