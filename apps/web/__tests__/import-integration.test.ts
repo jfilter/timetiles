@@ -283,10 +283,9 @@ describe.sequential("Import System Integration Tests", () => {
       };
 
       await fileParsingJob.handler({
-        job: {
-          input: fileParsingJobInput,
-        },
-        payload,
+        input: fileParsingJobInput,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       // Verify import was updated after file parsing
@@ -310,10 +309,9 @@ describe.sequential("Import System Integration Tests", () => {
       };
 
       await batchProcessingJob.handler({
-        job: {
-          input: batchProcessingJobInput,
-        },
-        payload,
+        input: batchProcessingJobInput,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       // Job queue verification removed - using real job queue
@@ -338,11 +336,9 @@ describe.sequential("Import System Integration Tests", () => {
       };
 
       await eventCreationJob.handler({
-        job: {
-          id: 3,
-          input: eventCreationJobInput,
-        },
-        payload,
+        input: eventCreationJobInput,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       // Verify events were created
@@ -380,11 +376,9 @@ describe.sequential("Import System Integration Tests", () => {
       };
 
       await geocodingBatchJob.handler({
-        job: {
-          id: 4,
-          input: geocodingJobInput,
-        },
-        payload,
+        input: geocodingJobInput,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       // Verify events were geocoded
@@ -499,10 +493,9 @@ describe.sequential("Import System Integration Tests", () => {
       // The upload handler should have created the file at the correct path
 
       await fileParsingJob.handler({
-        job: {
-          input: fileParsingJobInput,
-        },
-        payload,
+        input: fileParsingJobInput,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       // Verify import was updated after file parsing
@@ -555,13 +548,9 @@ describe.sequential("Import System Integration Tests", () => {
 
       await expect(
         fileParsingJob.handler({
-          job: {
-            input: fileParsingJobInput,
-            taskStatus: "running" as any,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          payload,
+          input: fileParsingJobInput,
+          job: { id: "test-job", taskStatus: "running" },
+          req: { payload },
         }),
       ).rejects.toThrow("No valid rows found");
 
@@ -607,20 +596,18 @@ describe.sequential("Import System Integration Tests", () => {
 
       // Process through to geocoding
       await fileParsingJob.handler({
-        job: {
-          input: {
+        input: {
             importId,
             filePath: geocodingImportRecord.metadata.filePath,
             fileName: "test.csv",
             fileType: "csv" as const,
-          },
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       await batchProcessingJob.handler({
-        job: {
-          input: {
+        input: {
             importId,
             batchNumber: 1,
             batchData: [
@@ -637,9 +624,9 @@ describe.sequential("Import System Integration Tests", () => {
               },
             ],
             totalBatches: 1,
-          },
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       const processedData = [
@@ -657,15 +644,13 @@ describe.sequential("Import System Integration Tests", () => {
       ];
 
       await eventCreationJob.handler({
-        job: {
-          id: 9,
-          input: {
-            importId,
-            processedData,
-            batchNumber: 1,
-          },
+        input: {
+          importId,
+          processedData,
+          batchNumber: 1,
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       // Get created event
@@ -678,15 +663,13 @@ describe.sequential("Import System Integration Tests", () => {
 
       // Process geocoding job - should handle failure gracefully
       await geocodingBatchJob.handler({
-        job: {
-          id: 10,
-          input: {
-            importId,
-            eventIds: [events.docs[0]?.id],
-            batchNumber: 1,
-          },
+        input: {
+          importId,
+          eventIds: [events.docs[0]?.id],
+          batchNumber: 1,
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       // Import should still complete despite geocoding failure
@@ -769,15 +752,14 @@ describe.sequential("Import System Integration Tests", () => {
 
       // Process file parsing
       await fileParsingJob.handler({
-        job: {
-          input: {
+        input: {
             importId,
             filePath: largeImportRecord.metadata.filePath,
             fileName: "large.csv",
             fileType: "csv" as const,
-          },
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       const importRecord = await payload.findByID({
@@ -861,15 +843,14 @@ describe.sequential("Import System Integration Tests", () => {
 
       // Process file parsing
       await fileParsingJob.handler({
-        job: {
-          input: {
+        input: {
             importId,
             filePath: progressImportRecord.metadata.filePath,
             fileName: "progress-test.csv",
             fileType: "csv" as const,
-          },
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       // Check progress after file parsing
@@ -886,15 +867,14 @@ describe.sequential("Import System Integration Tests", () => {
 
       // Continue with batch processing and event creation
       await batchProcessingJob.handler({
-        job: {
-          input: {
+        input: {
             importId,
             batchNumber: 1,
             batchData: sampleCsvData,
             totalBatches: 1,
-          },
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       const processedData = sampleCsvData.map((row) => ({
@@ -910,15 +890,13 @@ describe.sequential("Import System Integration Tests", () => {
       }));
 
       await eventCreationJob.handler({
-        job: {
-          id: 14,
-          input: {
-            importId,
-            processedData,
-            batchNumber: 1,
-          },
+        input: {
+          importId,
+          processedData,
+          batchNumber: 1,
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       // Check progress after event creation
@@ -940,15 +918,13 @@ describe.sequential("Import System Integration Tests", () => {
       });
 
       await geocodingBatchJob.handler({
-        job: {
-          id: 15,
-          input: {
-            importId,
-            eventIds: events.docs.map((e: any) => e.id),
-            batchNumber: 1,
-          },
+        input: {
+          importId,
+          eventIds: events.docs.map((e: any) => e.id),
+          batchNumber: 1,
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       // Check final progress
@@ -1059,28 +1035,23 @@ describe.sequential("Import System Integration Tests", () => {
       });
 
       await fileParsingJob.handler({
-        job: {
-          id: "integrity-test-1",
-          input: {
-            importId,
-            filePath: importRecord.metadata.filePath,
-            fileName: "integrity-test.csv",
-            fileType: "csv" as const,
-          },
+        input: {
+          importId,
+          filePath: importRecord.metadata.filePath,
+          fileType: "csv" as const,
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       await batchProcessingJob.handler({
-        job: {
-          id: "integrity-test-2",
-          input: {
-            importId,
-            batchNumber: 1,
-            batchData: integrityTestData,
-          },
+        input: {
+          importId,
+          batchNumber: 1,
+          batchData: integrityTestData,
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       const processedData = integrityTestData.map((row) => ({
@@ -1097,15 +1068,13 @@ describe.sequential("Import System Integration Tests", () => {
       }));
 
       await eventCreationJob.handler({
-        job: {
-          id: "integrity-test-3",
-          input: {
-            importId,
-            processedData,
-            batchNumber: 1,
-          },
+        input: {
+          importId,
+          processedData,
+          batchNumber: 1,
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       // Verify data integrity
@@ -1238,28 +1207,23 @@ describe.sequential("Import System Integration Tests", () => {
       });
 
       await fileParsingJob.handler({
-        job: {
-          id: "malicious-test-1",
-          input: {
-            importId,
-            filePath: importRecord.metadata.filePath,
-            fileName: "malicious-test.csv",
-            fileType: "csv" as const,
-          },
+        input: {
+          importId,
+          filePath: importRecord.metadata.filePath,
+          fileType: "csv" as const,
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       await batchProcessingJob.handler({
-        job: {
-          id: "malicious-test-2",
-          input: {
-            importId,
-            batchNumber: 1,
-            batchData: maliciousData,
-          },
+        input: {
+          importId,
+          batchNumber: 1,
+          batchData: maliciousData,
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       const processedData = maliciousData.map((row) => ({
@@ -1276,15 +1240,13 @@ describe.sequential("Import System Integration Tests", () => {
       }));
 
       await eventCreationJob.handler({
-        job: {
-          id: "malicious-test-3",
-          input: {
-            importId,
-            processedData,
-            batchNumber: 1,
-          },
+        input: {
+          importId,
+          processedData,
+          batchNumber: 1,
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       // Verify malicious content is stored safely (not executed)
@@ -1407,28 +1369,23 @@ describe.sequential("Import System Integration Tests", () => {
       });
 
       await fileParsingJob.handler({
-        job: {
-          id: "business-rules-1",
-          input: {
-            importId,
-            filePath: importRecord.metadata.filePath,
-            fileName: "business-rules.csv",
-            fileType: "csv" as const,
-          },
+        input: {
+          importId,
+          filePath: importRecord.metadata.filePath,
+          fileType: "csv" as const,
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       await batchProcessingJob.handler({
-        job: {
-          id: "business-rules-2",
-          input: {
-            importId,
-            batchNumber: 1,
-            batchData: businessRuleData,
-          },
+        input: {
+          importId,
+          batchNumber: 1,
+          batchData: businessRuleData,
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       const processedData = businessRuleData.map((row) => ({
@@ -1445,15 +1402,13 @@ describe.sequential("Import System Integration Tests", () => {
       }));
 
       await eventCreationJob.handler({
-        job: {
-          id: "business-rules-3",
-          input: {
-            importId,
-            processedData,
-            batchNumber: 1,
-          },
+        input: {
+          importId,
+          processedData,
+          batchNumber: 1,
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       // Verify all events are created regardless of business rule violations
@@ -1615,15 +1570,14 @@ describe.sequential("Import System Integration Tests", () => {
 
       // Process the import
       await fileParsingJob.handler({
-        job: {
-          input: {
+        input: {
             importId,
             filePath: malformedImportRecord.metadata.filePath,
             fileName: "malformed.csv",
             fileType: "csv" as const,
-          },
         },
-        payload,
+        job: { id: "test-job" },
+        req: { payload },
       });
 
       // Should only process valid rows

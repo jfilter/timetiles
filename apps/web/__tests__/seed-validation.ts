@@ -88,7 +88,7 @@ async function runSeedTests() {
   test("Catalog seeds have proper status values", () => {
     const catalogs = catalogSeeds("development");
     return catalogs.every((catalog) =>
-      ["active", "archived"].includes(catalog.status),
+      catalog.status && ["active", "archived"].includes(catalog.status),
     );
   });
 
@@ -146,7 +146,7 @@ async function runSeedTests() {
   test("Import seeds have proper status values", () => {
     const imports = importSeeds("development");
     return imports.every((imp) =>
-      ["pending", "processing", "completed", "failed"].includes(imp.status),
+      imp.status && ["pending", "processing", "completed", "failed"].includes(imp.status),
     );
   });
 
@@ -177,7 +177,7 @@ async function runSeedTests() {
     return (
       testCatalogs.some((c) => c.slug === "test-catalog") &&
       testDatasets.some((d) => d.slug === "test-dataset") &&
-      testEvents.some((e) => e.data.id === "test-001")
+      testEvents.some((e) => e.data && typeof e.data === 'object' && 'id' in e.data && (e.data as any).id === "test-001")
     );
   });
 

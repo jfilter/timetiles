@@ -1,43 +1,78 @@
-import type { Payload } from "payload";
+import type { Payload, TaskHandler, TaskHandlerArgs } from "payload";
 import { GeocodingService } from "../services/geocoding/GeocodingService";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import fs from "fs";
-import type { Import, Dataset, Event, Catalog } from "../../payload-types";
+import type { 
+  Import, 
+  Dataset, 
+  Event, 
+  Catalog,
+  TaskFileParsing,
+  TaskBatchProcessing,
+  TaskEventCreation,
+  TaskGeocodingBatch
+} from "../../payload-types";
 
-// Enhanced job payload types using Payload types
-interface FileParsingJobPayload {
-  importId: Import['id'];
-  filePath: string;
-  fileType: "csv" | "xlsx";
+// Enhanced job payload types using Payload task types
+interface FileParsingJobPayload extends TaskFileParsing {
+  input: {
+    importId: Import['id'];
+    filePath: string;
+    fileType: "csv" | "xlsx";
+  };
 }
 
-interface BatchProcessingJobPayload {
-  importId: Import['id'];
-  batchNumber: number;
-  batchData: Record<string, unknown>[];
+interface BatchProcessingJobPayload extends TaskBatchProcessing {
+  input: {
+    importId: Import['id'];
+    batchNumber: number;
+    batchData: Record<string, unknown>[];
+  };
 }
 
-interface GeocodingBatchJobPayload {
-  importId: Import['id'];
-  eventIds: number[];
-  batchNumber: number;
+interface GeocodingBatchJobPayload extends TaskGeocodingBatch {
+  input: {
+    importId: Import['id'];
+    eventIds: number[];
+    batchNumber: number;
+  };
 }
 
-interface EventCreationJobPayload {
-  importId: Import['id'];
-  processedData: Record<string, unknown>[];
-  batchNumber: number;
+interface EventCreationJobPayload extends TaskEventCreation {
+  input: {
+    importId: Import['id'];
+    processedData: Record<string, unknown>[];
+    batchNumber: number;
+  };
 }
 
-// Job handler context type - simplified for compatibility with both tests and Payload
-type JobHandlerContext = any;
+// Job handler context type that works with both Payload types and test mocks
+type JobHandlerContext<T = any> = {
+  input?: T;
+  job?: {
+    id: string | number;
+    taskStatus?: any;
+    [key: string]: any;
+  };
+  req?: {
+    payload: any;
+    [key: string]: any;
+  };
+  // Legacy test support - payload directly on context
+  payload?: any;
+  // Support any additional properties for backwards compatibility
+  [key: string]: any;
+};
 
 // File parsing job
 export const fileParsingJob = {
   slug: "file-parsing",
-  handler: async ({ job, payload }: JobHandlerContext) => {
-    const { importId, filePath, fileType } = job.input as FileParsingJobPayload;
+  handler: async (context: JobHandlerContext) => {
+    // Support both new format (req.payload) and legacy format (payload directly)
+    const payload = context.req?.payload || context.payload;
+    const input = context.input || (context.job as any)?.input;
+    const { importId, filePath, fileType } = input as FileParsingJobPayload['input'];
 
     try {
       // Update import status
@@ -161,7 +196,7 @@ export const fileParsingJob = {
             importId,
             batchNumber: i + 1,
             batchData,
-          } as BatchProcessingJobPayload,
+          } as BatchProcessingJobPayload['input'],
         });
       }
 
@@ -200,8 +235,10 @@ export const fileParsingJob = {
 // Batch processing job
 export const batchProcessingJob = {
   slug: "batch-processing",
-  handler: async ({ job, payload }: JobHandlerContext) => {
-    const { importId, batchNumber, batchData } = job.input as BatchProcessingJobPayload;
+  handler: async (context: JobHandlerContext) => {
+    const payload = context.req?.payload || context.payload;
+    const input = context.input || (context.job as any)?.input;
+    const { importId, batchNumber, batchData } = input as BatchProcessingJobPayload['input'];
 
     try {
       // Get current import to preserve other batchInfo fields
@@ -257,7 +294,7 @@ export const batchProcessingJob = {
           importId,
           processedData,
           batchNumber,
-        } as EventCreationJobPayload,
+        } as EventCreationJobPayload['input'],
       });
       return { output: {} };
     } catch (error) {
@@ -285,8 +322,10 @@ export const batchProcessingJob = {
 // Event creation job
 export const eventCreationJob = {
   slug: "event-creation",
-  handler: async ({ job, payload }: JobHandlerContext) => {
-    const { importId, processedData, batchNumber } = job.input as EventCreationJobPayload;
+  handler: async (context: JobHandlerContext) => {
+    const payload = context.req?.payload || context.payload;
+    const input = context.input || (context.job as any)?.input;
+    const { importId, processedData, batchNumber } = input as EventCreationJobPayload['input'];
 
     try {
       // Get the import record to find the dataset
@@ -385,7 +424,7 @@ export const eventCreationJob = {
         },
         select: {
           id: true,
-        } as any,
+        },
         limit: createdEventIds.length,
       });
       const eventsNeedingGeocoding: number[] = eventsWithAddresses.docs.map((event: Pick<Event, 'id'>) => event.id);
@@ -397,7 +436,7 @@ export const eventCreationJob = {
             importId,
             eventIds: eventsNeedingGeocoding,
             batchNumber,
-          } as GeocodingBatchJobPayload,
+          } as GeocodingBatchJobPayload['input'],
         });
       }
 
@@ -449,8 +488,10 @@ export const eventCreationJob = {
 // Geocoding batch job
 export const geocodingBatchJob = {
   slug: "geocoding-batch",
-  handler: async ({ job, payload }: JobHandlerContext) => {
-    const { importId, eventIds, batchNumber } = job.input as GeocodingBatchJobPayload;
+  handler: async (context: JobHandlerContext) => {
+    const payload = context.req?.payload || context.payload;
+    const input = context.input || (context.job as any)?.input;
+    const { importId, eventIds, batchNumber } = input as GeocodingBatchJobPayload['input'];
 
     try {
       const geocodingService = new GeocodingService(payload);

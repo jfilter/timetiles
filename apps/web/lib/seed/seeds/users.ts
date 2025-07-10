@@ -1,11 +1,9 @@
-export interface UserSeed {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  role: "user" | "admin" | "analyst";
-  isActive: boolean;
-}
+import type { User } from "../../../payload-types";
+
+// Use Payload type with specific omissions for seed data
+export type UserSeed = Omit<User, 'id' | 'createdAt' | 'updatedAt' | 'salt' | 'hash' | 'resetPasswordToken' | 'resetPasswordExpiration' | 'loginAttempts' | 'lockUntil'> & {
+  password: string; // Plain password for seeding, will be hashed
+};
 
 export function userSeeds(environment: string): UserSeed[] {
   const baseUsers: UserSeed[] = [
