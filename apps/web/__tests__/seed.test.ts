@@ -117,9 +117,6 @@ describe.sequential("Seed System", () => {
           collection,
           limit: 1,
         });
-        console.log(
-          `Collection ${collection} has ${result.docs.length} records`,
-        );
         expect(result.docs.length).toBeGreaterThan(0);
       }
     });
@@ -153,10 +150,6 @@ describe.sequential("Seed System", () => {
         collection: "datasets",
         limit: 100,
       });
-
-      console.log(
-        `Users: ${users.docs.length}, Catalogs: ${catalogs.docs.length}, Datasets: ${datasets.docs.length}`,
-      );
 
       expect(users.docs.length).toBeGreaterThan(0);
       expect(catalogs.docs.length).toBeGreaterThan(0);
@@ -207,9 +200,6 @@ describe.sequential("Seed System", () => {
           collection,
           limit: 100,
         });
-        console.log(
-          `After truncation, collection ${collection} has ${result.docs.length} records`,
-        );
         if (result.docs.length === 0) {
           emptiedCount++;
         }
