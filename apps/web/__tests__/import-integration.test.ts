@@ -10,8 +10,8 @@ import {
 } from "vitest";
 import { createIsolatedTestEnvironment } from "./test-helpers";
 import { NextRequest } from "next/server";
-import { POST as uploadHandler } from "../app/api/import/upload/route";
-import { GET as progressHandler } from "../app/api/import/[importId]/progress/route";
+import { POST as uploadHandler } from "../app/(app)/api/import/upload/route";
+import { GET as progressHandler } from "../app/(app)/api/import/[importId]/progress/route";
 import {
   fileParsingJob,
   batchProcessingJob,
@@ -50,12 +50,13 @@ vi.mock("../lib/services/geocoding/GeocodingService", () => {
           metadata: {},
         };
       }),
-      batchGeocode: vi.fn().mockImplementation(async (addresses: string[]) => {
+      batchGeocode: vi.fn().mockImplementation(async function(this: any, addresses: string[]) {
         const results = new Map();
         let successful = 0;
         let failed = 0;
         
         for (const address of addresses) {
+          if (!address) continue;
           try {
             const result = await this.geocode(address);
             results.set(address, result);
@@ -283,11 +284,7 @@ describe.sequential("Import System Integration Tests", () => {
 
       await fileParsingJob.handler({
         job: {
-          id: "test-job-1",
           input: fileParsingJobInput,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -314,11 +311,7 @@ describe.sequential("Import System Integration Tests", () => {
 
       await batchProcessingJob.handler({
         job: {
-          id: "test-job-2",
           input: batchProcessingJobInput,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -348,9 +341,6 @@ describe.sequential("Import System Integration Tests", () => {
         job: {
           id: 3,
           input: eventCreationJobInput,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -393,9 +383,6 @@ describe.sequential("Import System Integration Tests", () => {
         job: {
           id: 4,
           input: geocodingJobInput,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -428,7 +415,7 @@ describe.sequential("Import System Integration Tests", () => {
       );
       const progressResponse = await progressHandler(progressRequest, {
         params: { importId },
-      });
+      } as any);
       const progressResult = await progressResponse.json();
 
       expect(progressResponse.status).toBe(200);
@@ -513,11 +500,7 @@ describe.sequential("Import System Integration Tests", () => {
 
       await fileParsingJob.handler({
         job: {
-          id: "test-job-5",
           input: fileParsingJobInput,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -573,7 +556,6 @@ describe.sequential("Import System Integration Tests", () => {
       await expect(
         fileParsingJob.handler({
           job: {
-            id: "test-job-6",
             input: fileParsingJobInput,
             taskStatus: "running" as any,
             createdAt: new Date().toISOString(),
@@ -626,23 +608,18 @@ describe.sequential("Import System Integration Tests", () => {
       // Process through to geocoding
       await fileParsingJob.handler({
         job: {
-          id: "test-job-7",
           input: {
             importId,
             filePath: geocodingImportRecord.metadata.filePath,
             fileName: "test.csv",
             fileType: "csv" as const,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
 
       await batchProcessingJob.handler({
         job: {
-          id: "test-job-8",
           input: {
             importId,
             batchNumber: 1,
@@ -661,9 +638,6 @@ describe.sequential("Import System Integration Tests", () => {
             ],
             totalBatches: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -690,9 +664,6 @@ describe.sequential("Import System Integration Tests", () => {
             processedData,
             batchNumber: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -714,9 +685,6 @@ describe.sequential("Import System Integration Tests", () => {
             eventIds: [events.docs[0]?.id],
             batchNumber: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -802,16 +770,12 @@ describe.sequential("Import System Integration Tests", () => {
       // Process file parsing
       await fileParsingJob.handler({
         job: {
-          id: "test-job-11",
           input: {
             importId,
             filePath: largeImportRecord.metadata.filePath,
             fileName: "large.csv",
             fileType: "csv" as const,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -889,7 +853,7 @@ describe.sequential("Import System Integration Tests", () => {
       );
       let progressResponse = await progressHandler(progressRequest, {
         params: { importId },
-      });
+      } as any);
       let progressResult = await progressResponse.json();
 
       expect(progressResult.stage).toBe("file-parsing");
@@ -898,16 +862,12 @@ describe.sequential("Import System Integration Tests", () => {
       // Process file parsing
       await fileParsingJob.handler({
         job: {
-          id: "test-job-12",
           input: {
             importId,
             filePath: progressImportRecord.metadata.filePath,
             fileName: "progress-test.csv",
             fileType: "csv" as const,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -918,7 +878,7 @@ describe.sequential("Import System Integration Tests", () => {
       );
       progressResponse = await progressHandler(progressRequest, {
         params: { importId },
-      });
+      } as any);
       progressResult = await progressResponse.json();
 
       expect(progressResult.stage).toBe("row-processing");
@@ -927,16 +887,12 @@ describe.sequential("Import System Integration Tests", () => {
       // Continue with batch processing and event creation
       await batchProcessingJob.handler({
         job: {
-          id: "test-job-13",
           input: {
             importId,
             batchNumber: 1,
             batchData: sampleCsvData,
             totalBatches: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -961,9 +917,6 @@ describe.sequential("Import System Integration Tests", () => {
             processedData,
             batchNumber: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -974,7 +927,7 @@ describe.sequential("Import System Integration Tests", () => {
       );
       progressResponse = await progressHandler(progressRequest, {
         params: { importId },
-      });
+      } as any);
       progressResult = await progressResponse.json();
 
       expect(progressResult.stage).toBe("geocoding");
@@ -994,9 +947,6 @@ describe.sequential("Import System Integration Tests", () => {
             eventIds: events.docs.map((e: any) => e.id),
             batchNumber: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -1007,7 +957,7 @@ describe.sequential("Import System Integration Tests", () => {
       );
       progressResponse = await progressHandler(progressRequest, {
         params: { importId },
-      });
+      } as any);
       progressResult = await progressResponse.json();
 
       expect(progressResult.status).toBe("completed");
@@ -1117,9 +1067,6 @@ describe.sequential("Import System Integration Tests", () => {
             fileName: "integrity-test.csv",
             fileType: "csv" as const,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -1132,9 +1079,6 @@ describe.sequential("Import System Integration Tests", () => {
             batchNumber: 1,
             batchData: integrityTestData,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -1160,9 +1104,6 @@ describe.sequential("Import System Integration Tests", () => {
             processedData,
             batchNumber: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -1305,9 +1246,6 @@ describe.sequential("Import System Integration Tests", () => {
             fileName: "malicious-test.csv",
             fileType: "csv" as const,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -1320,9 +1258,6 @@ describe.sequential("Import System Integration Tests", () => {
             batchNumber: 1,
             batchData: maliciousData,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -1348,9 +1283,6 @@ describe.sequential("Import System Integration Tests", () => {
             processedData,
             batchNumber: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -1483,9 +1415,6 @@ describe.sequential("Import System Integration Tests", () => {
             fileName: "business-rules.csv",
             fileType: "csv" as const,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -1498,9 +1427,6 @@ describe.sequential("Import System Integration Tests", () => {
             batchNumber: 1,
             batchData: businessRuleData,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -1526,9 +1452,6 @@ describe.sequential("Import System Integration Tests", () => {
             processedData,
             batchNumber: 1,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });
@@ -1693,16 +1616,12 @@ describe.sequential("Import System Integration Tests", () => {
       // Process the import
       await fileParsingJob.handler({
         job: {
-          id: "test-job-16",
           input: {
             importId,
             filePath: malformedImportRecord.metadata.filePath,
             fileName: "malformed.csv",
             fileType: "csv" as const,
           },
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
         payload,
       });

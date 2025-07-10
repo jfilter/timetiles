@@ -1,11 +1,8 @@
-import { TopMenuBar } from "@/components/TopMenuBar";
 import { Button } from "@workspace/ui/components/button";
 
 export default function Page() {
   return (
-    <>
-      <TopMenuBar />
-      <main className="flex min-h-svh flex-col items-center justify-center px-4 pt-32">
+    <main className="flex min-h-svh flex-col items-center justify-center px-4 pt-32">
         {/* Hero Section */}
         <section className="flex max-w-2xl flex-col items-center gap-6 text-center">
           <h1 className="from-primary to-secondary bg-gradient-to-r bg-clip-text text-5xl font-extrabold leading-tight tracking-tight text-transparent">
@@ -59,6 +56,5 @@ export default function Page() {
           <Button size="lg">Try TimeTiles Free</Button>
         </section>
       </main>
-    </>
   );
 }

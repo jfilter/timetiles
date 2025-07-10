@@ -1,0 +1,50 @@
+name: Validate Payload Types
+
+on:
+  pull_request:
+    paths:
+      - 'apps/web/lib/collections/**'
+      - 'apps/web/payload.config.ts'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/web/lib/collections/**'
+      - 'apps/web/payload.config.ts'
+
+jobs:
+  validate-types:
+    name: Validate Payload Types are in sync
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Validate Payload types
+        run: |
+          cd apps/web
+          pnpm payload:validate
+          
+      - name: Check for uncommitted changes
+        run: |
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "❌ Payload types are out of sync!"
+            echo "Please run 'pnpm payload:generate' and commit the changes."
+            git status
+            exit 1
+          else
+            echo "✅ Payload types are in sync!"
+          fi

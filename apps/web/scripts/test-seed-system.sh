@@ -124,25 +124,3 @@ echo "  ✅ Full cleanup (Turborepo)"
 echo "  ✅ Cleanup verification"
 echo ""
 echo "🚀 Seed system is ready for production use with Turborepo!"
-
-# Test 9: Verify full cleanup
-echo "🔍 Test 9: Verifying full cleanup..."
-cd apps/web
-npx tsx scripts/verify-cleanup.ts
-cd ../..
-
-echo "🎉 All integration tests passed!"
-echo ""
-echo "📊 Test Summary:"
-echo "  ✅ Database connection"
-echo "  ✅ Seed data validation"
-echo "  ✅ Full seed operation (Turborepo)"
-echo "  ✅ Data verification"
-echo "  ✅ Truncate operation (Turborepo)"
-echo "  ✅ Truncation verification"
-echo "  ✅ Specific collection seeding (Turborepo)"
-echo "  ✅ Error handling"
-echo "  ✅ Full cleanup (Turborepo)"
-echo "  ✅ Cleanup verification"
-echo ""
-echo "🚀 Seed system is ready for production use with Turborepo!"

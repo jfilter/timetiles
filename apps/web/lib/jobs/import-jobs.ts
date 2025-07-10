@@ -1,41 +1,43 @@
-import type { Job, JobsConfig, Payload } from "payload";
+import type { Payload } from "payload";
 import { GeocodingService } from "../services/geocoding/GeocodingService";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import fs from "fs";
+import type { Import, Dataset, Event, Catalog } from "../../payload-types";
 
-// Job payload types
+// Enhanced job payload types using Payload types
 interface FileParsingJobPayload {
-  importId: string;
+  importId: Import['id'];
   filePath: string;
   fileType: "csv" | "xlsx";
 }
 
 interface BatchProcessingJobPayload {
-  importId: string;
+  importId: Import['id'];
   batchNumber: number;
   batchData: Record<string, unknown>[];
 }
 
 interface GeocodingBatchJobPayload {
-  importId: string;
-  eventIds: string[];
+  importId: Import['id'];
+  eventIds: number[];
   batchNumber: number;
 }
 
 interface EventCreationJobPayload {
-  importId: string;
+  importId: Import['id'];
   processedData: Record<string, unknown>[];
   batchNumber: number;
 }
 
+// Job handler context type - simplified for compatibility with both tests and Payload
+type JobHandlerContext = any;
+
 // File parsing job
 export const fileParsingJob = {
   slug: "file-parsing",
-  handler: async ({ req }: { req: any }) => {
-    const { job, payload } = req;
-    const { importId, filePath, fileType } =
-      job.input as FileParsingJobPayload;
+  handler: async ({ job, payload }: JobHandlerContext) => {
+    const { importId, filePath, fileType } = job.input as FileParsingJobPayload;
 
     try {
       // Update import status
@@ -198,10 +200,8 @@ export const fileParsingJob = {
 // Batch processing job
 export const batchProcessingJob = {
   slug: "batch-processing",
-  handler: async ({ req }: { req: any }) => {
-    const { job, payload } = req;
-    const { importId, batchNumber, batchData } =
-      job.input as BatchProcessingJobPayload;
+  handler: async ({ job, payload }: JobHandlerContext) => {
+    const { importId, batchNumber, batchData } = job.input as BatchProcessingJobPayload;
 
     try {
       // Get current import to preserve other batchInfo fields
@@ -285,14 +285,12 @@ export const batchProcessingJob = {
 // Event creation job
 export const eventCreationJob = {
   slug: "event-creation",
-  handler: async ({ req }: { req: any }) => {
-    const { job, payload } = req;
-    const { importId, processedData, batchNumber } =
-      job.input as EventCreationJobPayload;
+  handler: async ({ job, payload }: JobHandlerContext) => {
+    const { importId, processedData, batchNumber } = job.input as EventCreationJobPayload;
 
     try {
       // Get the import record to find the dataset
-      const currentImport = await payload.findByID({
+      const currentImport: Import = await payload.findByID({
         collection: "imports",
         id: importId,
       });
@@ -300,7 +298,7 @@ export const eventCreationJob = {
       // Get the catalog ID (it might be a relationship object)
       const catalogId =
         typeof currentImport.catalog === "object"
-          ? currentImport.catalog.id
+          ? (currentImport.catalog as Catalog).id
           : currentImport.catalog;
 
       // Get the dataset from the import's catalog
@@ -314,21 +312,21 @@ export const eventCreationJob = {
         limit: 1,
       });
 
-      const dataset = datasets.docs[0];
+      const dataset: Dataset | undefined = datasets.docs[0];
       if (!dataset) {
         throw new Error(`No dataset found for catalog ${catalogId}`);
       }
 
-      const createdEventIds: string[] = [];
+      const createdEventIds: number[] = [];
 
       // Create events
       for (const eventData of processedData) {
         try {
-          const event = await payload.create({
+          const event: Event = await payload.create({
             collection: "events",
             data: {
               dataset: dataset.id,
-              import: parseInt(importId),
+              import: importId,
               data: (eventData.originalData || eventData) as Record<string, unknown>,
               eventTimestamp: eventData.date as string,
               geocodingInfo: {
@@ -340,7 +338,7 @@ export const eventCreationJob = {
             },
           });
 
-          createdEventIds.push(event.id.toString());
+          createdEventIds.push(event.id);
         } catch (error) {
           console.error("Failed to create event:", eventData.title, error);
           // Continue with other events
@@ -348,7 +346,7 @@ export const eventCreationJob = {
       }
 
       // Update progress
-      const importRecord = await payload.findByID({
+      const importRecord: Import = await payload.findByID({
         collection: "imports",
         id: importId,
       });
@@ -374,17 +372,23 @@ export const eventCreationJob = {
         },
       });
 
-      // Queue geocoding if events have addresses
-      const eventsNeedingGeocoding = [];
-      for (const eventId of createdEventIds) {
-        const event = await payload.findByID({
-          collection: "events",
-          id: eventId,
-        });
-        if (event.geocodingInfo?.originalAddress) {
-          eventsNeedingGeocoding.push(eventId);
-        }
-      }
+      // Queue geocoding if events have addresses - bulk query optimization
+      const eventsWithAddresses = await payload.find({
+        collection: "events",
+        where: {
+          id: {
+            in: createdEventIds,
+          },
+          'geocodingInfo.originalAddress': {
+            exists: true,
+          },
+        },
+        select: {
+          id: true,
+        } as any,
+        limit: createdEventIds.length,
+      });
+      const eventsNeedingGeocoding: number[] = eventsWithAddresses.docs.map((event: Pick<Event, 'id'>) => event.id);
 
       if (eventsNeedingGeocoding.length > 0) {
         await payload.jobs.queue({
@@ -445,10 +449,8 @@ export const eventCreationJob = {
 // Geocoding batch job
 export const geocodingBatchJob = {
   slug: "geocoding-batch",
-  handler: async ({ req }: { req: any }) => {
-    const { job, payload } = req;
-    const { importId, eventIds, batchNumber } =
-      job.input as GeocodingBatchJobPayload;
+  handler: async ({ job, payload }: JobHandlerContext) => {
+    const { importId, eventIds, batchNumber } = job.input as GeocodingBatchJobPayload;
 
     try {
       const geocodingService = new GeocodingService(payload);

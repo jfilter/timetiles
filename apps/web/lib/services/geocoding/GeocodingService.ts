@@ -1,21 +1,11 @@
 import NodeGeocoder from "node-geocoder";
 import type { Payload } from "payload";
+import type { LocationCache } from "../../../payload-types";
 
-export interface GeocodingResult {
-  latitude: number;
-  longitude: number;
-  confidence: number;
-  provider: string;
-  normalizedAddress: string;
-  components: {
-    streetNumber?: string;
-    streetName?: string;
-    city?: string;
-    region?: string;
-    postalCode?: string;
-    country?: string;
-  };
-  metadata?: any;
+// Use Payload's LocationCache type more directly
+export interface GeocodingResult extends Pick<LocationCache, 'latitude' | 'longitude' | 'confidence' | 'provider' | 'normalizedAddress'> {
+  components: LocationCache['components'];
+  metadata: LocationCache['metadata'];
   fromCache?: boolean;
 }
 
@@ -74,7 +64,20 @@ export class GeocodingService {
         // Update hit count and last used
         await this.updateCacheHit(cached.id);
         return {
-          ...cached,
+          latitude: cached.latitude,
+          longitude: cached.longitude,
+          confidence: cached.confidence || 0,
+          provider: cached.provider,
+          normalizedAddress: cached.normalizedAddress,
+          components: {
+            streetNumber: cached.components?.streetNumber || undefined,
+            streetName: cached.components?.streetName || undefined,
+            city: cached.components?.city || undefined,
+            region: cached.components?.region || undefined,
+            postalCode: cached.components?.postalCode || undefined,
+            country: cached.components?.country || undefined,
+          },
+          metadata: cached.metadata,
           fromCache: true,
         };
       }
@@ -91,8 +94,8 @@ export class GeocodingService {
           const results = await geocoder.geocode(address);
           const responseTime = Date.now() - startTime;
 
-          if (results && results.length > 0) {
-            const result = this.convertNodeGeocoderResult(results[0], name);
+          if (results && results.length > 0 && results[0]) {
+            const result = this.convertNodeGeocoderResult(results[0], name as LocationCache['provider']);
 
             // Validate result quality
             if (this.isResultAcceptable(result)) {
@@ -174,7 +177,7 @@ export class GeocodingService {
     };
   }
 
-  private async getCachedResult(address: string): Promise<any> {
+  private async getCachedResult(address: string): Promise<LocationCache | null> {
     try {
       const normalizedAddress = this.normalizeAddress(address);
 
@@ -191,18 +194,9 @@ export class GeocodingService {
       });
 
       if (exactMatch.docs.length > 0) {
-        const cached = exactMatch.docs[0];
+        const cached: LocationCache = exactMatch.docs[0] as LocationCache;
         if (cached) {
-          return {
-            id: cached.id,
-            latitude: cached.latitude,
-            longitude: cached.longitude,
-            confidence: cached.confidence,
-          provider: cached.provider,
-          normalizedAddress: cached.normalizedAddress,
-          components: cached.components || {},
-          metadata: cached.metadata,
-        };
+          return cached;
         }
       }
 
@@ -239,10 +233,10 @@ export class GeocodingService {
     }
   }
 
-  private async updateCacheHit(cacheId: string): Promise<void> {
+  private async updateCacheHit(cacheId: number): Promise<void> {
     try {
       // Get current hit count and increment it
-      const current = await this.payload.findByID({
+      const current: LocationCache = await this.payload.findByID({
         collection: "location-cache",
         id: cacheId,
       });
@@ -261,14 +255,14 @@ export class GeocodingService {
   }
 
   private convertNodeGeocoderResult(
-    result: any,
-    provider: string,
+    result: NodeGeocoder.Entry,
+    provider: LocationCache['provider'],
   ): GeocodingResult {
     return {
-      latitude: result.latitude,
-      longitude: result.longitude,
+      latitude: result.latitude || 0,
+      longitude: result.longitude || 0,
       confidence: this.calculateConfidence(result, provider),
-      provider,
+      provider: provider,
       normalizedAddress:
         result.formattedAddress ||
         `${result.streetName || ""} ${result.streetNumber || ""}, ${result.city || ""}, ${result.country || ""}`.trim(),
@@ -287,16 +281,16 @@ export class GeocodingService {
     };
   }
 
-  private calculateConfidence(result: any, provider: string): number {
+  private calculateConfidence(result: NodeGeocoder.Entry, provider: LocationCache['provider']): number {
     let confidence = 0.5;
 
     // Provider-specific confidence calculation
     if (provider === "google") {
       if (result.extra?.googlePlaceId) confidence += 0.2;
-      if (result.extra?.confidence >= 0.8) confidence += 0.2;
+      if ((result.extra?.confidence || 0) >= 0.8) confidence += 0.2;
     } else if (provider === "nominatim") {
-      if (result.extra?.osmId) confidence += 0.1;
-      if (result.extra?.importance > 0.5) confidence += 0.2;
+      if ((result.extra as any)?.osmId) confidence += 0.1;
+      if (((result.extra as any)?.importance || 0) > 0.5) confidence += 0.2;
     }
 
     // General quality indicators
@@ -308,7 +302,7 @@ export class GeocodingService {
 
   private isResultAcceptable(result: GeocodingResult): boolean {
     // Minimum confidence threshold
-    if (result.confidence < 0.3) return false;
+    if ((result.confidence || 0) < 0.3) return false;
 
     // Basic coordinate validation
     if (Math.abs(result.latitude) > 90 || Math.abs(result.longitude) > 180)

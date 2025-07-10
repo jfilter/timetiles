@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:full": "concurrently \"pnpm dev\" \"pnpm payload:watch\"",
     "build": "payload generate:types && next build",
     "start": "next start",
     "lint": "next lint",
@@ -14,6 +15,8 @@
     "payload:generate": "payload generate:types",
     "payload:migrate": "payload migrate",
     "payload:migrate:create": "payload migrate:create",
+    "payload:watch": "nodemon --watch 'lib/collections/**/*.ts' --exec 'payload generate:types'",
+    "payload:validate": "tsx scripts/validate-types.ts",
     "seed": "tsx scripts/seed.ts",
     "seed:dev": "tsx scripts/seed.ts development",
     "seed:test": "tsx scripts/seed.ts test",

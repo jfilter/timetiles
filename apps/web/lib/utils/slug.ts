@@ -113,14 +113,20 @@ export function createSlugHook(
   collection: string,
   options?: { sourceField?: string },
 ) {
-  return async ({ value, data, req, operation, originalDoc }: any) => {
+  return async ({ value, data, req, operation, originalDoc }: {
+    value?: string;
+    data?: Record<string, unknown>;
+    req?: any;
+    operation?: string;
+    originalDoc?: Record<string, unknown>;
+  }) => {
     // Helper to get nested value by dot notation
-    function getNested(obj: any, path: string): any {
-      return path.split(".").reduce((o, k) => (o ? o[k] : undefined), obj);
+    function getNested(obj: Record<string, unknown>, path: string): unknown {
+      return path.split(".").reduce((o: any, k) => (o ? o[k] : undefined), obj);
     }
     const sourceField = options?.sourceField;
     let sourceValue = data?.name;
-    if (sourceField) {
+    if (sourceField && data) {
       sourceValue = getNested(data, sourceField);
     }
     if (
@@ -128,11 +134,11 @@ export function createSlugHook(
       sourceValue &&
       (operation === "create" || operation === "update")
     ) {
-      const currentId = operation === "update" ? originalDoc?.id : undefined;
-      return await generateUniqueSlug(sourceValue, collection, req, currentId);
+      const currentId = operation === "update" ? originalDoc?.id as string | number | undefined : undefined;
+      return await generateUniqueSlug(String(sourceValue), collection, req, currentId);
     }
     if (value && operation === "update") {
-      const currentId = originalDoc?.id;
+      const currentId = originalDoc?.id as string | number | undefined;
       const isUnique = await checkSlugUniqueness(
         value,
         collection,

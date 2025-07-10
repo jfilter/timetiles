@@ -9,8 +9,8 @@ import {
   afterEach,
 } from "vitest";
 import { NextRequest } from "next/server";
-import { POST as uploadHandler } from "../app/api/import/upload/route";
-import { GET as progressHandler } from "../app/api/import/[importId]/progress/route";
+import { POST as uploadHandler } from "../app/(app)/api/import/upload/route";
+import { GET as progressHandler } from "../app/(app)/api/import/[importId]/progress/route";
 import { createIsolatedTestEnvironment } from "./test-helpers";
 
 // No mocking needed for API tests - use real services
@@ -432,7 +432,7 @@ describe.sequential("Import API Endpoints", () => {
       );
       const response = await progressHandler(request, {
         params: { importId: testImportId },
-      });
+      } as any);
       const result = await response.json();
 
       expect(response.status).toBe(200);
@@ -480,7 +480,7 @@ describe.sequential("Import API Endpoints", () => {
       );
       let response = await progressHandler(request, {
         params: { importId: testImportId },
-      });
+      } as any);
       let result = await response.json();
 
       expect(result.stageProgress.stage).toBe("Parsing file...");
@@ -501,7 +501,7 @@ describe.sequential("Import API Endpoints", () => {
       );
       response = await progressHandler(request, {
         params: { importId: testImportId },
-      });
+      } as any);
       result = await response.json();
 
       expect(result.stageProgress.stage).toBe("Completed");
@@ -525,7 +525,7 @@ describe.sequential("Import API Endpoints", () => {
       );
       const response = await progressHandler(request, {
         params: { importId: testImportId },
-      });
+      } as any);
       const result = await response.json();
 
       expect(result.estimatedTimeRemaining).toBeGreaterThan(0);
@@ -538,7 +538,7 @@ describe.sequential("Import API Endpoints", () => {
       );
       const response = await progressHandler(request, {
         params: { importId: "99999" }, // Use a valid numeric ID that doesn't exist
-      });
+      } as any);
       const result = await response.json();
 
       expect(response.status).toBe(404);
@@ -555,7 +555,7 @@ describe.sequential("Import API Endpoints", () => {
       );
       const response = await progressHandler(request, {
         params: { importId: testImportId },
-      });
+      } as any);
       const result = await response.json();
 
       expect(response.status).toBe(500);
@@ -588,7 +588,7 @@ describe.sequential("Import API Endpoints", () => {
       );
       const response = await progressHandler(request, {
         params: { importId: minimalImport.id },
-      });
+      } as any);
       const result = await response.json();
 
       expect(response.status).toBe(200);
@@ -614,7 +614,7 @@ describe.sequential("Import API Endpoints", () => {
       );
       const response = await progressHandler(request, {
         params: { importId: testImportId },
-      });
+      } as any);
       const result = await response.json();
 
       expect(result.currentJob).toMatchObject({

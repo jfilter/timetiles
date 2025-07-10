@@ -5,6 +5,7 @@ import {
   dropTestDatabase,
   getDatabaseName,
 } from "./database-setup";
+import type { Config } from "../payload-types";
 
 /**
  * Creates an isolated test environment for each test
