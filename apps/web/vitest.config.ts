@@ -30,7 +30,7 @@ export default defineConfig({
       },
     },
     fileParallelism: true, // Enable parallel file execution
-    maxWorkers: 8, // Limit concurrent workers to prevent resource conflicts
+    maxWorkers: process.env.CI ? 4 : 8, // Reduce workers in CI to prevent database conflicts
     minWorkers: 1,
     sequence: {
       concurrent: true, // Allow concurrent test execution

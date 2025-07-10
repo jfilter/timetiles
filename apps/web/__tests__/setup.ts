@@ -12,10 +12,16 @@ if (!process.env.NODE_ENV) {
 const workerId = process.env.VITEST_WORKER_ID || "1";
 const testDbName = `timetiles_test_${workerId}`;
 
-// Use isolated database per worker
-process.env.DATABASE_URL =
-  process.env.DATABASE_URL ||
-  `postgresql://timetiles_user:timetiles_password@localhost:5432/${testDbName}`;
+// Use isolated database per worker, but fallback to main test db if worker db doesn't exist
+if (!process.env.DATABASE_URL) {
+  if (process.env.CI) {
+    // In CI, use worker-specific database if available, otherwise use main test db
+    process.env.DATABASE_URL = `postgresql://timetiles_user:timetiles_password@localhost:5432/${testDbName}`;
+  } else {
+    // Local development
+    process.env.DATABASE_URL = `postgresql://timetiles_user:timetiles_password@localhost:5432/${testDbName}`;
+  }
+}
 
 // Create unique temp directory for each test worker
 const tempDir = `/tmp/timetiles-test-${workerId}-${randomUUID()}`;

@@ -29,9 +29,19 @@ export async function createIsolatedTestEnvironment(): Promise<{
     fs.mkdirSync(tempDir, { recursive: true });
   }
 
-  // Create isolated database with timestamp for uniqueness
-  const dbName = `timetiles_test_${workerId}_${timestamp}_${testId.replace(/-/g, "_")}`;
-  const dbUrl = `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
+  // Create database URL based on environment
+  let dbName: string;
+  let dbUrl: string;
+
+  if (process.env.CI) {
+    // In CI, use pre-created worker databases
+    dbName = `timetiles_test_${workerId}`;
+    dbUrl = `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
+  } else {
+    // Local development - create fully isolated databases
+    dbName = `timetiles_test_${workerId}_${timestamp}_${testId.replace(/-/g, "_")}`;
+    dbUrl = `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
+  }
 
   // Set environment variables for this test
   const originalDbUrl = process.env.DATABASE_URL;
@@ -42,7 +52,29 @@ export async function createIsolatedTestEnvironment(): Promise<{
 
   // Create seed manager
   const seedManager = createSeedManager();
-  const payload = await seedManager.initialize();
+
+  // Initialize payload with retry logic for CI
+  let payload;
+  let retries = process.env.CI ? 3 : 1;
+
+  while (retries > 0) {
+    try {
+      payload = await seedManager.initialize();
+      break;
+    } catch (error: any) {
+      retries--;
+      if (error.message?.includes("already exists") && retries > 0) {
+        // Enum already exists - wait a bit and retry
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  if (!payload) {
+    throw new Error("Failed to initialize payload after retries");
+  }
 
   // Run migrations on the isolated database
   try {
@@ -69,8 +101,14 @@ export async function createIsolatedTestEnvironment(): Promise<{
       console.warn("Failed to clean up temp directory:", error);
     }
 
-    // Drop test database
-    await dropTestDatabase(dbName);
+    // Drop test database (but not in CI where we reuse databases)
+    if (!process.env.CI) {
+      try {
+        await dropTestDatabase(dbName);
+      } catch (error) {
+        console.warn("Failed to drop test database:", error);
+      }
+    }
 
     // Restore original database URL
     process.env.DATABASE_URL = originalDbUrl;

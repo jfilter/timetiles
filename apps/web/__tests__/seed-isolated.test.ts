@@ -14,7 +14,9 @@ describe.sequential("Isolated Seed System", () => {
   });
 
   afterAll(async () => {
-    await testEnv.cleanup();
+    if (testEnv && testEnv.cleanup) {
+      await testEnv.cleanup();
+    }
   });
 
   beforeEach(async () => {
