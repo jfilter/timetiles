@@ -1,4 +1,4 @@
-import type { Payload, TaskHandler, TaskHandlerArgs } from "payload";
+// import type { TaskHandlerArgs } from "payload"; // TODO: Use for better typing
 import { GeocodingService } from "../services/geocoding/GeocodingService";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -90,7 +90,7 @@ export const fileParsingJob = {
       });
 
       let parsedData: Record<string, unknown>[] = [];
-      let totalRows = 0;
+      // let totalRows = 0; // Used for debugging
 
       if (fileType === "csv") {
         const fileContent = fs.readFileSync(filePath, "utf8");
@@ -133,7 +133,7 @@ export const fileParsingJob = {
         }
       }
 
-      totalRows = parsedData.length;
+      // totalRows = parsedData.length; // Used for debugging
 
       // Validate required fields
       const requiredFields = ["title", "date"];

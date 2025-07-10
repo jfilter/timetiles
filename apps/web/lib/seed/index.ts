@@ -5,7 +5,7 @@ import { catalogSeeds } from "./seeds/catalogs";
 import { datasetSeeds } from "./seeds/datasets";
 import { eventSeeds } from "./seeds/events";
 import { importSeeds } from "./seeds/imports";
-import type { User, Catalog, Dataset, Event, Import, Config } from "../../payload-types";
+import type { Config } from "../../payload-types";
 
 export interface SeedOptions {
   collections?: string[];
@@ -325,7 +325,7 @@ export class SeedManager {
             ),
           ]);
           console.log("Database pool closed successfully");
-        } catch (_: unknown) {
+        } catch (error) {
           console.log(
             "Pool close timeout - skipping force closure to avoid double end",
           );
@@ -351,7 +351,7 @@ export class SeedManager {
             ),
           ]);
           console.log("Drizzle client closed successfully");
-        } catch (_: unknown) {
+        } catch (error) {
           console.log("Drizzle client close timeout - continuing");
         }
       }
@@ -370,7 +370,7 @@ export class SeedManager {
             ),
           ]);
           console.log("Database instance destroyed successfully");
-        } catch (_: unknown) {
+        } catch (error) {
           console.log("Database destroy timeout - continuing");
         }
       }
@@ -378,8 +378,8 @@ export class SeedManager {
       // Clean up payload instance
       this.payload = null;
       console.log("Cleanup completed successfully");
-    } catch (_: unknown) {
-      console.error("Error during cleanup:", _);
+    } catch (error: unknown) {
+      console.error("Error during cleanup:", error);
       this.payload = null;
     } finally {
       this.isCleaningUp = false;
