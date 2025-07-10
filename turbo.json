@@ -22,7 +22,7 @@
     "test": {
       "dependsOn": ["^build"]
     },
-    "seed:*": {
+    "seed": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "cache": false

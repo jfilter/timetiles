@@ -341,6 +341,14 @@ export interface Import {
      * Nominatim API calls made
      */
     nominatimApiCalls?: number | null;
+    /**
+     * Rows with coordinates from import
+     */
+    preExistingCoordinates?: number | null;
+    /**
+     * Rows where geocoding was skipped
+     */
+    skippedGeocoding?: number | null;
   };
   /**
    * Rate limiting information for this import
@@ -390,6 +398,34 @@ export interface Import {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Coordinate column detection information
+   */
+  coordinateDetection?: {
+    /**
+     * Were coordinate columns detected in the import?
+     */
+    detected?: boolean | null;
+    detectionMethod?: ('pattern' | 'heuristic' | 'manual' | 'none') | null;
+    columnMapping?: {
+      latitudeColumn?: string | null;
+      longitudeColumn?: string | null;
+      combinedColumn?: string | null;
+      coordinateFormat?: ('decimal' | 'dms' | 'combined_comma' | 'combined_space' | 'geojson') | null;
+    };
+    /**
+     * Confidence in coordinate detection (0-1)
+     */
+    detectionConfidence?: number | null;
+    sampleValidation?: {
+      validSamples?: number | null;
+      invalidSamples?: number | null;
+      /**
+       * Were lat/lon likely swapped?
+       */
+      swappedCoordinates?: boolean | null;
+    };
+  };
   /**
    * Additional import context and metadata
    */
@@ -463,6 +499,35 @@ export interface Event {
   location?: {
     latitude?: number | null;
     longitude?: number | null;
+  };
+  /**
+   * Source and validation of coordinate data
+   */
+  coordinateSource?: {
+    type?: ('import' | 'geocoded' | 'manual' | 'none') | null;
+    importColumns?: {
+      /**
+       * Column name containing latitude
+       */
+      latitudeColumn?: string | null;
+      /**
+       * Column name containing longitude
+       */
+      longitudeColumn?: string | null;
+      /**
+       * Column name if coordinates were combined
+       */
+      combinedColumn?: string | null;
+      /**
+       * Format of coordinates (decimal, DMS, etc.)
+       */
+      format?: string | null;
+    };
+    /**
+     * Confidence in coordinate accuracy (0-1)
+     */
+    confidence?: number | null;
+    validationStatus?: ('valid' | 'out_of_range' | 'suspicious_zero' | 'swapped' | 'invalid') | null;
   };
   /**
    * When the actual event occurred
@@ -888,6 +953,8 @@ export interface ImportsSelect<T extends boolean = true> {
         cachedResults?: T;
         googleApiCalls?: T;
         nominatimApiCalls?: T;
+        preExistingCoordinates?: T;
+        skippedGeocoding?: T;
       };
   rateLimitInfo?: T;
   currentJobId?: T;
@@ -902,6 +969,28 @@ export interface ImportsSelect<T extends boolean = true> {
         error?: T;
         result?: T;
         id?: T;
+      };
+  coordinateDetection?:
+    | T
+    | {
+        detected?: T;
+        detectionMethod?: T;
+        columnMapping?:
+          | T
+          | {
+              latitudeColumn?: T;
+              longitudeColumn?: T;
+              combinedColumn?: T;
+              coordinateFormat?: T;
+            };
+        detectionConfidence?: T;
+        sampleValidation?:
+          | T
+          | {
+              validSamples?: T;
+              invalidSamples?: T;
+              swappedCoordinates?: T;
+            };
       };
   metadata?: T;
   updatedAt?: T;
@@ -920,6 +1009,21 @@ export interface EventsSelect<T extends boolean = true> {
     | {
         latitude?: T;
         longitude?: T;
+      };
+  coordinateSource?:
+    | T
+    | {
+        type?: T;
+        importColumns?:
+          | T
+          | {
+              latitudeColumn?: T;
+              longitudeColumn?: T;
+              combinedColumn?: T;
+              format?: T;
+            };
+        confidence?: T;
+        validationStatus?: T;
       };
   eventTimestamp?: T;
   isValid?: T;

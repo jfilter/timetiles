@@ -7,8 +7,6 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "seed": "turbo seed",
-    "seed:dev": "turbo seed:dev", 
-    "seed:truncate": "turbo seed:truncate",
     "test": "turbo test",
     "test:clean": "turbo run test:clean",
     "docs:dev": "turbo docs:dev",

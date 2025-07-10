@@ -5,7 +5,7 @@ import { randomUUID } from "crypto";
 import fs from "fs";
 import path from "path";
 
-import { truncateAllTables } from "./database-setup";
+import { createTestDatabase, truncateAllTables } from "./database-setup";
 
 // Mock the logger to hide noisy output in tests
 vi.mock("../lib/logger", () => {
@@ -64,7 +64,7 @@ async function runMigrations() {
     fs.mkdirSync(lockDir);
 
     // Run migrations
-    execSync("pnpm payload migrate", { stdio: "inherit" });
+    execSync("pnpm payload migrate", { stdio: "pipe" });
   } catch (error: any) {
     if (error.code === "EEXIST") {
       // Lock exists, wait for it to be released
@@ -87,10 +87,11 @@ beforeAll(async () => {
     fs.mkdirSync(tempDir, { recursive: true });
   }
 
+  // Create test database if it doesn't exist
+  await createTestDatabase(testDbName);
+
   // Run migrations with locking to prevent race conditions
-  if (process.env.CI) {
-    await runMigrations();
-  }
+  await runMigrations();
 
   // Truncate all tables before each test suite
   await truncateAllTables();
