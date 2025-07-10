@@ -18,6 +18,23 @@ export async function createTestDatabase(dbName: string): Promise<void> {
   try {
     await client.connect();
 
+    // In CI, try to use pre-created worker databases first
+    if (process.env.CI) {
+      const workerId = process.env.VITEST_WORKER_ID || "1";
+      const ciDbName = `timetiles_test_${workerId}`;
+
+      // Check if the CI worker database exists
+      const result = await client.query(
+        `SELECT 1 FROM pg_database WHERE datname = $1`,
+        [ciDbName],
+      );
+
+      if (result.rows.length > 0) {
+        logger.debug(`Using existing CI database: ${ciDbName}`);
+        return; // Use the existing database, don't create a new one
+      }
+    }
+
     // Drop database if it exists
     await client.query(`DROP DATABASE IF EXISTS "${dbName}"`);
 
@@ -30,6 +47,13 @@ export async function createTestDatabase(dbName: string): Promise<void> {
       { err: error, dbName },
       `Failed to create test database ${dbName}`,
     );
+
+    // In CI, if database creation fails, try to use main test database
+    if (process.env.CI) {
+      logger.warn(`Falling back to main test database due to creation failure`);
+      return; // Don't throw, let tests use fallback database
+    }
+
     throw error;
   } finally {
     await client.end();

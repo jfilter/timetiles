@@ -50,8 +50,16 @@ jobs:
 
       - run: pnpm install
 
-      - name: Setup test database
+      - name: Setup test databases
         run: |
+          # Create multiple isolated databases for parallel test workers
+          for i in {1..8}; do
+            psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles_test_$i;"
+            psql -h localhost -U timetiles_user -d timetiles_test_$i -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+            psql -h localhost -U timetiles_user -d timetiles_test_$i -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
+            psql -h localhost -U timetiles_user -d timetiles_test_$i -c "CREATE SCHEMA IF NOT EXISTS payload;"
+          done
+          # Also setup the main test database
           psql -h localhost -U timetiles_user -d timetiles_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
           psql -h localhost -U timetiles_user -d timetiles_test -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
           psql -h localhost -U timetiles_user -d timetiles_test -c "CREATE SCHEMA IF NOT EXISTS payload;"
