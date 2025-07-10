@@ -20,7 +20,7 @@ jobs:
       postgres:
         image: postgis/postgis:17-3.5
         env:
-          POSTGRES_DB: timetiles_test
+          POSTGRES_DB: postgres # Connect to the default DB to create others
           POSTGRES_USER: timetiles_user
           POSTGRES_PASSWORD: timetiles_password
           POSTGRES_HOST_AUTH_METHOD: trust
@@ -33,7 +33,8 @@ jobs:
           - 5432:5432
 
     env:
-      DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
+      # This is a placeholder, the actual DB is set dynamically in setup.ts
+      DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test_1
       PAYLOAD_SECRET: test-secret-key
       NODE_ENV: test
       CI: true
@@ -50,7 +51,7 @@ jobs:
 
       - run: pnpm install
 
-      - name: Setup test databases
+      - name: Create test database pool
         run: |
           # Create multiple isolated databases for parallel test workers
           for i in {1..8}; do
@@ -59,10 +60,6 @@ jobs:
             psql -h localhost -U timetiles_user -d timetiles_test_$i -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
             psql -h localhost -U timetiles_user -d timetiles_test_$i -c "CREATE SCHEMA IF NOT EXISTS payload;"
           done
-          # Also setup the main test database
-          psql -h localhost -U timetiles_user -d timetiles_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-          psql -h localhost -U timetiles_user -d timetiles_test -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
-          psql -h localhost -U timetiles_user -d timetiles_test -c "CREATE SCHEMA IF NOT EXISTS payload;"
         env:
           PGPASSWORD: timetiles_password
 
@@ -74,10 +71,6 @@ jobs:
 
       - name: Run type checking
         run: pnpm typecheck
-        working-directory: apps/web
-
-      - name: Run Payload migrations
-        run: pnpm run payload:migrate
         working-directory: apps/web
 
       - name: Run main test suite

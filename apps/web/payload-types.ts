@@ -13,53 +13,53 @@
  * via the `definition` "supportedTimezones".
  */
 export type SupportedTimezones =
-  | "Pacific/Midway"
-  | "Pacific/Niue"
-  | "Pacific/Honolulu"
-  | "Pacific/Rarotonga"
-  | "America/Anchorage"
-  | "Pacific/Gambier"
-  | "America/Los_Angeles"
-  | "America/Tijuana"
-  | "America/Denver"
-  | "America/Phoenix"
-  | "America/Chicago"
-  | "America/Guatemala"
-  | "America/New_York"
-  | "America/Bogota"
-  | "America/Caracas"
-  | "America/Santiago"
-  | "America/Buenos_Aires"
-  | "America/Sao_Paulo"
-  | "Atlantic/South_Georgia"
-  | "Atlantic/Azores"
-  | "Atlantic/Cape_Verde"
-  | "Europe/London"
-  | "Europe/Berlin"
-  | "Africa/Lagos"
-  | "Europe/Athens"
-  | "Africa/Cairo"
-  | "Europe/Moscow"
-  | "Asia/Riyadh"
-  | "Asia/Dubai"
-  | "Asia/Baku"
-  | "Asia/Karachi"
-  | "Asia/Tashkent"
-  | "Asia/Calcutta"
-  | "Asia/Dhaka"
-  | "Asia/Almaty"
-  | "Asia/Jakarta"
-  | "Asia/Bangkok"
-  | "Asia/Shanghai"
-  | "Asia/Singapore"
-  | "Asia/Tokyo"
-  | "Asia/Seoul"
-  | "Australia/Brisbane"
-  | "Australia/Sydney"
-  | "Pacific/Guam"
-  | "Pacific/Noumea"
-  | "Pacific/Auckland"
-  | "Pacific/Fiji";
+  | 'Pacific/Midway'
+  | 'Pacific/Niue'
+  | 'Pacific/Honolulu'
+  | 'Pacific/Rarotonga'
+  | 'America/Anchorage'
+  | 'Pacific/Gambier'
+  | 'America/Los_Angeles'
+  | 'America/Tijuana'
+  | 'America/Denver'
+  | 'America/Phoenix'
+  | 'America/Chicago'
+  | 'America/Guatemala'
+  | 'America/New_York'
+  | 'America/Bogota'
+  | 'America/Caracas'
+  | 'America/Santiago'
+  | 'America/Buenos_Aires'
+  | 'America/Sao_Paulo'
+  | 'Atlantic/South_Georgia'
+  | 'Atlantic/Azores'
+  | 'Atlantic/Cape_Verde'
+  | 'Europe/London'
+  | 'Europe/Berlin'
+  | 'Africa/Lagos'
+  | 'Europe/Athens'
+  | 'Africa/Cairo'
+  | 'Europe/Moscow'
+  | 'Asia/Riyadh'
+  | 'Asia/Dubai'
+  | 'Asia/Baku'
+  | 'Asia/Karachi'
+  | 'Asia/Tashkent'
+  | 'Asia/Calcutta'
+  | 'Asia/Dhaka'
+  | 'Asia/Almaty'
+  | 'Asia/Jakarta'
+  | 'Asia/Bangkok'
+  | 'Asia/Shanghai'
+  | 'Asia/Singapore'
+  | 'Asia/Tokyo'
+  | 'Asia/Seoul'
+  | 'Australia/Brisbane'
+  | 'Australia/Sydney'
+  | 'Pacific/Guam'
+  | 'Pacific/Noumea'
+  | 'Pacific/Auckland'
+  | 'Pacific/Fiji';
 
 export interface Config {
   auth: {
@@ -73,11 +73,11 @@ export interface Config {
     events: Event;
     users: User;
     media: Media;
-    "location-cache": LocationCache;
-    "payload-jobs": PayloadJob;
-    "payload-locked-documents": PayloadLockedDocument;
-    "payload-preferences": PayloadPreference;
-    "payload-migrations": PayloadMigration;
+    'location-cache': LocationCache;
+    'payload-jobs': PayloadJob;
+    'payload-locked-documents': PayloadLockedDocument;
+    'payload-preferences': PayloadPreference;
+    'payload-migrations': PayloadMigration;
   };
   collectionsJoins: {};
   collectionsSelect: {
@@ -87,17 +87,11 @@ export interface Config {
     events: EventsSelect<false> | EventsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
-    "location-cache": LocationCacheSelect<false> | LocationCacheSelect<true>;
-    "payload-jobs": PayloadJobsSelect<false> | PayloadJobsSelect<true>;
-    "payload-locked-documents":
-      | PayloadLockedDocumentsSelect<false>
-      | PayloadLockedDocumentsSelect<true>;
-    "payload-preferences":
-      | PayloadPreferencesSelect<false>
-      | PayloadPreferencesSelect<true>;
-    "payload-migrations":
-      | PayloadMigrationsSelect<false>
-      | PayloadMigrationsSelect<true>;
+    'location-cache': LocationCacheSelect<false> | LocationCacheSelect<true>;
+    'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
+    'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
+    'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
+    'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
   };
   db: {
     defaultIDType: number;
@@ -106,14 +100,14 @@ export interface Config {
   globalsSelect: {};
   locale: null;
   user: User & {
-    collection: "users";
+    collection: 'users';
   };
   jobs: {
     tasks: {
-      "file-parsing": TaskFileParsing;
-      "batch-processing": TaskBatchProcessing;
-      "event-creation": TaskEventCreation;
-      "geocoding-batch": TaskGeocodingBatch;
+      'file-parsing': TaskFileParsing;
+      'batch-processing': TaskBatchProcessing;
+      'event-creation': TaskEventCreation;
+      'geocoding-batch': TaskGeocodingBatch;
       inline: {
         input: unknown;
         output: unknown;
@@ -155,8 +149,8 @@ export interface Catalog {
         version: number;
         [k: string]: unknown;
       }[];
-      direction: ("ltr" | "rtl") | null;
-      format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
       indent: number;
       version: number;
     };
@@ -166,7 +160,7 @@ export interface Catalog {
    * URL-friendly identifier (auto-generated from name if not provided)
    */
   slug?: string | null;
-  status?: ("active" | "archived") | null;
+  status?: ('active' | 'archived') | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -185,8 +179,8 @@ export interface Dataset {
         version: number;
         [k: string]: unknown;
       }[];
-      direction: ("ltr" | "rtl") | null;
-      format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
       indent: number;
       version: number;
     };
@@ -198,7 +192,7 @@ export interface Dataset {
    * ISO-639 3 letter code (e.g., eng, deu, fra)
    */
   language: string;
-  status?: ("draft" | "active" | "archived") | null;
+  status?: ('draft' | 'active' | 'archived') | null;
   isPublic?: boolean | null;
   /**
    * JSON schema definition for this dataset
@@ -258,19 +252,11 @@ export interface Import {
    * Session ID for unauthenticated users
    */
   sessionId?: string | null;
-  status?: ("pending" | "processing" | "completed" | "failed") | null;
+  status?: ('pending' | 'processing' | 'completed' | 'failed') | null;
   /**
    * Current processing stage
    */
-  processingStage?:
-    | (
-        | "file-parsing"
-        | "row-processing"
-        | "geocoding"
-        | "event-creation"
-        | "completed"
-      )
-    | null;
+  processingStage?: ('file-parsing' | 'row-processing' | 'geocoding' | 'event-creation' | 'completed') | null;
   importedAt?: string | null;
   completedAt?: string | null;
   /**
@@ -381,12 +367,8 @@ export interface Import {
          * Payload job ID
          */
         jobId: string;
-        jobType:
-          | "file-parsing"
-          | "batch-processing"
-          | "geocoding-batch"
-          | "event-creation";
-        status: "queued" | "running" | "completed" | "failed";
+        jobType: 'file-parsing' | 'batch-processing' | 'geocoding-batch' | 'event-creation';
+        status: 'queued' | 'running' | 'completed' | 'failed';
         startedAt?: string | null;
         completedAt?: string | null;
         /**
@@ -431,7 +413,7 @@ export interface User {
   id: number;
   firstName?: string | null;
   lastName?: string | null;
-  role?: ("user" | "admin" | "analyst") | null;
+  role?: ('user' | 'admin' | 'analyst') | null;
   isActive?: boolean | null;
   lastLoginAt?: string | null;
   updatedAt: string;
@@ -513,7 +495,7 @@ export interface Event {
     /**
      * Geocoding provider used
      */
-    provider?: ("google" | "nominatim" | "manual") | null;
+    provider?: ('google' | 'nominatim' | 'manual') | null;
     /**
      * Geocoding confidence score (0-1)
      */
@@ -603,7 +585,7 @@ export interface LocationCache {
   /**
    * Geocoding provider used
    */
-  provider: "google" | "nominatim";
+  provider: 'google' | 'nominatim';
   /**
    * Confidence score (0-1)
    */
@@ -712,12 +694,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug:
-          | "inline"
-          | "file-parsing"
-          | "batch-processing"
-          | "event-creation"
-          | "geocoding-batch";
+        taskSlug: 'inline' | 'file-parsing' | 'batch-processing' | 'event-creation' | 'geocoding-batch';
         taskID: string;
         input?:
           | {
@@ -737,7 +714,7 @@ export interface PayloadJob {
           | number
           | boolean
           | null;
-        state: "failed" | "succeeded";
+        state: 'failed' | 'succeeded';
         error?:
           | {
               [k: string]: unknown;
@@ -750,15 +727,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?:
-    | (
-        | "inline"
-        | "file-parsing"
-        | "batch-processing"
-        | "event-creation"
-        | "geocoding-batch"
-      )
-    | null;
+  taskSlug?: ('inline' | 'file-parsing' | 'batch-processing' | 'event-creation' | 'geocoding-batch') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -773,40 +742,40 @@ export interface PayloadLockedDocument {
   id: number;
   document?:
     | ({
-        relationTo: "catalogs";
+        relationTo: 'catalogs';
         value: number | Catalog;
       } | null)
     | ({
-        relationTo: "datasets";
+        relationTo: 'datasets';
         value: number | Dataset;
       } | null)
     | ({
-        relationTo: "imports";
+        relationTo: 'imports';
         value: number | Import;
       } | null)
     | ({
-        relationTo: "events";
+        relationTo: 'events';
         value: number | Event;
       } | null)
     | ({
-        relationTo: "users";
+        relationTo: 'users';
         value: number | User;
       } | null)
     | ({
-        relationTo: "media";
+        relationTo: 'media';
         value: number | Media;
       } | null)
     | ({
-        relationTo: "location-cache";
+        relationTo: 'location-cache';
         value: number | LocationCache;
       } | null)
     | ({
-        relationTo: "payload-jobs";
+        relationTo: 'payload-jobs';
         value: number | PayloadJob;
       } | null);
   globalSlug?: string | null;
   user: {
-    relationTo: "users";
+    relationTo: 'users';
     value: number | User;
   };
   updatedAt: string;
@@ -819,7 +788,7 @@ export interface PayloadLockedDocument {
 export interface PayloadPreference {
   id: number;
   user: {
-    relationTo: "users";
+    relationTo: 'users';
     value: number | User;
   };
   key?: string | null;
@@ -1176,6 +1145,7 @@ export interface Auth {
   [k: string]: unknown;
 }
 
-declare module "payload" {
+
+declare module 'payload' {
   export interface GeneratedTypes extends Config {}
 }

@@ -12,10 +12,8 @@ export default defineConfig({
     ],
     exclude: ["**/node_modules/**"],
     setupFiles: ["__tests__/setup.ts"],
-    testTimeout: 10000,
-    silent: false,
+    testTimeout: 20000,
     reporters: ["basic"],
-    outputFile: undefined,
     coverage: {
       provider: "v8",
       include: ["lib/**/*.ts", "scripts/**/*.ts"],
@@ -25,12 +23,11 @@ export default defineConfig({
     pool: "forks",
     poolOptions: {
       forks: {
-        singleFork: false, // Enable parallel forks
-        isolate: true, // Isolate each test file
+        isolate: true,
       },
     },
-    fileParallelism: true, // Enable parallel file execution
-    maxWorkers: process.env.CI ? 4 : 8, // Reduce workers in CI to prevent database conflicts
+    fileParallelism: true, // Re-enable parallel file execution
+    maxWorkers: process.env.CI ? 4 : 8, // Restore parallel workers
     minWorkers: 1,
     sequence: {
       concurrent: true, // Allow concurrent test execution
