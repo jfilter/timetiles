@@ -55,7 +55,7 @@ export class GeocodingService {
   }
 
   async geocode(address: string): Promise<GeocodingResult> {
-    const startTime = Date.now();
+    // const startTime = Date.now(); // TODO: Use for performance monitoring
 
     try {
       // Check cache first
@@ -92,7 +92,7 @@ export class GeocodingService {
       for (const { name, geocoder } of providers) {
         try {
           const results = await geocoder.geocode(address);
-          const responseTime = Date.now() - startTime;
+          // const responseTime = Date.now() - startTime; // TODO: Use for performance monitoring
 
           if (results && results.length > 0 && results[0]) {
             const result = this.convertNodeGeocoderResult(results[0], name as LocationCache['provider']);

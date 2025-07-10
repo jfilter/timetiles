@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
         collection: "catalogs",
         id: catalogId,
       });
-    } catch (_: unknown) {
+    } catch {
       console.log("Catalog not found for ID:", catalogId);
       return NextResponse.json(
         { success: false, message: "Catalog not found" },
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
           id: datasetId,
         });
         console.log("Found dataset:", dataset.name);
-      } catch (_: unknown) {
+      } catch {
         return NextResponse.json(
           { success: false, message: "Dataset not found" },
           { status: 404 },
@@ -189,8 +189,8 @@ export async function POST(request: NextRequest) {
         const jsonData = XLSX.utils.sheet_to_json(worksheet!);
         rowCount = jsonData.length;
       }
-    } catch (_: unknown) {
-      console.warn("Failed to parse file for row count:", _);
+    } catch (error) {
+      console.warn("Failed to parse file for row count:", error);
       rowCount = 0;
     }
 
@@ -256,13 +256,13 @@ export async function POST(request: NextRequest) {
         collection: "imports",
         data: importData,
       });
-    } catch (_: unknown) {
-      console.error("Failed to create import record:", _);
-      console.error("Error details:", (_ as { data?: unknown }).data);
+    } catch (error) {
+      console.error("Failed to create import record:", error);
+      console.error("Error details:", (error as { data?: unknown }).data);
       return NextResponse.json(
         {
           success: false,
-          message: `Failed to create import record: ${(_ as Error).message}`,
+          message: `Failed to create import record: ${(error as Error).message}`,
         },
         { status: 500 },
       );
@@ -296,8 +296,8 @@ export async function POST(request: NextRequest) {
       },
       { headers },
     );
-  } catch (__) {
-    console.error("Upload error:", __);
+  } catch (error) {
+    console.error("Upload error:", error);
     return NextResponse.json(
       {
         success: false,
@@ -308,7 +308,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getUserFromToken(_: string): Promise<Pick<User, 'id'> | null> {
+async function getUserFromToken(token: string): Promise<Pick<User, 'id'> | null> {
   // This would implement JWT token validation
   // For now, return null (unauthenticated)
   return null;
