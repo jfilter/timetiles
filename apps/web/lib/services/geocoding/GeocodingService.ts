@@ -48,20 +48,71 @@ export class GeocodingService {
   constructor(payload: Payload) {
     this.payload = payload;
 
-    // Initialize Google Maps geocoder if API key is available
-    if (process.env.GOOGLE_MAPS_API_KEY) {
-      this.googleGeocoder = NodeGeocoder({
-        provider: "google",
-        apiKey: process.env.GOOGLE_MAPS_API_KEY,
+    // Use test provider for integration tests only (not unit tests)
+    if (process.env.NODE_ENV === 'test' && process.env.USE_TEST_GEOCODING_PROVIDER === 'true') {
+      // Create test geocoders that return predictable results
+      this.googleGeocoder = {
+        geocode: async (address: string) => {
+          // Return predictable test results based on address
+          if (address.toLowerCase().includes('fail') || 
+              address.toLowerCase().includes('error') ||
+              address.toLowerCase().includes('test st')) {
+            throw new Error('Test geocoding failure');
+          }
+          return [{
+            latitude: 37.7749,
+            longitude: -122.4194,
+            city: 'San Francisco',
+            state: 'CA',
+            zipcode: '94102',
+            streetName: 'Main St',
+            formattedAddress: `${address}, San Francisco, CA 94102, USA`,
+            extra: {
+              googlePlaceId: 'ChIJd8BlQ2BZwokRAFUEcm_qrcA',
+              confidence: 0.9
+            }
+          }];
+        }
+      } as any;
+      
+      this.nominatimGeocoder = {
+        geocode: async (address: string) => {
+          // Return predictable test results for fallback
+          if (address.toLowerCase().includes('fail') || 
+              address.toLowerCase().includes('error') ||
+              address.toLowerCase().includes('test st')) {
+            throw new Error('Test geocoding failure');
+          }
+          return [{
+            latitude: 40.7128,
+            longitude: -74.0060,
+            country: 'USA',
+            city: 'New York',
+            state: 'NY',
+            zipcode: '10001',
+            streetName: 'Broadway',
+            streetNumber: '1',
+            formattedAddress: `${address}, New York, NY 10001, USA`
+          }];
+        }
+      } as any;
+    } else {
+      // Production environment or unit tests - use real geocoding services
+      // Initialize Google Maps geocoder if API key is available
+      if (process.env.GOOGLE_MAPS_API_KEY) {
+        this.googleGeocoder = NodeGeocoder({
+          provider: "google",
+          apiKey: process.env.GOOGLE_MAPS_API_KEY,
+          formatter: null,
+        });
+      }
+
+      // Initialize Nominatim geocoder
+      this.nominatimGeocoder = NodeGeocoder({
+        provider: "openstreetmap",
         formatter: null,
       });
     }
-
-    // Initialize Nominatim geocoder
-    this.nominatimGeocoder = NodeGeocoder({
-      provider: "openstreetmap",
-      formatter: null,
-    });
   }
 
   async geocode(address: string): Promise<GeocodingResult> {
