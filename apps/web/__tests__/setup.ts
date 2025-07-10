@@ -30,7 +30,9 @@ vi.mock("../lib/logger", () => {
 });
 
 // Set test environment
-process.env.NODE_ENV = "test";
+if (!process.env.NODE_ENV) {
+  (process.env as any).NODE_ENV = "test";
+}
 process.env.PAYLOAD_SECRET = "test-secret-key";
 
 // Create isolated test database for each worker

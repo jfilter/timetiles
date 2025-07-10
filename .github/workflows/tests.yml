@@ -74,7 +74,5 @@ jobs:
         working-directory: apps/web
 
       - name: Run main test suite
-        run: pnpm test
+        run: pnpm test:verbose
         working-directory: apps/web
-
-
