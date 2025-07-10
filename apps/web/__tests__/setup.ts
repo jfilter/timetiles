@@ -44,6 +44,6 @@ afterAll(async () => {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   } catch (error) {
-    console.warn("Failed to clean up temp directory:", error);
+    // Ignore cleanup errors in test environment
   }
 });

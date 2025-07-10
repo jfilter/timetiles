@@ -3,21 +3,22 @@ import { GeocodingService } from "../services/geocoding/GeocodingService";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import fs from "fs";
-import type { 
-  Import, 
-  Dataset, 
-  Event, 
+import type {
+  Import,
+  Dataset,
+  Event,
   Catalog,
   TaskFileParsing,
   TaskBatchProcessing,
   TaskEventCreation,
-  TaskGeocodingBatch
+  TaskGeocodingBatch,
 } from "../../payload-types";
+import { createJobLogger, logError, logPerformance } from "../logger";
 
 // Enhanced job payload types using Payload task types
 interface FileParsingJobPayload extends TaskFileParsing {
   input: {
-    importId: Import['id'];
+    importId: Import["id"];
     filePath: string;
     fileType: "csv" | "xlsx";
   };
@@ -25,7 +26,7 @@ interface FileParsingJobPayload extends TaskFileParsing {
 
 interface BatchProcessingJobPayload extends TaskBatchProcessing {
   input: {
-    importId: Import['id'];
+    importId: Import["id"];
     batchNumber: number;
     batchData: Record<string, unknown>[];
   };
@@ -33,7 +34,7 @@ interface BatchProcessingJobPayload extends TaskBatchProcessing {
 
 interface GeocodingBatchJobPayload extends TaskGeocodingBatch {
   input: {
-    importId: Import['id'];
+    importId: Import["id"];
     eventIds: number[];
     batchNumber: number;
   };
@@ -41,7 +42,7 @@ interface GeocodingBatchJobPayload extends TaskGeocodingBatch {
 
 interface EventCreationJobPayload extends TaskEventCreation {
   input: {
-    importId: Import['id'];
+    importId: Import["id"];
     processedData: Record<string, unknown>[];
     batchNumber: number;
   };
@@ -72,7 +73,13 @@ export const fileParsingJob = {
     // Support both new format (req.payload) and legacy format (payload directly)
     const payload = context.req?.payload || context.payload;
     const input = context.input || (context.job as any)?.input;
-    const { importId, filePath, fileType } = input as FileParsingJobPayload['input'];
+    const { importId, filePath, fileType } =
+      input as FileParsingJobPayload["input"];
+
+    const jobId = context.job?.id || "unknown";
+    const logger = createJobLogger(jobId, "file-parsing");
+    logger.info({ importId, filePath, fileType }, "Starting file parsing job");
+    const startTime = Date.now();
 
     try {
       // Update import status
@@ -92,6 +99,8 @@ export const fileParsingJob = {
       let parsedData: Record<string, unknown>[] = [];
       // let totalRows = 0; // Used for debugging
 
+      logger.debug(`Parsing ${fileType} file`);
+
       if (fileType === "csv") {
         const fileContent = fs.readFileSync(filePath, "utf8");
         const parseResult = Papa.parse(fileContent, {
@@ -101,12 +110,17 @@ export const fileParsingJob = {
         });
 
         if (parseResult.errors.length > 0) {
+          logger.error({ errors: parseResult.errors }, "CSV parsing errors");
           throw new Error(
             `CSV parsing errors: ${parseResult.errors.map((e: Papa.ParseError) => e.message).join(", ")}`,
           );
         }
 
         parsedData = parseResult.data as Record<string, unknown>[];
+        logger.debug(
+          { rowCount: parsedData.length },
+          "CSV parsed successfully",
+        );
       } else if (fileType === "xlsx") {
         // Read as buffer to avoid file access issues
         const fileBuffer = fs.readFileSync(filePath);
@@ -131,6 +145,10 @@ export const fileParsingJob = {
             return obj;
           });
         }
+        logger.debug(
+          { rowCount: parsedData.length },
+          "Excel parsed successfully",
+        );
       }
 
       // totalRows = parsedData.length; // Used for debugging
@@ -144,8 +162,21 @@ export const fileParsingJob = {
       });
 
       if (validRows.length === 0) {
+        logger.error(
+          { totalRows: parsedData.length },
+          "No valid rows found after validation",
+        );
         throw new Error("No valid rows found. Required fields: title, date");
       }
+
+      logger.info(
+        {
+          totalRows: parsedData.length,
+          validRows: validRows.length,
+          invalidRows: parsedData.length - validRows.length,
+        },
+        "Row validation completed",
+      );
 
       // Update progress
       await payload.update({
@@ -171,6 +202,11 @@ export const fileParsingJob = {
       const batchSize = 100;
       const totalBatches = Math.ceil(validRows.length / batchSize);
 
+      logger.info(
+        { batchSize, totalBatches, validRowCount: validRows.length },
+        "Creating batches for processing",
+      );
+
       await payload.update({
         collection: "imports",
         where: {
@@ -190,25 +226,38 @@ export const fileParsingJob = {
       for (let i = 0; i < totalBatches; i++) {
         const batchData = validRows.slice(i * batchSize, (i + 1) * batchSize);
 
+        logger.debug(
+          { batchNumber: i + 1, batchItemCount: batchData.length },
+          "Queueing batch processing job",
+        );
+
         await payload.jobs.queue({
           task: "batch-processing",
           input: {
             importId,
             batchNumber: i + 1,
             batchData,
-          } as BatchProcessingJobPayload['input'],
+          } as BatchProcessingJobPayload["input"],
         });
       }
 
       // Clean up uploaded file
       try {
         fs.unlinkSync(filePath);
+        logger.debug({ filePath }, "Uploaded file deleted successfully");
       } catch (error) {
-        console.warn("Failed to delete uploaded file:", error);
+        logger.warn({ error, filePath }, "Failed to delete uploaded file");
       }
+
+      logPerformance("File parsing job", Date.now() - startTime, {
+        importId,
+        totalRows: validRows.length,
+        totalBatches,
+      });
+
       return { output: {} };
     } catch (error) {
-      console.error("File parsing job failed:", error);
+      logError(error, "File parsing job failed", { importId, filePath });
 
       await payload.update({
         collection: "imports",
@@ -238,7 +287,16 @@ export const batchProcessingJob = {
   handler: async (context: JobHandlerContext) => {
     const payload = context.req?.payload || context.payload;
     const input = context.input || (context.job as any)?.input;
-    const { importId, batchNumber, batchData } = input as BatchProcessingJobPayload['input'];
+    const { importId, batchNumber, batchData } =
+      input as BatchProcessingJobPayload["input"];
+
+    const jobId = context.job?.id || "unknown";
+    const logger = createJobLogger(jobId, "batch-processing");
+    logger.info(
+      { importId, batchNumber, itemCount: batchData.length },
+      "Starting batch processing job",
+    );
+    const startTime = Date.now();
 
     try {
       // Get current import to preserve other batchInfo fields
@@ -262,6 +320,8 @@ export const batchProcessingJob = {
           },
         },
       });
+
+      logger.debug("Processing batch data");
 
       const processedData = batchData.map((row) => {
         // Normalize and validate data
@@ -288,17 +348,29 @@ export const batchProcessingJob = {
       });
 
       // Queue event creation job
+      logger.info(
+        { processedItemCount: processedData.length },
+        "Queueing event creation job",
+      );
+
       await payload.jobs.queue({
         task: "event-creation",
         input: {
           importId,
           processedData,
           batchNumber,
-        } as EventCreationJobPayload['input'],
+        } as EventCreationJobPayload["input"],
       });
+
+      logPerformance("Batch processing job", Date.now() - startTime, {
+        importId,
+        batchNumber,
+        processedItems: processedData.length,
+      });
+
       return { output: {} };
     } catch (error) {
-      console.error("Batch processing job failed:", error);
+      logError(error, "Batch processing job failed", { importId, batchNumber });
 
       await payload.update({
         collection: "imports",
@@ -325,7 +397,16 @@ export const eventCreationJob = {
   handler: async (context: JobHandlerContext) => {
     const payload = context.req?.payload || context.payload;
     const input = context.input || (context.job as any)?.input;
-    const { importId, processedData, batchNumber } = input as EventCreationJobPayload['input'];
+    const { importId, processedData, batchNumber } =
+      input as EventCreationJobPayload["input"];
+
+    const jobId = context.job?.id || "unknown";
+    const logger = createJobLogger(jobId, "event-creation");
+    logger.info(
+      { importId, batchNumber, eventCount: processedData.length },
+      "Starting event creation job",
+    );
+    const startTime = Date.now();
 
     try {
       // Get the import record to find the dataset
@@ -353,10 +434,17 @@ export const eventCreationJob = {
 
       const dataset: Dataset | undefined = datasets.docs[0];
       if (!dataset) {
+        logger.error({ catalogId }, "No dataset found for catalog");
         throw new Error(`No dataset found for catalog ${catalogId}`);
       }
 
+      logger.debug(
+        { datasetId: dataset.id, datasetName: dataset.name },
+        "Found dataset for events",
+      );
+
       const createdEventIds: number[] = [];
+      let failedEventCount = 0;
 
       // Create events
       for (const eventData of processedData) {
@@ -366,7 +454,10 @@ export const eventCreationJob = {
             data: {
               dataset: dataset.id,
               import: importId,
-              data: (eventData.originalData || eventData) as Record<string, unknown>,
+              data: (eventData.originalData || eventData) as Record<
+                string,
+                unknown
+              >,
               eventTimestamp: eventData.date as string,
               geocodingInfo: {
                 originalAddress: eventData.address as string,
@@ -379,10 +470,27 @@ export const eventCreationJob = {
 
           createdEventIds.push(event.id);
         } catch (error) {
-          console.error("Failed to create event:", eventData.title, error);
+          failedEventCount++;
+          logger.error(
+            {
+              error,
+              eventTitle: eventData.title,
+              eventData,
+            },
+            "Failed to create event",
+          );
           // Continue with other events
         }
       }
+
+      logger.info(
+        {
+          createdEvents: createdEventIds.length,
+          failedEvents: failedEventCount,
+          totalEvents: processedData.length,
+        },
+        "Event creation completed",
+      );
 
       // Update progress
       const importRecord: Import = await payload.findByID({
@@ -418,7 +526,7 @@ export const eventCreationJob = {
           id: {
             in: createdEventIds,
           },
-          'geocodingInfo.originalAddress': {
+          "geocodingInfo.originalAddress": {
             exists: true,
           },
         },
@@ -427,17 +535,26 @@ export const eventCreationJob = {
         },
         limit: createdEventIds.length,
       });
-      const eventsNeedingGeocoding: number[] = eventsWithAddresses.docs.map((event: Pick<Event, 'id'>) => event.id);
+      const eventsNeedingGeocoding: number[] = eventsWithAddresses.docs.map(
+        (event: Pick<Event, "id">) => event.id,
+      );
 
       if (eventsNeedingGeocoding.length > 0) {
+        logger.info(
+          { geocodingEventCount: eventsNeedingGeocoding.length },
+          "Queueing geocoding batch job",
+        );
+
         await payload.jobs.queue({
           task: "geocoding-batch",
           input: {
             importId,
             eventIds: eventsNeedingGeocoding,
             batchNumber,
-          } as GeocodingBatchJobPayload['input'],
+          } as GeocodingBatchJobPayload["input"],
         });
+      } else {
+        logger.debug("No events require geocoding in this batch");
       }
 
       // Check if this is the last batch and update stage
@@ -450,6 +567,10 @@ export const eventCreationJob = {
       const currentBatch = Number(updatedImport.batchInfo?.currentBatch) || 0;
 
       if (currentBatch >= totalBatches) {
+        logger.debug(
+          "Last batch processed, updating import stage to geocoding",
+        );
+
         await payload.update({
           collection: "imports",
           where: {
@@ -462,9 +583,17 @@ export const eventCreationJob = {
           },
         });
       }
+
+      logPerformance("Event creation job", Date.now() - startTime, {
+        importId,
+        batchNumber,
+        createdEvents: createdEventIds.length,
+        failedEvents: failedEventCount,
+      });
+
       return { output: {} };
     } catch (error) {
-      console.error("Event creation job failed:", error);
+      logError(error, "Event creation job failed", { importId, batchNumber });
 
       await payload.update({
         collection: "imports",
@@ -491,7 +620,16 @@ export const geocodingBatchJob = {
   handler: async (context: JobHandlerContext) => {
     const payload = context.req?.payload || context.payload;
     const input = context.input || (context.job as any)?.input;
-    const { importId, eventIds, batchNumber } = input as GeocodingBatchJobPayload['input'];
+    const { importId, eventIds, batchNumber } =
+      input as GeocodingBatchJobPayload["input"];
+
+    const jobId = context.job?.id || "unknown";
+    const logger = createJobLogger(jobId, "geocoding-batch");
+    logger.info(
+      { importId, batchNumber, eventCount: eventIds.length },
+      "Starting geocoding batch job",
+    );
+    const startTime = Date.now();
 
     try {
       const geocodingService = new GeocodingService(payload);
@@ -506,15 +644,33 @@ export const geocodingBatchJob = {
           });
 
           if (!event.geocodingInfo?.originalAddress) {
+            logger.debug({ eventId }, "Event has no address to geocode");
             processedCount++; // Count as processed even if no address
             continue;
           }
+
+          logger.debug(
+            {
+              eventId,
+              address: event.geocodingInfo.originalAddress,
+            },
+            "Geocoding event address",
+          );
 
           const geocodingResult = await geocodingService.geocode(
             event.geocodingInfo.originalAddress,
           );
 
           if (geocodingResult) {
+            logger.debug(
+              {
+                eventId,
+                provider: geocodingResult.provider,
+                confidence: geocodingResult.confidence,
+                fromCache: geocodingResult.fromCache,
+              },
+              "Geocoding successful",
+            );
             await payload.update({
               collection: "events",
               where: {
@@ -529,20 +685,35 @@ export const geocodingBatchJob = {
                 },
                 geocodingInfo: {
                   ...event.geocodingInfo,
-                  provider: geocodingResult.provider as "google" | "nominatim" | "manual" | null,
+                  provider: geocodingResult.provider as
+                    | "google"
+                    | "nominatim"
+                    | "manual"
+                    | null,
                   confidence: geocodingResult.confidence,
                   normalizedAddress: geocodingResult.normalizedAddress,
                 },
               },
             });
             geocodedCount++; // Only count successful geocoding
+          } else {
+            logger.warn({ eventId }, "Geocoding failed - no result returned");
           }
           processedCount++; // Count as processed regardless of success/failure
         } catch (error) {
-          console.error("Failed to geocode event:", eventId, error);
+          logger.error({ error, eventId }, "Failed to geocode event");
           processedCount++; // Count as processed even if geocoding failed
         }
       }
+
+      logger.info(
+        {
+          processedCount,
+          geocodedCount,
+          failedCount: processedCount - geocodedCount,
+        },
+        "Geocoding batch completed",
+      );
 
       // Update geocoding progress
       const importRecord = await payload.findByID({
@@ -576,6 +747,11 @@ export const geocodingBatchJob = {
       // For now, we'll complete if we've processed any events and there are no more geocoding jobs
       // This is a simplification - in a real implementation, we'd need better batch tracking
       if (processedCount === eventIds.length && geocodedEvents >= 0) {
+        logger.info(
+          { importId },
+          "All events processed, marking import as completed",
+        );
+
         await payload.update({
           collection: "imports",
           id: importId,
@@ -586,9 +762,17 @@ export const geocodingBatchJob = {
           },
         });
       }
+
+      logPerformance("Geocoding batch job", Date.now() - startTime, {
+        importId,
+        batchNumber,
+        processedEvents: processedCount,
+        geocodedEvents: geocodedCount,
+      });
+
       return { output: {} };
     } catch (error) {
-      console.error("Geocoding batch job failed:", error);
+      logError(error, "Geocoding batch job failed", { importId, batchNumber });
 
       await payload.update({
         collection: "imports",

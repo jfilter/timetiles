@@ -316,10 +316,54 @@ describe.sequential("Import API Endpoints", () => {
       expect(result.message).toBe("Dataset not found");
     });
 
-    it.skip("should enforce rate limits for unauthenticated users", async () => {
-      // Skipped: Rate limiting test requires real load testing or complex setup
-      // In production, rate limits are enforced by the actual RateLimitService
-      // This test would require multiple concurrent requests to trigger rate limits
+    it("should enforce rate limits for unauthenticated users", async () => {
+      // Test rate limiting behavior by directly testing the service
+      const { RateLimitService, RATE_LIMITS } = await import(
+        "../lib/services/RateLimitService"
+      );
+      const rateLimitService = new RateLimitService(payload);
+
+      const clientId = "192.168.1.100";
+      const limit = RATE_LIMITS.FILE_UPLOAD.limit; // 5
+      const windowMs = RATE_LIMITS.FILE_UPLOAD.windowMs;
+
+      // Test that first 5 requests are allowed
+      for (let i = 0; i < limit; i++) {
+        const result = await rateLimitService.checkRateLimit(
+          clientId,
+          limit,
+          windowMs,
+        );
+        expect(result.allowed).toBe(true);
+        expect(result.remaining).toBe(limit - (i + 1));
+      }
+
+      // 6th request should be blocked
+      const blockedResult = await rateLimitService.checkRateLimit(
+        clientId,
+        limit,
+        windowMs,
+      );
+      expect(blockedResult.allowed).toBe(false);
+      expect(blockedResult.remaining).toBe(0);
+      expect(blockedResult.blocked).toBe(true);
+
+      // Test that subsequent requests are also blocked
+      const stillBlockedResult = await rateLimitService.checkRateLimit(
+        clientId,
+        limit,
+        windowMs,
+      );
+      expect(stillBlockedResult.allowed).toBe(false);
+      expect(stillBlockedResult.blocked).toBe(true);
+
+      // Test rate limit headers
+      const headers = rateLimitService.getRateLimitHeaders(clientId, limit);
+      expect(headers["X-RateLimit-Limit"]).toBe("5");
+      expect(headers["X-RateLimit-Remaining"]).toBe("0");
+      expect(headers["X-RateLimit-Blocked"]).toBe("true");
+
+      rateLimitService.destroy();
     });
 
     it("should include rate limit headers in response", async () => {

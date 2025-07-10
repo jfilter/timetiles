@@ -1,7 +1,10 @@
 import type { Event } from "../../../payload-types";
 
 // Use Payload type with specific modifications for seed data
-export type EventSeed = Omit<Event, 'id' | 'createdAt' | 'updatedAt' | 'dataset' | 'import' | 'eventTimestamp'> & {
+export type EventSeed = Omit<
+  Event,
+  "id" | "createdAt" | "updatedAt" | "dataset" | "import" | "eventTimestamp"
+> & {
   dataset: string; // This will be resolved to dataset ID during seeding
   eventTimestamp: Date; // Use Date object for easier seed data handling
 };
@@ -79,34 +82,6 @@ export function eventSeeds(environment: string): EventSeed[] {
       isValid: true,
     },
   ];
-
-  if (environment === "test") {
-    // Only return test-specific events, do NOT include baseEvents
-    return [
-      {
-        dataset: "test-dataset",
-        data: {
-          id: "test-001",
-          value: 42,
-        },
-        eventTimestamp: new Date("2024-01-01T12:00:00Z"),
-        isValid: true,
-      },
-      {
-        dataset: "test-dataset",
-        data: {
-          id: "test-002",
-          value: "invalid",
-        },
-        eventTimestamp: new Date("2024-01-01T12:05:00Z"),
-        isValid: false,
-        validationErrors: {
-          field: "value",
-          message: "Expected number, got string",
-        },
-      },
-    ];
-  }
 
   if (environment === "development") {
     return [

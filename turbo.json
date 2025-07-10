@@ -1,7 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalEnv": ["NODE_ENV", "GOOGLE_MAPS_API_KEY"],
+  "globalEnv": ["NODE_ENV", "GOOGLE_MAPS_API_KEY", "LOG_LEVEL"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -26,27 +26,12 @@
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "cache": false
     },
-    "seed:test": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "cache": false
-    },
-    "seed:validate": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$"],
-      "cache": false
-    },
     "seed:dev": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "cache": false
     },
     "seed:truncate": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "cache": false
-    },
-    "seed:integration": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "cache": false

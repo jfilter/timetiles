@@ -1,4 +1,7 @@
 import { Client } from "pg";
+import { createLogger } from "../lib/logger";
+
+const logger = createLogger("database-setup");
 
 /**
  * Creates isolated test database for each worker
@@ -21,9 +24,12 @@ export async function createTestDatabase(dbName: string): Promise<void> {
     // Create new database
     await client.query(`CREATE DATABASE "${dbName}"`);
 
-    console.log(`Created test database: ${dbName}`);
+    logger.debug(`Created test database: ${dbName}`);
   } catch (error) {
-    console.error(`Failed to create test database ${dbName}:`, error);
+    logger.error(
+      { err: error, dbName },
+      `Failed to create test database ${dbName}`,
+    );
     throw error;
   } finally {
     await client.end();
@@ -56,9 +62,12 @@ export async function dropTestDatabase(dbName: string): Promise<void> {
     // Drop database
     await client.query(`DROP DATABASE IF EXISTS "${dbName}"`);
 
-    console.log(`Dropped test database: ${dbName}`);
+    logger.debug(`Dropped test database: ${dbName}`);
   } catch (error) {
-    console.warn(`Failed to drop test database ${dbName}:`, error);
+    logger.warn(
+      { err: error, dbName },
+      `Failed to drop test database ${dbName}`,
+    );
   } finally {
     await client.end();
   }

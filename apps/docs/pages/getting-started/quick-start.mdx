@@ -1,223 +1,80 @@
-# Quick Start Guide
+# Development Setup
 
-Get TimeTiles up and running in just a few minutes with this streamlined setup process.
+Get TimeTiles up and running for development.
 
-## TL;DR - One Command Setup
+## Prerequisites
+
+- Node.js 24+
+- pnpm
+- Docker and Docker Compose
+
+## Quick Start
 
 ```bash
+# Clone the repository
 git clone <repository-url>
 cd timetiles
-make setup && make dev
+
+# Install dependencies
+pnpm install
+
+# Start PostgreSQL database
+make up
+
+# Run database migrations
+cd apps/web && pnpm payload:migrate
+
+# Start development server
+pnpm dev
 ```
 
-Then visit http://localhost:3000 and create your admin user.
+Open http://localhost:3000 to see the application.
 
-## Step-by-Step Setup
-
-### 1. Clone and Setup
-
-```bash
-git clone <repository-url>
-cd timetiles
-make setup
-```
-
-The `make setup` command will:
-
-- Install all dependencies using pnpm
-- Set up the development environment
-- Configure Docker services
-
-### 2. Start Development Services
-
-```bash
-make dev
-```
-
-This command will:
-
-- Start PostgreSQL database with PostGIS
-- Launch the Next.js development server
-- Set up all necessary services
-
-You should see output similar to:
-
-```
-✓ PostgreSQL is ready
-✓ Next.js dev server started on http://localhost:3000
-✓ All services are running
-```
-
-### 3. Create Admin User
-
-Open a new terminal and create your first admin user:
+## Creating Your First Admin User
 
 ```bash
 cd apps/web
 pnpm payload create:user
 ```
 
-Follow the prompts:
+Follow the prompts to create an admin user, then log in at http://localhost:3000/admin
 
-- **Email**: your-email@example.com
-- **Password**: Choose a secure password
-- **Confirm Password**: Repeat your password
+## Development Commands
 
-### 4. Access the Application
+From the project root:
 
-Open your browser and navigate to:
+- `pnpm dev` - Start development server
+- `pnpm build` - Build all packages
+- `pnpm test` - Run tests
+- `pnpm lint` - Run linting
+- `pnpm format` - Format code with Prettier
 
-- **Main App**: http://localhost:3000
-- **Admin Panel**: http://localhost:3000/admin
+From `apps/web`:
 
-Log in with the credentials you just created.
+- `pnpm dev` - Start Next.js dev server
+- `pnpm payload:generate` - Generate TypeScript types
+- `pnpm seed` - Seed development data
+- `pnpm test` - Run Vitest tests
 
-## Verify Everything Works
+## Docker Commands
 
-### Check the Database
+- `make up` - Start PostgreSQL
+- `make down` - Stop services  
+- `make logs` - View logs
 
+## Troubleshooting
+
+### Port 3000 in use
 ```bash
-# Connect to PostgreSQL
-make db-shell
-
-# List tables
-\dt
-
-# Exit
-\q
-```
-
-### Seed Sample Data
-
-```bash
-make seed
-```
-
-This will populate your database with sample data for testing.
-
-### Run Tests
-
-```bash
-make test
-```
-
-Ensure all tests pass to verify your setup is correct.
-
-## Alternative Setup Methods
-
-### Using Turborepo Directly
-
-```bash
-# Install dependencies
-pnpm install
-
-# Start infrastructure
-make up
-
-# Start development server
-pnpm dev
-```
-
-### Manual Docker Setup
-
-```bash
-# Start PostgreSQL only
-docker-compose -f docker-compose.dev.yml up postgres -d
-
-# Install and start app
-pnpm install
-cd apps/web
-pnpm dev
-```
-
-## Common Issues
-
-### Port Already in Use
-
-If port 3000 is already in use:
-
-```bash
-# Kill process using port 3000
 lsof -ti:3000 | xargs kill -9
-
-# Or use a different port
-PORT=3001 pnpm dev
 ```
 
-### Database Connection Issues
-
+### Database connection issues
 ```bash
-# Restart PostgreSQL
-make down
-make up
-
-# Check database status
-make logs
+make down && make up
 ```
 
-### Permission Issues
-
+### Reset everything
 ```bash
-# Fix Docker permissions (Linux/macOS)
-sudo chown -R $USER:$USER .
-
-# Reset Docker volumes
-make clean
-make up
+make clean && make up
 ```
-
-## Next Steps
-
-Now that TimeTiles is running:
-
-1. **Explore the Admin Panel** - Visit http://localhost:3000/admin
-2. **Create Your First Project** - Use the admin interface or API
-3. **Start Time Tracking** - Begin logging your time
-4. **Generate Reports** - View your productivity insights
-
-## Development Workflow
-
-### Daily Development
-
-```bash
-# Start everything
-make dev
-
-# In another terminal, watch for changes
-pnpm dev --turbo
-```
-
-### Working with Data
-
-```bash
-# Reset and reseed data
-make seed-truncate
-make seed
-
-# Run specific seed collections
-cd apps/web
-pnpm seed users projects
-```
-
-### Building and Testing
-
-```bash
-# Build for production
-pnpm build
-
-# Run all tests
-make test
-
-# Run integration tests
-make seed-integration
-```
-
-## Getting Help
-
-If you encounter issues:
-
-- Check the [Troubleshooting Guide](/reference/troubleshooting)
-- Review [Development Setup](/development/setup) for detailed instructions
-- Visit our [GitHub Issues](https://github.com/your-org/timetiles/issues)
-
-Ready to dive deeper? Continue with the [Configuration Guide](/getting-started/configuration).

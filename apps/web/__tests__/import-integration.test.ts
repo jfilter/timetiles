@@ -29,10 +29,13 @@ vi.mock("../lib/services/geocoding/GeocodingService", () => {
     GeocodingService: vi.fn().mockImplementation(() => ({
       geocode: vi.fn().mockImplementation(async (address: string) => {
         // Simulate geocoding failure for test addresses
-        if (address.toLowerCase().includes('fail') || address.toLowerCase().includes('test st')) {
-          throw new Error('Geocoding failed');
+        if (
+          address.toLowerCase().includes("fail") ||
+          address.toLowerCase().includes("test st")
+        ) {
+          throw new Error("Geocoding failed");
         }
-        
+
         return {
           latitude: 37.7749,
           longitude: -122.4194,
@@ -50,11 +53,14 @@ vi.mock("../lib/services/geocoding/GeocodingService", () => {
           metadata: {},
         };
       }),
-      batchGeocode: vi.fn().mockImplementation(async function(this: any, addresses: string[]) {
+      batchGeocode: vi.fn().mockImplementation(async function (
+        this: any,
+        addresses: string[],
+      ) {
         const results = new Map();
         let successful = 0;
         let failed = 0;
-        
+
         for (const address of addresses) {
           if (!address) continue;
           try {
@@ -66,7 +72,7 @@ vi.mock("../lib/services/geocoding/GeocodingService", () => {
             failed++;
           }
         }
-        
+
         return {
           results,
           summary: {
@@ -79,7 +85,11 @@ vi.mock("../lib/services/geocoding/GeocodingService", () => {
       }),
     })),
     GeocodingError: class extends Error {
-      constructor(message: string, public code: string, public retryable = false) {
+      constructor(
+        message: string,
+        public code: string,
+        public retryable = false,
+      ) {
         super(message);
         this.name = "GeocodingError";
       }
@@ -191,7 +201,7 @@ describe.sequential("Import System Integration Tests", () => {
 
     // Clean up any test files in uploads directory
     const uploadsDir = path.join(process.cwd(), "uploads");
-    
+
     try {
       if (fs.existsSync(uploadsDir)) {
         const files = fs.readdirSync(uploadsDir);
@@ -203,7 +213,7 @@ describe.sequential("Import System Integration Tests", () => {
         });
       }
     } catch (error) {
-      console.warn('Failed to clean up test files:', error);
+      console.warn("Failed to clean up test files:", error);
     }
   });
 
@@ -228,7 +238,11 @@ describe.sequential("Import System Integration Tests", () => {
             .map((val) => {
               // Properly escape CSV values - double quotes and wrap in quotes if contains comma
               const stringVal = String(val);
-              if (stringVal.includes(',') || stringVal.includes('"') || stringVal.includes('\n')) {
+              if (
+                stringVal.includes(",") ||
+                stringVal.includes('"') ||
+                stringVal.includes("\n")
+              ) {
                 return `"${stringVal.replace(/"/g, '""')}"`;
               }
               return stringVal;
@@ -597,10 +611,10 @@ describe.sequential("Import System Integration Tests", () => {
       // Process through to geocoding
       await fileParsingJob.handler({
         input: {
-            importId,
-            filePath: geocodingImportRecord.metadata.filePath,
-            fileName: "test.csv",
-            fileType: "csv" as const,
+          importId,
+          filePath: geocodingImportRecord.metadata.filePath,
+          fileName: "test.csv",
+          fileType: "csv" as const,
         },
         job: { id: "test-job" },
         req: { payload },
@@ -608,22 +622,22 @@ describe.sequential("Import System Integration Tests", () => {
 
       await batchProcessingJob.handler({
         input: {
-            importId,
-            batchNumber: 1,
-            batchData: [
-              {
-                title: "Test Event",
-                description: "Test Description",
-                date: "2024-03-15",
-                enddate: "",
-                location: "Test Location",
-                address: "123 Test St",
-                url: "https://test.com",
-                category: "Test",
-                tags: "test",
-              },
-            ],
-            totalBatches: 1,
+          importId,
+          batchNumber: 1,
+          batchData: [
+            {
+              title: "Test Event",
+              description: "Test Description",
+              date: "2024-03-15",
+              enddate: "",
+              location: "Test Location",
+              address: "123 Test St",
+              url: "https://test.com",
+              category: "Test",
+              tags: "test",
+            },
+          ],
+          totalBatches: 1,
         },
         job: { id: "test-job" },
         req: { payload },
@@ -715,7 +729,11 @@ describe.sequential("Import System Integration Tests", () => {
             .map((val) => {
               // Properly escape CSV values - double quotes and wrap in quotes if contains comma
               const stringVal = String(val);
-              if (stringVal.includes(',') || stringVal.includes('"') || stringVal.includes('\n')) {
+              if (
+                stringVal.includes(",") ||
+                stringVal.includes('"') ||
+                stringVal.includes("\n")
+              ) {
                 return `"${stringVal.replace(/"/g, '""')}"`;
               }
               return stringVal;
@@ -753,10 +771,10 @@ describe.sequential("Import System Integration Tests", () => {
       // Process file parsing
       await fileParsingJob.handler({
         input: {
-            importId,
-            filePath: largeImportRecord.metadata.filePath,
-            fileName: "large.csv",
-            fileType: "csv" as const,
+          importId,
+          filePath: largeImportRecord.metadata.filePath,
+          fileName: "large.csv",
+          fileType: "csv" as const,
         },
         job: { id: "test-job" },
         req: { payload },
@@ -794,7 +812,11 @@ describe.sequential("Import System Integration Tests", () => {
             .map((val) => {
               // Properly escape CSV values - double quotes and wrap in quotes if contains comma
               const stringVal = String(val);
-              if (stringVal.includes(',') || stringVal.includes('"') || stringVal.includes('\n')) {
+              if (
+                stringVal.includes(",") ||
+                stringVal.includes('"') ||
+                stringVal.includes("\n")
+              ) {
                 return `"${stringVal.replace(/"/g, '""')}"`;
               }
               return stringVal;
@@ -844,10 +866,10 @@ describe.sequential("Import System Integration Tests", () => {
       // Process file parsing
       await fileParsingJob.handler({
         input: {
-            importId,
-            filePath: progressImportRecord.metadata.filePath,
-            fileName: "progress-test.csv",
-            fileType: "csv" as const,
+          importId,
+          filePath: progressImportRecord.metadata.filePath,
+          fileName: "progress-test.csv",
+          fileType: "csv" as const,
         },
         job: { id: "test-job" },
         req: { payload },
@@ -868,10 +890,10 @@ describe.sequential("Import System Integration Tests", () => {
       // Continue with batch processing and event creation
       await batchProcessingJob.handler({
         input: {
-            importId,
-            batchNumber: 1,
-            batchData: sampleCsvData,
-            totalBatches: 1,
+          importId,
+          batchNumber: 1,
+          batchData: sampleCsvData,
+          totalBatches: 1,
         },
         job: { id: "test-job" },
         req: { payload },
@@ -951,7 +973,7 @@ describe.sequential("Import System Integration Tests", () => {
           description: "Test unicode handling & special chars: <>&\"'",
           date: "2024-03-15",
           enddate: "2024-03-17",
-          location: "Location with, comma and \"quotes\"",
+          location: 'Location with, comma and "quotes"',
           address: "123 Test St, City, ST 12345",
           url: "https://example.com/event?param=value&other=test",
           category: "Multi-word Category",
@@ -981,7 +1003,8 @@ describe.sequential("Import System Integration Tests", () => {
         },
       ];
 
-      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders =
+        "title,description,date,enddate,location,address,url,category,tags";
       const csvRows = integrityTestData
         .map((row) =>
           [
@@ -997,12 +1020,16 @@ describe.sequential("Import System Integration Tests", () => {
           ]
             .map((val) => {
               const stringVal = String(val);
-              if (stringVal.includes(',') || stringVal.includes('"') || stringVal.includes('\n')) {
+              if (
+                stringVal.includes(",") ||
+                stringVal.includes('"') ||
+                stringVal.includes("\n")
+              ) {
                 return `"${stringVal.replace(/"/g, '""')}"`;
               }
               return stringVal;
             })
-            .join(",")
+            .join(","),
         )
         .join("\n");
       const csvContent = csvHeaders + "\n" + csvRows;
@@ -1086,17 +1113,23 @@ describe.sequential("Import System Integration Tests", () => {
       expect(events.docs).toHaveLength(3);
 
       // Verify special characters are preserved
-      const unicodeEvent = events.docs.find(
-        (event: any) => event.data.title?.includes("àáâäæçèéêë")
+      const unicodeEvent = events.docs.find((event: any) =>
+        event.data.title?.includes("àáâäæçèéêë"),
       );
       expect(unicodeEvent).toBeDefined();
-      expect(unicodeEvent.data.title).toBe("Event with Special Characters: àáâäæçèéêë");
-      expect(unicodeEvent.data.description).toBe("Test unicode handling & special chars: <>&\"'");
-      expect(unicodeEvent.data.location).toBe("Location with, comma and \"quotes\"");
+      expect(unicodeEvent.data.title).toBe(
+        "Event with Special Characters: àáâäæçèéêë",
+      );
+      expect(unicodeEvent.data.description).toBe(
+        "Test unicode handling & special chars: <>&\"'",
+      );
+      expect(unicodeEvent.data.location).toBe(
+        'Location with, comma and "quotes"',
+      );
 
       // Verify long description handling
       const longDescEvent = events.docs.find(
-        (event: any) => event.data.description?.length > 400
+        (event: any) => event.data.description?.length > 400,
       );
       expect(longDescEvent).toBeDefined();
       expect(longDescEvent.data.description).toHaveLength(500);
@@ -1104,7 +1137,7 @@ describe.sequential("Import System Integration Tests", () => {
 
       // Verify date format consistency
       const dateEvent = events.docs.find(
-        (event: any) => event.data.title === "Event with Edge Case Dates"
+        (event: any) => event.data.title === "Event with Edge Case Dates",
       );
       expect(dateEvent).toBeDefined();
       expect(dateEvent.eventTimestamp).toBeDefined();
@@ -1113,13 +1146,15 @@ describe.sequential("Import System Integration Tests", () => {
       // Verify all events have required fields
       events.docs.forEach((event: any) => {
         // Handle dataset ID comparison (could be string, number, or object)
-        const eventDatasetId = typeof event.dataset === 'object' ? event.dataset.id : event.dataset;
+        const eventDatasetId =
+          typeof event.dataset === "object" ? event.dataset.id : event.dataset;
         expect(eventDatasetId).toBe(testDatasetId);
-        
+
         // Handle import ID comparison (could be string, number, or object)
-        const eventImportId = typeof event.import === 'object' ? event.import.id : event.import;
+        const eventImportId =
+          typeof event.import === "object" ? event.import.id : event.import;
         expect(eventImportId).toBe(importId);
-        
+
         expect(event.data).toBeDefined();
         expect(event.eventTimestamp).toBeDefined();
         expect(event.isValid).toBe(true);
@@ -1153,7 +1188,8 @@ describe.sequential("Import System Integration Tests", () => {
         },
       ];
 
-      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders =
+        "title,description,date,enddate,location,address,url,category,tags";
       const csvRows = maliciousData
         .map((row) =>
           [
@@ -1169,12 +1205,16 @@ describe.sequential("Import System Integration Tests", () => {
           ]
             .map((val) => {
               const stringVal = String(val);
-              if (stringVal.includes(',') || stringVal.includes('"') || stringVal.includes('\n')) {
+              if (
+                stringVal.includes(",") ||
+                stringVal.includes('"') ||
+                stringVal.includes("\n")
+              ) {
                 return `"${stringVal.replace(/"/g, '""')}"`;
               }
               return stringVal;
             })
-            .join(",")
+            .join(","),
         )
         .join("\n");
       const csvContent = csvHeaders + "\n" + csvRows;
@@ -1259,13 +1299,15 @@ describe.sequential("Import System Integration Tests", () => {
 
       // Verify malicious content is properly escaped/stored
       const formulaEvent = events.docs.find(
-        (event: any) => event.data.title?.includes("=cmd") || event.data.title?.includes("@SUM")
+        (event: any) =>
+          event.data.title?.includes("=cmd") ||
+          event.data.title?.includes("@SUM"),
       );
       if (formulaEvent) {
         // Content should be stored as-is, not executed
-        expect(typeof formulaEvent.data.title).toBe('string');
-        expect(typeof formulaEvent.data.description).toBe('string');
-        expect(typeof formulaEvent.data.location).toBe('string');
+        expect(typeof formulaEvent.data.title).toBe("string");
+        expect(typeof formulaEvent.data.description).toBe("string");
+        expect(typeof formulaEvent.data.location).toBe("string");
       }
 
       // Verify the application hasn't been compromised
@@ -1316,7 +1358,8 @@ describe.sequential("Import System Integration Tests", () => {
         },
       ];
 
-      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders =
+        "title,description,date,enddate,location,address,url,category,tags";
       const csvRows = businessRuleData
         .map((row) =>
           [
@@ -1332,12 +1375,16 @@ describe.sequential("Import System Integration Tests", () => {
           ]
             .map((val) => {
               const stringVal = String(val);
-              if (stringVal.includes(',') || stringVal.includes('"') || stringVal.includes('\n')) {
+              if (
+                stringVal.includes(",") ||
+                stringVal.includes('"') ||
+                stringVal.includes("\n")
+              ) {
                 return `"${stringVal.replace(/"/g, '""')}"`;
               }
               return stringVal;
             })
-            .join(",")
+            .join(","),
         )
         .join("\n");
       const csvContent = csvHeaders + "\n" + csvRows;
@@ -1422,21 +1469,21 @@ describe.sequential("Import System Integration Tests", () => {
 
       // Verify past events are still created
       const pastEvent = events.docs.find(
-        (event: any) => event.data.title === "Event in the Past"
+        (event: any) => event.data.title === "Event in the Past",
       );
       expect(pastEvent).toBeDefined();
       expect(new Date(pastEvent.eventTimestamp).getFullYear()).toBe(2020);
 
       // Verify events with invalid date ranges are still created
       const paradoxEvent = events.docs.find(
-        (event: any) => event.data.title === "Event with End Before Start"
+        (event: any) => event.data.title === "Event with End Before Start",
       );
       expect(paradoxEvent).toBeDefined();
       expect(paradoxEvent.data.enddate).toBeDefined();
 
       // Verify long duration events are created
       const longEvent = events.docs.find(
-        (event: any) => event.data.title === "Very Long Event Duration"
+        (event: any) => event.data.title === "Very Long Event Duration",
       );
       expect(longEvent).toBeDefined();
       expect(longEvent.data.enddate).toBeDefined();
@@ -1571,10 +1618,10 @@ describe.sequential("Import System Integration Tests", () => {
       // Process the import
       await fileParsingJob.handler({
         input: {
-            importId,
-            filePath: malformedImportRecord.metadata.filePath,
-            fileName: "malformed.csv",
-            fileType: "csv" as const,
+          importId,
+          filePath: malformedImportRecord.metadata.filePath,
+          fileName: "malformed.csv",
+          fileType: "csv" as const,
         },
         job: { id: "test-job" },
         req: { payload },

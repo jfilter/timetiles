@@ -1,35 +1,41 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig } from "payload";
 
 const Media: CollectionConfig = {
-  slug: 'media',
+  slug: "media",
   upload: {
-    staticDir: 'media',
+    staticDir: "media",
     imageSizes: [
       {
-        name: 'thumbnail',
+        name: "thumbnail",
         width: 400,
         height: 300,
-        position: 'centre',
+        position: "centre",
       },
       {
-        name: 'card',
+        name: "card",
         width: 768,
         height: 1024,
-        position: 'centre',
+        position: "centre",
       },
       {
-        name: 'tablet',
+        name: "tablet",
         width: 1024,
         height: undefined,
-        position: 'centre',
+        position: "centre",
       },
     ],
-    adminThumbnail: 'thumbnail',
-    mimeTypes: ['image/*', 'application/pdf', 'text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+    adminThumbnail: "thumbnail",
+    mimeTypes: [
+      "image/*",
+      "application/pdf",
+      "text/csv",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ],
   },
   admin: {
-    useAsTitle: 'filename',
-    defaultColumns: ['filename', 'alt', 'mimeType', 'fileSize', 'createdAt'],
+    useAsTitle: "filename",
+    defaultColumns: ["filename", "alt", "mimeType", "fileSize", "createdAt"],
   },
   access: {
     read: () => true,
@@ -39,14 +45,14 @@ const Media: CollectionConfig = {
   },
   fields: [
     {
-      name: 'alt',
-      type: 'text',
+      name: "alt",
+      type: "text",
       admin: {
-        description: 'Alternative text for accessibility',
+        description: "Alternative text for accessibility",
       },
     },
   ],
   timestamps: true,
-}
+};
 
-export default Media
+export default Media;

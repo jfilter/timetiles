@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 import { createSeedManager } from "../lib/seed/index.js";
+import { createLogger, logError } from "../lib/logger.js";
+
+const logger = createLogger("seed-cli");
 
 async function main() {
   const args = process.argv.slice(2);
@@ -46,6 +49,7 @@ Examples:
 `);
     } else if (command === "truncate") {
       const collections = args.slice(1);
+      logger.info({ collections }, "Starting truncate operation");
       await seedManager.truncate(collections);
     } else {
       // Default to seed command
@@ -65,6 +69,7 @@ Examples:
         }
       }
 
+      logger.info({ environment, collections }, "Starting seed operation");
       await seedManager.seed({
         environment: environment as any,
         collections: collections.length > 0 ? collections : undefined,
@@ -72,7 +77,8 @@ Examples:
       });
     }
   } catch (error) {
-    console.error("❌ Seed operation failed:", error);
+    logError(error, "Seed operation failed", { command, args });
+    console.error("❌ Seed operation failed"); // User-facing error
     process.exit(1);
   } finally {
     await seedManager.cleanup();

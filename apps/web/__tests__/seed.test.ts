@@ -26,65 +26,78 @@ describe.sequential("Seed System", () => {
   describe.sequential("Seed Data Functions", () => {
     it("should generate user seeds for different environments", () => {
       const devUsers = userSeeds("development");
-      const testUsers = userSeeds("test");
       const prodUsers = userSeeds("production");
 
-      expect(devUsers.length).toBeGreaterThan(testUsers.length);
-      expect(testUsers.length).toBeGreaterThan(prodUsers.length);
+      // Development should have more users than production
+      expect(devUsers.length).toBeGreaterThan(prodUsers.length);
+      // All users should have required fields
       expect(devUsers.every((user) => user.email && user.password)).toBe(true);
+      expect(prodUsers.every((user) => user.email && user.password)).toBe(true);
     });
 
     it("should generate catalog seeds for different environments", () => {
       const devCatalogs = catalogSeeds("development");
-      const testCatalogs = catalogSeeds("test");
       const prodCatalogs = catalogSeeds("production");
 
-      expect(devCatalogs.length).toBeGreaterThan(testCatalogs.length);
-      expect(testCatalogs.length).toBeGreaterThan(prodCatalogs.length);
+      // Development should have more catalogs than production
+      expect(devCatalogs.length).toBeGreaterThan(prodCatalogs.length);
+      // All catalogs should have required fields
       expect(devCatalogs.every((catalog) => catalog.name && catalog.slug)).toBe(
         true,
       );
+      expect(
+        prodCatalogs.every((catalog) => catalog.name && catalog.slug),
+      ).toBe(true);
     });
 
     it("should generate dataset seeds for different environments", () => {
       const devDatasets = datasetSeeds("development");
-      const testDatasets = datasetSeeds("test");
       const prodDatasets = datasetSeeds("production");
 
-      expect(devDatasets.length).toBeGreaterThan(testDatasets.length);
-      expect(testDatasets.length).toBeGreaterThan(prodDatasets.length);
+      // Development should have more datasets than production
+      expect(devDatasets.length).toBeGreaterThan(prodDatasets.length);
+      // All datasets should have required fields
       expect(
         devDatasets.every((dataset) => dataset.name && dataset.schema),
+      ).toBe(true);
+      expect(
+        prodDatasets.every((dataset) => dataset.name && dataset.schema),
       ).toBe(true);
     });
 
     it("should generate event seeds for different environments", () => {
       const devEvents = eventSeeds("development");
-      const testEvents = eventSeeds("test");
       const prodEvents = eventSeeds("production");
 
+      // Development should have more events than production
       expect(devEvents.length).toBeGreaterThan(prodEvents.length);
-      expect(prodEvents.length).toBeGreaterThan(testEvents.length);
+      // All events should have required fields
       expect(devEvents.every((event) => event.dataset && event.data)).toBe(
+        true,
+      );
+      expect(prodEvents.every((event) => event.dataset && event.data)).toBe(
         true,
       );
     });
 
     it("should generate import seeds for different environments", () => {
       const devImports = importSeeds("development");
-      const testImports = importSeeds("test");
       const prodImports = importSeeds("production");
 
-      expect(devImports.length).toBeGreaterThan(testImports.length);
-      expect(testImports.length).toBeGreaterThan(prodImports.length);
+      // Development should have more imports than production
+      expect(devImports.length).toBeGreaterThan(prodImports.length);
+      // All imports should have required fields
       expect(devImports.every((imp) => imp.fileName && imp.catalog)).toBe(true);
+      expect(prodImports.every((imp) => imp.fileName && imp.catalog)).toBe(
+        true,
+      );
     });
   });
 
   describe.sequential("Seeding Operations", () => {
     it("should seed all collections in correct order", async () => {
       await testEnv.seedManager.truncate();
-      
+
       // Seed all collections at once to ensure dependencies are resolved
       await testEnv.seedManager.seed({
         environment: "test",
@@ -93,7 +106,7 @@ describe.sequential("Seed System", () => {
       // Check that all collections have data
       const collections = [
         "users",
-        "catalogs", 
+        "catalogs",
         "datasets",
         "events",
         "imports",
@@ -104,15 +117,23 @@ describe.sequential("Seed System", () => {
           collection,
           limit: 1,
         });
-        console.log(`Collection ${collection} has ${result.docs.length} records`);
+        console.log(
+          `Collection ${collection} has ${result.docs.length} records`,
+        );
         expect(result.docs.length).toBeGreaterThan(0);
       }
     });
 
     it("should handle specific collection seeding", async () => {
       // Explicitly truncate all collections to ensure clean state
-      await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events", "imports"]);
-      
+      await testEnv.seedManager.truncate([
+        "users",
+        "catalogs",
+        "datasets",
+        "events",
+        "imports",
+      ]);
+
       await testEnv.seedManager.seed({
         collections: ["users", "catalogs"],
         environment: "test",
@@ -133,8 +154,10 @@ describe.sequential("Seed System", () => {
         limit: 100,
       });
 
-      console.log(`Users: ${users.docs.length}, Catalogs: ${catalogs.docs.length}, Datasets: ${datasets.docs.length}`);
-      
+      console.log(
+        `Users: ${users.docs.length}, Catalogs: ${catalogs.docs.length}, Datasets: ${datasets.docs.length}`,
+      );
+
       expect(users.docs.length).toBeGreaterThan(0);
       expect(catalogs.docs.length).toBeGreaterThan(0);
       expect(datasets.docs.length).toBe(0); // Should not be seeded
@@ -152,7 +175,7 @@ describe.sequential("Seed System", () => {
       const collections = [
         "users",
         "catalogs",
-        "datasets", 
+        "datasets",
         "events",
         "imports",
       ];
@@ -172,9 +195,9 @@ describe.sequential("Seed System", () => {
       // Truncate all (with timeout protection)
       await Promise.race([
         testEnv.seedManager.truncate(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Truncate timeout')), 10000)
-        )
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Truncate timeout")), 10000),
+        ),
       ]);
 
       // Check that most collections are empty (allowing some that might not clear due to refs)
@@ -184,12 +207,14 @@ describe.sequential("Seed System", () => {
           collection,
           limit: 100,
         });
-        console.log(`After truncation, collection ${collection} has ${result.docs.length} records`);
+        console.log(
+          `After truncation, collection ${collection} has ${result.docs.length} records`,
+        );
         if (result.docs.length === 0) {
           emptiedCount++;
         }
       }
-      
+
       // Expect at least 3 out of 5 collections to be properly truncated
       expect(emptiedCount).toBeGreaterThanOrEqual(3);
     }, 15000); // 15 second timeout

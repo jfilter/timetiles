@@ -36,58 +36,71 @@ describe.sequential("Isolated Seed System", () => {
   describe.sequential("Seed Data Functions", () => {
     it("should generate user seeds for different environments", () => {
       const devUsers = userSeeds("development");
-      const testUsers = userSeeds("test");
       const prodUsers = userSeeds("production");
 
-      expect(devUsers.length).toBeGreaterThan(testUsers.length);
-      expect(testUsers.length).toBeGreaterThan(prodUsers.length);
+      // Development should have more users than production
+      expect(devUsers.length).toBeGreaterThan(prodUsers.length);
+      // All users should have required fields
       expect(devUsers.every((user) => user.email && user.password)).toBe(true);
+      expect(prodUsers.every((user) => user.email && user.password)).toBe(true);
     });
 
     it("should generate catalog seeds for different environments", () => {
       const devCatalogs = catalogSeeds("development");
-      const testCatalogs = catalogSeeds("test");
       const prodCatalogs = catalogSeeds("production");
 
-      expect(devCatalogs.length).toBeGreaterThan(testCatalogs.length);
-      expect(testCatalogs.length).toBeGreaterThan(prodCatalogs.length);
+      // Development should have more catalogs than production
+      expect(devCatalogs.length).toBeGreaterThan(prodCatalogs.length);
+      // All catalogs should have required fields
       expect(devCatalogs.every((catalog) => catalog.name && catalog.slug)).toBe(
         true,
       );
+      expect(
+        prodCatalogs.every((catalog) => catalog.name && catalog.slug),
+      ).toBe(true);
     });
 
     it("should generate dataset seeds for different environments", () => {
       const devDatasets = datasetSeeds("development");
-      const testDatasets = datasetSeeds("test");
       const prodDatasets = datasetSeeds("production");
 
-      expect(devDatasets.length).toBeGreaterThan(testDatasets.length);
-      expect(testDatasets.length).toBeGreaterThan(prodDatasets.length);
+      // Development should have more datasets than production
+      expect(devDatasets.length).toBeGreaterThan(prodDatasets.length);
+      // All datasets should have required fields
       expect(
         devDatasets.every((dataset) => dataset.name && dataset.schema),
+      ).toBe(true);
+      expect(
+        prodDatasets.every((dataset) => dataset.name && dataset.schema),
       ).toBe(true);
     });
 
     it("should generate event seeds for different environments", () => {
       const devEvents = eventSeeds("development");
-      const testEvents = eventSeeds("test");
       const prodEvents = eventSeeds("production");
 
+      // Development should have more events than production
       expect(devEvents.length).toBeGreaterThan(prodEvents.length);
-      expect(prodEvents.length).toBeGreaterThan(testEvents.length);
+      // All events should have required fields
       expect(devEvents.every((event) => event.dataset && event.data)).toBe(
+        true,
+      );
+      expect(prodEvents.every((event) => event.dataset && event.data)).toBe(
         true,
       );
     });
 
     it("should generate import seeds for different environments", () => {
       const devImports = importSeeds("development");
-      const testImports = importSeeds("test");
       const prodImports = importSeeds("production");
 
-      expect(devImports.length).toBeGreaterThan(testImports.length);
-      expect(testImports.length).toBeGreaterThan(prodImports.length);
+      // Development should have more imports than production
+      expect(devImports.length).toBeGreaterThan(prodImports.length);
+      // All imports should have required fields
       expect(devImports.every((imp) => imp.fileName && imp.catalog)).toBe(true);
+      expect(prodImports.every((imp) => imp.fileName && imp.catalog)).toBe(
+        true,
+      );
     });
   });
 
@@ -95,7 +108,7 @@ describe.sequential("Isolated Seed System", () => {
     it("should seed users collection", async () => {
       await testEnv.seedManager.seed({
         collections: ["users"],
-        environment: "test",
+        environment: "development",
         truncate: false,
       });
 
@@ -113,7 +126,7 @@ describe.sequential("Isolated Seed System", () => {
     it("should seed catalogs collection", async () => {
       await testEnv.seedManager.seed({
         collections: ["catalogs"],
-        environment: "test",
+        environment: "development",
         truncate: false,
       });
 
@@ -124,7 +137,9 @@ describe.sequential("Isolated Seed System", () => {
 
       expect(catalogs.docs.length).toBeGreaterThan(0);
       expect(
-        catalogs.docs.some((catalog: any) => catalog.name === "Test Catalog"),
+        catalogs.docs.some(
+          (catalog: any) => catalog.name === "Environmental Data",
+        ),
       ).toBe(true);
     });
 
@@ -132,14 +147,14 @@ describe.sequential("Isolated Seed System", () => {
       // First seed catalogs
       await testEnv.seedManager.seed({
         collections: ["catalogs"],
-        environment: "test",
+        environment: "development",
         truncate: false,
       });
 
       // Then seed datasets
       await testEnv.seedManager.seed({
         collections: ["datasets"],
-        environment: "test",
+        environment: "development",
         truncate: false,
       });
 
@@ -150,27 +165,27 @@ describe.sequential("Isolated Seed System", () => {
       });
 
       expect(datasets.docs.length).toBeGreaterThan(0);
-      // Look for any test dataset instead of specific slug
-      const testDataset = datasets.docs.find(
-        (dataset: any) => dataset.name === "Test Dataset",
+      // Look for a dataset that should exist in development environment
+      const airQualityDataset = datasets.docs.find(
+        (dataset: any) => dataset.name === "Air Quality Measurements",
       );
-      expect(testDataset).toBeDefined();
-      expect(testDataset.catalog).toBeDefined();
-      expect(typeof testDataset.catalog).toBe("object"); // Should be populated
+      expect(airQualityDataset).toBeDefined();
+      expect(airQualityDataset.catalog).toBeDefined();
+      expect(typeof airQualityDataset.catalog).toBe("object"); // Should be populated
     });
 
     it("should seed events with proper dataset relationships", async () => {
       // Seed prerequisites
       await testEnv.seedManager.seed({
         collections: ["catalogs", "datasets"],
-        environment: "test",
+        environment: "development",
         truncate: false,
       });
 
       // Then seed events
       await testEnv.seedManager.seed({
         collections: ["events"],
-        environment: "test",
+        environment: "development",
         truncate: false,
       });
 
@@ -181,26 +196,26 @@ describe.sequential("Isolated Seed System", () => {
       });
 
       expect(events.docs.length).toBeGreaterThan(0);
-      const testEvent = events.docs.find(
-        (event: any) => event.data.id === "test-001",
+      const airQualityEvent = events.docs.find(
+        (event: any) => event.data.station_id === "AQ001",
       );
-      expect(testEvent).toBeDefined();
-      expect(testEvent.dataset).toBeDefined();
-      expect(typeof testEvent.dataset).toBe("object"); // Should be populated
+      expect(airQualityEvent).toBeDefined();
+      expect(airQualityEvent.dataset).toBeDefined();
+      expect(typeof airQualityEvent.dataset).toBe("object"); // Should be populated
     });
 
     it("should seed imports with proper catalog relationships", async () => {
       // First seed catalogs
       await testEnv.seedManager.seed({
         collections: ["catalogs"],
-        environment: "test",
+        environment: "development",
         truncate: false,
       });
 
       // Then seed imports
       await testEnv.seedManager.seed({
         collections: ["imports"],
-        environment: "test",
+        environment: "development",
         truncate: false,
       });
 
@@ -211,17 +226,17 @@ describe.sequential("Isolated Seed System", () => {
       });
 
       expect(imports.docs.length).toBeGreaterThan(0);
-      const testImport = imports.docs.find(
-        (imp: any) => imp.fileName === "test_data.csv",
+      const airQualityImport = imports.docs.find(
+        (imp: any) => imp.fileName === "air_quality_2024_01_15.csv",
       );
-      expect(testImport).toBeDefined();
-      expect(testImport.catalog).toBeDefined();
-      expect(typeof testImport.catalog).toBe("object"); // Should be populated
+      expect(airQualityImport).toBeDefined();
+      expect(airQualityImport.catalog).toBeDefined();
+      expect(typeof airQualityImport.catalog).toBe("object"); // Should be populated
     });
 
     it("should seed all collections in correct order", async () => {
       await testEnv.seedManager.seed({
-        environment: "test",
+        environment: "development",
         truncate: false,
       });
 
@@ -250,7 +265,7 @@ describe.sequential("Isolated Seed System", () => {
       await expect(
         testEnv.seedManager.seed({
           collections: ["datasets"],
-          environment: "test",
+          environment: "development",
           truncate: false,
         }),
       ).resolves.toBeUndefined();
@@ -264,7 +279,7 @@ describe.sequential("Isolated Seed System", () => {
     it("should handle missing datasets for events", async () => {
       await testEnv.seedManager.seed({
         collections: ["catalogs"],
-        environment: "test",
+        environment: "development",
         truncate: false,
       });
 
@@ -272,7 +287,7 @@ describe.sequential("Isolated Seed System", () => {
       await expect(
         testEnv.seedManager.seed({
           collections: ["events"],
-          environment: "test",
+          environment: "development",
           truncate: false,
         }),
       ).resolves.toBeUndefined();
@@ -287,7 +302,7 @@ describe.sequential("Isolated Seed System", () => {
       await expect(
         testEnv.seedManager.seed({
           collections: ["invalid-collection"],
-          environment: "test",
+          environment: "development",
           truncate: false,
         }),
       ).resolves.toBeUndefined(); // The method completes but logs the error

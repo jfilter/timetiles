@@ -1,6 +1,4 @@
 {
   "index": "Overview",
-  "installation": "Installation",
-  "quick-start": "Quick Start",
-  "configuration": "Configuration"
+  "quick-start": "Development Setup"
 }

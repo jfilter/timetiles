@@ -1,7 +1,18 @@
 import type { User } from "../../../payload-types";
 
 // Use Payload type with specific omissions for seed data
-export type UserSeed = Omit<User, 'id' | 'createdAt' | 'updatedAt' | 'salt' | 'hash' | 'resetPasswordToken' | 'resetPasswordExpiration' | 'loginAttempts' | 'lockUntil'> & {
+export type UserSeed = Omit<
+  User,
+  | "id"
+  | "createdAt"
+  | "updatedAt"
+  | "salt"
+  | "hash"
+  | "resetPasswordToken"
+  | "resetPasswordExpiration"
+  | "loginAttempts"
+  | "lockUntil"
+> & {
   password: string; // Plain password for seeding, will be hashed
 };
 
@@ -24,20 +35,6 @@ export function userSeeds(environment: string): UserSeed[] {
       isActive: true,
     },
   ];
-
-  if (environment === "test") {
-    return [
-      ...baseUsers,
-      {
-        email: "testuser@example.com",
-        password: "test123",
-        firstName: "Test",
-        lastName: "User",
-        role: "user",
-        isActive: true,
-      },
-    ];
-  }
 
   if (environment === "development") {
     return [

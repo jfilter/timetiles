@@ -1,87 +1,43 @@
-# TimeTiles Documentation
+# TimeTiles
 
-> **Note:** TimeTiles is under active development. Features, APIs, and documentation may change frequently as we continue to improve the platform.
+> **Note:** TimeTiles is under active development.
 
-Welcome to the comprehensive documentation for TimeTiles - a powerful spatial data management platform built with Next.js, Payload CMS, and PostgreSQL with PostGIS.
-
-## What is TimeTiles?
-
-TimeTiles is a monorepo application designed for spatial data management and content administration. It provides:
-
-- **Spatial Data Management**: PostgreSQL with PostGIS for advanced spatial operations
-- **Content Management**: Payload CMS for structured content and user management
-- **Modern Stack**: Next.js 15, React 19, TypeScript, and Tailwind CSS
-- **Developer Experience**: Turborepo monorepo with pnpm and comprehensive tooling
+TimeTiles is a spatial data management platform built with Next.js, Payload CMS, and PostgreSQL with PostGIS.
 
 ## Quick Start
-
-Get up and running with TimeTiles in minutes:
 
 ```bash
 # Clone and setup
 git clone <repository-url>
 cd timetiles
-make setup
+pnpm install
+
+# Start database
+make up
+
+# Run migrations  
+cd apps/web && pnpm payload:migrate
 
 # Start development
-make dev
-
-# Set up Payload CMS
-cd apps/web
-pnpm payload create:user
+pnpm dev
 ```
 
-## Key Features
-
-### 🗺️ Spatial Data Management
-
-- PostGIS-enabled PostgreSQL database
-- Spatial event data with coordinates and timestamps
-- Geographic data visualization and analysis
-
-### 📊 Content Management
-
-- Payload CMS with rich collections
-- User management with role-based access
-- File uploads with image processing
-- GraphQL and REST APIs
-
-### 🏗️ Modern Architecture
-
-- Turborepo monorepo structure
-- Shared UI components with shadcn/ui
-- TypeScript throughout
-- Comprehensive testing and CI/CD
-
-### 🔧 Developer Tools
-
-- Docker development environment
-- Comprehensive seed system
-- Make commands for common tasks
-- Automated testing and validation
-
-## Documentation Structure
-
-- **[Getting Started](/getting-started)** - Installation, setup, and basic configuration
-- **[User Guides](/guides)** - How to use TimeTiles features and workflows
-- **[API Reference](/api)** - Complete API documentation for all endpoints
-- **[Development](/development)** - Developer guides, architecture, and contributing
-- **[Reference](/reference)** - Technical reference and troubleshooting
+Visit http://localhost:3000 to see the application.
 
 ## Technology Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript
-- **CMS**: Payload CMS with PostgreSQL adapter
-- **UI**: shadcn/ui, Tailwind CSS, Lucide React
-- **Database**: PostgreSQL 17 with PostGIS extension
-- **Package Manager**: pnpm
-- **Build Tool**: Turbo
+- **CMS**: Payload CMS with PostgreSQL
+- **UI**: shadcn/ui, Tailwind CSS
+- **Database**: PostgreSQL with PostGIS
+- **Monorepo**: Turborepo with pnpm
 
-## Getting Help
+## Features
 
-- Check the [troubleshooting guide](/reference/troubleshooting)
-- Review the [development setup](/development/setup)
-- Explore the [API documentation](/api)
-- See the [contributing guide](/development/contributing)
+- Event data import system (CSV/Excel)
+- Background job processing
+- Geocoding integration
+- Spatial data management
+- Admin interface with Payload CMS
 
-Ready to get started? Head over to the [Getting Started](/getting-started) guide!
+Ready to get started? Check out the [development setup guide](/getting-started/quick-start).

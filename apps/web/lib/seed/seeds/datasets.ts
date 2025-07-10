@@ -1,7 +1,10 @@
 import type { Dataset } from "../../../payload-types";
 
 // Use Payload type with specific modifications for seed data
-export type DatasetSeed = Omit<Dataset, 'id' | 'createdAt' | 'updatedAt' | 'catalog'> & {
+export type DatasetSeed = Omit<
+  Dataset,
+  "id" | "createdAt" | "updatedAt" | "catalog"
+> & {
   catalog: string; // This will be resolved to catalog ID during seeding
 };
 
@@ -118,49 +121,6 @@ export function datasetSeeds(environment: string): DatasetSeed[] {
       },
     },
   ];
-
-  if (environment === "test") {
-    return [
-      ...baseDatasets,
-      {
-        name: "Test Dataset",
-        description: {
-          root: {
-            type: "root",
-            children: [
-              {
-                type: "paragraph",
-                version: 1,
-                children: [
-                  {
-                    type: "text",
-                    text: "A simple test dataset for automated testing.",
-                    version: 1,
-                  },
-                ],
-              },
-            ],
-            direction: "ltr",
-            format: "",
-            indent: 0,
-            version: 1,
-          },
-        },
-        slug: "test-dataset",
-        catalog: "test-catalog",
-        language: "eng",
-        status: "active",
-        isPublic: false,
-        schema: {
-          type: "object",
-          properties: {
-            id: { type: "string" },
-            value: { type: "number" },
-          },
-        },
-      },
-    ];
-  }
 
   if (environment === "development") {
     return [

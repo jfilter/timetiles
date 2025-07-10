@@ -1,7 +1,7 @@
 import type { Catalog } from "../../../payload-types";
 
 // Use Payload type with specific omissions for seed data
-export type CatalogSeed = Omit<Catalog, 'id' | 'createdAt' | 'updatedAt'>;
+export type CatalogSeed = Omit<Catalog, "id" | "createdAt" | "updatedAt">;
 
 export function catalogSeeds(environment: string): CatalogSeed[] {
   const baseCatalogs: CatalogSeed[] = [
@@ -60,39 +60,6 @@ export function catalogSeeds(environment: string): CatalogSeed[] {
       status: "active",
     },
   ];
-
-  if (environment === "test") {
-    return [
-      ...baseCatalogs,
-      {
-        name: "Test Catalog",
-        description: {
-          root: {
-            type: "root",
-            children: [
-              {
-                type: "paragraph",
-                version: 1,
-                children: [
-                  {
-                    type: "text",
-                    text: "A test catalog for automated testing purposes.",
-                    version: 1,
-                  },
-                ],
-              },
-            ],
-            direction: "ltr",
-            format: "",
-            indent: 0,
-            version: 1,
-          },
-        },
-        slug: "test-catalog",
-        status: "active",
-      },
-    ];
-  }
 
   if (environment === "development") {
     return [

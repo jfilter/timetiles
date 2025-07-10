@@ -1,4 +1,7 @@
 import type { Payload } from "payload";
+import { createLogger } from "../logger";
+
+const logger = createLogger("rate-limit-service");
 
 interface RateLimitEntry {
   count: number;
@@ -16,6 +19,7 @@ export class RateLimitService {
 
     // Clean up expired entries every 5 minutes (skip in test environment)
     if (process.env.NODE_ENV !== "test") {
+      logger.info("Starting rate limit cleanup interval");
       this.cleanupInterval = setInterval(
         () => {
           this.cleanup();
@@ -30,6 +34,7 @@ export class RateLimitService {
    */
   destroy(): void {
     if (this.cleanupInterval) {
+      logger.debug("Destroying rate limit service");
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
@@ -75,6 +80,10 @@ export class RateLimitService {
 
     // If already blocked, deny request
     if (entry.blocked) {
+      logger.debug(
+        { identifier, resetTime: new Date(entry.resetTime) },
+        "Request denied - identifier blocked",
+      );
       return {
         allowed: false,
         remaining: 0,
@@ -89,6 +98,10 @@ export class RateLimitService {
     // Check if limit exceeded
     if (entry.count > limit) {
       entry.blocked = true;
+      logger.info(
+        { identifier, count: entry.count, limit },
+        "Rate limit exceeded - blocking identifier",
+      );
 
       // Log rate limit violation
       await this.logRateLimitViolation(identifier, entry.count, limit);
@@ -144,6 +157,7 @@ export class RateLimitService {
       blocked: true,
     };
     this.cache.set(identifier, entry);
+    logger.warn({ identifier, durationMs }, "Identifier blocked");
   }
 
   /**
@@ -178,10 +192,15 @@ export class RateLimitService {
    */
   private cleanup(): void {
     const now = Date.now();
+    let cleanedCount = 0;
     for (const [identifier, entry] of this.cache.entries()) {
       if (now >= entry.resetTime) {
         this.cache.delete(identifier);
+        cleanedCount++;
       }
+    }
+    if (cleanedCount > 0) {
+      logger.debug({ cleanedCount }, "Cleaned up expired rate limit entries");
     }
   }
 
@@ -194,8 +213,13 @@ export class RateLimitService {
     limit: number,
   ): Promise<void> {
     try {
-      console.warn(
-        `Rate limit exceeded for ${identifier}: ${attemptedCount}/${limit}`,
+      logger.warn(
+        {
+          identifier,
+          attemptedCount,
+          limit,
+        },
+        "Rate limit exceeded",
       );
 
       // You could also store this in a database for monitoring
@@ -209,7 +233,7 @@ export class RateLimitService {
       //   }
       // })
     } catch (error) {
-      console.error("Failed to log rate limit violation:", error);
+      logger.error({ error, identifier }, "Failed to log rate limit violation");
     }
   }
 
