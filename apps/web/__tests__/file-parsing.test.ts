@@ -3,6 +3,10 @@ import { vi } from "vitest";
 
 const mockFs = {
   readFileSync: vi.fn(),
+  existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  writeFileSync: vi.fn(),
+  unlinkSync: vi.fn(),
 };
 
 const mockPapa = {

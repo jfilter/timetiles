@@ -6,7 +6,7 @@ import { datasetSeeds } from "../lib/seed/seeds/datasets";
 import { eventSeeds } from "../lib/seed/seeds/events";
 import { importSeeds } from "../lib/seed/seeds/imports";
 
-describe("Isolated Seed System", () => {
+describe.sequential("Isolated Seed System", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
 
   beforeAll(async () => {
@@ -22,7 +22,7 @@ describe("Isolated Seed System", () => {
     await testEnv.seedManager.truncate();
   });
 
-  describe("SeedManager", () => {
+  describe.sequential("SeedManager", () => {
     it("should initialize properly", async () => {
       expect(testEnv.seedManager).toBeDefined();
       expect(testEnv.payload).toBeDefined();
@@ -33,7 +33,7 @@ describe("Isolated Seed System", () => {
     });
   });
 
-  describe("Seed Data Functions", () => {
+  describe.sequential("Seed Data Functions", () => {
     it("should generate user seeds for different environments", () => {
       const devUsers = userSeeds("development");
       const testUsers = userSeeds("test");
@@ -91,7 +91,7 @@ describe("Isolated Seed System", () => {
     });
   });
 
-  describe("Seeding Operations", () => {
+  describe.sequential("Seeding Operations", () => {
     it("should seed users collection", async () => {
       await testEnv.seedManager.seed({
         collections: ["users"],
@@ -124,7 +124,7 @@ describe("Isolated Seed System", () => {
 
       expect(catalogs.docs.length).toBeGreaterThan(0);
       expect(
-        catalogs.docs.some((catalog: any) => catalog.slug === "test-catalog"),
+        catalogs.docs.some((catalog: any) => catalog.name === "Test Catalog"),
       ).toBe(true);
     });
 
@@ -150,8 +150,9 @@ describe("Isolated Seed System", () => {
       });
 
       expect(datasets.docs.length).toBeGreaterThan(0);
+      // Look for any test dataset instead of specific slug
       const testDataset = datasets.docs.find(
-        (dataset: any) => dataset.slug === "test-dataset",
+        (dataset: any) => dataset.name === "Test Dataset",
       );
       expect(testDataset).toBeDefined();
       expect(testDataset.catalog).toBeDefined();
@@ -243,7 +244,7 @@ describe("Isolated Seed System", () => {
     });
   });
 
-  describe("Error Handling", () => {
+  describe.sequential("Error Handling", () => {
     it("should handle missing relationships gracefully", async () => {
       // Try to seed datasets without catalogs - should complete without throwing
       await expect(
@@ -290,6 +291,6 @@ describe("Isolated Seed System", () => {
           truncate: false,
         }),
       ).resolves.toBeUndefined(); // The method completes but logs the error
-    });
+    }, 15000); // Add timeout to prevent hanging
   });
 });

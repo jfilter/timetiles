@@ -16,7 +16,7 @@ import {
 } from "../lib/services/RateLimitService";
 import { createIsolatedTestEnvironment } from "./test-helpers";
 
-describe("RateLimitService", () => {
+describe.sequential("RateLimitService", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
   let payload: any;
   let rateLimitService: RateLimitService;
@@ -39,7 +39,7 @@ describe("RateLimitService", () => {
     rateLimitService["cache"].clear();
   });
 
-  describe("checkRateLimit", () => {
+  describe.sequential("checkRateLimit", () => {
     const testIdentifier = "test-client-123";
     const limit = 5;
     const windowMs = 60 * 1000; // 1 minute
@@ -166,7 +166,7 @@ describe("RateLimitService", () => {
     });
   });
 
-  describe("getRateLimitStatus", () => {
+  describe.sequential("getRateLimitStatus", () => {
     const testIdentifier = "status-test-client";
     const limit = 3;
     const windowMs = 60 * 1000;
@@ -210,7 +210,7 @@ describe("RateLimitService", () => {
     });
   });
 
-  describe("resetRateLimit", () => {
+  describe.sequential("resetRateLimit", () => {
     const testIdentifier = "reset-test-client";
     const limit = 3;
     const windowMs = 60 * 1000;
@@ -271,7 +271,7 @@ describe("RateLimitService", () => {
     });
   });
 
-  describe("blockIdentifier", () => {
+  describe.sequential("blockIdentifier", () => {
     const testIdentifier = "block-test-client";
     const limit = 5;
     const windowMs = 60 * 1000;
@@ -333,7 +333,7 @@ describe("RateLimitService", () => {
     });
   });
 
-  describe("getRateLimitHeaders", () => {
+  describe.sequential("getRateLimitHeaders", () => {
     const testIdentifier = "headers-test-client";
     const limit = 5;
 
@@ -379,7 +379,7 @@ describe("RateLimitService", () => {
     });
   });
 
-  describe("cleanup", () => {
+  describe.sequential("cleanup", () => {
     it("should remove expired entries", async () => {
       const shortWindow = 50;
       const identifier1 = "cleanup-client-1";
@@ -401,7 +401,7 @@ describe("RateLimitService", () => {
     });
   });
 
-  describe("getStatistics", () => {
+  describe.sequential("getStatistics", () => {
     it("should return correct statistics", async () => {
       const client1 = "stats-client-1";
       const client2 = "stats-client-2";
@@ -432,7 +432,7 @@ describe("RateLimitService", () => {
   });
 });
 
-describe("getRateLimitService", () => {
+describe.sequential("getRateLimitService", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
   let payload: any;
 
@@ -445,16 +445,18 @@ describe("getRateLimitService", () => {
     await testEnv.cleanup();
   });
 
-  it("should return singleton instance", () => {
+  it("should return new instances in test environment for isolation", () => {
     const service1 = getRateLimitService(payload);
     const service2 = getRateLimitService(payload);
 
-    expect(service1).toBe(service2);
+    // In test environment, should return new instances for isolation
+    expect(service1).not.toBe(service2);
     expect(service1).toBeInstanceOf(RateLimitService);
+    expect(service2).toBeInstanceOf(RateLimitService);
   });
 });
 
-describe("getClientIdentifier", () => {
+describe.sequential("getClientIdentifier", () => {
   it("should extract IP from x-forwarded-for header", () => {
     const request = new Request("http://localhost", {
       headers: {
@@ -520,7 +522,7 @@ describe("getClientIdentifier", () => {
   });
 });
 
-describe("RATE_LIMITS constants", () => {
+describe.sequential("RATE_LIMITS constants", () => {
   it("should have correct rate limit configurations", () => {
     expect(RATE_LIMITS.FILE_UPLOAD.limit).toBe(5);
     expect(RATE_LIMITS.FILE_UPLOAD.windowMs).toBe(60 * 60 * 1000);
