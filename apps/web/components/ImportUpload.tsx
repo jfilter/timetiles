@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, useRef } from "react";
+import type { Import } from "../payload-types";
 
+// Use Payload types more directly for better type safety
 interface ImportProgress {
   importId: string;
-  status: "pending" | "processing" | "completed" | "failed";
-  stage: string;
+  status: Import['status'];
+  stage: Import['processingStage'];
   progress: {
     current: number;
     total: number;
     percentage: number;
+    createdEvents: number;
   };
   stageProgress: {
     stage: string;
@@ -20,7 +23,7 @@ interface ImportProgress {
     totalBatches: number;
     batchSize: number;
   };
-  geocodingStats: Record<string, unknown>;
+  geocodingStats: Import['geocodingStats'];
   currentJob?: {
     id: string;
     status: string;

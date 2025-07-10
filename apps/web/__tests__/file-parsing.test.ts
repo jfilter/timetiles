@@ -5,6 +5,7 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import path from "path";
 import os from "os";
+import type { Event, Dataset } from "../payload-types";
 
 describe("File Parsing", () => {
   let tempDir: string;
@@ -203,7 +204,7 @@ Event 2,2024-03-16
       
       // Parse first sheet
       const firstSheet = readWorkbook.Sheets[readWorkbook.SheetNames[0]!];
-      const firstSheetData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+      const firstSheetData = firstSheet ? XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) : [];
       expect(firstSheetData[0]).toEqual(["title", "date"]);
       expect(firstSheetData[1]).toEqual(["Event 1", "2024-03-15"]);
     });
@@ -223,10 +224,10 @@ Event 2,2024-03-16
       const readWorkbook = XLSX.read(excelBuffer, { type: 'buffer' });
       const sheetName = readWorkbook.SheetNames[0];
       const readWorksheet = readWorkbook.Sheets[sheetName!];
-      const rawData = XLSX.utils.sheet_to_json(readWorksheet, {
+      const rawData = readWorksheet ? XLSX.utils.sheet_to_json(readWorksheet, {
         header: 1,
         defval: "",
-      }) as any[];
+      }) : [] as any[];
 
       // Convert to object format (same logic as in import jobs)
       const headers = (rawData[0] as string[]).map((h) =>

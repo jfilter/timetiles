@@ -492,10 +492,10 @@ describe("GeocodingService", () => {
       expect(result.summary.successful).toBe(1);
       expect(result.summary.failed).toBe(2);
 
-      const mainStResult = result.results.get(testAddresses[0]);
+      const mainStResult = result.results.get(testAddresses[0]!);
       expect(mainStResult).toHaveProperty("latitude");
 
-      const failedResult = result.results.get(testAddresses[1]);
+      const failedResult = result.results.get(testAddresses[1]!);
       expect(failedResult).toBeInstanceOf(GeocodingError);
     });
 
@@ -514,8 +514,8 @@ describe("GeocodingService", () => {
       await payload.create({
         collection: "location-cache",
         data: {
-          address: uniqueAddresses[0],
-          normalizedAddress: uniqueAddresses[0].toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim(),
+          address: uniqueAddresses[0]!,
+          normalizedAddress: uniqueAddresses[0]!.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim(),
           latitude: 37.7749,
           longitude: -122.4194,
           provider: "google",
@@ -770,7 +770,7 @@ describe("GeocodingService", () => {
 
       expect(result.summary.successful).toBe(2);
       expect(result.summary.failed).toBe(1);
-      expect(result.results.get(testAddresses[1])).toBeInstanceOf(GeocodingError);
+      expect(result.results.get(testAddresses[1]!)).toBeInstanceOf(GeocodingError);
     });
 
     it("should handle cache errors gracefully", async () => {

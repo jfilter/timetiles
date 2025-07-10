@@ -5,6 +5,7 @@ import { catalogSeeds } from "./seeds/catalogs";
 import { datasetSeeds } from "./seeds/datasets";
 import { eventSeeds } from "./seeds/events";
 import { importSeeds } from "./seeds/imports";
+import type { User, Catalog, Dataset, Event, Import, Config } from "../../payload-types";
 
 export interface SeedOptions {
   collections?: string[];
@@ -95,7 +96,7 @@ export class SeedManager {
         }
 
         await this.payload!.create({
-          collection: collection as any,
+          collection: collection as keyof Config['collections'],
           data: resolvedItem,
         });
 
@@ -186,7 +187,7 @@ export class SeedManager {
 
           while (hasMore) {
             const items = await this.payload!.find({
-              collection: collection as any,
+              collection: collection as keyof Config['collections'],
               limit: 1000, // Get more items at once
               depth: 0,
             });
@@ -200,7 +201,7 @@ export class SeedManager {
             for (const item of items.docs) {
               try {
                 await this.payload!.delete({
-                  collection: collection as any,
+                  collection: collection as keyof Config['collections'],
                   id: item.id,
                 });
                 totalDeleted++;
@@ -388,7 +389,7 @@ export class SeedManager {
   async getCollectionCount(collection: string): Promise<number> {
     await this.initialize();
     const result = await this.payload!.find({
-      collection: collection as any,
+      collection: collection as keyof Config['collections'],
       limit: 0, // Only get count, not documents
     });
     return result.totalDocs;

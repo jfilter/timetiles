@@ -6,11 +6,13 @@ import {
   getClientIdentifier,
   RATE_LIMITS,
 } from "../../../../../../lib/services/RateLimitService";
+import type { Import } from "../../../../../../payload-types";
 
-interface ProgressResponse {
+// Use Payload types directly instead of custom interfaces
+type ProgressResponse = {
   importId: string;
-  status: string;
-  stage: string;
+  status: Import['status'];
+  stage: Import['processingStage'];
   progress: {
     current: number;
     total: number;
@@ -26,40 +28,24 @@ interface ProgressResponse {
     totalBatches: number;
     batchSize: number;
   };
-  geocodingStats: Record<string, unknown>;
+  geocodingStats: Import['geocodingStats'];
   currentJob?: {
     id: string;
     status: string;
     progress: number;
   };
   estimatedTimeRemaining?: number;
-}
+};
 
-interface ProgressCounts {
+// Use Payload's progress type structure but simplified for calculations
+type ProgressCounts = {
   totalRows: number;
   processedRows: number;
   geocodedRows: number;
   createdEvents: number;
-}
+};
 
-interface ImportRecord {
-  progress?: {
-    totalRows?: number | null;
-    processedRows?: number | null;
-    geocodedRows?: number | null;
-    createdEvents?: number | null;
-  };
-  processingStage?: string | null;
-  currentJobId?: string | null;
-  status?: string | null;
-  batchInfo?: {
-    currentBatch?: number | null;
-    totalBatches?: number | null;
-    batchSize?: number | null;
-  };
-  geocodingStats?: Record<string, unknown>;
-  importedAt?: string | null;
-}
+// Use the generated Import type instead of custom interface
 
 export async function GET(
   request: NextRequest,
@@ -75,7 +61,7 @@ export async function GET(
     const rateLimitService = getRateLimitService(payload);
 
     // Find the import record
-    let importRecord: ImportRecord;
+    let importRecord: Import;
     try {
       importRecord = await payload.findByID({
         collection: "imports",
@@ -160,7 +146,7 @@ export async function GET(
   }
 }
 
-function calculateStageProgress(stage: string, counts: ProgressCounts) {
+function calculateStageProgress(stage: Import['processingStage'], counts: ProgressCounts) {
   switch (stage) {
     case "file-parsing":
       return { stage: "Parsing file...", percentage: 10 };
@@ -186,7 +172,7 @@ function calculateStageProgress(stage: string, counts: ProgressCounts) {
   }
 }
 
-function calculateEstimatedTime(importRecord: ImportRecord): number | undefined {
+function calculateEstimatedTime(importRecord: Import): number | undefined {
   // Simple estimation based on processing speed
   const totalRows = importRecord.progress?.totalRows || 0;
   const processedRows = importRecord.progress?.processedRows || 0;

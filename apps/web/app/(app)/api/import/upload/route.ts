@@ -10,6 +10,10 @@ import {
   getClientIdentifier,
   RATE_LIMITS,
 } from "../../../../../lib/services/RateLimitService";
+import type { Catalog, Dataset, Import, User } from "../../../../../payload-types";
+
+// Type for creating new import records, excluding auto-generated fields
+type CreateImportData = Omit<Import, 'id' | 'createdAt' | 'updatedAt'>;
 
 
 
@@ -68,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from request (if authenticated)
-    const user: { id: number } | null = request.headers.get("authorization")
+    const user: Pick<User, 'id'> | null = request.headers.get("authorization")
       ? await getUserFromToken(request.headers.get("authorization")!)
       : null;
 
@@ -126,7 +130,7 @@ export async function POST(request: NextRequest) {
 
     // Verify catalog exists
     console.log("Looking for catalog with ID:", catalogId);
-    let catalog;
+    let catalog: Catalog;
     try {
       catalog = await payload.findByID({
         collection: "catalogs",
@@ -145,10 +149,11 @@ export async function POST(request: NextRequest) {
     // Verify dataset exists if provided
     if (datasetId) {
       try {
-        await payload.findByID({
+        const dataset: Dataset = await payload.findByID({
           collection: "datasets",
           id: datasetId,
         });
+        console.log("Found dataset:", dataset.name);
       } catch (_: unknown) {
         return NextResponse.json(
           { success: false, message: "Dataset not found" },
@@ -190,12 +195,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Create import record
-    let importRecord;
+    let importRecord: Import;
     try {
       console.log("Creating import record with catalogId:", catalogId);
       console.log("catalogId type:", typeof catalogId);
 
-      const importData = {
+      const importData: CreateImportData = {
         fileName: uniqueFileName,
         originalName: file.name,
         catalog: catalogId,
@@ -203,8 +208,8 @@ export async function POST(request: NextRequest) {
         mimeType: file.type,
         user: user?.id || null,
         sessionId: sessionId || null,
-        status: "pending" as const,
-        processingStage: "file-parsing" as const,
+        status: "pending",
+        processingStage: "file-parsing",
         importedAt: new Date().toISOString(),
         rowCount: rowCount,
         errorCount: 0,
@@ -303,7 +308,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getUserFromToken(_: string): Promise<{ id: number } | null> {
+async function getUserFromToken(_: string): Promise<Pick<User, 'id'> | null> {
   // This would implement JWT token validation
   // For now, return null (unauthenticated)
   return null;
