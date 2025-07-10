@@ -1,14 +1,10 @@
-export interface EventSeed {
+import type { Event } from "../../../payload-types";
+
+// Use Payload type with specific modifications for seed data
+export type EventSeed = Omit<Event, 'id' | 'createdAt' | 'updatedAt' | 'dataset' | 'import' | 'eventTimestamp'> & {
   dataset: string; // This will be resolved to dataset ID during seeding
-  data: Record<string, unknown>;
-  location?: {
-    latitude?: number;
-    longitude?: number;
-  };
-  eventTimestamp: Date;
-  isValid: boolean;
-  validationErrors?: Record<string, unknown>;
-}
+  eventTimestamp: Date; // Use Date object for easier seed data handling
+};
 
 export function eventSeeds(environment: string): EventSeed[] {
   const baseEvents: EventSeed[] = [

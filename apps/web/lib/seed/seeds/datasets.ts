@@ -1,14 +1,9 @@
-export interface DatasetSeed {
-  name: string;
-  description?: Record<string, unknown>;
-  slug?: string;
+import type { Dataset } from "../../../payload-types";
+
+// Use Payload type with specific modifications for seed data
+export type DatasetSeed = Omit<Dataset, 'id' | 'createdAt' | 'updatedAt' | 'catalog'> & {
   catalog: string; // This will be resolved to catalog ID during seeding
-  language: string;
-  status: "draft" | "active" | "archived";
-  isPublic: boolean;
-  schema: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
-}
+};
 
 export function datasetSeeds(environment: string): DatasetSeed[] {
   const baseDatasets: DatasetSeed[] = [
@@ -20,14 +15,20 @@ export function datasetSeeds(environment: string): DatasetSeed[] {
           children: [
             {
               type: "paragraph",
+              version: 1,
               children: [
                 {
                   type: "text",
                   text: "Real-time air quality measurements from monitoring stations across the city.",
+                  version: 1,
                 },
               ],
             },
           ],
+          direction: "ltr",
+          format: "",
+          indent: 0,
+          version: 1,
         },
       },
       slug: "air-quality-measurements",
@@ -73,14 +74,20 @@ export function datasetSeeds(environment: string): DatasetSeed[] {
           children: [
             {
               type: "paragraph",
+              version: 1,
               children: [
                 {
                   type: "text",
                   text: "Quarterly GDP growth rates by country and region.",
+                  version: 1,
                 },
               ],
             },
           ],
+          direction: "ltr",
+          format: "",
+          indent: 0,
+          version: 1,
         },
       },
       slug: "gdp-growth-rates",
@@ -123,14 +130,20 @@ export function datasetSeeds(environment: string): DatasetSeed[] {
             children: [
               {
                 type: "paragraph",
+                version: 1,
                 children: [
                   {
                     type: "text",
                     text: "A simple test dataset for automated testing.",
+                    version: 1,
                   },
                 ],
               },
             ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            version: 1,
           },
         },
         slug: "test-dataset",
@@ -160,14 +173,20 @@ export function datasetSeeds(environment: string): DatasetSeed[] {
             children: [
               {
                 type: "paragraph",
+                version: 1,
                 children: [
                   {
                     type: "text",
                     text: "Daily engagement metrics from social media platforms.",
+                    version: 1,
                   },
                 ],
               },
             ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            version: 1,
           },
         },
         slug: "social-media-engagement",
@@ -199,14 +218,20 @@ export function datasetSeeds(environment: string): DatasetSeed[] {
             children: [
               {
                 type: "paragraph",
+                version: 1,
                 children: [
                   {
                     type: "text",
                     text: "Historical weather data that is no longer actively maintained.",
+                    version: 1,
                   },
                 ],
               },
             ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            version: 1,
           },
         },
         slug: "historical-weather-data",

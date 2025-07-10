@@ -1,17 +1,11 @@
-export interface ImportSeed {
-  fileName: string;
-  originalName?: string;
+import type { Import } from "../../../payload-types";
+
+// Use Payload type with specific modifications for seed data
+export type ImportSeed = Omit<Import, 'id' | 'createdAt' | 'updatedAt' | 'catalog' | 'user' | 'importedAt' | 'completedAt'> & {
   catalog: string; // This will be resolved to catalog ID during seeding
-  fileSize?: number;
-  mimeType?: string;
-  status: "pending" | "processing" | "completed" | "failed";
-  importedAt?: Date;
-  completedAt?: Date;
-  rowCount: number;
-  errorCount: number;
-  errorLog?: string;
-  metadata?: Record<string, unknown>;
-}
+  importedAt?: Date; // Use Date object for easier seed data handling
+  completedAt?: Date; // Use Date object for easier seed data handling
+};
 
 export function importSeeds(environment: string): ImportSeed[] {
   const baseImports: ImportSeed[] = [
