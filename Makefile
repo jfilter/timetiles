@@ -1,4 +1,4 @@
-.PHONY: up down logs db-reset db-shell clean setup dev build lint format test help
+.PHONY: up down logs db-reset db-shell clean setup dev build lint format test seed help
 
 # Start the development environment
 up:
@@ -68,14 +68,6 @@ test:
 seed:
 	pnpm seed
 
-# Run seed system integration tests
-seed-integration:
-	pnpm seed:integration
-
-# Setup seed system (runs infrastructure + migrations + seeding)
-seed-setup:
-	./scripts/setup-seed-system.sh
-
 # Full development setup (infrastructure + dev server)
 dev-full: up
 	@echo "⏳ Waiting for services to be ready..."
@@ -98,10 +90,8 @@ help:
 	@echo "  format      - Format code with Prettier"
 	@echo "  test        - Run tests"
 	@echo ""
-	@echo "🌱 Database Seeding:"
-	@echo "  seed        - Seed database (use 'pnpm seed help' for options)"
-	@echo "  seed-integration - Run seed system tests"
-	@echo "  seed-setup  - Full seed system setup"
+	@echo "🌱 Database:"
+	@echo "  seed        - Seed database with sample data"
 	@echo ""
 	@echo "🐳 Infrastructure:"
 	@echo "  up          - Start development environment"

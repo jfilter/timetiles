@@ -1,5 +1,7 @@
 // import type { TaskHandlerArgs } from "payload"; // TODO: Use for better typing
 import { GeocodingService } from "../services/geocoding/GeocodingService";
+import { GeoLocationDetector } from "../services/import/GeoLocationDetector";
+import { CoordinateValidator } from "../services/import/CoordinateValidator";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import fs from "fs";
@@ -178,6 +180,40 @@ export const fileParsingJob = {
         "Row validation completed",
       );
 
+      // Detect coordinate columns
+      const geoDetector = new GeoLocationDetector();
+      const headers = Object.keys(parsedData[0] || {});
+      const sampleRows = parsedData.slice(0, Math.min(20, parsedData.length));
+      const geoColumns = geoDetector.detectGeoColumns(headers, sampleRows);
+
+      logger.info(
+        {
+          detected: geoColumns.found,
+          type: geoColumns.type,
+          confidence: geoColumns.confidence,
+          method: geoColumns.detectionMethod,
+        },
+        "Coordinate detection completed",
+      );
+
+      // Update import with coordinate detection results
+      const coordinateDetectionData = {
+        detected: geoColumns.found,
+        detectionMethod: geoColumns.detectionMethod || "none",
+        columnMapping: geoColumns.found ? {
+          latitudeColumn: geoColumns.latColumn || null,
+          longitudeColumn: geoColumns.lonColumn || null,
+          combinedColumn: geoColumns.combinedColumn || null,
+          coordinateFormat: geoColumns.format || "decimal",
+        } : {},
+        detectionConfidence: geoColumns.confidence || 0,
+        sampleValidation: {
+          validSamples: 0,
+          invalidSamples: 0,
+          swappedCoordinates: geoColumns.swappedCoordinates || false,
+        },
+      };
+
       // Update progress
       await payload.update({
         collection: "imports",
@@ -195,6 +231,7 @@ export const fileParsingJob = {
             percentage: 0,
           },
           processingStage: "row-processing",
+          coordinateDetection: coordinateDetectionData,
         },
       });
 
@@ -323,9 +360,14 @@ export const batchProcessingJob = {
 
       logger.debug("Processing batch data");
 
+      // Initialize coordinate validator
+      const coordinateValidator = new CoordinateValidator();
+      const hasCoordinates = currentImport.coordinateDetection?.detected || false;
+      const columnMapping = currentImport.coordinateDetection?.columnMapping;
+
       const processedData = batchData.map((row) => {
         // Normalize and validate data
-        const processedRow = {
+        const processedRow: any = {
           title: (row.title as string)?.toString().trim(),
           description: (row.description as string)?.toString().trim() || "",
           date: parseDate(row.date as string),
@@ -343,6 +385,47 @@ export const batchProcessingJob = {
             : [],
           originalData: row,
         };
+
+        // Extract coordinates if detected
+        if (hasCoordinates && columnMapping) {
+          let extractedCoords: { latitude: number | null; longitude: number | null } | null = null;
+
+          if (columnMapping.latitudeColumn && columnMapping.longitudeColumn) {
+            // Separate columns
+            const latValue = row[columnMapping.latitudeColumn];
+            const lonValue = row[columnMapping.longitudeColumn];
+            const lat = coordinateValidator.parseCoordinate(latValue);
+            const lon = coordinateValidator.parseCoordinate(lonValue);
+            
+            const validated = coordinateValidator.validateCoordinates(lat, lon, true);
+            if (validated.isValid) {
+              extractedCoords = {
+                latitude: validated.latitude,
+                longitude: validated.longitude,
+              };
+              processedRow.coordinateValidation = validated;
+            }
+          } else if (columnMapping.combinedColumn) {
+            // Combined column
+            const combinedValue = row[columnMapping.combinedColumn];
+            const extraction = coordinateValidator.extractFromCombined(
+              combinedValue,
+              columnMapping.coordinateFormat || "combined_comma"
+            );
+            
+            if (extraction.isValid && extraction.latitude !== null && extraction.longitude !== null) {
+              extractedCoords = {
+                latitude: extraction.latitude,
+                longitude: extraction.longitude,
+              };
+            }
+          }
+
+          if (extractedCoords) {
+            processedRow.preExistingCoordinates = extractedCoords;
+            processedRow.skipGeocoding = true;
+          }
+        }
 
         return processedRow;
       });
@@ -445,27 +528,54 @@ export const eventCreationJob = {
 
       const createdEventIds: number[] = [];
       let failedEventCount = 0;
+      let preExistingCoordinateCount = 0;
 
       // Create events
       for (const eventData of processedData) {
         try {
+          const eventCreateData: any = {
+            dataset: dataset.id,
+            import: importId,
+            data: (eventData.originalData || eventData) as Record<
+              string,
+              unknown
+            >,
+            eventTimestamp: eventData.date as string,
+            geocodingInfo: {
+              originalAddress: eventData.address as string,
+              provider: null,
+              confidence: null,
+              normalizedAddress: null,
+            },
+          };
+
+          // Add pre-existing coordinates if available
+          if (eventData.preExistingCoordinates && eventData.skipGeocoding) {
+            eventCreateData.location = {
+              latitude: eventData.preExistingCoordinates.latitude,
+              longitude: eventData.preExistingCoordinates.longitude,
+            };
+            eventCreateData.coordinateSource = {
+              type: "import",
+              confidence: eventData.coordinateValidation?.confidence || 0.9,
+              validationStatus: eventData.coordinateValidation?.validationStatus || "valid",
+              importColumns: {
+                latitudeColumn: currentImport.coordinateDetection?.columnMapping?.latitudeColumn || null,
+                longitudeColumn: currentImport.coordinateDetection?.columnMapping?.longitudeColumn || null,
+                combinedColumn: currentImport.coordinateDetection?.columnMapping?.combinedColumn || null,
+                format: currentImport.coordinateDetection?.columnMapping?.coordinateFormat || "decimal",
+              },
+            };
+            preExistingCoordinateCount++;
+          } else {
+            eventCreateData.coordinateSource = {
+              type: "none",
+            };
+          }
+
           const event: Event = await payload.create({
             collection: "events",
-            data: {
-              dataset: dataset.id,
-              import: importId,
-              data: (eventData.originalData || eventData) as Record<
-                string,
-                unknown
-              >,
-              eventTimestamp: eventData.date as string,
-              geocodingInfo: {
-                originalAddress: eventData.address as string,
-                provider: null,
-                confidence: null,
-                normalizedAddress: null,
-              },
-            },
+            data: eventCreateData,
           });
 
           createdEventIds.push(event.id);
@@ -487,6 +597,7 @@ export const eventCreationJob = {
         {
           createdEvents: createdEventIds.length,
           failedEvents: failedEventCount,
+          preExistingCoordinates: preExistingCoordinateCount,
           totalEvents: processedData.length,
         },
         "Event creation completed",
@@ -519,16 +630,36 @@ export const eventCreationJob = {
         },
       });
 
-      // Queue geocoding if events have addresses - bulk query optimization
+      // Queue geocoding if events have addresses but no coordinates - bulk query optimization
       const eventsWithAddresses = await payload.find({
         collection: "events",
         where: {
-          id: {
-            in: createdEventIds,
-          },
-          "geocodingInfo.originalAddress": {
-            exists: true,
-          },
+          and: [
+            {
+              id: {
+                in: createdEventIds,
+              },
+            },
+            {
+              "geocodingInfo.originalAddress": {
+                exists: true,
+              },
+            },
+            {
+              or: [
+                {
+                  "location.latitude": {
+                    exists: false,
+                  },
+                },
+                {
+                  "coordinateSource.type": {
+                    equals: "none",
+                  },
+                },
+              ],
+            },
+          ],
         },
         select: {
           id: true,
@@ -682,6 +813,11 @@ export const geocodingBatchJob = {
                 location: {
                   latitude: geocodingResult.latitude,
                   longitude: geocodingResult.longitude,
+                },
+                coordinateSource: {
+                  type: "geocoded",
+                  confidence: geocodingResult.confidence || 0.8,
+                  validationStatus: "valid",
                 },
                 geocodingInfo: {
                   ...event.geocodingInfo,
