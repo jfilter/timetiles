@@ -1,7 +1,5 @@
 import { Client } from "pg";
-import { createLogger } from "../lib/logger";
-
-const logger = createLogger("database-setup");
+import { logger } from "../lib/logger";
 
 /**
  * Creates isolated test database for each worker
@@ -18,42 +16,62 @@ export async function createTestDatabase(dbName: string): Promise<void> {
   try {
     await client.connect();
 
-    // In CI, try to use pre-created worker databases first
-    if (process.env.CI) {
-      const workerId = process.env.VITEST_WORKER_ID || "1";
-      const ciDbName = `timetiles_test_${workerId}`;
+    // Check if database already exists
+    const result = await client.query(
+      `SELECT 1 FROM pg_database WHERE datname = $1`,
+      [dbName],
+    );
 
-      // Check if the CI worker database exists
-      const result = await client.query(
-        `SELECT 1 FROM pg_database WHERE datname = $1`,
-        [ciDbName],
-      );
-
-      if (result.rows.length > 0) {
-        logger.debug(`Using existing CI database: ${ciDbName}`);
-        return; // Use the existing database, don't create a new one
-      }
+    if (result.rows.length === 0) {
+      // Create new database
+      await client.query(`CREATE DATABASE "${dbName}"`);
+      logger.debug(`Created test database: ${dbName}`);
+    } else {
+      logger.debug(`Test database already exists: ${dbName}`);
     }
-
-    // Drop database if it exists
-    await client.query(`DROP DATABASE IF EXISTS "${dbName}"`);
-
-    // Create new database
-    await client.query(`CREATE DATABASE "${dbName}"`);
-
-    logger.debug(`Created test database: ${dbName}`);
   } catch (error) {
     logger.error(
       { err: error, dbName },
-      `Failed to create test database ${dbName}`,
+      `Failed to create or check test database ${dbName}`,
     );
+    throw error;
+  } finally {
+    await client.end();
+  }
+}
 
-    // In CI, if database creation fails, try to use main test database
-    if (process.env.CI) {
-      logger.warn(`Falling back to main test database due to creation failure`);
-      return; // Don't throw, let tests use fallback database
+/**
+ * Truncates all tables in the test database
+ */
+export async function truncateAllTables(): Promise<void> {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    throw new Error("DATABASE_URL environment variable is not set");
+  }
+
+  const client = new Client({ connectionString: dbUrl });
+
+  try {
+    await client.connect();
+
+    // Get all table names in the public schema
+    const res = await client.query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+    `);
+
+    const tableNames = res.rows.map((row) => row.table_name);
+
+    if (tableNames.length > 0) {
+      // Truncate all tables
+      await client.query(
+        `TRUNCATE TABLE ${tableNames.map((name) => `"${name}"`).join(", ")} RESTART IDENTITY CASCADE`,
+      );
+      logger.debug("Truncated all tables in the test database");
     }
-
+  } catch (error) {
+    logger.error({ err: error }, "Failed to truncate tables");
     throw error;
   } finally {
     await client.end();
