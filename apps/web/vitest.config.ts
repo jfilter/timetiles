@@ -14,6 +14,7 @@ export default defineConfig({
     setupFiles: ["__tests__/setup.ts"],
     testTimeout: 20000,
     reporters: ["basic"],
+    silent: true, // Default to silent output
     coverage: {
       provider: "v8",
       include: ["lib/**/*.ts", "scripts/**/*.ts"],
