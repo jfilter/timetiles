@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "dev:full": "concurrently \"pnpm dev\" \"pnpm payload:watch\"",
-    "build": "payload generate:types && next build",
+    "build": "payload generate:types --silent && next build",
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",

@@ -4,7 +4,7 @@ import { execSync } from "child_process";
 import { randomUUID } from "crypto";
 import fs from "fs";
 import path from "path";
-import { destroyRateLimitService } from "../lib/services/RateLimitService";
+
 import { truncateAllTables } from "./database-setup";
 
 // Mock the logger to hide noisy output in tests
@@ -94,19 +94,4 @@ beforeAll(async () => {
 
   // Truncate all tables before each test suite
   await truncateAllTables();
-});
-
-// Global teardown to ensure clean exit
-afterAll(async () => {
-  // Clean up rate limit service
-  destroyRateLimitService();
-
-  // Clean up temp directory
-  try {
-    if (fs.existsSync(tempDir)) {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
-  } catch (error) {
-    // Ignore cleanup errors
-  }
 });

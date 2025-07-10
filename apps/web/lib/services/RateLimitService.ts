@@ -304,16 +304,6 @@ export function getClientIdentifier(request: Request): string {
   return "unknown";
 }
 
-/**
- * Cleanup singleton instance (for testing)
- */
-export function destroyRateLimitService(): void {
-  if (rateLimitService) {
-    rateLimitService.destroy();
-    rateLimitService = null;
-  }
-}
-
 // Rate limit configurations for different endpoints
 export const RATE_LIMITS = {
   FILE_UPLOAD: {
