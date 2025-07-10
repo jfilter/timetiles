@@ -1,75 +1,42 @@
-// Mock dependencies
-import { vi } from "vitest";
-
-const mockFs = {
-  readFileSync: vi.fn(),
-  existsSync: vi.fn(),
-  mkdirSync: vi.fn(),
-  writeFileSync: vi.fn(),
-  unlinkSync: vi.fn(),
-};
-
-const mockPapa = {
-  parse: vi.fn(),
-};
-
-const mockXLSX = {
-  readFile: vi.fn(),
-  utils: {
-    sheet_to_json: vi.fn(),
-  },
-};
-
-vi.mock("papaparse", () => mockPapa);
-vi.mock("xlsx", () => mockXLSX);
-vi.mock("fs", () => mockFs);
+// No mocking needed - use real file parsing libraries
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import fs from "fs";
+import Papa from "papaparse";
+import * as XLSX from "xlsx";
+import path from "path";
+import os from "os";
 
 describe("File Parsing", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    // Create a temporary directory for test files
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'file-parsing-test-'));
+  });
+
   afterEach(() => {
-    vi.clearAllMocks();
+    // Clean up temporary directory
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 
   describe("CSV Parsing", () => {
-    const mockCsvContent = `title,description,date
+    it("should parse CSV content successfully", () => {
+      const csvContent = `title,description,date
 "Tech Conference 2024","Annual technology conference","2024-03-15"
 "Art Gallery Opening","Contemporary art exhibition","2024-03-20"`;
-
-    beforeEach(() => {
-      mockFs.readFileSync.mockReturnValue(mockCsvContent);
-    });
-
-    it("should parse valid CSV file correctly", () => {
-      const mockParsedData = [
-        {
-          title: "Tech Conference 2024",
-          description: "Annual technology conference",
-          date: "2024-03-15",
-        },
-        {
-          title: "Art Gallery Opening",
-          description: "Contemporary art exhibition",
-          date: "2024-03-20",
-        },
-      ];
-
-      mockPapa.parse.mockReturnValue({
-        data: mockParsedData,
-        errors: [],
-      });
-
-      // Simulate parsing
-      const filePath = "/tmp/test.csv";
-      const fileContent = mockFs.readFileSync(filePath, "utf8");
-      const parseResult = mockPapa.parse(fileContent, {
+      const csvPath = path.join(tempDir, 'test.csv');
+      
+      // Write real CSV file
+      fs.writeFileSync(csvPath, csvContent, 'utf8');
+      
+      // Read and parse real file
+      const fileContent = fs.readFileSync(csvPath, 'utf8');
+      const parseResult = Papa.parse(fileContent, {
         header: true,
         skipEmptyLines: true,
         transformHeader: (header: string) => header.trim().toLowerCase(),
-      }) as { data: any[]; errors: any[] };
-
-      expect(mockPapa.parse).toHaveBeenCalledWith(mockCsvContent, {
-        header: true,
-        skipEmptyLines: true,
-        transformHeader: expect.any(Function),
       });
 
       expect(parseResult.data).toHaveLength(2);
@@ -79,171 +46,189 @@ describe("File Parsing", () => {
         description: "Annual technology conference",
         date: "2024-03-15",
       });
+      expect(parseResult.data[1]).toMatchObject({
+        title: "Art Gallery Opening",
+        description: "Contemporary art exhibition",
+        date: "2024-03-20",
+      });
     });
 
-    it("should handle CSV parsing errors", () => {
-      const mockErrors = [{ message: "Invalid delimiter", row: 2 }];
-
-      mockPapa.parse.mockReturnValue({
-        data: [],
-        errors: mockErrors,
-      });
-
-      const filePath = "/tmp/invalid.csv";
-      const fileContent = mockFs.readFileSync(filePath, "utf8");
-      const parseResult = mockPapa.parse(fileContent, {
-        header: true,
-        skipEmptyLines: true,
-        transformHeader: (header: string) => header.trim().toLowerCase(),
-      }) as { data: any[]; errors: any[] };
-
-      expect(parseResult.errors).toHaveLength(1);
-      expect(parseResult.errors[0]?.message).toBe("Invalid delimiter");
-    });
-
-    it("should transform headers to lowercase", () => {
-      const mockData = [
-        {
-          title: "Test Event",
-          description: "Test Description",
-          date: "2024-03-15",
-        },
-      ];
-
-      mockPapa.parse.mockReturnValue({
-        data: mockData,
-        errors: [],
-      });
-
-      const filePath = "/tmp/test.csv";
-      const fileContent = mockFs.readFileSync(filePath, "utf8");
-      mockPapa.parse(fileContent, {
+    it("should handle CSV with special characters and commas", () => {
+      const csvContent = `title,description,date
+"Event with, comma","Description with ""quotes""","2024-03-15"
+"Special chars: åéî","Normal description","2024-03-20"`;
+      const csvPath = path.join(tempDir, 'special.csv');
+      
+      fs.writeFileSync(csvPath, csvContent, 'utf8');
+      const fileContent = fs.readFileSync(csvPath, 'utf8');
+      const parseResult = Papa.parse(fileContent, {
         header: true,
         skipEmptyLines: true,
         transformHeader: (header: string) => header.trim().toLowerCase(),
       });
 
-      // Verify transformHeader function was called
-      expect(mockPapa.parse).toHaveBeenCalledWith(mockCsvContent, {
+      expect(parseResult.data).toHaveLength(2);
+      expect(parseResult.errors).toHaveLength(0);
+      expect(parseResult.data[0]).toMatchObject({
+        title: "Event with, comma",
+        description: 'Description with "quotes"',
+        date: "2024-03-15",
+      });
+      expect(parseResult.data[1]).toMatchObject({
+        title: "Special chars: åéî",
+        description: "Normal description",
+        date: "2024-03-20",
+      });
+    });
+
+    it("should handle malformed CSV gracefully", () => {
+      const invalidCsvContent = `title,description,date
+"Unclosed quote event,"Description","2024-03-15"
+"Valid Event","Valid Description","2024-03-20"`;
+      const csvPath = path.join(tempDir, 'invalid.csv');
+      
+      fs.writeFileSync(csvPath, invalidCsvContent, 'utf8');
+      const fileContent = fs.readFileSync(csvPath, 'utf8');
+      const parseResult = Papa.parse(fileContent, {
         header: true,
         skipEmptyLines: true,
-        transformHeader: expect.any(Function),
       });
+
+      // Papa.parse is quite forgiving, should still get some data
+      expect(parseResult.data.length).toBeGreaterThan(0);
+      
+      // The valid row should parse correctly
+      const validRow = parseResult.data.find((row: any) => 
+        row.title?.includes("Valid Event")
+      );
+      expect(validRow).toBeDefined();
+    });
+
+    it("should transform headers correctly", () => {
+      const csvContent = `  TITLE  , Description ,  DATE  
+"Event 1","Desc 1","2024-03-15"`;
+      const csvPath = path.join(tempDir, 'headers.csv');
+      
+      fs.writeFileSync(csvPath, csvContent, 'utf8');
+      const fileContent = fs.readFileSync(csvPath, 'utf8');
+      const parseResult = Papa.parse(fileContent, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header: string) => header.trim().toLowerCase(),
+      });
+
+      expect(parseResult.data).toHaveLength(1);
+      expect(parseResult.data[0]).toHaveProperty('title');
+      expect(parseResult.data[0]).toHaveProperty('description');
+      expect(parseResult.data[0]).toHaveProperty('date');
     });
 
     it("should skip empty lines", () => {
-      const csvWithEmptyLines = `title,date
+      const csvContent = `title,date
 Event 1,2024-03-15
 
-Event 2,2024-03-16`;
-
-      mockFs.readFileSync.mockReturnValue(csvWithEmptyLines);
-      mockPapa.parse.mockReturnValue({
-        data: [
-          { title: "Event 1", date: "2024-03-15" },
-          { title: "Event 2", date: "2024-03-16" },
-        ],
-        errors: [],
-      });
-
-      const filePath = "/tmp/test.csv";
-      const fileContent = mockFs.readFileSync(filePath, "utf8");
-      const parseResult = mockPapa.parse(fileContent, {
+Event 2,2024-03-16
+`;
+      const csvPath = path.join(tempDir, 'empty-lines.csv');
+      
+      fs.writeFileSync(csvPath, csvContent, 'utf8');
+      const fileContent = fs.readFileSync(csvPath, 'utf8');
+      const parseResult = Papa.parse(fileContent, {
         header: true,
         skipEmptyLines: true,
-        transformHeader: (header: string) => header.trim().toLowerCase(),
-      }) as { data: any[]; errors: any[] };
+      });
 
       expect(parseResult.data).toHaveLength(2);
-      expect(mockPapa.parse).toHaveBeenCalledWith(
-        csvWithEmptyLines,
-        expect.objectContaining({ skipEmptyLines: true }),
-      );
+      expect(parseResult.data[0]).toMatchObject({
+        title: "Event 1",
+        date: "2024-03-15",
+      });
+      expect(parseResult.data[1]).toMatchObject({
+        title: "Event 2", 
+        date: "2024-03-16",
+      });
     });
   });
 
   describe("Excel Parsing", () => {
-    const mockWorkbook = {
-      SheetNames: ["Sheet1", "Sheet2"],
-      Sheets: {
-        Sheet1: {
-          A1: { v: "title" },
-          B1: { v: "description" },
-          C1: { v: "date" },
-          A2: { v: "Tech Conference 2024" },
-          B2: { v: "Annual technology conference" },
-          C2: { v: "2024-03-15" },
-        },
-        Sheet2: {},
-      },
-    };
-
-    beforeEach(() => {
-      mockXLSX.readFile.mockReturnValue(mockWorkbook);
-    });
-
-    it("should parse Excel file correctly", () => {
-      const mockSheetData = [
+    it("should parse Excel content successfully", () => {
+      // Create a real Excel workbook in memory
+      const workbook = XLSX.utils.book_new();
+      const worksheetData = [
         ["title", "description", "date"],
-        ["Tech Conference 2024", "Annual technology conference", "2024-03-15"],
-        ["Art Gallery Opening", "Contemporary art exhibition", "2024-03-20"],
+        ["Conference 2024", "Tech event", "2024-03-15"],
+        ["Art Show", "Gallery opening", "2024-03-20"],
       ];
-
-      mockXLSX.utils.sheet_to_json.mockReturnValue(mockSheetData);
-
-      const filePath = "/tmp/test.xlsx";
-      const workbook = mockXLSX.readFile(filePath) as any;
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const rawData = mockXLSX.utils.sheet_to_json(worksheet, {
-        header: 1,
-        defval: "",
-      }) as any[];
-
-      expect(mockXLSX.readFile).toHaveBeenCalledWith(filePath);
-      expect(mockXLSX.utils.sheet_to_json).toHaveBeenCalledWith(worksheet, {
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+      
+      // Write to buffer instead of file
+      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      
+      // Read from buffer (simulating real file reading)
+      const readWorkbook = XLSX.read(excelBuffer, { type: 'buffer' });
+      const sheetName = readWorkbook.SheetNames[0];
+      const readWorksheet = readWorkbook.Sheets[sheetName!];
+      const jsonData = XLSX.utils.sheet_to_json(readWorksheet, {
         header: 1,
         defval: "",
       });
 
-      expect(rawData).toHaveLength(3);
-      expect(rawData[0]).toEqual(["title", "description", "date"]);
-      expect(rawData[1]).toEqual([
-        "Tech Conference 2024",
-        "Annual technology conference",
-        "2024-03-15",
-      ]);
+      expect(jsonData).toHaveLength(3);
+      expect(jsonData[0]).toEqual(["title", "description", "date"]);
+      expect(jsonData[1]).toEqual(["Conference 2024", "Tech event", "2024-03-15"]);
+      expect(jsonData[2]).toEqual(["Art Show", "Gallery opening", "2024-03-20"]);
+    });
+
+    it("should handle Excel files with multiple sheets", () => {
+      const workbook = XLSX.utils.book_new();
+      
+      // Add multiple sheets
+      const sheet1Data = [["title", "date"], ["Event 1", "2024-03-15"]];
+      const sheet2Data = [["name", "location"], ["Event 2", "New York"]];
+      
+      const worksheet1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+      const worksheet2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+      
+      XLSX.utils.book_append_sheet(workbook, worksheet1, "Events");
+      XLSX.utils.book_append_sheet(workbook, worksheet2, "Locations");
+      
+      // Write to buffer and read back
+      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      const readWorkbook = XLSX.read(excelBuffer, { type: 'buffer' });
+      
+      expect(readWorkbook.SheetNames).toHaveLength(2);
+      expect(readWorkbook.SheetNames).toContain("Events");
+      expect(readWorkbook.SheetNames).toContain("Locations");
+      
+      // Parse first sheet
+      const firstSheet = readWorkbook.Sheets[readWorkbook.SheetNames[0]!];
+      const firstSheetData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+      expect(firstSheetData[0]).toEqual(["title", "date"]);
+      expect(firstSheetData[1]).toEqual(["Event 1", "2024-03-15"]);
     });
 
     it("should convert Excel data to object format", () => {
-      const mockSheetData = [
+      const workbook = XLSX.utils.book_new();
+      const worksheetData = [
         ["Title", "Description", "Date", "Location"],
-        [
-          "Tech Conference 2024",
-          "Annual technology conference",
-          "2024-03-15",
-          "Convention Center",
-        ],
-        [
-          "Art Gallery Opening",
-          "Contemporary art exhibition",
-          "2024-03-20",
-          "Modern Art Gallery",
-        ],
+        ["Tech Conference 2024", "Annual technology conference", "2024-03-15", "Convention Center"],
+        ["Art Gallery Opening", "Contemporary art exhibition", "2024-03-20", "Modern Art Gallery"],
       ];
-
-      mockXLSX.utils.sheet_to_json.mockReturnValue(mockSheetData);
-
-      const filePath = "/tmp/test.xlsx";
-      const workbook = mockXLSX.readFile(filePath) as any;
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const rawData = mockXLSX.utils.sheet_to_json(worksheet, {
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+      
+      // Write to buffer and read back
+      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      const readWorkbook = XLSX.read(excelBuffer, { type: 'buffer' });
+      const sheetName = readWorkbook.SheetNames[0];
+      const readWorksheet = readWorkbook.Sheets[sheetName!];
+      const rawData = XLSX.utils.sheet_to_json(readWorksheet, {
         header: 1,
         defval: "",
       }) as any[];
 
-      // Convert to object format
+      // Convert to object format (same logic as in import jobs)
       const headers = (rawData[0] as string[]).map((h) =>
         h.toString().trim().toLowerCase(),
       );
@@ -262,23 +247,30 @@ Event 2,2024-03-16`;
         date: "2024-03-15",
         location: "Convention Center",
       });
+      expect(parsedData[1]).toMatchObject({
+        title: "Art Gallery Opening",
+        description: "Contemporary art exhibition", 
+        date: "2024-03-20",
+        location: "Modern Art Gallery",
+      });
     });
 
-    it("should handle Excel files with multiple sheets", () => {
-      const workbook = mockXLSX.readFile("/tmp/multi-sheet.xlsx") as any;
-
-      expect(workbook.SheetNames).toEqual(["Sheet1", "Sheet2"]);
-      expect(workbook.SheetNames[0]).toBe("Sheet1"); // Should use first sheet
-    });
-
-    it("should handle Excel parsing errors", () => {
-      mockXLSX.readFile.mockImplementation(() => {
-        throw new Error("Invalid Excel file format");
+    it("should handle empty Excel files", () => {
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.aoa_to_sheet([]);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Empty");
+      
+      // Write to buffer and read back
+      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      const readWorkbook = XLSX.read(excelBuffer, { type: 'buffer' });
+      const sheetName = readWorkbook.SheetNames[0];
+      const readWorksheet = readWorkbook.Sheets[sheetName!];
+      const jsonData = XLSX.utils.sheet_to_json(readWorksheet, {
+        header: 1,
+        defval: "",
       });
 
-      expect(() => {
-        mockXLSX.readFile("/tmp/corrupt.xlsx");
-      }).toThrow("Invalid Excel file format");
+      expect(jsonData).toHaveLength(0);
     });
   });
 
@@ -372,7 +364,7 @@ Event 2,2024-03-16`;
     it("should detect common column variations", () => {
       const testHeaders = [
         "title",
-        "event_name",
+        "event_name", 
         "name",
         "description",
         "date",
