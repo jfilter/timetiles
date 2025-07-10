@@ -12,9 +12,9 @@ export default defineConfig({
     ],
     exclude: ["**/node_modules/**"],
     setupFiles: ["__tests__/setup.ts"],
-    testTimeout: 20000,
+    testTimeout: 10000,
     reporters: ["basic"],
-    silent: true, // Default to silent output
+    silent: true,
     coverage: {
       provider: "v8",
       include: ["lib/**/*.ts", "scripts/**/*.ts"],
@@ -27,11 +27,10 @@ export default defineConfig({
         isolate: true,
       },
     },
-    fileParallelism: true, // Re-enable parallel file execution
-    maxWorkers: process.env.CI ? 4 : 8, // Restore parallel workers
-    minWorkers: 1,
+    fileParallelism: true,
+    maxWorkers: process.env.CI ? 4 : undefined,
     sequence: {
-      concurrent: true, // Allow concurrent test execution
+      concurrent: true,
     },
   },
   resolve: {
