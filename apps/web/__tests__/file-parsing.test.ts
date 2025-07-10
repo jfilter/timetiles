@@ -12,7 +12,7 @@ describe("File Parsing", () => {
 
   beforeEach(() => {
     // Create a temporary directory for test files
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'file-parsing-test-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "file-parsing-test-"));
   });
 
   afterEach(() => {
@@ -27,13 +27,13 @@ describe("File Parsing", () => {
       const csvContent = `title,description,date
 "Tech Conference 2024","Annual technology conference","2024-03-15"
 "Art Gallery Opening","Contemporary art exhibition","2024-03-20"`;
-      const csvPath = path.join(tempDir, 'test.csv');
-      
+      const csvPath = path.join(tempDir, "test.csv");
+
       // Write real CSV file
-      fs.writeFileSync(csvPath, csvContent, 'utf8');
-      
+      fs.writeFileSync(csvPath, csvContent, "utf8");
+
       // Read and parse real file
-      const fileContent = fs.readFileSync(csvPath, 'utf8');
+      const fileContent = fs.readFileSync(csvPath, "utf8");
       const parseResult = Papa.parse(fileContent, {
         header: true,
         skipEmptyLines: true,
@@ -58,10 +58,10 @@ describe("File Parsing", () => {
       const csvContent = `title,description,date
 "Event with, comma","Description with ""quotes""","2024-03-15"
 "Special chars: åéî","Normal description","2024-03-20"`;
-      const csvPath = path.join(tempDir, 'special.csv');
-      
-      fs.writeFileSync(csvPath, csvContent, 'utf8');
-      const fileContent = fs.readFileSync(csvPath, 'utf8');
+      const csvPath = path.join(tempDir, "special.csv");
+
+      fs.writeFileSync(csvPath, csvContent, "utf8");
+      const fileContent = fs.readFileSync(csvPath, "utf8");
       const parseResult = Papa.parse(fileContent, {
         header: true,
         skipEmptyLines: true,
@@ -86,10 +86,10 @@ describe("File Parsing", () => {
       const invalidCsvContent = `title,description,date
 "Unclosed quote event,"Description","2024-03-15"
 "Valid Event","Valid Description","2024-03-20"`;
-      const csvPath = path.join(tempDir, 'invalid.csv');
-      
-      fs.writeFileSync(csvPath, invalidCsvContent, 'utf8');
-      const fileContent = fs.readFileSync(csvPath, 'utf8');
+      const csvPath = path.join(tempDir, "invalid.csv");
+
+      fs.writeFileSync(csvPath, invalidCsvContent, "utf8");
+      const fileContent = fs.readFileSync(csvPath, "utf8");
       const parseResult = Papa.parse(fileContent, {
         header: true,
         skipEmptyLines: true,
@@ -97,10 +97,10 @@ describe("File Parsing", () => {
 
       // Papa.parse is quite forgiving, should still get some data
       expect(parseResult.data.length).toBeGreaterThan(0);
-      
+
       // The valid row should parse correctly
-      const validRow = parseResult.data.find((row: any) => 
-        row.title?.includes("Valid Event")
+      const validRow = parseResult.data.find((row: any) =>
+        row.title?.includes("Valid Event"),
       );
       expect(validRow).toBeDefined();
     });
@@ -108,10 +108,10 @@ describe("File Parsing", () => {
     it("should transform headers correctly", () => {
       const csvContent = `  TITLE  , Description ,  DATE  
 "Event 1","Desc 1","2024-03-15"`;
-      const csvPath = path.join(tempDir, 'headers.csv');
-      
-      fs.writeFileSync(csvPath, csvContent, 'utf8');
-      const fileContent = fs.readFileSync(csvPath, 'utf8');
+      const csvPath = path.join(tempDir, "headers.csv");
+
+      fs.writeFileSync(csvPath, csvContent, "utf8");
+      const fileContent = fs.readFileSync(csvPath, "utf8");
       const parseResult = Papa.parse(fileContent, {
         header: true,
         skipEmptyLines: true,
@@ -119,9 +119,9 @@ describe("File Parsing", () => {
       });
 
       expect(parseResult.data).toHaveLength(1);
-      expect(parseResult.data[0]).toHaveProperty('title');
-      expect(parseResult.data[0]).toHaveProperty('description');
-      expect(parseResult.data[0]).toHaveProperty('date');
+      expect(parseResult.data[0]).toHaveProperty("title");
+      expect(parseResult.data[0]).toHaveProperty("description");
+      expect(parseResult.data[0]).toHaveProperty("date");
     });
 
     it("should skip empty lines", () => {
@@ -130,10 +130,10 @@ Event 1,2024-03-15
 
 Event 2,2024-03-16
 `;
-      const csvPath = path.join(tempDir, 'empty-lines.csv');
-      
-      fs.writeFileSync(csvPath, csvContent, 'utf8');
-      const fileContent = fs.readFileSync(csvPath, 'utf8');
+      const csvPath = path.join(tempDir, "empty-lines.csv");
+
+      fs.writeFileSync(csvPath, csvContent, "utf8");
+      const fileContent = fs.readFileSync(csvPath, "utf8");
       const parseResult = Papa.parse(fileContent, {
         header: true,
         skipEmptyLines: true,
@@ -145,7 +145,7 @@ Event 2,2024-03-16
         date: "2024-03-15",
       });
       expect(parseResult.data[1]).toMatchObject({
-        title: "Event 2", 
+        title: "Event 2",
         date: "2024-03-16",
       });
     });
@@ -162,12 +162,15 @@ Event 2,2024-03-16
       ];
       const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
       XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-      
+
       // Write to buffer instead of file
-      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-      
+      const excelBuffer = XLSX.write(workbook, {
+        type: "buffer",
+        bookType: "xlsx",
+      });
+
       // Read from buffer (simulating real file reading)
-      const readWorkbook = XLSX.read(excelBuffer, { type: 'buffer' });
+      const readWorkbook = XLSX.read(excelBuffer, { type: "buffer" });
       const sheetName = readWorkbook.SheetNames[0];
       const readWorksheet = readWorkbook.Sheets[sheetName!];
       const jsonData = XLSX.utils.sheet_to_json(readWorksheet!, {
@@ -177,34 +180,53 @@ Event 2,2024-03-16
 
       expect(jsonData).toHaveLength(3);
       expect(jsonData[0]).toEqual(["title", "description", "date"]);
-      expect(jsonData[1]).toEqual(["Conference 2024", "Tech event", "2024-03-15"]);
-      expect(jsonData[2]).toEqual(["Art Show", "Gallery opening", "2024-03-20"]);
+      expect(jsonData[1]).toEqual([
+        "Conference 2024",
+        "Tech event",
+        "2024-03-15",
+      ]);
+      expect(jsonData[2]).toEqual([
+        "Art Show",
+        "Gallery opening",
+        "2024-03-20",
+      ]);
     });
 
     it("should handle Excel files with multiple sheets", () => {
       const workbook = XLSX.utils.book_new();
-      
+
       // Add multiple sheets
-      const sheet1Data = [["title", "date"], ["Event 1", "2024-03-15"]];
-      const sheet2Data = [["name", "location"], ["Event 2", "New York"]];
-      
+      const sheet1Data = [
+        ["title", "date"],
+        ["Event 1", "2024-03-15"],
+      ];
+      const sheet2Data = [
+        ["name", "location"],
+        ["Event 2", "New York"],
+      ];
+
       const worksheet1 = XLSX.utils.aoa_to_sheet(sheet1Data);
       const worksheet2 = XLSX.utils.aoa_to_sheet(sheet2Data);
-      
+
       XLSX.utils.book_append_sheet(workbook, worksheet1, "Events");
       XLSX.utils.book_append_sheet(workbook, worksheet2, "Locations");
-      
+
       // Write to buffer and read back
-      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-      const readWorkbook = XLSX.read(excelBuffer, { type: 'buffer' });
-      
+      const excelBuffer = XLSX.write(workbook, {
+        type: "buffer",
+        bookType: "xlsx",
+      });
+      const readWorkbook = XLSX.read(excelBuffer, { type: "buffer" });
+
       expect(readWorkbook.SheetNames).toHaveLength(2);
       expect(readWorkbook.SheetNames).toContain("Events");
       expect(readWorkbook.SheetNames).toContain("Locations");
-      
+
       // Parse first sheet
       const firstSheet = readWorkbook.Sheets[readWorkbook.SheetNames[0]!];
-      const firstSheetData = firstSheet ? XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) : [];
+      const firstSheetData = firstSheet
+        ? XLSX.utils.sheet_to_json(firstSheet, { header: 1 })
+        : [];
       expect(firstSheetData[0]).toEqual(["title", "date"]);
       expect(firstSheetData[1]).toEqual(["Event 1", "2024-03-15"]);
     });
@@ -213,21 +235,36 @@ Event 2,2024-03-16
       const workbook = XLSX.utils.book_new();
       const worksheetData = [
         ["Title", "Description", "Date", "Location"],
-        ["Tech Conference 2024", "Annual technology conference", "2024-03-15", "Convention Center"],
-        ["Art Gallery Opening", "Contemporary art exhibition", "2024-03-20", "Modern Art Gallery"],
+        [
+          "Tech Conference 2024",
+          "Annual technology conference",
+          "2024-03-15",
+          "Convention Center",
+        ],
+        [
+          "Art Gallery Opening",
+          "Contemporary art exhibition",
+          "2024-03-20",
+          "Modern Art Gallery",
+        ],
       ];
       const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
       XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-      
+
       // Write to buffer and read back
-      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-      const readWorkbook = XLSX.read(excelBuffer, { type: 'buffer' });
+      const excelBuffer = XLSX.write(workbook, {
+        type: "buffer",
+        bookType: "xlsx",
+      });
+      const readWorkbook = XLSX.read(excelBuffer, { type: "buffer" });
       const sheetName = readWorkbook.SheetNames[0];
       const readWorksheet = readWorkbook.Sheets[sheetName!];
-      const rawData = readWorksheet ? XLSX.utils.sheet_to_json(readWorksheet, {
-        header: 1,
-        defval: "",
-      }) : [] as any[];
+      const rawData = readWorksheet
+        ? XLSX.utils.sheet_to_json(readWorksheet, {
+            header: 1,
+            defval: "",
+          })
+        : ([] as any[]);
 
       // Convert to object format (same logic as in import jobs)
       const headers = (rawData[0] as string[]).map((h) =>
@@ -250,7 +287,7 @@ Event 2,2024-03-16
       });
       expect(parsedData[1]).toMatchObject({
         title: "Art Gallery Opening",
-        description: "Contemporary art exhibition", 
+        description: "Contemporary art exhibition",
         date: "2024-03-20",
         location: "Modern Art Gallery",
       });
@@ -260,10 +297,13 @@ Event 2,2024-03-16
       const workbook = XLSX.utils.book_new();
       const worksheet = XLSX.utils.aoa_to_sheet([]);
       XLSX.utils.book_append_sheet(workbook, worksheet, "Empty");
-      
+
       // Write to buffer and read back
-      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-      const readWorkbook = XLSX.read(excelBuffer, { type: 'buffer' });
+      const excelBuffer = XLSX.write(workbook, {
+        type: "buffer",
+        bookType: "xlsx",
+      });
+      const readWorkbook = XLSX.read(excelBuffer, { type: "buffer" });
       const sheetName = readWorkbook.SheetNames[0];
       const readWorksheet = readWorkbook.Sheets[sheetName!];
       const jsonData = XLSX.utils.sheet_to_json(readWorksheet!, {
@@ -365,7 +405,7 @@ Event 2,2024-03-16
     it("should detect common column variations", () => {
       const testHeaders = [
         "title",
-        "event_name", 
+        "event_name",
         "name",
         "description",
         "date",

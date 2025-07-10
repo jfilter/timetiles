@@ -1,7 +1,16 @@
 import type { Import } from "../../../payload-types";
 
 // Use Payload type with specific modifications for seed data
-export type ImportSeed = Omit<Import, 'id' | 'createdAt' | 'updatedAt' | 'catalog' | 'user' | 'importedAt' | 'completedAt'> & {
+export type ImportSeed = Omit<
+  Import,
+  | "id"
+  | "createdAt"
+  | "updatedAt"
+  | "catalog"
+  | "user"
+  | "importedAt"
+  | "completedAt"
+> & {
   catalog: string; // This will be resolved to catalog ID during seeding
   importedAt?: Date; // Use Date object for easier seed data handling
   completedAt?: Date; // Use Date object for easier seed data handling
@@ -52,30 +61,6 @@ export function importSeeds(environment: string): ImportSeed[] {
       },
     },
   ];
-
-  if (environment === "test") {
-    // Return test-specific imports, include one more than production
-    return [
-      ...baseImports,
-      {
-        fileName: "test_data.csv",
-        originalName: "Test Data File",
-        catalog: "test-catalog",
-        fileSize: 1024,
-        mimeType: "text/csv",
-        status: "completed",
-        importedAt: new Date("2024-01-01T12:00:00Z"),
-        completedAt: new Date("2024-01-01T12:01:00Z"),
-        rowCount: 2,
-        errorCount: 1,
-        errorLog: 'Row 2: Invalid data type for field "value"',
-        metadata: {
-          source: "test",
-          import_type: "test",
-        },
-      },
-    ];
-  }
 
   if (environment === "development") {
     return [

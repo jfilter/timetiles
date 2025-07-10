@@ -1,8 +1,13 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
 
 # Generate Payload types before commit
 cd apps/web && pnpm payload:generate
 
 # Add the generated types to the commit if they changed
 git add payload-types.ts
+
+# Go back to root and run linting
+cd ../.. && pnpm lint
+
+# Run prettier formatting from root
+pnpm format

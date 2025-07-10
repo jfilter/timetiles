@@ -7,16 +7,13 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "seed": "turbo seed",
-    "seed:dev": "turbo seed:dev",
-    "seed:test": "turbo seed:test",
-    "seed:validate": "turbo seed:validate",
+    "seed:dev": "turbo seed:dev", 
     "seed:truncate": "turbo seed:truncate",
-    "seed:integration": "turbo seed:integration",
     "test": "turbo test",
+    "test:clean": "turbo run test:clean",
     "docs:dev": "turbo docs:dev",
     "docs:build": "turbo docs:build",
     "docs:export": "turbo docs:export",
-    "export": "turbo docs:export",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {

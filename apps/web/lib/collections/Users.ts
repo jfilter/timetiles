@@ -1,11 +1,11 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig } from "payload";
 
 const Users: CollectionConfig = {
-  slug: 'users',
+  slug: "users",
   auth: true,
   admin: {
-    useAsTitle: 'email',
-    defaultColumns: ['email', 'firstName', 'lastName', 'role', 'isActive'],
+    useAsTitle: "email",
+    defaultColumns: ["email", "firstName", "lastName", "role", "isActive"],
   },
   access: {
     read: () => true,
@@ -15,58 +15,58 @@ const Users: CollectionConfig = {
   },
   fields: [
     {
-      name: 'firstName',
-      type: 'text',
+      name: "firstName",
+      type: "text",
       maxLength: 100,
     },
     {
-      name: 'lastName',
-      type: 'text',
+      name: "lastName",
+      type: "text",
       maxLength: 100,
     },
     {
-      name: 'role',
-      type: 'select',
+      name: "role",
+      type: "select",
       options: [
         {
-          label: 'User',
-          value: 'user',
+          label: "User",
+          value: "user",
         },
         {
-          label: 'Admin',
-          value: 'admin',
+          label: "Admin",
+          value: "admin",
         },
         {
-          label: 'Analyst',
-          value: 'analyst',
+          label: "Analyst",
+          value: "analyst",
         },
       ],
-      defaultValue: 'user',
+      defaultValue: "user",
       admin: {
-        position: 'sidebar',
+        position: "sidebar",
       },
     },
     {
-      name: 'isActive',
-      type: 'checkbox',
+      name: "isActive",
+      type: "checkbox",
       defaultValue: true,
       admin: {
-        position: 'sidebar',
+        position: "sidebar",
       },
     },
     {
-      name: 'lastLoginAt',
-      type: 'date',
+      name: "lastLoginAt",
+      type: "date",
       admin: {
         date: {
-          pickerAppearance: 'dayAndTime',
+          pickerAppearance: "dayAndTime",
         },
-        position: 'sidebar',
+        position: "sidebar",
         readOnly: true,
       },
     },
   ],
   timestamps: true,
-}
+};
 
-export default Users
+export default Users;

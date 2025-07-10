@@ -10,12 +10,20 @@ import {
   getClientIdentifier,
   RATE_LIMITS,
 } from "../../../../../lib/services/RateLimitService";
-import type { Catalog, Dataset, Import, User } from "../../../../../payload-types";
+import type {
+  Catalog,
+  Dataset,
+  Import,
+  User,
+} from "../../../../../payload-types";
+import {
+  createRequestLogger,
+  logError,
+  logPerformance,
+} from "../../../../../lib/logger";
 
 // Type for creating new import records, excluding auto-generated fields
-type CreateImportData = Omit<Import, 'id' | 'createdAt' | 'updatedAt'>;
-
-
+type CreateImportData = Omit<Import, "id" | "createdAt" | "updatedAt">;
 
 const ALLOWED_MIME_TYPES = [
   "text/csv",
@@ -29,12 +37,18 @@ const MAX_FILE_SIZE = {
 };
 
 export async function POST(request: NextRequest) {
+  const requestId = uuidv4();
+  const logger = createRequestLogger(requestId);
+  const startTime = Date.now();
+
   try {
+    logger.debug("Processing import upload request");
     const payload = await getPayload({ config });
 
     // Check rate limiting for unauthenticated users
     const clientId = getClientIdentifier(request);
     const rateLimitService = getRateLimitService(payload);
+    logger.debug({ clientId }, "Checking rate limits");
 
     // Parse form data
     const formData = await request.formData();
@@ -43,7 +57,7 @@ export async function POST(request: NextRequest) {
     const datasetIdRaw = formData.get("datasetId");
     const sessionIdRaw = formData.get("sessionId");
 
-    console.log("Raw form data:", { catalogIdRaw, datasetIdRaw, sessionIdRaw });
+    logger.debug({ catalogIdRaw, datasetIdRaw, sessionIdRaw }, "Raw form data");
 
     const catalogIdStr = (catalogIdRaw as string)?.trim();
     const catalogId = catalogIdStr ? parseInt(catalogIdStr, 10) : null;
@@ -54,7 +68,7 @@ export async function POST(request: NextRequest) {
         : null;
     const sessionId = (sessionIdRaw as string | null)?.trim() || null;
 
-    console.log("Parsed form data:", { catalogId, datasetId, sessionId });
+    logger.debug({ catalogId, datasetId, sessionId }, "Parsed form data");
 
     // Validate required fields
     if (!file) {
@@ -72,9 +86,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from request (if authenticated)
-    const user: Pick<User, 'id'> | null = request.headers.get("authorization")
+    const user: Pick<User, "id"> | null = request.headers.get("authorization")
       ? await getUserFromToken(request.headers.get("authorization")!)
       : null;
+
+    logger.debug(
+      {
+        isAuthenticated: !!user,
+        userId: user?.id,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+      },
+      "Processing file upload request",
+    );
 
     // Validate file type
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
@@ -129,22 +154,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify catalog exists
-    console.log("Looking for catalog with ID:", catalogId);
+    logger.debug({ catalogId }, "Looking for catalog");
     let catalog: Catalog;
     try {
       catalog = await payload.findByID({
         collection: "catalogs",
         id: catalogId,
       });
+      logger.debug(
+        {
+          catalogId,
+          catalogName: catalog.name,
+          catalogSlug: catalog.slug,
+        },
+        "Catalog found and validated",
+      );
     } catch {
-      console.log("Catalog not found for ID:", catalogId);
+      logger.warn({ catalogId }, "Catalog not found");
       return NextResponse.json(
         { success: false, message: "Catalog not found" },
         { status: 404 },
       );
     }
-    console.log("Found catalog:", catalog.name, catalog.slug);
-    console.log("Catalog validation passed, catalog object:", catalog);
 
     // Verify dataset exists if provided
     if (datasetId) {
@@ -153,7 +184,7 @@ export async function POST(request: NextRequest) {
           collection: "datasets",
           id: datasetId,
         });
-        console.log("Found dataset:", dataset.name);
+        logger.debug({ datasetId, datasetName: dataset.name }, "Dataset found");
       } catch {
         return NextResponse.json(
           { success: false, message: "Dataset not found" },
@@ -190,15 +221,17 @@ export async function POST(request: NextRequest) {
         rowCount = jsonData.length;
       }
     } catch (error) {
-      console.warn("Failed to parse file for row count:", error);
+      logger.warn({ error }, "Failed to parse file for row count");
       rowCount = 0;
     }
 
     // Create import record
     let importRecord: Import;
     try {
-      console.log("Creating import record with catalogId:", catalogId);
-      console.log("catalogId type:", typeof catalogId);
+      logger.info(
+        { catalogId, catalogType: typeof catalogId },
+        "Creating import record",
+      );
 
       const importData: CreateImportData = {
         fileName: uniqueFileName,
@@ -247,18 +280,22 @@ export async function POST(request: NextRequest) {
         },
       };
 
-      console.log(
-        "Import data to create:",
-        JSON.stringify(importData, null, 2),
-      );
+      logger.debug({ importData }, "Import data to create");
 
       importRecord = await payload.create({
         collection: "imports",
         data: importData,
       });
+
+      logger.info(
+        { importId: importRecord.id },
+        "Import record created successfully",
+      );
     } catch (error) {
-      console.error("Failed to create import record:", error);
-      console.error("Error details:", (error as { data?: unknown }).data);
+      logError(error, "Failed to create import record", {
+        catalogId,
+        errorData: (error as { data?: unknown }).data,
+      });
       return NextResponse.json(
         {
           success: false,
@@ -269,6 +306,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Queue the file parsing job
+    logger.info(
+      {
+        importId: importRecord.id,
+        fileName: file.name,
+        fileType: file.type === "text/csv" ? "csv" : "xlsx",
+        estimatedRows: rowCount,
+        estimatedBatches: Math.ceil(rowCount / 100),
+      },
+      "Queueing file parsing job",
+    );
+
     await payload.jobs.queue({
       task: "file-parsing",
       input: {
@@ -280,6 +328,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    logger.debug(
+      { importId: importRecord.id },
+      "File parsing job queued successfully",
+    );
+
     // Add rate limit headers to successful response
     const headers = !user
       ? rateLimitService.getRateLimitHeaders(
@@ -287,6 +340,13 @@ export async function POST(request: NextRequest) {
           RATE_LIMITS.FILE_UPLOAD.limit,
         )
       : {};
+
+    logPerformance("Upload request", Date.now() - startTime, {
+      requestId,
+      importId: importRecord.id,
+      fileSize: file.size,
+      fileType: file.type,
+    });
 
     return NextResponse.json(
       {
@@ -297,7 +357,7 @@ export async function POST(request: NextRequest) {
       { headers },
     );
   } catch (error) {
-    console.error("Upload error:", error);
+    logError(error, "Upload error", { requestId });
     return NextResponse.json(
       {
         success: false,
@@ -308,7 +368,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getUserFromToken(token: string): Promise<Pick<User, 'id'> | null> {
+async function getUserFromToken(
+  _token: string,
+): Promise<Pick<User, "id"> | null> {
   // This would implement JWT token validation
   // For now, return null (unauthenticated)
   return null;

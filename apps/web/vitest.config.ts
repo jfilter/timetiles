@@ -13,6 +13,9 @@ export default defineConfig({
     exclude: ["**/node_modules/**"],
     setupFiles: ["__tests__/setup.ts"],
     testTimeout: 10000,
+    silent: false,
+    reporters: ["basic"],
+    outputFile: undefined,
     coverage: {
       provider: "v8",
       include: ["lib/**/*.ts", "scripts/**/*.ts"],

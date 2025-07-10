@@ -19,17 +19,16 @@
     "payload:validate": "tsx scripts/validate-types.ts",
     "seed": "tsx scripts/seed.ts",
     "seed:dev": "tsx scripts/seed.ts development",
-    "seed:test": "tsx scripts/seed.ts test",
-    "seed:validate": "tsx __tests__/seed-validation.ts",
     "seed:truncate": "tsx scripts/seed.ts truncate",
-    "seed:integration": "./scripts/test-seed-system.sh",
-    "test": "vitest run",
+    "test": "vitest run --reporter=basic",
+    "test:clean": "vitest run --reporter=basic --silent",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:parallel": "vitest run --reporter=verbose --pool=forks --poolOptions.forks.singleFork=false",
     "test:parallel:watch": "vitest --reporter=verbose --pool=forks --poolOptions.forks.singleFork=false",
     "test:isolated": "vitest run __tests__/seed-isolated.test.ts --reporter=verbose",
-    "test:sequential": "vitest run --no-file-parallelism --pool=forks --poolOptions.forks.singleFork=true"
+    "test:sequential": "vitest run --no-file-parallelism --pool=forks --poolOptions.forks.singleFork=true",
+    "prepare": "husky"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.46.0",
@@ -47,6 +46,8 @@
     "papaparse": "^5.5.3",
     "payload": "^3.46.0",
     "pg": "^8.16.3",
+    "pino": "^9.7.0",
+    "pino-pretty": "^13.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sharp": "^0.34.2",
@@ -62,6 +63,7 @@
     "@vitest/coverage-v8": "^2.1.8",
     "@workspace/eslint-config": "workspace:^",
     "@workspace/typescript-config": "workspace:*",
+    "husky": "^9.1.7",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
   }

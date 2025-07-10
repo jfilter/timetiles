@@ -17,7 +17,7 @@ export function generateSlug(text: string): string {
 /**
  * Generates a unique slug by checking for existing slugs and appending random suffixes if needed
  */
-export async function generateUniqueSlug<T extends keyof Config['collections']>(
+export async function generateUniqueSlug<T extends keyof Config["collections"]>(
   baseText: string,
   collection: T,
   req: PayloadRequest,
@@ -67,15 +67,15 @@ export async function generateUniqueSlug<T extends keyof Config['collections']>(
 /**
  * Checks if a slug is unique in the given collection
  */
-async function checkSlugUniqueness<T extends keyof Config['collections']>(
+async function checkSlugUniqueness<T extends keyof Config["collections"]>(
   slug: string,
   collection: T,
   req: PayloadRequest,
   currentId?: string | number,
 ): Promise<boolean> {
-  const where = { 
+  const where = {
     slug: { equals: slug },
-    ...(currentId && { id: { not_equals: currentId } })
+    ...(currentId && { id: { not_equals: currentId } }),
   };
 
   const result = await req.payload.find({
@@ -108,11 +108,17 @@ function generateRandomSuffix(): string {
  * @param collection - The collection name
  * @param options - Optional object with sourceField (dot notation)
  */
-export function createSlugHook<T extends keyof Config['collections']>(
+export function createSlugHook<T extends keyof Config["collections"]>(
   collection: T,
   options?: { sourceField?: string },
 ) {
-  return async ({ value, data, req, operation, originalDoc }: {
+  return async ({
+    value,
+    data,
+    req,
+    operation,
+    originalDoc,
+  }: {
     value?: string;
     data?: Record<string, unknown>;
     req?: PayloadRequest;
@@ -121,7 +127,15 @@ export function createSlugHook<T extends keyof Config['collections']>(
   }) => {
     // Helper to get nested value by dot notation
     function getNested(obj: Record<string, unknown>, path: string): unknown {
-      return path.split(".").reduce((o: unknown, k) => (o && typeof o === 'object' && k in o ? (o as Record<string, unknown>)[k] : undefined), obj);
+      return path
+        .split(".")
+        .reduce(
+          (o: unknown, k) =>
+            o && typeof o === "object" && k in o
+              ? (o as Record<string, unknown>)[k]
+              : undefined,
+          obj,
+        );
     }
     const sourceField = options?.sourceField;
     let sourceValue = data?.name;
@@ -133,8 +147,18 @@ export function createSlugHook<T extends keyof Config['collections']>(
       sourceValue &&
       (operation === "create" || operation === "update")
     ) {
-      const currentId = operation === "update" ? originalDoc?.id as string | number | undefined : undefined;
-      return req ? await generateUniqueSlug(String(sourceValue), collection, req, currentId) : generateSlug(String(sourceValue));
+      const currentId =
+        operation === "update"
+          ? (originalDoc?.id as string | number | undefined)
+          : undefined;
+      return req
+        ? await generateUniqueSlug(
+            String(sourceValue),
+            collection,
+            req,
+            currentId,
+          )
+        : generateSlug(String(sourceValue));
     }
     if (value && operation === "update" && req) {
       const currentId = originalDoc?.id as string | number | undefined;

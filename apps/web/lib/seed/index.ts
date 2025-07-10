@@ -6,6 +6,9 @@ import { datasetSeeds } from "./seeds/datasets";
 import { eventSeeds } from "./seeds/events";
 import { importSeeds } from "./seeds/imports";
 import type { Config } from "../../payload-types";
+import { createLogger, logError, logPerformance } from "../logger";
+
+const logger = createLogger("seed");
 
 export interface SeedOptions {
   collections?: string[];
@@ -24,9 +27,11 @@ export class SeedManager {
 
   async initialize() {
     if (!this.payload) {
+      logger.debug("Initializing Payload instance for seed manager");
       this.payload = await getPayload({
         config,
       });
+      logger.debug("Payload instance initialized successfully");
     }
     return this.payload;
   }
@@ -40,7 +45,11 @@ export class SeedManager {
 
     await this.initialize();
 
-    console.log(`🌱 Starting seed process for ${environment} environment...`);
+    logger.info(
+      { environment, collections, truncate },
+      `Starting seed process for ${environment} environment`,
+    );
+    const startTime = Date.now();
 
     // Truncate collections if requested
     if (truncate) {
@@ -52,28 +61,45 @@ export class SeedManager {
 
     for (const collection of seedOrder) {
       if (collections.includes(collection)) {
-        console.log(`🌱 Seeding ${collection}...`);
+        logger.info(`Seeding ${collection}...`);
+        const collectionStartTime = Date.now();
         await this.seedCollection(collection, environment);
+        logPerformance(`Seed ${collection}`, Date.now() - collectionStartTime);
       }
     }
 
-    console.log("✅ Seed process completed successfully!");
+    logPerformance("Complete seed process", Date.now() - startTime, {
+      collections: collections.length,
+      environment,
+    });
+    logger.info("Seed process completed successfully!");
   }
 
   async truncate(collections: string[] = []) {
     await this.initialize();
-    console.log("🗑️  Starting truncate process...");
+    logger.info({ collections }, "Starting truncate process...");
+    const startTime = Date.now();
+
     await this.truncateCollections(collections);
-    console.log("✅ Truncate process completed!");
+
+    logPerformance("Truncate process", Date.now() - startTime, {
+      collectionsCount: collections.length || "all",
+    });
+    logger.info("Truncate process completed!");
   }
 
   private async seedCollection(collection: string, environment: string) {
     const seedData = await this.getSeedData(collection, environment);
 
     if (!seedData || seedData.length === 0) {
-      console.log(`⚠️  No seed data found for ${collection}`);
+      logger.warn(`No seed data found for ${collection}`);
       return;
     }
+
+    logger.debug(
+      { collection, count: seedData.length },
+      `Found ${seedData.length} items to seed for ${collection}`,
+    );
 
     for (const item of seedData) {
       try {
@@ -96,7 +122,7 @@ export class SeedManager {
         }
 
         await this.payload!.create({
-          collection: collection as keyof Config['collections'],
+          collection: collection as keyof Config["collections"],
           data: resolvedItem,
         });
 
@@ -107,10 +133,16 @@ export class SeedManager {
           (item as { fileName?: string }).fileName ||
           (item as { id?: string }).id ||
           "Unknown";
-        console.log(`✅ Created ${collection} item: ${displayName}`);
+        logger.debug(
+          { collection, displayName },
+          `Created ${collection} item: ${displayName}`,
+        );
       } catch (error) {
         // Log the error but don't throw - allows graceful handling
-        console.error(`❌ Failed to create ${collection} item:`, error);
+        logError(error, `Failed to create ${collection} item`, {
+          collection,
+          item,
+        });
       }
     }
   }
@@ -128,7 +160,7 @@ export class SeedManager {
       case "imports":
         return importSeeds(environment);
       default:
-        console.warn(`Unknown collection: ${collection}`);
+        logger.warn(`Unknown collection: ${collection}`);
         return []; // Return empty array instead of throwing
     }
   }
@@ -187,7 +219,7 @@ export class SeedManager {
 
           while (hasMore) {
             const items = await this.payload!.find({
-              collection: collection as keyof Config['collections'],
+              collection: collection as keyof Config["collections"],
               limit: 1000, // Get more items at once
               depth: 0,
             });
@@ -201,14 +233,18 @@ export class SeedManager {
             for (const item of items.docs) {
               try {
                 await this.payload!.delete({
-                  collection: collection as keyof Config['collections'],
+                  collection: collection as keyof Config["collections"],
                   id: item.id,
                 });
                 totalDeleted++;
               } catch (deleteError) {
-                console.warn(
-                  `⚠️  Failed to delete ${collection} item ${item.id}:`,
-                  deleteError,
+                logger.warn(
+                  {
+                    error: deleteError,
+                    collection,
+                    itemId: item.id,
+                  },
+                  `Failed to delete ${collection} item ${item.id}`,
                 );
               }
             }
@@ -217,9 +253,12 @@ export class SeedManager {
             hasMore = items.docs.length > 0;
           }
 
-          console.log(`🗑️  Truncated ${collection} (${totalDeleted} items)`);
+          logger.info(
+            { collection, totalDeleted },
+            `Truncated ${collection} (${totalDeleted} items)`,
+          );
         } catch (error) {
-          console.error(`❌ Failed to truncate ${collection}:`, error);
+          logError(error, `Failed to truncate ${collection}`, { collection });
         }
       }
     }
@@ -233,15 +272,24 @@ export class SeedManager {
 
     // Resolve catalog relationships
     if (item.catalog && typeof item.catalog === "string") {
-      console.log(`🔍 Looking for catalog with slug: ${item.catalog}`);
-      
+      logger.debug(`Looking for catalog with slug: ${item.catalog}`);
+
       // In test environment, look for catalogs by name instead of slug due to slug modifications
-      const searchField = collection === "datasets" || collection === "imports" || collection === "events" ? "name" : "slug";
-      const searchValue = item.catalog === "test-catalog" ? "Test Catalog" : 
-                         item.catalog === "environmental-data" ? "Environmental Data" :
-                         item.catalog === "economic-indicators" ? "Economic Indicators" :
-                         item.catalog;
-      
+      const searchField =
+        collection === "datasets" ||
+        collection === "imports" ||
+        collection === "events"
+          ? "name"
+          : "slug";
+      const searchValue =
+        item.catalog === "test-catalog"
+          ? "Test Catalog"
+          : item.catalog === "environmental-data"
+            ? "Environmental Data"
+            : item.catalog === "economic-indicators"
+              ? "Economic Indicators"
+              : item.catalog;
+
       const catalog = await this.payload!.find({
         collection: "catalogs",
         where: {
@@ -252,17 +300,21 @@ export class SeedManager {
         limit: 1,
       });
 
-      console.log(
-        `🔍 Found ${catalog?.docs?.length || 0} catalogs with ${searchField}: ${searchValue}`,
+      logger.debug(
+        { count: catalog?.docs?.length || 0, searchField, searchValue },
+        `Found ${catalog?.docs?.length || 0} catalogs with ${searchField}: ${searchValue}`,
       );
+
       if (catalog?.docs?.length && catalog.docs.length > 0) {
-        console.log(
-          `✅ Resolved catalog ${item.catalog} to ID: ${catalog.docs[0]?.id}`,
+        logger.debug(
+          { catalogSlug: item.catalog, catalogId: catalog.docs[0]?.id },
+          `Resolved catalog ${item.catalog} to ID: ${catalog.docs[0]?.id}`,
         );
         resolvedItem.catalog = catalog.docs[0]?.id;
       } else {
-        console.warn(
-          `⚠️  Could not find catalog with ${searchField}: ${searchValue} - skipping ${collection} item`,
+        logger.warn(
+          { searchField, searchValue, collection },
+          `Could not find catalog with ${searchField}: ${searchValue} - skipping ${collection} item`,
         );
         return null; // Skip this item instead of throwing
       }
@@ -271,11 +323,15 @@ export class SeedManager {
     // Resolve dataset relationships
     if (item.dataset && typeof item.dataset === "string") {
       // In test environment, look for datasets by name instead of slug due to slug modifications
-      const searchValue = item.dataset === "test-dataset" ? "Test Dataset" :
-                         item.dataset === "air-quality-measurements" ? "Air Quality Measurements" :
-                         item.dataset === "gdp-growth-rates" ? "GDP Growth Rates" :
-                         item.dataset;
-      
+      const searchValue =
+        item.dataset === "test-dataset"
+          ? "Test Dataset"
+          : item.dataset === "air-quality-measurements"
+            ? "Air Quality Measurements"
+            : item.dataset === "gdp-growth-rates"
+              ? "GDP Growth Rates"
+              : item.dataset;
+
       const dataset = await this.payload!.find({
         collection: "datasets",
         where: {
@@ -287,10 +343,15 @@ export class SeedManager {
       });
 
       if (dataset?.docs?.length > 0) {
+        logger.debug(
+          { datasetName: searchValue, datasetId: dataset.docs[0]?.id },
+          `Resolved dataset ${searchValue} to ID: ${dataset.docs[0]?.id}`,
+        );
         resolvedItem.dataset = dataset.docs[0]?.id;
       } else {
-        console.warn(
-          `⚠️  Could not find dataset with name: ${searchValue} - skipping ${collection} item`,
+        logger.warn(
+          { searchValue, collection },
+          `Could not find dataset with name: ${searchValue} - skipping ${collection} item`,
         );
         return null; // Skip this item instead of throwing
       }
@@ -308,7 +369,7 @@ export class SeedManager {
     this.isCleaningUp = true;
 
     try {
-      console.log("Starting cleanup process...");
+      logger.info("Starting cleanup process...");
 
       // Try to close the database connection pool with timeout
       if (
@@ -316,7 +377,7 @@ export class SeedManager {
         this.payload.db.pool &&
         !(this.payload.db.pool as any).ended
       ) {
-        console.log("Closing database pool...");
+        logger.debug("Closing database pool...");
         try {
           await Promise.race([
             this.payload.db.pool.end(),
@@ -324,9 +385,9 @@ export class SeedManager {
               setTimeout(() => reject(new Error("Pool.end() timeout")), 3000),
             ),
           ]);
-          console.log("Database pool closed successfully");
+          logger.debug("Database pool closed successfully");
         } catch (error) {
-          console.log(
+          logger.debug(
             "Pool close timeout - skipping force closure to avoid double end",
           );
         }
@@ -339,7 +400,7 @@ export class SeedManager {
         (this.payload.db.drizzle as any).$client &&
         !(this.payload.db.drizzle as any).$client.ended
       ) {
-        console.log("Closing drizzle client...");
+        logger.debug("Closing drizzle client...");
         try {
           await Promise.race([
             (this.payload.db.drizzle as any).$client.end(),
@@ -350,15 +411,15 @@ export class SeedManager {
               ),
             ),
           ]);
-          console.log("Drizzle client closed successfully");
+          logger.debug("Drizzle client closed successfully");
         } catch (error) {
-          console.log("Drizzle client close timeout - continuing");
+          logger.debug("Drizzle client close timeout - continuing");
         }
       }
 
       // Try to destroy the database instance
       if (this.payload.db && typeof this.payload.db.destroy === "function") {
-        console.log("Destroying database instance...");
+        logger.debug("Destroying database instance...");
         try {
           await Promise.race([
             this.payload.db.destroy(),
@@ -369,17 +430,17 @@ export class SeedManager {
               ),
             ),
           ]);
-          console.log("Database instance destroyed successfully");
+          logger.debug("Database instance destroyed successfully");
         } catch (error) {
-          console.log("Database destroy timeout - continuing");
+          logger.debug("Database destroy timeout - continuing");
         }
       }
 
       // Clean up payload instance
       this.payload = null;
-      console.log("Cleanup completed successfully");
+      logger.info("Cleanup completed successfully");
     } catch (error: unknown) {
-      console.error("Error during cleanup:", error);
+      logError(error, "Error during cleanup");
       this.payload = null;
     } finally {
       this.isCleaningUp = false;
@@ -389,7 +450,7 @@ export class SeedManager {
   async getCollectionCount(collection: string): Promise<number> {
     await this.initialize();
     const result = await this.payload!.find({
-      collection: collection as keyof Config['collections'],
+      collection: collection as keyof Config["collections"],
       limit: 0, // Only get count, not documents
     });
     return result.totalDocs;

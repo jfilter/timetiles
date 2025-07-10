@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 
 const ThemeContext = createContext({
   theme: "system",
-  setTheme: (theme: "light" | "dark" | "system") => {},
+  setTheme: (_theme: "light" | "dark" | "system") => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {

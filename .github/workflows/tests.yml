@@ -1,4 +1,4 @@
-name: Seed System Tests
+name: CI Tests
 
 on:
   push:
@@ -13,7 +13,7 @@ on:
       - ".github/workflows/docs.yml"
 
 jobs:
-  seed-tests:
+  test:
     runs-on: ubuntu-latest
 
     services:
@@ -45,7 +45,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "20"
           cache: "pnpm"
 
       - run: pnpm install
@@ -58,20 +58,22 @@ jobs:
         env:
           PGPASSWORD: timetiles_password
 
-      - run: pnpm build
+      - name: Build project
+        run: pnpm build
+
+      - name: Run linting
+        run: pnpm lint
+
+      - name: Run type checking
+        run: pnpm typecheck
+        working-directory: apps/web
 
       - name: Run Payload migrations
         run: pnpm run payload:migrate
         working-directory: apps/web
 
-      - name: Run seed data validation tests
-        run: npx tsx __tests__/seed-validation.ts
+      - name: Run main test suite
+        run: pnpm test
         working-directory: apps/web
 
-      - run: pnpm seed:test
 
-      - run: pnpm seed:truncate
-
-      - run: pnpm turbo seed -- test users catalogs
-
-      - run: pnpm seed:integration

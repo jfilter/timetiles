@@ -259,8 +259,11 @@ describe.sequential("Import Jobs", () => {
 
       try {
         // Use in-memory buffer instead of writing to disk
-        const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-        require('fs').writeFileSync(testExcelPath, excelBuffer);
+        const excelBuffer = XLSX.write(workbook, {
+          type: "buffer",
+          bookType: "xlsx",
+        });
+        require("fs").writeFileSync(testExcelPath, excelBuffer);
       } catch (error) {
         // If Excel file creation fails, skip this test
         console.warn("Excel file creation failed, skipping test:", error);
@@ -466,7 +469,7 @@ describe.sequential("Import Jobs", () => {
       const maliciousContent = `title,date,description
 "=SUM(1+1)","2024-03-15","Formula injection attempt"
 "<script>alert('xss')</script>","2024-03-16","XSS attempt"
-"${'A'.repeat(10000)}","2024-03-17","Very long title"
+"${"A".repeat(10000)}","2024-03-17","Very long title"
 "Normal Event","2024-03-18","This should work fine"`;
       await writeFile(maliciousCsvPath, maliciousContent);
 
@@ -490,14 +493,14 @@ describe.sequential("Import Jobs", () => {
 
       // All should be parsed (security filtering happens elsewhere)
       expect(updatedImport.progress.totalRows).toBe(4);
-      
+
       // Verify batch data contains the content (sanitization is handled by data processing)
       expect(payload.jobs.queue).toHaveBeenCalledWith({
         task: "batch-processing",
         input: expect.objectContaining({
           batchData: expect.arrayContaining([
-            expect.objectContaining({ 
-              title: "=SUM(1+1)" // Raw content preserved, sanitization elsewhere
+            expect.objectContaining({
+              title: "=SUM(1+1)", // Raw content preserved, sanitization elsewhere
             }),
           ]),
         }),
@@ -510,8 +513,11 @@ describe.sequential("Import Jobs", () => {
         testEnv.tempDir,
         `heavy-${Date.now()}.csv`,
       );
-      const columns = Array.from({length: 50}, (_, i) => `col${i}`).join(',');
-      const largeRow = Array.from({length: 50}, (_, i) => `"${'x'.repeat(100)}"`).join(',');
+      const columns = Array.from({ length: 50 }, (_, i) => `col${i}`).join(",");
+      const largeRow = Array.from(
+        { length: 50 },
+        (_, i) => `"${"x".repeat(100)}"`,
+      ).join(",");
       const heavyContent = `title,date,${columns}
 "Heavy Event 1","2024-03-15",${largeRow}
 "Heavy Event 2","2024-03-16",${largeRow}`;
@@ -520,16 +526,18 @@ describe.sequential("Import Jobs", () => {
       mockJob.input.filePath = heavyCsvPath;
 
       // Should not throw memory errors
-      await expect(fileParsingJob.handler({
-        job: {
-          id: 1,
-          ...mockJob,
-          taskStatus: "running" as any,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        payload,
-      })).resolves.not.toThrow();
+      await expect(
+        fileParsingJob.handler({
+          job: {
+            id: 1,
+            ...mockJob,
+            taskStatus: "running" as any,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          payload,
+        }),
+      ).resolves.not.toThrow();
     });
 
     it("should create multiple batches for large datasets", async () => {
@@ -808,7 +816,7 @@ describe.sequential("Import Jobs", () => {
       // Generate unique titles to avoid slug conflicts
       const timestamp = Date.now();
       const randomSuffix = Math.random().toString(36).substring(2, 8);
-      
+
       mockProcessedData = [
         {
           title: `Test Event 1 ${timestamp}-${randomSuffix}`,
@@ -833,7 +841,7 @@ describe.sequential("Import Jobs", () => {
           tags: ["art"],
         },
       ];
-      
+
       mockJob.input = {
         importId: testImportId,
         processedData: mockProcessedData,
@@ -869,7 +877,7 @@ describe.sequential("Import Jobs", () => {
         expect.arrayContaining([
           expect.stringContaining("Test Event 1"),
           expect.stringContaining("Test Event 2"),
-        ])
+        ]),
       );
 
       // Verify progress was updated
@@ -981,7 +989,7 @@ describe.sequential("Import Jobs", () => {
       // Create test events with addresses and unique titles to avoid slug conflicts
       const timestamp = Date.now();
       const randomSuffix = Math.random().toString(36).substring(2, 8);
-      
+
       const event1 = await payload.create({
         collection: "events",
         data: {

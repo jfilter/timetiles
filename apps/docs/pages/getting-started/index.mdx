@@ -1,62 +1,37 @@
-# Getting Started with TimeTiles
+# Getting Started
 
-TimeTiles is a comprehensive spatial data management platform built with modern web technologies. This guide will help you get up and running quickly.
+TimeTiles is a spatial data management platform for event data import and geocoding.
 
 ## Prerequisites
 
-Before you begin, ensure you have the following installed:
+- Node.js 24+
+- pnpm 
+- Docker and Docker Compose
 
-- **Node.js** (version 24 or higher)
-- **pnpm** (version 10.12.4 or higher)
-- **Docker** and **Docker Compose**
-- **Git**
-
-## System Requirements
-
-- **Operating System**: macOS, Linux, or Windows with WSL2
-- **Memory**: 8GB RAM minimum, 16GB recommended
-- **Storage**: 5GB free space for development environment
-
-## What You'll Build
-
-By following this guide, you'll have:
-
-- A fully functional TimeTiles development environment
-- PostgreSQL database with PostGIS extensions
-- Payload CMS admin interface
-- Next.js frontend application
-- Comprehensive seed data for testing
-
-## Architecture Overview
-
-TimeTiles uses a monorepo structure with the following components:
+## Project Structure
 
 ```
 timetiles/
 ├── apps/
-│   ├── web/          # Main Next.js application
-│   └── docs/         # Documentation site (this site!)
-├── packages/
-│   ├── ui/           # Shared UI components
-│   ├── eslint-config/    # Shared ESLint configuration
-│   └── typescript-config/ # Shared TypeScript configuration
-└── scripts/          # Setup and utility scripts
+│   ├── web/          # Next.js application with Payload CMS
+│   └── docs/         # Documentation site
+└── packages/         # Shared packages and configs
 ```
 
-### Technology Stack
+## Technology Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript
-- **CMS**: Payload CMS with PostgreSQL adapter
-- **Database**: PostgreSQL 17 with PostGIS extension
-- **UI**: shadcn/ui, Tailwind CSS, Lucide React
-- **Package Manager**: pnpm
-- **Build Tool**: Turborepo
-- **Development**: Docker Compose for local services
+- **CMS**: Payload CMS with PostgreSQL
+- **Database**: PostgreSQL with PostGIS
+- **UI**: shadcn/ui, Tailwind CSS
+- **Monorepo**: Turborepo with pnpm
 
-## Next Steps
+## Core Features
 
-1. **[Installation](/getting-started/installation)** - Install dependencies and clone the repository
-2. **[Quick Start](/getting-started/quick-start)** - Get the development environment running
-3. **[Configuration](/getting-started/configuration)** - Customize your setup
+- CSV/Excel event data import
+- Background job processing
+- Geocoding with Google Maps API + fallback
+- Spatial data storage with PostGIS
+- Admin interface for data management
 
-Ready to begin? Let's start with the [installation process](/getting-started/installation).
+Ready to start? Follow the [development setup guide](/getting-started/quick-start).

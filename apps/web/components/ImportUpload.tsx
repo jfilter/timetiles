@@ -6,8 +6,8 @@ import type { Import } from "../payload-types";
 // Use Payload types more directly for better type safety
 interface ImportProgress {
   importId: string;
-  status: Import['status'];
-  stage: Import['processingStage'];
+  status: Import["status"];
+  stage: Import["processingStage"];
   progress: {
     current: number;
     total: number;
@@ -23,7 +23,7 @@ interface ImportProgress {
     totalBatches: number;
     batchSize: number;
   };
-  geocodingStats: Import['geocodingStats'];
+  geocodingStats: Import["geocodingStats"];
   currentJob?: {
     id: string;
     status: string;
@@ -109,8 +109,9 @@ export default function ImportUpload(): JSX.Element {
             }
           }
         }
-      } catch (err) {
-        console.error("Failed to fetch progress:", err);
+      } catch (_err) {
+        // Silently handle progress fetch errors - user will see last known progress state
+        // In production, this could be sent to a client-side error tracking service
       }
     };
 

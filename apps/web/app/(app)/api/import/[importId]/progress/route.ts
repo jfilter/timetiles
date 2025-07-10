@@ -7,12 +7,14 @@ import {
   RATE_LIMITS,
 } from "../../../../../../lib/services/RateLimitService";
 import type { Import } from "../../../../../../payload-types";
+import { createRequestLogger, logError } from "../../../../../../lib/logger";
+import { v4 as uuidv4 } from "uuid";
 
 // Use Payload types directly instead of custom interfaces
 type ProgressResponse = {
   importId: string;
-  status: Import['status'];
-  stage: Import['processingStage'];
+  status: Import["status"];
+  stage: Import["processingStage"];
   progress: {
     current: number;
     total: number;
@@ -28,7 +30,7 @@ type ProgressResponse = {
     totalBatches: number;
     batchSize: number;
   };
-  geocodingStats: Import['geocodingStats'];
+  geocodingStats: Import["geocodingStats"];
   currentJob?: {
     id: string;
     status: string;
@@ -51,7 +53,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ importId: string }> },
 ) {
+  const requestId = uuidv4();
+  const logger = createRequestLogger(requestId);
+
   try {
+    logger.debug("Handling progress check request");
     const payload = await getPayload({ config });
     const resolvedParams = await params;
     const importId = resolvedParams.importId;
@@ -69,8 +75,14 @@ export async function GET(
       });
     } catch (error) {
       // Check if it's a NotFound error or a different error
-      if (error instanceof Error && (error.message.includes("Not Found") || error.name === "NotFound")) {
-        return NextResponse.json({ error: "Import not found" }, { status: 404 });
+      if (
+        error instanceof Error &&
+        (error.message.includes("Not Found") || error.name === "NotFound")
+      ) {
+        return NextResponse.json(
+          { error: "Import not found" },
+          { status: 404 },
+        );
       }
       // For other errors, throw to be caught by the outer try-catch
       throw error;
@@ -93,7 +105,11 @@ export async function GET(
     );
 
     // Get current job status if available
-    let currentJobStatus: { id: string; status: string; progress: number } | null = null;
+    let currentJobStatus: {
+      id: string;
+      status: string;
+      progress: number;
+    } | null = null;
     if (importRecord.currentJobId) {
       try {
         // In a real implementation, you would query the job queue
@@ -104,7 +120,10 @@ export async function GET(
           progress: stageProgress.percentage,
         };
       } catch (error) {
-        console.warn("Failed to get job status:", error);
+        logger.warn(
+          { error, importId, jobId: importRecord.currentJobId },
+          "Failed to get job status",
+        );
       }
     }
 
@@ -136,9 +155,13 @@ export async function GET(
       RATE_LIMITS.PROGRESS_CHECK.limit,
     );
 
+    logger.debug(
+      { importId, status: response.status, stage: response.stage },
+      "Progress check completed",
+    );
     return NextResponse.json(response, { headers });
   } catch (error) {
-    console.error("Progress tracking error:", error);
+    logError(error, "Progress tracking error", { requestId });
     return NextResponse.json(
       { error: "Failed to fetch progress" },
       { status: 500 },
@@ -146,7 +169,10 @@ export async function GET(
   }
 }
 
-function calculateStageProgress(stage: Import['processingStage'], counts: ProgressCounts) {
+function calculateStageProgress(
+  stage: Import["processingStage"],
+  counts: ProgressCounts,
+) {
   switch (stage) {
     case "file-parsing":
       return { stage: "Parsing file...", percentage: 10 };

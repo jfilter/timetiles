@@ -1,9 +1,4 @@
 {
   "index": "Introduction",
-  "getting-started": "Getting Started",
-  "features": "Features",
-  "guides": "User Guides",
-  "api": "API Reference",
-  "development": "Development",
-  "reference": "Reference"
+  "getting-started": "Getting Started"
 }
