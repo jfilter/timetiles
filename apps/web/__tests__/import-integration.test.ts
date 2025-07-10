@@ -23,8 +23,68 @@ import fs from "fs";
 import path from "path";
 import * as XLSX from "xlsx";
 
-// Use test provider for geocoding to avoid real HTTP calls
-vi.stubEnv('USE_TEST_GEOCODING_PROVIDER', 'true');
+// Mock GeocodingService to avoid real HTTP calls
+vi.mock("../lib/services/geocoding/GeocodingService", () => {
+  return {
+    GeocodingService: vi.fn().mockImplementation(() => ({
+      geocode: vi.fn().mockImplementation(async (address: string) => {
+        // Simulate geocoding failure for test addresses
+        if (address.toLowerCase().includes('fail') || address.toLowerCase().includes('test st')) {
+          throw new Error('Geocoding failed');
+        }
+        
+        return {
+          latitude: 37.7749,
+          longitude: -122.4194,
+          confidence: 0.9,
+          provider: "google",
+          normalizedAddress: address,
+          components: {
+            streetNumber: "123",
+            streetName: "Main St",
+            city: "San Francisco",
+            region: "CA",
+            postalCode: "94102",
+            country: "USA",
+          },
+          metadata: {},
+        };
+      }),
+      batchGeocode: vi.fn().mockImplementation(async (addresses: string[]) => {
+        const results = new Map();
+        let successful = 0;
+        let failed = 0;
+        
+        for (const address of addresses) {
+          try {
+            const result = await this.geocode(address);
+            results.set(address, result);
+            successful++;
+          } catch (error) {
+            results.set(address, error);
+            failed++;
+          }
+        }
+        
+        return {
+          results,
+          summary: {
+            total: addresses.length,
+            successful,
+            failed,
+            cached: 0,
+          },
+        };
+      }),
+    })),
+    GeocodingError: class extends Error {
+      constructor(message: string, public code: string, public retryable = false) {
+        super(message);
+        this.name = "GeocodingError";
+      }
+    },
+  };
+});
 
 describe.sequential("Import System Integration Tests", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
