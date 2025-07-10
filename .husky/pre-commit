@@ -1,13 +1,10 @@
 #!/usr/bin/env sh
 
-# Generate Payload types before commit
-cd apps/web && pnpm payload:generate
-
-# Add the generated types to the commit if they changed
-git add payload-types.ts
-
-# Go back to root and run linting
-cd ../.. && pnpm lint
+# Run linting from root
+pnpm lint
 
 # Run prettier formatting from root
 pnpm format
+
+# Add any formatted files to the commit
+git add -A
