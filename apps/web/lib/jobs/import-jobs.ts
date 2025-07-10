@@ -119,7 +119,7 @@ export const fileParsingJob: JobConfig = {
         },
         data: {
           progress: {
-            totalRows: totalRows,
+            totalRows: validRows.length,
             processedRows: 0,
             geocodedRows: 0,
             createdEvents: 0,

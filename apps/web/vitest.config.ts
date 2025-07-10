@@ -10,9 +10,9 @@ export default defineConfig({
       "scripts/**/*.{test,spec}.{js,ts}",
       "__tests__/**/*.{test,spec}.{js,ts}",
     ],
-    exclude: ["**/node_modules/**", "**/backup-*/**", "__tests__/backup-*/**"],
+    exclude: ["**/node_modules/**"],
     setupFiles: ["__tests__/setup.ts"],
-    testTimeout: 30000, // Increased timeout for database operations
+    testTimeout: 10000,
     coverage: {
       provider: "v8",
       include: ["lib/**/*.ts", "scripts/**/*.ts"],

@@ -20,6 +20,8 @@ vi.mock("uuid", () => ({
   v4: vi.fn(() => "mock-uuid-123"),
 }));
 
+// Remove payload mock for now - let's see what the actual errors are
+
 // Create shared mock functions that can be reconfigured
 const mockCheckRateLimit = vi.fn().mockResolvedValue({
   allowed: true,
@@ -47,7 +49,7 @@ vi.mock("../lib/services/RateLimitService", () => ({
   },
 }));
 
-describe("Import API Endpoints", () => {
+describe.sequential("Import API Endpoints", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
@@ -56,23 +58,36 @@ describe("Import API Endpoints", () => {
   beforeAll(async () => {
     testEnv = await createIsolatedTestEnvironment();
     payload = testEnv.payload;
+  });
 
-    // Create test catalog
+  afterAll(async () => {
+    await testEnv.cleanup();
+  });
+
+  beforeEach(async () => {
+    // Clear collections before each test - this is now isolated per test file
+    await testEnv.seedManager.truncate();
+
+    // Create test catalog with unique slug for each test
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
     const catalog = await payload.create({
       collection: "catalogs",
       data: {
-        name: "Test Catalog",
-        description: "Test catalog for API tests",
+        name: `API Test Catalog ${timestamp}`,
+        slug: `api-test-catalog-${timestamp}-${randomSuffix}`,
+        description: "Catalog for API testing",
       },
     });
     testCatalogId = catalog.id;
 
-    // Create test dataset
+    // Create test dataset with unique slug for each test
     const dataset = await payload.create({
       collection: "datasets",
       data: {
-        name: "Test Dataset",
-        description: "Test dataset for API tests",
+        name: `API Test Dataset ${timestamp}`,
+        slug: `api-test-dataset-${timestamp}-${randomSuffix}`,
+        description: "Dataset for API testing",
         catalog: testCatalogId,
         language: "eng",
         schema: {
@@ -87,15 +102,6 @@ describe("Import API Endpoints", () => {
       },
     });
     testDatasetId = dataset.id;
-  });
-
-  afterAll(async () => {
-    await testEnv.cleanup();
-  });
-
-  beforeEach(async () => {
-    // Clear collections before each test - this is now isolated per test file
-    await testEnv.seedManager.truncate();
 
     // Mock payload.jobs.queue
     payload.jobs = {
@@ -112,7 +118,7 @@ describe("Import API Endpoints", () => {
     vi.clearAllMocks();
   });
 
-  describe("Upload Endpoint", () => {
+  describe.sequential("Upload Endpoint", () => {
     const createMockFile = (
       name: string,
       type: string,
@@ -438,7 +444,7 @@ describe("Import API Endpoints", () => {
     });
   });
 
-  describe("Progress Endpoint", () => {
+  describe.sequential("Progress Endpoint", () => {
     let testImportId: string;
 
     beforeEach(async () => {

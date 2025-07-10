@@ -45,7 +45,9 @@ export async function createIsolatedTestEnvironment(): Promise<{
 
   // Run migrations on the isolated database
   try {
-    await (payload as any).migrate();
+    if (payload.db && typeof payload.db.migrate === "function") {
+      await payload.db.migrate();
+    }
   } catch (error) {
     console.warn("Migration failed, continuing:", error);
   }

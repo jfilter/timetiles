@@ -46,13 +46,4 @@ afterAll(async () => {
   } catch (error) {
     console.warn("Failed to clean up temp directory:", error);
   }
-
-  // Give time for all async operations to complete
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  // Force close any remaining connections
-  if (process.env.NODE_ENV === "test") {
-    // Give Vitest time to clean up
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
 });
