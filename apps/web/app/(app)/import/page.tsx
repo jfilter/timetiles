@@ -1,4 +1,4 @@
-import ImportUpload from "../../components/ImportUpload";
+import ImportUpload from "../../../components/ImportUpload";
 
 export default function ImportPage(): JSX.Element {
   return (

@@ -11,7 +11,7 @@ async function main() {
     const collections = ["users", "catalogs", "datasets", "events", "imports"];
 
     for (const collection of collections) {
-      const result = await payload.find({ collection, limit: 1 });
+      const result = await payload.find({ collection: collection as any, limit: 1 });
       if (result.docs.length > 0) {
         throw new Error(`Data still exists in ${collection}`);
       }

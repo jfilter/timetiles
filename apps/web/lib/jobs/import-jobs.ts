@@ -1,4 +1,4 @@
-import type { Job, JobConfig, Payload } from "payload";
+import type { Job, JobsConfig, Payload } from "payload";
 import { GeocodingService } from "../services/geocoding/GeocodingService";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -30,9 +30,10 @@ interface EventCreationJobPayload {
 }
 
 // File parsing job
-export const fileParsingJob: JobConfig = {
+export const fileParsingJob = {
   slug: "file-parsing",
-  handler: async ({ job, payload }) => {
+  handler: async ({ req }: { req: any }) => {
+    const { job, payload } = req;
     const { importId, filePath, fileType } =
       job.input as FileParsingJobPayload;
 
@@ -48,7 +49,6 @@ export const fileParsingJob: JobConfig = {
         data: {
           status: "processing",
           processingStage: "file-parsing",
-          startedAt: new Date().toISOString(),
         },
       });
 
@@ -85,10 +85,11 @@ export const fileParsingJob: JobConfig = {
           const headers = (jsonData[0] as string[]).map((h) =>
             h.toString().trim().toLowerCase(),
           );
-          parsedData = jsonData.slice(1).map((row: unknown[]) => {
+          parsedData = jsonData.slice(1).map((row: unknown) => {
             const obj: Record<string, unknown> = {};
+            const rowArray = row as unknown[];
             headers.forEach((header, index) => {
-              obj[header] = row[index] || "";
+              obj[header] = rowArray[index] || "";
             });
             return obj;
           });
@@ -168,6 +169,7 @@ export const fileParsingJob: JobConfig = {
       } catch (error) {
         console.warn("Failed to delete uploaded file:", error);
       }
+      return { output: {} };
     } catch (error) {
       console.error("File parsing job failed:", error);
 
@@ -189,13 +191,15 @@ export const fileParsingJob: JobConfig = {
 
       throw error;
     }
+    return { output: {} };
   },
 };
 
 // Batch processing job
-export const batchProcessingJob: JobConfig = {
+export const batchProcessingJob = {
   slug: "batch-processing",
-  handler: async ({ job, payload }) => {
+  handler: async ({ req }: { req: any }) => {
+    const { job, payload } = req;
     const { importId, batchNumber, batchData } =
       job.input as BatchProcessingJobPayload;
 
@@ -227,8 +231,8 @@ export const batchProcessingJob: JobConfig = {
         const processedRow = {
           title: (row.title as string)?.toString().trim(),
           description: (row.description as string)?.toString().trim() || "",
-          date: parseDate(row.date),
-          endDate: row.enddate ? parseDate(row.enddate) : null,
+          date: parseDate(row.date as string),
+          endDate: row.enddate ? parseDate(row.enddate as string) : null,
           location: (row.location as string)?.toString().trim() || "",
           address: (row.address as string)?.toString().trim() || "",
           url: (row.url as string)?.toString().trim() || "",
@@ -255,6 +259,7 @@ export const batchProcessingJob: JobConfig = {
           batchNumber,
         } as EventCreationJobPayload,
       });
+      return { output: {} };
     } catch (error) {
       console.error("Batch processing job failed:", error);
 
@@ -273,13 +278,15 @@ export const batchProcessingJob: JobConfig = {
 
       throw error;
     }
+    return { output: {} };
   },
 };
 
 // Event creation job
 export const eventCreationJob = {
   slug: "event-creation",
-  handler: async ({ job, payload }: { job: Job; payload: Payload }) => {
+  handler: async ({ req }: { req: any }) => {
+    const { job, payload } = req;
     const { importId, processedData, batchNumber } =
       job.input as EventCreationJobPayload;
 
@@ -321,8 +328,8 @@ export const eventCreationJob = {
             collection: "events",
             data: {
               dataset: dataset.id,
-              import: importId,
-              data: eventData.originalData || eventData,
+              import: parseInt(importId),
+              data: (eventData.originalData || eventData) as Record<string, unknown>,
               eventTimestamp: eventData.date as string,
               geocodingInfo: {
                 originalAddress: eventData.address as string,
@@ -333,7 +340,7 @@ export const eventCreationJob = {
             },
           });
 
-          createdEventIds.push(event.id);
+          createdEventIds.push(event.id.toString());
         } catch (error) {
           console.error("Failed to create event:", eventData.title, error);
           // Continue with other events
@@ -412,6 +419,7 @@ export const eventCreationJob = {
           },
         });
       }
+      return { output: {} };
     } catch (error) {
       console.error("Event creation job failed:", error);
 
@@ -430,13 +438,15 @@ export const eventCreationJob = {
 
       throw error;
     }
+    return { output: {} };
   },
 };
 
 // Geocoding batch job
 export const geocodingBatchJob = {
   slug: "geocoding-batch",
-  handler: async ({ job, payload }: { job: Job; payload: Payload }) => {
+  handler: async ({ req }: { req: any }) => {
+    const { job, payload } = req;
     const { importId, eventIds, batchNumber } =
       job.input as GeocodingBatchJobPayload;
 
@@ -476,7 +486,7 @@ export const geocodingBatchJob = {
                 },
                 geocodingInfo: {
                   ...event.geocodingInfo,
-                  provider: geocodingResult.provider,
+                  provider: geocodingResult.provider as "google" | "nominatim" | "manual" | null,
                   confidence: geocodingResult.confidence,
                   normalizedAddress: geocodingResult.normalizedAddress,
                 },
@@ -533,6 +543,7 @@ export const geocodingBatchJob = {
           },
         });
       }
+      return { output: {} };
     } catch (error) {
       console.error("Geocoding batch job failed:", error);
 
@@ -547,6 +558,7 @@ export const geocodingBatchJob = {
 
       throw error;
     }
+    return { output: {} };
   },
 };
 

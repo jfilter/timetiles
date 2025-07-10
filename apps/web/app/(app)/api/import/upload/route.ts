@@ -9,7 +9,7 @@ import {
   getRateLimitService,
   getClientIdentifier,
   RATE_LIMITS,
-} from "../../../../lib/services/RateLimitService";
+} from "../../../../../lib/services/RateLimitService";
 
 
 
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from request (if authenticated)
-    const user = request.headers.get("authorization")
+    const user: { id: number } | null = request.headers.get("authorization")
       ? await getUserFromToken(request.headers.get("authorization")!)
       : null;
 
@@ -303,7 +303,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getUserFromToken(_: string) {
+async function getUserFromToken(_: string): Promise<{ id: number } | null> {
   // This would implement JWT token validation
   // For now, return null (unauthenticated)
   return null;

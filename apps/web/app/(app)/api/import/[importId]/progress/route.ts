@@ -5,7 +5,7 @@ import {
   getRateLimitService,
   getClientIdentifier,
   RATE_LIMITS,
-} from "../../../../../lib/services/RateLimitService";
+} from "../../../../../../lib/services/RateLimitService";
 
 interface ProgressResponse {
   importId: string;
@@ -44,30 +44,31 @@ interface ProgressCounts {
 
 interface ImportRecord {
   progress?: {
-    totalRows?: number;
-    processedRows?: number;
-    geocodedRows?: number;
-    createdEvents?: number;
+    totalRows?: number | null;
+    processedRows?: number | null;
+    geocodedRows?: number | null;
+    createdEvents?: number | null;
   };
-  processingStage?: string;
-  currentJobId?: string;
-  status?: string;
+  processingStage?: string | null;
+  currentJobId?: string | null;
+  status?: string | null;
   batchInfo?: {
-    currentBatch?: number;
-    totalBatches?: number;
-    batchSize?: number;
+    currentBatch?: number | null;
+    totalBatches?: number | null;
+    batchSize?: number | null;
   };
   geocodingStats?: Record<string, unknown>;
-  importedAt?: string;
+  importedAt?: string | null;
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { importId: string } },
+  { params }: { params: Promise<{ importId: string }> },
 ) {
   try {
     const payload = await getPayload({ config });
-    const importId = params.importId;
+    const resolvedParams = await params;
+    const importId = resolvedParams.importId;
 
     // Set up rate limiting
     const clientId = getClientIdentifier(request);
@@ -90,10 +91,10 @@ export async function GET(
     }
 
     // Calculate overall progress
-    const totalRows = importRecord.progress?.totalRows || 0;
-    const processedRows = importRecord.progress?.processedRows || 0;
-    const geocodedRows = importRecord.progress?.geocodedRows || 0;
-    const createdEvents = importRecord.progress?.createdEvents || 0;
+    const totalRows = importRecord.progress?.totalRows ?? 0;
+    const processedRows = importRecord.progress?.processedRows ?? 0;
+    const geocodedRows = importRecord.progress?.geocodedRows ?? 0;
+    const createdEvents = importRecord.progress?.createdEvents ?? 0;
 
     const stageProgress = calculateStageProgress(
       importRecord.processingStage || "file-parsing",
@@ -134,9 +135,9 @@ export async function GET(
       },
       stageProgress,
       batchInfo: {
-        currentBatch: Number(importRecord.batchInfo?.currentBatch) || 0,
-        totalBatches: Number(importRecord.batchInfo?.totalBatches) || 0,
-        batchSize: Number(importRecord.batchInfo?.batchSize) || 100,
+        currentBatch: Number(importRecord.batchInfo?.currentBatch ?? 0),
+        totalBatches: Number(importRecord.batchInfo?.totalBatches ?? 0),
+        batchSize: Number(importRecord.batchInfo?.batchSize ?? 100),
       },
       geocodingStats: importRecord.geocodingStats || {},
       currentJob: currentJobStatus || undefined,
