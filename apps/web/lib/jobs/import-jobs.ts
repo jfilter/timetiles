@@ -551,22 +551,25 @@ export const eventCreationJob = {
 
           // Add pre-existing coordinates if available
           if (eventData.preExistingCoordinates && eventData.skipGeocoding) {
-            eventCreateData.location = {
-              latitude: eventData.preExistingCoordinates.latitude,
-              longitude: eventData.preExistingCoordinates.longitude,
-            };
-            eventCreateData.coordinateSource = {
-              type: "import",
-              confidence: eventData.coordinateValidation?.confidence || 0.9,
-              validationStatus: eventData.coordinateValidation?.validationStatus || "valid",
-              importColumns: {
-                latitudeColumn: currentImport.coordinateDetection?.columnMapping?.latitudeColumn || null,
-                longitudeColumn: currentImport.coordinateDetection?.columnMapping?.longitudeColumn || null,
-                combinedColumn: currentImport.coordinateDetection?.columnMapping?.combinedColumn || null,
-                format: currentImport.coordinateDetection?.columnMapping?.coordinateFormat || "decimal",
-              },
-            };
-            preExistingCoordinateCount++;
+            const coords = eventData.preExistingCoordinates as { latitude: number; longitude: number };
+            if (coords.latitude !== null && coords.longitude !== null) {
+              eventCreateData.location = {
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+              };
+              eventCreateData.coordinateSource = {
+                type: "import",
+                confidence: (eventData as any).coordinateValidation?.confidence || 0.9,
+                validationStatus: (eventData as any).coordinateValidation?.validationStatus || "valid",
+                importColumns: {
+                  latitudeColumn: currentImport.coordinateDetection?.columnMapping?.latitudeColumn || null,
+                  longitudeColumn: currentImport.coordinateDetection?.columnMapping?.longitudeColumn || null,
+                  combinedColumn: currentImport.coordinateDetection?.columnMapping?.combinedColumn || null,
+                  format: currentImport.coordinateDetection?.columnMapping?.coordinateFormat || "decimal",
+                },
+              };
+              preExistingCoordinateCount++;
+            }
           } else {
             eventCreateData.coordinateSource = {
               type: "none",

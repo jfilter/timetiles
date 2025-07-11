@@ -27,7 +27,9 @@ describe.sequential("RateLimitService", () => {
   });
 
   afterAll(async () => {
-    await testEnv.cleanup();
+    if (testEnv?.cleanup) {
+      await testEnv.cleanup();
+    }
   });
 
   beforeEach(() => {
@@ -442,7 +444,9 @@ describe.sequential("getRateLimitService", () => {
   });
 
   afterAll(async () => {
-    await testEnv.cleanup();
+    if (testEnv?.cleanup) {
+      await testEnv.cleanup();
+    }
   });
 
   it("should return new instances in test environment for isolation", () => {

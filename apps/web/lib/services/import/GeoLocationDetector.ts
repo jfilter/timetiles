@@ -154,6 +154,7 @@ export class GeoLocationDetector {
 
     // Check if coordinates might be swapped
     const swappedSamples = nonNullSamples.filter(s => 
+      s.lat !== null && s.lon !== null &&
       Math.abs(s.lat) > 90 && Math.abs(s.lat) <= 180 &&
       Math.abs(s.lon) <= 90
     );
@@ -240,7 +241,7 @@ export class GeoLocationDetector {
 
     // Try DMS format (e.g., "40°42'46"N")
     const dmsMatch = str.match(/^(-?\d+)[°\s]+(\d+)['\s]+(\d+(?:\.\d+)?)["\s]*([NSEW])?$/i);
-    if (dmsMatch) {
+    if (dmsMatch && dmsMatch[1] && dmsMatch[2] && dmsMatch[3]) {
       const degrees = parseFloat(dmsMatch[1]);
       const minutes = parseFloat(dmsMatch[2]);
       const seconds = parseFloat(dmsMatch[3]);
@@ -257,7 +258,7 @@ export class GeoLocationDetector {
 
     // Try degrees with direction (e.g., "40.7128 N")
     const directionMatch = str.match(/^(-?\d+(?:\.\d+)?)\s*([NSEW])$/i);
-    if (directionMatch) {
+    if (directionMatch && directionMatch[1] && directionMatch[2]) {
       const value = parseFloat(directionMatch[1]);
       const direction = directionMatch[2];
       
@@ -310,7 +311,7 @@ export class GeoLocationDetector {
     // Check for comma-separated format
     const commaFormat = samples.filter(s => {
       const match = String(s).match(/^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/);
-      if (match) {
+      if (match && match[1] && match[2]) {
         const lat = parseFloat(match[1]);
         const lon = parseFloat(match[2]);
         return this.isValidCoordinate(lat, lon);
@@ -325,7 +326,7 @@ export class GeoLocationDetector {
     // Check for space-separated format
     const spaceFormat = samples.filter(s => {
       const match = String(s).match(/^(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/);
-      if (match) {
+      if (match && match[1] && match[2]) {
         const lat = parseFloat(match[1]);
         const lon = parseFloat(match[2]);
         return this.isValidCoordinate(lat, lon);

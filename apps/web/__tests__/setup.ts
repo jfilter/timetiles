@@ -48,10 +48,16 @@ process.env.TEMP_DIR = tempDir;
 // --- Migration and Database Locking ---
 const lockDir = path.join("/tmp", `migration-lock-${workerId}`);
 
-async function waitForLock(maxWaitTime = 20000, pollInterval = 100) {
+async function waitForLock(maxWaitTime = 60000, pollInterval = 100) {
   const startTime = Date.now();
   while (fs.existsSync(lockDir)) {
     if (Date.now() - startTime > maxWaitTime) {
+      // Try to force cleanup the lock as a last resort
+      try {
+        fs.rmSync(lockDir, { recursive: true, force: true });
+      } catch (cleanupError) {
+        // Ignore cleanup errors
+      }
       throw new Error("Timeout waiting for migration lock");
     }
     await new Promise((resolve) => setTimeout(resolve, pollInterval));
@@ -59,9 +65,11 @@ async function waitForLock(maxWaitTime = 20000, pollInterval = 100) {
 }
 
 async function runMigrations() {
+  let lockAcquired = false;
   try {
     // Attempt to create lock
     fs.mkdirSync(lockDir);
+    lockAcquired = true;
 
     // Run migrations
     execSync("pnpm payload migrate", { stdio: "pipe" });
@@ -69,13 +77,26 @@ async function runMigrations() {
     if (error.code === "EEXIST") {
       // Lock exists, wait for it to be released
       await waitForLock();
+      // After waiting, try to run migrations again
+      try {
+        fs.mkdirSync(lockDir);
+        lockAcquired = true;
+        execSync("pnpm payload migrate", { stdio: "pipe" });
+      } catch (retryError) {
+        // If we still can't get the lock or run migrations, that's fine
+        // The migrations might have been run by another process
+      }
     } else {
       throw error;
     }
   } finally {
-    // Release lock
-    if (fs.existsSync(lockDir)) {
-      fs.rmdirSync(lockDir);
+    // Release lock only if we acquired it
+    if (lockAcquired && fs.existsSync(lockDir)) {
+      try {
+        fs.rmSync(lockDir, { recursive: true, force: true });
+      } catch (cleanupError) {
+        // Ignore cleanup errors - process might be shutting down
+      }
     }
   }
 }

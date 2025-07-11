@@ -386,7 +386,7 @@ export class SeedManager {
             ),
           ]);
           logger.debug("Database pool closed successfully");
-        } catch (error) {
+        } catch {
           logger.debug(
             "Pool close timeout - skipping force closure to avoid double end",
           );
@@ -412,7 +412,7 @@ export class SeedManager {
             ),
           ]);
           logger.debug("Drizzle client closed successfully");
-        } catch (error) {
+        } catch {
           logger.debug("Drizzle client close timeout - continuing");
         }
       }
@@ -431,7 +431,7 @@ export class SeedManager {
             ),
           ]);
           logger.debug("Database instance destroyed successfully");
-        } catch (error) {
+        } catch {
           logger.debug("Database destroy timeout - continuing");
         }
       }

@@ -3,9 +3,9 @@ import type { CollectionConfig } from "payload";
 const LocationCache: CollectionConfig = {
   slug: "location-cache",
   admin: {
-    useAsTitle: "address",
+    useAsTitle: "originalAddress",
     defaultColumns: [
-      "address",
+      "originalAddress",
       "provider",
       "confidence",
       "hitCount",
@@ -23,7 +23,7 @@ const LocationCache: CollectionConfig = {
   },
   fields: [
     {
-      name: "address",
+      name: "originalAddress",
       type: "text",
       required: true,
       unique: true,
@@ -61,20 +61,10 @@ const LocationCache: CollectionConfig = {
     },
     {
       name: "provider",
-      type: "select",
-      options: [
-        {
-          label: "Google Maps",
-          value: "google",
-        },
-        {
-          label: "Nominatim (OpenStreetMap)",
-          value: "nominatim",
-        },
-      ],
+      type: "text",
       required: true,
       admin: {
-        description: "Geocoding provider used",
+        description: "Name of the geocoding provider used",
       },
     },
     {

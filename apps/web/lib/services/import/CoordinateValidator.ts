@@ -128,7 +128,7 @@ export class CoordinateValidator {
    */
   private extractCommaFormat(value: string): CoordinateExtraction {
     const match = value.match(/^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/);
-    if (match) {
+    if (match && match[1] && match[2]) {
       const lat = parseFloat(match[1]);
       const lon = parseFloat(match[2]);
       const validated = this.validateCoordinates(lat, lon);
@@ -148,7 +148,7 @@ export class CoordinateValidator {
    */
   private extractSpaceFormat(value: string): CoordinateExtraction {
     const match = value.match(/^(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/);
-    if (match) {
+    if (match && match[1] && match[2]) {
       const lat = parseFloat(match[1]);
       const lon = parseFloat(match[2]);
       const validated = this.validateCoordinates(lat, lon);
@@ -200,7 +200,7 @@ export class CoordinateValidator {
 
     // Try brackets format [lat, lon]
     const bracketMatch = value.match(/^\[?\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\s*\]?$/);
-    if (bracketMatch) {
+    if (bracketMatch && bracketMatch[1] && bracketMatch[2]) {
       const lat = parseFloat(bracketMatch[1]);
       const lon = parseFloat(bracketMatch[2]);
       const validated = this.validateCoordinates(lat, lon);
@@ -264,7 +264,7 @@ export class CoordinateValidator {
     const dmsMatch = str.match(
       /^(-?\d+)[°\s]+(\d+)['′\s]+(\d+(?:\.\d+)?)["″\s]*([NSEW])?$/i
     );
-    if (dmsMatch) {
+    if (dmsMatch && dmsMatch[1] && dmsMatch[2] && dmsMatch[3]) {
       const degrees = parseFloat(dmsMatch[1]);
       const minutes = parseFloat(dmsMatch[2]);
       const seconds = parseFloat(dmsMatch[3]);
@@ -283,7 +283,7 @@ export class CoordinateValidator {
 
     // Try degrees and decimal minutes (e.g., "40°42.768'N")
     const dmMatch = str.match(/^(-?\d+)[°\s]+(\d+(?:\.\d+)?)['′\s]*([NSEW])?$/i);
-    if (dmMatch) {
+    if (dmMatch && dmMatch[1] && dmMatch[2]) {
       const degrees = parseFloat(dmMatch[1]);
       const minutes = parseFloat(dmMatch[2]);
       const direction = dmMatch[3];
@@ -300,7 +300,7 @@ export class CoordinateValidator {
 
     // Try degrees with direction (e.g., "40.7128 N" or "40.7128N")
     const directionMatch = str.match(/^(-?\d+(?:\.\d+)?)\s*([NSEW])$/i);
-    if (directionMatch) {
+    if (directionMatch && directionMatch[1] && directionMatch[2]) {
       const value = Math.abs(parseFloat(directionMatch[1]));
       const direction = directionMatch[2];
       

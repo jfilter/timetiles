@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
     // Get user from request (if authenticated)
     const user: Pick<User, "id"> | null = request.headers.get("authorization")
-      ? await getUserFromToken(request.headers.get("authorization")!)
+      ? await getUserFromToken()
       : null;
 
     logger.debug(
@@ -368,9 +368,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getUserFromToken(
-  _token: string,
-): Promise<Pick<User, "id"> | null> {
+async function getUserFromToken(): Promise<Pick<User, "id"> | null> {
   // This would implement JWT token validation
   // For now, return null (unauthenticated)
   return null;

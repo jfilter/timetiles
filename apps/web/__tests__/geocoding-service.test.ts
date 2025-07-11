@@ -126,14 +126,67 @@ describe("GeocodingService", () => {
     });
   });
 
-  // Helper function to ensure service is created
-  const ensureServiceCreated = (withGoogleApi = false) => {
+  // Helper function to create test providers in the collection
+  const createTestProviders = async (withGoogleApi = false) => {
+    const uniqueId = `${testCounter}-${Date.now()}`;
+    const providerNames = { google: null, nominatim: null };
+    
     if (withGoogleApi) {
       process.env.GOOGLE_MAPS_API_KEY = "test-api-key";
+      const googleName = `Google Maps (Test ${uniqueId})`;
+      await payload.create({
+        collection: "geocoding-providers",
+        data: {
+          name: googleName,
+          type: "google",
+          enabled: true,
+          priority: 1,
+          rateLimit: 50,
+          config: {
+            google: {
+              apiKey: "test-api-key",
+              language: "en",
+            },
+          },
+          tags: ["testing", "production"],
+        },
+      });
+      providerNames.google = googleName;
     } else {
       delete process.env.GOOGLE_MAPS_API_KEY;
     }
+    
+    // Always create Nominatim provider for tests
+    const nominatimName = `Nominatim (Test ${uniqueId})`;
+    await payload.create({
+      collection: "geocoding-providers",
+      data: {
+        name: nominatimName,
+        type: "nominatim",
+        enabled: true,
+        priority: withGoogleApi ? 2 : 1,
+        rateLimit: 1,
+        config: {
+          nominatim: {
+            baseUrl: "https://nominatim.openstreetmap.org",
+            userAgent: "TimeTiles-Test/1.0",
+            addressdetails: true,
+            extratags: false,
+          },
+        },
+        tags: ["testing", "free-tier"],
+      },
+    });
+    providerNames.nominatim = nominatimName;
+    
+    return providerNames;
+  };
+
+  // Helper function to ensure service is created
+  const ensureServiceCreated = async (withGoogleApi = false) => {
+    const providerNames = await createTestProviders(withGoogleApi);
     geocodingService = new GeocodingService(payload);
+    return providerNames;
   };
 
   describe.sequential("geocode", () => {
@@ -195,8 +248,7 @@ describe("GeocodingService", () => {
       );
 
       // Set up environment and recreate service to include Google geocoder AFTER setting up mocks
-      process.env.GOOGLE_MAPS_API_KEY = "test-api-key";
-      geocodingService = new GeocodingService(payload);
+      const providerNames = await ensureServiceCreated(true);
 
       const result = await geocodingService.geocode(uniqueAddress);
 
@@ -204,7 +256,7 @@ describe("GeocodingService", () => {
         latitude: 37.7749,
         longitude: -122.4194,
         confidence: expect.any(Number),
-        provider: "google",
+        provider: providerNames.google,
         normalizedAddress: expect.any(String),
         components: {
           streetNumber: "1234",
@@ -248,12 +300,11 @@ describe("GeocodingService", () => {
       ]);
 
       // Set up environment and recreate service to include Google geocoder AFTER setting up mocks
-      process.env.GOOGLE_MAPS_API_KEY = "test-api-key";
-      geocodingService = new GeocodingService(payload);
+      const providerNames = await ensureServiceCreated(true);
 
       const result = await geocodingService.geocode(uniqueAddress);
 
-      expect(result.provider).toBe("nominatim");
+      expect(result.provider).toMatch(/Nominatim.*Test/);
       expect(result.latitude).toBe(37.7749);
       expect(result.longitude).toBe(-122.4194);
       expect(mockGoogleGeocoder.geocode).toHaveBeenCalled();
@@ -283,14 +334,13 @@ describe("GeocodingService", () => {
       ]);
 
       // Ensure no Google API key and recreate service AFTER setting up mocks
-      delete process.env.GOOGLE_MAPS_API_KEY;
-      geocodingService = new GeocodingService(payload);
+      const providerNames = await ensureServiceCreated(false);
 
       const uniqueAddress = `9012 Nominatim Blvd, San Francisco, CA ${testCounter}-${Date.now()}`;
 
       const result = await geocodingService.geocode(uniqueAddress);
 
-      expect(result.provider).toBe("nominatim");
+      expect(result.provider).toMatch(/Nominatim.*Test/);
       expect(result.latitude).toBe(37.7749);
       expect(result.longitude).toBe(-122.4194);
       expect(mockNominatimGeocoder.geocode).toHaveBeenCalledWith(uniqueAddress);
@@ -298,7 +348,7 @@ describe("GeocodingService", () => {
 
     it("should return cached result when available", async () => {
       // Create service instance for this test
-      geocodingService = new GeocodingService(payload);
+      const providerNames = await ensureServiceCreated();
 
       const uniqueAddress = `111 Cache St, San Francisco, CA ${Date.now()}-${Math.random()}`;
 
@@ -306,7 +356,7 @@ describe("GeocodingService", () => {
       const cachedResult = await payload.create({
         collection: "location-cache",
         data: {
-          address: uniqueAddress,
+          originalAddress: uniqueAddress,
           normalizedAddress: uniqueAddress
             .toLowerCase()
             .replace(/[^a-z0-9\s]/g, "")
@@ -314,7 +364,7 @@ describe("GeocodingService", () => {
             .trim(),
           latitude: 37.7749,
           longitude: -122.4194,
-          provider: "google",
+          provider: providerNames.nominatim,
           confidence: 0.9,
           hitCount: 1,
           lastUsed: new Date().toISOString(),
@@ -348,7 +398,7 @@ describe("GeocodingService", () => {
 
     it("should throw GeocodingError when all providers fail", async () => {
       // Create service instance for this test
-      geocodingService = new GeocodingService(payload);
+      await ensureServiceCreated();
 
       const uniqueAddress = `${mockAddress} ${testCounter}`;
 
@@ -383,7 +433,7 @@ describe("GeocodingService", () => {
       ]);
 
       // Create service instance for this test AFTER setting up mocks
-      ensureServiceCreated();
+      await ensureServiceCreated();
 
       const uniqueAddress = `${mockAddress} ${testCounter}`;
 
@@ -412,7 +462,7 @@ describe("GeocodingService", () => {
       mockNominatimGeocoder.geocode.mockResolvedValue([invalidResult]);
 
       // Create service instance for this test AFTER setting up mocks
-      ensureServiceCreated();
+      await ensureServiceCreated();
 
       const uniqueAddress = `${mockAddress} ${testCounter}`;
 
@@ -431,7 +481,7 @@ describe("GeocodingService", () => {
       mockNominatimGeocoder.geocode.mockResolvedValue([]);
 
       // Create service instance for this test AFTER setting up mocks
-      ensureServiceCreated();
+      await ensureServiceCreated();
 
       await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow(
         GeocodingError,
@@ -448,7 +498,7 @@ describe("GeocodingService", () => {
 
     it("should process multiple addresses in batches", async () => {
       // Create service instance for this test
-      geocodingService = new GeocodingService(payload);
+      await ensureServiceCreated();
 
       // Set up mocks: Google fails, Nominatim succeeds for all addresses
       mockGoogleGeocoder.geocode.mockRejectedValue(
@@ -518,7 +568,7 @@ describe("GeocodingService", () => {
       });
 
       // Create service instance for this test AFTER setting up mocks
-      geocodingService = new GeocodingService(payload);
+      await ensureServiceCreated();
 
       const result = await geocodingService.batchGeocode(testAddresses);
 
@@ -535,7 +585,7 @@ describe("GeocodingService", () => {
 
     it("should use cached results when available", async () => {
       // Create service instance for this test
-      geocodingService = new GeocodingService(payload);
+      await ensureServiceCreated();
 
       // Create unique addresses for this test
       const uniqueAddresses = [
@@ -548,7 +598,7 @@ describe("GeocodingService", () => {
       await payload.create({
         collection: "location-cache",
         data: {
-          address: uniqueAddresses[0]!,
+          originalAddress: uniqueAddresses[0]!,
           normalizedAddress: uniqueAddresses[0]!
             .toLowerCase()
             .replace(/[^a-z0-9\s]/g, "")
@@ -556,7 +606,7 @@ describe("GeocodingService", () => {
             .trim(),
           latitude: 37.7749,
           longitude: -122.4194,
-          provider: "google",
+          provider: "Test Nominatim",
           confidence: 0.9,
           hitCount: 1,
           lastUsed: new Date().toISOString(),
@@ -609,8 +659,7 @@ describe("GeocodingService", () => {
       );
 
       // Create service with Google API enabled AFTER setting up mocks
-      process.env.GOOGLE_MAPS_API_KEY = "test-api-key";
-      geocodingService = new GeocodingService(payload);
+      await ensureServiceCreated(true);
 
       const result = await geocodingService.geocode(uniqueAddress);
 
@@ -638,7 +687,7 @@ describe("GeocodingService", () => {
       mockNominatimGeocoder.geocode.mockResolvedValue([nominatimResult]);
 
       // Create service instance for this test AFTER setting up mocks
-      ensureServiceCreated();
+      await ensureServiceCreated();
 
       const result = await geocodingService.geocode(
         "123 Main St, San Francisco, CA",
@@ -676,7 +725,7 @@ describe("GeocodingService", () => {
       ]);
 
       // Create service instance for this test AFTER setting up mocks
-      ensureServiceCreated();
+      await ensureServiceCreated();
 
       // First call should hit the geocoding service and create cache entry
       const result1 = await geocodingService.geocode(address1);
@@ -693,16 +742,16 @@ describe("GeocodingService", () => {
 
     it("should clean up old cache entries", async () => {
       // Create service instance for this test
-      ensureServiceCreated();
+      await ensureServiceCreated();
 
-      // Create old cache entry
-      const oldDate = new Date(Date.now() - 100 * 24 * 60 * 60 * 1000); // 100 days ago
+      // Create old cache entry (older than default 365 day TTL)
+      const oldDate = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000); // 400 days ago
       const uniqueAddress = `Old Address ${Date.now()}-${Math.random()}`;
 
       await payload.create({
         collection: "location-cache",
         data: {
-          address: uniqueAddress,
+          originalAddress: uniqueAddress,
           normalizedAddress: uniqueAddress
             .toLowerCase()
             .replace(/[^a-z0-9\s]/g, "")
@@ -724,7 +773,7 @@ describe("GeocodingService", () => {
       const remainingEntries = await payload.find({
         collection: "location-cache",
         where: {
-          address: { equals: uniqueAddress },
+          originalAddress: { equals: uniqueAddress },
         },
       });
 
@@ -733,7 +782,7 @@ describe("GeocodingService", () => {
 
     it("should not clean up frequently used cache entries", async () => {
       // Create service instance for this test
-      ensureServiceCreated();
+      await ensureServiceCreated();
 
       // Create recent cache entry with high hit count
       const uniqueAddress = `Popular Address ${Date.now()}-${Math.random()}`;
@@ -741,7 +790,7 @@ describe("GeocodingService", () => {
       await payload.create({
         collection: "location-cache",
         data: {
-          address: uniqueAddress,
+          originalAddress: uniqueAddress,
           normalizedAddress: uniqueAddress
             .toLowerCase()
             .replace(/[^a-z0-9\s]/g, "")
@@ -763,7 +812,7 @@ describe("GeocodingService", () => {
       const remainingEntries = await payload.find({
         collection: "location-cache",
         where: {
-          address: { equals: uniqueAddress },
+          originalAddress: { equals: uniqueAddress },
         },
       });
 
@@ -774,7 +823,7 @@ describe("GeocodingService", () => {
   describe.sequential("error handling", () => {
     it("should handle network errors gracefully", async () => {
       // Create service instance for this test
-      ensureServiceCreated();
+      await ensureServiceCreated();
 
       const uniqueAddress = `Test Address ${testCounter}`;
 
@@ -822,7 +871,7 @@ describe("GeocodingService", () => {
       });
 
       // Create service instance for this test AFTER setting up mocks
-      ensureServiceCreated();
+      await ensureServiceCreated();
 
       const result = await geocodingService.batchGeocode(testAddresses);
 
@@ -835,7 +884,7 @@ describe("GeocodingService", () => {
 
     it("should handle cache errors gracefully", async () => {
       // Create service instance for this test
-      ensureServiceCreated();
+      await ensureServiceCreated();
 
       // Create a unique address to avoid conflicts
       const uniqueAddress = `Test Address ${Date.now()}-${Math.random()}`;

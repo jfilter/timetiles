@@ -74,6 +74,7 @@ export interface Config {
     users: User;
     media: Media;
     'location-cache': LocationCache;
+    'geocoding-providers': GeocodingProvider;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -88,6 +89,7 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     'location-cache': LocationCacheSelect<false> | LocationCacheSelect<true>;
+    'geocoding-providers': GeocodingProvidersSelect<false> | GeocodingProvidersSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -634,7 +636,7 @@ export interface LocationCache {
   /**
    * Original address string
    */
-  address: string;
+  originalAddress: string;
   /**
    * Normalized address for better matching
    */
@@ -648,9 +650,9 @@ export interface LocationCache {
    */
   longitude: number;
   /**
-   * Geocoding provider used
+   * Name of the geocoding provider used
    */
-  provider: 'google' | 'nominatim';
+  provider: string;
   /**
    * Confidence score (0-1)
    */
@@ -704,6 +706,153 @@ export interface LocationCache {
     | number
     | boolean
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Manage geocoding provider configurations
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "geocoding-providers".
+ */
+export interface GeocodingProvider {
+  id: number;
+  /**
+   * Unique name for this provider instance (e.g., 'Google Primary', 'Nominatim EU')
+   */
+  name: string;
+  /**
+   * The geocoding service provider
+   */
+  type: 'google' | 'nominatim' | 'opencage';
+  /**
+   * Enable this provider instance
+   */
+  enabled?: boolean | null;
+  /**
+   * Provider priority (1 = highest priority, 1000 = lowest)
+   */
+  priority: number;
+  /**
+   * Maximum requests per second for this provider
+   */
+  rateLimit?: number | null;
+  /**
+   * Provider-specific settings
+   */
+  config?: {
+    google?: {
+      /**
+       * Google Maps Geocoding API key
+       */
+      apiKey: string;
+      /**
+       * ISO 3166-1 alpha-2 country code for result bias (e.g., 'US', 'GB')
+       */
+      region?: string | null;
+      /**
+       * Language for returned results (e.g., 'en', 'de', 'fr')
+       */
+      language?: string | null;
+    };
+    nominatim?: {
+      /**
+       * Nominatim server URL
+       */
+      baseUrl: string;
+      /**
+       * User agent string for requests (required by Nominatim policy)
+       */
+      userAgent: string;
+      /**
+       * Contact email for high-volume usage (recommended)
+       */
+      email?: string | null;
+      /**
+       * Comma-separated ISO 3166-1 alpha-2 codes to limit results (e.g., 'us,ca,gb')
+       */
+      countrycodes?: string | null;
+      /**
+       * Include detailed address components in results
+       */
+      addressdetails?: boolean | null;
+      /**
+       * Include additional OSM tags in results
+       */
+      extratags?: boolean | null;
+    };
+    opencage?: {
+      /**
+       * OpenCage Geocoding API key
+       */
+      apiKey: string;
+      /**
+       * ISO 639-1 language code for results (e.g., 'en', 'de', 'fr')
+       */
+      language?: string | null;
+      /**
+       * ISO 3166-1 alpha-2 country code to restrict results (e.g., 'US', 'DE')
+       */
+      countrycode?: string | null;
+      /**
+       * Restrict results to a specific geographic area
+       */
+      bounds?: {
+        enabled?: boolean | null;
+        southwest?: {
+          lat?: number | null;
+          lng?: number | null;
+        };
+        northeast?: {
+          lat?: number | null;
+          lng?: number | null;
+        };
+      };
+      /**
+       * Include additional metadata like timezone, currency, etc.
+       */
+      annotations?: boolean | null;
+      /**
+       * Abbreviate street names and components
+       */
+      abbrv?: boolean | null;
+    };
+  };
+  /**
+   * Tags for organizing and filtering providers
+   */
+  tags?:
+    | (
+        | 'production'
+        | 'development'
+        | 'testing'
+        | 'backup'
+        | 'primary'
+        | 'secondary'
+        | 'region-us'
+        | 'region-eu'
+        | 'region-asia'
+        | 'region-global'
+        | 'high-volume'
+        | 'low-volume'
+        | 'free-tier'
+        | 'paid-tier'
+      )[]
+    | null;
+  /**
+   * Provider usage statistics (automatically updated)
+   */
+  statistics?: {
+    totalRequests?: number | null;
+    successfulRequests?: number | null;
+    failedRequests?: number | null;
+    lastUsed?: string | null;
+    averageResponseTime?: number | null;
+  };
+  /**
+   * Internal notes about this provider instance
+   */
+  notes?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -833,6 +982,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'location-cache';
         value: number | LocationCache;
+      } | null)
+    | ({
+        relationTo: 'geocoding-providers';
+        value: number | GeocodingProvider;
       } | null)
     | ({
         relationTo: 'payload-jobs';
@@ -1124,7 +1277,7 @@ export interface MediaSelect<T extends boolean = true> {
  * via the `definition` "location-cache_select".
  */
 export interface LocationCacheSelect<T extends boolean = true> {
-  address?: T;
+  originalAddress?: T;
   normalizedAddress?: T;
   latitude?: T;
   longitude?: T;
@@ -1143,6 +1296,77 @@ export interface LocationCacheSelect<T extends boolean = true> {
         country?: T;
       };
   metadata?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "geocoding-providers_select".
+ */
+export interface GeocodingProvidersSelect<T extends boolean = true> {
+  name?: T;
+  type?: T;
+  enabled?: T;
+  priority?: T;
+  rateLimit?: T;
+  config?:
+    | T
+    | {
+        google?:
+          | T
+          | {
+              apiKey?: T;
+              region?: T;
+              language?: T;
+            };
+        nominatim?:
+          | T
+          | {
+              baseUrl?: T;
+              userAgent?: T;
+              email?: T;
+              countrycodes?: T;
+              addressdetails?: T;
+              extratags?: T;
+            };
+        opencage?:
+          | T
+          | {
+              apiKey?: T;
+              language?: T;
+              countrycode?: T;
+              bounds?:
+                | T
+                | {
+                    enabled?: T;
+                    southwest?:
+                      | T
+                      | {
+                          lat?: T;
+                          lng?: T;
+                        };
+                    northeast?:
+                      | T
+                      | {
+                          lat?: T;
+                          lng?: T;
+                        };
+                  };
+              annotations?: T;
+              abbrv?: T;
+            };
+      };
+  tags?: T;
+  statistics?:
+    | T
+    | {
+        totalRequests?: T;
+        successfulRequests?: T;
+        failedRequests?: T;
+        lastUsed?: T;
+        averageResponseTime?: T;
+      };
+  notes?: T;
   updatedAt?: T;
   createdAt?: T;
 }

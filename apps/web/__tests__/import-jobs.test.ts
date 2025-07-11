@@ -67,7 +67,9 @@ describe.sequential("Import Jobs", () => {
   });
 
   afterAll(async () => {
-    await testEnv.cleanup();
+    if (testEnv?.cleanup) {
+      await testEnv.cleanup();
+    }
   });
 
   beforeEach(async () => {
