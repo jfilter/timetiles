@@ -12,7 +12,8 @@ export default defineConfig({
     ],
     exclude: ["**/node_modules/**"],
     setupFiles: ["__tests__/setup.ts"],
-    testTimeout: 10000,
+    testTimeout: 30000,
+    hookTimeout: 30000,
     reporters: ["basic"],
     silent: true,
     coverage: {

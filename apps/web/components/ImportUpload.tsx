@@ -109,7 +109,7 @@ export default function ImportUpload(): JSX.Element {
             }
           }
         }
-      } catch (_err) {
+      } catch {
         // Silently handle progress fetch errors - user will see last known progress state
         // In production, this could be sent to a client-side error tracking service
       }

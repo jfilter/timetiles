@@ -1,7 +1,18 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalEnv": ["NODE_ENV", "GOOGLE_MAPS_API_KEY", "LOG_LEVEL"],
+  "globalEnv": [
+    "NODE_ENV",
+    "GOOGLE_MAPS_API_KEY",
+    "LOG_LEVEL",
+    "GEOCODING_ENABLED",
+    "GEOCODING_FALLBACK_ENABLED",
+    "GEOCODING_PROVIDER_STRATEGY",
+    "GEOCODING_REQUIRED_TAGS",
+    "GEOCODING_CACHING_ENABLED",
+    "GEOCODING_CACHE_TTL_DAYS",
+    "OPENCAGE_API_KEY"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

@@ -28,7 +28,9 @@ describe.sequential("Import API Endpoints", () => {
   });
 
   afterAll(async () => {
-    await testEnv.cleanup();
+    if (testEnv?.cleanup) {
+      await testEnv.cleanup();
+    }
   });
 
   beforeEach(async () => {

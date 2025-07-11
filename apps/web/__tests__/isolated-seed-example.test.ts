@@ -17,7 +17,9 @@ describe("Isolated Seed System Test Example", () => {
   });
 
   afterAll(async () => {
-    await testEnv.cleanup();
+    if (testEnv?.cleanup) {
+      await testEnv.cleanup();
+    }
   });
 
   beforeEach(async () => {

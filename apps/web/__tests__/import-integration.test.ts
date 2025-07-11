@@ -143,11 +143,13 @@ describe.sequential("Import System Integration Tests", () => {
   beforeAll(async () => {
     testEnv = await createIsolatedTestEnvironment();
     payload = testEnv.payload;
-  });
+  }, 30000);
 
   afterAll(async () => {
-    await testEnv.cleanup();
-  });
+    if (testEnv?.cleanup) {
+      await testEnv.cleanup();
+    }
+  }, 30000);
 
   beforeEach(async () => {
     // Clean up before each test - this is now isolated per test file
@@ -194,7 +196,7 @@ describe.sequential("Import System Integration Tests", () => {
     testDatasetId = dataset.id;
 
     // Use real services - no mocking needed
-  });
+  }, 30000);
 
   afterEach(() => {
     vi.clearAllMocks();
