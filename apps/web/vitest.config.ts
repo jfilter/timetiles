@@ -4,11 +4,12 @@ import path from "path";
 export default defineConfig({
   test: {
     globals: true,
-    environment: "node",
+    environment: "jsdom",
     include: [
-      "lib/**/*.{test,spec}.{js,ts}",
-      "scripts/**/*.{test,spec}.{js,ts}",
-      "__tests__/**/*.{test,spec}.{js,ts}",
+      "lib/**/*.{test,spec}.{js,ts,jsx,tsx}",
+      "scripts/**/*.{test,spec}.{js,ts,jsx,tsx}",
+      "__tests__/**/*.{test,spec}.{js,ts,jsx,tsx}",
+      "__tests__/**/*.test.tsx",
     ],
     exclude: ["**/node_modules/**"],
     setupFiles: ["__tests__/setup.ts"],

@@ -14,6 +14,9 @@ node_modules
 
 # Testing
 coverage
+# Playwright
+playwright-report/
+test-results/
 
 # Turbo
 .turbo
@@ -29,6 +32,7 @@ dist
 
 # Debug
 npm-debug.log*
+dev.log
 
 # Misc
 .DS_Store
