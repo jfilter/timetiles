@@ -28,7 +28,14 @@ export default defineWorkspace([
         "__tests__/services/CoordinateValidator.test.ts",
         "__tests__/services/GeoLocationDetector.test.ts",
         "__tests__/seed-validation.test.ts",
+        "__tests__/components/**/*.{test,spec}.{js,ts,jsx,tsx}",
       ],
+    },
+  },
+  {
+    extends: "./vitest.config.components.ts",
+    test: {
+      name: "components",
     },
   },
 ]);
