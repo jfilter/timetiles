@@ -284,7 +284,7 @@ export class GeocodingService {
               countrycodes: nominatimConfig.countrycodes,
               addressdetails: nominatimConfig.addressdetails !== false,
               extratags: nominatimConfig.extratags === true,
-            } as any);
+            } as NodeGeocoder.Options);
             break;
           }
 
@@ -295,7 +295,7 @@ export class GeocodingService {
             }
             logger.info(`Creating OpenCage geocoder for '${doc.name}'`);
             const opencageConfig = doc.config.opencage;
-            const geocoderOptions: any = {
+            const geocoderOptions: NodeGeocoder.Options = {
               provider: "opencage",
               apiKey: opencageConfig.apiKey,
               formatter: null,

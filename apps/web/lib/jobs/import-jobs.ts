@@ -15,6 +15,7 @@ import type {
   TaskGeocodingBatch,
 } from "../../payload-types";
 import { createJobLogger, logError, logPerformance } from "../logger";
+import type { Payload } from "payload";
 
 // Enhanced job payload types using Payload task types
 interface FileParsingJobPayload extends TaskFileParsing {
@@ -58,11 +59,11 @@ type JobHandlerContext<T = unknown> = {
     [key: string]: unknown;
   };
   req?: {
-    payload: any;
+    payload: Payload;
     [key: string]: unknown;
   };
   // Legacy test support - payload directly on context
-  payload?: any;
+  payload?: Payload;
   // Support any additional properties for backwards compatibility
   [key: string]: unknown;
 };
@@ -557,8 +558,8 @@ export const eventCreationJob = {
               };
               eventCreateData.coordinateSource = {
                 type: "import",
-                confidence: (eventData as any).coordinateValidation?.confidence || 0.9,
-                validationStatus: (eventData as any).coordinateValidation?.validationStatus || "valid",
+                confidence: (eventData as { coordinateValidation?: { confidence?: number } }).coordinateValidation?.confidence || 0.9,
+                validationStatus: (eventData as { coordinateValidation?: { validationStatus?: string } }).coordinateValidation?.validationStatus || "valid",
                 importColumns: {
                   latitudeColumn: currentImport.coordinateDetection?.columnMapping?.latitudeColumn || null,
                   longitudeColumn: currentImport.coordinateDetection?.columnMapping?.longitudeColumn || null,
