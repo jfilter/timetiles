@@ -20,6 +20,8 @@ vi.mock("../lib/logger", () => {
     createLogger: () => mockedLogger,
     createRequestLogger: () => mockedLogger,
     createJobLogger: () => mockedLogger,
+    createTestLogger: () => mockedLogger,
+    perfStart: () => ({ end: vi.fn().mockReturnValue(10) }),
     logPerformance: vi.fn(),
     logError: vi.fn(),
   };

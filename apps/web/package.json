@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:debug": "LOG_LEVEL=debug next dev --turbopack",
     "dev:full": "concurrently \"pnpm dev\" \"pnpm payload:watch\"",
     "build": "payload generate:types --silent && next build",
     "start": "next start",
@@ -20,6 +21,8 @@
     "seed": "tsx scripts/seed.ts development",
     "test": "vitest run --reporter=basic --silent",
     "test:verbose": "vitest run --reporter=basic",
+    "test:debug": "TEST_LOG_LEVEL=debug TEST_PRETTY_LOGS=true vitest run --reporter=verbose",
+    "test:debug:watch": "TEST_LOG_LEVEL=debug TEST_PRETTY_LOGS=true vitest --reporter=verbose",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:parallel": "vitest run --reporter=verbose --pool=forks --poolOptions.forks.singleFork=false",
