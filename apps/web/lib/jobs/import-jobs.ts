@@ -50,21 +50,21 @@ interface EventCreationJobPayload extends TaskEventCreation {
 }
 
 // Job handler context type that works with both Payload types and test mocks
-type JobHandlerContext<T = any> = {
+type JobHandlerContext<T = unknown> = {
   input?: T;
   job?: {
     id: string | number;
-    taskStatus?: any;
-    [key: string]: any;
+    taskStatus?: Record<string, unknown>;
+    [key: string]: unknown;
   };
   req?: {
     payload: any;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   // Legacy test support - payload directly on context
   payload?: any;
   // Support any additional properties for backwards compatibility
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 // File parsing job
@@ -73,7 +73,7 @@ export const fileParsingJob = {
   handler: async (context: JobHandlerContext) => {
     // Support both new format (req.payload) and legacy format (payload directly)
     const payload = context.req?.payload || context.payload;
-    const input = context.input || (context.job as any)?.input;
+    const input = (context.input || context.job?.input) as FileParsingJobPayload['input'];
     const { importId, filePath, fileType } =
       input as FileParsingJobPayload["input"];
 
@@ -321,7 +321,7 @@ export const batchProcessingJob = {
   slug: "batch-processing",
   handler: async (context: JobHandlerContext) => {
     const payload = context.req?.payload || context.payload;
-    const input = context.input || (context.job as any)?.input;
+    const input = (context.input || context.job?.input) as BatchProcessingJobPayload['input'];
     const { importId, batchNumber, batchData } =
       input as BatchProcessingJobPayload["input"];
 
@@ -365,7 +365,7 @@ export const batchProcessingJob = {
 
       const processedData = batchData.map((row) => {
         // Normalize and validate data
-        const processedRow: any = {
+        const processedRow: Record<string, unknown> = {
           title: (row.title as string)?.toString().trim(),
           description: (row.description as string)?.toString().trim() || "",
           date: parseDate(row.date as string),
@@ -477,7 +477,7 @@ export const eventCreationJob = {
   slug: "event-creation",
   handler: async (context: JobHandlerContext) => {
     const payload = context.req?.payload || context.payload;
-    const input = context.input || (context.job as any)?.input;
+    const input = (context.input || context.job?.input) as EventCreationJobPayload['input'];
     const { importId, processedData, batchNumber } =
       input as EventCreationJobPayload["input"];
 
@@ -531,7 +531,7 @@ export const eventCreationJob = {
       // Create events
       for (const eventData of processedData) {
         try {
-          const eventCreateData: any = {
+          const eventCreateData: Partial<Event> = {
             dataset: dataset.id,
             import: importId,
             data: (eventData.originalData || eventData) as Record<
@@ -751,7 +751,7 @@ export const geocodingBatchJob = {
   slug: "geocoding-batch",
   handler: async (context: JobHandlerContext) => {
     const payload = context.req?.payload || context.payload;
-    const input = context.input || (context.job as any)?.input;
+    const input = (context.input || context.job?.input) as GeocodingBatchJobPayload['input'];
     const { importId, eventIds, batchNumber } =
       input as GeocodingBatchJobPayload["input"];
 

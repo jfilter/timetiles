@@ -1,7 +1,8 @@
-import NodeGeocoder from "node-geocoder";
+import NodeGeocoder, { Entry } from "node-geocoder";
 import type { Payload } from "payload";
-import type { LocationCache } from "../../../payload-types";
+import type { GeocodingProvider, LocationCache } from "../../../payload-types";
 import { createLogger, logError, logPerformance } from "../../logger";
+import { Where } from "payload/types";
 
 const logger = createLogger("geocoding-service");
 
@@ -43,10 +44,23 @@ interface ProviderConfig {
   enabled: boolean;
 }
 
+interface GeocodingSettings {
+  enabled: boolean;
+  fallbackEnabled: boolean;
+  providerSelection: {
+    strategy: string;
+    requiredTags: string[];
+  };
+  caching: {
+    enabled: boolean;
+    ttlDays: number;
+  };
+}
+
 export class GeocodingService {
   private providers: ProviderConfig[] = [];
   private payload: Payload;
-  private settings: any = null;
+  private settings: GeocodingSettings | null = null;
   private initialized = false;
 
   constructor(payload: Payload) {
@@ -104,7 +118,7 @@ export class GeocodingService {
     const requiredTags = this.settings?.providerSelection?.requiredTags || [];
 
     // Query providers from collection
-    const query: any = {
+    const query: { collection: string; where: Where; limit: number } = {
       collection: "geocoding-providers",
       where: {
         enabled: { equals: true },
@@ -231,7 +245,7 @@ export class GeocodingService {
     }
   }
 
-  private initializeProvidersFromDocs(docs: any[]): void {
+  private initializeProvidersFromDocs(docs: GeocodingProvider[]): void {
     logger.info(`Initializing ${docs.length} providers from docs`);
     
     for (const doc of docs) {
@@ -363,7 +377,7 @@ export class GeocodingService {
             setTimeout(() => reject(new Error("Provider timeout")), 10000)
           );
           
-          const results = await Promise.race([geocodePromise, timeoutPromise]) as any[];
+          const results = await Promise.race([geocodePromise, timeoutPromise]) as Entry[];
 
           if (results && results.length > 0 && results[0]) {
             const result = this.convertNodeGeocoderResult(results[0], provider.name);
@@ -473,11 +487,11 @@ export class GeocodingService {
     };
   }
 
-  async testConfiguration(testAddress?: string): Promise<any> {
+  async testConfiguration(testAddress?: string): Promise<Record<string, unknown>> {
     await this.initialize();
     
     const address = testAddress || this.settings?.testing?.testAddress || "London, UK";
-    const results: any = {};
+    const results: Record<string, unknown> = {};
 
     for (const provider of this.providers.filter(p => p.enabled)) {
       try {
@@ -487,7 +501,7 @@ export class GeocodingService {
           setTimeout(() => reject(new Error("Geocoding timeout")), 5000)
         );
         
-        const geocodeResults = await Promise.race([geocodePromise, timeoutPromise]) as any[];
+        const geocodeResults = await Promise.race([geocodePromise, timeoutPromise]) as Entry[];
         const result = geocodeResults[0];
         
         if (result) {
@@ -527,12 +541,12 @@ export class GeocodingService {
   }
 
   // Helper methods
-  private convertNodeGeocoderResult(result: any, providerName: string): GeocodingResult {
+  private convertNodeGeocoderResult(result: Entry, providerName: string): GeocodingResult {
     return {
       latitude: result.latitude!,
       longitude: result.longitude!,
       confidence: this.calculateConfidence(result, providerName),
-      provider: providerName as any,
+      provider: providerName,
       normalizedAddress: result.formattedAddress || result.display_name || "",
       components: {
         streetNumber: result.streetNumber,
@@ -551,7 +565,7 @@ export class GeocodingService {
     };
   }
 
-  private calculateConfidence(result: any, providerName: string): number {
+  private calculateConfidence(result: Entry, providerName: string): number {
     let confidence = 0.7; // Base confidence
 
     switch (providerName) {
@@ -577,7 +591,7 @@ export class GeocodingService {
       latitude: cached.latitude,
       longitude: cached.longitude,
       confidence: cached.confidence || 0,
-      provider: cached.provider as any, // Provider is now the name string
+      provider: cached.provider,
       normalizedAddress: cached.normalizedAddress,
       components: {
         streetNumber: cached.components?.streetNumber || undefined,

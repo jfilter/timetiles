@@ -66,7 +66,7 @@ export class GeoLocationDetector {
   /**
    * Detect geolocation columns in the imported data
    */
-  detectGeoColumns(headers: string[], sampleRows: any[]): GeoColumnResult {
+  detectGeoColumns(headers: string[], sampleRows: Record<string, unknown>[]): GeoColumnResult {
     this.log.info(`Detecting geo columns from ${headers.length} headers`);
 
     // Step 1: Try to find separate lat/lon columns by pattern
@@ -133,7 +133,7 @@ export class GeoLocationDetector {
    * Validate coordinate pairs from sample rows
    */
   private validateCoordinatePairs(
-    sampleRows: any[],
+    sampleRows: Record<string, unknown>[],
     latColumn: string,
     lonColumn: string
   ): { isValid: boolean; confidence: number; swapped: boolean } {
@@ -186,7 +186,7 @@ export class GeoLocationDetector {
    * Extract coordinate samples from rows
    */
   private extractCoordinateSamples(
-    rows: any[],
+    rows: Record<string, unknown>[],
     latColumn: string,
     lonColumn: string,
     limit: number = 10
@@ -220,7 +220,7 @@ export class GeoLocationDetector {
   /**
    * Parse various coordinate formats
    */
-  private parseCoordinate(value: any): number | null {
+  private parseCoordinate(value: unknown): number | null {
     if (value === null || value === undefined || value === "") {
       return null;
     }
@@ -296,7 +296,7 @@ export class GeoLocationDetector {
    * Detect combined coordinate format
    */
   private detectCombinedFormat(
-    sampleRows: any[],
+    sampleRows: Record<string, unknown>[],
     column: string
   ): { format: string; confidence: number } | null {
     const samples = sampleRows
@@ -362,7 +362,7 @@ export class GeoLocationDetector {
   /**
    * Heuristic detection by analyzing column values
    */
-  private detectByHeuristics(headers: string[], sampleRows: any[]): GeoColumnResult {
+  private detectByHeuristics(headers: string[], sampleRows: Record<string, unknown>[]): GeoColumnResult {
     const columnStats: Map<string, { 
       validCoords: number; 
       latOnly: number; 

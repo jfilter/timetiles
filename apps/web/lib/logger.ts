@@ -73,7 +73,7 @@ export const createJobLogger = (jobId: string | number, taskType: string) => {
 export const logPerformance = (
   operation: string,
   duration: number,
-  metadata?: Record<string, any>,
+  metadata?: Record<string, unknown>,
 ) => {
   logger.info(
     {
@@ -90,7 +90,7 @@ export const logPerformance = (
 export const logError = (
   error: unknown,
   context: string,
-  metadata?: Record<string, any>,
+  metadata?: Record<string, unknown>,
 ) => {
   const err = error instanceof Error ? error : new Error(String(error));
   logger.error(

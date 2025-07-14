@@ -375,7 +375,7 @@ export class SeedManager {
       if (
         this.payload.db &&
         this.payload.db.pool &&
-        !(this.payload.db.pool as any).ended
+        !(this.payload.db.pool as { ended?: boolean }).ended
       ) {
         logger.debug("Closing database pool...");
         try {
@@ -397,13 +397,13 @@ export class SeedManager {
       if (
         this.payload.db &&
         this.payload.db.drizzle &&
-        (this.payload.db.drizzle as any).$client &&
-        !(this.payload.db.drizzle as any).$client.ended
+        (this.payload.db.drizzle as { $client?: { ended?: boolean } }).$client &&
+        !(this.payload.db.drizzle as { $client?: { ended?: boolean } }).$client?.ended
       ) {
         logger.debug("Closing drizzle client...");
         try {
           await Promise.race([
-            (this.payload.db.drizzle as any).$client.end(),
+            (this.payload.db.drizzle as { $client: { end: () => Promise<void> } }).$client.end(),
             new Promise((_, reject) =>
               setTimeout(
                 () => reject(new Error("Drizzle client.end() timeout")),

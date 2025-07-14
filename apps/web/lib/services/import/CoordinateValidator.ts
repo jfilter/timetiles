@@ -100,7 +100,7 @@ export class CoordinateValidator {
   /**
    * Extract coordinates from a combined column
    */
-  extractFromCombined(value: any, format: string): CoordinateExtraction {
+  extractFromCombined(value: unknown, format: string): CoordinateExtraction {
     if (value === null || value === undefined || value === "") {
       return { latitude: null, longitude: null, format, isValid: false };
     }
@@ -166,7 +166,7 @@ export class CoordinateValidator {
   /**
    * Extract from GeoJSON format
    */
-  private extractGeoJsonFormat(value: any): CoordinateExtraction {
+  private extractGeoJsonFormat(value: unknown): CoordinateExtraction {
     try {
       const parsed = typeof value === "string" ? JSON.parse(value) : value;
       if (parsed && parsed.type === "Point" && Array.isArray(parsed.coordinates)) {
@@ -247,7 +247,7 @@ export class CoordinateValidator {
   /**
    * Parse various coordinate formats to decimal degrees
    */
-  parseCoordinate(value: any): number | null {
+  parseCoordinate(value: unknown): number | null {
     if (value === null || value === undefined || value === "") {
       return null;
     }
