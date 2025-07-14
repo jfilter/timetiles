@@ -76,3 +76,40 @@ jobs:
       - name: Run main test suite
         run: pnpm test:verbose
         working-directory: apps/web
+
+      - name: Setup E2E test database
+        run: |
+          # Create main database for E2E tests
+          psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles;"
+          psql -h localhost -U timetiles_user -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+          psql -h localhost -U timetiles_user -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
+          psql -h localhost -U timetiles_user -d timetiles -c "CREATE SCHEMA IF NOT EXISTS payload;"
+        env:
+          PGPASSWORD: timetiles_password
+
+      - name: Run migrations for E2E tests
+        run: pnpm payload:migrate
+        working-directory: apps/web
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+          PAYLOAD_SECRET: test-secret-key
+
+      - name: Install Playwright browsers
+        run: pnpm playwright install --with-deps
+        working-directory: apps/web
+
+      - name: Run E2E tests
+        run: pnpm test:e2e
+        working-directory: apps/web
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+          PAYLOAD_SECRET: test-secret-key
+          NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
+
+      - name: Upload E2E test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 30

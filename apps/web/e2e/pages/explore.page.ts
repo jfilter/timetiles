@@ -21,10 +21,10 @@ export class ExplorePage {
     this.datasetCheckboxes = page.locator('input[type="checkbox"]');
     this.startDateInput = page.locator('#start-date');
     this.endDateInput = page.locator('#end-date');
-    this.clearDatesButton = page.getByRole('button', { name: 'Clear date filters' });
-    this.eventsList = page.locator('[class*="space-y-2"]');
-    this.eventsCount = page.locator('h2', { hasText: /Events \(\d+\)/ });
-    this.loadingIndicator = page.getByText('Loading...');
+    this.clearDatesButton = page.getByText('Clear date filters');
+    this.eventsList = page.locator('.space-y-2').first();
+    this.eventsCount = page.locator('h2').filter({ hasText: /Events \(\d+\)/ });
+    this.loadingIndicator = page.getByText('Loading events...');
     this.noEventsMessage = page.getByText('No events found');
     this.noDatasetsMessage = page.getByText('No datasets available');
   }
