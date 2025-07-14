@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayloadHMR } from "@payloadcms/next/utilities";
-import type { Where } from 'payload/types';
+import type { Where } from 'payload';
 import config from '../../../payload.config';
 
 export async function GET(request: NextRequest) {
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     
     const catalog = searchParams.get("catalog");
     const datasets = searchParams.getAll("datasets");
-    const boundsParam = search_params.get("bounds");
+    const boundsParam = searchParams.get("bounds");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     

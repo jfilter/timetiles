@@ -13,6 +13,7 @@ import type {
   TaskBatchProcessing,
   TaskEventCreation,
   TaskGeocodingBatch,
+  EventsSelect,
 } from "../../payload-types";
 import { createJobLogger, logError, logPerformance } from "../logger";
 import type { Payload } from "payload";
@@ -73,7 +74,10 @@ export const fileParsingJob = {
   slug: "file-parsing",
   handler: async (context: JobHandlerContext) => {
     // Support both new format (req.payload) and legacy format (payload directly)
-    const payload = context.req?.payload || context.payload;
+    const payload = (context.req?.payload || context.payload) as Payload;
+    if (!payload) {
+      throw new Error('Payload instance not found in job context');
+    }
     const input = (context.input || context.job?.input) as FileParsingJobPayload['input'];
     const { importId, filePath, fileType } =
       input as FileParsingJobPayload["input"];
@@ -198,12 +202,12 @@ export const fileParsingJob = {
       // Update import with coordinate detection results
       const coordinateDetectionData = {
         detected: geoColumns.found,
-        detectionMethod: geoColumns.detectionMethod || "none",
+        detectionMethod: (geoColumns.detectionMethod || "none") as "pattern" | "heuristic" | "manual" | "none",
         columnMapping: geoColumns.found ? {
           latitudeColumn: geoColumns.latColumn || null,
           longitudeColumn: geoColumns.lonColumn || null,
           combinedColumn: geoColumns.combinedColumn || null,
-          coordinateFormat: geoColumns.format || "decimal",
+          coordinateFormat: (geoColumns.format || "decimal") as "decimal" | "dms" | "combined_comma" | "combined_space" | "geojson",
         } : {},
         detectionConfidence: geoColumns.confidence || 0,
         sampleValidation: {
@@ -321,7 +325,7 @@ export const fileParsingJob = {
 export const batchProcessingJob = {
   slug: "batch-processing",
   handler: async (context: JobHandlerContext) => {
-    const payload = context.req?.payload || context.payload;
+    const payload = (context.req?.payload || context.payload) as Payload;
     const input = (context.input || context.job?.input) as BatchProcessingJobPayload['input'];
     const { importId, batchNumber, batchData } =
       input as BatchProcessingJobPayload["input"];
@@ -477,7 +481,7 @@ export const batchProcessingJob = {
 export const eventCreationJob = {
   slug: "event-creation",
   handler: async (context: JobHandlerContext) => {
-    const payload = context.req?.payload || context.payload;
+    const payload = (context.req?.payload || context.payload) as Payload;
     const input = (context.input || context.job?.input) as EventCreationJobPayload['input'];
     const { importId, processedData, batchNumber } =
       input as EventCreationJobPayload["input"];
@@ -532,13 +536,15 @@ export const eventCreationJob = {
       // Create events
       for (const eventData of processedData) {
         try {
-          const eventCreateData: Partial<Event> = {
+          type EventCreationPayload = {
+            dataset: number | Dataset;
+            data: Event['data'];
+          } & Partial<Omit<Event, 'id' | 'createdAt' | 'updatedAt' | 'dataset' | 'data' | 'sizes'>>;
+
+          const eventCreateData: EventCreationPayload = {
             dataset: dataset.id,
             import: importId,
-            data: (eventData.originalData || eventData) as Record<
-              string,
-              unknown
-            >,
+            data: (eventData.originalData || eventData) as Event["data"],
             eventTimestamp: eventData.date as string,
             geocodingInfo: {
               originalAddress: eventData.address as string,
@@ -559,7 +565,7 @@ export const eventCreationJob = {
               eventCreateData.coordinateSource = {
                 type: "import",
                 confidence: (eventData as { coordinateValidation?: { confidence?: number } }).coordinateValidation?.confidence || 0.9,
-                validationStatus: (eventData as { coordinateValidation?: { validationStatus?: string } }).coordinateValidation?.validationStatus || "valid",
+                validationStatus: (eventData as { coordinateValidation?: { validationStatus?: string } }).coordinateValidation?.validationStatus as "valid" | "out_of_range" | "suspicious_zero" | "swapped" | "invalid" | null | undefined || "valid",
                 importColumns: {
                   latitudeColumn: currentImport.coordinateDetection?.columnMapping?.latitudeColumn || null,
                   longitudeColumn: currentImport.coordinateDetection?.columnMapping?.longitudeColumn || null,
@@ -665,7 +671,7 @@ export const eventCreationJob = {
         },
         select: {
           id: true,
-        },
+        } as EventsSelect<true>,
         limit: createdEventIds.length,
       });
       const eventsNeedingGeocoding: number[] = eventsWithAddresses.docs.map(
@@ -751,7 +757,10 @@ export const eventCreationJob = {
 export const geocodingBatchJob = {
   slug: "geocoding-batch",
   handler: async (context: JobHandlerContext) => {
-    const payload = context.req?.payload || context.payload;
+    const payload = (context.req?.payload || context.payload) as Payload;
+    if (!payload) {
+      throw new Error('Payload instance not found in job context');
+    }
     const input = (context.input || context.job?.input) as GeocodingBatchJobPayload['input'];
     const { importId, eventIds, batchNumber } =
       input as GeocodingBatchJobPayload["input"];
@@ -765,7 +774,7 @@ export const geocodingBatchJob = {
     const startTime = Date.now();
 
     try {
-      const geocodingService = new GeocodingService(payload);
+      const geocodingService = new GeocodingService(payload as Payload);
       let geocodedCount = 0; // Successfully geocoded events
       let processedCount = 0; // All processed events (success or failure)
 

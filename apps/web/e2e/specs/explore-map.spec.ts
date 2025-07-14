@@ -32,7 +32,7 @@ test.describe('Explore Page - Map Interactions', () => {
     await explorePage.panMap(200, 200);
     
     // Wait a bit for the map to update and trigger API call
-    await page.waitForTimeout(1000);
+    await explorePage.waitForApiResponse();
     
     // Check that a request with bounds was made
     expect(boundsRequested).toBe(true);

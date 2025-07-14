@@ -68,6 +68,11 @@ export function Map({ onBoundsChange, events = [] }: MapProps) {
   }, [events, isLoaded]);
 
   return (
-    <div ref={mapContainer} className="w-full h-full" />
+    <div 
+      ref={mapContainer} 
+      className="w-full h-full" 
+      role="region"
+      aria-label="Map"
+    />
   );
 }

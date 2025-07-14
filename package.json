@@ -26,5 +26,10 @@
   "packageManager": "pnpm@10.12.4",
   "engines": {
     "node": ">=24"
+  },
+  "pnpm": {
+    "overrides": {
+      "pino": "9.7.0"
+    }
   }
 }

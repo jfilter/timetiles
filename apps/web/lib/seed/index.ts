@@ -403,7 +403,7 @@ export class SeedManager {
         logger.debug("Closing drizzle client...");
         try {
           await Promise.race([
-            (this.payload.db.drizzle as { $client: { end: () => Promise<void> } }).$client.end(),
+            (this.payload.db.drizzle as unknown as { end: () => Promise<void> }).end(),
             new Promise((_, reject) =>
               setTimeout(
                 () => reject(new Error("Drizzle client.end() timeout")),

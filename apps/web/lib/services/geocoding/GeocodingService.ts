@@ -1,8 +1,8 @@
 import NodeGeocoder, { Entry } from "node-geocoder";
 import type { Payload } from "payload";
-import type { GeocodingProvider, LocationCache } from "../../../payload-types";
+import type { Config, GeocodingProvider, LocationCache } from "../../../payload-types";
 import { createLogger, logError, logPerformance } from "../../logger";
-import { Where } from "payload/types";
+import type { Where } from "payload";
 
 const logger = createLogger("geocoding-service");
 
@@ -118,7 +118,7 @@ export class GeocodingService {
     const requiredTags = this.settings?.providerSelection?.requiredTags || [];
 
     // Query providers from collection
-    const query: { collection: string; where: Where; limit: number } = {
+    const query: { collection: keyof Config["collections"]; where: Where; limit: number } = {
       collection: "geocoding-providers",
       where: {
         enabled: { equals: true },
@@ -143,12 +143,12 @@ export class GeocodingService {
         // Re-query
         const newResults = await this.payload.find(query);
         logger.info(`After creating defaults, found ${newResults.docs.length} providers`);
-        this.initializeProvidersFromDocs(newResults.docs);
+        this.initializeProvidersFromDocs(newResults.docs as GeocodingProvider[]);
       } else {
-        this.initializeProvidersFromDocs(providerResults.docs);
+        this.initializeProvidersFromDocs(providerResults.docs as GeocodingProvider[]);
       }
     } catch (error) {
-      logger.warn("Failed to query geocoding providers, using hardcoded defaults", { error });
+      logger.warn({ error }, "Failed to query geocoding providers, using hardcoded defaults");
       // Fallback to hardcoded providers if collection query fails
       const hardcodedProviders = [
         {
@@ -168,7 +168,7 @@ export class GeocodingService {
         },
       ];
       logger.info(`Using ${hardcodedProviders.length} hardcoded providers as fallback`);
-      this.initializeProvidersFromDocs(hardcodedProviders);
+      this.initializeProvidersFromDocs(hardcodedProviders as GeocodingProvider[]);
     }
   }
 
@@ -269,8 +269,8 @@ export class GeocodingService {
               provider: "google",
               apiKey: doc.config.google.apiKey,
               formatter: null,
-              region: doc.config.google.region,
-              language: doc.config.google.language || "en",
+              region: doc.config.google.region ?? undefined,
+              language: doc.config.google.language ?? "en",
             });
             break;
 
@@ -280,10 +280,10 @@ export class GeocodingService {
             geocoder = NodeGeocoder({
               provider: "openstreetmap",
               formatter: null,
-              osmServer: nominatimConfig.baseUrl || "https://nominatim.openstreetmap.org",
-              countrycodes: nominatimConfig.countrycodes,
-              addressdetails: nominatimConfig.addressdetails !== false,
-              extratags: nominatimConfig.extratags === true,
+              osmServer: (nominatimConfig as any).baseUrl || "https://nominatim.openstreetmap.org",
+              countrycodes: (nominatimConfig as any).countrycodes,
+              addressdetails: (nominatimConfig as any).addressdetails !== false,
+              extratags: (nominatimConfig as any).extratags === true,
             } as NodeGeocoder.Options);
             break;
           }
@@ -300,10 +300,7 @@ export class GeocodingService {
               apiKey: opencageConfig.apiKey,
               formatter: null,
               language: opencageConfig.language || "en",
-              countrycode: opencageConfig.countrycode,
-              abbrv: opencageConfig.abbrv === true,
-              annotations: opencageConfig.annotations !== false,
-            };
+            } as NodeGeocoder.Options;
 
             // Add bounds if configured
             if (opencageConfig.bounds?.enabled && 
@@ -312,7 +309,7 @@ export class GeocodingService {
               const { southwest, northeast } = opencageConfig.bounds;
               if (southwest.lat != null && southwest.lng != null && 
                   northeast.lat != null && northeast.lng != null) {
-                geocoderOptions.bounds = `${southwest.lat},${southwest.lng},${northeast.lat},${northeast.lng}`;
+                (geocoderOptions as any).bounds = `${southwest.lat},${southwest.lng},${northeast.lat},${northeast.lng}`;
               }
             }
 
@@ -490,7 +487,7 @@ export class GeocodingService {
   async testConfiguration(testAddress?: string): Promise<Record<string, unknown>> {
     await this.initialize();
     
-    const address = testAddress || this.settings?.testing?.testAddress || "London, UK";
+    const address = testAddress || "London, UK";
     const results: Record<string, unknown> = {};
 
     for (const provider of this.providers.filter(p => p.enabled)) {
@@ -547,7 +544,7 @@ export class GeocodingService {
       longitude: result.longitude!,
       confidence: this.calculateConfidence(result, providerName),
       provider: providerName,
-      normalizedAddress: result.formattedAddress || result.display_name || "",
+      normalizedAddress: result.formattedAddress || (result as any).display_name || "",
       components: {
         streetNumber: result.streetNumber,
         streetName: result.streetName,
@@ -557,9 +554,9 @@ export class GeocodingService {
         country: result.country,
       },
       metadata: {
-        importance: result.importance,
+        importance: (result as any).importance,
         placeId: result.extra?.googlePlaceId,
-        osmId: result.extra?.osm_id,
+        osmId: (result.extra as any)?.osm_id,
         confidence: result.extra?.confidence,
       },
     };
@@ -570,16 +567,16 @@ export class GeocodingService {
 
     switch (providerName) {
       case "google":
-        if (result.extra?.confidence === "exact_match") confidence = 0.95;
-        else if (result.extra?.confidence === "approximate") confidence = 0.8;
+        if ((result.extra as any)?.confidence === "exact_match") confidence = 0.95;
+        else if ((result.extra as any)?.confidence === "approximate") confidence = 0.8;
         break;
       
       case "opencage":
-        confidence = (result.confidence || 5) / 10; // OpenCage uses 1-10 scale
+        confidence = ((result as any).confidence || 5) / 10; // OpenCage uses 1-10 scale
         break;
       
       case "nominatim":
-        confidence = result.importance ? Math.min(result.importance * 0.8, 0.9) : 0.6;
+        confidence = (result as any).importance ? Math.min((result as any).importance * 0.8, 0.9) : 0.6;
         break;
     }
 

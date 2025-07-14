@@ -195,6 +195,7 @@ export class GeoLocationDetector {
     
     for (let i = 0; i < Math.min(rows.length, limit); i++) {
       const row = rows[i];
+      if (!row) continue;
       const latValue = row[latColumn];
       const lonValue = row[lonColumn];
 

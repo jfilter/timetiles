@@ -1,5 +1,6 @@
 import type { CollectionConfig } from "payload";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
+import { createSlugHook } from "../utils/slug";
 
 const Datasets: CollectionConfig = {
   slug: "datasets",
@@ -41,17 +42,7 @@ const Datasets: CollectionConfig = {
         position: "sidebar",
       },
       hooks: {
-        beforeValidate: [
-          ({ value, data }) => {
-            if (data?.name && !value) {
-              return data.name
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, "-")
-                .replace(/(^-|-$)/g, "");
-            }
-            return value;
-          },
-        ],
+        beforeValidate: [createSlugHook("datasets")],
       },
     },
     {

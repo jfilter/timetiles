@@ -45,7 +45,7 @@ test.describe('Explore Page - Filtering', () => {
     // Select the dataset
     await explorePage.selectDatasets(['GDP Growth Rates']);
     
-    // Wait for events to load
+    // Wait for API response and events to load
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
     
@@ -65,7 +65,7 @@ test.describe('Explore Page - Filtering', () => {
     await explorePage.setStartDate('2024-01-01');
     await explorePage.setEndDate('2024-12-31');
     
-    // Wait for API response
+    // Wait for API response and events to load
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
     
@@ -87,8 +87,8 @@ test.describe('Explore Page - Filtering', () => {
     // Clear date filters
     await explorePage.clearDateFilters();
     
-    // Wait for new API response
-    await explorePage.waitForApiResponse();
+    // Wait for URL to update
+    await page.waitForTimeout(100);
     
     // Check that date params are removed from URL
     await explorePage.assertUrlParam('startDate', null);
@@ -103,7 +103,7 @@ test.describe('Explore Page - Filtering', () => {
     await explorePage.setStartDate('2024-06-01');
     await explorePage.setEndDate('2024-06-30');
     
-    // Wait for API response
+    // Wait for API response and events to load
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
     
@@ -172,7 +172,7 @@ test.describe('Explore Page - Filtering', () => {
     await page.goto(urlWithParams);
     
     // Check that filters are restored
-    await page.waitForTimeout(1000);
+    await explorePage.waitForApiResponse();
     await expect(page.locator('#catalog-select')).toContainText('Environmental Data');
     await expect(page.locator('#start-date')).toHaveValue('2024-01-01');
   });

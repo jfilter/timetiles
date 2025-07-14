@@ -149,7 +149,7 @@ export function createSlugHook<T extends keyof Config["collections"]>(
     ) {
       // For tests, generate simple slug without async uniqueness check
       if (!req) {
-        return generateSlug(String(sourceValue));
+        return generateSlug(sourceValue as string);
       }
       
       const currentId =
@@ -159,14 +159,14 @@ export function createSlugHook<T extends keyof Config["collections"]>(
       
       try {
         return await generateUniqueSlug(
-          String(sourceValue),
+          sourceValue as string,
           collection,
           req,
           currentId,
         );
       } catch {
         // Fallback to simple generation if uniqueness check fails
-        return generateSlug(String(sourceValue)) + '-' + Date.now();
+        return generateSlug(sourceValue as string) + '-' + Date.now();
       }
     }
     if (value && operation === "update" && req) {

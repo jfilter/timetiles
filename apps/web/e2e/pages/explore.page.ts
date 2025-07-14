@@ -16,7 +16,7 @@ export class ExplorePage {
 
   constructor(page: Page) {
     this.page = page;
-    this.map = page.locator('.maplibregl-map');
+    this.map = page.getByRole('region', { name: 'Map' }).first();
     this.catalogSelect = page.locator('#catalog-select');
     this.datasetCheckboxes = page.locator('input[type="checkbox"]');
     this.startDateInput = page.locator('#start-date');
@@ -31,18 +31,19 @@ export class ExplorePage {
 
   async goto() {
     await this.page.goto('/explore');
+    await this.page.waitForLoadState('networkidle');
   }
 
   async waitForMapLoad() {
     await this.map.waitFor({ state: 'visible' });
     // Wait for map to be interactive
-    await this.page.waitForTimeout(1000);
+    await this.page.waitForTimeout(500);
   }
 
   async selectCatalog(catalogName: string) {
     await this.catalogSelect.click();
     // Wait for dropdown to open and options to be visible
-    await this.page.waitForSelector('[role="option"]', { timeout: 5000 });
+    await this.page.waitForSelector('[role="option"]');
     await this.page.getByRole('option', { name: catalogName }).click();
   }
 
@@ -129,12 +130,13 @@ export class ExplorePage {
   }
 
   async waitForEventsToLoad() {
-    await expect(this.loadingIndicator).not.toBeVisible({ timeout: 10000 });
+    await expect(this.loadingIndicator).not.toBeVisible();
   }
 
   async waitForApiResponse() {
     await this.page.waitForResponse(response => 
-      response.url().includes('/api/events') && response.status() === 200
+      response.url().includes('/api/events') && response.status() === 200,
+      { timeout: 10000 }
     );
   }
 
