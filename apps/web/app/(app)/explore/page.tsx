@@ -1,11 +1,14 @@
-import { getPayloadHMR } from "@payloadcms/next/utilities";
+import { getPayload } from "payload";
 import { MapExplorer } from "@/components/MapExplorer";
 import { Suspense } from "react";
 
 import config from '../../../payload.config';
 
+// Force dynamic rendering to prevent build-time database queries
+export const dynamic = 'force-dynamic';
+
 export default async function ExplorePage() {
-  const payload = await getPayloadHMR({ config });
+  const payload = await getPayload({ config });
   
   const [catalogs, datasets] = await Promise.all([
     payload.find({

@@ -6,6 +6,9 @@ import config from "../../../../payload.config";
 import { GeocodingTestPanel } from "../../../../lib/components/GeocodingTestPanel";
 import { ProviderPriorityList } from "../../../../lib/components/ProviderPriorityList";
 
+// Force dynamic rendering to prevent build-time database queries
+export const dynamic = 'force-dynamic';
+
 async function getProviders() {
   const payload = await getPayload({ config });
   
