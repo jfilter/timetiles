@@ -1,4 +1,3 @@
-// import type { TaskHandlerArgs } from "payload"; // TODO: Use for better typing
 import { GeocodingService } from "../services/geocoding/GeocodingService";
 import { GeoLocationDetector } from "../services/import/GeoLocationDetector";
 import { CoordinateValidator } from "../services/import/CoordinateValidator";
@@ -99,7 +98,6 @@ export const fileParsingJob = {
       });
 
       let parsedData: Record<string, unknown>[] = [];
-      // let totalRows = 0; // Used for debugging
 
       logger.debug(`Parsing ${fileType} file`);
 

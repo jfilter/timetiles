@@ -13,9 +13,6 @@ import Media from "./lib/collections/Media";
 import LocationCache from "./lib/collections/LocationCache";
 import GeocodingProviders from "./lib/collections/GeocodingProviders";
 
-// Import globals
-// import GeocodingSettings from "./lib/globals/GeocodingSettings";
-
 // Import job definitions
 import {
   fileParsingJob,

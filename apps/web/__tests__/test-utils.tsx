@@ -27,7 +27,7 @@ function AllTheProviders({
 export function renderWithProviders(
   ui: React.ReactElement,
   options?: CustomRenderOptions
-) {
+): ReturnType<typeof render> {
   const { searchParams, ...renderOptions } = options || {};
   
   return render(ui, {

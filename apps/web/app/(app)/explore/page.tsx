@@ -1,5 +1,6 @@
 import { getPayloadHMR } from "@payloadcms/next/utilities";
 import { MapExplorer } from "@/components/MapExplorer";
+import { Suspense } from "react";
 
 import config from '../../../payload.config';
 
@@ -19,9 +20,11 @@ export default async function ExplorePage() {
   ]);
   
   return (
-    <MapExplorer
-      catalogs={catalogs.docs}
-      datasets={datasets.docs}
-    />
+    <Suspense fallback={<div>Loading explorer...</div>}>
+      <MapExplorer
+        catalogs={catalogs.docs}
+        datasets={datasets.docs}
+      />
+    </Suspense>
   );
 }

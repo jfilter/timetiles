@@ -64,5 +64,4 @@ export default defineConfig({
   },
 
   /* Global setup to seed database before tests */
-  // globalSetup: './e2e/global-setup.ts',
 });

@@ -147,29 +147,43 @@ export function createSlugHook<T extends keyof Config["collections"]>(
       sourceValue &&
       (operation === "create" || operation === "update")
     ) {
+      // For tests, generate simple slug without async uniqueness check
+      if (!req) {
+        return generateSlug(String(sourceValue));
+      }
+      
       const currentId =
         operation === "update"
           ? (originalDoc?.id as string | number | undefined)
           : undefined;
-      return req
-        ? await generateUniqueSlug(
-            String(sourceValue),
-            collection,
-            req,
-            currentId,
-          )
-        : generateSlug(String(sourceValue));
+      
+      try {
+        return await generateUniqueSlug(
+          String(sourceValue),
+          collection,
+          req,
+          currentId,
+        );
+      } catch {
+        // Fallback to simple generation if uniqueness check fails
+        return generateSlug(String(sourceValue)) + '-' + Date.now();
+      }
     }
     if (value && operation === "update" && req) {
-      const currentId = originalDoc?.id as string | number | undefined;
-      const isUnique = await checkSlugUniqueness(
-        value,
-        collection,
-        req,
-        currentId,
-      );
-      if (!isUnique) {
-        return await generateUniqueSlug(value, collection, req, currentId);
+      try {
+        const currentId = originalDoc?.id as string | number | undefined;
+        const isUnique = await checkSlugUniqueness(
+          value,
+          collection,
+          req,
+          currentId,
+        );
+        if (!isUnique) {
+          return await generateUniqueSlug(value, collection, req, currentId);
+        }
+      } catch {
+        // Fallback to simple generation if uniqueness check fails
+        return value + '-' + Date.now();
       }
     }
     return value;

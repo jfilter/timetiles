@@ -15,27 +15,29 @@ export async function GET(request: NextRequest) {
     
     const where: any = {};
     
-    if (catalog || datasets.length > 0) {
-      const datasetQuery: any[] = [];
-      
-      if (catalog && datasets.length === 0) {
-        datasetQuery.push({
-          "dataset.catalog": {
-            equals: catalog,
-          },
-        });
+    if (catalog || (datasets.length > 0 && datasets[0] !== '')) {
+      if (catalog && (datasets.length === 0 || datasets[0] === '')) {
+        // Filter by catalog
+        where.and = [
+          ...(Array.isArray(where.and) ? where.and : []),
+          {
+            "dataset.catalog.slug": {
+              equals: catalog,
+            },
+          }
+        ];
       }
       
-      if (datasets.length > 0) {
-        datasetQuery.push({
-          dataset: {
-            in: datasets,
-          },
-        });
-      }
-      
-      if (datasetQuery.length > 0) {
-        where.or = datasetQuery;
+      if (datasets.length > 0 && datasets[0] !== '') {
+        // Filter by specific datasets
+        where.and = [
+          ...(Array.isArray(where.and) ? where.and : []),
+          {
+            "dataset.slug": {
+              in: datasets,
+            },
+          }
+        ];
       }
     }
     
@@ -43,7 +45,7 @@ export async function GET(request: NextRequest) {
       try {
         const bounds = JSON.parse(boundsParam);
         where.and = [
-          ...(where.and || []),
+          ...(Array.isArray(where.and) ? where.and : []),
           {
             "location.longitude": {
               greater_than_equal: bounds.west,
@@ -62,59 +64,35 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Add date filtering
+    // Add date filtering - simplified
     if (startDate || endDate) {
-      const dateFilters: any = {};
-      
-      if (startDate) {
-        dateFilters.greater_than_equal = new Date(startDate).toISOString();
-      }
-      
-      if (endDate) {
-        // Add 1 day to include the entire end date
-        const endDateTime = new Date(endDate);
-        endDateTime.setDate(endDateTime.getDate() + 1);
-        dateFilters.less_than = endDateTime.toISOString();
-      }
-      
-      // First try to filter by eventTimestamp
-      const timestampFilter = {
-        eventTimestamp: dateFilters
-      };
-      
-      // Also prepare a filter for data field in case events store dates there
-      const dataFieldFilters = [];
-      if (startDate) {
-        dataFieldFilters.push({
-          or: [
-            { "data.startDate": { greater_than_equal: new Date(startDate).toISOString() } },
-            { "data.date": { greater_than_equal: new Date(startDate).toISOString() } },
-            { "data.eventDate": { greater_than_equal: new Date(startDate).toISOString() } }
-          ]
-        });
-      }
-      if (endDate) {
-        const endDateTime = new Date(endDate);
-        endDateTime.setDate(endDateTime.getDate() + 1);
-        dataFieldFilters.push({
-          or: [
-            { "data.endDate": { less_than: endDateTime.toISOString() } },
-            { "data.date": { less_than: endDateTime.toISOString() } },
-            { "data.eventDate": { less_than: endDateTime.toISOString() } }
-          ]
-        });
-      }
-      
-      // Combine filters - try eventTimestamp first, fallback to data fields
-      where.and = [
-        ...(where.and || []),
-        {
-          or: [
-            timestampFilter,
-            ...(dataFieldFilters.length > 0 ? [{ and: dataFieldFilters }] : [])
-          ]
+      try {
+        const dateFilters: Record<string, string> = {};
+        
+        if (startDate) {
+          const startDateTime = new Date(startDate);
+          if (isNaN(startDateTime.getTime())) {
+            throw new Error(`Invalid start date: ${startDate}`);
+          }
+          dateFilters.greater_than_equal = startDateTime.toISOString();
         }
-      ];
+        
+        if (endDate) {
+          const endDateTime = new Date(endDate);
+          if (isNaN(endDateTime.getTime())) {
+            throw new Error(`Invalid end date: ${endDate}`);
+          }
+          // Add 1 day to include the entire end date
+          endDateTime.setDate(endDateTime.getDate() + 1);
+          dateFilters.less_than = endDateTime.toISOString();
+        }
+        
+        // Skip database-level date filtering - we'll do post-processing instead
+        // This allows us to include events with null eventTimestamp and filter by data fields
+      } catch (error) {
+        console.error("Error processing date filters:", error);
+        // Skip date filtering if there's an error
+      }
     }
     
     const events = await payload.find({
@@ -124,7 +102,69 @@ export async function GET(request: NextRequest) {
       depth: 2,
     });
     
-    return NextResponse.json(events);
+    // Additional filtering by data fields (post-processing)
+    let filteredEvents = events.docs;
+    
+    if (startDate || endDate) {
+      const startDateTime = startDate ? new Date(startDate) : null;
+      const endDateTime = endDate ? new Date(endDate) : null;
+      if (endDateTime) {
+        endDateTime.setDate(endDateTime.getDate() + 1); // Include the entire end date
+      }
+      
+      filteredEvents = events.docs.filter(event => {
+        // Check eventTimestamp first
+        if (event.eventTimestamp) {
+          const eventDate = new Date(event.eventTimestamp);
+          const matchesTimestamp = 
+            (!startDateTime || eventDate >= startDateTime) &&
+            (!endDateTime || eventDate < endDateTime);
+          if (matchesTimestamp) return true;
+        }
+        
+        // If no eventTimestamp or eventTimestamp doesn't match, check data fields
+        const commonDateFields = ['date', 'startDate', 'start_date', 'eventDate', 'event_date'];
+        
+        for (const dateField of commonDateFields) {
+          const eventData = event.data;
+          if (eventData && typeof eventData === 'object' && !Array.isArray(eventData) && eventData !== null) {
+            const dataDateValue = (eventData as Record<string, unknown>)[dateField];
+            if (dataDateValue && typeof dataDateValue === 'string') {
+              const dataDate = new Date(dataDateValue);
+              if (!isNaN(dataDate.getTime())) {
+                const matchesDataField = 
+                  (!startDateTime || dataDate >= startDateTime) &&
+                  (!endDateTime || dataDate < endDateTime);
+                if (matchesDataField) return true;
+              }
+            }
+          }
+        }
+        
+        return false;
+      });
+    }
+    
+    // Serialize the response to avoid JSON serialization issues
+    const serializedEvents = {
+      docs: filteredEvents.map(event => ({
+        id: event.id,
+        data: event.data,
+        location: event.location,
+        eventTimestamp: event.eventTimestamp,
+        dataset: typeof event.dataset === 'object' ? event.dataset.id : event.dataset,
+        createdAt: event.createdAt,
+        updatedAt: event.updatedAt,
+      })),
+      totalDocs: filteredEvents.length,
+      limit: events.limit,
+      page: events.page ?? 1,
+      totalPages: Math.ceil(filteredEvents.length / (events.limit || 1000)),
+      hasNextPage: filteredEvents.length > (events.limit || 1000) * (events.page ?? 1),
+      hasPrevPage: (events.page ?? 1) > 1,
+    };
+    
+    return NextResponse.json(serializedEvents);
   } catch (error) {
     console.error("Error fetching events:", error);
     return NextResponse.json(

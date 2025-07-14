@@ -2,8 +2,6 @@
 
 import { useState, useRef } from "react";
 import type { Import } from "../payload-types";
-
-// Use Payload types more directly for better type safety
 interface ImportProgress {
   importId: string;
   status: Import["status"];
@@ -110,8 +108,7 @@ export default function ImportUpload(): JSX.Element {
           }
         }
       } catch {
-        // Silently handle progress fetch errors - user will see last known progress state
-        // In production, this could be sent to a client-side error tracking service
+        // Silently handle progress fetch errors
       }
     };
 

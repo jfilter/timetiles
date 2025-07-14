@@ -22,7 +22,28 @@ describe("Import with existing coordinates", () => {
         data: {
           name: `Test Coordinate Import ${timestamp}`,
           slug: `test-coordinate-import-${timestamp}-${randomSuffix}`,
-          description: "Testing coordinate detection",
+          description: {
+            root: {
+              type: "root",
+              children: [
+                {
+                  type: "paragraph",
+                  version: 1,
+                  children: [
+                    {
+                      type: "text",
+                      text: "Testing coordinate detection",
+                      version: 1,
+                    },
+                  ],
+                },
+              ],
+              direction: "ltr" as const,
+              format: "" as const,
+              indent: 0,
+              version: 1,
+            },
+          },
         },
       });
       catalogId = catalog.id;
@@ -34,7 +55,28 @@ describe("Import with existing coordinates", () => {
           name: `Test Dataset ${timestamp}`,
           slug: `test-dataset-${timestamp}-${randomSuffix}`,
           catalog: catalogId,
-          description: "Test dataset for coordinate import",
+          description: {
+            root: {
+              type: "root",
+              children: [
+                {
+                  type: "paragraph",
+                  version: 1,
+                  children: [
+                    {
+                      type: "text",
+                      text: "Test dataset for coordinate import",
+                      version: 1,
+                    },
+                  ],
+                },
+              ],
+              direction: "ltr" as const,
+              format: "" as const,
+              indent: 0,
+              version: 1,
+            },
+          },
           language: "eng",
           schema: {
             fields: [
@@ -291,7 +333,7 @@ describe("Import with existing coordinates", () => {
         catalog: catalogId,
         status: "processing",
         rowCount: 2,
-        fileType: "xlsx",
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         coordinateDetection: {
           detected: true,
           detectionMethod: "heuristic",

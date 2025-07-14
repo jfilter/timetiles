@@ -129,7 +129,7 @@ describe("GeocodingService", () => {
   // Helper function to create test providers in the collection
   const createTestProviders = async (withGoogleApi = false) => {
     const uniqueId = `${testCounter}-${Date.now()}`;
-    const providerNames = { google: null, nominatim: null };
+    const providerNames: { google: string | null, nominatim: string | null } = { google: null, nominatim: null };
     
     if (withGoogleApi) {
       process.env.GOOGLE_MAPS_API_KEY = "test-api-key";
