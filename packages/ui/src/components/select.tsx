@@ -6,6 +6,9 @@ import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 
 import { cn } from "@workspace/ui/lib/utils"
 
+// Type for Lucide React icons with React 19 compatibility
+type IconComponent = React.ComponentType<{ className?: string }>
+
 function Select({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root>) {
@@ -44,7 +47,7 @@ function SelectTrigger({
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        {React.createElement(ChevronDownIcon as React.ComponentType<any>, { 
+        {React.createElement(ChevronDownIcon as IconComponent, { 
           className: "size-4 opacity-50" 
         })}
       </SelectPrimitive.Icon>
@@ -116,7 +119,7 @@ function SelectItem({
     >
       <span className="absolute right-2 flex size-3.5 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
-          {React.createElement(CheckIcon as React.ComponentType<any>, { 
+          {React.createElement(CheckIcon as IconComponent, { 
             className: "size-4" 
           })}
         </SelectPrimitive.ItemIndicator>
@@ -152,7 +155,7 @@ function SelectScrollUpButton({
       )}
       {...props}
     >
-      {React.createElement(ChevronUpIcon as React.ComponentType<any>, { 
+      {React.createElement(ChevronUpIcon as IconComponent, { 
         className: "size-4" 
       })}
     </SelectPrimitive.ScrollUpButton>
@@ -172,7 +175,7 @@ function SelectScrollDownButton({
       )}
       {...props}
     >
-      {React.createElement(ChevronDownIcon as React.ComponentType<any>, { 
+      {React.createElement(ChevronDownIcon as IconComponent, { 
         className: "size-4" 
       })}
     </SelectPrimitive.ScrollDownButton>
