@@ -1,22 +1,22 @@
 export { BaseChart } from "./BaseChart";
 export { Histogram } from "./Histogram";
 export { BarChart } from "./BarChart";
-export type { 
-  BaseChartProps, 
-  HistogramProps, 
+export type {
+  BaseChartProps,
+  HistogramProps,
   HistogramBin,
   BarChartProps,
   BarChartDataItem,
   ChartTheme,
-  BinningStrategy 
+  BinningStrategy,
 } from "./types";
-export { 
-  createHistogramBins, 
+export {
+  createHistogramBins,
   formatDateForBin,
-  determineBinningStrategy 
+  determineBinningStrategy,
 } from "./utils/data-transform";
-export { 
-  defaultLightTheme, 
-  defaultDarkTheme, 
-  applyThemeToOption 
+export {
+  defaultLightTheme,
+  defaultDarkTheme,
+  applyThemeToOption,
 } from "./utils/theme";

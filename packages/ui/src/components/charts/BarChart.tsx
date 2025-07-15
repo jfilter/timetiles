@@ -22,78 +22,89 @@ export function BarChart({
 }: BarChartProps) {
   const processedData = useMemo(() => {
     const sorted = [...data];
-    
+
     if (sortBy !== "none") {
       sorted.sort((a, b) => {
-        const compareValue = sortBy === "value" 
-          ? a.value - b.value 
-          : a.label.localeCompare(b.label);
+        const compareValue =
+          sortBy === "value"
+            ? a.value - b.value
+            : a.label.localeCompare(b.label);
         return sortOrder === "asc" ? compareValue : -compareValue;
       });
     }
-    
+
     return sorted;
   }, [data, sortBy, sortOrder]);
 
   const chartOption: EChartsOption = useMemo(() => {
     const isHorizontal = orientation === "horizontal";
-    
+
     const truncateLabel = (label: string) => {
       if (label.length <= maxLabelLength) return label;
       return label.slice(0, maxLabelLength - 3) + "...";
     };
 
-    const labels = processedData.map(item => truncateLabel(labelFormatter(item.label)));
-    const values = processedData.map(item => item.value);
-    const colors = processedData.map(item => item.color || "#3b82f6");
+    const labels = processedData.map((item) =>
+      truncateLabel(labelFormatter(item.label)),
+    );
+    const values = processedData.map((item) => item.value);
+    const colors = processedData.map((item) => item.color || "#3b82f6");
 
     const baseOption: EChartsOption = {
-      title: title ? {
-        text: title,
-        left: "center",
-        top: 0
-      } : undefined,
+      title: title
+        ? {
+            text: title,
+            left: "center",
+            top: 0,
+          }
+        : undefined,
       tooltip: {
         trigger: "axis",
         axisPointer: {
-          type: "shadow"
+          type: "shadow",
         },
         formatter: (params: unknown) => {
           const paramsArray = params as { dataIndex: number }[];
           const item = processedData[paramsArray[0]?.dataIndex];
-          if (!item) return '';
+          if (!item) return "";
           return `
             <div style="padding: 8px;">
               <strong>${item.label}</strong><br/>
               Value: <strong>${valueFormatter(item.value)}</strong>
             </div>
           `;
-        }
+        },
       },
       grid: {
         left: "10%",
         right: "5%",
         bottom: "10%",
         top: title ? "15%" : "10%",
-        containLabel: true
+        containLabel: true,
       },
-      series: [{
-        type: "bar",
-        data: values,
-        itemStyle: {
-          color: (params: { dataIndex: number }) => colors[params.dataIndex] || "#3b82f6"
-        },
-        emphasis: {
+      series: [
+        {
+          type: "bar",
+          data: values,
           itemStyle: {
-            opacity: 0.8
-          }
+            color: (params: { dataIndex: number }) =>
+              colors[params.dataIndex] || "#3b82f6",
+          },
+          emphasis: {
+            itemStyle: {
+              opacity: 0.8,
+            },
+          },
+          label: showValues
+            ? {
+                show: true,
+                position: isHorizontal ? "right" : "top",
+                formatter: (params: { value: number }) =>
+                  valueFormatter(params.value),
+              }
+            : undefined,
         },
-        label: showValues ? {
-          show: true,
-          position: isHorizontal ? "right" : "top",
-          formatter: (params: { value: number }) => valueFormatter(params.value)
-        } : undefined
-      }]
+      ],
     };
 
     if (isHorizontal) {
@@ -103,7 +114,7 @@ export function BarChart({
           type: "value",
           name: yLabel,
           nameLocation: "middle",
-          nameGap: 35
+          nameGap: 35,
         },
         yAxis: {
           type: "category",
@@ -113,9 +124,9 @@ export function BarChart({
           nameGap: 80,
           inverse: true,
           axisLabel: {
-            formatter: (value: string) => value
-          }
-        }
+            formatter: (value: string) => value,
+          },
+        },
       };
     } else {
       return {
@@ -127,25 +138,39 @@ export function BarChart({
           nameLocation: "middle",
           nameGap: 35,
           axisLabel: {
-            rotate: labels.some(l => l.length > 10) ? 45 : 0,
-            formatter: (value: string) => value
-          }
+            rotate: labels.some((l) => l.length > 10) ? 45 : 0,
+            formatter: (value: string) => value,
+          },
         },
         yAxis: {
           type: "value",
           name: yLabel,
           nameLocation: "middle",
-          nameGap: 50
-        }
+          nameGap: 50,
+        },
       };
     }
-  }, [processedData, orientation, xLabel, yLabel, title, showValues, valueFormatter, labelFormatter, maxLabelLength]);
+  }, [
+    processedData,
+    orientation,
+    xLabel,
+    yLabel,
+    title,
+    showValues,
+    valueFormatter,
+    labelFormatter,
+    maxLabelLength,
+  ]);
 
   const events = useMemo(() => {
     const baseEvents = { ...baseProps.onEvents };
-    
+
     if (onBarClick) {
-      baseEvents.click = (params: { componentType: string; seriesType: string; dataIndex: number }) => {
+      baseEvents.click = (params: {
+        componentType: string;
+        seriesType: string;
+        dataIndex: number;
+      }) => {
         if (params.componentType === "series" && params.seriesType === "bar") {
           const item = processedData[params.dataIndex];
           if (item) {
@@ -154,15 +179,9 @@ export function BarChart({
         }
       };
     }
-    
+
     return baseEvents;
   }, [baseProps.onEvents, onBarClick, processedData]);
 
-  return (
-    <BaseChart
-      {...baseProps}
-      config={chartOption}
-      onEvents={events}
-    />
-  );
+  return <BaseChart {...baseProps} config={chartOption} onEvents={events} />;
 }

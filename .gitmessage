@@ -1,0 +1,20 @@
+# <type>(<scope>): <subject>
+# Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert, security
+# Scopes (optional but recommended):
+#   Apps/Packages: web, docs, ui, config
+#   Features: import, geocoding, events, catalogs, datasets, auth, cache
+#   Technical: db, api, jobs, types, testing, deps, docker, scripts, security, config
+# Subject: imperative mood, max 72 chars (proper nouns allowed: GitHub, API, ES, etc.)
+
+# List your changes as bullet points:
+# - 
+# - 
+# - 
+# 
+# Add as many bullets as needed to describe all changes
+
+# BREAKING CHANGE: 
+# Describe any breaking changes here
+
+# References: #
+# Include issue or PR numbers if applicable

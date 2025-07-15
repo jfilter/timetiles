@@ -36,8 +36,7 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
-    "test:all": "pnpm test:unit && pnpm test:e2e",
-    "prepare": "husky"
+    "test:all": "pnpm test:unit && pnpm test:e2e"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.46.0",
@@ -86,7 +85,6 @@
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.2",
     "happy-dom": "^18.0.1",
-    "husky": "^9.1.7",
     "jsdom": "^26.1.0",
     "msw": "^2.10.4",
     "playwright": "^1.54.1",

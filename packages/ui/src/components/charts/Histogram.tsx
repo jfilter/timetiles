@@ -4,7 +4,11 @@ import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import { BaseChart } from "./BaseChart";
 import type { HistogramProps, BinningStrategy } from "./types";
-import { createHistogramBins, formatDateForBin, determineBinningStrategy } from "./utils/data-transform";
+import {
+  createHistogramBins,
+  formatDateForBin,
+  determineBinningStrategy,
+} from "./utils/data-transform";
 
 export function Histogram<T = unknown>({
   data,
@@ -24,54 +28,72 @@ export function Histogram<T = unknown>({
   }, [data, xAccessor, binning]);
 
   const chartOption: EChartsOption = useMemo(() => {
-    const xAxisData = bins.map(bin => {
+    const xAxisData = bins.map((bin) => {
       const [start] = bin.range;
-      const strategy = typeof binning === "string" && binning !== "auto" 
-        ? binning 
-        : determineBinningStrategy(
-            new Date(Math.min(...data.map(d => {
-              const val = xAccessor(d);
-              return val instanceof Date ? val.getTime() : new Date(val).getTime();
-            }))),
-            new Date(Math.max(...data.map(d => {
-              const val = xAccessor(d);
-              return val instanceof Date ? val.getTime() : new Date(val).getTime();
-            }))),
-            binning
-          );
-      
-      return formatter.xAxis 
+      const strategy =
+        typeof binning === "string" && binning !== "auto"
+          ? binning
+          : determineBinningStrategy(
+              new Date(
+                Math.min(
+                  ...data.map((d) => {
+                    const val = xAccessor(d);
+                    return val instanceof Date
+                      ? val.getTime()
+                      : new Date(val).getTime();
+                  }),
+                ),
+              ),
+              new Date(
+                Math.max(
+                  ...data.map((d) => {
+                    const val = xAccessor(d);
+                    return val instanceof Date
+                      ? val.getTime()
+                      : new Date(val).getTime();
+                  }),
+                ),
+              ),
+              binning,
+            );
+
+      return formatter.xAxis
         ? formatter.xAxis(start)
-        : formatDateForBin(start instanceof Date ? start : new Date(start), strategy as BinningStrategy);
+        : formatDateForBin(
+            start instanceof Date ? start : new Date(start),
+            strategy as BinningStrategy,
+          );
     });
 
-    const yAxisData = bins.map(bin => 
-      yAccessor ? yAccessor(bin.items) : bin.count
+    const yAxisData = bins.map((bin) =>
+      yAccessor ? yAccessor(bin.items) : bin.count,
     );
 
     return {
-      title: title ? {
-        text: title,
-        left: "center",
-        top: 0
-      } : undefined,
+      title: title
+        ? {
+            text: title,
+            left: "center",
+            top: 0,
+          }
+        : undefined,
       tooltip: {
         trigger: "axis",
         formatter: (params: unknown) => {
           const paramsArray = params as { dataIndex: number }[];
           const bin = bins[paramsArray[0]?.dataIndex];
-          if (!bin) return '';
+          if (!bin) return "";
           if (formatter.tooltip) {
             return formatter.tooltip(bin);
           }
-          
+
           const [start, end] = bin.range;
           const startDate = start instanceof Date ? start : new Date(start);
           const endDate = end instanceof Date ? end : new Date(end);
           const dateStr = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
-          
+
           return `${dateStr}<br/>Count: ${bin.count}`;
-        }
+        },
       },
       xAxis: {
         type: "category",
@@ -81,8 +103,8 @@ export function Histogram<T = unknown>({
         nameGap: 35,
         axisLabel: {
           rotate: bins.length > 10 ? 45 : 0,
-          formatter: formatter.xAxis
-        }
+          formatter: formatter.xAxis,
+        },
       },
       yAxis: {
         type: "value",
@@ -90,41 +112,59 @@ export function Histogram<T = unknown>({
         nameLocation: "middle",
         nameGap: 50,
         axisLabel: {
-          formatter: formatter.yAxis
-        }
-      },
-      series: [{
-        type: "bar",
-        data: yAxisData,
-        itemStyle: {
-          color: typeof color === "function" 
-            ? (params: { dataIndex: number }) => {
-                const bin = bins[params.dataIndex];
-                return bin ? color(bin) : '#ccc';
-              }
-            : color
+          formatter: formatter.yAxis,
         },
-        emphasis: {
+      },
+      series: [
+        {
+          type: "bar",
+          data: yAxisData,
           itemStyle: {
-            opacity: 0.8
-          }
-        }
-      }],
+            color:
+              typeof color === "function"
+                ? (params: { dataIndex: number }) => {
+                    const bin = bins[params.dataIndex];
+                    return bin ? color(bin) : "#ccc";
+                  }
+                : color,
+          },
+          emphasis: {
+            itemStyle: {
+              opacity: 0.8,
+            },
+          },
+        },
+      ],
       grid: {
         left: "10%",
         right: "5%",
         bottom: bins.length > 10 ? "15%" : "10%",
         top: title ? "15%" : "10%",
-        containLabel: true
-      }
+        containLabel: true,
+      },
     };
-  }, [bins, data, xAccessor, yAccessor, binning, color, xLabel, yLabel, title, formatter]);
+  }, [
+    bins,
+    data,
+    xAccessor,
+    yAccessor,
+    binning,
+    color,
+    xLabel,
+    yLabel,
+    title,
+    formatter,
+  ]);
 
   const events = useMemo(() => {
     const baseEvents = { ...baseProps.onEvents };
-    
+
     if (onBarClick) {
-      baseEvents.click = (params: { componentType: string; seriesType: string; dataIndex: number }) => {
+      baseEvents.click = (params: {
+        componentType: string;
+        seriesType: string;
+        dataIndex: number;
+      }) => {
         if (params.componentType === "series" && params.seriesType === "bar") {
           const bin = bins[params.dataIndex];
           if (bin) {
@@ -133,15 +173,9 @@ export function Histogram<T = unknown>({
         }
       };
     }
-    
+
     return baseEvents;
   }, [baseProps.onEvents, onBarClick, bins]);
 
-  return (
-    <BaseChart
-      {...baseProps}
-      config={chartOption}
-      onEvents={events}
-    />
-  );
+  return <BaseChart {...baseProps} config={chartOption} onEvents={events} />;
 }
