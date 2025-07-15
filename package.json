@@ -13,7 +13,7 @@
     "docs:build": "turbo docs:build",
     "docs:export": "turbo docs:export",
     "format": "turbo format",
-    "check-types": "turbo check-types"
+    "typecheck": "turbo typecheck"
   },
   "devDependencies": {
     "@workspace/eslint-config": "workspace:*",

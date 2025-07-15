@@ -9,6 +9,7 @@
     "docs:build": "next build",
     "start": "next start --port 3001",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
     "export": "next build && next export"
   },
   "dependencies": {
