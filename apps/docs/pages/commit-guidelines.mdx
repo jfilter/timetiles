@@ -46,13 +46,14 @@ The scope provides additional context about what part of the codebase changed:
 - **import**: Changes to import system
 - **auth**: Changes to authentication
 - **db**: Database-related changes
+- **deps**: Dependency changes
 
 #### Subject
 
 The subject contains a succinct description of the change:
 
 - Use the imperative mood
-- Don't capitalize the first letter
+- Don't capitalize the first letter (except for proper nouns and acronyms)
 - No period at the end
 - Be clear and concise
 
@@ -64,7 +65,7 @@ The body should provide:
 - **Impact**: What are the implications of this change?
 - **Breaking changes**: Clearly marked with "BREAKING CHANGE:"
 
-Wrap the body at 72 characters per line.
+Wrap the body at 100 characters per line.
 
 ## Examples
 
@@ -125,11 +126,11 @@ To use a template for your commits, create a file `.gitmessage` in your home dir
 ```
 # <type>(<scope>): <subject> (max 72 chars)
 
-# Why was this change necessary?
+# Why was this change necessary? (wrap at 100 chars)
 
-# How does it address the problem?
+# How does it address the problem? (wrap at 100 chars)
 
-# Are there any side effects?
+# Are there any side effects? (wrap at 100 chars)
 
 # References: #issue
 ```

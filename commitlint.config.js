@@ -32,7 +32,8 @@ module.exports = {
         'deps',
       ],
     ],
-    'subject-case': [2, 'always', 'lower-case'],
+    'scope-empty': [0, 'never'],
+    'subject-case': [2, 'always', ['lower-case', 'sentence-case']],
     'subject-empty': [2, 'never'],
     'subject-full-stop': [2, 'never', '.'],
     'type-case': [2, 'always', 'lower-case'],
@@ -41,6 +42,6 @@ module.exports = {
     'header-max-length': [2, 'always', 72],
     'body-leading-blank': [2, 'always'],
     'footer-leading-blank': [2, 'always'],
-    'body-max-line-length': [2, 'always', 72],
+    'body-max-line-length': [2, 'always', 100],
   },
 };
