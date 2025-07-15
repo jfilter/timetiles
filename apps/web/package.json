@@ -83,6 +83,8 @@
     "@vitest/ui": "^3.2.4",
     "@workspace/eslint-config": "workspace:^",
     "@workspace/typescript-config": "workspace:*",
+    "echarts": "^5.6.0",
+    "echarts-for-react": "^3.0.2",
     "happy-dom": "^18.0.1",
     "husky": "^9.1.7",
     "jsdom": "^26.1.0",
