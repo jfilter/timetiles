@@ -45,4 +45,4 @@ uploads/
 mise.toml
 .github/chatmodes
 CLAUDE.md
-.claude/settings.local.json
+.claude/

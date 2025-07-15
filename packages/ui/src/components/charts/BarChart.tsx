@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import { BaseChart } from "./BaseChart";
-import type { BarChartProps, BarChartDataItem } from "./types";
+import type { BarChartProps } from "./types";
 
 export function BarChart({
   data,
@@ -21,7 +21,7 @@ export function BarChart({
   ...baseProps
 }: BarChartProps) {
   const processedData = useMemo(() => {
-    let sorted = [...data];
+    const sorted = [...data];
     
     if (sortBy !== "none") {
       sorted.sort((a, b) => {
@@ -58,8 +58,9 @@ export function BarChart({
         axisPointer: {
           type: "shadow"
         },
-        formatter: (params: any) => {
-          const item = processedData[params[0]?.dataIndex];
+        formatter: (params: unknown) => {
+          const paramsArray = params as { dataIndex: number }[];
+          const item = processedData[paramsArray[0]?.dataIndex];
           if (!item) return '';
           return `
             <div style="padding: 8px;">
@@ -80,7 +81,7 @@ export function BarChart({
         type: "bar",
         data: values,
         itemStyle: {
-          color: (params: any) => colors[params.dataIndex] || "#3b82f6"
+          color: (params: { dataIndex: number }) => colors[params.dataIndex] || "#3b82f6"
         },
         emphasis: {
           itemStyle: {
@@ -90,7 +91,7 @@ export function BarChart({
         label: showValues ? {
           show: true,
           position: isHorizontal ? "right" : "top",
-          formatter: (params: any) => valueFormatter(params.value)
+          formatter: (params: { value: number }) => valueFormatter(params.value)
         } : undefined
       }]
     };
@@ -144,7 +145,7 @@ export function BarChart({
     const baseEvents = { ...baseProps.onEvents };
     
     if (onBarClick) {
-      baseEvents.click = (params: any) => {
+      baseEvents.click = (params: { componentType: string; seriesType: string; dataIndex: number }) => {
         if (params.componentType === "series" && params.seriesType === "bar") {
           const item = processedData[params.dataIndex];
           if (item) {

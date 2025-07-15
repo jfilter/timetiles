@@ -1,4 +1,5 @@
 import type { ChartTheme } from "../types";
+import type { EChartsOption } from "echarts";
 
 export const defaultLightTheme: ChartTheme = {
   backgroundColor: "transparent",
@@ -16,7 +17,7 @@ export const defaultDarkTheme: ChartTheme = {
   itemColor: "#60a5fa"
 };
 
-export function applyThemeToOption(option: any, theme: ChartTheme): any {
+export function applyThemeToOption(option: EChartsOption, theme: ChartTheme): EChartsOption {
   return {
     ...option,
     backgroundColor: theme.backgroundColor,
@@ -55,7 +56,7 @@ export function applyThemeToOption(option: any, theme: ChartTheme): any {
         }
       }
     },
-    series: option.series?.map((s: any) => ({
+    series: option.series?.map((s: unknown) => ({
       ...s,
       itemStyle: {
         ...s.itemStyle,

@@ -3,10 +3,10 @@
 import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import { BaseChart } from "./BaseChart";
-import type { HistogramProps } from "./types";
+import type { HistogramProps, BinningStrategy } from "./types";
 import { createHistogramBins, formatDateForBin, determineBinningStrategy } from "./utils/data-transform";
 
-export function Histogram<T = any>({
+export function Histogram<T = unknown>({
   data,
   xAccessor,
   yAccessor,
@@ -42,7 +42,7 @@ export function Histogram<T = any>({
       
       return formatter.xAxis 
         ? formatter.xAxis(start)
-        : formatDateForBin(start instanceof Date ? start : new Date(start), strategy as any);
+        : formatDateForBin(start instanceof Date ? start : new Date(start), strategy as BinningStrategy);
     });
 
     const yAxisData = bins.map(bin => 
@@ -57,8 +57,9 @@ export function Histogram<T = any>({
       } : undefined,
       tooltip: {
         trigger: "axis",
-        formatter: (params: any) => {
-          const bin = bins[params[0]?.dataIndex];
+        formatter: (params: unknown) => {
+          const paramsArray = params as { dataIndex: number }[];
+          const bin = bins[paramsArray[0]?.dataIndex];
           if (!bin) return '';
           if (formatter.tooltip) {
             return formatter.tooltip(bin);
@@ -97,7 +98,7 @@ export function Histogram<T = any>({
         data: yAxisData,
         itemStyle: {
           color: typeof color === "function" 
-            ? (params: any) => {
+            ? (params: { dataIndex: number }) => {
                 const bin = bins[params.dataIndex];
                 return bin ? color(bin) : '#ccc';
               }
@@ -123,7 +124,7 @@ export function Histogram<T = any>({
     const baseEvents = { ...baseProps.onEvents };
     
     if (onBarClick) {
-      baseEvents.click = (params: any) => {
+      baseEvents.click = (params: { componentType: string; seriesType: string; dataIndex: number }) => {
         if (params.componentType === "series" && params.seriesType === "bar") {
           const bin = bins[params.dataIndex];
           if (bin) {

@@ -15,17 +15,17 @@ export interface BaseChartProps {
   loading?: boolean;
   theme?: ChartTheme;
   config?: Partial<EChartsOption>;
-  onChartReady?: (chart: any) => void;
-  onEvents?: Record<string, (params: any) => void>;
+  onChartReady?: (chart: unknown) => void;
+  onEvents?: Record<string, (params: unknown) => void>;
 }
 
-export interface HistogramBin<T = any> {
+export interface HistogramBin<T = unknown> {
   range: [Date | number, Date | number];
   count: number;
   items: T[];
 }
 
-export interface HistogramProps<T = any> extends BaseChartProps {
+export interface HistogramProps<T = unknown> extends BaseChartProps {
   data: T[];
   xAccessor: (item: T) => Date | string | number;
   yAccessor?: (items: T[]) => number;
@@ -36,8 +36,8 @@ export interface HistogramProps<T = any> extends BaseChartProps {
   yLabel?: string;
   title?: string;
   formatter?: {
-    xAxis?: (value: any) => string;
-    yAxis?: (value: any) => string;
+    xAxis?: (value: unknown) => string;
+    yAxis?: (value: unknown) => string;
     tooltip?: (bin: HistogramBin<T>) => string;
   };
 }
@@ -48,7 +48,7 @@ export interface BarChartDataItem {
   label: string;
   value: number;
   color?: string;
-  metadata?: any;
+  metadata?: unknown;
 }
 
 export interface BarChartProps extends BaseChartProps {
