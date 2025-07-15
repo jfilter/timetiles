@@ -24,46 +24,93 @@ The title is the first line of your commit message and must:
 
 The type must be one of the following:
 
-- **feat**: A new feature
-- **fix**: A bug fix
-- **docs**: Documentation changes only
-- **style**: Code style changes (formatting, missing semicolons, etc.)
+**Feature & Fixes:**
+- **feat**: A new feature for the user (not a new feature for build script)
+  - Example: `feat(import): add support for Excel file uploads`
+- **fix**: A bug fix for the user (not a fix to a build script)
+  - Example: `fix(geocoding): handle addresses with special characters`
+
+**Code Quality:**
 - **refactor**: Code changes that neither fix bugs nor add features
+  - Example: `refactor(api): extract validation logic into middleware`
+- **style**: Code style changes (formatting, missing semicolons, whitespace)
+  - Example: `style(ui): fix indentation in button component`
+  - Note: NOT for CSS/UI styling - use feat or fix for those
 - **perf**: Performance improvements
-- **test**: Adding or updating tests
-- **build**: Changes to build system or dependencies
-- **ci**: Changes to CI configuration files and scripts
+  - Example: `perf(import): reduce memory usage by streaming CSV files`
+
+**Testing & Documentation:**
+- **test**: Adding missing tests or correcting existing tests
+  - Example: `test(events): add unit tests for date validation`
+- **docs**: Documentation only changes
+  - Example: `docs(api): update endpoint examples with new fields`
+
+**Maintenance & Operations:**
+- **build**: Changes affecting build system or external dependencies
+  - Example: `build(deps): upgrade to Next.js 15`
+  - Example: `build(docker): optimize production image size`
+- **ci**: Changes to CI configuration and scripts
+  - Example: `ci(github): add automated security scanning`
 - **chore**: Other changes that don't modify src or test files
+  - Example: `chore(scripts): update seed data generation`
 
-#### Scope (Optional)
+**Special Types:**
+- **revert**: Reverts a previous commit
+  - Example: `revert: feat(import): add Excel support`
+  - Body should include: `This reverts commit <hash>`
+- **security**: Security fixes or improvements
+  - Example: `security(auth): fix JWT token expiration issue`
+  - Example: `security(import): add file type validation`
 
-The scope provides additional context about what part of the codebase changed:
+#### Scope (Optional but Recommended)
 
-- **web**: Changes to the web application
-- **docs**: Changes to documentation app
-- **ui**: Changes to UI components package
-- **geocoding**: Changes to geocoding functionality
-- **import**: Changes to import system
-- **auth**: Changes to authentication
-- **db**: Database-related changes
-- **deps**: Dependency changes
+The scope provides additional context about what part of the codebase changed. Scopes are organized into three categories:
+
+**Apps & Packages** (where the code lives):
+- **web**: Next.js web application
+- **docs**: Documentation site (Nextra)
+- **ui**: Shared UI components package
+- **config**: ESLint & TypeScript configuration packages
+
+**Core Features** (what functionality is affected):
+- **import**: File import system (CSV/Excel processing)
+- **geocoding**: Address geocoding and location services
+- **events**: Event data management
+- **catalogs**: Catalog organization
+- **datasets**: Dataset operations
+- **auth**: Authentication & authorization
+- **cache**: Caching strategies (location cache, etc.)
+
+**Technical Areas** (infrastructure & tooling):
+- **db**: Database operations, migrations, PostGIS
+- **api**: API endpoints (REST, GraphQL, tRPC)
+- **jobs**: Background job processing and queues
+- **types**: TypeScript type definitions and interfaces
+- **testing**: Test infrastructure and utilities (NOT individual test files)
+- **deps**: External dependencies (typically used with `build` type)
+- **docker**: Docker, containerization, and orchestration
+- **scripts**: Utility and automation scripts
+- **security**: Security configurations and policies
+- **config**: Configuration files and settings management
 
 #### Subject
 
 The subject contains a succinct description of the change:
 
 - Use the imperative mood
-- Don't capitalize the first letter (except for proper nouns and acronyms)
+- Start with lowercase (proper nouns allowed: GitHub, PostgreSQL, TypeScript, etc.)
 - No period at the end
 - Be clear and concise
 
 ### Body (Optional but Recommended)
 
-The body should provide:
-- **Motivation**: Why was this change necessary?
-- **Implementation**: What approach was taken and why?
-- **Impact**: What are the implications of this change?
-- **Breaking changes**: Clearly marked with "BREAKING CHANGE:"
+The body should use **bullet points** to clearly describe the changes:
+
+- Start each point with a dash (-)
+- Keep each bullet point concise and focused
+- Use as many bullet points as needed to fully describe the changes
+- Include context about why changes were made when it's not obvious
+- Mark breaking changes with "BREAKING CHANGE:" as a separate paragraph
 
 Wrap the body at 100 characters per line.
 
@@ -78,21 +125,23 @@ fix(import): handle empty CSV files gracefully
 ```
 feat(geocoding): add support for OpenCage provider
 
-Added OpenCage as a new geocoding provider option. This provider
-offers better coverage for European addresses and includes
-confidence scores in the results.
-
-The implementation follows the existing provider pattern and
-includes automatic fallback to other providers when configured.
+- Added OpenCage as a third geocoding provider option
+- Provides better coverage for European addresses
+- Returns confidence scores with geocoding results
+- Follows existing provider pattern for consistency
+- Includes automatic fallback when configured
+- Supports all existing cache mechanisms
 ```
 
 ### Breaking Change
 ```
 refactor(api): change import endpoint response format
 
-Changed the /api/import/upload response to include more detailed
-progress information. The response now returns a job object
-instead of just the import ID.
+- Changed /api/import/upload response structure
+- Now returns complete job object instead of just import ID
+- Includes detailed progress tracking information
+- Adds support for real-time status updates
+- Improves error reporting with structured error objects
 
 BREAKING CHANGE: API clients need to update to handle the new
 response format. The import ID is now at response.job.importId
@@ -106,36 +155,106 @@ fix(web): correct type errors and improve error handling
 - Fixed TaskStatus type in import-integration tests
 - Added proper error boundaries to import components
 - Improved error messages for failed geocoding attempts
-
-These changes improve the overall stability of the import
-process and provide better feedback to users when errors occur.
+- Updated error logging to include more context
+- Added retry logic for transient failures
 ```
+
+### Refactoring with Context
+```
+refactor(geocoding): simplify provider initialization
+
+- Extracted provider configuration to separate modules
+- Removed duplicate validation logic across providers
+- Consolidated error handling into base provider class
+- Improved type safety with stricter interfaces
+- Reduced initialization time from ~200ms to ~50ms
+```
+
+### Bug Fix with Investigation Details
+```
+fix(import): resolve memory leak in large file processing
+
+- Identified leak in CSV parser stream handling
+- Fixed by properly closing streams after processing
+- Added explicit garbage collection hints for large batches
+- Reduced memory usage by ~60% for files over 100MB
+- Added monitoring to detect future memory issues
+```
+
+## Choosing the Right Type
+
+When deciding between types, consider:
+
+- **feat vs fix**: Is this adding new functionality (feat) or correcting existing behavior (fix)?
+- **fix vs refactor**: Does this change user-facing behavior (fix) or just code structure (refactor)?
+- **build vs chore**: Does this affect how the project builds (build) or is it general maintenance (chore)?
+- **style vs refactor**: Is this only formatting (style) or restructuring code logic (refactor)?
+- **security vs fix**: Is this addressing a security vulnerability (security) or a general bug (fix)?
+
+## Handling Type/Scope Overlaps
+
+Some combinations need special attention:
+
+- **`docs(docs)`**: Valid when updating documentation app code
+  - Example: `docs(docs): fix broken link in navigation`
+- **`test(testing)`**: Use for test infrastructure changes
+  - Example: `test(testing): add custom vitest matchers`
+- **`test(web)`**: Use for adding tests to web app
+  - Example: `test(web): add unit tests for import flow`
+- **`ci` vs `build`**: 
+  - Use `ci` type for GitHub Actions, pipeline changes
+  - Use `build` type for webpack, bundling, compilation
+- **`build(deps)` vs `chore(deps)`**:
+  - Use `build(deps)` for production dependencies
+  - Use `chore(deps)` for development-only dependencies
+- **`style` type**: For code formatting only, NOT CSS/visual changes
+  - CSS changes: `feat(ui): update button styles`
+  - Code formatting: `style(api): fix indentation`
 
 ## Best Practices
 
 1. **Atomic Commits**: Each commit should represent one logical change
-2. **Test Your Changes**: Ensure tests pass before committing
-3. **Review Before Push**: Use `git diff --staged` to review changes
-4. **Amend When Needed**: Use `git commit --amend` for small fixes to the previous commit
-5. **Reference Issues**: Include issue numbers when applicable (e.g., "fixes #123")
+2. **Use Bullet Points**: Structure your commit body with clear, concise bullet points
+3. **Be Specific**: Each bullet point should describe a specific change or aspect
+4. **Choose the Right Scope**: 
+   - Use app/package scopes for changes isolated to that codebase
+   - Use feature scopes for business logic changes
+   - Use technical scopes for infrastructure/tooling changes
+   - When changes span multiple areas, pick the primary scope
+5. **Test Your Changes**: Ensure tests pass before committing
+6. **Review Before Push**: Use `git diff --staged` to review changes
+7. **Amend When Needed**: Use `git commit --amend` for small fixes to the previous commit
+8. **Reference Issues**: Include issue numbers when applicable (e.g., "fixes #123")
+9. **Keep Bullets Focused**: One concept per bullet point for clarity
 
 ## Commit Message Template
 
-To use a template for your commits, create a file `.gitmessage` in your home directory:
+This project includes a commit message template at `.gitmessage` that is automatically configured for use. When you run `git commit` without the `-m` flag, your editor will open with this template:
 
 ```
-# <type>(<scope>): <subject> (max 72 chars)
+# <type>(<scope>): <subject>
+# Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert, security
+# Scopes (optional but recommended):
+#   Apps/Packages: web, docs, ui, config
+#   Features: import, geocoding, events, catalogs, datasets, auth, cache
+#   Technical: db, api, jobs, types, testing, deps, docker, scripts, security, config
+# Subject: imperative mood, max 72 chars (proper nouns allowed: GitHub, API, ES, etc.)
 
-# Why was this change necessary? (wrap at 100 chars)
+# List your changes as bullet points:
+# - 
+# - 
+# - 
+# 
+# Add as many bullets as needed to describe all changes
 
-# How does it address the problem? (wrap at 100 chars)
+# BREAKING CHANGE: 
+# Describe any breaking changes here
 
-# Are there any side effects? (wrap at 100 chars)
-
-# References: #issue
+# References: #
+# Include issue or PR numbers if applicable
 ```
 
-Then configure Git to use it:
+The template is already configured for this repository. To use a similar template globally for all your projects:
 ```bash
 git config --global commit.template ~/.gitmessage
 ```
@@ -159,17 +278,74 @@ The project uses Husky to enforce commit message standards. If your commit doesn
 
 ## Quick Reference
 
+### Title-only commits (for very simple changes):
 ```
-feat(web): add dark mode toggle
 fix(import): prevent duplicate event creation
 docs(api): update geocoding endpoint examples
 style(ui): format button component
-refactor(geocoding): extract provider logic
-perf(import): optimize batch processing
-test(geocoding): add provider fallback tests
-build(deps): upgrade to Next.js 15
-ci(github): add e2e test workflow
 chore(config): update ESLint rules
+test(events): add unit tests for event validation
+fix(cache): resolve memory leak in location cache
+feat(datasets): add bulk export functionality
+refactor(types): consolidate shared type definitions
+ci(docker): optimize container build times
+perf(geocoding): implement request batching
+```
+
+### Commits with bullet-point bodies:
+```
+feat(web): add dark mode toggle
+
+- Added theme context provider for global state
+- Implemented toggle component in header
+- Persisted user preference to localStorage
+- Updated all components to use theme-aware colors
+```
+
+```
+perf(import): optimize batch processing
+
+- Increased default batch size from 100 to 500
+- Added streaming parser for large CSV files
+- Implemented parallel processing for geocoding
+- Reduced memory allocation by reusing buffers
+- Improved overall import speed by ~40%
+```
+
+```
+feat(web): add GraphQL API with ES module support
+
+- Implemented GraphQL endpoint at /api/graphql
+- Added ES module configuration for better tree-shaking
+- Integrated with existing REST API authentication
+- Supports both HTTP POST and WebSocket connections
+```
+
+### Scope Selection Examples
+
+```
+# App/Package scope - when changes are isolated to one codebase
+fix(ui): correct button hover state in dark mode
+docs(docs): update getting started guide
+style(config): format ESLint configuration
+
+# Feature scope - when changing business logic
+feat(events): add recurring event support
+fix(geocoding): handle postal codes without city names
+perf(import): optimize CSV parsing for large files
+
+# Technical scope - for infrastructure/tooling
+build(docker): reduce image size by 40%
+test(api): add integration tests for event endpoints
+ci(scripts): automate release notes generation
+
+# Handling overlaps correctly
+docs(docs): update Nextra to version 3.0          # Docs app code change
+test(testing): implement snapshot testing utility  # Test infrastructure
+build(deps): upgrade PostgreSQL client to v16      # Production dependency
+chore(deps): update ESLint to latest version      # Dev dependency
+security(import): add virus scanning for uploads   # Security feature
+style(config): format TypeScript config files      # Code formatting
 ```
 
 Remember: Good commit messages help future maintainers (including yourself) understand why changes were made, not just what changed.
