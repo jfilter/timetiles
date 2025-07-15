@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+# Run commitlint on the commit message
+npx commitlint --edit "$1"
