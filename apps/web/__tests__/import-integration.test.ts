@@ -585,7 +585,7 @@ describe.sequential("Import System Integration Tests", () => {
       await expect(
         fileParsingJob.handler({
           input: fileParsingJobInput,
-          job: { id: "test-job", taskStatus: "running" },
+          job: { id: "test-job" },
           req: { payload },
         }),
       ).rejects.toThrow("No valid rows found");

@@ -1,0 +1,174 @@
+# Commit Guidelines
+
+This guide outlines the commit message conventions for the TimeTiles project. Following these guidelines ensures consistency, improves readability, and helps with automated tooling.
+
+## Commit Message Format
+
+Each commit message consists of a **title** and an optional **body**:
+
+```
+<type>(<scope>): <subject>
+
+<body>
+```
+
+### Title (Required)
+
+The title is the first line of your commit message and must:
+- Be **no more than 72 characters**
+- Start with a type and optional scope
+- Use the imperative mood ("add" not "adds" or "added")
+- Not end with a period
+
+#### Type
+
+The type must be one of the following:
+
+- **feat**: A new feature
+- **fix**: A bug fix
+- **docs**: Documentation changes only
+- **style**: Code style changes (formatting, missing semicolons, etc.)
+- **refactor**: Code changes that neither fix bugs nor add features
+- **perf**: Performance improvements
+- **test**: Adding or updating tests
+- **build**: Changes to build system or dependencies
+- **ci**: Changes to CI configuration files and scripts
+- **chore**: Other changes that don't modify src or test files
+
+#### Scope (Optional)
+
+The scope provides additional context about what part of the codebase changed:
+
+- **web**: Changes to the web application
+- **docs**: Changes to documentation app
+- **ui**: Changes to UI components package
+- **geocoding**: Changes to geocoding functionality
+- **import**: Changes to import system
+- **auth**: Changes to authentication
+- **db**: Database-related changes
+
+#### Subject
+
+The subject contains a succinct description of the change:
+
+- Use the imperative mood
+- Don't capitalize the first letter
+- No period at the end
+- Be clear and concise
+
+### Body (Optional but Recommended)
+
+The body should provide:
+- **Motivation**: Why was this change necessary?
+- **Implementation**: What approach was taken and why?
+- **Impact**: What are the implications of this change?
+- **Breaking changes**: Clearly marked with "BREAKING CHANGE:"
+
+Wrap the body at 72 characters per line.
+
+## Examples
+
+### Simple Fix
+```
+fix(import): handle empty CSV files gracefully
+```
+
+### Feature with Description
+```
+feat(geocoding): add support for OpenCage provider
+
+Added OpenCage as a new geocoding provider option. This provider
+offers better coverage for European addresses and includes
+confidence scores in the results.
+
+The implementation follows the existing provider pattern and
+includes automatic fallback to other providers when configured.
+```
+
+### Breaking Change
+```
+refactor(api): change import endpoint response format
+
+Changed the /api/import/upload response to include more detailed
+progress information. The response now returns a job object
+instead of just the import ID.
+
+BREAKING CHANGE: API clients need to update to handle the new
+response format. The import ID is now at response.job.importId
+instead of response.importId.
+```
+
+### Multiple Changes
+```
+fix(web): correct type errors and improve error handling
+
+- Fixed TaskStatus type in import-integration tests
+- Added proper error boundaries to import components
+- Improved error messages for failed geocoding attempts
+
+These changes improve the overall stability of the import
+process and provide better feedback to users when errors occur.
+```
+
+## Best Practices
+
+1. **Atomic Commits**: Each commit should represent one logical change
+2. **Test Your Changes**: Ensure tests pass before committing
+3. **Review Before Push**: Use `git diff --staged` to review changes
+4. **Amend When Needed**: Use `git commit --amend` for small fixes to the previous commit
+5. **Reference Issues**: Include issue numbers when applicable (e.g., "fixes #123")
+
+## Commit Message Template
+
+To use a template for your commits, create a file `.gitmessage` in your home directory:
+
+```
+# <type>(<scope>): <subject> (max 72 chars)
+
+# Why was this change necessary?
+
+# How does it address the problem?
+
+# Are there any side effects?
+
+# References: #issue
+```
+
+Then configure Git to use it:
+```bash
+git config --global commit.template ~/.gitmessage
+```
+
+## Tools and Automation
+
+### Commitizen
+
+For interactive commit message creation:
+```bash
+npm install -g commitizen
+npm install -g cz-conventional-changelog
+echo '{ "path": "cz-conventional-changelog" }' > ~/.czrc
+```
+
+Then use `git cz` instead of `git commit`.
+
+### Commit Linting
+
+The project uses Husky to enforce commit message standards. If your commit doesn't meet the guidelines, it will be rejected with a helpful error message.
+
+## Quick Reference
+
+```
+feat(web): add dark mode toggle
+fix(import): prevent duplicate event creation
+docs(api): update geocoding endpoint examples
+style(ui): format button component
+refactor(geocoding): extract provider logic
+perf(import): optimize batch processing
+test(geocoding): add provider fallback tests
+build(deps): upgrade to Next.js 15
+ci(github): add e2e test workflow
+chore(config): update ESLint rules
+```
+
+Remember: Good commit messages help future maintainers (including yourself) understand why changes were made, not just what changed.
