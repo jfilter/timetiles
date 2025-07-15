@@ -6,6 +6,7 @@ import type { Catalog, Dataset, Event } from "../payload-types";
 import { Map } from "./Map";
 import { EventsList } from "./EventsList";
 import { EventFilters } from "./EventFilters";
+import { ChartSection } from "./ChartSection";
 import type { LngLatBounds } from "maplibre-gl";
 
 interface MapExplorerProps {
@@ -93,6 +94,15 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
           
           <div className="mb-6">
             <EventFilters catalogs={catalogs} datasets={datasets} />
+          </div>
+          
+          <div className="mb-6 border-t pt-6">
+            <ChartSection 
+              events={events} 
+              datasets={datasets} 
+              catalogs={catalogs} 
+              loading={isPending} 
+            />
           </div>
           
           <div className="border-t pt-6">
