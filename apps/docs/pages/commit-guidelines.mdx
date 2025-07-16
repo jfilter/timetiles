@@ -104,12 +104,33 @@ The subject contains a succinct description of the change:
 
 ### Body (Optional but Recommended)
 
-The body should use **bullet points** to clearly describe the changes:
+The body should use **bullet points** to clearly describe the changes. Use verbosity scaling based on the complexity of your changes:
+
+#### When to Include a Body
+
+**Title-only commits** (no body needed):
+- Simple, self-explanatory changes
+- Single-file formatting fixes
+- Minor typos or corrections
+- Dependency updates without breaking changes
+- Examples: `fix(import): prevent duplicate events`, `style(ui): format button component`
+
+**Commits with bodies** (bullet points recommended):
+- Multiple related changes in one commit
+- Complex logic changes requiring explanation
+- New features with multiple aspects
+- Bug fixes that needed investigation
+- Performance improvements with measurable impact
+- Breaking changes (always require explanation)
+
+#### Body Format Guidelines
 
 - Start each point with a dash (-)
-- Keep each bullet point concise and focused
+- Keep each bullet point concise and focused (one concept per bullet)
 - Use as many bullet points as needed to fully describe the changes
 - Include context about why changes were made when it's not obvious
+- Avoid unnecessary formatting (Git tools don't render markdown well)
+- Use plain text with minimal formatting for maximum compatibility
 - Mark breaking changes with "BREAKING CHANGE:" as a separate paragraph
 
 Wrap the body at 100 characters per line.
@@ -181,6 +202,74 @@ fix(import): resolve memory leak in large file processing
 - Added monitoring to detect future memory issues
 ```
 
+## Writing Quality Commit Messages
+
+Good commit messages tell a story about your changes. They should be written for future maintainers (including yourself) who need to understand the reasoning behind changes.
+
+### Mechanical vs. Thoughtful Approach
+
+**❌ Mechanical (just listing what changed):**
+```
+fix(import): update import-jobs.ts and add validation
+
+- Modified fileParsingJob function
+- Added new validation checks
+- Updated error handling code
+- Changed batch processing logic
+```
+
+**✅ Thoughtful (explaining why and impact):**
+```
+fix(import): prevent memory leaks in large file processing
+
+- Added stream cleanup to prevent memory accumulation
+- Implemented batch size limits for files over 100MB
+- Enhanced error recovery to handle partial failures gracefully
+- Reduced memory usage by 60% for large CSV imports
+```
+
+### Focus on Business Value
+
+**❌ Technical details without context:**
+```
+refactor(geocoding): extract provider logic into separate classes
+
+- Created GoogleProvider class
+- Created NominatimProvider class
+- Updated GeocodingService to use new providers
+- Modified tests to work with new structure
+```
+
+**✅ Business value with technical context:**
+```
+refactor(geocoding): improve provider extensibility for future integrations
+
+- Extracted provider logic into pluggable classes
+- Enables easy addition of new geocoding services
+- Standardized error handling across all providers
+- Reduced provider initialization time by 40%
+```
+
+### Formatting and Text Styling
+
+Since Git tools (GitHub, GitLab, terminal git log, etc.) have varying markdown support, keep formatting minimal:
+
+**✅ Good formatting practices:**
+- Use plain text for maximum compatibility
+- Bullet points with simple dashes (-)
+- ALL CAPS for emphasis when needed (e.g., "BREAKING CHANGE:")
+- Simple parentheses for examples: (fixes #123)
+- Avoid bold, italic, or other markdown formatting in commit messages
+
+**❌ Avoid in commit messages:**
+- **Bold text** - not consistently rendered
+- *Italic text* - not consistently rendered  
+- `Code blocks` - can appear as plain text with backticks
+- [Links](url) - become plain text in many git tools
+- Complex formatting that relies on markdown parsing
+
+**Exception:** These guidelines (this documentation) use markdown formatting for readability, but actual commit messages should be plain text.
+
 ## Choosing the Right Type
 
 When deciding between types, consider:
@@ -214,18 +303,24 @@ Some combinations need special attention:
 ## Best Practices
 
 1. **Atomic Commits**: Each commit should represent one logical change
-2. **Use Bullet Points**: Structure your commit body with clear, concise bullet points
-3. **Be Specific**: Each bullet point should describe a specific change or aspect
-4. **Choose the Right Scope**: 
+2. **Focus on "Why" Not "What"**: Explain the motivation and impact, not just what files changed
+   - ❌ Bad: "Updated GeocodingService.ts, added new provider, modified config"
+   - ✅ Good: "Add OpenCage provider for better European address coverage"
+3. **Use Bullet Points**: Structure your commit body with clear, concise bullet points
+4. **Be Specific**: Each bullet point should describe a specific change or aspect
+5. **Avoid Mechanical Descriptions**: Don't just list file changes or technical details
+   - ❌ Bad: "Modified 3 files, added 2 functions, updated 1 test"
+   - ✅ Good: "Implement rate limiting to prevent API quota exhaustion"
+6. **Choose the Right Scope**: 
    - Use app/package scopes for changes isolated to that codebase
    - Use feature scopes for business logic changes
    - Use technical scopes for infrastructure/tooling changes
    - When changes span multiple areas, pick the primary scope
-5. **Test Your Changes**: Ensure tests pass before committing
-6. **Review Before Push**: Use `git diff --staged` to review changes
-7. **Amend When Needed**: Use `git commit --amend` for small fixes to the previous commit
-8. **Reference Issues**: Include issue numbers when applicable (e.g., "fixes #123")
-9. **Keep Bullets Focused**: One concept per bullet point for clarity
+7. **Test Your Changes**: Ensure tests pass before committing
+8. **Review Before Push**: Use `git diff --staged` to review changes
+9. **Amend When Needed**: Use `git commit --amend` for small fixes to the previous commit
+10. **Reference Issues**: Include issue numbers when applicable (e.g., "fixes #123")
+11. **Keep Bullets Focused**: One concept per bullet point for clarity
 
 ## Commit Message Template
 
@@ -240,7 +335,13 @@ This project includes a commit message template at `.gitmessage` that is automat
 #   Technical: db, api, jobs, types, testing, deps, docker, scripts, security, config
 # Subject: imperative mood, max 72 chars (proper nouns allowed: GitHub, API, ES, etc.)
 
-# List your changes as bullet points:
+# Body Guidelines:
+# - Use title-only for simple, self-explanatory changes
+# - Add body with bullet points for complex changes
+# - Focus on WHY and business impact, not just WHAT changed
+# - Use plain text formatting (no markdown bold/italic)
+
+# List your changes as bullet points (if body needed):
 # - 
 # - 
 # - 
@@ -278,7 +379,7 @@ The project uses Husky to enforce commit message standards. If your commit doesn
 
 ## Quick Reference
 
-### Title-only commits (for very simple changes):
+### Title-only commits (for simple, self-explanatory changes):
 ```
 fix(import): prevent duplicate event creation
 docs(api): update geocoding endpoint examples
@@ -291,6 +392,13 @@ refactor(types): consolidate shared type definitions
 ci(docker): optimize container build times
 perf(geocoding): implement request batching
 ```
+
+### When to use title-only:
+- Single-file changes with obvious intent
+- Formatting or style fixes
+- Simple dependency updates
+- Minor documentation corrections
+- Clear bug fixes that don't need explanation
 
 ### Commits with bullet-point bodies:
 ```
@@ -348,4 +456,42 @@ security(import): add virus scanning for uploads   # Security feature
 style(config): format TypeScript config files      # Code formatting
 ```
 
-Remember: Good commit messages help future maintainers (including yourself) understand why changes were made, not just what changed.
+## Common Mistakes to Avoid
+
+### 1. Listing File Changes
+```
+❌ Bad: "Updated GeocodingService.ts, modified config.ts, added tests"
+✅ Good: "Add rate limiting to prevent geocoding API quota exhaustion"
+```
+
+### 2. Technical Details Without Context
+```
+❌ Bad: "Add new function processCoordinates() and refactor validation logic"
+✅ Good: "Improve coordinate validation to handle edge cases and malformed data"
+```
+
+### 3. Using Present Tense Instead of Imperative
+```
+❌ Bad: "Adding support for Excel imports"
+✅ Good: "Add support for Excel imports"
+```
+
+### 4. Vague or Generic Messages
+```
+❌ Bad: "Fix bug" or "Update code" or "Improvements"
+✅ Good: "Fix memory leak in CSV parser for files over 100MB"
+```
+
+### 5. Too Much Technical Detail
+```
+❌ Bad: "Refactor AbstractGeocodingProvider to implement IGeocoder interface with async/await pattern"
+✅ Good: "Standardize geocoding provider interface for easier testing and maintenance"
+```
+
+### 6. Missing Business Context
+```
+❌ Bad: "Add new provider class and update service configuration"
+✅ Good: "Add OpenCage provider to improve geocoding accuracy for European addresses"
+```
+
+Remember: Good commit messages help future maintainers (including yourself) understand why changes were made, not just what changed. Focus on business value and user impact rather than technical implementation details.
