@@ -27,7 +27,10 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
   });
 
   useEffect(() => {
-    startTransition(async () => {
+    // Cancel any previous requests if pending
+    const abortController = new AbortController();
+    
+    const fetchEvents = async () => {
       const params = new URLSearchParams();
 
       if (filters.catalog) {
@@ -59,15 +62,27 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
       }
 
       try {
-        const response = await fetch(`/api/events?${params.toString()}`);
-        if (response.ok) {
+        const response = await fetch(`/api/events?${params.toString()}`, {
+          signal: abortController.signal,
+        });
+        if (response.ok && !abortController.signal.aborted) {
           const data = await response.json();
-          setEvents(data.docs || []);
+          startTransition(() => {
+            setEvents(data.docs || []);
+          });
         }
       } catch (error) {
-        console.error("Failed to fetch events:", error);
+        if (!abortController.signal.aborted) {
+          console.error("Failed to fetch events:", error);
+        }
       }
-    });
+    };
+
+    fetchEvents();
+    
+    return () => {
+      abortController.abort();
+    };
   }, [
     filters.catalog,
     filters.datasets,
