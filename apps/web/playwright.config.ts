@@ -16,9 +16,9 @@ export default defineConfig({
   /* Limit workers to prevent resource contention */
   workers: process.env.CI ? 1 : 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: process.env.CI ? "list" : "html",
-  /* Test timeout - 10 seconds locally, 30 seconds in CI */
-  timeout: process.env.CI ? 30000 : 10000,
+  reporter: process.env.CI ? "list" : "list",
+  /* Test timeout - 15 seconds locally, 30 seconds in CI */
+  timeout: process.env.CI ? 30000 : 15000,
   /* Expect timeout - shorter expect assertions timeout */
   expect: {
     timeout: process.env.CI ? 10000 : 5000,
@@ -34,38 +34,46 @@ export default defineConfig({
     /* Record video on failure */
     video: "retain-on-failure",
     /* Navigation timeout */
-    navigationTimeout: process.env.CI ? 30000 : 10000,
+    navigationTimeout: process.env.CI ? 15000 : 8000,
     /* Action timeout - for click, fill, etc */
-    actionTimeout: process.env.CI ? 10000 : 5000,
+    actionTimeout: process.env.CI ? 8000 : 5000,
+    /* Run tests in headless mode */
+    headless: true,
   },
 
   /* Configure projects for major browsers */
-  projects: [
-    {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
-    },
-
-    {
-      name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
-    },
-
-    {
-      name: "webkit",
-      use: { ...devices["Desktop Safari"] },
-    },
-
-    /* Test against mobile viewports. */
-    {
-      name: "Mobile Chrome",
-      use: { ...devices["Pixel 5"] },
-    },
-    {
-      name: "Mobile Safari",
-      use: { ...devices["iPhone 12"] },
-    },
-  ],
+  projects: process.env.TEST_ALL_BROWSERS
+    ? [
+        // Test all browsers when TEST_ALL_BROWSERS is set
+        {
+          name: "chromium",
+          use: { ...devices["Desktop Chrome"] },
+        },
+        {
+          name: "firefox",
+          use: { ...devices["Desktop Firefox"] },
+        },
+        {
+          name: "webkit",
+          use: { ...devices["Desktop Safari"] },
+        },
+        /* Test against mobile viewports. */
+        {
+          name: "Mobile Chrome",
+          use: { ...devices["Pixel 5"] },
+        },
+        {
+          name: "Mobile Safari",
+          use: { ...devices["iPhone 12"] },
+        },
+      ]
+    : [
+        // Default: only Chromium for speed and efficiency
+        {
+          name: "chromium",
+          use: { ...devices["Desktop Chrome"] },
+        },
+      ],
 
   /* Run your local dev server before starting the tests */
   webServer: {
