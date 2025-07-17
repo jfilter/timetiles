@@ -7,29 +7,7 @@ import path from "path";
 
 import { createTestDatabase, truncateAllTables } from "./database-setup";
 
-// Mock the logger to hide noisy output in tests
-vi.mock("../lib/logger", () => {
-  const mockedLogger = {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  };
-
-  return {
-    logger: {
-      ...mockedLogger,
-      child: () => mockedLogger,
-    },
-    createLogger: () => mockedLogger,
-    createRequestLogger: () => mockedLogger,
-    createJobLogger: () => mockedLogger,
-    createTestLogger: () => mockedLogger,
-    perfStart: () => ({ end: vi.fn().mockReturnValue(10) }),
-    logPerformance: vi.fn(),
-    logError: vi.fn(),
-  };
-});
+// Don't mock logger - let it work normally for debugging
 
 // Set test environment
 if (!process.env.NODE_ENV) {

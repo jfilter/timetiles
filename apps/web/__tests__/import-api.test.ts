@@ -9,12 +9,14 @@ import {
   afterEach,
 } from "vitest";
 import { NextRequest } from "next/server";
-import { POST as uploadHandler } from "../app/(app)/api/import/upload/route";
+import { POST as uploadHandler, GET as uploadHealthCheck } from "../app/(app)/api/import/upload/route";
 import { GET as progressHandler } from "../app/(app)/api/import/[importId]/progress/route";
 import { createIsolatedTestEnvironment } from "./test-helpers";
 
-// No mocking needed for API tests - use real services
-// This allows us to test the actual API behavior
+// Store the payload instance globally for test API routes to use
+declare global {
+  var __TEST_PAYLOAD__: any;
+}
 
 describe.sequential("Import API Endpoints", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
@@ -25,6 +27,9 @@ describe.sequential("Import API Endpoints", () => {
   beforeAll(async () => {
     testEnv = await createIsolatedTestEnvironment();
     payload = testEnv.payload;
+    
+    // Store payload globally for API routes to use in test mode
+    global.__TEST_PAYLOAD__ = payload;
   });
 
   afterAll(async () => {
@@ -80,6 +85,17 @@ describe.sequential("Import API Endpoints", () => {
   });
 
   describe.sequential("Upload Endpoint", () => {
+    it("should pass health check", async () => {
+      const request = new NextRequest("http://localhost:3000/api/import/upload");
+      const response = await uploadHealthCheck(request);
+      const result = await response.json();
+      
+      expect(response.status).toBe(200);
+      expect(result.success).toBe(true);
+      expect(result.hasGlobalPayload).toBe(true);
+    });
+
+
     const createMockFile = (
       name: string,
       type: string,
@@ -98,8 +114,8 @@ describe.sequential("Import API Endpoints", () => {
     ) => {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("catalogId", catalogId);
-      if (datasetId) formData.append("datasetId", datasetId);
+      formData.append("catalogId", catalogId.toString());
+      if (datasetId) formData.append("datasetId", datasetId.toString());
       if (sessionId) formData.append("sessionId", sessionId);
       return formData;
     };
@@ -109,14 +125,14 @@ describe.sequential("Import API Endpoints", () => {
       fileContent: string,
       headers: Record<string, string> = {},
     ) => {
-      // Create proper multipart boundary
+      // Create proper boundary for multipart form data
       const boundary = `----formdata-${Math.random().toString(36).substring(2)}`;
       
-      // Build multipart body manually for test environment
-      let body = '';
+      // Build multipart body
+      let body = "";
       
       // Add file field
-      const file = formData.get('file') as File;
+      const file = formData.get("file") as File;
       if (file) {
         body += `--${boundary}\r\n`;
         body += `Content-Disposition: form-data; name="file"; filename="${file.name}"\r\n`;
@@ -126,7 +142,7 @@ describe.sequential("Import API Endpoints", () => {
       
       // Add other fields
       for (const [key, value] of formData.entries()) {
-        if (key !== 'file') {
+        if (key !== "file") {
           body += `--${boundary}\r\n`;
           body += `Content-Disposition: form-data; name="${key}"\r\n\r\n`;
           body += `${value}\r\n`;
@@ -135,14 +151,49 @@ describe.sequential("Import API Endpoints", () => {
       
       body += `--${boundary}--\r\n`;
       
-      return new NextRequest("http://localhost:3000/api/import/upload", {
+      // Mock the formData method to return the expected data structure
+      const mockFormData = async () => {
+        const formDataResult = new FormData();
+        
+        // Add file
+        if (file) {
+          // Create a proper File object for the test with arrayBuffer method
+          const fileBlob = new Blob([fileContent], { type: file.type });
+          const testFile = new File([fileBlob], file.name, { type: file.type });
+          
+          // Ensure the file has the arrayBuffer method
+          (testFile as any).arrayBuffer = async () => {
+            // Convert string content to buffer
+            const buffer = Buffer.from(fileContent);
+            return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+          };
+          
+          formDataResult.append("file", testFile);
+        }
+        
+        // Add other fields
+        for (const [key, value] of formData.entries()) {
+          if (key !== "file") {
+            formDataResult.append(key, value as string);
+          }
+        }
+        
+        return formDataResult;
+      };
+      
+      const request = new NextRequest("http://localhost:3000/api/import/upload", {
         method: "POST",
         body: body,
         headers: {
-          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          "Content-Type": `multipart/form-data; boundary=${boundary}`,
           ...headers,
         },
       });
+      
+      // Override the formData method to use our mock
+      (request as any).formData = mockFormData;
+      
+      return request;
     };
 
     it("should successfully upload CSV file", async () => {
@@ -154,8 +205,6 @@ describe.sequential("Import API Endpoints", () => {
 
       const response = await uploadHandler(request);
       const result = await response.json();
-
-      // Test passed - upload successful
 
       expect(response.status).toBe(200);
       expect(result.success).toBe(true);
@@ -219,7 +268,10 @@ describe.sequential("Import API Endpoints", () => {
     it("should include dataset in import record when provided", async () => {
       const file = createMockFile("test.csv", "text/csv", 1024);
       const formData = createFormData(file, testCatalogId, testDatasetId);
-      const request = await createMockRequest(formData, "title,date,location\nTest Event,2024-03-15,Test Location");
+      const request = await createMockRequest(
+        formData,
+        "title,date,location\nTest Event,2024-03-15,Test Location",
+      );
 
       const response = await uploadHandler(request);
       const result = await response.json();
@@ -243,7 +295,10 @@ describe.sequential("Import API Endpoints", () => {
         undefined,
         "session-123",
       );
-      const request = await createMockRequest(formData, "title,date,location\nTest Event,2024-03-15,Test Location");
+      const request = await createMockRequest(
+        formData,
+        "title,date,location\nTest Event,2024-03-15,Test Location",
+      );
 
       const response = await uploadHandler(request);
       const result = await response.json();
@@ -263,7 +318,10 @@ describe.sequential("Import API Endpoints", () => {
     it("should reject missing file", async () => {
       const formData = new FormData();
       formData.append("catalogId", testCatalogId);
-      const request = await createMockRequest(formData, "title,date,location\nTest Event,2024-03-15,Test Location");
+      const request = await createMockRequest(
+        formData,
+        "title,date,location\nTest Event,2024-03-15,Test Location",
+      );
 
       const response = await uploadHandler(request);
       const result = await response.json();
@@ -277,7 +335,10 @@ describe.sequential("Import API Endpoints", () => {
       const file = createMockFile("test.csv", "text/csv", 1024);
       const formData = new FormData();
       formData.append("file", file);
-      const request = await createMockRequest(formData, "title,date,location\nTest Event,2024-03-15,Test Location");
+      const request = await createMockRequest(
+        formData,
+        "title,date,location\nTest Event,2024-03-15,Test Location",
+      );
 
       const response = await uploadHandler(request);
       const result = await response.json();
@@ -290,7 +351,10 @@ describe.sequential("Import API Endpoints", () => {
     it("should reject unsupported file types", async () => {
       const file = createMockFile("test.txt", "text/plain", 1024);
       const formData = createFormData(file, testCatalogId);
-      const request = await createMockRequest(formData, "title,date,location\nTest Event,2024-03-15,Test Location");
+      const request = await createMockRequest(
+        formData,
+        "title,date,location\nTest Event,2024-03-15,Test Location",
+      );
 
       const response = await uploadHandler(request);
       const result = await response.json();
@@ -323,7 +387,10 @@ describe.sequential("Import API Endpoints", () => {
     it("should reject non-existent catalog", async () => {
       const file = createMockFile("test.csv", "text/csv", 1024);
       const formData = createFormData(file, "99999"); // Use a valid numeric ID that doesn't exist
-      const request = await createMockRequest(formData, "title,date,location\nTest Event,2024-03-15,Test Location");
+      const request = await createMockRequest(
+        formData,
+        "title,date,location\nTest Event,2024-03-15,Test Location",
+      );
 
       const response = await uploadHandler(request);
       const result = await response.json();
@@ -340,7 +407,10 @@ describe.sequential("Import API Endpoints", () => {
         testCatalogId,
         "99999", // Use a valid numeric ID that doesn't exist
       );
-      const request = await createMockRequest(formData, "title,date,location\nTest Event,2024-03-15,Test Location");
+      const request = await createMockRequest(
+        formData,
+        "title,date,location\nTest Event,2024-03-15,Test Location",
+      );
 
       const response = await uploadHandler(request);
       const result = await response.json();
@@ -403,7 +473,10 @@ describe.sequential("Import API Endpoints", () => {
     it("should include rate limit headers in response", async () => {
       const file = createMockFile("test.csv", "text/csv", 1024);
       const formData = createFormData(file, testCatalogId);
-      const request = await createMockRequest(formData, "title,date,location\nTest Event,2024-03-15,Test Location");
+      const request = await createMockRequest(
+        formData,
+        "title,date,location\nTest Event,2024-03-15,Test Location",
+      );
 
       const response = await uploadHandler(request);
 
@@ -414,12 +487,7 @@ describe.sequential("Import API Endpoints", () => {
 
     it("should handle file parsing errors during row count calculation", async () => {
       const invalidContent = "invalid,csv,content";
-      const file = createMockFile(
-        "test.csv",
-        "text/csv",
-        1024,
-        invalidContent,
-      );
+      const file = createMockFile("test.csv", "text/csv", 1024, invalidContent);
       const formData = createFormData(file, testCatalogId);
       const request = await createMockRequest(formData, invalidContent);
 
@@ -445,7 +513,10 @@ describe.sequential("Import API Endpoints", () => {
 
       const file = createMockFile("test.csv", "text/csv", 1024);
       const formData = createFormData(file, testCatalogId);
-      const request = await createMockRequest(formData, "title,date,location\nTest Event,2024-03-15,Test Location");
+      const request = await createMockRequest(
+        formData,
+        "title,date,location\nTest Event,2024-03-15,Test Location",
+      );
 
       const response = await uploadHandler(request);
       const result = await response.json();

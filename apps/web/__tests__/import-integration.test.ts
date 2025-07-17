@@ -12,6 +12,8 @@ import { createIsolatedTestEnvironment } from "./test-helpers";
 import { NextRequest } from "next/server";
 import { POST as uploadHandler } from "../app/(app)/api/import/upload/route";
 import { GET as progressHandler } from "../app/(app)/api/import/[importId]/progress/route";
+
+import { getPayload } from "payload";
 import {
   fileParsingJob,
   batchProcessingJob,
@@ -105,38 +107,73 @@ const createMultipartRequest = async (
 ) => {
   // Create proper multipart boundary
   const boundary = `----formdata-${Math.random().toString(36).substring(2)}`;
-  
+
   // Build multipart body manually for test environment
-  let body = '';
-  
+  let body = "";
+
   // Add file field
-  const file = formData.get('file') as File;
+  const file = formData.get("file") as File;
   if (file) {
     body += `--${boundary}\r\n`;
     body += `Content-Disposition: form-data; name="file"; filename="${file.name}"\r\n`;
     body += `Content-Type: ${file.type}\r\n\r\n`;
     body += `${fileContent}\r\n`;
   }
-  
+
   // Add other fields
   for (const [key, value] of formData.entries()) {
-    if (key !== 'file') {
+    if (key !== "file") {
       body += `--${boundary}\r\n`;
       body += `Content-Disposition: form-data; name="${key}"\r\n\r\n`;
       body += `${value}\r\n`;
     }
   }
-  
+
   body += `--${boundary}--\r\n`;
-  
-  return new NextRequest("http://localhost:3000/api/import/upload", {
+
+  // Mock the formData method to return the expected data structure
+  const mockFormData = async () => {
+    const formDataResult = new FormData();
+    
+    // Add file
+    if (file) {
+      // Create a proper File object for the test with arrayBuffer method
+      const fileBlob = new Blob([fileContent], { type: file.type });
+      const testFile = new File([fileBlob], file.name, { type: file.type });
+      
+      // Ensure the file has the arrayBuffer method
+      (testFile as any).arrayBuffer = async () => {
+        // Convert string content to buffer
+        const buffer = Buffer.from(fileContent);
+        return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      };
+      
+      formDataResult.append("file", testFile);
+    }
+    
+    // Add other fields
+    for (const [key, value] of formData.entries()) {
+      if (key !== "file") {
+        formDataResult.append(key, value as string);
+      }
+    }
+    
+    return formDataResult;
+  };
+
+  const request = new NextRequest("http://localhost:3000/api/import/upload", {
     method: "POST",
     body: body,
     headers: {
-      'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      "Content-Type": `multipart/form-data; boundary=${boundary}`,
       ...headers,
     },
   });
+
+  // Override the formData method to use our mock
+  (request as any).formData = mockFormData;
+
+  return request;
 };
 
 describe.sequential("Import System Integration Tests", () => {
@@ -185,6 +222,9 @@ describe.sequential("Import System Integration Tests", () => {
   beforeAll(async () => {
     testEnv = await createIsolatedTestEnvironment();
     payload = testEnv.payload;
+    
+    // Store payload globally for API routes to use in test mode
+    (global as any).__TEST_PAYLOAD__ = payload;
   }, 30000);
 
   afterAll(async () => {
@@ -561,7 +601,10 @@ describe.sequential("Import System Integration Tests", () => {
       formData.append("file", file);
       formData.append("catalogId", String(testCatalogId));
 
-      const uploadRequest = await createMultipartRequest(formData, invalidCsvContent);
+      const uploadRequest = await createMultipartRequest(
+        formData,
+        invalidCsvContent,
+      );
 
       const uploadResponse = await uploadHandler(uploadRequest);
       const uploadResult = await uploadResponse.json();
@@ -1526,7 +1569,7 @@ describe.sequential("Import System Integration Tests", () => {
           formData.append("catalogId", String(testCatalogId));
 
           return await createMultipartRequest(formData, csvContent);
-        })
+        }),
       );
 
       const responses = await Promise.all(
