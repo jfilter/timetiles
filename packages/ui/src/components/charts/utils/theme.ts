@@ -59,12 +59,14 @@ export function applyThemeToOption(
         },
       },
     },
-    series: option.series?.map((s: unknown) => ({
-      ...s,
-      itemStyle: {
-        ...s.itemStyle,
-        color: theme.itemColor,
-      },
-    })),
+    series: Array.isArray(option.series)
+      ? option.series.map((s: unknown) => ({
+          ...s,
+          itemStyle: {
+            ...(s as Record<string, unknown>).itemStyle,
+            color: theme.itemColor,
+          },
+        }))
+      : option.series,
   };
 }

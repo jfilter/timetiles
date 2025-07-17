@@ -81,7 +81,9 @@ export function Histogram<T = unknown>({
         trigger: "axis",
         formatter: (params: unknown) => {
           const paramsArray = params as { dataIndex: number }[];
-          const bin = bins[paramsArray[0]?.dataIndex];
+          const dataIndex = paramsArray[0]?.dataIndex;
+          if (dataIndex === undefined) return "";
+          const bin = bins[dataIndex];
           if (!bin) return "";
           if (formatter.tooltip) {
             return formatter.tooltip(bin);
@@ -160,13 +162,17 @@ export function Histogram<T = unknown>({
     const baseEvents = { ...baseProps.onEvents };
 
     if (onBarClick) {
-      baseEvents.click = (params: {
-        componentType: string;
-        seriesType: string;
-        dataIndex: number;
-      }) => {
-        if (params.componentType === "series" && params.seriesType === "bar") {
-          const bin = bins[params.dataIndex];
+      baseEvents.click = (params: unknown) => {
+        const eventParams = params as {
+          componentType: string;
+          seriesType: string;
+          dataIndex: number;
+        };
+        if (
+          eventParams.componentType === "series" &&
+          eventParams.seriesType === "bar"
+        ) {
+          const bin = bins[eventParams.dataIndex];
           if (bin) {
             onBarClick(bin);
           }

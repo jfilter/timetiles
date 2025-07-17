@@ -65,7 +65,9 @@ export function BarChart({
         },
         formatter: (params: unknown) => {
           const paramsArray = params as { dataIndex: number }[];
-          const item = processedData[paramsArray[0]?.dataIndex];
+          const dataIndex = paramsArray[0]?.dataIndex;
+          if (dataIndex === undefined) return "";
+          const item = processedData[dataIndex];
           if (!item) return "";
           return `
             <div style="padding: 8px;">
@@ -84,7 +86,7 @@ export function BarChart({
       },
       series: [
         {
-          type: "bar",
+          type: "bar" as const,
           data: values,
           itemStyle: {
             color: (params: { dataIndex: number }) =>
@@ -98,7 +100,7 @@ export function BarChart({
           label: showValues
             ? {
                 show: true,
-                position: isHorizontal ? "right" : "top",
+                position: isHorizontal ? ("right" as const) : ("top" as const),
                 formatter: (params: { value: number }) =>
                   valueFormatter(params.value),
               }
@@ -166,15 +168,19 @@ export function BarChart({
     const baseEvents = { ...baseProps.onEvents };
 
     if (onBarClick) {
-      baseEvents.click = (params: {
-        componentType: string;
-        seriesType: string;
-        dataIndex: number;
-      }) => {
-        if (params.componentType === "series" && params.seriesType === "bar") {
-          const item = processedData[params.dataIndex];
+      baseEvents.click = (params: unknown) => {
+        const eventParams = params as {
+          componentType: string;
+          seriesType: string;
+          dataIndex: number;
+        };
+        if (
+          eventParams.componentType === "series" &&
+          eventParams.seriesType === "bar"
+        ) {
+          const item = processedData[eventParams.dataIndex];
           if (item) {
-            onBarClick(item, params.dataIndex);
+            onBarClick(item, eventParams.dataIndex);
           }
         }
       };
