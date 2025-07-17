@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { parseAsArrayOf, parseAsString, useQueryStates } from "nuqs";
 import type { Catalog, Dataset, Event } from "../payload-types";
 import { Map } from "./Map";
 import { EventsList } from "./EventsList";
 import { EventFilters } from "./EventFilters";
+import { ActiveFilters } from "./ActiveFilters";
 import { ChartSection } from "./ChartSection";
+import { useFilterManager } from "../hooks/useFilterManager";
 import type { LngLatBounds } from "maplibre-gl";
 
 interface MapExplorerProps {
@@ -19,12 +20,7 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
   const [bounds, setBounds] = useState<LngLatBounds | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const [filters] = useQueryStates({
-    catalog: parseAsString,
-    datasets: parseAsArrayOf(parseAsString).withDefault([]),
-    startDate: parseAsString,
-    endDate: parseAsString,
-  });
+  const { filters, labels, hasActiveFilters, activeFilterCount, actions } = useFilterManager(catalogs, datasets);
 
   useEffect(() => {
     // Cancel any previous requests if pending
@@ -135,6 +131,13 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
           </div>
 
           <div className="border-t pt-6">
+            <ActiveFilters
+              labels={labels}
+              hasActiveFilters={hasActiveFilters}
+              activeFilterCount={activeFilterCount}
+              actions={actions}
+            />
+            
             <h2 className="mb-4 text-lg font-semibold">
               Events ({events.length})
             </h2>

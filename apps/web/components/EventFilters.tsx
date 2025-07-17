@@ -1,6 +1,5 @@
 "use client";
 
-import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
 import type { Catalog, Dataset } from "../payload-types";
 import {
   Select,
@@ -10,6 +9,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select";
 import { Label } from "@workspace/ui/components/label";
+import { useFilterManager } from "../hooks/useFilterManager";
 
 interface EventFiltersProps {
   catalogs: Catalog[];
@@ -17,41 +17,22 @@ interface EventFiltersProps {
 }
 
 export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
-  const [selectedCatalog, setSelectedCatalog] = useQueryState(
-    "catalog",
-    parseAsString,
-  );
-  const [selectedDatasets, setSelectedDatasets] = useQueryState(
-    "datasets",
-    parseAsArrayOf(parseAsString).withDefault([]),
-  );
-  const [startDate, setStartDate] = useQueryState("startDate", parseAsString);
-  const [endDate, setEndDate] = useQueryState("endDate", parseAsString);
+  const { filters, actions } = useFilterManager(catalogs, datasets);
 
-  const filteredDatasets = selectedCatalog
+  const filteredDatasets = filters.catalog
     ? datasets.filter(
         (d) =>
           typeof d.catalog === "object" &&
-          String(d.catalog.id) === selectedCatalog,
+          String(d.catalog.id) === filters.catalog,
       )
     : datasets;
 
-  const handleCatalogChange = (value: string) => {
-    if (value === "all") {
-      setSelectedCatalog(null);
-      setSelectedDatasets([]);
-    } else {
-      setSelectedCatalog(value);
-      setSelectedDatasets([]);
-    }
-  };
-
   const handleDatasetToggle = (datasetId: string) => {
-    setSelectedDatasets((current) =>
-      current.includes(datasetId)
-        ? current.filter((id) => id !== datasetId)
-        : [...current, datasetId],
-    );
+    const current = filters.datasets;
+    const newDatasets = current.includes(datasetId)
+      ? current.filter((id) => id !== datasetId)
+      : [...current, datasetId];
+    actions.setDatasets(newDatasets);
   };
 
   return (
@@ -59,8 +40,8 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
       <div>
         <Label htmlFor="catalog-select">Catalog</Label>
         <Select
-          value={selectedCatalog || "all"}
-          onValueChange={handleCatalogChange}
+          value={filters.catalog || "all"}
+          onValueChange={actions.setCatalog}
         >
           <SelectTrigger id="catalog-select" className="mt-2">
             <SelectValue placeholder="Select a catalog" />
@@ -91,7 +72,7 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
               >
                 <input
                   type="checkbox"
-                  checked={selectedDatasets.includes(String(dataset.id))}
+                  checked={filters.datasets.includes(String(dataset.id))}
                   onChange={() => handleDatasetToggle(String(dataset.id))}
                   className="rounded border-gray-300"
                 />
@@ -108,8 +89,8 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
           <input
             type="date"
             id="start-date"
-            value={startDate || ""}
-            onChange={(e) => setStartDate(e.target.value || null)}
+            value={filters.startDate || ""}
+            onChange={(e) => actions.setStartDate(e.target.value || null)}
             className="border-input placeholder:text-muted-foreground focus-visible:ring-ring mt-2 flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
@@ -119,17 +100,17 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
           <input
             type="date"
             id="end-date"
-            value={endDate || ""}
-            onChange={(e) => setEndDate(e.target.value || null)}
+            value={filters.endDate || ""}
+            onChange={(e) => actions.setEndDate(e.target.value || null)}
             className="border-input placeholder:text-muted-foreground focus-visible:ring-ring mt-2 flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
 
-        {(startDate || endDate) && (
+        {(filters.startDate || filters.endDate) && (
           <button
             onClick={() => {
-              setStartDate(null);
-              setEndDate(null);
+              actions.setStartDate(null);
+              actions.setEndDate(null);
             }}
             className="text-muted-foreground hover:text-foreground text-sm"
           >
