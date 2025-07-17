@@ -1,5 +1,6 @@
 {
   "name": "docs",
+  "description": "The documentation site for the TimeTiles project.",
   "version": "0.0.1",
   "private": true,
   "type": "module",

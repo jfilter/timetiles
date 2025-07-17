@@ -1,5 +1,6 @@
 {
   "name": "web",
+  "description": "The web application for TimeTiles, providing the main user interface and data exploration features.",
   "version": "0.0.1",
   "type": "module",
   "private": true,

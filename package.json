@@ -1,5 +1,6 @@
 {
-  "name": "shadcn-ui-monorepo",
+  "name": "timetiles",
+  "description": "A data explorer for spatio-temporal data with custom metadata.",
   "version": "0.0.1",
   "private": true,
   "scripts": {
