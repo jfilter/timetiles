@@ -101,8 +101,12 @@ export function BarChart({
             ? {
                 show: true,
                 position: isHorizontal ? ("right" as const) : ("top" as const),
-                formatter: (params: { value: number }) =>
-                  valueFormatter(params.value),
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter: (params: any) => {
+                  const value =
+                    typeof params.value === "number" ? params.value : 0;
+                  return valueFormatter(value);
+                },
               }
             : undefined,
         },

@@ -60,13 +60,17 @@ export function applyThemeToOption(
       },
     },
     series: Array.isArray(option.series)
-      ? option.series.map((s: unknown) => ({
-          ...s,
-          itemStyle: {
-            ...(s as Record<string, unknown>).itemStyle,
-            color: theme.itemColor,
-          },
-        }))
+      ? option.series.map((s: unknown) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const series = s as Record<string, any>;
+          return {
+            ...series,
+            itemStyle: {
+              ...(series.itemStyle || {}),
+              color: theme.itemColor,
+            },
+          };
+        })
       : option.series,
   };
 }

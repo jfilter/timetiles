@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayloadHMR } from "@payloadcms/next/utilities";
 import type { Where } from "payload";
+import type { Event } from "../../../payload-types";
 import config from "../../../payload.config";
 
 export async function GET(request: NextRequest) {
@@ -114,7 +115,7 @@ export async function GET(request: NextRequest) {
         endDateTime.setDate(endDateTime.getDate() + 1); // Include the entire end date
       }
 
-      filteredEvents = events.docs.filter((event) => {
+      filteredEvents = events.docs.filter((event: Event) => {
         // Check eventTimestamp first
         if (event.eventTimestamp) {
           const eventDate = new Date(event.eventTimestamp);
@@ -162,7 +163,7 @@ export async function GET(request: NextRequest) {
 
     // Serialize the response to avoid JSON serialization issues
     const serializedEvents = {
-      docs: filteredEvents.map((event) => ({
+      docs: filteredEvents.map((event: Event) => ({
         id: event.id,
         data: event.data,
         location: event.location,
