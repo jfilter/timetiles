@@ -294,7 +294,15 @@ export class SeedManager {
             ? "Environmental Data"
             : item.catalog === "economic-indicators"
               ? "Economic Indicators"
-              : item.catalog;
+              : item.catalog === "academic-research-portal"
+                ? "Academic Research Portal"
+                : item.catalog === "community-events-portal"
+                  ? "Community Events Portal"
+                  : item.catalog === "cultural-heritage-archives"
+                    ? "Cultural Heritage Archives"
+                    : item.catalog === "historical-records"
+                      ? "Historical Records"
+                      : item.catalog;
 
       const catalog = await this.payload!.find({
         collection: "catalogs",
@@ -332,11 +340,29 @@ export class SeedManager {
       const searchValue =
         item.dataset === "test-dataset"
           ? "Test Dataset"
-          : item.dataset === "air-quality-measurements"
+          : item.dataset === "air-quality-measurements" || item.dataset === "environmental-data-air-quality-measurements"
             ? "Air Quality Measurements"
-            : item.dataset === "gdp-growth-rates"
+            : item.dataset === "gdp-growth-rates" || item.dataset === "economic-indicators-gdp-growth-rates"
               ? "GDP Growth Rates"
-              : item.dataset;
+              : item.dataset === "environmental-data-water-quality-assessments"
+                ? "Water Quality Assessments"
+                : item.dataset === "environmental-data-climate-station-data"
+                  ? "Climate Station Data"
+                  : item.dataset === "economic-indicators-employment-statistics"
+                    ? "Employment Statistics"
+                    : item.dataset === "economic-indicators-consumer-price-index"
+                      ? "Consumer Price Index"
+                      : item.dataset === "academic-research-portal-research-study-results"
+                        ? "Research Study Results"
+                        : item.dataset === "academic-research-portal-survey-response-data"
+                          ? "Survey Response Data"
+                          : item.dataset === "community-events-portal-local-events-calendar"
+                            ? "Local Events Calendar"
+                            : item.dataset === "cultural-heritage-archives-performance-schedule"
+                              ? "Performance Schedule"
+                              : item.dataset === "cultural-heritage-archives-exhibition-archive"
+                                ? "Exhibition Archive"
+                                : item.dataset;
 
       const dataset = await this.payload!.find({
         collection: "datasets",
