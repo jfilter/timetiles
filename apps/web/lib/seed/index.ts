@@ -121,18 +121,24 @@ export class SeedManager {
           resolvedItem.slug = `${resolvedItem.slug}-${timestamp}-${randomSuffix}`;
         }
 
+        // Check if item already exists to avoid duplicate key errors
+        const existingItem = await this.findExistingItem(collection, resolvedItem);
+        if (existingItem) {
+          const displayName = this.getDisplayName(item);
+          logger.debug(
+            { collection, displayName },
+            `Skipping existing ${collection} item: ${displayName}`,
+          );
+          continue;
+        }
+
         await this.payload!.create({
           collection: collection as keyof Config["collections"],
           data: resolvedItem,
         });
 
         // Get a display name for the item
-        const displayName =
-          (item as { name?: string }).name ||
-          (item as { email?: string }).email ||
-          (item as { fileName?: string }).fileName ||
-          (item as { id?: string }).id ||
-          "Unknown";
+        const displayName = this.getDisplayName(item);
         logger.debug(
           { collection, displayName },
           `Created ${collection} item: ${displayName}`,
@@ -458,6 +464,77 @@ export class SeedManager {
       limit: 0, // Only get count, not documents
     });
     return result.totalDocs;
+  }
+
+  private async findExistingItem(collection: string, item: Record<string, unknown>): Promise<any> {
+    try {
+      // Define unique identifiers for each collection
+      let where: Record<string, any> = {};
+
+      switch (collection) {
+        case "users":
+          if (item.email) {
+            where.email = { equals: item.email };
+          }
+          break;
+        case "catalogs":
+          if (item.slug) {
+            where.slug = { equals: item.slug };
+          } else if (item.name) {
+            where.name = { equals: item.name };
+          }
+          break;
+        case "datasets":
+          if (item.slug) {
+            where.slug = { equals: item.slug };
+          } else if (item.name) {
+            where.name = { equals: item.name };
+          }
+          break;
+        case "events":
+          // For events, check by a combination of fields to avoid exact duplicates
+          if (item.data && item.location) {
+            where.and = [
+              { "location.latitude": { equals: (item.location as any)?.latitude } },
+              { "location.longitude": { equals: (item.location as any)?.longitude } },
+            ];
+          }
+          break;
+        case "imports":
+          if (item.fileName) {
+            where.fileName = { equals: item.fileName };
+          }
+          break;
+        default:
+          return null; // Skip existence check for unknown collections
+      }
+
+      if (Object.keys(where).length === 0) {
+        return null; // No unique identifier found, can't check for existence
+      }
+
+      const existing = await this.payload!.find({
+        collection: collection as keyof Config["collections"],
+        where,
+        limit: 1,
+      });
+
+      return existing.docs.length > 0 ? existing.docs[0] : null;
+    } catch (error) {
+      // If we can't check for existence, just proceed with creation
+      logger.debug(`Could not check for existing ${collection} item:`, error);
+      return null;
+    }
+  }
+
+  private getDisplayName(item: any): string {
+    return (
+      item.name ||
+      item.email ||
+      item.fileName ||
+      item.id ||
+      "Unknown"
+    );
   }
 }
 
