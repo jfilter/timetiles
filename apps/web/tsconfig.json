@@ -3,25 +3,16 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@workspace/ui/*": [
-        "../../packages/ui/src/*"
-      ],
-      "@payload-config": [
-        "./payload.config.ts"
-      ]
+      "@/*": ["./*"],
+      "@workspace/ui/*": ["../../packages/ui/src/*"],
+      "@payload-config": ["./payload.config.ts"]
     },
     "plugins": [
       {
         "name": "next"
       }
     ],
-    "types": [
-      "vitest",
-      "node"
-    ]
+    "types": ["vitest", "node"]
   },
   "include": [
     "next-env.d.ts",
@@ -31,7 +22,5 @@
     ".next/types/**/*.ts",
     "__tests__/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

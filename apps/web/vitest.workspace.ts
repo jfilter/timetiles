@@ -19,9 +19,7 @@ export default defineWorkspace([
     extends: "./vitest.config.ts",
     test: {
       name: "integration",
-      include: [
-        "__tests__/**/*.{test,spec}.{js,ts}",
-      ],
+      include: ["__tests__/**/*.{test,spec}.{js,ts}"],
       exclude: [
         "**/node_modules/**",
         "__tests__/file-parsing.test.ts",

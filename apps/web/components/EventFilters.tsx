@@ -19,24 +19,20 @@ interface EventFiltersProps {
 export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
   const [selectedCatalog, setSelectedCatalog] = useQueryState(
     "catalog",
-    parseAsString
+    parseAsString,
   );
   const [selectedDatasets, setSelectedDatasets] = useQueryState(
     "datasets",
-    parseAsArrayOf(parseAsString).withDefault([])
+    parseAsArrayOf(parseAsString).withDefault([]),
   );
-  const [startDate, setStartDate] = useQueryState(
-    "startDate",
-    parseAsString
-  );
-  const [endDate, setEndDate] = useQueryState(
-    "endDate",
-    parseAsString
-  );
+  const [startDate, setStartDate] = useQueryState("startDate", parseAsString);
+  const [endDate, setEndDate] = useQueryState("endDate", parseAsString);
 
   const filteredDatasets = selectedCatalog
-    ? datasets.filter((d) => 
-        typeof d.catalog === "object" && String(d.catalog.id) === selectedCatalog
+    ? datasets.filter(
+        (d) =>
+          typeof d.catalog === "object" &&
+          String(d.catalog.id) === selectedCatalog,
       )
     : datasets;
 
@@ -54,7 +50,7 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
     setSelectedDatasets((current) =>
       current.includes(datasetId)
         ? current.filter((id) => id !== datasetId)
-        : [...current, datasetId]
+        : [...current, datasetId],
     );
   };
 
@@ -82,14 +78,16 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
 
       <div>
         <Label>Datasets</Label>
-        <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
+        <div className="mt-2 max-h-64 space-y-2 overflow-y-auto">
           {filteredDatasets.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No datasets available</p>
+            <p className="text-muted-foreground text-sm">
+              No datasets available
+            </p>
           ) : (
             filteredDatasets.map((dataset) => (
               <label
                 key={dataset.id}
-                className="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-accent/50"
+                className="hover:bg-accent/50 flex cursor-pointer items-center space-x-2 rounded p-2"
               >
                 <input
                   type="checkbox"
@@ -112,10 +110,10 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
             id="start-date"
             value={startDate || ""}
             onChange={(e) => setStartDate(e.target.value || null)}
-            className="mt-2 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            className="border-input placeholder:text-muted-foreground focus-visible:ring-ring mt-2 flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
-        
+
         <div>
           <Label htmlFor="end-date">End Date</Label>
           <input
@@ -123,7 +121,7 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
             id="end-date"
             value={endDate || ""}
             onChange={(e) => setEndDate(e.target.value || null)}
-            className="mt-2 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            className="border-input placeholder:text-muted-foreground focus-visible:ring-ring mt-2 flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
 
@@ -133,7 +131,7 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
               setStartDate(null);
               setEndDate(null);
             }}
-            className="text-sm text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground text-sm"
           >
             Clear date filters
           </button>

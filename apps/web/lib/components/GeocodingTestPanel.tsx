@@ -47,10 +47,13 @@ export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
     }
   };
 
-  const renderResult = (providerName: string, result: TestResult | undefined) => {
+  const renderResult = (
+    providerName: string,
+    result: TestResult | undefined,
+  ) => {
     if (!result) {
       return (
-        <div className="text-gray-500 text-sm">
+        <div className="text-sm text-gray-500">
           Not configured or not tested
         </div>
       );
@@ -59,11 +62,13 @@ export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
     if (result.success && result.result) {
       return (
         <div className="space-y-1">
-          <div className="text-green-600 font-medium">✓ Success</div>
+          <div className="font-medium text-green-600">✓ Success</div>
           <div className="text-sm text-gray-600">
             <div>Lat: {result.result.latitude.toFixed(6)}</div>
             <div>Lng: {result.result.longitude.toFixed(6)}</div>
-            <div>Confidence: {(result.result.confidence * 100).toFixed(1)}%</div>
+            <div>
+              Confidence: {(result.result.confidence * 100).toFixed(1)}%
+            </div>
             <div className="truncate" title={result.result.normalizedAddress}>
               {result.result.normalizedAddress}
             </div>
@@ -73,7 +78,7 @@ export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
     } else {
       return (
         <div className="space-y-1">
-          <div className="text-red-600 font-medium">✗ Failed</div>
+          <div className="font-medium text-red-600">✗ Failed</div>
           <div className="text-sm text-red-500">
             {result.error || "Unknown error"}
           </div>
@@ -83,19 +88,23 @@ export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
   };
 
   return (
-    <div className="space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+    <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
+        <h3 className="mb-2 text-lg font-medium text-gray-900">
           Test Geocoding Configuration
         </h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Test your geocoding providers with a sample address to verify they&apos;re working correctly.
+        <p className="mb-4 text-sm text-gray-600">
+          Test your geocoding providers with a sample address to verify
+          they&apos;re working correctly.
         </p>
       </div>
 
       <div className="space-y-3">
         <div>
-          <label htmlFor="test-address" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="test-address"
+            className="mb-1 block text-sm font-medium text-gray-700"
+          >
             Test Address
           </label>
           <div className="flex space-x-2">
@@ -105,7 +114,7 @@ export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
               value={testAddress}
               onChange={(e) => setTestAddress(e.target.value)}
               placeholder="Enter an address to test..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="flex-1 rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
             />
             <Button
               onClick={handleTest}
@@ -120,27 +129,27 @@ export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
         {results && (
           <div className="space-y-3">
             <h4 className="font-medium text-gray-900">Test Results:</h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-3 border border-gray-200 rounded-md bg-white">
-                <h5 className="font-medium text-gray-900 mb-2 flex items-center">
-                  <span className="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-md border border-gray-200 bg-white p-3">
+                <h5 className="mb-2 flex items-center font-medium text-gray-900">
+                  <span className="mr-2 h-3 w-3 rounded-full bg-blue-500"></span>
                   Google Maps
                 </h5>
                 {renderResult("Google", results.google)}
               </div>
 
-              <div className="p-3 border border-gray-200 rounded-md bg-white">
-                <h5 className="font-medium text-gray-900 mb-2 flex items-center">
-                  <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+              <div className="rounded-md border border-gray-200 bg-white p-3">
+                <h5 className="mb-2 flex items-center font-medium text-gray-900">
+                  <span className="mr-2 h-3 w-3 rounded-full bg-green-500"></span>
                   Nominatim
                 </h5>
                 {renderResult("Nominatim", results.nominatim)}
               </div>
 
-              <div className="p-3 border border-gray-200 rounded-md bg-white">
-                <h5 className="font-medium text-gray-900 mb-2 flex items-center">
-                  <span className="w-3 h-3 bg-orange-500 rounded-full mr-2"></span>
+              <div className="rounded-md border border-gray-200 bg-white p-3">
+                <h5 className="mb-2 flex items-center font-medium text-gray-900">
+                  <span className="mr-2 h-3 w-3 rounded-full bg-orange-500"></span>
                   OpenCage
                 </h5>
                 {renderResult("OpenCage", results.opencage)}

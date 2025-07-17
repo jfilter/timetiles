@@ -129,8 +129,11 @@ describe("GeocodingService", () => {
   // Helper function to create test providers in the collection
   const createTestProviders = async (withGoogleApi = false) => {
     const uniqueId = `${testCounter}-${Date.now()}`;
-    const providerNames: { google: string | null, nominatim: string | null } = { google: null, nominatim: null };
-    
+    const providerNames: { google: string | null; nominatim: string | null } = {
+      google: null,
+      nominatim: null,
+    };
+
     if (withGoogleApi) {
       process.env.GOOGLE_MAPS_API_KEY = "test-api-key";
       const googleName = `Google Maps (Test ${uniqueId})`;
@@ -155,7 +158,7 @@ describe("GeocodingService", () => {
     } else {
       delete process.env.GOOGLE_MAPS_API_KEY;
     }
-    
+
     // Always create Nominatim provider for tests
     const nominatimName = `Nominatim (Test ${uniqueId})`;
     await payload.create({
@@ -178,7 +181,7 @@ describe("GeocodingService", () => {
       },
     });
     providerNames.nominatim = nominatimName;
-    
+
     return providerNames;
   };
 

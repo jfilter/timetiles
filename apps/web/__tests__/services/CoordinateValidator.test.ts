@@ -11,19 +11,19 @@ describe("CoordinateValidator", () => {
   describe("coordinate parsing", () => {
     it("parses decimal degrees", () => {
       expect(validator.parseCoordinate("40.7128")).toBe(40.7128);
-      expect(validator.parseCoordinate("-74.0060")).toBe(-74.0060);
+      expect(validator.parseCoordinate("-74.0060")).toBe(-74.006);
       expect(validator.parseCoordinate("0")).toBe(0);
       expect(validator.parseCoordinate("-180")).toBe(-180);
     });
 
-    it('parses DMS format (40°42\'46"N)', () => {
-      const result = validator.parseCoordinate('40°42\'46"N');
+    it("parses DMS format (40°42'46\"N)", () => {
+      const result = validator.parseCoordinate("40°42'46\"N");
       expect(result).toBeCloseTo(40.7128, 3);
     });
 
     it("parses degrees with direction (40.7128 N)", () => {
       expect(validator.parseCoordinate("40.7128 N")).toBe(40.7128);
-      expect(validator.parseCoordinate("74.0060 W")).toBe(-74.0060);
+      expect(validator.parseCoordinate("74.0060 W")).toBe(-74.006);
       expect(validator.parseCoordinate("51.5074 N")).toBe(51.5074);
       expect(validator.parseCoordinate("0.1278 W")).toBe(-0.1278);
     });
@@ -43,13 +43,13 @@ describe("CoordinateValidator", () => {
 
     it("handles number inputs", () => {
       expect(validator.parseCoordinate(40.7128)).toBe(40.7128);
-      expect(validator.parseCoordinate(-74.0060)).toBe(-74.0060);
+      expect(validator.parseCoordinate(-74.006)).toBe(-74.006);
       expect(validator.parseCoordinate(0)).toBe(0);
     });
 
     it("handles string numbers with spaces", () => {
       expect(validator.parseCoordinate(" 40.7128 ")).toBe(40.7128);
-      expect(validator.parseCoordinate("  -74.0060  ")).toBe(-74.0060);
+      expect(validator.parseCoordinate("  -74.0060  ")).toBe(-74.006);
     });
   });
 
@@ -100,66 +100,81 @@ describe("CoordinateValidator", () => {
     it("auto-fixes swapped coordinates when enabled", () => {
       // -74.0060 is valid longitude but not latitude (outside ±90)
       // 40.7128 is valid for both
-      const result = validator.validateCoordinates(-74.0060, 40.7128, true);
+      const result = validator.validateCoordinates(-74.006, 40.7128, true);
       expect(result.isValid).toBe(true);
-      expect(result.validationStatus).toBe("valid");  // After fixing, coords are valid
-      expect(result.latitude).toBe(-74.0060);
+      expect(result.validationStatus).toBe("valid"); // After fixing, coords are valid
+      expect(result.latitude).toBe(-74.006);
       expect(result.longitude).toBe(40.7128);
-      expect(result.wasSwapped).toBeUndefined();  // These coords are actually valid
+      expect(result.wasSwapped).toBeUndefined(); // These coords are actually valid
     });
 
     it("doesn't fix swapped coordinates when disabled", () => {
       // Test with actually swapped coordinates
-      const result = validator.validateCoordinates(139.6503, 35.6762, false);  // Tokyo swapped
+      const result = validator.validateCoordinates(139.6503, 35.6762, false); // Tokyo swapped
       expect(result.isValid).toBe(false);
       expect(result.validationStatus).toBe("swapped");
-      expect(result.latitude).toBe(139.6503);  // Unchanged
-      expect(result.longitude).toBe(35.6762);  // Unchanged
+      expect(result.latitude).toBe(139.6503); // Unchanged
+      expect(result.longitude).toBe(35.6762); // Unchanged
     });
   });
 
   describe("combined format extraction", () => {
     it("extracts comma-separated coordinates", () => {
-      const result = validator.extractFromCombined("40.7128,-74.0060", "combined_comma");
+      const result = validator.extractFromCombined(
+        "40.7128,-74.0060",
+        "combined_comma",
+      );
       expect(result.isValid).toBe(true);
       expect(result.latitude).toBe(40.7128);
-      expect(result.longitude).toBe(-74.0060);
+      expect(result.longitude).toBe(-74.006);
       expect(result.format).toBe("combined_comma");
     });
 
     it("extracts space-separated coordinates", () => {
-      const result = validator.extractFromCombined("40.7128 -74.0060", "combined_space");
+      const result = validator.extractFromCombined(
+        "40.7128 -74.0060",
+        "combined_space",
+      );
       expect(result.isValid).toBe(true);
       expect(result.latitude).toBe(40.7128);
-      expect(result.longitude).toBe(-74.0060);
+      expect(result.longitude).toBe(-74.006);
       expect(result.format).toBe("combined_space");
     });
 
     it("extracts GeoJSON coordinates", () => {
-      const geoJson = { type: "Point", coordinates: [-74.0060, 40.7128] };
+      const geoJson = { type: "Point", coordinates: [-74.006, 40.7128] };
       const result = validator.extractFromCombined(geoJson, "geojson");
       expect(result.isValid).toBe(true);
       expect(result.latitude).toBe(40.7128);
-      expect(result.longitude).toBe(-74.0060);
+      expect(result.longitude).toBe(-74.006);
       expect(result.format).toBe("geojson");
     });
 
     it("auto-detects comma format", () => {
-      const result = validator.extractFromCombined("51.5074,-0.1278", "unknown");
+      const result = validator.extractFromCombined(
+        "51.5074,-0.1278",
+        "unknown",
+      );
       expect(result.isValid).toBe(true);
       expect(result.latitude).toBe(51.5074);
       expect(result.longitude).toBe(-0.1278);
     });
 
     it("auto-detects bracket format", () => {
-      const result = validator.extractFromCombined("[40.7128, -74.0060]", "unknown");
+      const result = validator.extractFromCombined(
+        "[40.7128, -74.0060]",
+        "unknown",
+      );
       expect(result.isValid).toBe(true);
       expect(result.latitude).toBe(40.7128);
-      expect(result.longitude).toBe(-74.0060);
+      expect(result.longitude).toBe(-74.006);
     });
 
     it("handles invalid combined formats", () => {
-      const result1 = validator.extractFromCombined("not-coordinates", "combined_comma");
+      const result1 = validator.extractFromCombined(
+        "not-coordinates",
+        "combined_comma",
+      );
       expect(result1.isValid).toBe(false);
       expect(result1.latitude).toBe(null);
       expect(result1.longitude).toBe(null);
@@ -175,13 +190,13 @@ describe("CoordinateValidator", () => {
   describe("confidence calculation", () => {
     it("reduces confidence for exact integers", () => {
       const confidence1 = validator.calculateConfidence(40.0, -74.0);
-      const confidence2 = validator.calculateConfidence(40.7128, -74.0060);
+      const confidence2 = validator.calculateConfidence(40.7128, -74.006);
       expect(confidence1).toBeLessThan(confidence2);
     });
 
     it("reduces confidence for boundary coordinates", () => {
       const confidence1 = validator.calculateConfidence(89.9, 179.9);
-      const confidence2 = validator.calculateConfidence(40.7128, -74.0060);
+      const confidence2 = validator.calculateConfidence(40.7128, -74.006);
       expect(confidence1).toBeLessThan(confidence2);
     });
 
@@ -189,8 +204,8 @@ describe("CoordinateValidator", () => {
       const confidence1 = validator.calculateConfidence(0, 0);
       const confidence2 = validator.calculateConfidence(1, 1);
       const confidence3 = validator.calculateConfidence(12.345678, 12.345678);
-      const confidence4 = validator.calculateConfidence(40.7128, -74.0060);
-      
+      const confidence4 = validator.calculateConfidence(40.7128, -74.006);
+
       expect(confidence1).toBeLessThan(confidence4);
       expect(confidence2).toBeLessThan(confidence4);
       expect(confidence3).toBeLessThan(confidence4);
@@ -209,7 +224,7 @@ describe("CoordinateValidator", () => {
     });
 
     it("handles negative DMS", () => {
-      const result = validator.parseCoordinate('74°0\'21.6"W');
+      const result = validator.parseCoordinate("74°0'21.6\"W");
       expect(result).toBeCloseTo(-74.006, 3);
     });
   });

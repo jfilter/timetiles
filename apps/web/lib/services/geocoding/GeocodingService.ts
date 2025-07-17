@@ -1,6 +1,10 @@
 import NodeGeocoder, { Entry } from "node-geocoder";
 import type { Payload } from "payload";
-import type { Config, GeocodingProvider, LocationCache } from "../../../payload-types";
+import type {
+  Config,
+  GeocodingProvider,
+  LocationCache,
+} from "../../../payload-types";
 import { createLogger, logError, logPerformance } from "../../logger";
 import type { Where } from "payload";
 
@@ -69,27 +73,32 @@ export class GeocodingService {
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
-    
+
     logger.info("Initializing geocoding service");
-    
+
     try {
       // Load settings from database
       await this.loadSettings();
       logger.info("Settings loaded successfully");
-      
+
       // Load and initialize providers from collection
       await this.loadProviders();
       logger.info(`Loaded ${this.providers.length} providers`);
-      
+
       // Sort providers by priority
       this.providers.sort((a, b) => a.priority - b.priority);
-      
+
       this.initialized = true;
-      
-      logger.info({ 
-        activeProviders: this.providers.filter(p => p.enabled).map(p => p.name),
-        totalProviders: this.providers.length
-      }, "Geocoding service initialized");
+
+      logger.info(
+        {
+          activeProviders: this.providers
+            .filter((p) => p.enabled)
+            .map((p) => p.name),
+          totalProviders: this.providers.length,
+        },
+        "Geocoding service initialized",
+      );
     } catch (error) {
       logger.error({ error }, "Failed to initialize geocoding service");
       throw error;
@@ -102,13 +111,13 @@ export class GeocodingService {
     this.settings = {
       enabled: process.env.GEOCODING_ENABLED !== "false",
       fallbackEnabled: process.env.GEOCODING_FALLBACK_ENABLED !== "false",
-      providerSelection: { 
+      providerSelection: {
         strategy: process.env.GEOCODING_PROVIDER_STRATEGY || "priority",
-        requiredTags: process.env.GEOCODING_REQUIRED_TAGS?.split(",") || []
+        requiredTags: process.env.GEOCODING_REQUIRED_TAGS?.split(",") || [],
       },
-      caching: { 
+      caching: {
         enabled: process.env.GEOCODING_CACHING_ENABLED !== "false",
-        ttlDays: parseInt(process.env.GEOCODING_CACHE_TTL_DAYS || "365")
+        ttlDays: parseInt(process.env.GEOCODING_CACHE_TTL_DAYS || "365"),
       },
     };
   }
@@ -118,7 +127,11 @@ export class GeocodingService {
     const requiredTags = this.settings?.providerSelection?.requiredTags || [];
 
     // Query providers from collection
-    const query: { collection: keyof Config["collections"]; where: Where; limit: number } = {
+    const query: {
+      collection: keyof Config["collections"];
+      where: Where;
+      limit: number;
+    } = {
       collection: "geocoding-providers",
       where: {
         enabled: { equals: true },
@@ -134,21 +147,32 @@ export class GeocodingService {
     try {
       logger.info({ query }, "Querying providers from collection");
       const providerResults = await this.payload.find(query);
-      logger.info(`Found ${providerResults.docs.length} providers in collection`);
-      
+      logger.info(
+        `Found ${providerResults.docs.length} providers in collection`,
+      );
+
       if (providerResults.docs.length === 0) {
         logger.info("No providers found, creating default providers");
         // Create default providers from environment variables
         await this.createDefaultProviders();
         // Re-query
         const newResults = await this.payload.find(query);
-        logger.info(`After creating defaults, found ${newResults.docs.length} providers`);
-        this.initializeProvidersFromDocs(newResults.docs as GeocodingProvider[]);
+        logger.info(
+          `After creating defaults, found ${newResults.docs.length} providers`,
+        );
+        this.initializeProvidersFromDocs(
+          newResults.docs as GeocodingProvider[],
+        );
       } else {
-        this.initializeProvidersFromDocs(providerResults.docs as GeocodingProvider[]);
+        this.initializeProvidersFromDocs(
+          providerResults.docs as GeocodingProvider[],
+        );
       }
     } catch (error) {
-      logger.warn({ error }, "Failed to query geocoding providers, using hardcoded defaults");
+      logger.warn(
+        { error },
+        "Failed to query geocoding providers, using hardcoded defaults",
+      );
       // Fallback to hardcoded providers if collection query fails
       const hardcodedProviders = [
         {
@@ -167,8 +191,12 @@ export class GeocodingService {
           tags: ["testing"],
         },
       ];
-      logger.info(`Using ${hardcodedProviders.length} hardcoded providers as fallback`);
-      this.initializeProvidersFromDocs(hardcodedProviders as GeocodingProvider[]);
+      logger.info(
+        `Using ${hardcodedProviders.length} hardcoded providers as fallback`,
+      );
+      this.initializeProvidersFromDocs(
+        hardcodedProviders as GeocodingProvider[],
+      );
     }
   }
 
@@ -240,14 +268,17 @@ export class GeocodingService {
         });
         logger.info(`Created default provider: ${provider.name}`);
       } catch (error) {
-        logger.warn({ error, provider: provider.name }, "Failed to create default provider");
+        logger.warn(
+          { error, provider: provider.name },
+          "Failed to create default provider",
+        );
       }
     }
   }
 
   private initializeProvidersFromDocs(docs: GeocodingProvider[]): void {
     logger.info(`Initializing ${docs.length} providers from docs`);
-    
+
     for (const doc of docs) {
       if (!doc.enabled || !doc.type) {
         logger.warn(`Skipping disabled or invalid provider: ${doc.name}`);
@@ -255,7 +286,9 @@ export class GeocodingService {
       }
 
       try {
-        logger.info(`Initializing provider '${doc.name}' of type '${doc.type}'`);
+        logger.info(
+          `Initializing provider '${doc.name}' of type '${doc.type}'`,
+        );
         let geocoder: NodeGeocoder.Geocoder;
 
         switch (doc.type) {
@@ -280,7 +313,9 @@ export class GeocodingService {
             geocoder = NodeGeocoder({
               provider: "openstreetmap",
               formatter: null,
-              osmServer: (nominatimConfig as any).baseUrl || "https://nominatim.openstreetmap.org",
+              osmServer:
+                (nominatimConfig as any).baseUrl ||
+                "https://nominatim.openstreetmap.org",
               countrycodes: (nominatimConfig as any).countrycodes,
               addressdetails: (nominatimConfig as any).addressdetails !== false,
               extratags: (nominatimConfig as any).extratags === true,
@@ -303,13 +338,20 @@ export class GeocodingService {
             } as NodeGeocoder.Options;
 
             // Add bounds if configured
-            if (opencageConfig.bounds?.enabled && 
-                opencageConfig.bounds.southwest && 
-                opencageConfig.bounds.northeast) {
+            if (
+              opencageConfig.bounds?.enabled &&
+              opencageConfig.bounds.southwest &&
+              opencageConfig.bounds.northeast
+            ) {
               const { southwest, northeast } = opencageConfig.bounds;
-              if (southwest.lat != null && southwest.lng != null && 
-                  northeast.lat != null && northeast.lng != null) {
-                (geocoderOptions as any).bounds = `${southwest.lat},${southwest.lng},${northeast.lat},${northeast.lng}`;
+              if (
+                southwest.lat != null &&
+                southwest.lng != null &&
+                northeast.lat != null &&
+                northeast.lng != null
+              ) {
+                (geocoderOptions as any).bounds =
+                  `${southwest.lat},${southwest.lng},${northeast.lat},${northeast.lng}`;
               }
             }
 
@@ -329,19 +371,25 @@ export class GeocodingService {
           enabled: true,
         });
 
-        logger.info(`Successfully initialized provider '${doc.name}' (${doc.type})`);
+        logger.info(
+          `Successfully initialized provider '${doc.name}' (${doc.type})`,
+        );
       } catch (error) {
-        logger.error({ error, providerName: doc.name, providerType: doc.type }, 
-          `Failed to initialize provider '${doc.name}'`);
+        logger.error(
+          { error, providerName: doc.name, providerType: doc.type },
+          `Failed to initialize provider '${doc.name}'`,
+        );
       }
     }
-    
-    logger.info(`Finished initializing providers. Total: ${this.providers.length} active providers`);
+
+    logger.info(
+      `Finished initializing providers. Total: ${this.providers.length} active providers`,
+    );
   }
 
   async geocode(address: string): Promise<GeocodingResult> {
     await this.initialize();
-    
+
     const startTime = Date.now();
     logger.debug({ address }, "Starting geocoding request");
 
@@ -351,41 +399,58 @@ export class GeocodingService {
         const cached = await this.getCachedResult(address);
         if (cached) {
           await this.updateCacheHit(cached.id);
-          logPerformance("Geocoding (cache hit)", Date.now() - startTime, { address });
-          
+          logPerformance("Geocoding (cache hit)", Date.now() - startTime, {
+            address,
+          });
+
           return this.convertCachedResult(cached);
         }
       }
 
       // Try providers in order
-      const enabledProviders = this.providers.filter(p => p.enabled);
-      
+      const enabledProviders = this.providers.filter((p) => p.enabled);
+
       if (enabledProviders.length === 0) {
-        throw new GeocodingError("No geocoding providers available", "NO_PROVIDERS_AVAILABLE");
+        throw new GeocodingError(
+          "No geocoding providers available",
+          "NO_PROVIDERS_AVAILABLE",
+        );
       }
 
       for (const provider of enabledProviders) {
         try {
-          logger.debug({ provider: provider.name, address }, "Attempting geocoding");
+          logger.debug(
+            { provider: provider.name, address },
+            "Attempting geocoding",
+          );
 
           // Add timeout to prevent hanging
           const geocodePromise = provider.geocoder.geocode(address);
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Provider timeout")), 10000)
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Provider timeout")), 10000),
           );
-          
-          const results = await Promise.race([geocodePromise, timeoutPromise]) as Entry[];
+
+          const results = (await Promise.race([
+            geocodePromise,
+            timeoutPromise,
+          ])) as Entry[];
 
           if (results && results.length > 0 && results[0]) {
-            const result = this.convertNodeGeocoderResult(results[0], provider.name);
-            
+            const result = this.convertNodeGeocoderResult(
+              results[0],
+              provider.name,
+            );
+
             if (this.isResultAcceptable(result)) {
-              logger.info({
-                provider: provider.name,
-                address,
-                confidence: result.confidence,
-                coordinates: { lat: result.latitude, lng: result.longitude },
-              }, "Geocoding successful");
+              logger.info(
+                {
+                  provider: provider.name,
+                  address,
+                  confidence: result.confidence,
+                  coordinates: { lat: result.latitude, lng: result.longitude },
+                },
+                "Geocoding successful",
+              );
 
               // Cache the result
               if (this.settings?.caching?.enabled) {
@@ -396,13 +461,16 @@ export class GeocodingService {
                 address,
                 provider: provider.name,
               });
-              
+
               return result;
             }
           }
         } catch (error) {
-          logger.warn({ error, provider: provider.name, address }, "Provider failed");
-          
+          logger.warn(
+            { error, provider: provider.name, address },
+            "Provider failed",
+          );
+
           // If fallback is disabled, throw error
           if (!this.settings?.fallbackEnabled) {
             throw error;
@@ -411,7 +479,10 @@ export class GeocodingService {
         }
       }
 
-      throw new GeocodingError("All geocoding providers failed", "ALL_PROVIDERS_FAILED");
+      throw new GeocodingError(
+        "All geocoding providers failed",
+        "ALL_PROVIDERS_FAILED",
+      );
     } catch (error) {
       if (error instanceof GeocodingError) {
         throw error;
@@ -425,12 +496,18 @@ export class GeocodingService {
     }
   }
 
-  async batchGeocode(addresses: string[], batchSize: number = 10): Promise<BatchGeocodingResult> {
+  async batchGeocode(
+    addresses: string[],
+    batchSize: number = 10,
+  ): Promise<BatchGeocodingResult> {
     await this.initialize();
-    
+
     const startTime = Date.now();
-    logger.info({ addressCount: addresses.length, batchSize }, "Starting batch geocoding");
-    
+    logger.info(
+      { addressCount: addresses.length, batchSize },
+      "Starting batch geocoding",
+    );
+
     const results: Map<string, GeocodingResult | GeocodingError> = new Map();
     const batches = this.createBatches(addresses, batchSize);
 
@@ -465,13 +542,16 @@ export class GeocodingService {
       }
     }
 
-    logger.info({
-      total: addresses.length,
-      successful: totalSuccessful,
-      failed: totalFailed,
-      cached: totalCached,
-      duration: Date.now() - startTime,
-    }, "Batch geocoding completed");
+    logger.info(
+      {
+        total: addresses.length,
+        successful: totalSuccessful,
+        failed: totalFailed,
+        cached: totalCached,
+        duration: Date.now() - startTime,
+      },
+      "Batch geocoding completed",
+    );
 
     return {
       results,
@@ -484,23 +564,28 @@ export class GeocodingService {
     };
   }
 
-  async testConfiguration(testAddress?: string): Promise<Record<string, unknown>> {
+  async testConfiguration(
+    testAddress?: string,
+  ): Promise<Record<string, unknown>> {
     await this.initialize();
-    
+
     const address = testAddress || "London, UK";
     const results: Record<string, unknown> = {};
 
-    for (const provider of this.providers.filter(p => p.enabled)) {
+    for (const provider of this.providers.filter((p) => p.enabled)) {
       try {
         // Add timeout to prevent hanging
         const geocodePromise = provider.geocoder.geocode(address);
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Geocoding timeout")), 5000)
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Geocoding timeout")), 5000),
         );
-        
-        const geocodeResults = await Promise.race([geocodePromise, timeoutPromise]) as Entry[];
+
+        const geocodeResults = (await Promise.race([
+          geocodePromise,
+          timeoutPromise,
+        ])) as Entry[];
         const result = geocodeResults[0];
-        
+
         if (result) {
           results[provider.name] = {
             success: true,
@@ -538,13 +623,17 @@ export class GeocodingService {
   }
 
   // Helper methods
-  private convertNodeGeocoderResult(result: Entry, providerName: string): GeocodingResult {
+  private convertNodeGeocoderResult(
+    result: Entry,
+    providerName: string,
+  ): GeocodingResult {
     return {
       latitude: result.latitude!,
       longitude: result.longitude!,
       confidence: this.calculateConfidence(result, providerName),
       provider: providerName,
-      normalizedAddress: result.formattedAddress || (result as any).display_name || "",
+      normalizedAddress:
+        result.formattedAddress || (result as any).display_name || "",
       components: {
         streetNumber: result.streetNumber,
         streetName: result.streetName,
@@ -567,16 +656,20 @@ export class GeocodingService {
 
     switch (providerName) {
       case "google":
-        if ((result.extra as any)?.confidence === "exact_match") confidence = 0.95;
-        else if ((result.extra as any)?.confidence === "approximate") confidence = 0.8;
+        if ((result.extra as any)?.confidence === "exact_match")
+          confidence = 0.95;
+        else if ((result.extra as any)?.confidence === "approximate")
+          confidence = 0.8;
         break;
-      
+
       case "opencage":
         confidence = ((result as any).confidence || 5) / 10; // OpenCage uses 1-10 scale
         break;
-      
+
       case "nominatim":
-        confidence = (result as any).importance ? Math.min((result as any).importance * 0.8, 0.9) : 0.6;
+        confidence = (result as any).importance
+          ? Math.min((result as any).importance * 0.8, 0.9)
+          : 0.6;
         break;
     }
 
@@ -611,10 +704,12 @@ export class GeocodingService {
       .trim();
   }
 
-  private async getCachedResult(address: string): Promise<LocationCache | null> {
+  private async getCachedResult(
+    address: string,
+  ): Promise<LocationCache | null> {
     try {
       const normalizedAddress = this.normalizeAddress(address);
-      
+
       const results = await this.payload.find({
         collection: "location-cache",
         where: { normalizedAddress: { equals: normalizedAddress } },
@@ -626,9 +721,12 @@ export class GeocodingService {
 
       const cached = results.docs[0];
       if (!cached) return null;
-      
+
       if (this.isCacheExpired(cached)) {
-        await this.payload.delete({ collection: "location-cache", id: cached.id });
+        await this.payload.delete({
+          collection: "location-cache",
+          id: cached.id,
+        });
         return null;
       }
 
@@ -642,7 +740,7 @@ export class GeocodingService {
   private isCacheExpired(cached: LocationCache): boolean {
     if (!cached.createdAt) return true;
     const ttl = (this.settings?.caching?.ttlDays || 365) * 24 * 60 * 60 * 1000;
-    return (Date.now() - new Date(cached.createdAt).getTime()) > ttl;
+    return Date.now() - new Date(cached.createdAt).getTime() > ttl;
   }
 
   private async updateCacheHit(cacheId: string | number): Promise<void> {
@@ -665,7 +763,10 @@ export class GeocodingService {
     }
   }
 
-  private async cacheResult(address: string, result: GeocodingResult): Promise<void> {
+  private async cacheResult(
+    address: string,
+    result: GeocodingResult,
+  ): Promise<void> {
     try {
       await this.payload.create({
         collection: "location-cache",
@@ -715,9 +816,10 @@ export class GeocodingService {
 
   async cleanupCache(): Promise<void> {
     try {
-      const ttl = (this.settings?.caching?.ttlDays || 365) * 24 * 60 * 60 * 1000;
+      const ttl =
+        (this.settings?.caching?.ttlDays || 365) * 24 * 60 * 60 * 1000;
       const cutoffDate = new Date(Date.now() - ttl);
-      
+
       // Find old cache entries based on lastUsed date
       const oldEntries = await this.payload.find({
         collection: "location-cache",
@@ -728,7 +830,7 @@ export class GeocodingService {
         },
         limit: 1000,
       });
-      
+
       // Delete old entries
       for (const entry of oldEntries.docs) {
         await this.payload.delete({
@@ -736,8 +838,11 @@ export class GeocodingService {
           id: entry.id,
         });
       }
-      
-      logger.info({ deletedEntries: oldEntries.docs.length }, "Cache cleanup completed");
+
+      logger.info(
+        { deletedEntries: oldEntries.docs.length },
+        "Cache cleanup completed",
+      );
     } catch (error) {
       logger.warn({ error }, "Failed to cleanup cache");
     }

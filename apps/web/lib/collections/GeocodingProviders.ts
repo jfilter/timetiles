@@ -27,7 +27,8 @@ export const GeocodingProviders: CollectionConfig = {
       required: true,
       unique: true,
       admin: {
-        description: "Unique name for this provider instance (e.g., 'Google Primary', 'Nominatim EU')",
+        description:
+          "Unique name for this provider instance (e.g., 'Google Primary', 'Nominatim EU')",
       },
     },
     {
@@ -107,7 +108,8 @@ export const GeocodingProviders: CollectionConfig = {
               type: "text",
               label: "Region Bias",
               admin: {
-                description: "ISO 3166-1 alpha-2 country code for result bias (e.g., 'US', 'GB')",
+                description:
+                  "ISO 3166-1 alpha-2 country code for result bias (e.g., 'US', 'GB')",
                 placeholder: "e.g., US, GB, DE",
               },
             },
@@ -117,7 +119,8 @@ export const GeocodingProviders: CollectionConfig = {
               label: "Language",
               defaultValue: "en",
               admin: {
-                description: "Language for returned results (e.g., 'en', 'de', 'fr')",
+                description:
+                  "Language for returned results (e.g., 'en', 'de', 'fr')",
               },
             },
           ],
@@ -147,7 +150,8 @@ export const GeocodingProviders: CollectionConfig = {
               defaultValue: "TimeTiles-App/1.0",
               required: true,
               admin: {
-                description: "User agent string for requests (required by Nominatim policy)",
+                description:
+                  "User agent string for requests (required by Nominatim policy)",
               },
             },
             {
@@ -155,7 +159,8 @@ export const GeocodingProviders: CollectionConfig = {
               type: "text",
               label: "Email Contact",
               admin: {
-                description: "Contact email for high-volume usage (recommended)",
+                description:
+                  "Contact email for high-volume usage (recommended)",
                 placeholder: "your-email@domain.com",
               },
             },
@@ -164,7 +169,8 @@ export const GeocodingProviders: CollectionConfig = {
               type: "text",
               label: "Country Codes",
               admin: {
-                description: "Comma-separated ISO 3166-1 alpha-2 codes to limit results (e.g., 'us,ca,gb')",
+                description:
+                  "Comma-separated ISO 3166-1 alpha-2 codes to limit results (e.g., 'us,ca,gb')",
                 placeholder: "us,ca,gb",
               },
             },
@@ -212,7 +218,8 @@ export const GeocodingProviders: CollectionConfig = {
               label: "Language Code",
               defaultValue: "en",
               admin: {
-                description: "ISO 639-1 language code for results (e.g., 'en', 'de', 'fr')",
+                description:
+                  "ISO 639-1 language code for results (e.g., 'en', 'de', 'fr')",
               },
             },
             {
@@ -220,7 +227,8 @@ export const GeocodingProviders: CollectionConfig = {
               type: "text",
               label: "Country Code",
               admin: {
-                description: "ISO 3166-1 alpha-2 country code to restrict results (e.g., 'US', 'DE')",
+                description:
+                  "ISO 3166-1 alpha-2 country code to restrict results (e.g., 'US', 'DE')",
                 placeholder: "e.g., US, GB, DE",
               },
             },
@@ -294,7 +302,8 @@ export const GeocodingProviders: CollectionConfig = {
               label: "Include Annotations",
               defaultValue: true,
               admin: {
-                description: "Include additional metadata like timezone, currency, etc.",
+                description:
+                  "Include additional metadata like timezone, currency, etc.",
               },
             },
             {

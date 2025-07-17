@@ -14,7 +14,7 @@ vi.mock("nuqs", () => ({
     withDefault: () => {},
   },
   parseAsArrayOf: () => ({
-    withDefault: () => ({})
+    withDefault: () => ({}),
   }),
   useQueryState: () => [null, vi.fn()],
 }));
@@ -99,17 +99,17 @@ describe("DatasetBarChart", () => {
 
   it("renders bar chart with dataset grouping", () => {
     render(
-      <DatasetBarChart 
-        events={mockEvents} 
+      <DatasetBarChart
+        events={mockEvents}
         datasets={mockDatasets}
         catalogs={mockCatalogs}
         groupBy="dataset"
-      />
+      />,
     );
-    
+
     const chart = screen.getByTestId("echarts-bar-mock");
     expect(chart).toBeInTheDocument();
-    
+
     // Should have bars for datasets with events
     const bars = chart.querySelectorAll("[data-value]");
     expect(bars.length).toBeGreaterThan(0);
@@ -117,28 +117,28 @@ describe("DatasetBarChart", () => {
 
   it("renders bar chart with catalog grouping", () => {
     const { container } = render(
-      <DatasetBarChart 
-        events={mockEvents} 
+      <DatasetBarChart
+        events={mockEvents}
         datasets={mockDatasets}
         catalogs={mockCatalogs}
         groupBy="catalog"
-      />
+      />,
     );
-    
+
     const chart = container.querySelector('[data-testid="echarts-bar-mock"]');
     expect(chart).toBeInTheDocument();
   });
 
   it("shows loading state", () => {
     render(
-      <DatasetBarChart 
-        events={[]} 
+      <DatasetBarChart
+        events={[]}
         datasets={mockDatasets}
         catalogs={mockCatalogs}
         loading={true}
-      />
+      />,
     );
-    
+
     // Check for loading indicator
     const loadingElement = document.querySelector(".animate-spin");
     expect(loadingElement).toBeInTheDocument();

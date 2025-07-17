@@ -46,30 +46,38 @@ export function useEventStats(events: Event[]): EventStats {
       }
 
       // Dataset stats
-      const datasetId = typeof event.dataset === "object" 
-        ? String(event.dataset.id) 
-        : String(event.dataset);
-      
+      const datasetId =
+        typeof event.dataset === "object"
+          ? String(event.dataset.id)
+          : String(event.dataset);
+
       if (datasetId) {
-        stats.eventsByDataset[datasetId] = (stats.eventsByDataset[datasetId] || 0) + 1;
+        stats.eventsByDataset[datasetId] =
+          (stats.eventsByDataset[datasetId] || 0) + 1;
       }
 
       // Catalog stats (through dataset)
       if (typeof event.dataset === "object" && event.dataset.catalog) {
-        const catalogId = typeof event.dataset.catalog === "object"
-          ? String(event.dataset.catalog.id)
-          : String(event.dataset.catalog);
-        
+        const catalogId =
+          typeof event.dataset.catalog === "object"
+            ? String(event.dataset.catalog.id)
+            : String(event.dataset.catalog);
+
         if (catalogId) {
-          stats.eventsByCatalog[catalogId] = (stats.eventsByCatalog[catalogId] || 0) + 1;
+          stats.eventsByCatalog[catalogId] =
+            (stats.eventsByCatalog[catalogId] || 0) + 1;
         }
       }
     });
 
     // Calculate date range
     if (dates.length > 0) {
-      stats.dateRange.min = new Date(Math.min(...dates.map(d => d.getTime())));
-      stats.dateRange.max = new Date(Math.max(...dates.map(d => d.getTime())));
+      stats.dateRange.min = new Date(
+        Math.min(...dates.map((d) => d.getTime())),
+      );
+      stats.dateRange.max = new Date(
+        Math.max(...dates.map((d) => d.getTime())),
+      );
     }
 
     return stats;
@@ -87,17 +95,18 @@ export function useEventDateAccessor() {
 
 export function useEventsByDataset(
   events: Event[],
-  datasets: Dataset[]
+  datasets: Dataset[],
 ): BarChartDataItem[] {
   return useMemo(() => {
-    const datasetMap = new Map(datasets.map(d => [String(d.id), d]));
+    const datasetMap = new Map(datasets.map((d) => [String(d.id), d]));
     const eventCounts = new Map<string, number>();
 
-    events.forEach(event => {
-      const datasetId = typeof event.dataset === "object" 
-        ? String(event.dataset.id) 
-        : String(event.dataset);
-      
+    events.forEach((event) => {
+      const datasetId =
+        typeof event.dataset === "object"
+          ? String(event.dataset.id)
+          : String(event.dataset);
+
       eventCounts.set(datasetId, (eventCounts.get(datasetId) || 0) + 1);
     });
 
@@ -107,7 +116,7 @@ export function useEventsByDataset(
         return {
           label: dataset?.name || `Dataset ${datasetId}`,
           value: count,
-          metadata: { datasetId, dataset }
+          metadata: { datasetId, dataset },
         };
       })
       .sort((a, b) => b.value - a.value);
@@ -116,18 +125,19 @@ export function useEventsByDataset(
 
 export function useEventsByCatalog(
   events: Event[],
-  catalogs: Catalog[]
+  catalogs: Catalog[],
 ): BarChartDataItem[] {
   return useMemo(() => {
-    const catalogMap = new Map(catalogs.map(c => [String(c.id), c]));
+    const catalogMap = new Map(catalogs.map((c) => [String(c.id), c]));
     const catalogCounts = new Map<string, number>();
 
-    events.forEach(event => {
+    events.forEach((event) => {
       if (typeof event.dataset === "object" && event.dataset.catalog) {
-        const catalogId = typeof event.dataset.catalog === "object"
-          ? String(event.dataset.catalog.id)
-          : String(event.dataset.catalog);
-        
+        const catalogId =
+          typeof event.dataset.catalog === "object"
+            ? String(event.dataset.catalog.id)
+            : String(event.dataset.catalog);
+
         catalogCounts.set(catalogId, (catalogCounts.get(catalogId) || 0) + 1);
       }
     });
@@ -138,7 +148,7 @@ export function useEventsByCatalog(
         return {
           label: catalog?.name || `Catalog ${catalogId}`,
           value: count,
-          metadata: { catalogId, catalog }
+          metadata: { catalogId, catalog },
         };
       })
       .sort((a, b) => b.value - a.value);

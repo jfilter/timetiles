@@ -151,12 +151,12 @@ export function createSlugHook<T extends keyof Config["collections"]>(
       if (!req) {
         return generateSlug(sourceValue as string);
       }
-      
+
       const currentId =
         operation === "update"
           ? (originalDoc?.id as string | number | undefined)
           : undefined;
-      
+
       try {
         return await generateUniqueSlug(
           sourceValue as string,
@@ -166,7 +166,7 @@ export function createSlugHook<T extends keyof Config["collections"]>(
         );
       } catch {
         // Fallback to simple generation if uniqueness check fails
-        return generateSlug(sourceValue as string) + '-' + Date.now();
+        return generateSlug(sourceValue as string) + "-" + Date.now();
       }
     }
     if (value && operation === "update" && req) {
@@ -183,7 +183,7 @@ export function createSlugHook<T extends keyof Config["collections"]>(
         }
       } catch {
         // Fallback to simple generation if uniqueness check fails
-        return value + '-' + Date.now();
+        return value + "-" + Date.now();
       }
     }
     return value;

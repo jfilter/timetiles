@@ -75,7 +75,7 @@ const Events: CollectionConfig = {
             { label: "Pre-existing in Import", value: "import" },
             { label: "Geocoded from Address", value: "geocoded" },
             { label: "Manual Entry", value: "manual" },
-            { label: "Not Available", value: "none" }
+            { label: "Not Available", value: "none" },
           ],
           defaultValue: "none",
         },
@@ -87,34 +87,34 @@ const Events: CollectionConfig = {
               name: "latitudeColumn",
               type: "text",
               admin: {
-                description: "Column name containing latitude"
-              }
+                description: "Column name containing latitude",
+              },
             },
             {
-              name: "longitudeColumn", 
+              name: "longitudeColumn",
               type: "text",
               admin: {
-                description: "Column name containing longitude"
-              }
+                description: "Column name containing longitude",
+              },
             },
             {
               name: "combinedColumn",
               type: "text",
               admin: {
-                description: "Column name if coordinates were combined"
-              }
+                description: "Column name if coordinates were combined",
+              },
             },
             {
               name: "format",
               type: "text",
               admin: {
-                description: "Format of coordinates (decimal, DMS, etc.)"
-              }
-            }
+                description: "Format of coordinates (decimal, DMS, etc.)",
+              },
+            },
           ],
           admin: {
-            condition: (data) => data.coordinateSource?.type === "import"
-          }
+            condition: (data) => data.coordinateSource?.type === "import",
+          },
         },
         {
           name: "confidence",
@@ -123,8 +123,8 @@ const Events: CollectionConfig = {
           max: 1,
           admin: {
             step: 0.01,
-            description: "Confidence in coordinate accuracy (0-1)"
-          }
+            description: "Confidence in coordinate accuracy (0-1)",
+          },
         },
         {
           name: "validationStatus",
@@ -134,13 +134,13 @@ const Events: CollectionConfig = {
             { label: "Out of Range", value: "out_of_range" },
             { label: "Suspicious (0,0)", value: "suspicious_zero" },
             { label: "Swapped", value: "swapped" },
-            { label: "Invalid Format", value: "invalid" }
-          ]
-        }
+            { label: "Invalid Format", value: "invalid" },
+          ],
+        },
       ],
       admin: {
-        description: "Source and validation of coordinate data"
-      }
+        description: "Source and validation of coordinate data",
+      },
     },
     {
       name: "eventTimestamp",

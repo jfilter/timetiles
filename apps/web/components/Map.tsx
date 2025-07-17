@@ -54,11 +54,11 @@ export function Map({ onBoundsChange, events = [] }: MapProps) {
         .setLngLat([event.longitude, event.latitude])
         .setPopup(
           new maplibregl.Popup({ offset: 25 }).setHTML(
-            `<h3>${event.title || "Event"}</h3>`
-          )
+            `<h3>${event.title || "Event"}</h3>`,
+          ),
         )
         .addTo(map.current!);
-      
+
       markers.push(marker);
     });
 
@@ -68,9 +68,9 @@ export function Map({ onBoundsChange, events = [] }: MapProps) {
   }, [events, isLoaded]);
 
   return (
-    <div 
-      ref={mapContainer} 
-      className="w-full h-full" 
+    <div
+      ref={mapContainer}
+      className="h-full w-full"
       role="region"
       aria-label="Map"
     />

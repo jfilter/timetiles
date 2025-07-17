@@ -13,7 +13,7 @@ describe("Import with existing coordinates", () => {
     try {
       testEnv = await createIsolatedTestEnvironment();
       payload = testEnv.payload;
-      
+
       // Create a test catalog with unique slug
       const timestamp = Date.now();
       const randomSuffix = Math.random().toString(36).substring(7);
@@ -144,7 +144,7 @@ describe("Import with existing coordinates", () => {
         eventTimestamp: new Date().toISOString(),
         location: {
           latitude: 40.7128,
-          longitude: -74.0060,
+          longitude: -74.006,
         },
         coordinateSource: {
           type: "import",
@@ -162,7 +162,7 @@ describe("Import with existing coordinates", () => {
     // Verify coordinate source
     expect(event1.coordinateSource?.type).toBe("import");
     expect(event1.location?.latitude).toBe(40.7128);
-    expect(event1.location?.longitude).toBe(-74.0060);
+    expect(event1.location?.longitude).toBe(-74.006);
   });
 
   it("geocodes when coordinates are invalid", async () => {
@@ -238,7 +238,11 @@ describe("Import with existing coordinates", () => {
       data: {
         dataset: datasetId,
         import: importData.id,
-        data: { title: "Has Coords", latitude: "51.5074", longitude: "-0.1278" },
+        data: {
+          title: "Has Coords",
+          latitude: "51.5074",
+          longitude: "-0.1278",
+        },
         eventTimestamp: new Date().toISOString(),
         location: {
           latitude: 51.5074,
@@ -333,7 +337,8 @@ describe("Import with existing coordinates", () => {
         catalog: catalogId,
         status: "processing",
         rowCount: 2,
-        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         coordinateDetection: {
           detected: true,
           detectionMethod: "heuristic",
@@ -357,7 +362,11 @@ describe("Import with existing coordinates", () => {
       data: {
         dataset: datasetId,
         import: importExcel.id,
-        data: { title: "Sydney Opera House", y_coord: "-33.8568", x_coord: "151.2153" },
+        data: {
+          title: "Sydney Opera House",
+          y_coord: "-33.8568",
+          x_coord: "151.2153",
+        },
         eventTimestamp: new Date().toISOString(),
         location: {
           latitude: -33.8568,

@@ -397,13 +397,17 @@ export class SeedManager {
       if (
         this.payload.db &&
         this.payload.db.drizzle &&
-        (this.payload.db.drizzle as { $client?: { ended?: boolean } }).$client &&
-        !(this.payload.db.drizzle as { $client?: { ended?: boolean } }).$client?.ended
+        (this.payload.db.drizzle as { $client?: { ended?: boolean } })
+          .$client &&
+        !(this.payload.db.drizzle as { $client?: { ended?: boolean } }).$client
+          ?.ended
       ) {
         logger.debug("Closing drizzle client...");
         try {
           await Promise.race([
-            (this.payload.db.drizzle as unknown as { end: () => Promise<void> }).end(),
+            (
+              this.payload.db.drizzle as unknown as { end: () => Promise<void> }
+            ).end(),
             new Promise((_, reject) =>
               setTimeout(
                 () => reject(new Error("Drizzle client.end() timeout")),

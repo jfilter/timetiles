@@ -1,40 +1,38 @@
-import React from 'react';
-import { render, type RenderOptions } from '@testing-library/react';
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { vi } from 'vitest';
+import React from "react";
+import { render, type RenderOptions } from "@testing-library/react";
+import { NuqsTestingAdapter } from "nuqs/adapters/testing";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { vi } from "vitest";
 
-interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
+interface CustomRenderOptions extends Omit<RenderOptions, "wrapper"> {
   searchParams?: URLSearchParams;
 }
 
-function AllTheProviders({ 
+function AllTheProviders({
   children,
-  searchParams = new URLSearchParams()
-}: { 
+  searchParams = new URLSearchParams(),
+}: {
   children: React.ReactNode;
   searchParams?: URLSearchParams;
 }) {
   return (
     <NuqsTestingAdapter searchParams={searchParams}>
-      <ThemeProvider>
-        {children}
-      </ThemeProvider>
+      <ThemeProvider>{children}</ThemeProvider>
     </NuqsTestingAdapter>
   );
 }
 
 export function renderWithProviders(
   ui: React.ReactElement,
-  options?: CustomRenderOptions
+  options?: CustomRenderOptions,
 ): ReturnType<typeof render> {
   const { searchParams, ...renderOptions } = options || {};
-  
+
   return render(ui, {
     wrapper: ({ children }) => (
       <AllTheProviders searchParams={searchParams}>{children}</AllTheProviders>
     ),
-    ...renderOptions
+    ...renderOptions,
   });
 }
 
@@ -42,7 +40,7 @@ export function renderWithProviders(
 export const mockMapLibre = () => {
   const mockMap = {
     on: vi.fn((event: string, callback: Function) => {
-      if (event === 'load') {
+      if (event === "load") {
         setTimeout(() => callback(), 100);
       }
     }),
@@ -78,5 +76,5 @@ export const mockMapLibre = () => {
 };
 
 // Re-export everything
-export * from '@testing-library/react';
-export { default as userEvent } from '@testing-library/user-event';
+export * from "@testing-library/react";
+export { default as userEvent } from "@testing-library/user-event";

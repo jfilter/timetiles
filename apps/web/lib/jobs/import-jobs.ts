@@ -76,9 +76,10 @@ export const fileParsingJob = {
     // Support both new format (req.payload) and legacy format (payload directly)
     const payload = (context.req?.payload || context.payload) as Payload;
     if (!payload) {
-      throw new Error('Payload instance not found in job context');
+      throw new Error("Payload instance not found in job context");
     }
-    const input = (context.input || context.job?.input) as FileParsingJobPayload['input'];
+    const input = (context.input ||
+      context.job?.input) as FileParsingJobPayload["input"];
     const { importId, filePath, fileType } =
       input as FileParsingJobPayload["input"];
 
@@ -202,13 +203,24 @@ export const fileParsingJob = {
       // Update import with coordinate detection results
       const coordinateDetectionData = {
         detected: geoColumns.found,
-        detectionMethod: (geoColumns.detectionMethod || "none") as "pattern" | "heuristic" | "manual" | "none",
-        columnMapping: geoColumns.found ? {
-          latitudeColumn: geoColumns.latColumn || null,
-          longitudeColumn: geoColumns.lonColumn || null,
-          combinedColumn: geoColumns.combinedColumn || null,
-          coordinateFormat: (geoColumns.format || "decimal") as "decimal" | "dms" | "combined_comma" | "combined_space" | "geojson",
-        } : {},
+        detectionMethod: (geoColumns.detectionMethod || "none") as
+          | "pattern"
+          | "heuristic"
+          | "manual"
+          | "none",
+        columnMapping: geoColumns.found
+          ? {
+              latitudeColumn: geoColumns.latColumn || null,
+              longitudeColumn: geoColumns.lonColumn || null,
+              combinedColumn: geoColumns.combinedColumn || null,
+              coordinateFormat: (geoColumns.format || "decimal") as
+                | "decimal"
+                | "dms"
+                | "combined_comma"
+                | "combined_space"
+                | "geojson",
+            }
+          : {},
         detectionConfidence: geoColumns.confidence || 0,
         sampleValidation: {
           validSamples: 0,
@@ -326,7 +338,8 @@ export const batchProcessingJob = {
   slug: "batch-processing",
   handler: async (context: JobHandlerContext) => {
     const payload = (context.req?.payload || context.payload) as Payload;
-    const input = (context.input || context.job?.input) as BatchProcessingJobPayload['input'];
+    const input = (context.input ||
+      context.job?.input) as BatchProcessingJobPayload["input"];
     const { importId, batchNumber, batchData } =
       input as BatchProcessingJobPayload["input"];
 
@@ -365,7 +378,8 @@ export const batchProcessingJob = {
 
       // Initialize coordinate validator
       const coordinateValidator = new CoordinateValidator();
-      const hasCoordinates = currentImport.coordinateDetection?.detected || false;
+      const hasCoordinates =
+        currentImport.coordinateDetection?.detected || false;
       const columnMapping = currentImport.coordinateDetection?.columnMapping;
 
       const processedData = batchData.map((row) => {
@@ -391,7 +405,10 @@ export const batchProcessingJob = {
 
         // Extract coordinates if detected
         if (hasCoordinates && columnMapping) {
-          let extractedCoords: { latitude: number | null; longitude: number | null } | null = null;
+          let extractedCoords: {
+            latitude: number | null;
+            longitude: number | null;
+          } | null = null;
 
           if (columnMapping.latitudeColumn && columnMapping.longitudeColumn) {
             // Separate columns
@@ -399,8 +416,12 @@ export const batchProcessingJob = {
             const lonValue = row[columnMapping.longitudeColumn];
             const lat = coordinateValidator.parseCoordinate(latValue);
             const lon = coordinateValidator.parseCoordinate(lonValue);
-            
-            const validated = coordinateValidator.validateCoordinates(lat, lon, true);
+
+            const validated = coordinateValidator.validateCoordinates(
+              lat,
+              lon,
+              true,
+            );
             if (validated.isValid) {
               extractedCoords = {
                 latitude: validated.latitude,
@@ -413,10 +434,14 @@ export const batchProcessingJob = {
             const combinedValue = row[columnMapping.combinedColumn];
             const extraction = coordinateValidator.extractFromCombined(
               combinedValue,
-              columnMapping.coordinateFormat || "combined_comma"
+              columnMapping.coordinateFormat || "combined_comma",
             );
-            
-            if (extraction.isValid && extraction.latitude !== null && extraction.longitude !== null) {
+
+            if (
+              extraction.isValid &&
+              extraction.latitude !== null &&
+              extraction.longitude !== null
+            ) {
               extractedCoords = {
                 latitude: extraction.latitude,
                 longitude: extraction.longitude,
@@ -482,7 +507,8 @@ export const eventCreationJob = {
   slug: "event-creation",
   handler: async (context: JobHandlerContext) => {
     const payload = (context.req?.payload || context.payload) as Payload;
-    const input = (context.input || context.job?.input) as EventCreationJobPayload['input'];
+    const input = (context.input ||
+      context.job?.input) as EventCreationJobPayload["input"];
     const { importId, processedData, batchNumber } =
       input as EventCreationJobPayload["input"];
 
@@ -538,8 +564,13 @@ export const eventCreationJob = {
         try {
           type EventCreationPayload = {
             dataset: number | Dataset;
-            data: Event['data'];
-          } & Partial<Omit<Event, 'id' | 'createdAt' | 'updatedAt' | 'dataset' | 'data' | 'sizes'>>;
+            data: Event["data"];
+          } & Partial<
+            Omit<
+              Event,
+              "id" | "createdAt" | "updatedAt" | "dataset" | "data" | "sizes"
+            >
+          >;
 
           const eventCreateData: EventCreationPayload = {
             dataset: dataset.id,
@@ -556,7 +587,10 @@ export const eventCreationJob = {
 
           // Add pre-existing coordinates if available
           if (eventData.preExistingCoordinates && eventData.skipGeocoding) {
-            const coords = eventData.preExistingCoordinates as { latitude: number; longitude: number };
+            const coords = eventData.preExistingCoordinates as {
+              latitude: number;
+              longitude: number;
+            };
             if (coords.latitude !== null && coords.longitude !== null) {
               eventCreateData.location = {
                 latitude: coords.latitude,
@@ -564,13 +598,38 @@ export const eventCreationJob = {
               };
               eventCreateData.coordinateSource = {
                 type: "import",
-                confidence: (eventData as { coordinateValidation?: { confidence?: number } }).coordinateValidation?.confidence || 0.9,
-                validationStatus: (eventData as { coordinateValidation?: { validationStatus?: string } }).coordinateValidation?.validationStatus as "valid" | "out_of_range" | "suspicious_zero" | "swapped" | "invalid" | null | undefined || "valid",
+                confidence:
+                  (
+                    eventData as {
+                      coordinateValidation?: { confidence?: number };
+                    }
+                  ).coordinateValidation?.confidence || 0.9,
+                validationStatus:
+                  ((
+                    eventData as {
+                      coordinateValidation?: { validationStatus?: string };
+                    }
+                  ).coordinateValidation?.validationStatus as
+                    | "valid"
+                    | "out_of_range"
+                    | "suspicious_zero"
+                    | "swapped"
+                    | "invalid"
+                    | null
+                    | undefined) || "valid",
                 importColumns: {
-                  latitudeColumn: currentImport.coordinateDetection?.columnMapping?.latitudeColumn || null,
-                  longitudeColumn: currentImport.coordinateDetection?.columnMapping?.longitudeColumn || null,
-                  combinedColumn: currentImport.coordinateDetection?.columnMapping?.combinedColumn || null,
-                  format: currentImport.coordinateDetection?.columnMapping?.coordinateFormat || "decimal",
+                  latitudeColumn:
+                    currentImport.coordinateDetection?.columnMapping
+                      ?.latitudeColumn || null,
+                  longitudeColumn:
+                    currentImport.coordinateDetection?.columnMapping
+                      ?.longitudeColumn || null,
+                  combinedColumn:
+                    currentImport.coordinateDetection?.columnMapping
+                      ?.combinedColumn || null,
+                  format:
+                    currentImport.coordinateDetection?.columnMapping
+                      ?.coordinateFormat || "decimal",
                 },
               };
               preExistingCoordinateCount++;
@@ -759,9 +818,10 @@ export const geocodingBatchJob = {
   handler: async (context: JobHandlerContext) => {
     const payload = (context.req?.payload || context.payload) as Payload;
     if (!payload) {
-      throw new Error('Payload instance not found in job context');
+      throw new Error("Payload instance not found in job context");
     }
-    const input = (context.input || context.job?.input) as GeocodingBatchJobPayload['input'];
+    const input = (context.input ||
+      context.job?.input) as GeocodingBatchJobPayload["input"];
     const { importId, eventIds, batchNumber } =
       input as GeocodingBatchJobPayload["input"];
 

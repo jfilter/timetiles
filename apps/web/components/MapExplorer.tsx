@@ -29,30 +29,33 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
   useEffect(() => {
     startTransition(async () => {
       const params = new URLSearchParams();
-      
+
       if (filters.catalog) {
         params.append("catalog", filters.catalog);
       }
-      
+
       filters.datasets.forEach((datasetId) => {
         params.append("datasets", datasetId);
       });
-      
+
       if (filters.startDate) {
         params.append("startDate", filters.startDate);
       }
-      
+
       if (filters.endDate) {
         params.append("endDate", filters.endDate);
       }
-      
+
       if (bounds) {
-        params.append("bounds", JSON.stringify({
-          west: bounds.getWest(),
-          south: bounds.getSouth(),
-          east: bounds.getEast(),
-          north: bounds.getNorth(),
-        }));
+        params.append(
+          "bounds",
+          JSON.stringify({
+            west: bounds.getWest(),
+            south: bounds.getSouth(),
+            east: bounds.getEast(),
+            north: bounds.getNorth(),
+          }),
+        );
       }
 
       try {
@@ -65,48 +68,59 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
         console.error("Failed to fetch events:", error);
       }
     });
-  }, [filters.catalog, filters.datasets, filters.startDate, filters.endDate, bounds]);
+  }, [
+    filters.catalog,
+    filters.datasets,
+    filters.startDate,
+    filters.endDate,
+    bounds,
+  ]);
 
   const mapEvents = events
     .filter((event) => event.location?.longitude && event.location?.latitude)
     .map((event) => {
-      const eventData = typeof event.data === 'object' && event.data !== null && !Array.isArray(event.data) 
-        ? event.data as Record<string, unknown>
-        : {};
-      
+      const eventData =
+        typeof event.data === "object" &&
+        event.data !== null &&
+        !Array.isArray(event.data)
+          ? (event.data as Record<string, unknown>)
+          : {};
+
       return {
         id: String(event.id),
         longitude: event.location!.longitude!,
         latitude: event.location!.latitude!,
-        title: (eventData.title || eventData.name || `Event ${event.id}`) as string,
+        title: (eventData.title ||
+          eventData.name ||
+          `Event ${event.id}`) as string,
       };
     });
 
   return (
     <div className="flex h-screen">
-      <div className="w-1/2 h-full">
+      <div className="h-full w-1/2">
         <Map events={mapEvents} onBoundsChange={setBounds} />
       </div>
-      
-      <div className="w-1/2 h-full overflow-y-auto border-l">
+
+      <div className="h-full w-1/2 overflow-y-auto border-l">
         <div className="p-6">
-          <h1 className="text-2xl font-bold mb-6">Event Explorer</h1>
-          
+          <h1 className="mb-6 text-2xl font-bold">Event Explorer</h1>
+
           <div className="mb-6">
             <EventFilters catalogs={catalogs} datasets={datasets} />
           </div>
-          
+
           <div className="mb-6 border-t pt-6">
-            <ChartSection 
-              events={events} 
-              datasets={datasets} 
-              catalogs={catalogs} 
-              loading={isPending} 
+            <ChartSection
+              events={events}
+              datasets={datasets}
+              catalogs={catalogs}
+              loading={isPending}
             />
           </div>
-          
+
           <div className="border-t pt-6">
-            <h2 className="text-lg font-semibold mb-4">
+            <h2 className="mb-4 text-lg font-semibold">
               Events ({events.length})
             </h2>
             <EventsList events={events} loading={isPending} />

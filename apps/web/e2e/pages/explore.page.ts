@@ -1,4 +1,4 @@
-import { type Page, type Locator, expect } from '@playwright/test';
+import { type Page, type Locator, expect } from "@playwright/test";
 
 export class ExplorePage {
   readonly page: Page;
@@ -16,26 +16,26 @@ export class ExplorePage {
 
   constructor(page: Page) {
     this.page = page;
-    this.map = page.getByRole('region', { name: 'Map' }).first();
-    this.catalogSelect = page.locator('#catalog-select');
+    this.map = page.getByRole("region", { name: "Map" }).first();
+    this.catalogSelect = page.locator("#catalog-select");
     this.datasetCheckboxes = page.locator('input[type="checkbox"]');
-    this.startDateInput = page.locator('#start-date');
-    this.endDateInput = page.locator('#end-date');
-    this.clearDatesButton = page.getByText('Clear date filters');
-    this.eventsList = page.locator('.space-y-2').first();
-    this.eventsCount = page.locator('h2').filter({ hasText: /Events \(\d+\)/ });
-    this.loadingIndicator = page.getByText('Loading events...');
-    this.noEventsMessage = page.getByText('No events found');
-    this.noDatasetsMessage = page.getByText('No datasets available');
+    this.startDateInput = page.locator("#start-date");
+    this.endDateInput = page.locator("#end-date");
+    this.clearDatesButton = page.getByText("Clear date filters");
+    this.eventsList = page.locator(".space-y-2").first();
+    this.eventsCount = page.locator("h2").filter({ hasText: /Events \(\d+\)/ });
+    this.loadingIndicator = page.getByText("Loading events...");
+    this.noEventsMessage = page.getByText("No events found");
+    this.noDatasetsMessage = page.getByText("No datasets available");
   }
 
   async goto() {
-    await this.page.goto('/explore');
-    await this.page.waitForLoadState('networkidle');
+    await this.page.goto("/explore");
+    await this.page.waitForLoadState("networkidle");
   }
 
   async waitForMapLoad() {
-    await this.map.waitFor({ state: 'visible' });
+    await this.map.waitFor({ state: "visible" });
     // Wait for map to be interactive
     await this.page.waitForTimeout(500);
   }
@@ -44,13 +44,15 @@ export class ExplorePage {
     await this.catalogSelect.click();
     // Wait for dropdown to open and options to be visible
     await this.page.waitForSelector('[role="option"]');
-    await this.page.getByRole('option', { name: catalogName }).click();
+    await this.page.getByRole("option", { name: catalogName }).click();
   }
 
   async selectDatasets(datasetNames: string[]) {
     for (const datasetName of datasetNames) {
       // Use more specific selector to find checkboxes within dataset labels
-      const datasetCheckbox = this.page.locator(`label:has-text("${datasetName}") input[type="checkbox"]`);
+      const datasetCheckbox = this.page.locator(
+        `label:has-text("${datasetName}") input[type="checkbox"]`,
+      );
       await datasetCheckbox.check();
     }
   }
@@ -75,7 +77,7 @@ export class ExplorePage {
 
   async panMap(deltaX: number, deltaY: number) {
     const mapBox = await this.map.boundingBox();
-    if (!mapBox) throw new Error('Map not found');
+    if (!mapBox) throw new Error("Map not found");
 
     const centerX = mapBox.x + mapBox.width / 2;
     const centerY = mapBox.y + mapBox.height / 2;
@@ -88,7 +90,7 @@ export class ExplorePage {
 
   async zoomIn() {
     const mapBox = await this.map.boundingBox();
-    if (!mapBox) throw new Error('Map not found');
+    if (!mapBox) throw new Error("Map not found");
 
     const centerX = mapBox.x + mapBox.width / 2;
     const centerY = mapBox.y + mapBox.height / 2;
@@ -98,14 +100,14 @@ export class ExplorePage {
 
   async zoomOut() {
     const mapBox = await this.map.boundingBox();
-    if (!mapBox) throw new Error('Map not found');
+    if (!mapBox) throw new Error("Map not found");
 
     const centerX = mapBox.x + mapBox.width / 2;
     const centerY = mapBox.y + mapBox.height / 2;
 
-    await this.page.keyboard.down('Shift');
+    await this.page.keyboard.down("Shift");
     await this.page.mouse.dblclick(centerX, centerY);
-    await this.page.keyboard.up('Shift');
+    await this.page.keyboard.up("Shift");
   }
 
   async getEventCount(): Promise<number> {
@@ -115,17 +117,17 @@ export class ExplorePage {
   }
 
   async getEventTitles(): Promise<string[]> {
-    const events = await this.eventsList.locator('h3').allTextContents();
+    const events = await this.eventsList.locator("h3").allTextContents();
     return events;
   }
 
   async clickMapMarker(markerIndex: number) {
-    const markers = this.page.locator('.maplibregl-marker');
+    const markers = this.page.locator(".maplibregl-marker");
     await markers.nth(markerIndex).click();
   }
 
   async getPopupContent(): Promise<string | null> {
-    const popup = this.page.locator('.maplibregl-popup-content');
+    const popup = this.page.locator(".maplibregl-popup-content");
     return await popup.textContent();
   }
 
@@ -134,9 +136,10 @@ export class ExplorePage {
   }
 
   async waitForApiResponse() {
-    await this.page.waitForResponse(response => 
-      response.url().includes('/api/events') && response.status() === 200,
-      { timeout: 10000 }
+    await this.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/events") && response.status() === 200,
+      { timeout: 10000 },
     );
   }
 
@@ -156,7 +159,7 @@ export class ExplorePage {
 
   async assertUrlParams(expected: Record<string, string | string[] | null>) {
     const params = await this.getUrlParams();
-    
+
     for (const [key, value] of Object.entries(expected)) {
       if (value === null) {
         expect(params.has(key)).toBe(false);

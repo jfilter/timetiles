@@ -4,7 +4,12 @@ export interface ValidatedCoordinates {
   latitude: number;
   longitude: number;
   isValid: boolean;
-  validationStatus: "valid" | "out_of_range" | "suspicious_zero" | "swapped" | "invalid";
+  validationStatus:
+    | "valid"
+    | "out_of_range"
+    | "suspicious_zero"
+    | "swapped"
+    | "invalid";
   confidence: number;
   originalValues?: {
     lat: string;
@@ -29,7 +34,7 @@ export class CoordinateValidator {
   validateCoordinates(
     lat: number | null,
     lon: number | null,
-    autoFix: boolean = true
+    autoFix: boolean = true,
   ): ValidatedCoordinates {
     // Handle null/invalid values
     if (lat === null || lon === null || isNaN(lat) || isNaN(lon)) {
@@ -110,13 +115,13 @@ export class CoordinateValidator {
     switch (format) {
       case "combined_comma":
         return this.extractCommaFormat(strValue);
-      
+
       case "combined_space":
         return this.extractSpaceFormat(strValue);
-      
+
       case "geojson":
         return this.extractGeoJsonFormat(value);
-      
+
       default:
         // Try to auto-detect format
         return this.extractAutoDetect(strValue);
@@ -132,7 +137,7 @@ export class CoordinateValidator {
       const lat = parseFloat(match[1]);
       const lon = parseFloat(match[2]);
       const validated = this.validateCoordinates(lat, lon);
-      
+
       return {
         latitude: validated.latitude,
         longitude: validated.longitude,
@@ -140,7 +145,12 @@ export class CoordinateValidator {
         isValid: validated.isValid,
       };
     }
-    return { latitude: null, longitude: null, format: "combined_comma", isValid: false };
+    return {
+      latitude: null,
+      longitude: null,
+      format: "combined_comma",
+      isValid: false,
+    };
   }
 
   /**
@@ -152,7 +162,7 @@ export class CoordinateValidator {
       const lat = parseFloat(match[1]);
       const lon = parseFloat(match[2]);
       const validated = this.validateCoordinates(lat, lon);
-      
+
       return {
         latitude: validated.latitude,
         longitude: validated.longitude,
@@ -160,7 +170,12 @@ export class CoordinateValidator {
         isValid: validated.isValid,
       };
     }
-    return { latitude: null, longitude: null, format: "combined_space", isValid: false };
+    return {
+      latitude: null,
+      longitude: null,
+      format: "combined_space",
+      isValid: false,
+    };
   }
 
   /**
@@ -169,10 +184,14 @@ export class CoordinateValidator {
   private extractGeoJsonFormat(value: unknown): CoordinateExtraction {
     try {
       const parsed = typeof value === "string" ? JSON.parse(value) : value;
-      if (parsed && parsed.type === "Point" && Array.isArray(parsed.coordinates)) {
+      if (
+        parsed &&
+        parsed.type === "Point" &&
+        Array.isArray(parsed.coordinates)
+      ) {
         const [lon, lat] = parsed.coordinates; // GeoJSON is [lon, lat]
         const validated = this.validateCoordinates(lat, lon);
-        
+
         return {
           latitude: validated.latitude,
           longitude: validated.longitude,
@@ -183,7 +202,12 @@ export class CoordinateValidator {
     } catch (e) {
       this.log.debug("Failed to parse GeoJSON", { value, error: e });
     }
-    return { latitude: null, longitude: null, format: "geojson", isValid: false };
+    return {
+      latitude: null,
+      longitude: null,
+      format: "geojson",
+      isValid: false,
+    };
   }
 
   /**
@@ -199,12 +223,14 @@ export class CoordinateValidator {
     if (spaceResult.isValid) return spaceResult;
 
     // Try brackets format [lat, lon]
-    const bracketMatch = value.match(/^\[?\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\s*\]?$/);
+    const bracketMatch = value.match(
+      /^\[?\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\s*\]?$/,
+    );
     if (bracketMatch && bracketMatch[1] && bracketMatch[2]) {
       const lat = parseFloat(bracketMatch[1]);
       const lon = parseFloat(bracketMatch[2]);
       const validated = this.validateCoordinates(lat, lon);
-      
+
       return {
         latitude: validated.latitude,
         longitude: validated.longitude,
@@ -213,7 +239,12 @@ export class CoordinateValidator {
       };
     }
 
-    return { latitude: null, longitude: null, format: "unknown", isValid: false };
+    return {
+      latitude: null,
+      longitude: null,
+      format: "unknown",
+      isValid: false,
+    };
   }
 
   /**
@@ -233,14 +264,16 @@ export class CoordinateValidator {
   /**
    * Check for common coordinate mistakes in a batch
    */
-  detectSwappedCoordinates(samples: Array<{ lat: number; lon: number }>): boolean {
+  detectSwappedCoordinates(
+    samples: Array<{ lat: number; lon: number }>,
+  ): boolean {
     if (samples.length === 0) return false;
 
-    const possiblySwapped = samples.filter(s => 
-      Math.abs(s.lat) > 90 && Math.abs(s.lat) <= 180 &&
-      Math.abs(s.lon) <= 90
+    const possiblySwapped = samples.filter(
+      (s) =>
+        Math.abs(s.lat) > 90 && Math.abs(s.lat) <= 180 && Math.abs(s.lon) <= 90,
     );
-    
+
     return possiblySwapped.length > samples.length * 0.7;
   }
 
@@ -262,7 +295,7 @@ export class CoordinateValidator {
 
     // Try DMS format first (e.g., "40°42'46"N" or "40° 42' 46" N")
     const dmsMatch = str.match(
-      /^(-?\d+)[°\s]+(\d+)['′\s]+(\d+(?:\.\d+)?)["″\s]*([NSEW])?$/i
+      /^(-?\d+)[°\s]+(\d+)['′\s]+(\d+(?:\.\d+)?)["″\s]*([NSEW])?$/i,
     );
     if (dmsMatch && dmsMatch[1] && dmsMatch[2] && dmsMatch[3]) {
       const degrees = parseFloat(dmsMatch[1]);
@@ -270,11 +303,15 @@ export class CoordinateValidator {
       const seconds = parseFloat(dmsMatch[3]);
       const direction = dmsMatch[4];
 
-      let result = Math.abs(degrees) + (minutes / 60) + (seconds / 3600);
-      
+      let result = Math.abs(degrees) + minutes / 60 + seconds / 3600;
+
       // Apply negative sign for South/West or if degrees were originally negative
-      if ((direction && (direction.toUpperCase() === "S" || direction.toUpperCase() === "W")) ||
-          degrees < 0) {
+      if (
+        (direction &&
+          (direction.toUpperCase() === "S" ||
+            direction.toUpperCase() === "W")) ||
+        degrees < 0
+      ) {
         result = -result;
       }
 
@@ -282,16 +319,22 @@ export class CoordinateValidator {
     }
 
     // Try degrees and decimal minutes (e.g., "40°42.768'N")
-    const dmMatch = str.match(/^(-?\d+)[°\s]+(\d+(?:\.\d+)?)['′\s]*([NSEW])?$/i);
+    const dmMatch = str.match(
+      /^(-?\d+)[°\s]+(\d+(?:\.\d+)?)['′\s]*([NSEW])?$/i,
+    );
     if (dmMatch && dmMatch[1] && dmMatch[2]) {
       const degrees = parseFloat(dmMatch[1]);
       const minutes = parseFloat(dmMatch[2]);
       const direction = dmMatch[3];
 
-      let result = Math.abs(degrees) + (minutes / 60);
-      
-      if ((direction && (direction.toUpperCase() === "S" || direction.toUpperCase() === "W")) ||
-          degrees < 0) {
+      let result = Math.abs(degrees) + minutes / 60;
+
+      if (
+        (direction &&
+          (direction.toUpperCase() === "S" ||
+            direction.toUpperCase() === "W")) ||
+        degrees < 0
+      ) {
         result = -result;
       }
 
@@ -303,7 +346,7 @@ export class CoordinateValidator {
     if (directionMatch && directionMatch[1] && directionMatch[2]) {
       const value = Math.abs(parseFloat(directionMatch[1]));
       const direction = directionMatch[2];
-      
+
       if (direction.toUpperCase() === "S" || direction.toUpperCase() === "W") {
         return -value;
       }
@@ -344,7 +387,10 @@ export class CoordinateValidator {
     ];
 
     for (const test of testCoords) {
-      if (Math.abs(lat - test.lat) < 0.0001 && Math.abs(lon - test.lon) < 0.0001) {
+      if (
+        Math.abs(lat - test.lat) < 0.0001 &&
+        Math.abs(lon - test.lon) < 0.0001
+      ) {
         confidence *= 0.5;
         break;
       }

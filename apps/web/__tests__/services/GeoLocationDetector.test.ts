@@ -129,13 +129,19 @@ describe("GeoLocationDetector", () => {
     it("detects GeoJSON format", () => {
       const headers = ["location", "title"];
       const sampleRows = [
-        { 
-          location: JSON.stringify({ type: "Point", coordinates: [-74.0060, 40.7128] }), 
-          title: "NYC" 
+        {
+          location: JSON.stringify({
+            type: "Point",
+            coordinates: [-74.006, 40.7128],
+          }),
+          title: "NYC",
         },
-        { 
-          location: JSON.stringify({ type: "Point", coordinates: [-0.1278, 51.5074] }), 
-          title: "London" 
+        {
+          location: JSON.stringify({
+            type: "Point",
+            coordinates: [-0.1278, 51.5074],
+          }),
+          title: "London",
         },
       ];
 
@@ -223,7 +229,7 @@ describe("GeoLocationDetector", () => {
     it("handles various number formats", () => {
       const headers = ["lat", "lon"];
       const sampleRows = [
-        { lat: 40.7128, lon: -74.0060 }, // Numbers
+        { lat: 40.7128, lon: -74.006 }, // Numbers
         { lat: "51.5074", lon: "-0.1278" }, // Strings
         { lat: " 48.8566 ", lon: " 2.3522 " }, // With spaces
       ];

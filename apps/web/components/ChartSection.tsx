@@ -4,12 +4,12 @@ import { useState } from "react";
 import { EventHistogram } from "./EventHistogram";
 import { DatasetBarChart } from "./DatasetBarChart";
 import type { Event, Dataset, Catalog } from "../payload-types";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@workspace/ui/components/select";
 
 interface ChartSectionProps {
@@ -21,14 +21,22 @@ interface ChartSectionProps {
 
 type ChartType = "timeline" | "dataset-bar" | "catalog-bar";
 
-export function ChartSection({ events, datasets, catalogs, loading }: ChartSectionProps) {
+export function ChartSection({
+  events,
+  datasets,
+  catalogs,
+  loading,
+}: ChartSectionProps) {
   const [chartType, setChartType] = useState<ChartType>("timeline");
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Data Visualization</h2>
-        <Select value={chartType} onValueChange={(value) => setChartType(value as ChartType)}>
+        <Select
+          value={chartType}
+          onValueChange={(value) => setChartType(value as ChartType)}
+        >
           <SelectTrigger className="w-48">
             <SelectValue />
           </SelectTrigger>
@@ -45,21 +53,21 @@ export function ChartSection({ events, datasets, catalogs, loading }: ChartSecti
           <EventHistogram events={events} loading={loading} />
         )}
         {chartType === "dataset-bar" && (
-          <DatasetBarChart 
-            events={events} 
+          <DatasetBarChart
+            events={events}
             datasets={datasets}
             catalogs={catalogs}
             groupBy="dataset"
-            loading={loading} 
+            loading={loading}
           />
         )}
         {chartType === "catalog-bar" && (
-          <DatasetBarChart 
-            events={events} 
+          <DatasetBarChart
+            events={events}
             datasets={datasets}
             catalogs={catalogs}
             groupBy="catalog"
-            loading={loading} 
+            loading={loading}
           />
         )}
       </div>

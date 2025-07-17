@@ -42,7 +42,7 @@ export class GeoLocationDetector {
     /^lon(g|gitude)?$/i,
     /^lng$/i,
     /^lon[_\s-]?deg(rees)?$/i,
-    /^long[_\s-]?deg(rees)?$/i,  // Added to match "long_deg"
+    /^long[_\s-]?deg(rees)?$/i, // Added to match "long_deg"
     /^x[_\s-]?coord(inate)?$/i,
     /^location[_\s-]?lon(g|gitude)?$/i,
     /^geo[_\s-]?lon(g|gitude)?$/i,
@@ -66,15 +66,25 @@ export class GeoLocationDetector {
   /**
    * Detect geolocation columns in the imported data
    */
-  detectGeoColumns(headers: string[], sampleRows: Record<string, unknown>[]): GeoColumnResult {
+  detectGeoColumns(
+    headers: string[],
+    sampleRows: Record<string, unknown>[],
+  ): GeoColumnResult {
     this.log.info(`Detecting geo columns from ${headers.length} headers`);
 
     // Step 1: Try to find separate lat/lon columns by pattern
     const latColumn = this.findColumnByPatterns(headers, this.latitudePatterns);
-    const lonColumn = this.findColumnByPatterns(headers, this.longitudePatterns);
+    const lonColumn = this.findColumnByPatterns(
+      headers,
+      this.longitudePatterns,
+    );
 
     if (latColumn && lonColumn) {
-      const validation = this.validateCoordinatePairs(sampleRows, latColumn, lonColumn);
+      const validation = this.validateCoordinatePairs(
+        sampleRows,
+        latColumn,
+        lonColumn,
+      );
       if (validation.isValid) {
         return {
           found: true,
@@ -89,7 +99,10 @@ export class GeoLocationDetector {
     }
 
     // Step 2: Check for combined columns
-    const combinedColumn = this.findColumnByPatterns(headers, this.combinedPatterns);
+    const combinedColumn = this.findColumnByPatterns(
+      headers,
+      this.combinedPatterns,
+    );
     if (combinedColumn) {
       const format = this.detectCombinedFormat(sampleRows, combinedColumn);
       if (format) {
@@ -116,12 +129,17 @@ export class GeoLocationDetector {
   /**
    * Find column by matching patterns
    */
-  private findColumnByPatterns(headers: string[], patterns: RegExp[]): string | null {
+  private findColumnByPatterns(
+    headers: string[],
+    patterns: RegExp[],
+  ): string | null {
     for (const header of headers) {
       const normalizedHeader = header.trim();
       for (const pattern of patterns) {
         if (pattern.test(normalizedHeader)) {
-          this.log.debug(`Found column "${header}" matching pattern ${pattern}`);
+          this.log.debug(
+            `Found column "${header}" matching pattern ${pattern}`,
+          );
           return header;
         }
       }
@@ -135,39 +153,49 @@ export class GeoLocationDetector {
   private validateCoordinatePairs(
     sampleRows: Record<string, unknown>[],
     latColumn: string,
-    lonColumn: string
+    lonColumn: string,
   ): { isValid: boolean; confidence: number; swapped: boolean } {
-    const samples = this.extractCoordinateSamples(sampleRows, latColumn, lonColumn);
-    
+    const samples = this.extractCoordinateSamples(
+      sampleRows,
+      latColumn,
+      lonColumn,
+    );
+
     if (samples.length === 0) {
       return { isValid: false, confidence: 0, swapped: false };
     }
 
     // Count valid samples (excluding null/invalid)
-    const nonNullSamples = samples.filter(s => s.lat !== null && s.lon !== null);
+    const nonNullSamples = samples.filter(
+      (s) => s.lat !== null && s.lon !== null,
+    );
     if (nonNullSamples.length === 0) {
       return { isValid: false, confidence: 0, swapped: false };
     }
 
-    const validSamples = nonNullSamples.filter(s => s.isValid);
+    const validSamples = nonNullSamples.filter((s) => s.isValid);
     const validRatio = validSamples.length / nonNullSamples.length;
 
     // Check if coordinates might be swapped
-    const swappedSamples = nonNullSamples.filter(s => 
-      s.lat !== null && s.lon !== null &&
-      Math.abs(s.lat) > 90 && Math.abs(s.lat) <= 180 &&
-      Math.abs(s.lon) <= 90
+    const swappedSamples = nonNullSamples.filter(
+      (s) =>
+        s.lat !== null &&
+        s.lon !== null &&
+        Math.abs(s.lat) > 90 &&
+        Math.abs(s.lat) <= 180 &&
+        Math.abs(s.lon) <= 90,
     );
     const swappedRatio = swappedSamples.length / nonNullSamples.length;
 
     // If most coordinates appear swapped, that's a strong signal
     if (swappedRatio > 0.5) {
       // Re-check validity with swapped coordinates
-      const swappedValidSamples = nonNullSamples.filter(s =>
-        this.isValidCoordinate(s.lon, s.lat)
+      const swappedValidSamples = nonNullSamples.filter((s) =>
+        this.isValidCoordinate(s.lon, s.lat),
       );
-      const swappedValidRatio = swappedValidSamples.length / nonNullSamples.length;
-      
+      const swappedValidRatio =
+        swappedValidSamples.length / nonNullSamples.length;
+
       return {
         isValid: swappedValidRatio >= 0.5,
         confidence: swappedValidRatio,
@@ -176,7 +204,7 @@ export class GeoLocationDetector {
     }
 
     return {
-      isValid: validRatio >= 0.5,  // Lower threshold for mixed data
+      isValid: validRatio >= 0.5, // Lower threshold for mixed data
       confidence: validRatio,
       swapped: false,
     };
@@ -189,10 +217,10 @@ export class GeoLocationDetector {
     rows: Record<string, unknown>[],
     latColumn: string,
     lonColumn: string,
-    limit: number = 10
+    limit: number = 10,
   ): CoordinateSample[] {
     const samples: CoordinateSample[] = [];
-    
+
     for (let i = 0; i < Math.min(rows.length, limit); i++) {
       const row = rows[i];
       if (!row) continue;
@@ -241,7 +269,9 @@ export class GeoLocationDetector {
     }
 
     // Try DMS format (e.g., "40°42'46"N")
-    const dmsMatch = str.match(/^(-?\d+)[°\s]+(\d+)['\s]+(\d+(?:\.\d+)?)["\s]*([NSEW])?$/i);
+    const dmsMatch = str.match(
+      /^(-?\d+)[°\s]+(\d+)['\s]+(\d+(?:\.\d+)?)["\s]*([NSEW])?$/i,
+    );
     if (dmsMatch && dmsMatch[1] && dmsMatch[2] && dmsMatch[3]) {
       const degrees = parseFloat(dmsMatch[1]);
       const minutes = parseFloat(dmsMatch[2]);
@@ -249,8 +279,11 @@ export class GeoLocationDetector {
       const direction = dmsMatch[4];
 
       let result = degrees + minutes / 60 + seconds / 3600;
-      
-      if (direction && (direction.toUpperCase() === "S" || direction.toUpperCase() === "W")) {
+
+      if (
+        direction &&
+        (direction.toUpperCase() === "S" || direction.toUpperCase() === "W")
+      ) {
         result = -result;
       }
 
@@ -262,7 +295,7 @@ export class GeoLocationDetector {
     if (directionMatch && directionMatch[1] && directionMatch[2]) {
       const value = parseFloat(directionMatch[1]);
       const direction = directionMatch[2];
-      
+
       if (direction.toUpperCase() === "S" || direction.toUpperCase() === "W") {
         return -value;
       }
@@ -298,19 +331,19 @@ export class GeoLocationDetector {
    */
   private detectCombinedFormat(
     sampleRows: Record<string, unknown>[],
-    column: string
+    column: string,
   ): { format: string; confidence: number } | null {
     const samples = sampleRows
       .slice(0, 10)
-      .map(row => row[column])
-      .filter(val => val !== null && val !== undefined && val !== "");
+      .map((row) => row[column])
+      .filter((val) => val !== null && val !== undefined && val !== "");
 
     if (samples.length === 0) {
       return null;
     }
 
     // Check for comma-separated format
-    const commaFormat = samples.filter(s => {
+    const commaFormat = samples.filter((s) => {
       const match = String(s).match(/^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/);
       if (match && match[1] && match[2]) {
         const lat = parseFloat(match[1]);
@@ -321,11 +354,14 @@ export class GeoLocationDetector {
     });
 
     if (commaFormat.length / samples.length >= 0.7) {
-      return { format: "combined_comma", confidence: commaFormat.length / samples.length };
+      return {
+        format: "combined_comma",
+        confidence: commaFormat.length / samples.length,
+      };
     }
 
     // Check for space-separated format
-    const spaceFormat = samples.filter(s => {
+    const spaceFormat = samples.filter((s) => {
       const match = String(s).match(/^(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/);
       if (match && match[1] && match[2]) {
         const lat = parseFloat(match[1]);
@@ -336,14 +372,21 @@ export class GeoLocationDetector {
     });
 
     if (spaceFormat.length / samples.length >= 0.7) {
-      return { format: "combined_space", confidence: spaceFormat.length / samples.length };
+      return {
+        format: "combined_space",
+        confidence: spaceFormat.length / samples.length,
+      };
     }
 
     // Check for GeoJSON format
-    const geoJsonFormat = samples.filter(s => {
+    const geoJsonFormat = samples.filter((s) => {
       try {
         const parsed = typeof s === "string" ? JSON.parse(s) : s;
-        if (parsed && parsed.type === "Point" && Array.isArray(parsed.coordinates)) {
+        if (
+          parsed &&
+          parsed.type === "Point" &&
+          Array.isArray(parsed.coordinates)
+        ) {
           const [lon, lat] = parsed.coordinates;
           return this.isValidCoordinate(lat, lon);
         }
@@ -354,7 +397,10 @@ export class GeoLocationDetector {
     });
 
     if (geoJsonFormat.length / samples.length >= 0.7) {
-      return { format: "geojson", confidence: geoJsonFormat.length / samples.length };
+      return {
+        format: "geojson",
+        confidence: geoJsonFormat.length / samples.length,
+      };
     }
 
     return null;
@@ -363,23 +409,29 @@ export class GeoLocationDetector {
   /**
    * Heuristic detection by analyzing column values
    */
-  private detectByHeuristics(headers: string[], sampleRows: Record<string, unknown>[]): GeoColumnResult {
-    const columnStats: Map<string, { 
-      validCoords: number; 
-      latOnly: number; 
-      lonOnly: number; 
-      total: number;
-      samples: number[];
-    }> = new Map();
+  private detectByHeuristics(
+    headers: string[],
+    sampleRows: Record<string, unknown>[],
+  ): GeoColumnResult {
+    const columnStats: Map<
+      string,
+      {
+        validCoords: number;
+        latOnly: number;
+        lonOnly: number;
+        total: number;
+        samples: number[];
+      }
+    > = new Map();
 
     // Analyze each column
     for (const header of headers) {
-      const stats = { 
-        validCoords: 0,  // Valid as both lat and lon
-        latOnly: 0,      // Valid only as latitude (-90 to 90)
-        lonOnly: 0,      // Valid only as longitude but not latitude (90 to 180)
+      const stats = {
+        validCoords: 0, // Valid as both lat and lon
+        latOnly: 0, // Valid only as latitude (-90 to 90)
+        lonOnly: 0, // Valid only as longitude but not latitude (90 to 180)
         total: 0,
-        samples: [] as number[]
+        samples: [] as number[],
       };
 
       for (const row of sampleRows.slice(0, Math.min(20, sampleRows.length))) {
@@ -387,9 +439,9 @@ export class GeoLocationDetector {
         if (value !== null && !isNaN(value)) {
           stats.total++;
           stats.samples.push(value);
-          
+
           const absValue = Math.abs(value);
-          
+
           if (absValue <= 90) {
             stats.validCoords++;
             stats.latOnly++;
@@ -415,7 +467,7 @@ export class GeoLocationDetector {
     // First pass: look for columns that are clearly lat or lon
     for (const [header, stats] of columnStats.entries()) {
       const coordRatio = stats.validCoords / stats.total;
-      
+
       // Check if this column is mostly valid latitudes (all values within -90 to 90)
       if (stats.latOnly === stats.total && coordRatio > bestLatScore) {
         // Check it's not all the same value
@@ -430,9 +482,9 @@ export class GeoLocationDetector {
     // Second pass: find longitude column
     for (const [header, stats] of columnStats.entries()) {
       if (header === bestLat) continue;
-      
+
       const coordRatio = stats.validCoords / stats.total;
-      
+
       // This column has valid coordinate values
       if (coordRatio > bestLonScore) {
         const uniqueValues = new Set(stats.samples).size;
@@ -443,9 +495,19 @@ export class GeoLocationDetector {
       }
     }
 
-    if (bestLat && bestLon && bestLat !== bestLon && bestLatScore >= 0.7 && bestLonScore >= 0.7) {
+    if (
+      bestLat &&
+      bestLon &&
+      bestLat !== bestLon &&
+      bestLatScore >= 0.7 &&
+      bestLonScore >= 0.7
+    ) {
       // Validate with actual samples
-      const validation = this.validateCoordinatePairs(sampleRows, bestLat, bestLon);
+      const validation = this.validateCoordinatePairs(
+        sampleRows,
+        bestLat,
+        bestLon,
+      );
       if (validation.isValid || validation.swapped) {
         return {
           found: true,
