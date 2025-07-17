@@ -137,19 +137,18 @@ describe("Seed Data Validation", () => {
       const devEvents = eventSeeds("development");
 
       // Check for development-specific data
-      expect(devCatalogs.some((c) => c.slug === "social-media-analytics")).toBe(
+      expect(devCatalogs.some((c) => c.slug === "community-events-portal")).toBe(
         true,
       );
       expect(
-        devDatasets.some((d) => d.slug === "social-media-engagement"),
+        devDatasets.some((d) => d.slug.includes("local-events-calendar")),
       ).toBe(true);
       expect(
         devEvents.some(
           (e) =>
             e.data &&
             typeof e.data === "object" &&
-            "platform" in e.data &&
-            (e.data as any).platform === "twitter",
+            ("venue" in e.data || "performer" in e.data),
         ),
       ).toBe(true);
     });
