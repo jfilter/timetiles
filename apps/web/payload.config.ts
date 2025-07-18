@@ -4,16 +4,16 @@ import { postgresAdapter } from "@payloadcms/db-postgres";
 import sharp from "sharp";
 
 // Import collections
-import Catalogs from "./lib/collections/Catalogs.ts";
-import Datasets from "./lib/collections/Datasets.ts";
-import Imports from "./lib/collections/Imports.ts";
-import Events from "./lib/collections/Events.ts";
-import Users from "./lib/collections/Users.ts";
-import Media from "./lib/collections/Media.ts";
-import LocationCache from "./lib/collections/LocationCache.ts";
-import GeocodingProviders from "./lib/collections/GeocodingProviders.ts";
-import { MainMenu } from "./lib/collections/MainMenu.ts";
-import { Pages } from "./lib/collections/Pages.ts";
+import Catalogs from "./lib/collections/Catalogs";
+import Datasets from "./lib/collections/Datasets";
+import Imports from "./lib/collections/Imports";
+import Events from "./lib/collections/Events";
+import Users from "./lib/collections/Users";
+import Media from "./lib/collections/Media";
+import LocationCache from "./lib/collections/LocationCache";
+import GeocodingProviders from "./lib/collections/GeocodingProviders";
+import { MainMenu } from "./lib/collections/MainMenu";
+import { Pages } from "./lib/collections/Pages";
 
 // Import job definitions
 import {
@@ -21,7 +21,7 @@ import {
   batchProcessingJob,
   eventCreationJob,
   geocodingBatchJob,
-} from "./lib/jobs/import-jobs.ts";
+} from "./lib/jobs/import-jobs";
 
 export default buildConfig({
   admin: {
