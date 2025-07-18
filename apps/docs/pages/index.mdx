@@ -24,6 +24,10 @@ pnpm dev
 
 Visit http://localhost:3000 to see the application.
 
+## High-Performance Architecture
+
+TimeTiles is built to handle large datasets, including those with over 100,000 or even millions of data points. To achieve this, we leverage server-side clustering and computation to ensure the application remains fast and responsive. As much computation as possible is pushed to the database layer, for example, for histogram calculations. This approach minimizes the amount of data transferred to the client and offloads heavy processing to the backend, making for an efficient and scalable solution.
+
 ## Technology Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript, Zustand
