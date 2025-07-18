@@ -19,7 +19,7 @@
     "payload:migrate:create": "payload migrate:create",
     "payload:watch": "nodemon --watch 'lib/collections/**/*.ts' --exec 'payload generate:types'",
     "payload:validate": "tsx scripts/validate-types.ts",
-    "seed": "tsx scripts/seed.ts development",
+    "seed": "tsx scripts/seed.ts development users catalogs datasets events imports main-menu pages",
     "test": "vitest run --reporter=basic --silent",
     "test:verbose": "vitest run --reporter=basic",
     "test:debug": "TEST_LOG_LEVEL=debug TEST_PRETTY_LOGS=true vitest run --reporter=verbose",
@@ -66,7 +66,8 @@
     "sharp": "^0.34.2",
     "tsx": "^4.17.0",
     "uuid": "^11.1.0",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "zustand": "^5.0.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.1",

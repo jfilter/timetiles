@@ -141,7 +141,7 @@ describe("Seed Data Validation", () => {
         true,
       );
       expect(
-        devDatasets.some((d) => d.slug.includes("local-events-calendar")),
+        devDatasets.some((d) => d.slug?.includes("local-events-calendar")),
       ).toBe(true);
       expect(
         devEvents.some(

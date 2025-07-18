@@ -44,7 +44,8 @@ export async function POST(request: NextRequest) {
   try {
     logger.debug("Processing import upload request");
     // Use global test payload instance if available (for tests)
-    const payload = (global as any).__TEST_PAYLOAD__ || await getPayload({ config });
+    const payload =
+      (global as any).__TEST_PAYLOAD__ || (await getPayload({ config }));
 
     // Check rate limiting for unauthenticated users
     const clientId = getClientIdentifier(request);
@@ -171,7 +172,10 @@ export async function POST(request: NextRequest) {
         "Catalog found and validated",
       );
     } catch (error) {
-      logger.warn({ catalogId, error: (error as Error).message }, "Catalog not found");
+      logger.warn(
+        { catalogId, error: (error as Error).message },
+        "Catalog not found",
+      );
       return NextResponse.json(
         { success: false, message: "Catalog not found" },
         { status: 404 },
@@ -372,19 +376,23 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Use global test payload instance if available (for tests)
-    const payload = (global as any).__TEST_PAYLOAD__ || await getPayload({ config });
-    
+    const payload =
+      (global as any).__TEST_PAYLOAD__ || (await getPayload({ config }));
+
     return NextResponse.json({
       success: true,
       message: "Upload API is working",
-      hasGlobalPayload: !!(global as any).__TEST_PAYLOAD__
+      hasGlobalPayload: !!(global as any).__TEST_PAYLOAD__,
     });
   } catch (error) {
-    return NextResponse.json({
-      success: false,
-      message: "Upload API failed",
-      error: (error as Error).message
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Upload API failed",
+        error: (error as Error).message,
+      },
+      { status: 500 },
+    );
   }
 }
 

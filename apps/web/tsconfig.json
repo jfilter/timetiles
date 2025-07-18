@@ -4,6 +4,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
+      "@/components/*": ["./components/*"],
       "@workspace/ui/*": ["../../packages/ui/src/*"],
       "@payload-config": ["./payload.config.ts"]
     },

@@ -4,10 +4,12 @@ import { useEffect, useState, useTransition } from "react";
 import type { Catalog, Dataset, Event } from "../payload-types";
 import { Map } from "./Map";
 import { EventsList } from "./EventsList";
-import { EventFilters } from "./EventFilters";
 import { ActiveFilters } from "./ActiveFilters";
 import { ChartSection } from "./ChartSection";
-import { useFilterManager } from "../hooks/useFilterManager";
+import { FilterDrawer } from "./FilterDrawer";
+import { ExploreHeader } from "./ExploreHeader";
+import { useUIStore } from "../lib/store";
+import { useFilters } from "../lib/filters";
 import type { LngLatBounds } from "maplibre-gl";
 
 interface MapExplorerProps {
@@ -17,15 +19,96 @@ interface MapExplorerProps {
 
 export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
   const [events, setEvents] = useState<Event[]>([]);
-  const [bounds, setBounds] = useState<LngLatBounds | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const { filters, labels, hasActiveFilters, activeFilterCount, actions } = useFilterManager(catalogs, datasets);
+  // Get filter state from URL (nuqs)
+  const {
+    filters,
+    activeFilterCount,
+    hasActiveFilters,
+    removeFilter,
+    clearAllFilters,
+  } = useFilters();
+
+  // Get UI state from Zustand store
+  const isFilterDrawerOpen = useUIStore((state) => state.ui.isFilterDrawerOpen);
+  const mapBounds = useUIStore((state) => state.ui.mapBounds);
+  const selectedEvent = useUIStore((state) => state.ui.selectedEvent);
+
+  const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
+  const setMapBounds = useUIStore((state) => state.setMapBounds);
+  const setSelectedEvent = useUIStore((state) => state.setSelectedEvent);
+
+  // Helper function to get catalog name by ID
+  const getCatalogName = (catalogId: string): string => {
+    const catalog = catalogs.find((c) => String(c.id) === catalogId);
+    return catalog?.name || "Unknown Catalog";
+  };
+
+  // Helper function to get dataset name by ID
+  const getDatasetName = (datasetId: string): string => {
+    const dataset = datasets.find((d) => String(d.id) === datasetId);
+    return dataset?.name || "Unknown Dataset";
+  };
+
+  // Get human-readable filter labels
+  const getFilterLabels = () => {
+    const labels = {
+      catalog: filters.catalog ? getCatalogName(filters.catalog) : undefined,
+      datasets: filters.datasets.map((id) => ({
+        id,
+        name: getDatasetName(id),
+      })),
+      dateRange: (() => {
+        if (filters.startDate || filters.endDate) {
+          const start = filters.startDate
+            ? new Date(filters.startDate).toLocaleDateString()
+            : "Start";
+          const end = filters.endDate
+            ? new Date(filters.endDate).toLocaleDateString()
+            : "End";
+
+          if (filters.startDate && filters.endDate) {
+            return `${start} - ${end}`;
+          } else if (filters.startDate) {
+            return `From ${start}`;
+          } else if (filters.endDate) {
+            return `Until ${end}`;
+          }
+        }
+        return undefined;
+      })(),
+    };
+    return labels;
+  };
+
+  // Convert mapBounds to LngLatBounds format for compatibility
+  const bounds: LngLatBounds | null = mapBounds
+    ? ({
+        getNorth: () => mapBounds.north,
+        getSouth: () => mapBounds.south,
+        getEast: () => mapBounds.east,
+        getWest: () => mapBounds.west,
+      } as LngLatBounds)
+    : null;
+
+  const handleBoundsChange = (newBounds: LngLatBounds | null) => {
+    if (newBounds) {
+      setMapBounds({
+        north: newBounds.getNorth(),
+        south: newBounds.getSouth(),
+        east: newBounds.getEast(),
+        west: newBounds.getWest(),
+      });
+    } else {
+      setMapBounds(null);
+    }
+  };
 
   useEffect(() => {
     // Cancel any previous requests if pending
     const abortController = new AbortController();
-    
+
     const fetchEvents = async () => {
       const params = new URLSearchParams();
 
@@ -75,7 +158,7 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
     };
 
     fetchEvents();
-    
+
     return () => {
       abortController.abort();
     };
@@ -109,40 +192,63 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
 
   return (
     <div className="flex h-screen">
-      <div className="h-full w-1/2">
-        <Map events={mapEvents} onBoundsChange={setBounds} />
+      {/* Map - Left Side (Full Height) */}
+      <div className="h-full w-1/2 lg:w-2/5">
+        <Map events={mapEvents} onBoundsChange={handleBoundsChange} />
       </div>
 
-      <div className="h-full w-1/2 overflow-y-auto border-l">
-        <div className="p-6">
-          <h1 className="mb-6 text-2xl font-bold">Event Explorer</h1>
+      {/* Right Side Container */}
+      <div className="flex flex-1 flex-col">
+        {/* Header - Above Content and Filter */}
+        <ExploreHeader
+          filterCount={activeFilterCount}
+          isFilterOpen={isFilterDrawerOpen}
+          onFilterToggle={toggleFilterDrawer}
+        />
 
-          <div className="mb-6">
-            <EventFilters catalogs={catalogs} datasets={datasets} />
+        {/* Content and Filter Container */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto border-l">
+            <div className="p-6">
+              {/* Active Filters - Above Chart */}
+              <ActiveFilters
+                labels={getFilterLabels()}
+                hasActiveFilters={hasActiveFilters}
+                activeFilterCount={activeFilterCount}
+                actions={{
+                  removeFilter,
+                  clearAllFilters,
+                }}
+              />
+
+              {/* Chart Section */}
+              <div className="mb-6 border-t pt-6">
+                <ChartSection
+                  events={events}
+                  datasets={datasets}
+                  catalogs={catalogs}
+                  loading={isPending}
+                />
+              </div>
+
+              {/* Events List */}
+              <div className="border-t pt-6">
+                <h2 className="mb-4 text-lg font-semibold">
+                  Events ({events.length})
+                </h2>
+                <EventsList events={events} loading={isPending} />
+              </div>
+            </div>
           </div>
 
-          <div className="mb-6 border-t pt-6">
-            <ChartSection
-              events={events}
-              datasets={datasets}
-              catalogs={catalogs}
-              loading={isPending}
-            />
-          </div>
-
-          <div className="border-t pt-6">
-            <ActiveFilters
-              labels={labels}
-              hasActiveFilters={hasActiveFilters}
-              activeFilterCount={activeFilterCount}
-              actions={actions}
-            />
-            
-            <h2 className="mb-4 text-lg font-semibold">
-              Events ({events.length})
-            </h2>
-            <EventsList events={events} loading={isPending} />
-          </div>
+          {/* Filter Drawer - Right Side */}
+          <FilterDrawer
+            catalogs={catalogs}
+            datasets={datasets}
+            isOpen={isFilterDrawerOpen}
+            onToggle={toggleFilterDrawer}
+          />
         </div>
       </div>
     </div>

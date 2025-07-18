@@ -26,11 +26,17 @@ Visit http://localhost:3000 to see the application.
 
 ## Technology Stack
 
-- **Frontend**: Next.js 15, React 19, TypeScript
+- **Frontend**: Next.js 15, React 19, TypeScript, Zustand
 - **CMS**: Payload CMS with PostgreSQL
 - **UI**: shadcn/ui, Tailwind CSS
 - **Database**: PostgreSQL with PostGIS
 - **Monorepo**: Turborepo with pnpm
+
+## State Management
+
+TimeTiles utilizes **Zustand** for managing global application state that does not need to be reflected in the URL. This includes UI-specific states like modal visibility, temporary form inputs, or data that is frequently updated and doesn't require direct URL sharing. Zustand is chosen for its simplicity, small bundle size, and excellent performance, providing an intuitive and less verbose API.
+
+For state that needs to be synchronized with URL query parameters, **Nuqs** is employed. This is crucial for features where the application state should be shareable, bookmarkable, and persist across page reloads, such as map filtering, search queries, and pagination. Nuqs offers a type-safe and efficient way to manage this URL-driven state.
 
 ## Features
 
