@@ -15,6 +15,7 @@
     "docs:export": "turbo docs:export",
     "format": "turbo format",
     "typecheck": "turbo typecheck",
+    "check": "pnpm lint & pnpm typecheck & wait",
     "setup:git": "./scripts/setup-git.sh",
     "prepare": "husky"
   },

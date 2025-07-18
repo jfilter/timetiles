@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
-# Run linting from root (includes Prettier formatting checks via ESLint)
-pnpm lint
+# Run linting and TypeScript checking in parallel
+pnpm check
