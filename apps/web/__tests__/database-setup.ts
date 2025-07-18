@@ -38,6 +38,29 @@ export async function createTestDatabase(dbName: string): Promise<void> {
   } finally {
     await client.end();
   }
+
+  // Now connect to the target database and set up the schema
+  const targetClient = new Client({
+    host: "localhost",
+    port: 5432,
+    user: "timetiles_user",
+    password: "timetiles_password",
+    database: dbName,
+  });
+
+  try {
+    await targetClient.connect();
+    
+    // Create PostGIS extension if it doesn't exist
+    await targetClient.query(`CREATE EXTENSION IF NOT EXISTS postgis`);
+    logger.debug(`Ensured PostGIS extension in test database: ${dbName}`);
+    
+  } catch (error) {
+    logger.warn(`Failed to set up PostGIS extension in ${dbName}: ${error.message}`);
+    throw error;
+  } finally {
+    await targetClient.end();
+  }
 }
 
 /**
