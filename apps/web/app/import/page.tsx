@@ -1,5 +1,5 @@
-import ImportUpload from "../../../components/ImportUpload";
-import { PageLayout } from "../../../components/PageLayout";
+import ImportUpload from "../../components/ImportUpload";
+import { PageLayout } from "../../components/PageLayout";
 
 export default function ImportPage(): JSX.Element {
   return (

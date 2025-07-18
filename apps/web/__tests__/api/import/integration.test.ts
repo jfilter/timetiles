@@ -10,8 +10,8 @@ import {
 } from "vitest";
 import { createIsolatedTestEnvironment } from "../../test-helpers";
 import { NextRequest } from "next/server";
-import { POST as uploadHandler } from "../../../app/(app)/api/import/upload/route";
-import { GET as progressHandler } from "../../../app/(app)/api/import/[importId]/progress/route";
+import { POST as uploadHandler } from "../../../app/api/import/upload/route";
+import { GET as progressHandler } from "../../../app/api/import/[importId]/progress/route";
 
 import { getPayload } from "payload";
 import {

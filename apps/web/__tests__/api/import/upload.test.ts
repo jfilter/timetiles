@@ -9,8 +9,8 @@ import {
   afterEach,
 } from "vitest";
 import { NextRequest } from "next/server";
-import { POST as uploadHandler, GET as uploadHealthCheck } from "../../../app/(app)/api/import/upload/route";
-import { GET as progressHandler } from "../../../app/(app)/api/import/[importId]/progress/route";
+import { POST as uploadHandler, GET as uploadHealthCheck } from "../../../app/api/import/upload/route";
+import { GET as progressHandler } from "../../../app/api/import/[importId]/progress/route";
 import { createIsolatedTestEnvironment } from "../../test-helpers";
 
 // Store the payload instance globally for test API routes to use

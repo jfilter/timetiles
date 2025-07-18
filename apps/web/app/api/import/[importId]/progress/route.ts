@@ -5,9 +5,9 @@ import {
   getRateLimitService,
   getClientIdentifier,
   RATE_LIMITS,
-} from "../../../../../../lib/services/RateLimitService";
-import type { Import } from "../../../../../../payload-types";
-import { createRequestLogger, logError } from "../../../../../../lib/logger";
+} from "../../../../../lib/services/RateLimitService";
+import type { Import } from "../../../../../payload-types";
+import { createRequestLogger, logError } from "../../../../../lib/logger";
 import { v4 as uuidv4 } from "uuid";
 
 // Use Payload types directly instead of custom interfaces

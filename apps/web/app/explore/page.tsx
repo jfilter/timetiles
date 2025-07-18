@@ -2,7 +2,7 @@ import { getPayload } from "payload";
 import { MapExplorer } from "@/components/MapExplorer";
 import { Suspense } from "react";
 
-import config from "../../../payload.config";
+import config from "../../payload.config";
 
 // Force dynamic rendering to prevent build-time database queries
 export const dynamic = "force-dynamic";
