@@ -1,59 +1,43 @@
-import { Button } from "@workspace/ui/components/button";
+import React from "react";
+import { getPayload } from "payload";
+import config from "@/payload.config";
+import { notFound } from "next/navigation";
+import { RichText } from "@/components/RichText";
 
-export default function Page() {
+export default async function Page() {
+  const payload = await getPayload({
+    config,
+  });
+
+  const pages = await payload.find({
+    collection: "pages",
+    where: {
+      slug: {
+        equals: "home",
+      },
+    },
+  });
+
+  if (!pages.docs.length) {
+    notFound();
+  }
+
+  const page = pages.docs[0]!;
+
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center px-4 pt-32">
-      {/* Hero Section */}
-      <section className="flex max-w-2xl flex-col items-center gap-6 text-center">
-        <h1 className="from-primary to-secondary bg-gradient-to-r bg-clip-text text-5xl font-extrabold leading-tight tracking-tight text-transparent">
-          Explore Your Geodata with TimeTiles
-        </h1>
-        <p className="text-muted-foreground text-lg">
-          Visualize, analyze, and interact with your spatial and temporal data
-          like never before. TimeTiles lets you map, filter, and discover
-          patterns in your geodata, making it easy to turn raw location data
-          into actionable insights.
-        </p>
-        <Button size="lg" className="mt-2">
-          Start Exploring
-        </Button>
-      </section>
-
-      {/* Features Section */}
-      <section className="mt-24 grid w-full max-w-5xl grid-cols-1 gap-10 md:grid-cols-3">
-        <div className="bg-card flex flex-col items-center rounded-xl border p-6 shadow-md">
-          <span className="mb-4 text-4xl">🗺️</span>
-          <h2 className="mb-2 text-xl font-semibold">Interactive Maps</h2>
-          <p className="text-muted-foreground">
-            Upload your geodata and instantly see it on beautiful, interactive
-            maps. Pan, zoom, and explore your data in space and time.
-          </p>
+    <div className="min-h-screen pb-12 pt-24">
+      <div className="container mx-auto max-w-4xl px-6">
+        <div className="flex justify-center">
+          <div className="w-full max-w-3xl">
+            <h1 className="mb-8 text-center text-4xl font-bold">
+              {page.title}
+            </h1>
+            <div className="text-left">
+              <RichText content={page.content} />
+            </div>
+          </div>
         </div>
-        <div className="bg-card flex flex-col items-center rounded-xl border p-6 shadow-md">
-          <span className="mb-4 text-4xl">⏳</span>
-          <h2 className="mb-2 text-xl font-semibold">Temporal Analysis</h2>
-          <p className="text-muted-foreground">
-            Animate your data over time, filter by date ranges, and uncover
-            trends and movements in your spatial datasets.
-          </p>
-        </div>
-        <div className="bg-card flex flex-col items-center rounded-xl border p-6 shadow-md">
-          <span className="mb-4 text-4xl">🔍</span>
-          <h2 className="mb-2 text-xl font-semibold">Powerful Insights</h2>
-          <p className="text-muted-foreground">
-            Use built-in analytics to cluster, summarize, and extract meaning
-            from your geodata. Share your findings with interactive dashboards.
-          </p>
-        </div>
-      </section>
-
-      {/* Call to Action */}
-      <section className="mt-24 flex flex-col items-center gap-4">
-        <h2 className="text-2xl font-bold">
-          Ready to unlock the power of your geodata?
-        </h2>
-        <Button size="lg">Try TimeTiles Free</Button>
-      </section>
-    </main>
+      </div>
+    </div>
   );
 }
