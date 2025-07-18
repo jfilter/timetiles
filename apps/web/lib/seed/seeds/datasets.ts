@@ -1,5 +1,9 @@
 import type { Dataset } from "../../../payload-types";
-import { getDatasetsPerCatalog, DATASET_SCHEMAS, getSchemaTypeForCatalog } from "./utils";
+import {
+  getDatasetsPerCatalog,
+  DATASET_SCHEMAS,
+  getSchemaTypeForCatalog,
+} from "./utils";
 
 // Use Payload type with specific modifications for seed data
 export type DatasetSeed = Omit<
@@ -14,7 +18,8 @@ const DATASET_TEMPLATES = {
   environmental: [
     {
       name: "Air Quality Measurements",
-      description: "Real-time air quality measurements from monitoring stations",
+      description:
+        "Real-time air quality measurements from monitoring stations",
       slug: "air-quality-measurements",
     },
     {
@@ -24,7 +29,8 @@ const DATASET_TEMPLATES = {
     },
     {
       name: "Climate Station Data",
-      description: "Temperature, precipitation, and weather data from climate stations",
+      description:
+        "Temperature, precipitation, and weather data from climate stations",
       slug: "climate-station-data",
     },
   ],
@@ -89,7 +95,7 @@ export function datasetSeeds(environment: string): DatasetSeed[] {
     catalogs.push(
       { slug: "community-events-portal", type: "community" },
       { slug: "cultural-heritage-archives", type: "cultural" },
-      { slug: "historical-records", type: "academic" } // Treat as academic for schema
+      { slug: "historical-records", type: "academic" }, // Treat as academic for schema
     );
   }
 
@@ -97,14 +103,17 @@ export function datasetSeeds(environment: string): DatasetSeed[] {
 
   catalogs.forEach((catalog, catalogIndex) => {
     const numDatasets = getDatasetsPerCatalog(catalogIndex, catalog.type);
-    const templates = DATASET_TEMPLATES[catalog.type as keyof typeof DATASET_TEMPLATES] || DATASET_TEMPLATES.academic;
+    const templates =
+      DATASET_TEMPLATES[catalog.type as keyof typeof DATASET_TEMPLATES] ||
+      DATASET_TEMPLATES.academic;
     const schemaType = getSchemaTypeForCatalog(catalog.type);
     const schema = DATASET_SCHEMAS[schemaType];
 
     for (let i = 0; i < numDatasets && i < templates.length; i++) {
       const template = templates[i];
+      if (!template) continue;
       const isArchived = catalog.slug === "historical-records";
-      
+
       datasets.push({
         name: template.name,
         description: {
@@ -136,7 +145,9 @@ export function datasetSeeds(environment: string): DatasetSeed[] {
         isPublic: catalog.type !== "community", // Community datasets are private
         schema: schema,
         metadata: {
-          update_frequency: isArchived ? "none" : getUpdateFrequency(catalog.type),
+          update_frequency: isArchived
+            ? "none"
+            : getUpdateFrequency(catalog.type),
           data_source: getDataSource(catalog.type),
           catalog_type: catalog.type,
           dataset_index: i,

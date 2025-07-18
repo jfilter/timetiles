@@ -5,6 +5,7 @@ import { catalogSeeds } from "./seeds/catalogs";
 import { datasetSeeds } from "./seeds/datasets";
 import { eventSeeds } from "./seeds/events";
 import { importSeeds } from "./seeds/imports";
+import { mainMenuSeed } from "./seeds/main-menu";
 import type { Config } from "../../payload-types";
 import { createLogger, logError, logPerformance } from "../logger";
 
@@ -38,7 +39,15 @@ export class SeedManager {
 
   async seed(options: SeedOptions = {}) {
     const {
-      collections = ["users", "catalogs", "datasets", "events", "imports"],
+      collections = [
+        "users",
+        "catalogs",
+        "datasets",
+        "events",
+        "imports",
+        "main-menu",
+        "pages",
+      ],
       truncate = false,
       environment = "development",
     } = options;
@@ -57,7 +66,14 @@ export class SeedManager {
     }
 
     // Seed collections in dependency order
-    const seedOrder = ["users", "catalogs", "datasets", "events", "imports"];
+    const seedOrder = [
+      "users",
+      "catalogs",
+      "datasets",
+      "events",
+      "imports",
+      "main-menu",
+    ];
 
     for (const collection of seedOrder) {
       if (collections.includes(collection)) {
@@ -88,17 +104,37 @@ export class SeedManager {
     logger.info("Truncate process completed!");
   }
 
-  private async seedCollection(collection: string, environment: string) {
-    const seedData = await this.getSeedData(collection, environment);
+  private async seedCollection(
+    collectionOrGlobal: string,
+    environment: string,
+  ) {
+    const seedData = await this.getSeedData(collectionOrGlobal, environment);
 
     if (!seedData || seedData.length === 0) {
-      logger.warn(`No seed data found for ${collection}`);
+      logger.warn(`No seed data found for ${collectionOrGlobal}`);
+      return;
+    }
+
+    if (collectionOrGlobal === "main-menu") {
+      try {
+        logger.info("Seeding main-menu global...");
+        await this.payload!.updateGlobal({
+          slug: "main-menu",
+          data: seedData[0] as any,
+        });
+        logger.info("Seeded main-menu global successfully!");
+      } catch (error) {
+        logError(error, "Failed to seed main-menu global", {
+          global: "main-menu",
+          data: seedData[0],
+        });
+      }
       return;
     }
 
     logger.debug(
-      { collection, count: seedData.length },
-      `Found ${seedData.length} items to seed for ${collection}`,
+      { collection: collectionOrGlobal, count: seedData.length },
+      `Found ${seedData.length} items to seed for ${collectionOrGlobal}`,
     );
 
     for (const item of seedData) {
@@ -106,7 +142,7 @@ export class SeedManager {
         // Resolve relationships before creating
         const resolvedItem = await this.resolveRelationships(
           item as unknown as Record<string, unknown>,
-          collection,
+          collectionOrGlobal,
         );
 
         // Skip if relationships couldn't be resolved
@@ -122,39 +158,42 @@ export class SeedManager {
         }
 
         // Check if item already exists to avoid duplicate key errors
-        const existingItem = await this.findExistingItem(collection, resolvedItem);
+        const existingItem = await this.findExistingItem(
+          collectionOrGlobal,
+          resolvedItem,
+        );
         if (existingItem) {
           const displayName = this.getDisplayName(item);
           logger.debug(
-            { collection, displayName },
-            `Skipping existing ${collection} item: ${displayName}`,
+            { collection: collectionOrGlobal, displayName },
+            `Skipping existing ${collectionOrGlobal} item: ${displayName}`,
           );
           continue;
         }
 
         await this.payload!.create({
-          collection: collection as keyof Config["collections"],
+          collection: collectionOrGlobal as keyof Config["collections"],
           data: resolvedItem,
         });
 
         // Get a display name for the item
         const displayName = this.getDisplayName(item);
         logger.debug(
-          { collection, displayName },
-          `Created ${collection} item: ${displayName}`,
+          { collection: collectionOrGlobal, displayName },
+          `Created ${collectionOrGlobal} item: ${displayName}`,
         );
       } catch (error) {
         // Log the error but don't throw - allows graceful handling
-        logError(error, `Failed to create ${collection} item`, {
-          collection,
+        logError(error, `Failed to create ${collectionOrGlobal} item`, {
+          collection: collectionOrGlobal,
           item,
         });
       }
     }
   }
 
-  private async getSeedData(collection: string, environment: string) {
-    switch (collection) {
+  private async getSeedData(collectionOrGlobal: string, environment: string) {
+    switch (collectionOrGlobal) {
       case "users":
         return userSeeds(environment);
       case "catalogs":
@@ -165,8 +204,10 @@ export class SeedManager {
         return eventSeeds(environment);
       case "imports":
         return importSeeds(environment);
+      case "main-menu":
+        return [mainMenuSeed] as any;
       default:
-        logger.warn(`Unknown collection: ${collection}`);
+        logger.warn(`Unknown collection or global: ${collectionOrGlobal}`);
         return []; // Return empty array instead of throwing
     }
   }
@@ -340,9 +381,11 @@ export class SeedManager {
       const searchValue =
         item.dataset === "test-dataset"
           ? "Test Dataset"
-          : item.dataset === "air-quality-measurements" || item.dataset === "environmental-data-air-quality-measurements"
+          : item.dataset === "air-quality-measurements" ||
+              item.dataset === "environmental-data-air-quality-measurements"
             ? "Air Quality Measurements"
-            : item.dataset === "gdp-growth-rates" || item.dataset === "economic-indicators-gdp-growth-rates"
+            : item.dataset === "gdp-growth-rates" ||
+                item.dataset === "economic-indicators-gdp-growth-rates"
               ? "GDP Growth Rates"
               : item.dataset === "environmental-data-water-quality-assessments"
                 ? "Water Quality Assessments"
@@ -350,17 +393,23 @@ export class SeedManager {
                   ? "Climate Station Data"
                   : item.dataset === "economic-indicators-employment-statistics"
                     ? "Employment Statistics"
-                    : item.dataset === "economic-indicators-consumer-price-index"
+                    : item.dataset ===
+                        "economic-indicators-consumer-price-index"
                       ? "Consumer Price Index"
-                      : item.dataset === "academic-research-portal-research-study-results"
+                      : item.dataset ===
+                          "academic-research-portal-research-study-results"
                         ? "Research Study Results"
-                        : item.dataset === "academic-research-portal-survey-response-data"
+                        : item.dataset ===
+                            "academic-research-portal-survey-response-data"
                           ? "Survey Response Data"
-                          : item.dataset === "community-events-portal-local-events-calendar"
+                          : item.dataset ===
+                              "community-events-portal-local-events-calendar"
                             ? "Local Events Calendar"
-                            : item.dataset === "cultural-heritage-archives-performance-schedule"
+                            : item.dataset ===
+                                "cultural-heritage-archives-performance-schedule"
                               ? "Performance Schedule"
-                              : item.dataset === "cultural-heritage-archives-exhibition-archive"
+                              : item.dataset ===
+                                  "cultural-heritage-archives-exhibition-archive"
                                 ? "Exhibition Archive"
                                 : item.dataset;
 
@@ -492,10 +541,13 @@ export class SeedManager {
     return result.totalDocs;
   }
 
-  private async findExistingItem(collection: string, item: Record<string, unknown>): Promise<any> {
+  private async findExistingItem(
+    collection: string,
+    item: Record<string, unknown>,
+  ): Promise<any> {
     try {
       // Define unique identifiers for each collection
-      let where: Record<string, any> = {};
+      const where: Record<string, any> = {};
 
       switch (collection) {
         case "users":
@@ -521,8 +573,16 @@ export class SeedManager {
           // For events, check by a combination of fields to avoid exact duplicates
           if (item.data && item.location) {
             where.and = [
-              { "location.latitude": { equals: (item.location as any)?.latitude } },
-              { "location.longitude": { equals: (item.location as any)?.longitude } },
+              {
+                "location.latitude": {
+                  equals: (item.location as any)?.latitude,
+                },
+              },
+              {
+                "location.longitude": {
+                  equals: (item.location as any)?.longitude,
+                },
+              },
             ];
           }
           break;
@@ -554,13 +614,7 @@ export class SeedManager {
   }
 
   private getDisplayName(item: any): string {
-    return (
-      item.name ||
-      item.email ||
-      item.fileName ||
-      item.id ||
-      "Unknown"
-    );
+    return item.name || item.email || item.fileName || item.id || "Unknown";
   }
 }
 

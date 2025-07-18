@@ -13,8 +13,14 @@ export const DATASET_SCHEMAS = {
       department: { type: "string", description: "Department or division" },
       contact: { type: "string", description: "Contact email or phone" },
       severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
-      status: { type: "string", enum: ["open", "in-progress", "resolved", "closed"] },
-      reference_number: { type: "string", description: "Official reference number" },
+      status: {
+        type: "string",
+        enum: ["open", "in-progress", "resolved", "closed"],
+      },
+      reference_number: {
+        type: "string",
+        description: "Official reference number",
+      },
       reported_date: { type: "string", format: "date-time" },
     },
     required: ["agency", "department", "status"],
@@ -22,12 +28,18 @@ export const DATASET_SCHEMAS = {
   environmental: {
     type: "object",
     properties: {
-      station_id: { type: "string", description: "Monitoring station identifier" },
+      station_id: {
+        type: "string",
+        description: "Monitoring station identifier",
+      },
       measurement_type: { type: "string", description: "Type of measurement" },
       value: { type: "number", description: "Measured value" },
       unit: { type: "string", description: "Unit of measurement" },
       sensor_id: { type: "string", description: "Sensor identifier" },
-      quality: { type: "string", enum: ["good", "moderate", "poor", "hazardous"] },
+      quality: {
+        type: "string",
+        enum: ["good", "moderate", "poor", "hazardous"],
+      },
       conditions: { type: "string", description: "Environmental conditions" },
       timestamp: { type: "string", format: "date-time" },
     },
@@ -43,7 +55,10 @@ export const DATASET_SCHEMAS = {
       keywords: { type: "array", items: { type: "string" } },
       doi: { type: "string", description: "Digital Object Identifier" },
       publication_date: { type: "string", format: "date" },
-      sample_size: { type: "integer", description: "Sample size if applicable" },
+      sample_size: {
+        type: "integer",
+        description: "Sample size if applicable",
+      },
     },
     required: ["institution", "researcher", "discipline"],
   },
@@ -97,7 +112,7 @@ export const GEOGRAPHIC_REGIONS = {
       { name: "Staten Island", lat: 40.5795, lng: -74.1502 },
     ],
   },
-  "california": {
+  california: {
     name: "California",
     bounds: {
       north: 42.0,
@@ -113,7 +128,7 @@ export const GEOGRAPHIC_REGIONS = {
       { name: "San Jose", lat: 37.3382, lng: -121.8863 },
     ],
   },
-  "texas": {
+  texas: {
     name: "Texas",
     bounds: {
       north: 36.5,
@@ -123,13 +138,13 @@ export const GEOGRAPHIC_REGIONS = {
     },
     centers: [
       { name: "Houston", lat: 29.7604, lng: -95.3698 },
-      { name: "Dallas", lat: 32.7767, lng: -96.7970 },
+      { name: "Dallas", lat: 32.7767, lng: -96.797 },
       { name: "Austin", lat: 30.2672, lng: -97.7431 },
       { name: "San Antonio", lat: 29.4241, lng: -98.4936 },
       { name: "Fort Worth", lat: 32.7555, lng: -97.3308 },
     ],
   },
-  "europe": {
+  europe: {
     name: "Europe",
     bounds: {
       north: 60.0,
@@ -140,7 +155,7 @@ export const GEOGRAPHIC_REGIONS = {
     centers: [
       { name: "London", lat: 51.5074, lng: -0.1278 },
       { name: "Paris", lat: 48.8566, lng: 2.3522 },
-      { name: "Berlin", lat: 52.5200, lng: 13.4050 },
+      { name: "Berlin", lat: 52.52, lng: 13.405 },
       { name: "Madrid", lat: 40.4168, lng: -3.7038 },
       { name: "Rome", lat: 41.9028, lng: 12.4964 },
     ],
@@ -162,34 +177,50 @@ export function generateCoordinate(
 
   if (cluster && Math.random() < 0.7) {
     // 70% chance to cluster around a center
-    const center = regionData.centers[Math.floor(Math.random() * regionData.centers.length)];
-    return {
-      latitude: center.lat + (Math.random() - 0.5) * clusterRadius * 2,
-      longitude: center.lng + (Math.random() - 0.5) * clusterRadius * 2,
-    };
-  } else {
-    // Random within bounds
-    return {
-      latitude:
-        regionData.bounds.south +
-        Math.random() * (regionData.bounds.north - regionData.bounds.south),
-      longitude:
-        regionData.bounds.west +
-        Math.random() * (regionData.bounds.east - regionData.bounds.west),
-    };
+    const center =
+      regionData.centers[Math.floor(Math.random() * regionData.centers.length)];
+    if (center) {
+      return {
+        latitude: center.lat + (Math.random() - 0.5) * clusterRadius * 2,
+        longitude: center.lng + (Math.random() - 0.5) * clusterRadius * 2,
+      };
+    }
   }
+
+  // Random within bounds (fallback)
+  return {
+    latitude:
+      regionData.bounds.south +
+      Math.random() * (regionData.bounds.north - regionData.bounds.south),
+    longitude:
+      regionData.bounds.west +
+      Math.random() * (regionData.bounds.east - regionData.bounds.west),
+  };
 }
 
 /**
  * Determine number of datasets for a catalog based on its type
  */
-export function getDatasetsPerCatalog(catalogIndex: number, catalogType: string): number {
+export function getDatasetsPerCatalog(
+  catalogIndex: number,
+  catalogType: string,
+): number {
   // Deterministic but varied distribution
-  if (catalogType.includes("government") || catalogType.includes("federal") || catalogType.includes("environmental")) {
+  if (
+    catalogType.includes("government") ||
+    catalogType.includes("federal") ||
+    catalogType.includes("environmental")
+  ) {
     return 3; // Government/Environmental catalogs are comprehensive
-  } else if (catalogType.includes("academic") || catalogType.includes("research")) {
+  } else if (
+    catalogType.includes("academic") ||
+    catalogType.includes("research")
+  ) {
     return 2; // Academic catalogs are focused
-  } else if (catalogType.includes("community") || catalogType.includes("local")) {
+  } else if (
+    catalogType.includes("community") ||
+    catalogType.includes("local")
+  ) {
     return 1; // Community catalogs are single-purpose
   } else if (catalogType.includes("cultural")) {
     return 2; // Cultural catalogs have moderate scope
@@ -197,31 +228,46 @@ export function getDatasetsPerCatalog(catalogIndex: number, catalogType: string)
     return 3; // Economic catalogs are comprehensive
   } else {
     // Default pattern: 1, 2, 3, 1, 2, 3...
-    return ((catalogIndex % 3) + 1);
+    return (catalogIndex % 3) + 1;
   }
 }
 
 /**
  * Determine number of events for a dataset based on its characteristics
  */
-export function getEventsPerDataset(datasetIndex: number, datasetName: string): number {
+export function getEventsPerDataset(
+  datasetIndex: number,
+  datasetName: string,
+): number {
   const name = datasetName.toLowerCase();
-  
+
   // Large datasets (national/state level)
-  if (name.includes("national") || name.includes("federal") || name.includes("state")) {
-    return 50 + (datasetIndex * 10) % 51; // 50-100 events
+  if (
+    name.includes("national") ||
+    name.includes("federal") ||
+    name.includes("state")
+  ) {
+    return 50 + ((datasetIndex * 10) % 51); // 50-100 events
   }
   // Medium datasets (city/regional)
-  else if (name.includes("city") || name.includes("regional") || name.includes("metropolitan")) {
-    return 20 + (datasetIndex * 5) % 31; // 20-50 events
+  else if (
+    name.includes("city") ||
+    name.includes("regional") ||
+    name.includes("metropolitan")
+  ) {
+    return 20 + ((datasetIndex * 5) % 31); // 20-50 events
   }
   // Small datasets (local/specialized)
-  else if (name.includes("local") || name.includes("community") || name.includes("pilot")) {
-    return 5 + (datasetIndex * 3) % 16; // 5-20 events
+  else if (
+    name.includes("local") ||
+    name.includes("community") ||
+    name.includes("pilot")
+  ) {
+    return 5 + ((datasetIndex * 3) % 16); // 5-20 events
   }
   // Default: use a deterministic formula
   else {
-    return 5 + (datasetIndex * 15) % 96; // 5-100 events
+    return 5 + ((datasetIndex * 15) % 96); // 5-100 events
   }
 }
 
@@ -235,10 +281,16 @@ export function generateMetadata(
   switch (schemaType) {
     case "government":
       const agencies = ["EPA", "DOT", "HUD", "CDC", "FEMA"];
-      const departments = ["Operations", "Compliance", "Research", "Public Affairs", "Emergency Response"];
+      const departments = [
+        "Operations",
+        "Compliance",
+        "Research",
+        "Public Affairs",
+        "Emergency Response",
+      ];
       const statuses = ["open", "in-progress", "resolved", "closed"];
       const severities = ["low", "medium", "high", "critical"];
-      
+
       return {
         agency: agencies[index % agencies.length],
         department: departments[(index + 1) % departments.length],
@@ -253,7 +305,7 @@ export function generateMetadata(
       const measurements = ["PM2.5", "PM10", "NO2", "O3", "SO2", "CO"];
       const units = ["μg/m³", "ppb", "ppm", "mg/m³"];
       const qualities = ["good", "moderate", "poor", "hazardous"];
-      
+
       return {
         station_id: `ENV-${String(index + 100).padStart(3, "0")}`,
         measurement_type: measurements[index % measurements.length],
@@ -267,24 +319,42 @@ export function generateMetadata(
 
     case "academic":
       const institutions = ["MIT", "Stanford", "Harvard", "Yale", "Princeton"];
-      const disciplines = ["Computer Science", "Biology", "Physics", "Economics", "Psychology"];
+      const disciplines = [
+        "Computer Science",
+        "Biology",
+        "Physics",
+        "Economics",
+        "Psychology",
+      ];
       const funders = ["NSF", "NIH", "DOE", "NASA", "Private Foundation"];
-      
+
       return {
         institution: institutions[index % institutions.length],
         researcher: `Dr. ${["Smith", "Johnson", "Williams", "Brown", "Jones"][index % 5]}`,
         funding: funders[index % funders.length],
         discipline: disciplines[index % disciplines.length],
-        keywords: ["research", disciplines[index % disciplines.length].toLowerCase(), "study"],
+        keywords: [
+          "research",
+          disciplines[index % disciplines.length]?.toLowerCase() || "unknown",
+          "study",
+        ],
         doi: `10.1234/example.${index + 1000}`,
-        publication_date: new Date(Date.now() - index * 86400000).toISOString().split("T")[0],
-        sample_size: 100 + (index * 50),
+        publication_date: new Date(Date.now() - index * 86400000)
+          .toISOString()
+          .split("T")[0],
+        sample_size: 100 + index * 50,
       };
 
     case "cultural":
-      const venues = ["City Theater", "Music Hall", "Art Gallery", "Convention Center", "Stadium"];
+      const venues = [
+        "City Theater",
+        "Music Hall",
+        "Art Gallery",
+        "Convention Center",
+        "Stadium",
+      ];
       const genres = ["Rock", "Classical", "Jazz", "Pop", "Electronic"];
-      
+
       return {
         venue: venues[index % venues.length],
         performer: `Artist ${index + 1}`,
@@ -297,10 +367,28 @@ export function generateMetadata(
       };
 
     case "economic":
-      const indicators = ["GDP", "Unemployment", "Inflation", "Trade Balance", "Consumer Confidence"];
-      const regions = ["North America", "Europe", "Asia", "South America", "Africa"];
-      const sectors = ["Technology", "Healthcare", "Finance", "Manufacturing", "Retail"];
-      
+      const indicators = [
+        "GDP",
+        "Unemployment",
+        "Inflation",
+        "Trade Balance",
+        "Consumer Confidence",
+      ];
+      const regions = [
+        "North America",
+        "Europe",
+        "Asia",
+        "South America",
+        "Africa",
+      ];
+      const sectors = [
+        "Technology",
+        "Healthcare",
+        "Finance",
+        "Manufacturing",
+        "Retail",
+      ];
+
       return {
         indicator: indicators[index % indicators.length],
         value: Math.round(Math.random() * 1000) / 10,
@@ -320,21 +408,43 @@ export function generateMetadata(
 /**
  * Get the appropriate schema type for a catalog
  */
-export function getSchemaTypeForCatalog(catalogName: string): keyof typeof DATASET_SCHEMAS {
+export function getSchemaTypeForCatalog(
+  catalogName: string,
+): keyof typeof DATASET_SCHEMAS {
   const name = catalogName.toLowerCase();
-  
-  if (name.includes("environmental") || name.includes("climate") || name.includes("weather")) {
+
+  if (
+    name.includes("environmental") ||
+    name.includes("climate") ||
+    name.includes("weather")
+  ) {
     return "environmental";
-  } else if (name.includes("economic") || name.includes("financial") || name.includes("market")) {
+  } else if (
+    name.includes("economic") ||
+    name.includes("financial") ||
+    name.includes("market")
+  ) {
     return "economic";
-  } else if (name.includes("academic") || name.includes("research") || name.includes("university")) {
+  } else if (
+    name.includes("academic") ||
+    name.includes("research") ||
+    name.includes("university")
+  ) {
     return "academic";
-  } else if (name.includes("cultural") || name.includes("arts") || name.includes("entertainment")) {
+  } else if (
+    name.includes("cultural") ||
+    name.includes("arts") ||
+    name.includes("entertainment")
+  ) {
     return "cultural";
-  } else if (name.includes("government") || name.includes("federal") || name.includes("municipal")) {
+  } else if (
+    name.includes("government") ||
+    name.includes("federal") ||
+    name.includes("municipal")
+  ) {
     return "government";
   }
-  
+
   // Default to government for any unmatched catalogs
   return "government";
 }
@@ -342,19 +452,37 @@ export function getSchemaTypeForCatalog(catalogName: string): keyof typeof DATAS
 /**
  * Get geographic region for a dataset
  */
-export function getRegionForDataset(datasetName: string): keyof typeof GEOGRAPHIC_REGIONS {
+export function getRegionForDataset(
+  datasetName: string,
+): keyof typeof GEOGRAPHIC_REGIONS {
   const name = datasetName.toLowerCase();
-  
-  if (name.includes("california") || name.includes("west coast") || name.includes("pacific")) {
+
+  if (
+    name.includes("california") ||
+    name.includes("west coast") ||
+    name.includes("pacific")
+  ) {
     return "california";
-  } else if (name.includes("texas") || name.includes("southwest") || name.includes("gulf")) {
+  } else if (
+    name.includes("texas") ||
+    name.includes("southwest") ||
+    name.includes("gulf")
+  ) {
     return "texas";
-  } else if (name.includes("europe") || name.includes("eu") || name.includes("european")) {
+  } else if (
+    name.includes("europe") ||
+    name.includes("eu") ||
+    name.includes("european")
+  ) {
     return "europe";
-  } else if (name.includes("new york") || name.includes("northeast") || name.includes("atlantic")) {
+  } else if (
+    name.includes("new york") ||
+    name.includes("northeast") ||
+    name.includes("atlantic")
+  ) {
     return "new-york-metro";
   }
-  
+
   // Default to New York metro area
   return "new-york-metro";
 }

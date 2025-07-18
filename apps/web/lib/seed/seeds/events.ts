@@ -18,7 +18,7 @@ export type EventSeed = Omit<
 
 export function eventSeeds(environment: string): EventSeed[] {
   const events: EventSeed[] = [];
-  
+
   // Dataset configurations based on the new dataset structure
   const datasetConfigs = [
     // Environmental datasets
@@ -83,7 +83,7 @@ export function eventSeeds(environment: string): EventSeed[] {
         slug: "cultural-heritage-archives-exhibition-archive",
         catalogType: "cultural",
         name: "Exhibition Archive",
-      }
+      },
     );
   }
 
@@ -105,7 +105,10 @@ export function eventSeeds(environment: string): EventSeed[] {
       let eventTimestamp: Date;
       if (config.catalogType === "cultural" && metadata.event_date) {
         eventTimestamp = new Date(metadata.event_date as string);
-      } else if (config.catalogType === "academic" && metadata.publication_date) {
+      } else if (
+        config.catalogType === "academic" &&
+        metadata.publication_date
+      ) {
         eventTimestamp = new Date(metadata.publication_date as string);
       } else if (metadata.timestamp) {
         eventTimestamp = new Date(metadata.timestamp as string);
@@ -118,7 +121,8 @@ export function eventSeeds(environment: string): EventSeed[] {
       }
 
       // For economic data, some events don't need location
-      const needsLocation = config.catalogType !== "economic" || Math.random() > 0.5;
+      const needsLocation =
+        config.catalogType !== "economic" || Math.random() > 0.5;
 
       events.push({
         dataset: config.slug,
