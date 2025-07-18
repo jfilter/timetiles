@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { MainMenu } from "../payload-types";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -16,7 +17,7 @@ export function TopMenuBar({ mainMenu }: TopMenuBarProps) {
             key={index}
             className="hover:text-primary cursor-pointer text-base font-medium transition-colors"
           >
-            <a href={item.url}>{item.label}</a>
+            <Link href={item.url}>{item.label}</Link>
           </li>
         ))}
       </ul>
