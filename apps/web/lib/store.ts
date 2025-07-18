@@ -11,6 +11,7 @@ interface UIState {
     west: number;
   } | null;
   selectedEvent: string | null;
+  theme: "light" | "dark" | "system";
 }
 
 // Define the shape of our UI-only store
@@ -22,6 +23,7 @@ interface UIStore {
   toggleFilterDrawer: () => void;
   setMapBounds: (bounds: UIState["mapBounds"]) => void;
   setSelectedEvent: (eventId: string | null) => void;
+  setTheme: (theme: "light" | "dark" | "system") => void;
 }
 
 export const useUIStore = create<UIStore>()(
@@ -33,6 +35,7 @@ export const useUIStore = create<UIStore>()(
           isFilterDrawerOpen: true,
           mapBounds: null,
           selectedEvent: null,
+          theme: "system",
         },
 
         // UI actions
@@ -83,6 +86,18 @@ export const useUIStore = create<UIStore>()(
             false,
             "setSelectedEvent",
           ),
+
+        setTheme: (theme) =>
+          set(
+            (state) => ({
+              ui: {
+                ...state.ui,
+                theme,
+              },
+            }),
+            false,
+            "setTheme",
+          ),
       }),
       {
         name: "timetiles-ui-store",
@@ -90,6 +105,7 @@ export const useUIStore = create<UIStore>()(
         partialize: (state) => ({
           ui: {
             isFilterDrawerOpen: state.ui.isFilterDrawerOpen,
+            theme: state.ui.theme,
           },
         }),
       },
