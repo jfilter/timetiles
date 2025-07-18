@@ -12,7 +12,7 @@ export const RichText: React.FC<RichTextProps> = ({ content }) => {
   // Handle Lexical JSON format
   if (content.root && content.root.children) {
     return (
-      <div className="prose dark:prose-invert">
+      <div className="prose prose-lg dark:prose-invert mx-auto max-w-none">
         {content.root.children.map((node: any, i: number) => {
           return renderNode(node, i);
         })}
@@ -22,7 +22,7 @@ export const RichText: React.FC<RichTextProps> = ({ content }) => {
 
   // Handle array format (legacy)
   return (
-    <div className="prose dark:prose-invert">
+    <div className="prose prose-lg dark:prose-invert mx-auto max-w-none">
       {content.map((node: any, i: number) => {
         return renderNode(node, i);
       })}

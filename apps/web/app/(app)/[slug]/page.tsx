@@ -32,9 +32,19 @@ export default async function Page({ params }: PageProps) {
   const page = pages.docs[0]!;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="mb-4 text-4xl font-bold">{page.title}</h1>
-      <RichText content={page.content} />
+    <div className="min-h-screen pb-12 pt-24">
+      <div className="container mx-auto max-w-4xl px-6">
+        <div className="flex justify-center">
+          <div className="w-full max-w-3xl">
+            <h1 className="mb-8 text-center text-4xl font-bold">
+              {page.title}
+            </h1>
+            <div className="text-center">
+              <RichText content={page.content} />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
