@@ -6,6 +6,7 @@ import { datasetSeeds } from "./seeds/datasets";
 import { eventSeeds } from "./seeds/events";
 import { importSeeds } from "./seeds/imports";
 import { mainMenuSeed } from "./seeds/main-menu";
+import { pagesSeed } from "./seeds/pages";
 import type { Config } from "../../payload-types";
 import { createLogger, logError, logPerformance } from "../logger";
 
@@ -73,6 +74,7 @@ export class SeedManager {
       "events",
       "imports",
       "main-menu",
+      "pages",
     ];
 
     for (const collection of seedOrder) {
@@ -206,6 +208,8 @@ export class SeedManager {
         return importSeeds(environment);
       case "main-menu":
         return [mainMenuSeed] as any;
+      case "pages":
+        return pagesSeed;
       default:
         logger.warn(`Unknown collection or global: ${collectionOrGlobal}`);
         return []; // Return empty array instead of throwing
