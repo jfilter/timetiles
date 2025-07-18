@@ -38,9 +38,7 @@ export default buildConfig({
     GeocodingProviders,
     Pages,
   ],
-  globals: [
-    MainMenu,
-  ],
+  globals: [MainMenu],
   jobs: {
     tasks: [
       fileParsingJob,
@@ -56,6 +54,7 @@ export default buildConfig({
     outputFile: "./payload-types.ts",
   },
   db: postgresAdapter({
+    push: false, // Disable automatic schema updates
     pool: {
       connectionString:
         process.env.DATABASE_URL ||

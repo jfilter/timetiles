@@ -10,6 +10,7 @@ export default defineConfig({
       "scripts/**/*.{test,spec}.{js,ts,jsx,tsx}",
       "__tests__/**/*.{test,spec}.{js,ts,jsx,tsx}",
       "__tests__/**/*.test.tsx",
+      "app/**/*.{test,spec}.{js,ts,jsx,tsx}",
     ],
     exclude: ["**/node_modules/**"],
     setupFiles: ["__tests__/setup.ts"],
