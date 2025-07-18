@@ -12,6 +12,8 @@ import Users from "./lib/collections/Users";
 import Media from "./lib/collections/Media";
 import LocationCache from "./lib/collections/LocationCache";
 import GeocodingProviders from "./lib/collections/GeocodingProviders";
+import { MainMenu } from "./lib/collections/MainMenu";
+import { Pages } from "./lib/collections/Pages";
 
 // Import job definitions
 import {
@@ -34,10 +36,11 @@ export default buildConfig({
     Media,
     LocationCache,
     GeocodingProviders,
+    Pages,
   ],
-  // globals: [
-  //   GeocodingSettings,
-  // ],
+  globals: [
+    MainMenu,
+  ],
   jobs: {
     tasks: [
       fileParsingJob,
