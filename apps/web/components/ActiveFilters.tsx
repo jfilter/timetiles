@@ -1,13 +1,22 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { FilterLabels, FilterActions } from "../hooks/useFilterManager";
+import type { FilterState } from "../lib/store";
+
+interface FilterLabels {
+  catalog?: string;
+  datasets: Array<{ id: string; name: string }>;
+  dateRange?: string;
+}
 
 interface ActiveFiltersProps {
   labels: FilterLabels;
   hasActiveFilters: boolean;
   activeFilterCount: number;
-  actions: FilterActions;
+  actions: {
+    removeFilter: (filterType: keyof FilterState, value?: string) => void;
+    clearAllFilters: () => void;
+  };
 }
 
 export function ActiveFilters({
@@ -21,14 +30,14 @@ export function ActiveFilters({
   }
 
   return (
-    <div className="mb-4 rounded-lg border bg-muted/30 p-3">
+    <div className="bg-muted/30 mb-4 rounded-lg border p-3">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-foreground">
+        <h3 className="text-foreground text-sm font-medium">
           Active Filters ({activeFilterCount})
         </h3>
         <button
           onClick={actions.clearAllFilters}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground text-xs transition-colors"
           aria-label="Clear all filters"
         >
           Clear all
@@ -80,12 +89,12 @@ interface FilterPillProps {
 
 function FilterPill({ label, value, onRemove }: FilterPillProps) {
   return (
-    <div className="inline-flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-sm shadow-sm">
+    <div className="bg-background inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm shadow-sm">
       <span className="text-muted-foreground">{label}:</span>
       <span className="font-medium">{value}</span>
       <button
         onClick={onRemove}
-        className="ml-1 rounded p-0.5 hover:bg-muted transition-colors"
+        className="hover:bg-muted ml-1 rounded p-0.5 transition-colors"
         aria-label={`Remove ${label}: ${value}`}
       >
         <X className="h-3 w-3" />
