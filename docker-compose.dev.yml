@@ -10,6 +10,10 @@ services:
       POSTGRES_USER: timetiles_user
       POSTGRES_PASSWORD: timetiles_password
       POSTGRES_HOST_AUTH_METHOD: trust
+    command: >
+      postgres
+      -c max_locks_per_transaction=256
+      -c log_statement=none
     ports:
       - "5432:5432"
     volumes:

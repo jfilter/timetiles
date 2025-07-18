@@ -241,6 +241,14 @@ const Events: CollectionConfig = {
     },
   ],
   timestamps: true,
+  indexes: [
+    {
+      fields: ["dataset", "eventTimestamp"],
+    },
+    {
+      fields: ["eventTimestamp"],
+    },
+  ],
 };
 
 export default Events;
