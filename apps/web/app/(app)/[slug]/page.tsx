@@ -39,7 +39,7 @@ export default async function Page({ params }: PageProps) {
             <h1 className="mb-8 text-center text-4xl font-bold">
               {page.title}
             </h1>
-            <div className="text-center">
+            <div className="text-left">
               <RichText content={page.content} />
             </div>
           </div>
