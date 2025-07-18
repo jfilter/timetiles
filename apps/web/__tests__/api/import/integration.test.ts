@@ -26,7 +26,7 @@ import path from "path";
 import * as XLSX from "xlsx";
 
 // Mock GeocodingService to avoid real HTTP calls
-vi.mock("../lib/services/geocoding/GeocodingService", () => {
+vi.mock("../../../lib/services/geocoding/GeocodingService", () => {
   return {
     GeocodingService: vi.fn().mockImplementation(() => ({
       geocode: vi.fn().mockImplementation(async (address: string) => {
