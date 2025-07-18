@@ -1,13 +1,16 @@
 import ImportUpload from "../../../components/ImportUpload";
+import { PageLayout } from "../../../components/PageLayout";
 
 export default function ImportPage(): JSX.Element {
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      <PageLayout
+        title="Event Data Import System"
+        maxWidth="4xl"
+        centered={false}
+        contentClassName="text-left"
+      >
         <div className="mb-8 text-center">
-          <h1 className="mb-4 text-4xl font-bold text-gray-900">
-            Event Data Import System
-          </h1>
           <p className="mx-auto max-w-2xl text-lg text-gray-600">
             Upload your event data files (CSV or Excel) and watch them get
             processed, geocoded, and imported into the system with real-time
@@ -150,7 +153,7 @@ export default function ImportPage(): JSX.Element {
             </div>
           </div>
         </div>
-      </div>
+      </PageLayout>
     </div>
   );
 }
