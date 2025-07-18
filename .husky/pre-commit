@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
-# Run linting and TypeScript checking in parallel
-pnpm check
+# Run linting and TypeScript checking sequentially to ensure proper exit codes
+pnpm lint && pnpm typecheck
