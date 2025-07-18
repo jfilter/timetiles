@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, useMemo } from "react";
 import type { Catalog, Dataset, Event } from "../payload-types";
-import { Map } from "./Map";
+import { ClusteredMap } from "./ClusteredMap";
 import { EventsList } from "./EventsList";
 import { ActiveFilters } from "./ActiveFilters";
 import { ChartSection } from "./ChartSection";
@@ -20,6 +20,8 @@ interface MapExplorerProps {
 
 export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
   const [events, setEvents] = useState<Event[]>([]);
+  const [clusters, setClusters] = useState<any[]>([]);
+  const [mapZoom, setMapZoom] = useState(2);
   const [isPending, startTransition] = useTransition();
 
   // Get filter state from URL (nuqs)
@@ -175,14 +177,39 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
         );
       }
 
+      // Add zoom parameter for clustering
+      params.append("zoom", mapZoom.toString());
+
       try {
-        const response = await fetch(`/api/events?${params.toString()}`, {
-          signal: abortController.signal,
-        });
-        if (response.ok && !abortController.signal.aborted) {
-          const data = await response.json();
+        // Fetch clustered data for map
+        const clusterResponse = await fetch(
+          `/api/events/map-clusters?${params.toString()}`,
+          {
+            signal: abortController.signal,
+          },
+        );
+
+        // Also fetch events list for the sidebar
+        const listParams = new URLSearchParams(params);
+        listParams.set("limit", "100"); // Limit list view to 100 items
+        const listResponse = await fetch(
+          `/api/events/list?${listParams.toString()}`,
+          {
+            signal: abortController.signal,
+          },
+        );
+
+        if (
+          clusterResponse.ok &&
+          listResponse.ok &&
+          !abortController.signal.aborted
+        ) {
+          const clusterData = await clusterResponse.json();
+          const listData = await listResponse.json();
+
           startTransition(() => {
-            setEvents(data.docs || []);
+            setClusters(clusterData.features || []);
+            setEvents(listData.events || []);
           });
         }
       } catch (error) {
@@ -203,33 +230,22 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
     filters.startDate,
     filters.endDate,
     debouncedBounds,
+    mapZoom,
   ]);
 
-  const mapEvents = events
-    .filter((event) => event.location?.longitude && event.location?.latitude)
-    .map((event) => {
-      const eventData =
-        typeof event.data === "object" &&
-        event.data !== null &&
-        !Array.isArray(event.data)
-          ? (event.data as Record<string, unknown>)
-          : {};
-
-      return {
-        id: String(event.id),
-        longitude: event.location!.longitude!,
-        latitude: event.location!.latitude!,
-        title: (eventData.title ||
-          eventData.name ||
-          `Event ${event.id}`) as string,
-      };
-    });
+  const handleZoomChange = (zoom: number) => {
+    setMapZoom(Math.round(zoom));
+  };
 
   return (
     <div className="flex h-screen">
       {/* Map - Left Side (Full Height) */}
       <div className="h-full w-1/2 lg:w-2/5">
-        <Map events={mapEvents} onBoundsChange={handleBoundsChange} />
+        <ClusteredMap
+          clusters={clusters}
+          onBoundsChange={handleBoundsChange}
+          onZoomChange={handleZoomChange}
+        />
       </div>
 
       {/* Right Side Container */}
