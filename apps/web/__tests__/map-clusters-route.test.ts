@@ -22,19 +22,49 @@ describe("/api/events/map-clusters", () => {
       data: {
         name: "Test Catalog for Clustering",
         slug: `test-clustering-catalog-${uniqueSuffix}`,
-        description: "Test catalog for clustering integration tests",
+        description: {
+          root: {
+            type: "root",
+            children: [
+              {
+                type: "paragraph",
+                children: [{ type: "text", text: "Test catalog for clustering integration tests", version: 1 }],
+                version: 1,
+              },
+            ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            version: 1,
+          },
+        },
       },
     });
-    testCatalogId = catalog.id;
+    testCatalogId = String(catalog.id);
 
     // Create test dataset
     const dataset = await payload.create({
       collection: "datasets",
       data: {
-        catalog: testCatalogId,
+        catalog: parseInt(testCatalogId),
         name: "Test Dataset for Clustering",
         slug: `test-clustering-dataset-${uniqueSuffix}`,
-        description: "Test dataset for clustering integration tests",
+        description: {
+          root: {
+            type: "root",
+            children: [
+              {
+                type: "paragraph",
+                children: [{ type: "text", text: "Test dataset for clustering integration tests", version: 1 }],
+                version: 1,
+              },
+            ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            version: 1,
+          },
+        },
         language: "en",
         schema: {
           type: "object",
@@ -45,7 +75,7 @@ describe("/api/events/map-clusters", () => {
         },
       },
     });
-    testDatasetId = dataset.id;
+    testDatasetId = String(dataset.id);
 
     // Create test events with various locations
     const testLocations = [
@@ -68,19 +98,19 @@ describe("/api/events/map-clusters", () => {
       const event = await payload.create({
         collection: "events",
         data: {
-          dataset: testDatasetId,
+          dataset: parseInt(testDatasetId),
           data: {
             title: `Test Event ${i + 1}`,
-            description: `Test event for clustering at ${testLocations[i].lat}, ${testLocations[i].lng}`,
+            description: `Test event for clustering at ${testLocations[i]?.lat}, ${testLocations[i]?.lng}`,
           },
           location: {
-            latitude: testLocations[i].lat,
-            longitude: testLocations[i].lng,
+            latitude: testLocations[i]?.lat,
+            longitude: testLocations[i]?.lng,
           },
           eventTimestamp: new Date(2024, 0, i + 1).toISOString(),
         },
       });
-      testEventIds.push(event.id);
+      testEventIds.push(String(event.id));
     }
   });
 
@@ -93,7 +123,7 @@ describe("/api/events/map-clusters", () => {
       try {
         await testEnv.cleanup();
       } catch (error) {
-        console.warn("Cleanup failed:", error.message);
+        console.warn("Cleanup failed:", (error as Error).message);
       }
     }
   });

@@ -56,7 +56,7 @@ export async function createTestDatabase(dbName: string): Promise<void> {
     logger.debug(`Ensured PostGIS extension in test database: ${dbName}`);
     
   } catch (error) {
-    logger.warn(`Failed to set up PostGIS extension in ${dbName}: ${error.message}`);
+    logger.warn(`Failed to set up PostGIS extension in ${dbName}: ${(error as Error).message}`);
     throw error;
   } finally {
     await targetClient.end();

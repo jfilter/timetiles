@@ -22,19 +22,49 @@ describe("/api/events/histogram", () => {
       data: {
         name: "Test Catalog for Histogram",
         slug: `test-histogram-catalog-${uniqueSuffix}`,
-        description: "Test catalog for histogram integration tests",
+        description: {
+          root: {
+            type: "root",
+            children: [
+              {
+                type: "paragraph",
+                children: [{ type: "text", text: "Test catalog for histogram integration tests", version: 1 }],
+                version: 1,
+              },
+            ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            version: 1,
+          },
+        },
       },
     });
-    testCatalogId = catalog.id;
+    testCatalogId = String(catalog.id);
 
     // Create test dataset
     const dataset = await payload.create({
       collection: "datasets",
       data: {
-        catalog: testCatalogId,
+        catalog: catalog.id,
         name: "Test Dataset for Histogram",
         slug: `test-histogram-dataset-${uniqueSuffix}`,
-        description: "Test dataset for histogram integration tests",
+        description: {
+          root: {
+            type: "root",
+            children: [
+              {
+                type: "paragraph",
+                children: [{ type: "text", text: "Test dataset for histogram integration tests", version: 1 }],
+                version: 1,
+              },
+            ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            version: 1,
+          },
+        },
         language: "en",
         schema: {
           type: "object",
@@ -45,7 +75,7 @@ describe("/api/events/histogram", () => {
         },
       },
     });
-    testDatasetId = dataset.id;
+    testDatasetId = String(dataset.id);
 
     // Create test events spread across different dates
     const testDates = [
@@ -70,19 +100,19 @@ describe("/api/events/histogram", () => {
       const event = await payload.create({
         collection: "events",
         data: {
-          dataset: testDatasetId,
+          dataset: parseInt(testDatasetId),
           data: {
             title: `Test Event ${i + 1}`,
-            description: `Test event for histogram on ${testDates[i].toISOString()}`,
+            description: `Test event for histogram on ${testDates[i]?.toISOString()}`,
           },
           location: {
             latitude: 37.7749 + i * 0.01,
             longitude: -122.4194 + i * 0.01,
           },
-          eventTimestamp: testDates[i].toISOString(),
+          eventTimestamp: testDates[i]?.toISOString(),
         },
       });
-      testEventIds.push(event.id);
+      testEventIds.push(String(event.id));
     }
   });
 
@@ -95,7 +125,7 @@ describe("/api/events/histogram", () => {
       try {
         await testEnv.cleanup();
       } catch (error) {
-        console.warn("Cleanup failed:", error.message);
+        console.warn("Cleanup failed:", (error as Error).message);
       }
     }
   });
