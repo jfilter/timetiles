@@ -2,6 +2,7 @@ import { getPayload } from 'payload';
 import { sql } from '@payloadcms/db-postgres';
 import fs from 'fs/promises';
 import path from 'path';
+import config from '../payload.config';
 
 async function checkEnvironmentVariables() {
   const requiredVars = ['PAYLOAD_SECRET', 'DATABASE_URL'];
@@ -24,7 +25,7 @@ async function checkUploadsDirectory() {
 
 async function checkGeocodingService() {
   try {
-    const payload = await getPayload();
+    const payload = await getPayload({ config });
     const providers = await payload.find({
       collection: 'geocoding-providers',
       where: { enabled: { equals: true } },
@@ -44,7 +45,7 @@ async function checkGeocodingService() {
 
 async function checkPayloadCMS() {
   try {
-    const payload = await getPayload();
+    const payload = await getPayload({ config });
     await payload.find({ collection: 'users', limit: 1 });
     return { status: 'ok' };
   } catch (error) {
@@ -53,7 +54,7 @@ async function checkPayloadCMS() {
 }
 
 async function checkMigrations() {
-  const payload = await getPayload();
+  const payload = await getPayload({ config });
   const migrationsDir = path.resolve(__dirname, '../migrations');
   const migrationFiles = await fs.readdir(migrationsDir);
   const executedMigrations = await payload.find({
@@ -72,13 +73,13 @@ async function checkMigrations() {
 }
 
 async function checkPostGIS() {
-  const payload = await getPayload();
+  const payload = await getPayload({ config });
   try {
     const postgisCheck = await payload.db.drizzle.execute(
       sql`SELECT 1 FROM pg_extension WHERE extname = 'postgis'`
     );
     return {
-      status: postgisCheck.rowCount > 0 ? 'ok' : 'not found',
+      status: (postgisCheck as any).rowCount > 0 ? 'ok' : 'not found',
     };
   } catch (error) {
     return { status: 'error', message: (error as Error).message };

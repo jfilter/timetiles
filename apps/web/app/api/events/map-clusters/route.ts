@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         `);
         functionExists = functionCheck.rows[0]?.exists;
       } catch (error) {
-        console.warn("Function check failed, using fallback query:", error.message);
+        console.warn("Function check failed, using fallback query:", (error as Error).message);
         functionExists = false;
       }
     }
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
           ${zoom}::integer,
           ${JSON.stringify({
             catalogId: catalog ? parseInt(catalog) : undefined,
-            datasetId: datasets.length === 1 ? parseInt(datasets[0]) : undefined,
+            datasetId: datasets.length === 1 && datasets[0] ? parseInt(datasets[0]) : undefined,
             startDate,
             endDate,
           })}::jsonb
@@ -138,11 +138,11 @@ export async function GET(request: NextRequest) {
       features: clusters,
     });
   } catch (error) {
-    console.error("Error fetching map clusters:", error);
-    console.error("Error details:", error.message);
-    console.error("Error stack:", error.stack);
+    console.error("Error fetching map clusters:", (error as Error));
+    console.error("Error details:", (error as Error).message);
+    console.error("Error stack:", (error as any).stack);
     return NextResponse.json(
-      { error: "Failed to fetch map clusters", details: error.message },
+      { error: "Failed to fetch map clusters", details: (error as Error).message },
       { status: 500 },
     );
   }

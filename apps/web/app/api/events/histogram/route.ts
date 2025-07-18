@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         `);
         functionExists = functionCheck.rows[0]?.exists;
       } catch (error) {
-        console.warn("Function check failed, using fallback query:", error.message);
+        console.warn("Function check failed, using fallback query:", (error as Error).message);
         functionExists = false;
       }
     }
