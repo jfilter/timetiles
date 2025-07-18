@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { GET } from "../app/api/events/map-clusters/route";
+import { GET } from "../../../app/api/events/map-clusters/route";
 import { NextRequest } from "next/server";
 
 describe("Debug /api/events/map-clusters", () => {

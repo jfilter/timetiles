@@ -9,9 +9,9 @@ import {
   afterEach,
 } from "vitest";
 import { NextRequest } from "next/server";
-import { POST as uploadHandler, GET as uploadHealthCheck } from "../app/(app)/api/import/upload/route";
-import { GET as progressHandler } from "../app/(app)/api/import/[importId]/progress/route";
-import { createIsolatedTestEnvironment } from "./test-helpers";
+import { POST as uploadHandler, GET as uploadHealthCheck } from "../../../app/(app)/api/import/upload/route";
+import { GET as progressHandler } from "../../../app/(app)/api/import/[importId]/progress/route";
+import { createIsolatedTestEnvironment } from "../../test-helpers";
 
 // Store the payload instance globally for test API routes to use
 declare global {
@@ -423,7 +423,7 @@ describe.sequential("Import API Endpoints", () => {
     it("should enforce rate limits for unauthenticated users", async () => {
       // Test rate limiting behavior by directly testing the service
       const { RateLimitService, RATE_LIMITS } = await import(
-        "../lib/services/RateLimitService"
+        "../../../lib/services/RateLimitService"
       );
       const rateLimitService = new RateLimitService(payload);
 

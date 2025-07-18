@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import type { Payload } from "payload";
-import { GET } from "../app/api/events/histogram/route";
+import { GET } from "../../../app/api/events/histogram/route";
 import { NextRequest } from "next/server";
 
 describe("/api/events/histogram", () => {
@@ -12,7 +12,7 @@ describe("/api/events/histogram", () => {
   const uniqueSuffix = Date.now().toString();
 
   beforeAll(async () => {
-    const { createIsolatedTestEnvironment } = await import("./test-helpers");
+    const { createIsolatedTestEnvironment } = await import("../../test-helpers");
     testEnv = await createIsolatedTestEnvironment();
     payload = testEnv.payload;
 

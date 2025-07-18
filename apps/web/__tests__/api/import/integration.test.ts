@@ -8,10 +8,10 @@ import {
   beforeEach,
   afterEach,
 } from "vitest";
-import { createIsolatedTestEnvironment } from "./test-helpers";
+import { createIsolatedTestEnvironment } from "../../test-helpers";
 import { NextRequest } from "next/server";
-import { POST as uploadHandler } from "../app/(app)/api/import/upload/route";
-import { GET as progressHandler } from "../app/(app)/api/import/[importId]/progress/route";
+import { POST as uploadHandler } from "../../../app/(app)/api/import/upload/route";
+import { GET as progressHandler } from "../../../app/(app)/api/import/[importId]/progress/route";
 
 import { getPayload } from "payload";
 import {
@@ -19,8 +19,8 @@ import {
   batchProcessingJob,
   eventCreationJob,
   geocodingBatchJob,
-} from "../lib/jobs/import-jobs";
-import { GeocodingService } from "../lib/services/geocoding/GeocodingService";
+} from "../../../lib/jobs/import-jobs";
+import { GeocodingService } from "../../../lib/services/geocoding/GeocodingService";
 import fs from "fs";
 import path from "path";
 import * as XLSX from "xlsx";
