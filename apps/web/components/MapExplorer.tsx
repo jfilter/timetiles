@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useMemo } from "react";
 import type { Catalog, Dataset, Event } from "../payload-types";
 import { Map } from "./Map";
 import { EventsList } from "./EventsList";
@@ -10,6 +10,7 @@ import { FilterDrawer } from "./FilterDrawer";
 import { ExploreHeader } from "./ExploreHeader";
 import { useUIStore } from "../lib/store";
 import { useFilters } from "../lib/filters";
+import { useDebounce } from "../lib/hooks/useDebounce";
 import type { LngLatBounds } from "maplibre-gl";
 
 interface MapExplorerProps {
@@ -83,14 +84,33 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
   };
 
   // Convert mapBounds to LngLatBounds format for compatibility
-  const bounds: LngLatBounds | null = mapBounds
-    ? ({
-        getNorth: () => mapBounds.north,
-        getSouth: () => mapBounds.south,
-        getEast: () => mapBounds.east,
-        getWest: () => mapBounds.west,
-      } as LngLatBounds)
-    : null;
+  // Memoize bounds to prevent object recreation on every render
+  const bounds: LngLatBounds | null = useMemo(() => {
+    if (!mapBounds) return null;
+
+    return {
+      getNorth: () => mapBounds.north,
+      getSouth: () => mapBounds.south,
+      getEast: () => mapBounds.east,
+      getWest: () => mapBounds.west,
+    } as LngLatBounds;
+  }, [mapBounds?.north, mapBounds?.south, mapBounds?.east, mapBounds?.west]);
+
+  // Create a stable bounds key for comparison
+  const boundsKey = useMemo(() => {
+    if (!bounds) return null;
+    return `${bounds.getNorth()}-${bounds.getSouth()}-${bounds.getEast()}-${bounds.getWest()}`;
+  }, [bounds]);
+
+  // Debounce bounds changes to avoid excessive API calls during map interaction
+  // Wait 300ms after user stops panning/zooming before making API call
+  const debouncedBoundsKey = useDebounce(boundsKey, 300);
+
+  // Get the actual bounds object when the debounced key changes
+  const debouncedBounds = useMemo(() => {
+    if (!debouncedBoundsKey || !bounds) return null;
+    return bounds;
+  }, [debouncedBoundsKey, bounds]);
 
   const handleBoundsChange = (newBounds: LngLatBounds | null) => {
     if (newBounds) {
@@ -110,6 +130,21 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
     const abortController = new AbortController();
 
     const fetchEvents = async () => {
+      // Debug logging to verify deduplication is working
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          "Fetching events with bounds:",
+          debouncedBounds
+            ? {
+                north: debouncedBounds.getNorth(),
+                south: debouncedBounds.getSouth(),
+                east: debouncedBounds.getEast(),
+                west: debouncedBounds.getWest(),
+              }
+            : null,
+        );
+      }
+
       const params = new URLSearchParams();
 
       if (filters.catalog) {
@@ -128,14 +163,14 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
         params.append("endDate", filters.endDate);
       }
 
-      if (bounds) {
+      if (debouncedBounds) {
         params.append(
           "bounds",
           JSON.stringify({
-            west: bounds.getWest(),
-            south: bounds.getSouth(),
-            east: bounds.getEast(),
-            north: bounds.getNorth(),
+            west: debouncedBounds.getWest(),
+            south: debouncedBounds.getSouth(),
+            east: debouncedBounds.getEast(),
+            north: debouncedBounds.getNorth(),
           }),
         );
       }
@@ -167,7 +202,7 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
     filters.datasets,
     filters.startDate,
     filters.endDate,
-    bounds,
+    debouncedBounds,
   ]);
 
   const mapEvents = events
