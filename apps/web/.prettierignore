@@ -1,0 +1,19 @@
+# Build outputs
+.next/
+dist/
+build/
+
+# Test outputs
+coverage/
+test-results/
+playwright-report/
+
+# Generated files
+payload-generated-schema.ts
+payload-types.ts
+
+# Uploads directory
+uploads/
+
+# Documentation
+docs/
