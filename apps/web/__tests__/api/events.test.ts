@@ -651,6 +651,37 @@ describe.sequential("Events API Route", () => {
     expect(eventTitles).toContain("Test Event");
   });
 
+  test("reproduces the bounds filtering 500 error", async () => {
+    // Create real test data
+    const catalog = await createTestCatalog("Test Catalog");
+    const dataset = await createTestDataset("Test Dataset", catalog);
+
+    const event = await createTestEvent(
+      { title: "Test Event" },
+      { longitude: 13.405, latitude: 52.52 },
+      dataset,
+    );
+
+    // Test with the exact bounds that are causing the 500 error
+    const bounds = JSON.stringify({
+      west: 0.024697730639729798,
+      south: 46.17975316743707,
+      east: 18.36849798182675,
+      north: 55.06069375978734,
+    });
+
+    const url = new URL(
+      `http://localhost:3000/api/events?bounds=${encodeURIComponent(bounds)}`,
+    );
+    const request = new NextRequest(url);
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.docs).toHaveLength(1);
+    expect(data.totalDocs).toBe(1);
+  });
+
   test("tests date filtering with data fields", async () => {
     // Create real test data with dates in the data field
     const catalog = await createTestCatalog("Test Catalog");

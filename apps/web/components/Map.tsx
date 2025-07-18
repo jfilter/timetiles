@@ -22,27 +22,40 @@ export function Map({ onBoundsChange, events = [] }: MapProps) {
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    map.current = new maplibregl.Map({
-      container: mapContainer.current,
-      style: "https://tiles.versatiles.org/assets/styles/colorful/style.json",
-      center: [0, 40],
-      zoom: 2,
-    });
+    try {
+      map.current = new maplibregl.Map({
+        container: mapContainer.current,
+        style: "https://tiles.versatiles.org/assets/styles/colorful/style.json",
+        center: [0, 40],
+        zoom: 2,
+      });
 
-    map.current.on("load", () => {
-      setIsLoaded(true);
-    });
+      map.current.on("load", () => {
+        setIsLoaded(true);
+      });
 
-    map.current.on("moveend", () => {
-      if (map.current && onBoundsChange) {
-        onBoundsChange(map.current.getBounds());
-      }
-    });
+      map.current.on("error", (e) => {
+        console.error("Map error:", e);
+      });
+
+      map.current.on("webglcontextlost", (e: any) => {
+        e.preventDefault();
+      });
+
+      map.current.on("moveend", () => {
+        if (map.current && onBoundsChange) {
+          onBoundsChange(map.current.getBounds());
+        }
+      });
+    } catch (error) {
+      console.error("Failed to initialize map:", error);
+    }
 
     return () => {
       map.current?.remove();
+      map.current = null;
     };
-  }, [onBoundsChange]);
+  }, []); // Remove onBoundsChange dependency to prevent constant rebuilds
 
   useEffect(() => {
     if (!map.current || !isLoaded) return;
@@ -73,6 +86,7 @@ export function Map({ onBoundsChange, events = [] }: MapProps) {
       className="h-full w-full"
       role="region"
       aria-label="Map"
+      style={{ minHeight: "400px" }}
     />
   );
 }
