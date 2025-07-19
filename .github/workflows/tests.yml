@@ -46,7 +46,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "pnpm"
 
       - run: pnpm install
@@ -81,7 +81,7 @@ jobs:
           PGPASSWORD: timetiles_password
 
       - name: Build project
-        run: pnpm build
+        run: NODE_OPTIONS="--experimental-strip-types" pnpm build
         env:
           DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
           PAYLOAD_SECRET: test-secret-key
@@ -94,7 +94,7 @@ jobs:
         working-directory: apps/web
 
       - name: Run main test suite
-        run: pnpm test:verbose
+        run: NODE_OPTIONS="--experimental-strip-types" pnpm test:verbose
         working-directory: apps/web
 
       - name: Install Playwright browsers
