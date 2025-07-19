@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import fs from "fs";
 import { dropTestDatabase } from "./database-setup";
+import { verifyDatabaseSchema, waitForMigrations } from "./verify-schema";
 import { migrations } from "@/migrations";
 import Catalogs from "@/lib/collections/Catalogs";
 import Datasets from "@/lib/collections/Datasets";
@@ -41,8 +42,10 @@ export async function createIsolatedTestEnvironment(): Promise<{
   }
 
   // Create unique database
+  console.log(`[TEST-HELPER] Creating isolated test database: ${dbName}`);
   const { createTestDatabase } = await import("./database-setup");
   await createTestDatabase(dbName);
+  console.log(`[TEST-HELPER] Isolated test database created: ${dbName}`);
 
   // Initialize Payload with isolated database using environment override
   const originalDbUrl = process.env.DATABASE_URL;
@@ -94,15 +97,27 @@ export async function createIsolatedTestEnvironment(): Promise<{
     editor: lexicalEditor({}),
   });
 
+  console.log(`[TEST-HELPER] Initializing Payload for isolated test...`);
   const payload = await getPayload({ config: testConfig });
-  // console.log(`Initialized Payload for test with DB: ${dbName}`);
+  console.log(`[TEST-HELPER] Payload initialized for test with DB: ${dbName}`);
 
   // Force migrations to run
   try {
+    console.log(`[TEST-HELPER] Running migrations for isolated test database...`);
     await payload.db.migrate();
-    console.log(`Successfully ran migrations for test database: ${dbName}`);
+    console.log(`[TEST-HELPER] Successfully ran migrations for test database: ${dbName}`);
+    
+    // Wait for migrations to be recorded and verify schema
+    console.log(`[TEST-HELPER] Waiting for migrations to complete...`);
+    await waitForMigrations(dbUrl, 10000);
+    
+    console.log(`[TEST-HELPER] Verifying database schema...`);
+    await verifyDatabaseSchema(dbUrl);
+    console.log(`[TEST-HELPER] Database schema verified successfully`);
   } catch (error) {
-    console.warn(`Migration warning for ${dbName}:`, (error as Error).message);
+    console.error(`Migration FAILED for ${dbName}:`, error);
+    // Re-throw the error to fail the test
+    throw error;
   }
 
   // Restore original environment variables

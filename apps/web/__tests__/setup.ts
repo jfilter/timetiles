@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import fs from "fs";
 
 import { createTestDatabase } from "./database-setup";
+import { verifyDatabaseSchema, waitForMigrations } from "./verify-schema";
 
 // Set test environment
 if (!process.env.NODE_ENV) {
@@ -23,9 +24,11 @@ process.env.TEMP_DIR = tempDir;
 
 // Global setup to ensure clean test environment
 beforeAll(async () => {
-  console.log(`Setting up test environment for worker ${workerId}`);
-  console.log(`Test database: ${testDbName}`);
-  console.log(`DATABASE_URL: ${dbUrl}`);
+  console.log(`[SETUP] Setting up test environment for worker ${workerId}`);
+  console.log(`[SETUP] Test database: ${testDbName}`);
+  console.log(`[SETUP] DATABASE_URL: ${dbUrl}`);
+  console.log(`[SETUP] NODE_ENV: ${process.env.NODE_ENV}`);
+  console.log(`[SETUP] CI: ${process.env.CI}`);
   
   // Ensure temp directory exists
   if (!fs.existsSync(tempDir)) {
@@ -33,7 +36,9 @@ beforeAll(async () => {
   }
 
   // Create test database if it doesn't exist (includes PostGIS setup)
+  console.log(`[SETUP] Creating test database: ${testDbName}`);
   await createTestDatabase(testDbName);
+  console.log(`[SETUP] Test database created successfully: ${testDbName}`);
   
   // Run migrations to ensure database schema is up to date
   try {
@@ -96,12 +101,25 @@ beforeAll(async () => {
       editor: lexicalEditor({}),
     });
     
+    console.log(`[SETUP] Initializing Payload for migrations...`);
     const payload = await getPayload({ config: testConfig });
+    
+    console.log(`[SETUP] Running migrations...`);
     await payload.db.migrate();
-    console.log(`Successfully ran migrations for global test setup: ${testDbName}`);
+    console.log(`[SETUP] Successfully ran migrations for global test setup: ${testDbName}`);
+    
+    // Wait for migrations to be recorded and verify schema
+    console.log(`[SETUP] Waiting for migrations to complete...`);
+    await waitForMigrations(dbUrl, 10000);
+    
+    console.log(`[SETUP] Verifying database schema...`);
+    await verifyDatabaseSchema(dbUrl);
+    console.log(`[SETUP] Database schema verified successfully`);
   } catch (error) {
-    console.warn(`Migration warning for global setup ${testDbName}:`, (error as Error).message);
+    console.error(`Migration FAILED for global setup ${testDbName}:`, error);
+    // Re-throw the error to fail the test setup
+    throw error;
   }
   
-  console.log(`Test environment setup complete for worker ${workerId}`);
+  console.log(`[SETUP] Test environment setup complete for worker ${workerId}`);
 });
