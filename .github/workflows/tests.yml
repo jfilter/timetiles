@@ -55,6 +55,8 @@ jobs:
         run: |
           # Create main database for build step
           psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles;"
+          psql -h localhost -U timetiles_user -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+          psql -h localhost -U timetiles_user -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
           psql -h localhost -U timetiles_user -d timetiles -c "CREATE SCHEMA IF NOT EXISTS payload;"
         env:
           PGPASSWORD: timetiles_password
@@ -71,6 +73,8 @@ jobs:
           # Create multiple isolated databases for parallel test workers
           for i in {1..4}; do
             psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles_test_$i;"
+            psql -h localhost -U timetiles_user -d timetiles_test_$i -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+            psql -h localhost -U timetiles_user -d timetiles_test_$i -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
             psql -h localhost -U timetiles_user -d timetiles_test_$i -c "CREATE SCHEMA IF NOT EXISTS payload;"
           done
         env:
