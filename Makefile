@@ -24,6 +24,15 @@ db-reset:
 db-shell:
 	docker exec -it timetiles-postgres psql -U timetiles_user -d timetiles
 
+# Execute SQL query non-interactively
+db-query:
+	@if [ -z "$(SQL)" ]; then \
+		echo "Usage: make db-query SQL='SELECT * FROM your_table'"; \
+		echo "Example: make db-query SQL='SELECT COUNT(*) FROM events'"; \
+		exit 1; \
+	fi
+	@docker exec timetiles-postgres psql -U timetiles_user -d timetiles -c "$(SQL)"
+
 # Clean up everything (containers, volumes, networks)
 clean:
 	docker compose -f docker-compose.dev.yml down -v --remove-orphans
@@ -99,4 +108,5 @@ help:
 	@echo "  logs        - View container logs"
 	@echo "  db-reset    - Reset database (removes all data)"
 	@echo "  db-shell    - Open PostgreSQL shell"
+	@echo "  db-query    - Execute SQL query (usage: make db-query SQL='SELECT ...')"
 	@echo "  clean       - Clean up everything"
