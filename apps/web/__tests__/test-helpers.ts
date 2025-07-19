@@ -88,7 +88,7 @@ export async function createIsolatedTestEnvironment(): Promise<{
         connectionString: dbUrl,
       },
       schemaName: "payload",
-      push: true, // Disable push mode for tests, use migrations only
+      push: false,
       prodMigrations: migrations,
     }),
     editor: lexicalEditor({}),
@@ -97,7 +97,13 @@ export async function createIsolatedTestEnvironment(): Promise<{
   const payload = await getPayload({ config: testConfig });
   // console.log(`Initialized Payload for test with DB: ${dbName}`);
 
-  // prodMigrations will handle migrations automatically at initialization
+  // Force migrations to run
+  try {
+    await payload.db.migrate();
+    console.log(`Successfully ran migrations for test database: ${dbName}`);
+  } catch (error) {
+    console.warn(`Migration warning for ${dbName}:`, (error as Error).message);
+  }
 
   // Restore original environment variables
   if (originalDbUrl) {
@@ -117,7 +123,7 @@ export async function createIsolatedTestEnvironment(): Promise<{
   // Import the real SeedManager class
   const { SeedManager } = await import("../lib/seed/index");
   const seedManager = new SeedManager();
-  
+
   // Override the initialize method to use the isolated payload instance
   const originalInitialize = seedManager.initialize.bind(seedManager);
   seedManager.initialize = async () => {
