@@ -70,24 +70,42 @@ export async function waitForMigrations(connectionString: string, timeout = 3000
     
     while (Date.now() - startTime < timeout) {
       try {
-        // Check if migrations table exists and has entries
+        // First check if the migrations table exists
+        const tableCheck = await client.query(`
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'payload' 
+            AND table_name = 'payload_migrations'
+          )
+        `);
+        
+        if (!tableCheck.rows[0].exists) {
+          console.log(`[VERIFY] Migrations table doesn't exist yet, waiting...`);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          continue;
+        }
+        
+        // Check if migrations table has entries
         const result = await client.query(`
           SELECT COUNT(*) as count 
           FROM payload.payload_migrations
         `);
         
         const migrationCount = parseInt(result.rows[0].count);
+        console.log(`[VERIFY] Current migration count: ${migrationCount}`);
+        
+        // In test mode, we expect at least the initial migration
         if (migrationCount > 0) {
           console.log(`[VERIFY] Found ${migrationCount} completed migrations`);
           return;
         }
       } catch (error) {
-        // Table might not exist yet
-        console.log(`[VERIFY] Waiting for migrations table...`);
+        // Log the actual error
+        console.log(`[VERIFY] Error checking migrations:`, error);
       }
       
       // Wait a bit before checking again
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
     
     throw new Error(`Timed out waiting for migrations after ${timeout}ms`);

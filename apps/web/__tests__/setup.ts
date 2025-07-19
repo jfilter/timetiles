@@ -108,10 +108,8 @@ beforeAll(async () => {
     await payload.db.migrate();
     console.log(`[SETUP] Successfully ran migrations for global test setup: ${testDbName}`);
     
-    // Wait for migrations to be recorded and verify schema
-    console.log(`[SETUP] Waiting for migrations to complete...`);
-    await waitForMigrations(dbUrl, 10000);
-    
+    // In test environments, Payload might handle migrations differently
+    // Let's just verify the schema directly without waiting for migration records
     console.log(`[SETUP] Verifying database schema...`);
     await verifyDatabaseSchema(dbUrl);
     console.log(`[SETUP] Database schema verified successfully`);

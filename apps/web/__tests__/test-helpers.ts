@@ -32,20 +32,31 @@ export async function createIsolatedTestEnvironment(): Promise<{
 }> {
   const testId = randomUUID();
   const workerId = process.env.VITEST_WORKER_ID || "1";
-  const dbName = `timetiles_test_${workerId}_${testId.replace(/-/g, "_")}`;
+  
+  // In CI, use the pre-created databases to avoid migration issues
+  const isCI = process.env.CI === 'true';
+  const dbName = isCI 
+    ? `timetiles_test_${workerId}` 
+    : `timetiles_test_${workerId}_${testId.replace(/-/g, "_")}`;
   const dbUrl = `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
   const tempDir = `/tmp/timetiles-test-${workerId}-${testId}`;
+
+  console.log(`[TEST-HELPER] Test environment - CI: ${isCI}, Worker: ${workerId}, DB: ${dbName}`);
 
   // Create unique temp directory for this test
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
   }
 
-  // Create unique database
-  console.log(`[TEST-HELPER] Creating isolated test database: ${dbName}`);
-  const { createTestDatabase } = await import("./database-setup");
-  await createTestDatabase(dbName);
-  console.log(`[TEST-HELPER] Isolated test database created: ${dbName}`);
+  // Only create database if not in CI (CI pre-creates them)
+  if (!isCI) {
+    console.log(`[TEST-HELPER] Creating isolated test database: ${dbName}`);
+    const { createTestDatabase } = await import("./database-setup");
+    await createTestDatabase(dbName);
+    console.log(`[TEST-HELPER] Isolated test database created: ${dbName}`);
+  } else {
+    console.log(`[TEST-HELPER] Using pre-created CI database: ${dbName}`);
+  }
 
   // Initialize Payload with isolated database using environment override
   const originalDbUrl = process.env.DATABASE_URL;
@@ -101,23 +112,29 @@ export async function createIsolatedTestEnvironment(): Promise<{
   const payload = await getPayload({ config: testConfig });
   console.log(`[TEST-HELPER] Payload initialized for test with DB: ${dbName}`);
 
-  // Force migrations to run
-  try {
-    console.log(`[TEST-HELPER] Running migrations for isolated test database...`);
-    await payload.db.migrate();
-    console.log(`[TEST-HELPER] Successfully ran migrations for test database: ${dbName}`);
-    
-    // Wait for migrations to be recorded and verify schema
-    console.log(`[TEST-HELPER] Waiting for migrations to complete...`);
-    await waitForMigrations(dbUrl, 10000);
-    
-    console.log(`[TEST-HELPER] Verifying database schema...`);
+  // Force migrations to run (only if not in CI, as CI already has migrations)
+  if (!isCI) {
+    try {
+      console.log(`[TEST-HELPER] Running migrations for isolated test database...`);
+      const migrationResult = await payload.db.migrate();
+      console.log(`[TEST-HELPER] Migration result:`, migrationResult);
+      console.log(`[TEST-HELPER] Successfully ran migrations for test database: ${dbName}`);
+      
+      // In test environments, Payload might handle migrations differently
+      // Let's just verify the schema directly without waiting for migration records
+      console.log(`[TEST-HELPER] Verifying database schema...`);
+      await verifyDatabaseSchema(dbUrl);
+      console.log(`[TEST-HELPER] Database schema verified successfully`);
+    } catch (error) {
+      console.error(`Migration FAILED for ${dbName}:`, error);
+      // Re-throw the error to fail the test
+      throw error;
+    }
+  } else {
+    // In CI, just verify the schema exists from global setup
+    console.log(`[TEST-HELPER] Verifying pre-migrated CI database schema...`);
     await verifyDatabaseSchema(dbUrl);
-    console.log(`[TEST-HELPER] Database schema verified successfully`);
-  } catch (error) {
-    console.error(`Migration FAILED for ${dbName}:`, error);
-    // Re-throw the error to fail the test
-    throw error;
+    console.log(`[TEST-HELPER] CI database schema verified successfully`);
   }
 
   // Restore original environment variables
