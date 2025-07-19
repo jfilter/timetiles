@@ -35,5 +35,73 @@ beforeAll(async () => {
   // Create test database if it doesn't exist (includes PostGIS setup)
   await createTestDatabase(testDbName);
   
+  // Run migrations to ensure database schema is up to date
+  try {
+    const { getPayload, buildConfig } = await import("payload");
+    const { postgresAdapter } = await import("@payloadcms/db-postgres");
+    const { lexicalEditor } = await import("@payloadcms/richtext-lexical");
+    const { migrations } = await import("../migrations");
+    
+    // Import all collections to ensure proper migration
+    const Catalogs = (await import("../lib/collections/Catalogs")).default;
+    const Datasets = (await import("../lib/collections/Datasets")).default;
+    const Imports = (await import("../lib/collections/Imports")).default;
+    const Events = (await import("../lib/collections/Events")).default;
+    const Users = (await import("../lib/collections/Users")).default;
+    const Media = (await import("../lib/collections/Media")).default;
+    const LocationCache = (await import("../lib/collections/LocationCache")).default;
+    const GeocodingProviders = (await import("../lib/collections/GeocodingProviders")).default;
+    const { Pages } = await import("../lib/collections/Pages");
+    const { MainMenu } = await import("../lib/collections/MainMenu");
+    const {
+      fileParsingJob,
+      batchProcessingJob,
+      eventCreationJob,
+      geocodingBatchJob,
+    } = await import("../lib/jobs/import-jobs");
+    
+    const testConfig = buildConfig({
+      secret: process.env.PAYLOAD_SECRET || "test-secret-key",
+      admin: {
+        user: Users.slug,
+      },
+      collections: [
+        Catalogs,
+        Datasets,
+        Imports,
+        Events,
+        Users,
+        Media,
+        LocationCache,
+        GeocodingProviders,
+        Pages,
+      ],
+      globals: [MainMenu],
+      jobs: {
+        tasks: [
+          fileParsingJob,
+          batchProcessingJob,
+          eventCreationJob,
+          geocodingBatchJob,
+        ],
+      },
+      db: postgresAdapter({
+        pool: {
+          connectionString: dbUrl,
+        },
+        schemaName: "payload",
+        push: false,
+        prodMigrations: migrations,
+      }),
+      editor: lexicalEditor({}),
+    });
+    
+    const payload = await getPayload({ config: testConfig });
+    await payload.db.migrate();
+    console.log(`Successfully ran migrations for global test setup: ${testDbName}`);
+  } catch (error) {
+    console.warn(`Migration warning for global setup ${testDbName}:`, (error as Error).message);
+  }
+  
   console.log(`Test environment setup complete for worker ${workerId}`);
 });
