@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
     } else {
       // Use the histogram function
       const filtersWithBounds = {
-        catalog: catalog ? parseInt(catalog) : undefined,
+        catalogId: catalog ? parseInt(catalog) : undefined,
         datasets: datasets.length > 0 ? datasets.map(d => parseInt(d)) : undefined,
         startDate,
         endDate,
