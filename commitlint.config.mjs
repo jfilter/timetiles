@@ -46,7 +46,7 @@ export default {
       ],
     ],
     'scope-enum': [
-      1,
+      2,
       'always',
       [
         // Apps & Packages
