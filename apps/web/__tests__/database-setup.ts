@@ -53,7 +53,12 @@ export async function createTestDatabase(dbName: string): Promise<void> {
     
     // Create PostGIS extension if it doesn't exist
     await targetClient.query(`CREATE EXTENSION IF NOT EXISTS postgis`);
-    logger.debug(`Ensured PostGIS extension in test database: ${dbName}`);
+    await targetClient.query(`CREATE EXTENSION IF NOT EXISTS postgis_topology`);
+    
+    // Create the payload schema
+    await targetClient.query(`CREATE SCHEMA IF NOT EXISTS payload`);
+    
+    logger.debug(`Ensured PostGIS extensions and payload schema in test database: ${dbName}`);
     
   } catch (error) {
     logger.warn(`Failed to set up PostGIS extension in ${dbName}: ${(error as Error).message}`);
@@ -137,6 +142,7 @@ export async function dropTestDatabase(dbName: string): Promise<void> {
     await client.end();
   }
 }
+
 
 /**
  * Extract database name from connection URL
