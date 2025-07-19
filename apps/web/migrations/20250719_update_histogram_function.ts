@@ -1,8 +1,13 @@
 import { type MigrateUpArgs, type MigrateDownArgs, sql } from '@payloadcms/db-postgres'
 
 export async function up({ db }: MigrateUpArgs): Promise<void> {
+  // Drop the existing function first to avoid return type conflicts
   await db.execute(sql`
-    CREATE OR REPLACE FUNCTION calculate_event_histogram(
+    DROP FUNCTION IF EXISTS calculate_event_histogram(text, jsonb);
+  `);
+  
+  await db.execute(sql`
+    CREATE FUNCTION calculate_event_histogram(
       p_interval text, -- 'hour', 'day', 'week', 'month', 'year'
       p_filters jsonb DEFAULT '{}'::jsonb
     ) RETURNS TABLE(
