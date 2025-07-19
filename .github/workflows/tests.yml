@@ -51,13 +51,26 @@ jobs:
 
       - run: pnpm install
 
+      - name: Setup build database
+        run: |
+          # Create main database for build step
+          psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles;"
+          psql -h localhost -U timetiles_user -d timetiles -c "CREATE SCHEMA IF NOT EXISTS payload;"
+        env:
+          PGPASSWORD: timetiles_password
+
+      - name: Run migrations for build
+        run: pnpm payload:migrate
+        working-directory: apps/web
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+          PAYLOAD_SECRET: test-secret-key
+
       - name: Create test database pool
         run: |
           # Create multiple isolated databases for parallel test workers
           for i in {1..4}; do
             psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles_test_$i;"
-            psql -h localhost -U timetiles_user -d timetiles_test_$i -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-            psql -h localhost -U timetiles_user -d timetiles_test_$i -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
             psql -h localhost -U timetiles_user -d timetiles_test_$i -c "CREATE SCHEMA IF NOT EXISTS payload;"
           done
         env:
@@ -65,6 +78,9 @@ jobs:
 
       - name: Build project
         run: pnpm build
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+          PAYLOAD_SECRET: test-secret-key
 
       - name: Run linting
         run: pnpm lint
@@ -76,23 +92,6 @@ jobs:
       - name: Run main test suite
         run: pnpm test:verbose
         working-directory: apps/web
-
-      - name: Setup E2E test database
-        run: |
-          # Create main database for E2E tests
-          psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles;"
-          psql -h localhost -U timetiles_user -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-          psql -h localhost -U timetiles_user -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
-          psql -h localhost -U timetiles_user -d timetiles -c "CREATE SCHEMA IF NOT EXISTS payload;"
-        env:
-          PGPASSWORD: timetiles_password
-
-      - name: Run migrations for E2E tests
-        run: pnpm payload:migrate
-        working-directory: apps/web
-        env:
-          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
-          PAYLOAD_SECRET: test-secret-key
 
       - name: Install Playwright browsers
         run: pnpm playwright install chromium --with-deps
