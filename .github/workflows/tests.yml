@@ -101,6 +101,27 @@ jobs:
         run: pnpm playwright install chromium --with-deps
         working-directory: apps/web
 
+      - name: Seed database for E2E tests
+        run: pnpm seed
+        working-directory: apps/web
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+          PAYLOAD_SECRET: test-secret-key
+
+      - name: Start production server
+        run: |
+          # Start the production server in the background
+          pnpm start &
+          # Store the PID
+          echo $! > .server.pid
+          # Wait for server to be ready
+          npx wait-on http://localhost:3000 --timeout 60000
+        working-directory: apps/web
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+          PAYLOAD_SECRET: test-secret-key
+          NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
+
       - name: Run E2E tests
         run: pnpm test:e2e
         working-directory: apps/web
@@ -108,6 +129,15 @@ jobs:
           DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
           PAYLOAD_SECRET: test-secret-key
           NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
+
+      - name: Stop production server
+        if: always()
+        run: |
+          if [ -f .server.pid ]; then
+            kill $(cat .server.pid) || true
+            rm .server.pid
+          fi
+        working-directory: apps/web
 
       - name: Upload E2E test report
         uses: actions/upload-artifact@v4
