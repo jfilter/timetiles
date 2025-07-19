@@ -100,8 +100,8 @@ export async function GET(request: NextRequest) {
           COALESCE(data->>'title', data->>'name', 'Event ' || id) as event_title
         FROM payload.events
         WHERE
-          location_longitude BETWEEN ${bounds.west} AND ${bounds.east}
-          AND location_latitude BETWEEN ${bounds.south} AND ${bounds.north}
+          location_longitude BETWEEN ${bounds.west}::double precision AND ${bounds.east}::double precision
+          AND location_latitude BETWEEN ${bounds.south}::double precision AND ${bounds.north}::double precision
           AND location_longitude IS NOT NULL
           AND location_latitude IS NOT NULL
           ${catalog ? sql`AND dataset_id IN (SELECT id FROM payload.datasets WHERE catalog_id = ${parseInt(catalog)})` : sql``}
