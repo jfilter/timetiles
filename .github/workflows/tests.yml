@@ -102,11 +102,17 @@ jobs:
         working-directory: apps/web
 
       - name: Seed database for E2E tests
-        run: pnpm seed
+        run: |
+          echo "Running migrations before seeding..."
+          pnpm payload:migrate
+          echo "Seeding database..."
+          pnpm seed
         working-directory: apps/web
         env:
           DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
           PAYLOAD_SECRET: test-secret-key
+          PAYLOAD_CONFIG_PATH: ./payload.config.ts
+          LOG_LEVEL: info
 
       - name: Start production server
         run: |
@@ -132,7 +138,8 @@ jobs:
           fi
           echo "Server process is running"
           # Wait for server to be ready - check the API health endpoint instead
-          npx wait-on http://localhost:3000/api/health --timeout 60000 --interval 1000 --verbose --httpTimeout 30000
+          # Use http-get to avoid HEAD request issues
+          npx wait-on http-get://localhost:3000/api/health --timeout 60000 --interval 1000 --verbose --httpTimeout 30000
           # Additional check to ensure server is responding
           echo "Checking server health..."
           curl -v http://localhost:3000/api/health
@@ -143,6 +150,9 @@ jobs:
           DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
           PAYLOAD_SECRET: test-secret-key
           NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
+          PAYLOAD_CONFIG_PATH: ./payload.config.ts
+          NODE_ENV: production
+          LOG_LEVEL: debug
 
       - name: Run E2E tests
         run: pnpm test:e2e
@@ -151,6 +161,7 @@ jobs:
           DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
           PAYLOAD_SECRET: test-secret-key
           NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
+          LOG_LEVEL: info
 
       - name: Stop production server
         if: always()
