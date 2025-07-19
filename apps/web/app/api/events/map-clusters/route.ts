@@ -52,29 +52,46 @@ export async function GET(request: NextRequest) {
     // Check if clustering function exists (force fallback for tests)
     const isTestMode = !!(global as any).__TEST_PAYLOAD__;
     let functionExists = false;
-    
+
     if (!isTestMode) {
       try {
         const functionCheck = await payload.db.drizzle.execute(sql`
           SELECT EXISTS (
-            SELECT 1 FROM pg_proc 
+            SELECT 1 FROM pg_proc
             WHERE proname = 'cluster_events'
           ) as exists
         `);
         functionExists = functionCheck.rows[0]?.exists;
+        console.log(
+          "Clustering function check - exists:",
+          functionExists,
+          "isTestMode:",
+          isTestMode,
+        );
       } catch (error) {
-        console.warn("Function check failed, using fallback query:", (error as Error).message);
+        console.warn(
+          "Function check failed, using fallback query:",
+          (error as Error).message,
+        );
         functionExists = false;
       }
+    } else {
+      console.log("Test mode detected, using fallback query");
     }
 
     let result;
     if (!functionExists || isTestMode) {
       // Fallback to basic query without clustering
       console.warn("cluster_events function not found, using fallback query");
+      console.warn(
+        "functionExists:",
+        functionExists,
+        "isTestMode:",
+        isTestMode,
+      );
 
       result = await payload.db.drizzle.execute(sql`
-        SELECT 
+        SELECT
           id::text as cluster_id,
           location_longitude as longitude,
           location_latitude as latitude,
@@ -82,13 +99,20 @@ export async function GET(request: NextRequest) {
           id::text as event_id,
           COALESCE(data->>'title', data->>'name', 'Event ' || id) as event_title
         FROM payload.events
-        WHERE 
+        WHERE
           location_longitude BETWEEN ${bounds.west} AND ${bounds.east}
           AND location_latitude BETWEEN ${bounds.south} AND ${bounds.north}
           AND location_longitude IS NOT NULL
           AND location_latitude IS NOT NULL
           ${catalog ? sql`AND dataset_id IN (SELECT id FROM payload.datasets WHERE catalog_id = ${parseInt(catalog)})` : sql``}
-          ${datasets.length > 0 ? sql`AND dataset_id IN (${sql.join(datasets.map(d => sql`${parseInt(d)}`), sql`, `)})` : sql``}
+          ${
+            datasets.length > 0
+              ? sql`AND dataset_id IN (${sql.join(
+                  datasets.map((d) => sql`${parseInt(d)}`),
+                  sql`, `,
+                )})`
+              : sql``
+          }
           ${startDate ? sql`AND event_timestamp >= ${startDate}::timestamp` : sql``}
           ${endDate ? sql`AND event_timestamp <= ${endDate}::timestamp` : sql``}
         LIMIT 1000
@@ -104,7 +128,10 @@ export async function GET(request: NextRequest) {
           ${zoom}::integer,
           ${JSON.stringify({
             catalogId: catalog ? parseInt(catalog) : undefined,
-            datasetId: datasets.length === 1 && datasets[0] ? parseInt(datasets[0]) : undefined,
+            datasetId:
+              datasets.length === 1 && datasets[0]
+                ? parseInt(datasets[0])
+                : undefined,
             startDate,
             endDate,
           })}::jsonb
@@ -116,6 +143,10 @@ export async function GET(request: NextRequest) {
     const clusters = result.rows.map((row: any) => {
       const isCluster = row.event_count > 1;
 
+      if (isCluster) {
+        console.log("Cluster found:", row);
+      }
+
       return {
         type: "Feature",
         geometry: {
@@ -124,7 +155,7 @@ export async function GET(request: NextRequest) {
         },
         properties: {
           id: row.cluster_id || row.event_id,
-          type: isCluster ? "cluster" : "event",
+          type: isCluster ? "event-cluster" : "event-point",
           ...(isCluster && { count: row.event_count }),
           ...(row.event_title && { title: row.event_title }),
           ...(row.event_ids &&
@@ -138,11 +169,14 @@ export async function GET(request: NextRequest) {
       features: clusters,
     });
   } catch (error) {
-    console.error("Error fetching map clusters:", (error as Error));
+    console.error("Error fetching map clusters:", error as Error);
     console.error("Error details:", (error as Error).message);
     console.error("Error stack:", (error as any).stack);
     return NextResponse.json(
-      { error: "Failed to fetch map clusters", details: (error as Error).message },
+      {
+        error: "Failed to fetch map clusters",
+        details: (error as Error).message,
+      },
       { status: 500 },
     );
   }
