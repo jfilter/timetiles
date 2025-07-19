@@ -1,6 +1,31 @@
 export default {
   extends: ['@commitlint/config-conventional'],
+  plugins: [
+    {
+      rules: {
+        'no-claude-coauthor': (parsed) => {
+          const { raw } = parsed;
+          
+          // Check for various forms of the Claude co-author
+          const claudePatterns = [
+            /Co-Authored-By:\s*Claude\s*<noreply@anthropic\.com>/i,
+            /Co-authored-by:\s*Claude\s*<noreply@anthropic\.com>/i,
+            /🤖\s*Generated with.*Claude/i
+          ];
+          
+          for (const pattern of claudePatterns) {
+            if (pattern.test(raw)) {
+              return [false, 'Claude co-author attribution is not allowed in commit messages'];
+            }
+          }
+          
+          return [true];
+        }
+      }
+    }
+  ],
   rules: {
+    'no-claude-coauthor': [2, 'always'],
     // Custom rules based on the TimeTiles commit guidelines
     'type-enum': [
       2,
