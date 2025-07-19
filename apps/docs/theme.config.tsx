@@ -4,10 +4,10 @@ import { DocsThemeConfig } from "nextra-theme-docs";
 const config: DocsThemeConfig = {
   logo: <span>TimeTiles Documentation</span>,
   project: {
-    link: "https://github.com/yourusername/timetiles",
+    link: "https://github.com/jfilter/timetiles",
   },
   docsRepositoryBase:
-    "https://github.com/yourusername/timetiles/tree/main/apps/docs",
+    "https://github.com/jfilter/timetiles/tree/main/apps/docs",
   footer: {
     text: "TimeTiles Documentation",
   },
@@ -49,7 +49,7 @@ const config: DocsThemeConfig = {
   search: {
     placeholder: "Search documentation...",
   },
-  gitTimestamp: "Last updated on",
+  gitTimestamp: false,
 };
 
 export default config;
