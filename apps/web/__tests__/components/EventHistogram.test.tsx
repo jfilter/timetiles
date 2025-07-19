@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { EventHistogram } from "../../components/EventHistogram";
-import type { Event } from "../../payload-types";
 
 // Mock next-themes
 vi.mock("next-themes", () => ({
@@ -16,12 +15,32 @@ vi.mock("nuqs", () => ({
   useQueryState: () => [null, vi.fn()],
 }));
 
+// Mock the filters hook
+vi.mock("../../lib/filters", () => ({
+  useFilters: () => ({
+    filters: {
+      catalog: null,
+      datasets: [],
+      startDate: null,
+      endDate: null,
+    },
+  }),
+}));
+
+// Mock the UI store
+vi.mock("../../lib/store", () => ({
+  useUIStore: () => null, // No map bounds
+}));
+
+// Mock fetch
+global.fetch = vi.fn();
+
 // Mock ECharts component
 vi.mock("echarts-for-react", () => ({
   default: ({ option }: any) => {
     return (
       <div data-testid="echarts-mock">
-        {JSON.stringify(option.series?.[0]?.data)}
+        {JSON.stringify(option?.series?.[0]?.data || [])}
       </div>
     );
   },
@@ -30,59 +49,44 @@ vi.mock("echarts-for-react", () => ({
 describe("EventHistogram", () => {
   beforeEach(() => {
     cleanup();
+    vi.clearAllMocks();
   });
 
-  const mockEvents: Event[] = [
-    {
-      id: 1,
-      dataset: 1,
-      data: { title: "Event 1" },
-      eventTimestamp: "2024-01-01T00:00:00Z",
-      updatedAt: "2024-01-01T00:00:00Z",
-      createdAt: "2024-01-01T00:00:00Z",
-    },
-    {
-      id: 2,
-      dataset: 1,
-      data: { title: "Event 2" },
-      eventTimestamp: "2024-01-02T00:00:00Z",
-      updatedAt: "2024-01-02T00:00:00Z",
-      createdAt: "2024-01-02T00:00:00Z",
-    },
-    {
-      id: 3,
-      dataset: 1,
-      data: { title: "Event 3" },
-      eventTimestamp: null,
-      updatedAt: "2024-01-03T00:00:00Z",
-      createdAt: "2024-01-03T00:00:00Z",
-    },
-  ];
-
-  it("renders histogram with events", () => {
-    render(<EventHistogram events={mockEvents} />);
-
-    const chart = screen.getByTestId("echarts-mock");
-    expect(chart).toBeInTheDocument();
+  it("renders loading state", () => {
+    render(<EventHistogram loading={true} />);
+    expect(screen.getByText("Loading histogram...")).toBeInTheDocument();
   });
 
-  it("filters out events without timestamps", () => {
-    const { container } = render(<EventHistogram events={mockEvents} />);
+  it("renders no data state when histogram data is empty", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      json: async () => ({ histogram: [] }),
+    });
 
-    const chart = container.querySelector('[data-testid="echarts-mock"]');
-    expect(chart).toBeInTheDocument();
-
-    const data = JSON.parse(chart?.textContent || "[]");
-
-    // Should have data for events with timestamps only
-    expect(data.length).toBeGreaterThan(0);
+    render(<EventHistogram />);
+    
+    // Wait for the component to load
+    await screen.findByText("No data available");
+    expect(screen.getByText("No data available")).toBeInTheDocument();
   });
 
-  it("shows loading state", () => {
-    render(<EventHistogram events={[]} loading={true} />);
+  it("renders chart when data is available", async () => {
+    const mockHistogramData = [
+      { date: "2024-01-01", count: 5 },
+      { date: "2024-01-02", count: 10 },
+    ];
 
-    // Check for loading indicator
-    const loadingElement = document.querySelector(".animate-spin");
-    expect(loadingElement).toBeInTheDocument();
+    (global.fetch as any).mockResolvedValueOnce({
+      json: async () => ({ histogram: mockHistogramData }),
+    });
+
+    render(<EventHistogram />);
+    
+    // Wait for the chart to render
+    await screen.findByTestId("echarts-mock");
+    const chartElement = screen.getByTestId("echarts-mock");
+    
+    // Check that the chart contains the expected data
+    expect(chartElement.textContent).toContain("2024-01-01");
+    expect(chartElement.textContent).toContain("2024-01-02");
   });
 });

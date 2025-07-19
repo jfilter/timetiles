@@ -161,10 +161,10 @@ describe("/api/events/map-clusters", () => {
 
     // At zoom level 2, we should have clusters
     const clusters = data.features.filter(
-      (f: any) => f.properties.type === "cluster"
+      (f: any) => f.properties.type === "event-cluster"
     );
     const singles = data.features.filter(
-      (f: any) => f.properties.type === "event"
+      (f: any) => f.properties.type === "event-point"
     );
 
     console.log("Clusters found:", clusters.length);
@@ -213,7 +213,7 @@ describe("/api/events/map-clusters", () => {
 
     // At zoom level 16 in a small area, we should see individual events
     const singles = data.features.filter(
-      (f: any) => f.properties.type === "event"
+      (f: any) => f.properties.type === "event-point"
     );
 
     expect(singles.length).toBeGreaterThan(0);
