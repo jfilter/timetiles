@@ -1,190 +1,208 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import maplibregl from "maplibre-gl";
+import { useCallback, useMemo, useState, useEffect } from "react";
+import Map, { Source, Layer, Popup, type MapRef } from "react-map-gl/maplibre";
+import type { LngLatBounds } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { createLogger } from "../lib/logger";
 
 interface ClusteredMapProps {
-  onBoundsChange?: (bounds: maplibregl.LngLatBounds) => void;
-  onZoomChange?: (zoom: number) => void;
+  onBoundsChange?: (bounds: LngLatBounds, zoom: number) => void;
   clusters?: any[]; // GeoJSON features from the clustering API
 }
 
+const logger = createLogger("ClusteredMap");
+
 export function ClusteredMap({
   onBoundsChange,
-  onZoomChange,
   clusters = [],
 }: ClusteredMapProps) {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<maplibregl.Map | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [popupInfo, setPopupInfo] = useState<{
+    longitude: number;
+    latitude: number;
+    title: string;
+  } | null>(null);
+  const [currentBounds, setCurrentBounds] = useState<LngLatBounds | null>(null);
 
-  useEffect(() => {
-    if (!mapContainer.current || map.current) return;
+  const handleLoad = useCallback(
+    (evt: any) => {
+      const map = evt.target as MapRef;
+      const bounds = map.getBounds();
+      const zoom = map.getZoom();
+      setCurrentBounds(bounds);
 
-    try {
-      map.current = new maplibregl.Map({
-        container: mapContainer.current,
-        style: "https://tiles.versatiles.org/assets/styles/colorful/style.json",
-        center: [0, 40],
-        zoom: 2,
+      logger.debug("Map initialized", {
+        bounds: {
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        },
+        zoom: zoom,
+        center: map.getCenter(),
       });
 
-      map.current.on("load", () => {
-        setIsLoaded(true);
+      // Store map reference for manual source management
+      (window as any)._mapRef = map;
 
-        // Add source for clusters
-        map.current!.addSource("events", {
-          type: "geojson",
-          data: {
-            type: "FeatureCollection",
-            features: [],
-          },
-        });
+      // Trigger initial bounds change to load data
+      if (onBoundsChange) {
+        onBoundsChange(bounds, zoom);
+      }
+    },
+    [onBoundsChange],
+  );
 
-        // Add layer for clusters
-        map.current!.addLayer({
-          id: "clusters",
-          type: "circle",
-          source: "events",
-          filter: ["==", ["get", "type"], "cluster"],
-          paint: {
-            "circle-color": [
-              "step",
-              ["get", "count"],
-              "#51bbd6",
-              10,
-              "#f1f075",
-              100,
-              "#f28cb1",
-            ],
-            "circle-radius": ["step", ["get", "count"], 20, 10, 25, 100, 30],
-          },
-        });
+  const handleClick = useCallback((event: any) => {
+    const feature = event.features?.[0];
+    if (!feature) return;
 
-        // Add layer for cluster counts
-        map.current!.addLayer({
-          id: "cluster-count",
-          type: "symbol",
-          source: "events",
-          filter: ["==", ["get", "type"], "cluster"],
-          layout: {
-            "text-field": "{count}",
-            "text-font": ["Open Sans Semibold"],
-            "text-size": 12,
-          },
-        });
+    const { type } = feature.properties;
 
-        // Add layer for individual events
-        map.current!.addLayer({
-          id: "unclustered-point",
-          type: "circle",
-          source: "events",
-          filter: ["==", ["get", "type"], "event"],
-          paint: {
-            "circle-color": "#11b4da",
-            "circle-radius": 6,
-            "circle-stroke-width": 1,
-            "circle-stroke-color": "#fff",
-          },
-        });
-
-        // Click handler for clusters
-        map.current!.on("click", "clusters", (e) => {
-          const feature = e.features?.[0];
-          if (!feature || !feature.properties) return;
-
-          const bbox = feature.properties.bbox;
-          if (bbox) {
-            // Zoom to cluster bounds
-            const bounds = JSON.parse(bbox);
-            map.current!.fitBounds(
-              [
-                [bounds.west, bounds.south],
-                [bounds.east, bounds.north],
-              ],
-              { padding: 50 },
-            );
-          }
-        });
-
-        // Click handler for individual events
-        map.current!.on("click", "unclustered-point", (e) => {
-          const feature = e.features?.[0];
-          if (!feature || !feature.geometry || !feature.properties) return;
-
-          const coordinates = (feature.geometry as any).coordinates.slice();
-          const { title, id } = feature.properties;
-
-          new maplibregl.Popup()
-            .setLngLat(coordinates as [number, number])
-            .setHTML(`<h3>${title || `Event ${id}`}</h3>`)
-            .addTo(map.current!);
-        });
-
-        // Change cursor on hover
-        map.current!.on("mouseenter", "clusters", () => {
-          map.current!.getCanvas().style.cursor = "pointer";
-        });
-        map.current!.on("mouseleave", "clusters", () => {
-          map.current!.getCanvas().style.cursor = "";
-        });
-        map.current!.on("mouseenter", "unclustered-point", () => {
-          map.current!.getCanvas().style.cursor = "pointer";
-        });
-        map.current!.on("mouseleave", "unclustered-point", () => {
-          map.current!.getCanvas().style.cursor = "";
-        });
+    if (type === "event-cluster") {
+      // Zoom in on cluster click
+      const [longitude, latitude] = feature.geometry.coordinates;
+      event.target.flyTo({
+        center: [longitude, latitude],
+        zoom: event.target.getZoom() + 2,
       });
-
-      map.current.on("moveend", () => {
-        if (map.current) {
-          if (onBoundsChange) {
-            onBoundsChange(map.current.getBounds());
-          }
-          if (onZoomChange) {
-            onZoomChange(map.current.getZoom());
-          }
-        }
+    } else if (type === "event-point") {
+      // Show popup for individual events
+      const [longitude, latitude] = feature.geometry.coordinates;
+      const { title, id } = feature.properties;
+      setPopupInfo({
+        longitude,
+        latitude,
+        title: title || `Event ${id}`,
       });
-
-      map.current.on("error", (e) => {
-        console.error("Map error:", e);
-      });
-
-      map.current.on("webglcontextlost", (e: any) => {
-        e.preventDefault();
-      });
-    } catch (error) {
-      console.error("Failed to initialize map:", error);
     }
+  }, []);
 
-    return () => {
-      map.current?.remove();
-      map.current = null;
+  const geojsonData = useMemo(() => {
+    const data = {
+      type: "FeatureCollection" as const,
+      features: clusters,
     };
-  }, []); // No dependencies to prevent constant rebuilds
 
-  // Update clusters data when it changes
-  useEffect(() => {
-    if (!map.current || !isLoaded) return;
+    return data;
+  }, [clusters]);
 
-    const source = map.current.getSource("events") as maplibregl.GeoJSONSource;
-    if (source) {
-      source.setData({
-        type: "FeatureCollection",
-        features: clusters,
+  const eventPointLayer: any = {
+    id: "unclustered-point",
+    type: "circle",
+    // source: "all-features",
+    filter: ["==", ["get", "type"], "event-point"],
+    paint: {
+      "circle-color": "#11b4da",
+      "circle-radius": 6,
+      "circle-stroke-width": 1,
+      "circle-stroke-color": "#fff",
+    },
+  };
+
+  const clusterLayer: any = {
+    id: "event-clusters",
+    type: "circle",
+    // source: "all-features",
+    filter: ["==", ["get", "type"], "event-cluster"],
+    paint: {
+      "circle-radius": 30,
+      "circle-color": "#ff6b6b",
+      "circle-stroke-width": 3,
+      "circle-stroke-color": "#ffffff",
+    },
+  };
+
+  const clusterCountLayer: any = {
+    id: "event-cluster-count",
+    type: "symbol",
+    // source: "all-features",
+    filter: ["==", ["get", "type"], "event-cluster"],
+    layout: {
+      "text-field": ["to-string", ["get", "count"]],
+      "text-size": 16,
+      "text-font": ["Noto Sans Regular"], // Use font from OpenMapTiles
+    },
+    paint: {
+      "text-color": "#ffffff",
+      "text-halo-color": "#000000",
+      "text-halo-width": 1,
+    },
+  };
+
+  // Debug layer to show ALL features
+  const debugLayer: any = {
+    id: "debug-all-features",
+    type: "circle",
+    source: "all-features",
+    paint: {
+      "circle-radius": 25,
+      "circle-color": "#ff0000", // Bright red
+      "circle-opacity": 1.0, // Fully opaque
+      "circle-stroke-width": 5,
+      "circle-stroke-color": "#ffff00", // Yellow border
+    },
+  };
+
+  const handleMove = useCallback(
+    (evt: any) => {
+      const map = evt.target as MapRef;
+      const bounds = map.getBounds();
+      const zoom = map.getZoom();
+      setCurrentBounds(bounds);
+
+      logger.trace("Map viewport changed", {
+        zoom,
+        bounds: {
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        },
       });
-    }
-  }, [clusters, isLoaded]);
+
+      if (onBoundsChange) {
+        onBoundsChange(bounds, zoom);
+      }
+    },
+    [onBoundsChange],
+  );
 
   return (
-    <div
-      ref={mapContainer}
-      className="h-full w-full"
-      role="region"
-      aria-label="Map"
-      style={{ minHeight: "400px" }}
-    />
+    <Map
+      initialViewState={{
+        longitude: -74.0,
+        latitude: 40.6,
+        zoom: 9,
+      }}
+      style={{ width: "100%", height: "100%", minHeight: "400px" }}
+      mapStyle="https://tiles.versatiles.org/assets/styles/colorful/style.json"
+      onMove={handleMove}
+      onLoad={handleLoad}
+      onClick={handleClick}
+      interactiveLayerIds={["event-clusters", "unclustered-point"]}
+      cursor="auto"
+    >
+      <Source
+        type="geojson"
+        data={geojsonData}
+        id="clustered-map-source"
+        key={"clustered-map-source"}
+      >
+        <Layer {...eventPointLayer} />
+        <Layer {...clusterLayer} />
+      </Source>
+
+      {popupInfo && (
+        <Popup
+          longitude={popupInfo.longitude}
+          latitude={popupInfo.latitude}
+          anchor="bottom"
+          onClose={() => setPopupInfo(null)}
+        >
+          <div>{popupInfo.title}</div>
+        </Popup>
+      )}
+    </Map>
   );
 }

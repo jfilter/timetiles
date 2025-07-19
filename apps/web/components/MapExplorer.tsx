@@ -12,16 +12,19 @@ import { useUIStore } from "../lib/store";
 import { useFilters } from "../lib/filters";
 import { useDebounce } from "../lib/hooks/useDebounce";
 import type { LngLatBounds } from "maplibre-gl";
+import { createLogger } from "../lib/logger";
 
 interface MapExplorerProps {
   catalogs: Catalog[];
   datasets: Dataset[];
 }
 
+const logger = createLogger("MapExplorer");
+
 export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [clusters, setClusters] = useState<any[]>([]);
-  const [mapZoom, setMapZoom] = useState(2);
+  const [mapZoom, setMapZoom] = useState(9);
   const [isPending, startTransition] = useTransition();
 
   // Get filter state from URL (nuqs)
@@ -114,7 +117,7 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
     return bounds;
   }, [debouncedBoundsKey, bounds]);
 
-  const handleBoundsChange = (newBounds: LngLatBounds | null) => {
+  const handleBoundsChange = (newBounds: LngLatBounds | null, zoom?: number) => {
     if (newBounds) {
       setMapBounds({
         north: newBounds.getNorth(),
@@ -122,6 +125,9 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
         east: newBounds.getEast(),
         west: newBounds.getWest(),
       });
+      if (zoom !== undefined) {
+        setMapZoom(Math.round(zoom));
+      }
     } else {
       setMapBounds(null);
     }
@@ -133,19 +139,16 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
 
     const fetchEvents = async () => {
       // Debug logging to verify deduplication is working
-      if (process.env.NODE_ENV === "development") {
-        console.log(
-          "Fetching events with bounds:",
-          debouncedBounds
-            ? {
-                north: debouncedBounds.getNorth(),
-                south: debouncedBounds.getSouth(),
-                east: debouncedBounds.getEast(),
-                west: debouncedBounds.getWest(),
-              }
-            : null,
-        );
-      }
+      logger.debug("Fetching events with bounds", {
+        bounds: debouncedBounds
+          ? {
+              north: debouncedBounds.getNorth(),
+              south: debouncedBounds.getSouth(),
+              east: debouncedBounds.getEast(),
+              west: debouncedBounds.getWest(),
+            }
+          : null,
+      });
 
       const params = new URLSearchParams();
 
@@ -175,6 +178,17 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
             north: debouncedBounds.getNorth(),
           }),
         );
+      } else {
+        // Use default NYC area bounds if no bounds are available yet
+        params.append(
+          "bounds",
+          JSON.stringify({
+            west: -74.2,
+            south: 40.5,
+            east: -73.6,
+            north: 40.9,
+          }),
+        );
       }
 
       // Add zoom parameter for clustering
@@ -191,7 +205,7 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
 
         // Also fetch events list for the sidebar
         const listParams = new URLSearchParams(params);
-        listParams.set("limit", "100"); // Limit list view to 100 items
+        listParams.set("limit", "1000"); // Limit list view to 100 items
         const listResponse = await fetch(
           `/api/events/list?${listParams.toString()}`,
           {
@@ -233,9 +247,6 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
     mapZoom,
   ]);
 
-  const handleZoomChange = (zoom: number) => {
-    setMapZoom(Math.round(zoom));
-  };
 
   return (
     <div className="flex h-screen">
@@ -244,7 +255,6 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
         <ClusteredMap
           clusters={clusters}
           onBoundsChange={handleBoundsChange}
-          onZoomChange={handleZoomChange}
         />
       </div>
 
