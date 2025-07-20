@@ -26,7 +26,10 @@ async function checkEnvironmentVariables() {
 
 async function checkUploadsDirectory() {
   logger.debug("Checking uploads directory");
-  const uploadsDir = path.resolve(__dirname, "../uploads");
+  // In production, use process.cwd() which is the app root, not the compiled directory
+  const uploadsDir = process.env.NODE_ENV === "production" 
+    ? path.join(process.cwd(), "uploads")
+    : path.resolve(__dirname, "../uploads");
   
   try {
     await fs.access(uploadsDir, fs.constants.W_OK);
@@ -104,7 +107,10 @@ async function checkMigrations() {
     logger.debug("Getting Payload instance for migrations check");
     const payload = await getPayload({ config });
     
-    const migrationsDir = path.resolve(__dirname, "../migrations");
+    // In production, use process.cwd() which is the app root, not the compiled directory
+    const migrationsDir = process.env.NODE_ENV === "production"
+      ? path.join(process.cwd(), "migrations")
+      : path.resolve(__dirname, "../migrations");
     logger.debug("Reading migrations directory", { path: migrationsDir });
     
     const migrationFiles = await fs.readdir(migrationsDir);

@@ -114,6 +114,12 @@ jobs:
           PAYLOAD_CONFIG_PATH: ./payload.config.ts
           LOG_LEVEL: info
 
+      - name: Create production uploads directory
+        run: |
+          mkdir -p uploads
+          echo "Created production uploads directory"
+        working-directory: apps/web
+
       - name: Start production server
         run: |
           echo "Starting production server..."
