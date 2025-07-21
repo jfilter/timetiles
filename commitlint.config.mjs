@@ -39,7 +39,6 @@ export default {
         'perf',     // Performance improvements
         'test',     // Adding or updating tests
         'build',    // Build system or external dependencies
-        'ci',       // CI configuration files and scripts
         'chore',    // Other changes that don't modify src or test files
         'revert',   // Reverts a previous commit
         'security', // Security fixes or improvements
@@ -53,7 +52,7 @@ export default {
         'web',        // Next.js web application
         'docs',       // Documentation site
         'ui',         // Shared UI components package
-        'config',     // ESLint & TypeScript configs
+        'config',     // Configuration packages (ESLint, TypeScript, etc.)
         
         // Core Features
         'import',     // File import system
@@ -73,8 +72,7 @@ export default {
         'deps',       // Dependencies (use with build type)
         'docker',     // Docker & containerization
         'scripts',    // Utility & automation scripts
-        'security',   // Security features & policies
-        'config',     // Configuration files & settings
+        'ci',         // CI configuration files and scripts
       ],
     ],
     'scope-empty': [1, 'never'],

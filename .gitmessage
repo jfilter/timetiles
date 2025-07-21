@@ -1,9 +1,9 @@
 # <type>(<scope>): <subject>
-# Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert, security
+# Types: feat, fix, docs, style, refactor, perf, test, build, chore, revert, security
 # Scopes (optional but recommended):
 #   Apps/Packages: web, docs, ui, config
 #   Features: import, geocoding, events, catalogs, datasets, auth, cache
-#   Technical: db, api, jobs, types, testing, deps, docker, scripts, security, config
+#   Technical: db, api, jobs, types, testing, deps, docker, scripts, ci
 # Subject: imperative mood, max 72 chars (proper nouns allowed: GitHub, API, ES, etc.)
 
 # List your changes as bullet points:

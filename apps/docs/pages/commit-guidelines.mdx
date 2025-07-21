@@ -49,8 +49,6 @@ The type must be one of the following:
 - **build**: Changes affecting build system or external dependencies
   - Example: `build(deps): upgrade to Next.js 15`
   - Example: `build(docker): optimize production image size`
-- **ci**: Changes to CI configuration and scripts
-  - Example: `ci(github): add automated security scanning`
 - **chore**: Other changes that don't modify src or test files
   - Example: `chore(scripts): update seed data generation`
 
@@ -70,7 +68,7 @@ The scope provides additional context about what part of the codebase changed. S
 - **web**: Next.js web application
 - **docs**: Documentation site (Nextra)
 - **ui**: Shared UI components package
-- **config**: ESLint & TypeScript configuration packages
+- **config**: Configuration packages (ESLint, TypeScript, etc.)
 
 **Core Features** (what functionality is affected):
 - **import**: File import system (CSV/Excel processing)
@@ -90,8 +88,7 @@ The scope provides additional context about what part of the codebase changed. S
 - **deps**: External dependencies (typically used with `build` type)
 - **docker**: Docker, containerization, and orchestration
 - **scripts**: Utility and automation scripts
-- **security**: Security configurations and policies
-- **config**: Configuration files and settings management
+- **ci**: CI configuration files and scripts
 
 #### Subject
 
@@ -290,9 +287,12 @@ Some combinations need special attention:
   - Example: `test(testing): add custom vitest matchers`
 - **`test(web)`**: Use for adding tests to web app
   - Example: `test(web): add unit tests for import flow`
-- **`ci` vs `build`**: 
-  - Use `ci` type for GitHub Actions, pipeline changes
-  - Use `build` type for webpack, bundling, compilation
+- **CI/CD changes with `(ci)` scope**:
+  - `build(ci)`: CI infrastructure and configuration changes
+  - `fix(ci)`: Fix broken CI pipelines or workflows
+  - `feat(ci)`: Add new CI features (e.g., new checks, deployment stages)
+  - `chore(ci)`: Routine CI maintenance (e.g., update action versions)
+- **`build` without scope**: Use for webpack, bundling, compilation changes
 - **`build(deps)` vs `chore(deps)`**:
   - Use `build(deps)` for production dependencies
   - Use `chore(deps)` for development-only dependencies
@@ -328,11 +328,11 @@ This project includes a commit message template at `.gitmessage` that is automat
 
 ```
 # <type>(<scope>): <subject>
-# Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert, security
+# Types: feat, fix, docs, style, refactor, perf, test, build, chore, revert, security
 # Scopes (optional but recommended):
 #   Apps/Packages: web, docs, ui, config
 #   Features: import, geocoding, events, catalogs, datasets, auth, cache
-#   Technical: db, api, jobs, types, testing, deps, docker, scripts, security, config
+#   Technical: db, api, jobs, types, testing, deps, docker, scripts, ci
 # Subject: imperative mood, max 72 chars (proper nouns allowed: GitHub, API, ES, etc.)
 
 # Body Guidelines:
@@ -389,8 +389,10 @@ test(events): add unit tests for event validation
 fix(cache): resolve memory leak in location cache
 feat(datasets): add bulk export functionality
 refactor(types): consolidate shared type definitions
-ci(docker): optimize container build times
+build(ci): optimize container build times
 perf(geocoding): implement request batching
+security(auth): fix JWT token expiration vulnerability
+security(import): add file type validation to prevent malicious uploads
 ```
 
 ### When to use title-only:
@@ -445,7 +447,10 @@ perf(import): optimize CSV parsing for large files
 # Technical scope - for infrastructure/tooling
 build(docker): reduce image size by 40%
 test(api): add integration tests for event endpoints
-ci(scripts): automate release notes generation
+build(ci): automate release notes generation
+fix(ci): resolve GitHub Actions Node.js version conflicts
+feat(ci): add automated dependency vulnerability scanning
+chore(ci): update actions/checkout to v4
 
 # Handling overlaps correctly
 docs(docs): update Nextra to version 3.0          # Docs app code change
