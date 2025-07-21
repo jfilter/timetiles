@@ -34,7 +34,6 @@ jobs:
       DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
       PAYLOAD_SECRET: test-secret-key
       PGPASSWORD: timetiles_password
-      NODE_OPTIONS: --experimental-strip-types
 
     steps:
       - uses: actions/checkout@v4
@@ -105,7 +104,6 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          if [ -f .server.pid ]; then
-            kill $(cat .server.pid) || true
+          if [ -f apps/web/.server.pid ]; then
+            kill $(cat apps/web/.server.pid) || true
           fi
-        working-directory: apps/web
