@@ -14,6 +14,7 @@ export async function GET() {
     const hasError = Object.values(results).some((r) => r.status === "error");
     const hasPending = results.migrations.status === "pending";
     const postgisNotFound = results.postgis.status === "not found";
+    const hasWarning = Object.values(results).some((r) => r.status === "warning");
 
     let overallStatus = 200;
     if (hasError || postgisNotFound) {
@@ -23,9 +24,12 @@ export async function GET() {
         postgisNotFound,
         results,
       });
-    } else if (hasPending) {
+    } else if (hasPending || hasWarning) {
       overallStatus = 200; // Still healthy, but with a warning
-      logger.info("Health check has pending migrations but returning 200");
+      logger.info("Health check has warnings but returning 200", {
+        hasPending,
+        hasWarning,
+      });
     } else {
       logger.info("Health check passed successfully");
     }

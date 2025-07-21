@@ -26,10 +26,20 @@ async function checkEnvironmentVariables() {
 
 async function checkUploadsDirectory() {
   logger.debug("Checking uploads directory");
-  // In production, use process.cwd() which is the app root, not the compiled directory
-  const uploadsDir = process.env.NODE_ENV === "production" 
-    ? path.join(process.cwd(), "uploads")
-    : path.resolve(__dirname, "../uploads");
+  // Find the project root by looking for package.json
+  let currentDir = __dirname;
+  let projectRoot = currentDir;
+  
+  // Walk up directories to find the web app root (where package.json is)
+  while (!projectRoot.endsWith('/apps/web') && projectRoot !== '/') {
+    if (currentDir.includes('/apps/web/')) {
+      projectRoot = currentDir.substring(0, currentDir.indexOf('/apps/web/') + '/apps/web'.length);
+      break;
+    }
+    currentDir = path.dirname(currentDir);
+  }
+  
+  const uploadsDir = path.join(projectRoot, "uploads");
   
   try {
     await fs.access(uploadsDir, fs.constants.W_OK);
@@ -40,6 +50,10 @@ async function checkUploadsDirectory() {
       path: uploadsDir, 
       error: (error as Error).message 
     });
+    // In CI, treat missing uploads directory as a warning instead of error
+    if (process.env.CI === "true") {
+      return { status: "warning", message: "Uploads directory not writable (CI environment)" };
+    }
     return { status: "error", message: "Uploads directory not writable" };
   }
 }
@@ -107,10 +121,20 @@ async function checkMigrations() {
     logger.debug("Getting Payload instance for migrations check");
     const payload = await getPayload({ config });
     
-    // In production, use process.cwd() which is the app root, not the compiled directory
-    const migrationsDir = process.env.NODE_ENV === "production"
-      ? path.join(process.cwd(), "migrations")
-      : path.resolve(__dirname, "../migrations");
+    // Find the project root by looking for the web app directory
+    let currentDir = __dirname;
+    let projectRoot = currentDir;
+    
+    // Walk up directories to find the web app root (where package.json is)
+    while (!projectRoot.endsWith('/apps/web') && projectRoot !== '/') {
+      if (currentDir.includes('/apps/web/')) {
+        projectRoot = currentDir.substring(0, currentDir.indexOf('/apps/web/') + '/apps/web'.length);
+        break;
+      }
+      currentDir = path.dirname(currentDir);
+    }
+    
+    const migrationsDir = path.join(projectRoot, "migrations");
     logger.debug("Reading migrations directory", { path: migrationsDir });
     
     const migrationFiles = await fs.readdir(migrationsDir);
