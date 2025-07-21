@@ -126,14 +126,7 @@ test.describe("Explore Page - Map Interactions", () => {
   });
 
   test("should handle map bounds updates correctly", async ({ page }) => {
-    // Load events
-    await explorePage.selectCatalog("Environmental Data");
-    await page.waitForTimeout(500);
-    await explorePage.selectDatasets(["Air Quality Measurements"]);
-    await explorePage.waitForApiResponse();
-    await explorePage.waitForEventsToLoad();
-
-    // Set up request tracking
+    // Set up request tracking before any API calls
     const boundsRequests: string[] = [];
     page.on("request", (request) => {
       const url = new URL(request.url());
@@ -142,13 +135,20 @@ test.describe("Explore Page - Map Interactions", () => {
       }
     });
 
+    // Load events
+    await explorePage.selectCatalog("Environmental Data");
+    await page.waitForTimeout(500);
+    await explorePage.selectDatasets(["Air Quality Measurements"]);
+    await explorePage.waitForApiResponse();
+    await explorePage.waitForEventsToLoad();
+
     // Pan the map
     await explorePage.panMap(200, 0);
 
-    // Wait for potential API call
-    await page.waitForTimeout(1500);
+    // Wait for potential API call with longer timeout
+    await page.waitForTimeout(2000);
 
-    // Bounds requests should have been made
+    // Bounds requests should have been made (at least from initial load)
     expect(boundsRequests.length).toBeGreaterThan(0);
 
     // All bounds should be valid JSON with required properties

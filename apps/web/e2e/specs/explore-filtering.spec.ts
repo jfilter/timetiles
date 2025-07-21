@@ -70,6 +70,12 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.setStartDate("2024-01-01");
     await explorePage.setEndDate("2024-12-31");
 
+    // Wait for URL to update with date parameters
+    await page.waitForFunction(() => {
+      const url = new URL(window.location.href);
+      return url.searchParams.has('startDate') && url.searchParams.has('endDate');
+    }, { timeout: 5000 });
+
     // Wait for API response and events to load
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
@@ -92,8 +98,11 @@ test.describe("Explore Page - Filtering", () => {
     // Clear date filters
     await explorePage.clearDateFilters();
 
-    // Wait for URL to update
-    await page.waitForTimeout(100);
+    // Wait for URL parameters to be removed
+    await page.waitForFunction(() => {
+      const url = new URL(window.location.href);
+      return !url.searchParams.has('startDate') && !url.searchParams.has('endDate');
+    }, { timeout: 5000 });
 
     // Check that date params are removed from URL
     await explorePage.assertUrlParam("startDate", null);

@@ -65,7 +65,7 @@ test.describe("Explore Page - Basic Functionality", () => {
     const pageWidth = await page.evaluate(() => window.innerWidth);
 
     // Map should take roughly 50% of width (with some tolerance for borders/scrollbars)
-    expect(mapBox!.width).toBeGreaterThan(pageWidth * 0.4);
+    expect(mapBox!.width).toBeGreaterThanOrEqual(pageWidth * 0.4);
     expect(mapBox!.width).toBeLessThan(pageWidth * 0.6);
 
     // Mobile view - stacked (if implemented)

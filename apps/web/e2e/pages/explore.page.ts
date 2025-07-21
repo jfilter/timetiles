@@ -94,14 +94,19 @@ export class ExplorePage {
 
   async setStartDate(date: string) {
     await this.startDateInput.fill(date);
+    await this.startDateInput.blur();
+    await this.page.waitForTimeout(100);
   }
 
   async setEndDate(date: string) {
     await this.endDateInput.fill(date);
+    await this.endDateInput.blur();
+    await this.page.waitForTimeout(100);
   }
 
   async clearDateFilters() {
     await this.clearDatesButton.click();
+    await this.page.waitForTimeout(200);
   }
 
   async panMap(deltaX: number, deltaY: number) {
