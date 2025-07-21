@@ -20,10 +20,8 @@ jobs:
       postgres:
         image: postgis/postgis:17-3.5
         env:
-          POSTGRES_DB: postgres # Connect to the default DB to create others
           POSTGRES_USER: timetiles_user
           POSTGRES_PASSWORD: timetiles_password
-          POSTGRES_HOST_AUTH_METHOD: trust
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -33,17 +31,14 @@ jobs:
           - 5432:5432
 
     env:
-      # This is a placeholder, the actual DB is set dynamically in setup.ts
-      DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test_1
+      DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
       PAYLOAD_SECRET: test-secret-key
-      NODE_ENV: test
-      CI: true
+      PGPASSWORD: timetiles_password
+      NODE_OPTIONS: --experimental-strip-types
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -51,159 +46,66 @@ jobs:
 
       - run: pnpm install
 
-      - name: Setup build database
+      - name: Setup databases
         run: |
-          # Create main database for build step
-          psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles;"
-          psql -h localhost -U timetiles_user -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-          psql -h localhost -U timetiles_user -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
-          psql -h localhost -U timetiles_user -d timetiles -c "CREATE SCHEMA IF NOT EXISTS payload;"
-        env:
-          PGPASSWORD: timetiles_password
-
-      - name: Run migrations for build
-        run: pnpm payload:migrate
-        working-directory: apps/web
-        env:
-          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
-          PAYLOAD_SECRET: test-secret-key
-
-      - name: Create test database pool
-        run: |
-          # Create multiple isolated databases for parallel test workers
+          # Function to setup a database with PostGIS
+          setup_db() {
+            psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE $1;"
+            psql -h localhost -U timetiles_user -d $1 -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE SCHEMA IF NOT EXISTS payload;"
+          }
+          
+          # Create main database
+          setup_db timetiles
+          
+          # Create test databases for parallel workers
           for i in {1..4}; do
-            psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles_test_$i;"
-            psql -h localhost -U timetiles_user -d timetiles_test_$i -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-            psql -h localhost -U timetiles_user -d timetiles_test_$i -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
-            psql -h localhost -U timetiles_user -d timetiles_test_$i -c "CREATE SCHEMA IF NOT EXISTS payload;"
+            setup_db timetiles_test_$i
           done
-        env:
-          PGPASSWORD: timetiles_password
 
-      - name: Build project
-        run: NODE_OPTIONS="--experimental-strip-types" pnpm build
-        env:
-          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
-          PAYLOAD_SECRET: test-secret-key
-
-      - name: Run linting
-        run: pnpm lint
-
-      - name: Run type checking
-        run: pnpm typecheck
-        working-directory: apps/web
-
-      - name: Run main test suite
-        run: NODE_OPTIONS="--experimental-strip-types" pnpm test:verbose
-        working-directory: apps/web
-
-      - name: Install Playwright browsers
-        run: pnpm playwright install chromium --with-deps
-        working-directory: apps/web
-
-      - name: Seed database for E2E tests
+      - name: Build and check code quality
         run: |
-          echo "Running migrations before seeding..."
+          cd apps/web && pnpm payload:migrate
+          cd ../.. && pnpm build
+          pnpm lint
+          cd apps/web && pnpm typecheck
+
+      - name: Run tests
+        run: pnpm test:verbose
+        working-directory: apps/web
+
+      - name: Setup E2E environment
+        run: |
+          pnpm playwright install chromium --with-deps
           pnpm payload:migrate
-          echo "Seeding database..."
           pnpm seed
-        working-directory: apps/web
-        env:
-          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
-          PAYLOAD_SECRET: test-secret-key
-          PAYLOAD_CONFIG_PATH: ./payload.config.ts
-          LOG_LEVEL: info
-
-      - name: Create production uploads directory
-        run: |
           mkdir -p uploads
-          echo "Created production uploads directory"
         working-directory: apps/web
 
-      - name: Start production server
+      - name: Start server and run E2E tests
         run: |
-          echo "Starting production server..."
-          # Start the production server in the background with output
+          # Start server
           nohup pnpm start > server.log 2>&1 &
-          # Store the PID
           echo $! > .server.pid
-          echo "Server PID: $(cat .server.pid)"
-          # Give the server a moment to start
-          echo "Waiting for server to initialize..."
-          sleep 10
-          # Show server logs
-          echo "=== Server logs ==="
-          cat server.log || echo "No server logs found"
-          echo "=================="
-          # Check if the server process is still running
-          if ! ps -p $(cat .server.pid) > /dev/null; then
-            echo "ERROR: Server process died!"
-            echo "Final server logs:"
+          
+          # Wait for server (simplified)
+          npx wait-on http-get://localhost:3000/api/health --timeout 60000 || {
+            echo "Server failed to start. Logs:"
             cat server.log
             exit 1
-          fi
-          echo "Server process is running"
-          # First check what the health endpoint returns
-          echo "Initial health check..."
-          curl -v http://localhost:3000/api/health || echo "Health check returned non-200"
-          # Try to get the actual response body
-          echo "Health check response:"
-          curl -s http://localhost:3000/api/health | jq . || echo "Failed to parse JSON response"
-          # Start background job to monitor server logs
-          (while true; do 
-            echo "=== Server logs at $(date) ==="
-            tail -20 server.log
-            sleep 5
-          done) &
-          MONITOR_PID=$!
-          # Wait for server to be ready - check the API health endpoint
-          # Use http-get to avoid HEAD request issues
-          npx wait-on http-get://localhost:3000/api/health --timeout 60000 --interval 1000 --verbose --httpTimeout 30000 || WAIT_EXIT_CODE=$?
-          # Stop the monitor
-          kill $MONITOR_PID 2>/dev/null || true
-          # Check if wait-on failed
-          if [ "${WAIT_EXIT_CODE:-0}" -ne 0 ]; then
-            echo "wait-on failed with exit code $WAIT_EXIT_CODE"
-            echo "Final server logs:"
-            cat server.log
-            exit $WAIT_EXIT_CODE
-          fi
-          # Additional check to ensure server is responding
-          echo "Checking server health after wait..."
-          curl -v http://localhost:3000/api/health
-          echo "Checking root page..."
-          curl -v http://localhost:3000 || echo "Root page returned non-200 (expected if no home page exists)"
+          }
+          
+          # Run E2E tests
+          pnpm test:e2e
         working-directory: apps/web
         env:
-          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
-          PAYLOAD_SECRET: test-secret-key
+          NODE_ENV: production
           NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
           PAYLOAD_CONFIG_PATH: ./payload.config.ts
-          NODE_ENV: production
-          LOG_LEVEL: debug
 
-      - name: Run E2E tests
-        run: pnpm test:e2e
-        working-directory: apps/web
-        env:
-          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
-          PAYLOAD_SECRET: test-secret-key
-          NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
-          LOG_LEVEL: info
-
-      - name: Stop production server
+      - name: Cleanup
         if: always()
         run: |
           if [ -f .server.pid ]; then
             kill $(cat .server.pid) || true
-            rm .server.pid
           fi
         working-directory: apps/web
-
-      - name: Upload E2E test report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report
-          path: apps/web/playwright-report/
-          retention-days: 30
