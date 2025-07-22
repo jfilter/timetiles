@@ -1,6 +1,8 @@
 {
   "index": "Introduction",
   "getting-started": "Getting Started",
+  "schema-detection": "Schema Detection",
+  "dynamic-filters": "Dynamic Filters",
   "commit-guidelines": "Commit Guidelines",
   "roadmap": "Roadmap"
 }

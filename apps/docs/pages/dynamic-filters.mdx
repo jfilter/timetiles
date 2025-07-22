@@ -1,0 +1,614 @@
+# Dynamic Filter Generation
+
+TimeTiles automatically generates intelligent, user-friendly filters from your data schema, enabling powerful search capabilities without manual configuration.
+
+## Overview
+
+The filter generation system:
+
+1. **Analyzes** schema and field statistics from imports
+2. **Generates** appropriate filter types based on data patterns
+3. **Provides** multi-language support with customizable labels
+4. **Optimizes** filter display with simple/advanced modes
+5. **Validates** user input in real-time
+6. **Stores** pre-computed filters for instant API responses
+
+## How Filters Are Generated
+
+### Automatic Type Detection
+
+The system analyzes each field to determine the best filter type:
+
+| Data Pattern | Generated Filter | Why |
+|-------------|-----------------|-----|
+| 5-20 unique values | Dropdown select | Easy selection from limited options |
+| Yes/No, True/False | Checkbox | Boolean toggle |
+| Numeric with range | Range slider | Visual range selection |
+| Dates/Timestamps | Date picker | Calendar interface |
+| Long text | Text search | Full-text search with operators |
+| Arrays | Multi-select | Select multiple values |
+| Coordinates | Map bounds | Geographic filtering |
+
+### Editor Control
+
+While filters are generated automatically, editors have full control:
+
+- **Enable/Disable**: Choose which filters are available to users
+- **Override Type**: Change from auto-detected type (e.g., text → select)
+- **Set Display Mode**: Control visibility in simple vs advanced mode
+- **Customize Labels**: Override auto-generated labels and descriptions
+- **Configure Validation**: Set custom validation rules
+- **Reorder Filters**: Arrange filters in logical order
+- **Group Filters**: Organize into collapsible sections
+
+### Intelligence Features
+
+**Enum Detection:**
+- Fields with <50 unique values become dropdowns
+- Tracks value frequency for smart ordering
+- Auto-detects status fields, categories, types
+
+**Format Recognition:**
+- Email fields get email validation
+- URLs get URL validation
+- Dates get appropriate date pickers
+- Numbers get numeric validation
+
+**Geographic Intelligence:**
+- Pairs latitude/longitude fields
+- Enables radius search
+- Integrates with map interface
+
+## Filter Configuration
+
+### Automatic Generation
+
+After schema detection completes, filters are generated automatically:
+
+```typescript
+// Generated filter example
+{
+  id: "status_a1b2c3d4",
+  fieldPath: "status",
+  label: "Status",
+  type: "select",
+  operators: ["equals", "in", "not_in"],
+  options: [
+    { value: "active", label: "Active", count: 1250 },
+    { value: "pending", label: "Pending", count: 340 },
+    { value: "completed", label: "Completed", count: 890 }
+  ],
+  displayMode: "both",
+  metadata: {
+    occurrencePercent: 98.5,
+    uniqueValues: 3,
+    mostCommon: "active"
+  }
+}
+```
+
+### Editor Customization
+
+Editors can override any aspect of auto-generated filters:
+
+```typescript
+{
+  fieldPath: "temperature",
+  enabled: true,  // Can disable filters that shouldn't be exposed
+  displayMode: "advanced", // Override auto-detection: simple, advanced, both, hidden
+  
+  // Override auto-generated labels
+  labels: {
+    en: "Temperature",
+    de: "Temperatur",
+    fr: "Température"
+  },
+  
+  // Add user-friendly descriptions
+  descriptions: {
+    en: "Filter by temperature in Celsius"
+  },
+  
+  // Provide helpful context
+  helpText: {
+    en: "Enter a temperature between -50 and 50°C"
+  },
+  
+  // Guide user input
+  placeholders: {
+    en: "e.g., 23.5"
+  },
+  
+  // Show common use cases
+  examples: [
+    { value: "20-25", description: "Room temperature" },
+    { value: ">30", description: "Hot days" }
+  ],
+  
+  // Override detected type
+  filterType: "range",  // Force range slider instead of text input
+  
+  // Custom validation rules
+  validation: {
+    min: -50,
+    max: 50,
+    pattern: "^-?\\d+(\\.\\d{1,2})?$"
+  },
+  
+  // Track modification source
+  source: "modified"  // auto, manual, modified
+}
+```
+
+## Filter Types
+
+### Text Filters
+
+For string fields without enum detection:
+
+```typescript
+{
+  type: "text",
+  operators: ["equals", "contains", "starts_with", "ends_with"],
+  validation: {
+    minLength: 1,
+    maxLength: 100,
+    pattern: "^[a-zA-Z0-9\\s]+$"
+  }
+}
+```
+
+### Numeric Filters
+
+For number fields with statistics:
+
+```typescript
+{
+  type: "range",
+  operators: ["equals", "between", "gt", "lt"],
+  config: {
+    min: 0,
+    max: 100,
+    step: 0.1,
+    unit: "°C"
+  }
+}
+```
+
+### Date Filters
+
+For date/datetime fields:
+
+```typescript
+{
+  type: "daterange",
+  operators: ["equals", "between", "before", "after"],
+  config: {
+    format: "YYYY-MM-DD",
+    minDate: "2020-01-01",
+    maxDate: "today",
+    quickSelects: ["today", "yesterday", "last7days", "last30days"]
+  }
+}
+```
+
+### Enum Filters
+
+For fields with limited values:
+
+```typescript
+{
+  type: "select",
+  operators: ["equals", "in", "not_in"],
+  options: [
+    { value: "draft", label: "Draft", color: "#gray" },
+    { value: "published", label: "Published", color: "#green" },
+    { value: "archived", label: "Archived", color: "#red" }
+  ],
+  config: {
+    multiple: true,
+    searchable: true,
+    clearable: true
+  }
+}
+```
+
+### Geographic Filters
+
+For coordinate fields:
+
+```typescript
+{
+  type: "geo",
+  operators: ["within_radius", "within_bounds"],
+  config: {
+    defaultRadius: 10,
+    radiusUnit: "km",
+    mapProvider: "mapbox",
+    defaultCenter: [52.520008, 13.404954]
+  }
+}
+```
+
+## Display Modes
+
+### Simple Mode
+
+Shows only the most important filters:
+
+- Fields with >80% occurrence rate
+- Primary identifiers (name, title, status)
+- Date fields for temporal filtering
+- Geographic fields for location search
+
+### Advanced Mode
+
+Shows all available filters:
+
+- All fields meeting minimum threshold
+- Complex operators (regex, arrays)
+- Nested field paths
+- Custom field combinations
+
+### Configuration
+
+```typescript
+{
+  filterConfiguration: {
+    settings: {
+      defaultMode: "simple",
+      allowModeSwitch: true,
+      simpleFilterLimit: 5,
+      advancedFilterLimit: 50
+    }
+  }
+}
+```
+
+## Smart Features
+
+### Operator Intelligence
+
+The system selects operators based on data:
+
+| Data Type | Common Values | Selected Operators |
+|-----------|--------------|-------------------|
+| String | Many unique | contains, starts_with |
+| String | Few unique | equals, in |
+| Number | Wide range | between, gt, lt |
+| Number | Few values | equals, in |
+| Array | Any | contains, contains_all |
+
+### Value Suggestions
+
+Based on field statistics:
+
+```typescript
+{
+  fieldPath: "category",
+  suggestions: {
+    popular: ["electronics", "books", "clothing"], // Top 3 by frequency
+    recent: ["furniture", "toys"],                  // Recently added
+    related: ["accessories"]                        // Based on co-occurrence
+  }
+}
+```
+
+### Validation Intelligence
+
+Automatic validation based on data:
+
+```typescript
+{
+  // For numeric fields
+  validation: {
+    min: stats.min * 0.9,  // 10% buffer
+    max: stats.max * 1.1,
+    isInteger: stats.allIntegers
+  },
+  
+  // For string fields
+  validation: {
+    pattern: detectPattern(samples), // e.g., email, phone
+    maxLength: stats.maxLength + 10
+  }
+}
+```
+
+## Filter Groups
+
+Organize filters into logical groups:
+
+```typescript
+{
+  groups: [
+    {
+      id: "basic",
+      labels: { en: "Basic Information" },
+      order: 1,
+      filters: ["name", "status", "category"]
+    },
+    {
+      id: "location",
+      labels: { en: "Location" },
+      order: 2,
+      filters: ["city", "country", "coordinates"],
+      collapsible: true,
+      defaultExpanded: false
+    },
+    {
+      id: "temporal",
+      labels: { en: "Time & Date" },
+      order: 3,
+      filters: ["createdAt", "eventDate", "year"]
+    }
+  ]
+}
+```
+
+## Performance Optimization
+
+### Pre-computed Filters
+
+Filters are generated during schema detection:
+
+1. **Generation Time**: After import completion
+2. **Storage**: In dataset document with version
+3. **Caching**: In-memory for fast API responses
+4. **Updates**: Only when schema changes
+
+### Query Optimization
+
+All filters use the single GIN index:
+
+```sql
+-- Single index for all JSONB queries
+CREATE INDEX idx_events_data_gin ON events USING gin (data);
+
+-- Example query for filter
+SELECT * FROM events 
+WHERE dataset_id = ? 
+AND data @> '{"status": "active"}'
+AND data->>'temperature' BETWEEN '20' AND '30';
+```
+
+## API Usage
+
+### Get Available Filters
+
+```http
+GET /api/datasets/:id/filters?locale=en&mode=simple
+
+Response:
+{
+  "filters": [...],
+  "groups": [...],
+  "settings": {
+    "defaultMode": "simple",
+    "allowModeSwitch": true
+  },
+  "metadata": {
+    "totalFilters": 25,
+    "simpleFilters": 5,
+    "lastGenerated": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+### Apply Filters
+
+```http
+POST /api/events/search
+{
+  "datasetId": "dataset-123",
+  "filters": [
+    {
+      "field": "status",
+      "operator": "in",
+      "value": ["active", "pending"]
+    },
+    {
+      "field": "temperature",
+      "operator": "between",
+      "value": [20, 30]
+    }
+  ],
+  "mode": "simple"
+}
+```
+
+### Filter Validation
+
+```http
+POST /api/datasets/:id/filters/validate
+{
+  "filters": [
+    {
+      "field": "email",
+      "operator": "equals",
+      "value": "invalid-email"
+    }
+  ]
+}
+
+Response:
+{
+  "valid": false,
+  "errors": [
+    {
+      "field": "email",
+      "message": "Invalid email format"
+    }
+  ]
+}
+```
+
+## Best Practices
+
+### For Automatic Generation
+
+1. **Consistent Data**: Use consistent types and formats
+2. **Meaningful Names**: Field names become filter labels
+3. **Limit Enums**: Keep unique values under threshold
+4. **Include Metadata**: Add units, ranges in field names
+
+### For Editor Management
+
+1. **Review Generated Filters**: Check auto-generated filters after import
+2. **Disable Unused**: Hide filters for rarely-used fields
+3. **Override When Needed**: Change types that don't match user needs
+4. **Test After Changes**: Verify filters work after schema updates
+5. **Document Migrations**: Note manual changes for future schema updates
+
+### Handling Schema Changes
+
+1. **Let System Merge**: Allow automatic preservation of customizations
+2. **Review Conflicts**: Check _state="conflict" filters after updates
+3. **Plan Migrations**: Document how to handle type changes
+4. **Test Thoroughly**: Verify filters still work with new data
+
+### For Performance
+
+1. **Limit Filters**: Hide rarely-used fields
+2. **Use Simple Mode**: Default to essential filters
+3. **Cache Results**: Enable filter result caching
+4. **Index Strategy**: Rely on GIN index efficiency
+
+## Troubleshooting
+
+### Filters Not Generated
+
+- Check if field occurrence > minimum threshold (10%)
+- Verify schema detection completed successfully
+- Ensure dataset has generated filters
+- Check filter generation job logs
+
+### Wrong Filter Type
+
+- Review field statistics in schema metadata
+- Check enum detection threshold settings
+- Verify type consistency in data
+- Consider manual filter type override
+
+### Performance Issues
+
+- Reduce number of active filters
+- Use more specific operators (equals vs contains)
+- Enable filter result caching
+- Check GIN index usage in queries
+
+## Schema Change Handling
+
+When schemas evolve, the system preserves editor customizations:
+
+### Automatic Preservation
+
+The system attempts to retain all manual configurations:
+
+```typescript
+// Original filter configuration
+{
+  fieldPath: "status",
+  enabled: true,
+  labels: { en: "Order Status" },  // Editor customization
+  descriptions: { en: "Current order status" },
+  displayMode: "simple"
+}
+
+// After schema change (new enum value added)
+{
+  fieldPath: "status",
+  enabled: true,
+  labels: { en: "Order Status" },  // Preserved
+  descriptions: { en: "Current order status" },  // Preserved
+  displayMode: "simple",  // Preserved
+  options: ["active", "pending", "completed", "cancelled"]  // Updated
+}
+```
+
+### Conflict Resolution
+
+When breaking changes occur:
+
+```typescript
+{
+  fieldPath: "temperature",
+  _state: "conflict",
+  _conflictInfo: {
+    reason: "type_changed",
+    oldType: "string",
+    newType: "number",
+    message: "Field type changed - manual migration required"
+  }
+}
+```
+
+### Manual Migration
+
+Editors can resolve conflicts through:
+
+1. **Type Transformation**: Configure automatic conversion
+2. **Field Mapping**: Map old field to new field
+3. **Reset Filter**: Start fresh with new configuration
+4. **Disable Filter**: Hide from users until resolved
+
+## Advanced Configuration
+
+### Filter Dependencies
+
+Define filter relationships:
+
+```typescript
+{
+  dependencies: [
+    {
+      parent: "country",
+      child: "city",
+      type: "values", // Filter city values based on country
+      mapping: {
+        "USA": ["New York", "Los Angeles", "Chicago"],
+        "UK": ["London", "Manchester", "Birmingham"]
+      }
+    }
+  ]
+}
+```
+
+### Computed Filters
+
+Create filters from multiple fields:
+
+```typescript
+{
+  computedFilters: [
+    {
+      id: "fullName",
+      label: "Full Name",
+      fields: ["firstName", "lastName"],
+      operator: "concat",
+      searchable: true
+    }
+  ]
+}
+```
+
+## Summary
+
+The dynamic filter system provides:
+
+- **Automatic generation** from schema and statistics
+- **Full editor control** to override, customize, or disable any filter
+- **Smart preservation** of customizations through schema changes
+- **Conflict detection** with manual migration options
+- **Multi-language support** with customizable labels
+- **Performance optimization** with pre-computation
+- **Real-time validation** for data integrity
+
+Key principles:
+1. Filters are generated automatically but never forced on users
+2. Editors decide which filters are exposed and how they appear
+3. Manual customizations are preserved when schemas evolve
+4. Conflicts require explicit resolution to maintain data integrity
+5. The system attempts to reuse configurations whenever possible
+
+This balance of automation and control ensures filters remain useful as data evolves while giving editors the flexibility to create the best user experience.

@@ -156,7 +156,7 @@ Edit `next.config.mjs` for:
 
 ### Build Issues
 
-1. **React Version Conflicts**: Ensure React 18.x is used (not 19.x)
+1. **React Version Conflicts**: This project uses React 19.x
 2. **Missing Dependencies**: Run `pnpm install` from project root
 3. **TypeScript Errors**: Check `tsconfig.json` extends workspace config
 

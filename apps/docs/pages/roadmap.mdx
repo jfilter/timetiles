@@ -13,14 +13,45 @@ TimeTiles is in early development and not yet functional for actual use.
 - [x] Development environment setup
 - [x] Isolated unit and integration test with vitest
 - [x] e2e tests with Playwright
-- [x] CI
+- [x] CI with Github Actions
 
 ## Alpha Release 🚧
 
-- [ ] Core event import functionality
-- [ ] Basic map visualization
-- [ ] User authentication
-- [ ] Initial documentation
+### Core Import System
+
+- [ ] **File parsing and batch processing** (CSV, JSON, Excel support)
+- [ ] **Progressive schema detection** during import using quicktype
+- [ ] **Smart deduplication** with configurable ID strategies:
+  - External ID from source data
+  - Computed hash from selected fields
+  - Auto-detection via content hashing
+  - Hybrid approaches
+- [ ] **Type transformation system** for handling data mismatches
+- [ ] **Geographic field detection** (latitude/longitude auto-detection)
+- [ ] **Schema approval workflow** for editors
+
+### Dynamic Filter Generation
+
+- [ ] **Automatic filter generation** from detected schemas
+- [ ] **Intelligent filter types**:
+  - Text search for high-cardinality fields
+  - Select/multi-select for enums
+  - Range sliders for numeric data
+  - Date pickers and ranges
+  - Geographic radius/bounds filters
+- [ ] **Editor customization interface**:
+  - Custom labels, descriptions, and help text
+  - Multi-language support with fallbacks
+  - Simple/Advanced mode configuration
+  - Filter grouping and ordering
+  - Validation rules and examples
+- [ ] **Filter conflict resolution** when schemas change
+
+### Visualization & Interface
+
+- [ ] Basic map visualization with geographic filtering
+- [ ] Filter UI with simple/advanced modes
+- [ ] Real-time filter validation and suggestions
 
 ## Beta Release 📋
 
