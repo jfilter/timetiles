@@ -24,11 +24,7 @@ process.env.TEMP_DIR = tempDir;
 
 // Global setup to ensure clean test environment
 beforeAll(async () => {
-  console.log(`[SETUP] Setting up test environment for worker ${workerId}`);
-  console.log(`[SETUP] Test database: ${testDbName}`);
-  console.log(`[SETUP] DATABASE_URL: ${dbUrl}`);
-  console.log(`[SETUP] NODE_ENV: ${process.env.NODE_ENV}`);
-  console.log(`[SETUP] CI: ${process.env.CI}`);
+  console.log(`Setting up test environment for worker ${workerId}`);
   
   // Ensure temp directory exists
   if (!fs.existsSync(tempDir)) {
@@ -36,17 +32,15 @@ beforeAll(async () => {
   }
 
   // Create test database if it doesn't exist (includes PostGIS setup)
-  console.log(`[SETUP] Creating test database: ${testDbName}`);
   await createTestDatabase(testDbName);
-  console.log(`[SETUP] Test database created successfully: ${testDbName}`);
-  
+
   // Run migrations to ensure database schema is up to date
   try {
     const { getPayload, buildConfig } = await import("payload");
     const { postgresAdapter } = await import("@payloadcms/db-postgres");
     const { lexicalEditor } = await import("@payloadcms/richtext-lexical");
     const { migrations } = await import("../migrations");
-    
+
     // Import all collections to ensure proper migration
     const Catalogs = (await import("../lib/collections/Catalogs")).default;
     const Datasets = (await import("../lib/collections/Datasets")).default;
@@ -54,8 +48,11 @@ beforeAll(async () => {
     const Events = (await import("../lib/collections/Events")).default;
     const Users = (await import("../lib/collections/Users")).default;
     const Media = (await import("../lib/collections/Media")).default;
-    const LocationCache = (await import("../lib/collections/LocationCache")).default;
-    const GeocodingProviders = (await import("../lib/collections/GeocodingProviders")).default;
+    const LocationCache = (await import("../lib/collections/LocationCache"))
+      .default;
+    const GeocodingProviders = (
+      await import("../lib/collections/GeocodingProviders")
+    ).default;
     const { Pages } = await import("../lib/collections/Pages");
     const { MainMenu } = await import("../lib/collections/MainMenu");
     const {
@@ -64,7 +61,7 @@ beforeAll(async () => {
       eventCreationJob,
       geocodingBatchJob,
     } = await import("../lib/jobs/import-jobs");
-    
+
     const testConfig = buildConfig({
       secret: process.env.PAYLOAD_SECRET || "test-secret-key",
       admin: {
@@ -100,24 +97,32 @@ beforeAll(async () => {
       }),
       editor: lexicalEditor({}),
     });
-    
-    console.log(`[SETUP] Initializing Payload for migrations...`);
+
     const payload = await getPayload({ config: testConfig });
-    
-    console.log(`[SETUP] Running migrations...`);
     await payload.db.migrate();
-    console.log(`[SETUP] Successfully ran migrations for global test setup: ${testDbName}`);
     
-    // In test environments, Payload might handle migrations differently
-    // Let's just verify the schema directly without waiting for migration records
-    console.log(`[SETUP] Verifying database schema...`);
+    // Verify the schema was created correctly
     await verifyDatabaseSchema(dbUrl);
-    console.log(`[SETUP] Database schema verified successfully`);
   } catch (error) {
     console.error(`Migration FAILED for global setup ${testDbName}:`, error);
     // Re-throw the error to fail the test setup
     throw error;
   }
-  
-  console.log(`[SETUP] Test environment setup complete for worker ${workerId}`);
 });
+
+// Global teardown to clean up
+afterAll(async () => {
+  // Clean up temp directory
+  if (fs.existsSync(tempDir)) {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+  
+  // Don't drop the database - leave it for debugging if needed
+  // The next test run will reuse it
+});
+
+// Common mocks
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn(),
+  notFound: vi.fn(),
+}));

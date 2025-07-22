@@ -1,17 +1,12 @@
 import { defineConfig } from "vitest/config";
 import path from "path";
+import baseConfig from "./vitest.config.base";
 
 export default defineConfig({
+  ...baseConfig,
   test: {
     globals: true,
     environment: "jsdom",
-    include: [
-      "lib/**/*.{test,spec}.{js,ts,jsx,tsx}",
-      "scripts/**/*.{test,spec}.{js,ts,jsx,tsx}",
-      "__tests__/**/*.{test,spec}.{js,ts,jsx,tsx}",
-      "__tests__/**/*.test.tsx",
-      "app/**/*.{test,spec}.{js,ts,jsx,tsx}",
-    ],
     exclude: ["**/node_modules/**"],
     setupFiles: ["__tests__/setup.ts"],
     testTimeout: 30000,
@@ -37,10 +32,10 @@ export default defineConfig({
     },
   },
   resolve: {
+    ...(baseConfig.resolve || {}),
     alias: {
+      ...((baseConfig.resolve && baseConfig.resolve.alias) || {}),
       "@payload-config": path.resolve(__dirname, "payload.config.ts"),
-      "@": path.resolve(__dirname, "."),
-      "@workspace/ui": path.resolve(__dirname, "../../packages/ui/src"),
     },
   },
 });

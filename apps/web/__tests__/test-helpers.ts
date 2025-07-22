@@ -1,16 +1,24 @@
 import { randomUUID } from "crypto";
 import fs from "fs";
-import { dropTestDatabase } from "./database-setup";
-import { verifyDatabaseSchema, waitForMigrations } from "./verify-schema";
+import path from "path";
+import { getPayload, buildConfig } from "payload";
+import { postgresAdapter } from "@payloadcms/db-postgres";
+import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { migrations } from "@/migrations";
+import { truncateAllTables } from "./database-setup";
+import { verifyDatabaseSchema } from "./verify-schema";
+
+// Import collections
 import Catalogs from "@/lib/collections/Catalogs";
 import Datasets from "@/lib/collections/Datasets";
-import GeocodingProviders from "@/lib/collections/GeocodingProviders";
 import Imports from "@/lib/collections/Imports";
-import LocationCache from "@/lib/collections/LocationCache";
-import { MainMenu } from "@/lib/collections/MainMenu";
+import Events from "@/lib/collections/Events";
+import Users from "@/lib/collections/Users";
 import Media from "@/lib/collections/Media";
+import LocationCache from "@/lib/collections/LocationCache";
+import GeocodingProviders from "@/lib/collections/GeocodingProviders";
 import { Pages } from "@/lib/collections/Pages";
+import { MainMenu } from "@/lib/collections/MainMenu";
 import {
   fileParsingJob,
   batchProcessingJob,
@@ -18,11 +26,9 @@ import {
   geocodingBatchJob,
 } from "@/lib/jobs/import-jobs";
 
-import Events from "@/lib/collections/Events";
-import Users from "@/lib/collections/Users";
-
 /**
  * Creates an isolated test environment for each test
+ * Uses the database already set up by the global setup, just truncates tables
  */
 export async function createIsolatedTestEnvironment(): Promise<{
   seedManager: any;
@@ -32,46 +38,25 @@ export async function createIsolatedTestEnvironment(): Promise<{
 }> {
   const testId = randomUUID();
   const workerId = process.env.VITEST_WORKER_ID || "1";
-  
-  // In CI, use the pre-created databases to avoid migration issues
-  const isCI = process.env.CI === 'true';
-  const dbName = isCI 
-    ? `timetiles_test_${workerId}` 
-    : `timetiles_test_${workerId}_${testId.replace(/-/g, "_")}`;
-  const dbUrl = `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
   const tempDir = `/tmp/timetiles-test-${workerId}-${testId}`;
-
-  console.log(`[TEST-HELPER] Test environment - CI: ${isCI}, Worker: ${workerId}, DB: ${dbName}`);
 
   // Create unique temp directory for this test
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
   }
 
-  // Only create database if not in CI (CI pre-creates them)
-  if (!isCI) {
-    console.log(`[TEST-HELPER] Creating isolated test database: ${dbName}`);
-    const { createTestDatabase } = await import("./database-setup");
-    await createTestDatabase(dbName);
-    console.log(`[TEST-HELPER] Isolated test database created: ${dbName}`);
-  } else {
-    console.log(`[TEST-HELPER] Using pre-created CI database: ${dbName}`);
-  }
+  // Use the database that was already set up by the global setup
+  const dbName = `timetiles_test_${workerId}`;
+  const dbUrl = process.env.DATABASE_URL || `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
 
-  // Initialize Payload with isolated database using environment override
-  const originalDbUrl = process.env.DATABASE_URL;
-  const originalSecret = process.env.PAYLOAD_SECRET;
+  console.log(`[TEST-HELPER] Using test database: ${dbName}`);
 
-  // Override environment variables for this test instance
-  process.env.DATABASE_URL = dbUrl;
-  process.env.PAYLOAD_SECRET = process.env.PAYLOAD_SECRET || "test-secret-key";
-  (process.env as any).NODE_ENV = "test"; // Prevent interactive prompts
+  // Truncate all tables to ensure clean state for this test
+  console.log(`[TEST-HELPER] Truncating tables for clean test state...`);
+  await truncateAllTables(dbUrl);
+  console.log(`[TEST-HELPER] Tables truncated successfully`);
 
-  const { getPayload, buildConfig } = await import("payload");
-  const { postgresAdapter } = await import("@payloadcms/db-postgres");
-  const { lexicalEditor } = await import("@payloadcms/richtext-lexical");
-
-  // Create test config
+  // Create test config (similar to setup.ts but using the existing database)
   const testConfig = buildConfig({
     secret: process.env.PAYLOAD_SECRET || "test-secret-key",
     admin: {
@@ -108,46 +93,9 @@ export async function createIsolatedTestEnvironment(): Promise<{
     editor: lexicalEditor({}),
   });
 
-  console.log(`[TEST-HELPER] Initializing Payload for isolated test...`);
+  console.log(`[TEST-HELPER] Initializing Payload for test...`);
   const payload = await getPayload({ config: testConfig });
   console.log(`[TEST-HELPER] Payload initialized for test with DB: ${dbName}`);
-
-  // Force migrations to run (only if not in CI, as CI already has migrations)
-  if (!isCI) {
-    try {
-      console.log(`[TEST-HELPER] Running migrations for isolated test database...`);
-      const migrationResult = await payload.db.migrate();
-      console.log(`[TEST-HELPER] Migration result:`, migrationResult);
-      console.log(`[TEST-HELPER] Successfully ran migrations for test database: ${dbName}`);
-      
-      // In test environments, Payload might handle migrations differently
-      // Let's just verify the schema directly without waiting for migration records
-      console.log(`[TEST-HELPER] Verifying database schema...`);
-      await verifyDatabaseSchema(dbUrl);
-      console.log(`[TEST-HELPER] Database schema verified successfully`);
-    } catch (error) {
-      console.error(`Migration FAILED for ${dbName}:`, error);
-      // Re-throw the error to fail the test
-      throw error;
-    }
-  } else {
-    // In CI, just verify the schema exists from global setup
-    console.log(`[TEST-HELPER] Verifying pre-migrated CI database schema...`);
-    await verifyDatabaseSchema(dbUrl);
-    console.log(`[TEST-HELPER] CI database schema verified successfully`);
-  }
-
-  // Restore original environment variables
-  if (originalDbUrl) {
-    process.env.DATABASE_URL = originalDbUrl;
-  } else {
-    delete process.env.DATABASE_URL;
-  }
-  if (originalSecret) {
-    process.env.PAYLOAD_SECRET = originalSecret;
-  } else {
-    delete process.env.PAYLOAD_SECRET;
-  }
 
   // Set global test payload for route handlers to use
   (global as any).__TEST_PAYLOAD__ = payload;
@@ -157,7 +105,6 @@ export async function createIsolatedTestEnvironment(): Promise<{
   const seedManager = new SeedManager();
 
   // Override the initialize method to use the isolated payload instance
-  const originalInitialize = seedManager.initialize.bind(seedManager);
   seedManager.initialize = async () => {
     // Set the payload instance directly instead of creating a new one
     (seedManager as any).payload = payload;
@@ -181,10 +128,11 @@ export async function createIsolatedTestEnvironment(): Promise<{
       console.warn("Failed to clean up temp directory:", error);
     }
 
+    // Truncate tables for the next test
     try {
-      // await dropTestDatabase(dbName);
+      await truncateAllTables(dbUrl);
     } catch (error) {
-      console.warn("Failed to drop test database:", error);
+      console.warn("Failed to truncate tables during cleanup:", error);
     }
   };
 

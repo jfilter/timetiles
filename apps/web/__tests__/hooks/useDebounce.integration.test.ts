@@ -13,7 +13,7 @@ describe("useDebounce", () => {
 
   test("should return initial value immediately", () => {
     const { result } = renderHook(() => useDebounce("initial", 500));
-    
+
     expect(result.current).toBe("initial");
   });
 
@@ -22,7 +22,7 @@ describe("useDebounce", () => {
       ({ value, delay }) => useDebounce(value, delay),
       {
         initialProps: { value: "initial", delay: 500 },
-      }
+      },
     );
 
     expect(result.current).toBe("initial");
@@ -55,22 +55,22 @@ describe("useDebounce", () => {
       ({ value, delay }) => useDebounce(value, delay),
       {
         initialProps: { value: "initial", delay: 500 },
-      }
+      },
     );
 
     // Make several rapid changes
     rerender({ value: "change1", delay: 500 });
-    
+
     act(() => {
       vi.advanceTimersByTime(300);
     });
-    
+
     rerender({ value: "change2", delay: 500 });
-    
+
     act(() => {
       vi.advanceTimersByTime(300);
     });
-    
+
     rerender({ value: "final", delay: 500 });
 
     // Should still be initial value
@@ -90,7 +90,7 @@ describe("useDebounce", () => {
       ({ value, delay }) => useDebounce(value, delay),
       {
         initialProps: { value: "initial", delay: 1000 },
-      }
+      },
     );
 
     rerender({ value: "updated", delay: 100 });

@@ -12,7 +12,9 @@ describe("/api/events/histogram", () => {
   const uniqueSuffix = Date.now().toString();
 
   beforeAll(async () => {
-    const { createIsolatedTestEnvironment } = await import("../../test-helpers");
+    const { createIsolatedTestEnvironment } = await import(
+      "../../test-helpers"
+    );
     testEnv = await createIsolatedTestEnvironment();
     payload = testEnv.payload;
 
@@ -28,7 +30,13 @@ describe("/api/events/histogram", () => {
             children: [
               {
                 type: "paragraph",
-                children: [{ type: "text", text: "Test catalog for histogram integration tests", version: 1 }],
+                children: [
+                  {
+                    type: "text",
+                    text: "Test catalog for histogram integration tests",
+                    version: 1,
+                  },
+                ],
                 version: 1,
               },
             ],
@@ -55,7 +63,13 @@ describe("/api/events/histogram", () => {
             children: [
               {
                 type: "paragraph",
-                children: [{ type: "text", text: "Test dataset for histogram integration tests", version: 1 }],
+                children: [
+                  {
+                    type: "text",
+                    text: "Test dataset for histogram integration tests",
+                    version: 1,
+                  },
+                ],
                 version: 1,
               },
             ],
@@ -119,7 +133,7 @@ describe("/api/events/histogram", () => {
   afterAll(async () => {
     // Skip cleanup for debugging
     console.log("Skipping cleanup for debugging");
-    
+
     // Clean up test environment
     if (testEnv?.cleanup) {
       try {
@@ -131,7 +145,9 @@ describe("/api/events/histogram", () => {
   });
 
   it("should return histogram data with auto granularity", async () => {
-    const request = new NextRequest("http://localhost:3000/api/events/histogram");
+    const request = new NextRequest(
+      "http://localhost:3000/api/events/histogram",
+    );
     const response = await GET(request);
 
     expect(response.status).toBe(200);
@@ -158,7 +174,7 @@ describe("/api/events/histogram", () => {
 
   it("should use month granularity for our test data", async () => {
     const request = new NextRequest(
-      "http://localhost:3000/api/events/histogram?granularity=month"
+      "http://localhost:3000/api/events/histogram?granularity=month",
     );
     const response = await GET(request);
 
@@ -171,14 +187,14 @@ describe("/api/events/histogram", () => {
 
     // January should have events
     const january = data.histogram.find(
-      (b: any) => new Date(b.date).getMonth() === 0
+      (b: any) => new Date(b.date).getMonth() === 0,
     );
     expect(january).toBeDefined();
     expect(january.count).toBeGreaterThan(0);
 
     // February should have events
     const february = data.histogram.find(
-      (b: any) => new Date(b.date).getMonth() === 1
+      (b: any) => new Date(b.date).getMonth() === 1,
     );
     expect(february).toBeDefined();
     expect(february.count).toBeGreaterThan(0);
@@ -186,7 +202,7 @@ describe("/api/events/histogram", () => {
 
   it("should filter by dataset", async () => {
     const request = new NextRequest(
-      `http://localhost:3000/api/events/histogram?datasets=${testDatasetId}`
+      `http://localhost:3000/api/events/histogram?datasets=${testDatasetId}`,
     );
     const response = await GET(request);
 
@@ -205,7 +221,7 @@ describe("/api/events/histogram", () => {
     const endDate = new Date(2024, 2, 31).toISOString().split("T")[0]; // Mar 31
 
     const request = new NextRequest(
-      `http://localhost:3000/api/events/histogram?startDate=${startDate}&endDate=${endDate}`
+      `http://localhost:3000/api/events/histogram?startDate=${startDate}&endDate=${endDate}`,
     );
     const response = await GET(request);
 
@@ -219,7 +235,7 @@ describe("/api/events/histogram", () => {
     // Should have some events in range
     const totalInRange = monthsWithData.reduce(
       (sum: number, b: any) => sum + b.count,
-      0
+      0,
     );
     expect(totalInRange).toBeGreaterThan(0);
   });
@@ -234,8 +250,8 @@ describe("/api/events/histogram", () => {
 
     const request = new NextRequest(
       `http://localhost:3000/api/events/histogram?bounds=${encodeURIComponent(
-        JSON.stringify(bounds)
-      )}`
+        JSON.stringify(bounds),
+      )}`,
     );
     const response = await GET(request);
 
@@ -252,7 +268,7 @@ describe("/api/events/histogram", () => {
     const endDate = new Date(2024, 0, 31).toISOString().split("T")[0];
 
     const request = new NextRequest(
-      `http://localhost:3000/api/events/histogram?startDate=${startDate}&endDate=${endDate}&granularity=day`
+      `http://localhost:3000/api/events/histogram?startDate=${startDate}&endDate=${endDate}&granularity=day`,
     );
     const response = await GET(request);
 
@@ -266,7 +282,7 @@ describe("/api/events/histogram", () => {
 
   it("should handle year granularity", async () => {
     const request = new NextRequest(
-      "http://localhost:3000/api/events/histogram?granularity=year"
+      "http://localhost:3000/api/events/histogram?granularity=year",
     );
     const response = await GET(request);
 
@@ -281,7 +297,7 @@ describe("/api/events/histogram", () => {
 
   it("should handle invalid bounds format", async () => {
     const request = new NextRequest(
-      "http://localhost:3000/api/events/histogram?bounds=invalid"
+      "http://localhost:3000/api/events/histogram?bounds=invalid",
     );
     const response = await GET(request);
 

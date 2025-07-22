@@ -2,21 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayloadHMR } from "@payloadcms/next/utilities";
 import { sql } from "@payloadcms/db-postgres";
 import config from "../../../../payload.config";
+import { logError } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+
+  // Extract parameters
+  const boundsParam = searchParams.get("bounds");
+  const catalog = searchParams.get("catalog");
+  const datasets = searchParams.getAll("datasets");
+  const startDate = searchParams.get("startDate");
+  const endDate = searchParams.get("endDate");
+  const granularity = searchParams.get("granularity") || "auto";
+
   try {
     // Use global test payload instance if available (for tests)
     const payload =
       (global as any).__TEST_PAYLOAD__ || (await getPayloadHMR({ config }));
-    const searchParams = request.nextUrl.searchParams;
-
-    // Extract parameters
-    const boundsParam = searchParams.get("bounds");
-    const catalog = searchParams.get("catalog");
-    const datasets = searchParams.getAll("datasets");
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
-    const granularity = searchParams.get("granularity") || "auto";
 
     // Parse bounds if provided
     let bounds = null;
@@ -47,7 +49,7 @@ export async function GET(request: NextRequest) {
     // Check if histogram function exists (force fallback for tests)
     const isTestMode = !!(global as any).__TEST_PAYLOAD__;
     let functionExists = false;
-    
+
     if (!isTestMode) {
       try {
         const functionCheck = await payload.db.drizzle.execute(sql`
@@ -58,7 +60,10 @@ export async function GET(request: NextRequest) {
         `);
         functionExists = functionCheck.rows[0]?.exists;
       } catch (error) {
-        console.warn("Function check failed, using fallback query:", (error as Error).message);
+        console.warn(
+          "Function check failed, using fallback query:",
+          (error as Error).message,
+        );
         functionExists = false;
       }
     }
@@ -91,7 +96,14 @@ export async function GET(request: NextRequest) {
         JOIN payload.datasets d ON e.dataset_id = d.id
         WHERE e.event_timestamp IS NOT NULL
           ${catalog ? sql`AND d.catalog_id = ${parseInt(catalog)}` : sql``}
-          ${datasets.length > 0 ? sql`AND e.dataset_id IN (${sql.join(datasets.map(d => sql`${parseInt(d)}`), sql`, `)})` : sql``}
+          ${
+            datasets.length > 0
+              ? sql`AND e.dataset_id IN (${sql.join(
+                  datasets.map((d) => sql`${parseInt(d)}`),
+                  sql`, `,
+                )})`
+              : sql``
+          }
           ${startDate ? sql`AND e.event_timestamp >= ${startDate}::timestamp` : sql``}
           ${endDate ? sql`AND e.event_timestamp <= ${endDate}::timestamp` : sql``}
           ${
@@ -118,7 +130,14 @@ export async function GET(request: NextRequest) {
         JOIN payload.datasets d ON e.dataset_id = d.id
         WHERE e.event_timestamp IS NOT NULL
           ${catalog ? sql`AND d.catalog_id = ${parseInt(catalog)}` : sql``}
-          ${datasets.length > 0 ? sql`AND e.dataset_id IN (${sql.join(datasets.map(d => sql`${parseInt(d)}`), sql`, `)})` : sql``}
+          ${
+            datasets.length > 0
+              ? sql`AND e.dataset_id IN (${sql.join(
+                  datasets.map((d) => sql`${parseInt(d)}`),
+                  sql`, `,
+                )})`
+              : sql``
+          }
           ${startDate ? sql`AND e.event_timestamp >= ${startDate}::timestamp` : sql``}
           ${endDate ? sql`AND e.event_timestamp <= ${endDate}::timestamp` : sql``}
           ${
@@ -147,7 +166,8 @@ export async function GET(request: NextRequest) {
       // Use the histogram function
       const filtersWithBounds = {
         catalogId: catalog ? parseInt(catalog) : undefined,
-        datasets: datasets.length > 0 ? datasets.map(d => parseInt(d)) : undefined,
+        datasets:
+          datasets.length > 0 ? datasets.map((d) => parseInt(d)) : undefined,
         startDate,
         endDate,
         ...(bounds && {
@@ -205,8 +225,8 @@ export async function GET(request: NextRequest) {
         topCatalogs: [],
       },
     });
-  } catch (error) {
-    console.error("Error calculating histogram:", error);
+  } catch (_error) {
+    logError(_error, "Failed to calculate histogram", { datasets });
     return NextResponse.json(
       { error: "Failed to calculate histogram" },
       { status: 500 },

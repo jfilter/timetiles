@@ -1,8 +1,9 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
-import path from "path";
+import baseConfig from "./vitest.config.base";
 
 export default defineConfig({
+  ...baseConfig,
   plugins: [react()],
   test: {
     globals: true,
@@ -11,11 +12,5 @@ export default defineConfig({
     setupFiles: ["__tests__/setup-components.ts"],
     testTimeout: 10000,
     pool: "forks",
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "."),
-      "@workspace/ui": path.resolve(__dirname, "../../packages/ui/src"),
-    },
   },
 });

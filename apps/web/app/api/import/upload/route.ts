@@ -10,12 +10,7 @@ import {
   getClientIdentifier,
   RATE_LIMITS,
 } from "../../../../lib/services/RateLimitService";
-import type {
-  Catalog,
-  Dataset,
-  Import,
-  User,
-} from "../../../../payload-types";
+import type { Catalog, Dataset, Import, User } from "../../../../payload-types";
 import {
   createRequestLogger,
   logError,

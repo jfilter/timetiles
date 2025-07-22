@@ -22,7 +22,9 @@
     "lint": {
       "dependsOn": ["^lint"]
     },
-    "format": {},
+    "format": {
+      "inputs": ["**/*.{ts,tsx,js,jsx,md,json}"]
+    },
     "typecheck": {
       "dependsOn": ["^typecheck"]
     },

@@ -137,9 +137,9 @@ describe("Seed Data Validation", () => {
       const devEvents = eventSeeds("development");
 
       // Check for development-specific data
-      expect(devCatalogs.some((c) => c.slug === "community-events-portal")).toBe(
-        true,
-      );
+      expect(
+        devCatalogs.some((c) => c.slug === "community-events-portal"),
+      ).toBe(true);
       expect(
         devDatasets.some((d) => d.slug?.includes("local-events-calendar")),
       ).toBe(true);

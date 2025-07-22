@@ -134,30 +134,33 @@ const createMultipartRequest = async (
   // Mock the formData method to return the expected data structure
   const mockFormData = async () => {
     const formDataResult = new FormData();
-    
+
     // Add file
     if (file) {
       // Create a proper File object for the test with arrayBuffer method
       const fileBlob = new Blob([fileContent], { type: file.type });
       const testFile = new File([fileBlob], file.name, { type: file.type });
-      
+
       // Ensure the file has the arrayBuffer method
       (testFile as any).arrayBuffer = async () => {
         // Convert string content to buffer
         const buffer = Buffer.from(fileContent);
-        return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+        return buffer.buffer.slice(
+          buffer.byteOffset,
+          buffer.byteOffset + buffer.byteLength,
+        );
       };
-      
+
       formDataResult.append("file", testFile);
     }
-    
+
     // Add other fields
     for (const [key, value] of formData.entries()) {
       if (key !== "file") {
         formDataResult.append(key, value as string);
       }
     }
-    
+
     return formDataResult;
   };
 
@@ -222,7 +225,7 @@ describe.sequential("Import System Integration Tests", () => {
   beforeAll(async () => {
     testEnv = await createIsolatedTestEnvironment();
     payload = testEnv.payload;
-    
+
     // Store payload globally for API routes to use in test mode
     (global as any).__TEST_PAYLOAD__ = payload;
   }, 30000);

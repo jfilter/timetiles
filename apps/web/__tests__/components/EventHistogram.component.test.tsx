@@ -48,7 +48,7 @@ describe.sequential("EventHistogram", () => {
     // Reset fetch mock
     global.fetch = vi.fn();
   });
-  
+
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
@@ -66,7 +66,7 @@ describe.sequential("EventHistogram", () => {
     });
 
     renderWithProviders(<EventHistogram />);
-    
+
     // Wait for no data message to appear
     await waitFor(() => {
       expect(screen.getByText("No data available")).toBeInTheDocument();
@@ -85,7 +85,7 @@ describe.sequential("EventHistogram", () => {
     });
 
     renderWithProviders(<EventHistogram />);
-    
+
     // Wait for the chart to render
     await waitFor(() => {
       const chartElement = screen.getByTestId("echarts-mock");

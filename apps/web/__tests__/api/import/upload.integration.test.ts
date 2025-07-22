@@ -9,9 +9,13 @@ import {
   afterEach,
 } from "vitest";
 import { NextRequest } from "next/server";
-import { POST as uploadHandler, GET as uploadHealthCheck } from "../../../app/api/import/upload/route";
+import {
+  POST as uploadHandler,
+  GET as uploadHealthCheck,
+} from "../../../app/api/import/upload/route";
 import { GET as progressHandler } from "../../../app/api/import/[importId]/progress/route";
 import { createIsolatedTestEnvironment } from "../../test-helpers";
+import fs from "fs";
 
 // Store the payload instance globally for test API routes to use
 declare global {
@@ -27,7 +31,7 @@ describe.sequential("Import API Endpoints", () => {
   beforeAll(async () => {
     testEnv = await createIsolatedTestEnvironment();
     payload = testEnv.payload;
-    
+
     // Store payload globally for API routes to use in test mode
     global.__TEST_PAYLOAD__ = payload;
   });
@@ -86,15 +90,16 @@ describe.sequential("Import API Endpoints", () => {
 
   describe.sequential("Upload Endpoint", () => {
     it("should pass health check", async () => {
-      const request = new NextRequest("http://localhost:3000/api/import/upload");
+      const request = new NextRequest(
+        "http://localhost:3000/api/import/upload",
+      );
       const response = await uploadHealthCheck(request);
       const result = await response.json();
-      
+
       expect(response.status).toBe(200);
       expect(result.success).toBe(true);
       expect(result.hasGlobalPayload).toBe(true);
     });
-
 
     const createMockFile = (
       name: string,
@@ -127,10 +132,10 @@ describe.sequential("Import API Endpoints", () => {
     ) => {
       // Create proper boundary for multipart form data
       const boundary = `----formdata-${Math.random().toString(36).substring(2)}`;
-      
+
       // Build multipart body
       let body = "";
-      
+
       // Add file field
       const file = formData.get("file") as File;
       if (file) {
@@ -139,7 +144,7 @@ describe.sequential("Import API Endpoints", () => {
         body += `Content-Type: ${file.type}\r\n\r\n`;
         body += `${fileContent}\r\n`;
       }
-      
+
       // Add other fields
       for (const [key, value] of formData.entries()) {
         if (key !== "file") {
@@ -148,51 +153,57 @@ describe.sequential("Import API Endpoints", () => {
           body += `${value}\r\n`;
         }
       }
-      
+
       body += `--${boundary}--\r\n`;
-      
+
       // Mock the formData method to return the expected data structure
       const mockFormData = async () => {
         const formDataResult = new FormData();
-        
+
         // Add file
         if (file) {
           // Create a proper File object for the test with arrayBuffer method
           const fileBlob = new Blob([fileContent], { type: file.type });
           const testFile = new File([fileBlob], file.name, { type: file.type });
-          
+
           // Ensure the file has the arrayBuffer method
           (testFile as any).arrayBuffer = async () => {
             // Convert string content to buffer
             const buffer = Buffer.from(fileContent);
-            return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+            return buffer.buffer.slice(
+              buffer.byteOffset,
+              buffer.byteOffset + buffer.byteLength,
+            );
           };
-          
+
           formDataResult.append("file", testFile);
         }
-        
+
         // Add other fields
         for (const [key, value] of formData.entries()) {
           if (key !== "file") {
             formDataResult.append(key, value as string);
           }
         }
-        
+
         return formDataResult;
       };
-      
-      const request = new NextRequest("http://localhost:3000/api/import/upload", {
-        method: "POST",
-        body: body,
-        headers: {
-          "Content-Type": `multipart/form-data; boundary=${boundary}`,
-          ...headers,
+
+      const request = new NextRequest(
+        "http://localhost:3000/api/import/upload",
+        {
+          method: "POST",
+          body: body,
+          headers: {
+            "Content-Type": `multipart/form-data; boundary=${boundary}`,
+            ...headers,
+          },
         },
-      });
-      
+      );
+
       // Override the formData method to use our mock
       (request as any).formData = mockFormData;
-      
+
       return request;
     };
 

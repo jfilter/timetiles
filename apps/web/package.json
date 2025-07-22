@@ -12,6 +12,7 @@
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
+    "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "payload": "payload",
     "payload:generate": "payload generate:types",

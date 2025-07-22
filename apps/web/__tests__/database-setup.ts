@@ -50,18 +50,21 @@ export async function createTestDatabase(dbName: string): Promise<void> {
 
   try {
     await targetClient.connect();
-    
+
     // Create PostGIS extension if it doesn't exist
     await targetClient.query(`CREATE EXTENSION IF NOT EXISTS postgis`);
     await targetClient.query(`CREATE EXTENSION IF NOT EXISTS postgis_topology`);
-    
+
     // Create the payload schema
     await targetClient.query(`CREATE SCHEMA IF NOT EXISTS payload`);
-    
-    logger.debug(`Ensured PostGIS extensions and payload schema in test database: ${dbName}`);
-    
+
+    logger.debug(
+      `Ensured PostGIS extensions and payload schema in test database: ${dbName}`,
+    );
   } catch (error) {
-    logger.warn(`Failed to set up PostGIS extension in ${dbName}: ${(error as Error).message}`);
+    logger.warn(
+      `Failed to set up PostGIS extension in ${dbName}: ${(error as Error).message}`,
+    );
     throw error;
   } finally {
     await targetClient.end();
@@ -71,22 +74,23 @@ export async function createTestDatabase(dbName: string): Promise<void> {
 /**
  * Truncates all tables in the test database
  */
-export async function truncateAllTables(): Promise<void> {
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) {
-    throw new Error("DATABASE_URL environment variable is not set");
+export async function truncateAllTables(dbUrl?: string): Promise<void> {
+  const connectionString = dbUrl || process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("No database URL provided");
   }
 
-  const client = new Client({ connectionString: dbUrl });
+  const client = new Client({ connectionString });
 
   try {
     await client.connect();
 
-    // Get all table names in the public schema
+    // Get all table names in the payload schema
     const res = await client.query(`
       SELECT table_name
       FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+      WHERE table_schema = 'payload' AND table_type = 'BASE TABLE'
+        AND table_name NOT LIKE 'payload_migrations%'
     `);
 
     const tableNames = res.rows.map((row) => row.table_name);
@@ -94,7 +98,7 @@ export async function truncateAllTables(): Promise<void> {
     if (tableNames.length > 0) {
       // Truncate all tables
       await client.query(
-        `TRUNCATE TABLE ${tableNames.map((name) => `"${name}"`).join(", ")} RESTART IDENTITY CASCADE`,
+        `TRUNCATE TABLE ${tableNames.map((name) => `payload."${name}"`).join(", ")} RESTART IDENTITY CASCADE`,
       );
       logger.debug("Truncated all tables in the test database");
     }
@@ -142,7 +146,6 @@ export async function dropTestDatabase(dbName: string): Promise<void> {
     await client.end();
   }
 }
-
 
 /**
  * Extract database name from connection URL
