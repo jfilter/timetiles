@@ -1,10 +1,14 @@
-import { type MigrateUpArgs, type MigrateDownArgs, sql } from '@payloadcms/db-postgres'
+import {
+  type MigrateUpArgs,
+  type MigrateDownArgs,
+  sql,
+} from "@payloadcms/db-postgres";
 
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
     DROP FUNCTION IF EXISTS calculate_event_histogram(text, jsonb);
   `);
-  
+
   await db.execute(sql`
     CREATE FUNCTION calculate_event_histogram(
       p_interval text, -- 'hour', 'day', 'week', 'month', 'year'

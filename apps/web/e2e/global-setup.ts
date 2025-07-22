@@ -11,9 +11,11 @@ async function globalSetup(config: FullConfig) {
     const payload = await seedManager.initialize();
     const catalogCount = await seedManager.getCollectionCount("catalogs");
     const datasetCount = await seedManager.getCollectionCount("datasets");
-    
+
     if (catalogCount >= 2 && datasetCount >= 2) {
-      console.log("✅ Database already has sufficient test data, skipping seeding");
+      console.log(
+        "✅ Database already has sufficient test data, skipping seeding",
+      );
       return;
     }
 
@@ -28,7 +30,7 @@ async function globalSetup(config: FullConfig) {
     console.log("✅ Database seeded successfully with fresh data");
   } catch (error) {
     console.error("❌ Failed to seed database with truncation:", error);
-    
+
     try {
       // Fallback: try to seed without truncation but skip conflicting users
       console.log("🔄 Attempting to seed without truncation...");

@@ -6,15 +6,17 @@ const logger = createLogger("health-api");
 
 export async function GET() {
   logger.info("Health check endpoint called");
-  
+
   try {
     const results = await runHealthChecks();
     logger.debug("Health check results:", results);
-    
+
     const hasError = Object.values(results).some((r) => r.status === "error");
     const hasPending = results.migrations.status === "pending";
     const postgisNotFound = results.postgis.status === "not found";
-    const hasWarning = Object.values(results).some((r) => r.status === "warning");
+    const hasWarning = Object.values(results).some(
+      (r) => r.status === "warning",
+    );
 
     let overallStatus = 200;
     if (hasError || postgisNotFound) {
@@ -40,12 +42,15 @@ export async function GET() {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
-    
+
     // Return a more detailed error response for debugging
     const errorResponse = {
       error: "Health check failed",
       message: error instanceof Error ? error.message : "Unknown error",
-      stack: process.env.NODE_ENV !== "production" ? (error as Error).stack : undefined,
+      stack:
+        process.env.NODE_ENV !== "production"
+          ? (error as Error).stack
+          : undefined,
       env: {
         NODE_ENV: process.env.NODE_ENV,
         DATABASE_URL: process.env.DATABASE_URL ? "Set" : "Not set",
@@ -53,7 +58,7 @@ export async function GET() {
         LOG_LEVEL: process.env.LOG_LEVEL || "default",
       },
     };
-    
+
     return NextResponse.json(errorResponse, { status: 500 });
   }
 }

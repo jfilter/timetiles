@@ -49,9 +49,7 @@ export function ChartSection({
       </div>
 
       <div className="min-h-[200px]">
-        {chartType === "timeline" && (
-          <EventHistogram loading={loading} />
-        )}
+        {chartType === "timeline" && <EventHistogram loading={loading} />}
         {chartType === "dataset-bar" && (
           <DatasetBarChart
             events={events}

@@ -4,5 +4,6 @@
   "schema-detection": "Schema Detection",
   "dynamic-filters": "Dynamic Filters",
   "commit-guidelines": "Commit Guidelines",
-  "roadmap": "Roadmap"
+  "roadmap": "Roadmap",
+  "testing-guidelines": "Testing Guidelines"
 }

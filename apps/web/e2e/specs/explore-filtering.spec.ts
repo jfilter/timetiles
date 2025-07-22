@@ -30,10 +30,12 @@ test.describe("Explore Page - Filtering", () => {
     const params = await explorePage.getUrlParams();
     expect(params.has("catalog")).toBe(true);
     expect(params.has("datasets")).toBe(true);
-    
+
     // Verify the catalog selection persisted
-    await expect(page.locator('#catalog-select')).toContainText("Environmental Data");
-    
+    await expect(page.locator("#catalog-select")).toContainText(
+      "Environmental Data",
+    );
+
     // Verify the dataset checkbox is checked
     await expect(page.locator('input[type="checkbox"]:checked')).toBeVisible();
   });
@@ -71,10 +73,15 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.setEndDate("2024-12-31");
 
     // Wait for URL to update with date parameters
-    await page.waitForFunction(() => {
-      const url = new URL(window.location.href);
-      return url.searchParams.has('startDate') && url.searchParams.has('endDate');
-    }, { timeout: 5000 });
+    await page.waitForFunction(
+      () => {
+        const url = new URL(window.location.href);
+        return (
+          url.searchParams.has("startDate") && url.searchParams.has("endDate")
+        );
+      },
+      { timeout: 5000 },
+    );
 
     // Wait for API response and events to load
     await explorePage.waitForApiResponse();
@@ -99,10 +106,15 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.clearDateFilters();
 
     // Wait for URL parameters to be removed
-    await page.waitForFunction(() => {
-      const url = new URL(window.location.href);
-      return !url.searchParams.has('startDate') && !url.searchParams.has('endDate');
-    }, { timeout: 5000 });
+    await page.waitForFunction(
+      () => {
+        const url = new URL(window.location.href);
+        return (
+          !url.searchParams.has("startDate") && !url.searchParams.has("endDate")
+        );
+      },
+      { timeout: 5000 },
+    );
 
     // Check that date params are removed from URL
     await explorePage.assertUrlParam("startDate", null);
@@ -137,7 +149,7 @@ test.describe("Explore Page - Filtering", () => {
 
     // Give time for the first operation to complete fully
     await page.waitForTimeout(1000);
-    
+
     // Check page stability before proceeding
     await explorePage.waitForPageStability();
     const initialCount = await explorePage.getEventCount();
@@ -148,7 +160,7 @@ test.describe("Explore Page - Filtering", () => {
     // Change to different catalog - use a fresh page load approach
     await page.goto("/explore");
     await explorePage.waitForMapLoad();
-    
+
     await explorePage.selectCatalog("Economic Indicators");
     await explorePage.selectDatasets(["GDP Growth Rates"]);
     await explorePage.waitForApiResponse();
@@ -156,7 +168,7 @@ test.describe("Explore Page - Filtering", () => {
     // Check page stability again before getting count
     if (await explorePage.isPageStable()) {
       const newCount = await explorePage.getEventCount();
-      
+
       // Counts may be different (events should update)
       // The important thing is that new API requests were made
       expect(typeof newCount).toBe("number");
@@ -166,10 +178,14 @@ test.describe("Explore Page - Filtering", () => {
       try {
         const params = await explorePage.getUrlParams();
         expect(params.has("catalog")).toBe(true);
-        console.warn("Page became unstable during test, but URL state updated correctly");
+        console.warn(
+          "Page became unstable during test, but URL state updated correctly",
+        );
       } catch {
         // If even URL check fails, just ensure the test doesn't crash completely
-        console.warn("Page completely unstable - marking test as conditional pass");
+        console.warn(
+          "Page completely unstable - marking test as conditional pass",
+        );
       }
     }
   });

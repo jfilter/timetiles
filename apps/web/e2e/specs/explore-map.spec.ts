@@ -161,7 +161,9 @@ test.describe("Explore Page - Map Interactions", () => {
     console.log("Bounds requests:", boundsRequests);
   });
 
-  test.skip("should maintain performance with many events", async ({ page }) => {
+  test.skip("should maintain performance with many events", async ({
+    page,
+  }) => {
     // Load a catalog that might have many events
     await explorePage.selectCatalog("Environmental Data");
     await page.waitForTimeout(500);
@@ -192,7 +194,10 @@ test.describe("Explore Page - Map Interactions", () => {
       await explorePage.panMap(50, 50);
     } catch (error) {
       // If panning fails due to page instability, log and continue
-      console.warn("Pan operation failed, likely due to page instability:", error);
+      console.warn(
+        "Pan operation failed, likely due to page instability:",
+        error,
+      );
     }
     await page.waitForTimeout(500);
 

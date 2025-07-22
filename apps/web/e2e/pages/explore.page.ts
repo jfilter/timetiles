@@ -44,43 +44,47 @@ export class ExplorePage {
     await this.catalogSelect.click();
     // Wait for dropdown to open and options to be visible
     await this.page.waitForSelector('[role="option"]', { timeout: 5000 });
-    
+
     // Wait for the specific option to be available and stable
     const option = this.page.getByRole("option", { name: catalogName });
-    await option.waitFor({ state: 'visible', timeout: 5000 });
-    
+    await option.waitFor({ state: "visible", timeout: 5000 });
+
     // Add a small delay to ensure UI stability
     await this.page.waitForTimeout(200);
-    
+
     await option.click();
-    
+
     // For "All Catalogs", no URL update expected
     if (catalogName !== "All Catalogs") {
       // Wait for the URL to update with the catalog parameter
-      await this.page.waitForFunction((name) => {
-        const url = new URL(window.location.href);
-        return url.searchParams.has('catalog');
-      }, catalogName, { timeout: 5000 });
+      await this.page.waitForFunction(
+        (name) => {
+          const url = new URL(window.location.href);
+          return url.searchParams.has("catalog");
+        },
+        catalogName,
+        { timeout: 5000 },
+      );
     }
-    
+
     // Wait for datasets section to update
-    await this.page.waitForSelector('text=Datasets', { timeout: 3000 });
+    await this.page.waitForSelector("text=Datasets", { timeout: 3000 });
   }
 
   async selectDatasets(datasetNames: string[]) {
     for (const datasetName of datasetNames) {
       // First, wait for the dataset to be visible in the list
       await this.page.waitForSelector(`text=${datasetName}`, { timeout: 5000 });
-      
+
       // Use more specific selector to find checkboxes within dataset labels
       const datasetCheckbox = this.page.locator(
         `label:has-text("${datasetName}") input[type="checkbox"]`,
       );
-      
+
       // Wait for the checkbox to be visible and enabled
-      await datasetCheckbox.waitFor({ state: 'visible', timeout: 3000 });
+      await datasetCheckbox.waitFor({ state: "visible", timeout: 3000 });
       await datasetCheckbox.check();
-      
+
       // Brief wait for the selection to register
       await this.page.waitForTimeout(100);
     }
@@ -151,7 +155,7 @@ export class ExplorePage {
         console.warn("Page is closed, returning 0 for event count");
         return 0;
       }
-      
+
       const text = await this.eventsCount.textContent({ timeout: 3000 });
       const match = text?.match(/Events \((\d+)\)/);
       return match && match[1] ? parseInt(match[1], 10) : 0;
@@ -183,7 +187,7 @@ export class ExplorePage {
         console.warn("Page is closed, skipping wait for events to load");
         return;
       }
-      
+
       await expect(this.loadingIndicator).not.toBeVisible({ timeout: 5000 });
     } catch (error) {
       console.warn("Failed to wait for events to load:", error);
@@ -238,9 +242,11 @@ export class ExplorePage {
       if (this.page.isClosed()) {
         return false;
       }
-      
+
       // Check if we can access a basic element
-      await this.page.locator('h1').waitFor({ state: 'visible', timeout: 1000 });
+      await this.page
+        .locator("h1")
+        .waitFor({ state: "visible", timeout: 1000 });
       return true;
     } catch {
       return false;
@@ -250,16 +256,16 @@ export class ExplorePage {
   async waitForPageStability() {
     let attempts = 0;
     const maxAttempts = 10;
-    
+
     while (attempts < maxAttempts) {
       if (await this.isPageStable()) {
         return;
       }
-      
+
       await this.page.waitForTimeout(500);
       attempts++;
     }
-    
+
     throw new Error("Page did not become stable within timeout");
   }
 }

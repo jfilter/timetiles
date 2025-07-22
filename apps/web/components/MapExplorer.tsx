@@ -117,7 +117,10 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
     return bounds;
   }, [debouncedBoundsKey, bounds]);
 
-  const handleBoundsChange = (newBounds: LngLatBounds | null, zoom?: number) => {
+  const handleBoundsChange = (
+    newBounds: LngLatBounds | null,
+    zoom?: number,
+  ) => {
     if (newBounds) {
       setMapBounds({
         north: newBounds.getNorth(),
@@ -247,15 +250,11 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
     mapZoom,
   ]);
 
-
   return (
     <div className="flex h-screen">
       {/* Map - Left Side (Full Height) */}
       <div className="h-full w-1/2 lg:w-2/5">
-        <ClusteredMap
-          clusters={clusters}
-          onBoundsChange={handleBoundsChange}
-        />
+        <ClusteredMap clusters={clusters} onBoundsChange={handleBoundsChange} />
       </div>
 
       {/* Right Side Container */}

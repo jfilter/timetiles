@@ -1,4 +1,8 @@
-import { type MigrateUpArgs, type MigrateDownArgs, sql } from '@payloadcms/db-postgres'
+import {
+  type MigrateUpArgs,
+  type MigrateDownArgs,
+  sql,
+} from "@payloadcms/db-postgres";
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
@@ -460,10 +464,14 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "payload_migrations_updated_at_idx" ON "payload"."payload_migrations" USING btree ("updated_at");
   CREATE INDEX "payload_migrations_created_at_idx" ON "payload"."payload_migrations" USING btree ("created_at");
   CREATE INDEX "main_menu_nav_items_order_idx" ON "payload"."main_menu_nav_items" USING btree ("_order");
-  CREATE INDEX "main_menu_nav_items_parent_id_idx" ON "payload"."main_menu_nav_items" USING btree ("_parent_id");`)
+  CREATE INDEX "main_menu_nav_items_parent_id_idx" ON "payload"."main_menu_nav_items" USING btree ("_parent_id");`);
 }
 
-export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
+export async function down({
+  db,
+  payload,
+  req,
+}: MigrateDownArgs): Promise<void> {
   await db.execute(sql`
    DROP TABLE "payload"."catalogs" CASCADE;
   DROP TABLE "payload"."datasets" CASCADE;
@@ -502,5 +510,5 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   DROP TYPE "payload"."enum_geocoding_providers_type";
   DROP TYPE "payload"."enum_payload_jobs_log_task_slug";
   DROP TYPE "payload"."enum_payload_jobs_log_state";
-  DROP TYPE "payload"."enum_payload_jobs_task_slug";`)
+  DROP TYPE "payload"."enum_payload_jobs_task_slug";`);
 }

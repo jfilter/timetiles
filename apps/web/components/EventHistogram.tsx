@@ -39,15 +39,17 @@ export function EventHistogram({
       setLoading(true);
       try {
         const params = new URLSearchParams();
-        
+
         // Add filter params
         if (filters.catalog) params.set("catalog", filters.catalog);
         if (filters.datasets.length > 0) {
-          filters.datasets.forEach(dataset => params.append("datasets", dataset));
+          filters.datasets.forEach((dataset) =>
+            params.append("datasets", dataset),
+          );
         }
         if (filters.startDate) params.set("startDate", filters.startDate);
         if (filters.endDate) params.set("endDate", filters.endDate);
-        
+
         // Add map bounds if available
         if (mapBounds) {
           const bounds = {
@@ -58,12 +60,14 @@ export function EventHistogram({
           };
           params.set("bounds", JSON.stringify(bounds));
         }
-        
+
         params.set("granularity", "auto");
 
-        const response = await fetch(`/api/events/histogram?${params.toString()}`);
+        const response = await fetch(
+          `/api/events/histogram?${params.toString()}`,
+        );
         const data = await response.json();
-        
+
         if (data.histogram) {
           setHistogramData(data.histogram);
         }
@@ -80,29 +84,29 @@ export function EventHistogram({
   // Create ECharts option for the histogram
   const getChartOption = () => {
     const isDark = theme === "dark";
-    
+
     return {
-      backgroundColor: 'transparent',
+      backgroundColor: "transparent",
       textStyle: {
-        color: isDark ? '#e5e7eb' : '#374151',
+        color: isDark ? "#e5e7eb" : "#374151",
       },
       grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
-        top: '10%',
+        left: "3%",
+        right: "4%",
+        bottom: "3%",
+        top: "10%",
         containLabel: true,
       },
       xAxis: {
-        type: 'time',
+        type: "time",
         boundaryGap: false,
         axisLabel: {
-          color: isDark ? '#9ca3af' : '#6b7280',
+          color: isDark ? "#9ca3af" : "#6b7280",
           fontSize: 11,
         },
         axisLine: {
           lineStyle: {
-            color: isDark ? '#374151' : '#e5e7eb',
+            color: isDark ? "#374151" : "#e5e7eb",
           },
         },
         splitLine: {
@@ -110,9 +114,9 @@ export function EventHistogram({
         },
       },
       yAxis: {
-        type: 'value',
+        type: "value",
         axisLabel: {
-          color: isDark ? '#9ca3af' : '#6b7280',
+          color: isDark ? "#9ca3af" : "#6b7280",
           fontSize: 11,
         },
         axisLine: {
@@ -123,17 +127,17 @@ export function EventHistogram({
         },
         splitLine: {
           lineStyle: {
-            color: isDark ? '#374151' : '#f3f4f6',
-            type: 'dashed',
+            color: isDark ? "#374151" : "#f3f4f6",
+            type: "dashed",
           },
         },
       },
       tooltip: {
-        trigger: 'axis',
-        backgroundColor: isDark ? '#1f2937' : '#ffffff',
-        borderColor: isDark ? '#374151' : '#e5e7eb',
+        trigger: "axis",
+        backgroundColor: isDark ? "#1f2937" : "#ffffff",
+        borderColor: isDark ? "#374151" : "#e5e7eb",
         textStyle: {
-          color: isDark ? '#f9fafb' : '#111827',
+          color: isDark ? "#f9fafb" : "#111827",
         },
         formatter: (params: any) => {
           const point = params[0];
@@ -149,15 +153,15 @@ export function EventHistogram({
       },
       series: [
         {
-          type: 'bar',
-          data: histogramData.map(item => [item.date, item.count]),
+          type: "bar",
+          data: histogramData.map((item) => [item.date, item.count]),
           itemStyle: {
-            color: isDark ? '#60a5fa' : '#3b82f6',
+            color: isDark ? "#60a5fa" : "#3b82f6",
             borderRadius: [2, 2, 0, 0],
           },
           emphasis: {
             itemStyle: {
-              color: isDark ? '#93c5fd' : '#1d4ed8',
+              color: isDark ? "#93c5fd" : "#1d4ed8",
             },
           },
         },
@@ -183,22 +187,24 @@ export function EventHistogram({
 
   if (loading || externalLoading) {
     return (
-      <div 
+      <div
         className={`flex items-center justify-center ${className}`}
         style={{ height }}
       >
-        <div className="text-sm text-muted-foreground">Loading histogram...</div>
+        <div className="text-muted-foreground text-sm">
+          Loading histogram...
+        </div>
       </div>
     );
   }
 
   if (histogramData.length === 0) {
     return (
-      <div 
+      <div
         className={`flex items-center justify-center ${className}`}
         style={{ height }}
       >
-        <div className="text-sm text-muted-foreground">No data available</div>
+        <div className="text-muted-foreground text-sm">No data available</div>
       </div>
     );
   }
@@ -207,11 +213,11 @@ export function EventHistogram({
     <div className={className} style={{ height }}>
       <ReactECharts
         option={getChartOption()}
-        style={{ height: '100%', width: '100%' }}
+        style={{ height: "100%", width: "100%" }}
         onEvents={{
           click: handleChartClick,
         }}
-        opts={{ renderer: 'svg' }}
+        opts={{ renderer: "svg" }}
       />
     </div>
   );

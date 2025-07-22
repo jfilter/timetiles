@@ -259,12 +259,8 @@
           "tableFrom": "datasets",
           "tableTo": "catalogs",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "catalog_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["catalog_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -380,12 +376,8 @@
           "tableFrom": "imports_job_history",
           "tableTo": "imports",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "_parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["_parent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -774,12 +766,8 @@
           "tableFrom": "imports",
           "tableTo": "catalogs",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "catalog_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["catalog_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -788,12 +776,8 @@
           "tableFrom": "imports",
           "tableTo": "users",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1073,12 +1057,8 @@
           "tableFrom": "events",
           "tableTo": "datasets",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "dataset_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["dataset_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1087,12 +1067,8 @@
           "tableFrom": "events",
           "tableTo": "imports",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "import_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["import_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1176,12 +1152,8 @@
           "tableFrom": "users_sessions",
           "tableTo": "users",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "_parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["_parent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1892,12 +1864,8 @@
           "tableFrom": "geocoding_providers_tags",
           "tableTo": "geocoding_providers",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2391,12 +2359,8 @@
           "tableFrom": "payload_jobs_log",
           "tableTo": "payload_jobs",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "_parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["_parent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -3012,12 +2976,8 @@
           "tableFrom": "payload_locked_documents_rels",
           "tableTo": "payload_locked_documents",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -3026,12 +2986,8 @@
           "tableFrom": "payload_locked_documents_rels",
           "tableTo": "catalogs",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "catalogs_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["catalogs_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -3040,12 +2996,8 @@
           "tableFrom": "payload_locked_documents_rels",
           "tableTo": "datasets",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "datasets_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["datasets_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -3054,12 +3006,8 @@
           "tableFrom": "payload_locked_documents_rels",
           "tableTo": "imports",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "imports_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["imports_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -3068,12 +3016,8 @@
           "tableFrom": "payload_locked_documents_rels",
           "tableTo": "events",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "events_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["events_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -3082,12 +3026,8 @@
           "tableFrom": "payload_locked_documents_rels",
           "tableTo": "users",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "users_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["users_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -3096,12 +3036,8 @@
           "tableFrom": "payload_locked_documents_rels",
           "tableTo": "media",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "media_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["media_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -3110,12 +3046,8 @@
           "tableFrom": "payload_locked_documents_rels",
           "tableTo": "location_cache",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "location_cache_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["location_cache_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -3124,12 +3056,8 @@
           "tableFrom": "payload_locked_documents_rels",
           "tableTo": "geocoding_providers",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "geocoding_providers_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["geocoding_providers_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -3138,12 +3066,8 @@
           "tableFrom": "payload_locked_documents_rels",
           "tableTo": "pages",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "pages_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pages_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -3152,12 +3076,8 @@
           "tableFrom": "payload_locked_documents_rels",
           "tableTo": "payload_jobs",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "payload_jobs_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["payload_jobs_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -3362,12 +3282,8 @@
           "tableFrom": "payload_preferences_rels",
           "tableTo": "payload_preferences",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -3376,12 +3292,8 @@
           "tableFrom": "payload_preferences_rels",
           "tableTo": "users",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "users_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["users_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -3541,12 +3453,8 @@
           "tableFrom": "main_menu_nav_items",
           "tableTo": "main_menu",
           "schemaTo": "payload",
-          "columnsFrom": [
-            "_parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["_parent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -3593,19 +3501,12 @@
     "payload.enum_catalogs_status": {
       "name": "enum_catalogs_status",
       "schema": "payload",
-      "values": [
-        "active",
-        "archived"
-      ]
+      "values": ["active", "archived"]
     },
     "payload.enum_datasets_status": {
       "name": "enum_datasets_status",
       "schema": "payload",
-      "values": [
-        "draft",
-        "active",
-        "archived"
-      ]
+      "values": ["draft", "active", "archived"]
     },
     "payload.enum_imports_job_history_job_type": {
       "name": "enum_imports_job_history_job_type",
@@ -3620,22 +3521,12 @@
     "payload.enum_imports_job_history_status": {
       "name": "enum_imports_job_history_status",
       "schema": "payload",
-      "values": [
-        "queued",
-        "running",
-        "completed",
-        "failed"
-      ]
+      "values": ["queued", "running", "completed", "failed"]
     },
     "payload.enum_imports_status": {
       "name": "enum_imports_status",
       "schema": "payload",
-      "values": [
-        "pending",
-        "processing",
-        "completed",
-        "failed"
-      ]
+      "values": ["pending", "processing", "completed", "failed"]
     },
     "payload.enum_imports_processing_stage": {
       "name": "enum_imports_processing_stage",
@@ -3651,12 +3542,7 @@
     "payload.enum_imports_coordinate_detection_detection_method": {
       "name": "enum_imports_coordinate_detection_detection_method",
       "schema": "payload",
-      "values": [
-        "pattern",
-        "heuristic",
-        "manual",
-        "none"
-      ]
+      "values": ["pattern", "heuristic", "manual", "none"]
     },
     "payload.coord_fmt": {
       "name": "coord_fmt",
@@ -3672,12 +3558,7 @@
     "payload.enum_events_coordinate_source_type": {
       "name": "enum_events_coordinate_source_type",
       "schema": "payload",
-      "values": [
-        "import",
-        "geocoded",
-        "manual",
-        "none"
-      ]
+      "values": ["import", "geocoded", "manual", "none"]
     },
     "payload.enum_events_coordinate_source_validation_status": {
       "name": "enum_events_coordinate_source_validation_status",
@@ -3693,20 +3574,12 @@
     "payload.enum_events_geocoding_info_provider": {
       "name": "enum_events_geocoding_info_provider",
       "schema": "payload",
-      "values": [
-        "google",
-        "nominatim",
-        "manual"
-      ]
+      "values": ["google", "nominatim", "manual"]
     },
     "payload.enum_users_role": {
       "name": "enum_users_role",
       "schema": "payload",
-      "values": [
-        "user",
-        "admin",
-        "analyst"
-      ]
+      "values": ["user", "admin", "analyst"]
     },
     "payload.enum_geocoding_providers_tags": {
       "name": "enum_geocoding_providers_tags",
@@ -3731,11 +3604,7 @@
     "payload.enum_geocoding_providers_type": {
       "name": "enum_geocoding_providers_type",
       "schema": "payload",
-      "values": [
-        "google",
-        "nominatim",
-        "opencage"
-      ]
+      "values": ["google", "nominatim", "opencage"]
     },
     "payload.enum_payload_jobs_log_task_slug": {
       "name": "enum_payload_jobs_log_task_slug",
@@ -3751,10 +3620,7 @@
     "payload.enum_payload_jobs_log_state": {
       "name": "enum_payload_jobs_log_state",
       "schema": "payload",
-      "values": [
-        "failed",
-        "succeeded"
-      ]
+      "values": ["failed", "succeeded"]
     },
     "payload.enum_payload_jobs_task_slug": {
       "name": "enum_payload_jobs_task_slug",
