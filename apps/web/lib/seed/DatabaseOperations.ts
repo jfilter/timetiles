@@ -17,7 +17,7 @@ export interface BatchOperationResult {
   itemsProcessed: number;
   duration: number;
   method: "sql-truncate" | "bulk-delete" | "batch-create";
-  errors?: any[];
+  errors?: unknown[];
 }
 
 export class DatabaseOperations {
@@ -79,9 +79,9 @@ export class DatabaseOperations {
   /**
    * Create multiple items efficiently using batch operations
    */
-  async createMany<T>(
-    collection: string,
-    items: T[],
+  async createMany<C extends keyof Config["collections"]>(
+    collection: C,
+    items: Config["collections"][C][],
     batchSize: number = 100,
   ): Promise<BatchOperationResult> {
     if (items.length === 0) {
@@ -94,8 +94,8 @@ export class DatabaseOperations {
     }
 
     const startTime = performance.now();
-    const results: T[] = [];
-    const errors: any[] = [];
+    const results: Config["collections"][C][] = [];
+    const errors: unknown[] = [];
 
     logger.info(
       `Creating ${items.length} items in ${collection} with batch size ${batchSize}`,
@@ -112,7 +112,7 @@ export class DatabaseOperations {
           try {
             const created = await this.payload.create({
               collection: collection as keyof Config["collections"],
-              data: item,
+              data: item as unknown as Record<string, unknown>,
             });
             return { success: true, result: created };
           } catch (error) {
@@ -126,7 +126,7 @@ export class DatabaseOperations {
         batchResults.forEach((result, index) => {
           if (result.status === "fulfilled") {
             if (result.value.success) {
-              results.push(result.value.result);
+              results.push(result.value.result as Config["collections"][C]);
             } else {
               errors.push({
                 batchIndex: Math.floor((i + index) / batchSize),
@@ -194,14 +194,17 @@ export class DatabaseOperations {
   /**
    * Update multiple items efficiently
    */
-  async updateMany<T>(
-    collection: string,
-    updates: Array<{ id: string | number; data: Partial<T> }>,
+  async updateMany<C extends keyof Config["collections"]>(
+    collection: C,
+    updates: Array<{
+      id: string | number;
+      data: Partial<Config["collections"][C]>;
+    }>,
     batchSize: number = 50,
   ): Promise<BatchOperationResult> {
     const startTime = performance.now();
-    const results: any[] = [];
-    const errors: any[] = [];
+    const results: unknown[] = [];
+    const errors: unknown[] = [];
 
     logger.info(`Updating ${updates.length} items in ${collection}`);
 
@@ -214,7 +217,7 @@ export class DatabaseOperations {
             const updated = await this.payload.update({
               collection: collection as keyof Config["collections"],
               id,
-              data,
+              data: data as Record<string, unknown>,
             });
             return { success: true, result: updated };
           } catch (error) {
@@ -275,7 +278,7 @@ export class DatabaseOperations {
       }
     >
   > {
-    const stats: Record<string, any> = {};
+    const stats: Record<string, unknown> = {};
 
     const promises = collections.map(async (collection) => {
       try {
@@ -300,7 +303,17 @@ export class DatabaseOperations {
           if (this.payload.db?.drizzle) {
             // If using Drizzle, we might be able to get table stats
             const tableStats = await this.getTableStats(collection);
-            stats[collection] = { ...stats[collection], ...tableStats };
+            if (
+              typeof tableStats === "object" &&
+              tableStats !== null &&
+              !Array.isArray(tableStats)
+            ) {
+              stats[collection] = Object.assign(
+                {},
+                stats[collection],
+                tableStats,
+              );
+            }
           }
         } catch {
           // Ignore errors getting extended stats
@@ -309,13 +322,16 @@ export class DatabaseOperations {
       } catch (error) {
         stats[collection] = {
           count: -1,
-          error: (error as any).message,
+          error: (error as Error).message,
         };
       }
     });
 
     await Promise.allSettled(promises);
-    return stats;
+    return stats as Record<
+      string,
+      { count: number; estimatedSize?: string; lastModified?: Date }
+    >;
   }
 
   /**
@@ -324,7 +340,7 @@ export class DatabaseOperations {
   private async sqlTruncateWithCascade(collection: string): Promise<{
     success: boolean;
     itemsProcessed: number;
-    errors?: any[];
+    errors?: unknown[];
   }> {
     try {
       // Check if we have direct database access
@@ -342,9 +358,9 @@ export class DatabaseOperations {
 
       // Execute SQL TRUNCATE with CASCADE
       const tableName = `payload."${collection}"`;
-      await this.payload.db.execute(
-        `TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`,
-      );
+      await (
+        this.payload.db as { execute: (query: string) => Promise<unknown> }
+      ).execute(`TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`);
 
       logger.info(`SQL TRUNCATE succeeded for ${collection}`, {
         itemsRemoved: initialCount,
@@ -357,7 +373,7 @@ export class DatabaseOperations {
       };
     } catch (error) {
       logger.debug(`SQL TRUNCATE failed for ${collection}`, {
-        error: (error as any).message,
+        error: (error as Error).message,
       });
 
       return {
@@ -374,12 +390,12 @@ export class DatabaseOperations {
   private async bulkDeleteCollection(collection: string): Promise<{
     success: boolean;
     itemsProcessed: number;
-    errors?: any[];
+    errors?: unknown[];
   }> {
     const batchSize = 1000;
     let hasMore = true;
     let totalDeleted = 0;
-    const errors: any[] = [];
+    const errors: unknown[] = [];
 
     logger.info(
       `Starting bulk delete for ${collection} with batch size ${batchSize}`,
@@ -390,7 +406,6 @@ export class DatabaseOperations {
         const items = await this.payload.find({
           collection: collection as keyof Config["collections"],
           limit: batchSize,
-          select: { id: true }, // Only select ID for efficiency
           depth: 0,
         });
 
@@ -408,7 +423,11 @@ export class DatabaseOperations {
           // Use SQL batch delete for efficiency
           const ids = items.docs.map((doc) => doc.id);
           try {
-            await this.payload.db.execute(
+            await (
+              this.payload.db as {
+                execute: (query: string, params: unknown[]) => Promise<unknown>;
+              }
+            ).execute(
               `DELETE FROM payload."${collection}" WHERE id = ANY($1)`,
               [ids],
             );
@@ -457,8 +476,8 @@ export class DatabaseOperations {
               errors.push({ error: failure.reason, itemIndex: index });
             } else if (failure.status === "fulfilled") {
               errors.push({
-                error: (failure.value as any).error,
-                id: (failure.value as any).id,
+                error: (failure.value as { error: unknown; id: unknown }).error,
+                id: (failure.value as { error: unknown; id: unknown }).id,
               });
             }
           });
@@ -499,7 +518,7 @@ export class DatabaseOperations {
       return result.totalDocs;
     } catch (error) {
       logger.warn(`Could not get count for ${collection}`, {
-        error: (error as any).message,
+        error: (error as Error).message,
       });
       return 0;
     }
@@ -509,14 +528,14 @@ export class DatabaseOperations {
    * Fallback individual deletes when SQL batch fails
    */
   private async fallbackIndividualDeletes(
-    items: any[],
+    items: { id: string | number }[],
     collection: string,
   ): Promise<{
     successful: number;
-    errors: any[];
+    errors: unknown[];
   }> {
     let successful = 0;
-    const errors: any[] = [];
+    const errors: unknown[] = [];
 
     const deletePromises = items.map(async (item) => {
       try {
@@ -553,7 +572,9 @@ export class DatabaseOperations {
   /**
    * Get table statistics if using SQL database
    */
-  private async getTableStats(collection: string): Promise<any> {
+  private async getTableStats(
+    collection: string,
+  ): Promise<Record<string, unknown>> {
     try {
       if (!this.payload.db || typeof this.payload.db.execute !== "function") {
         return {};
@@ -572,7 +593,11 @@ export class DatabaseOperations {
         LIMIT 5
       `;
 
-      const result = await this.payload.db.execute(query, [collection]);
+      const result = await (
+        this.payload.db as {
+          execute: (query: string, params: unknown[]) => Promise<unknown>;
+        }
+      ).execute(query, [collection]);
 
       return {
         hasStats: true,

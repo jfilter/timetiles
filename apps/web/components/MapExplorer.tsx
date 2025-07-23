@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition, useMemo } from "react";
 import type { Catalog, Dataset, Event } from "../payload-types";
 import { ClusteredMap } from "./ClusteredMap";
+import type { ClusterFeature } from "./ClusteredMap";
 import { EventsList } from "./EventsList";
 import { ActiveFilters } from "./ActiveFilters";
 import { ChartSection } from "./ChartSection";
@@ -23,7 +24,7 @@ const logger = createLogger("MapExplorer");
 
 export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
   const [events, setEvents] = useState<Event[]>([]);
-  const [clusters, setClusters] = useState<any[]>([]);
+  const [clusters, setClusters] = useState<ClusterFeature[]>([]);
   const [mapZoom, setMapZoom] = useState(9);
   const [isPending, startTransition] = useTransition();
 

@@ -126,7 +126,10 @@ export function findMaxDistance(points: Coordinates[]): number {
   let maxDistance = 0;
   for (let i = 0; i < points.length; i++) {
     for (let j = i + 1; j < points.length; j++) {
-      const distance = calculateDistance(points[i], points[j]);
+      const pointI = points[i];
+      const pointJ = points[j];
+      if (!pointI || !pointJ) continue;
+      const distance = calculateDistance(pointI, pointJ);
       if (distance > maxDistance) {
         maxDistance = distance;
       }

@@ -22,14 +22,14 @@ export interface CollectionConfig {
   /** Whether this collection is disabled */
   disabled?: boolean;
   /** Collection-specific options */
-  options?: Record<string, any>;
+  options?: Record<string, unknown>;
 }
 
 export interface GeneratorConfig {
   /** Type of generator (temporal, spatial, etc.) */
   type: "temporal" | "spatial" | "realistic" | "custom";
   /** Generator-specific options */
-  options: Record<string, any>;
+  options: Record<string, unknown>;
 }
 
 export interface EnvironmentConfig {

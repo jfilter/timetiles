@@ -1,4 +1,5 @@
 import { getPayload } from "payload";
+import type { Where } from "payload";
 import config from "../../payload.config";
 import { userSeeds } from "./seeds/users";
 import { catalogSeeds } from "./seeds/catalogs";
@@ -7,8 +8,22 @@ import { eventSeeds } from "./seeds/events";
 import { importSeeds } from "./seeds/imports";
 import { mainMenuSeed } from "./seeds/main-menu";
 import { pagesSeed } from "./seeds/pages";
-import type { Config } from "../../payload-types";
+import type { Config, Event, User, Dataset } from "../../payload-types";
+import type { UserSeed } from "./seeds/users";
+import type { CatalogSeed } from "./seeds/catalogs";
+import type { DatasetSeed } from "./seeds/datasets";
+import type { EventSeed } from "./seeds/events";
+import type { ImportSeed } from "./seeds/imports";
 import { createLogger, logError, logPerformance } from "../logger";
+
+type SeedData =
+  | UserSeed[]
+  | CatalogSeed[]
+  | DatasetSeed[]
+  | EventSeed[]
+  | ImportSeed[]
+  | Config["globals"]["main-menu"][]
+  | unknown[];
 import { RelationshipResolver } from "./RelationshipResolver";
 import { getDependencyOrder } from "./relationship-config";
 import { DatabaseOperations } from "./DatabaseOperations";
@@ -212,7 +227,10 @@ export class SeedManager {
     collectionOrGlobal: string,
     environment: string,
   ) {
-    const seedData = await this.getSeedData(collectionOrGlobal, environment);
+    const seedData = await this.getSeedData(
+      collectionOrGlobal as keyof Config["collections"],
+      environment,
+    );
 
     if (!seedData || seedData.length === 0) {
       logger.warn(`No seed data found for ${collectionOrGlobal}`);
@@ -222,9 +240,10 @@ export class SeedManager {
     if (collectionOrGlobal === "main-menu") {
       try {
         logger.info("Seeding main-menu global...");
+        const menuData = Array.isArray(seedData) ? seedData[0] : seedData;
         await this.payload!.updateGlobal({
           slug: "main-menu",
-          data: seedData[0] as any,
+          data: menuData as Config["globals"]["main-menu"],
         });
         logger.info("Seeded main-menu global successfully!");
       } catch (error) {
@@ -236,15 +255,18 @@ export class SeedManager {
       return;
     }
 
+    const itemCount = Array.isArray(seedData) ? seedData.length : 1;
     logger.debug(
-      { collection: collectionOrGlobal, count: seedData.length },
-      `Found ${seedData.length} items to seed for ${collectionOrGlobal}`,
+      { collection: collectionOrGlobal, count: itemCount },
+      `Found ${itemCount} items to seed for ${collectionOrGlobal}`,
     );
 
     // Use the new relationship resolver for bulk resolution
     const resolvedSeedData =
       await this.relationshipResolver!.resolveCollectionRelationships(
-        seedData as Record<string, unknown>[],
+        Array.isArray(seedData)
+          ? (seedData as Record<string, unknown>[])
+          : [seedData as Record<string, unknown>],
         collectionOrGlobal,
       );
 
@@ -327,19 +349,21 @@ export class SeedManager {
     let seedData = baseSeedData;
 
     // Limit to configured count if necessary
-    if (seedData.length > count) {
-      seedData = seedData.slice(0, count);
+    if (Array.isArray(seedData) && seedData.length > count) {
+      seedData = seedData.slice(0, count) as SeedData;
       logger.debug(
-        `Limited ${collectionName} to ${count} items from ${baseSeedData.length}`,
+        `Limited ${collectionName} to ${count} items from ${Array.isArray(baseSeedData) ? baseSeedData.length : 0}`,
       );
-    } else if (seedData.length < count) {
+    } else if (Array.isArray(seedData) && seedData.length < count) {
       // If we need more items than available, duplicate and modify existing ones
       const additional = this.generateAdditionalItems(
         seedData,
-        count - seedData.length,
+        Array.isArray(seedData) ? count - seedData.length : count,
         collectionName,
       );
-      seedData = [...seedData, ...additional];
+      if (Array.isArray(seedData)) {
+        seedData = [...seedData, ...additional] as SeedData;
+      }
       logger.debug(
         `Extended ${collectionName} to ${count} items (${additional.length} generated)`,
       );
@@ -364,21 +388,23 @@ export class SeedManager {
       );
     }
 
+    const seedCount = Array.isArray(seedData) ? seedData.length : 1;
     logger.info(
       {
         collection: collectionName,
-        count: seedData.length,
+        count: seedCount,
         config: config.options,
       },
-      `Seeding ${collectionName} with ${seedData.length} items using configuration`,
+      `Seeding ${collectionName} with ${seedCount} items using configuration`,
     );
 
     // Handle globals (like main-menu)
     if (collectionName === "main-menu") {
       try {
+        const menuData = Array.isArray(seedData) ? seedData[0] : seedData;
         await this.payload!.updateGlobal({
           slug: "main-menu",
-          data: seedData[0] as any,
+          data: menuData as Config["globals"]["main-menu"],
         });
         logger.info("Seeded main-menu global successfully!");
       } catch (error) {
@@ -393,7 +419,9 @@ export class SeedManager {
     // Use the relationship resolver for bulk resolution
     const resolvedSeedData =
       await this.relationshipResolver!.resolveCollectionRelationships(
-        seedData as Record<string, unknown>[],
+        Array.isArray(seedData)
+          ? (seedData as Record<string, unknown>[])
+          : [seedData as Record<string, unknown>],
         collectionName,
       );
 
@@ -449,51 +477,74 @@ export class SeedManager {
    * Generate additional items when we need more than available in seed data
    */
   private generateAdditionalItems(
-    existingItems: any[],
+    existingItems: SeedData,
     needed: number,
     collectionName: string,
-  ): any[] {
-    const additional: any[] = [];
+  ): unknown[] {
+    const additional: Record<string, unknown>[] = [];
+
+    // Ensure we have an array to work with
+    const itemsArray = Array.isArray(existingItems) ? existingItems : [];
+    if (itemsArray.length === 0) return [];
 
     for (let i = 0; i < needed; i++) {
-      const baseItem = existingItems[i % existingItems.length];
-      const newItem = { ...baseItem };
+      const baseItem = itemsArray[i % itemsArray.length];
+      const newItem =
+        typeof baseItem === "object" && baseItem !== null
+          ? { ...baseItem }
+          : { ...(baseItem as Record<string, unknown>) };
 
       // Make variations based on collection type
       switch (collectionName) {
-        case "events":
-          if (newItem.title) {
-            newItem.title = `${newItem.title} - Variant ${i + 1}`;
-          }
-          if (newItem.data?.address) {
-            newItem.data.address = `${newItem.data.address} - Unit ${i + 1}`;
-          }
-          break;
-        case "datasets":
-          if (newItem.name) {
-            newItem.name = `${newItem.name} - Extended ${i + 1}`;
-          }
-          if (newItem.slug) {
-            newItem.slug = `${newItem.slug}-ext-${i + 1}`;
-          }
-          break;
-        case "catalogs":
-          if (newItem.name) {
-            newItem.name = `${newItem.name} - Branch ${i + 1}`;
-          }
-          if (newItem.slug) {
-            newItem.slug = `${newItem.slug}-branch-${i + 1}`;
+        case "events": {
+          const eventItem = newItem as unknown as Event;
+          if (
+            eventItem.data &&
+            typeof eventItem.data === "object" &&
+            eventItem.data !== null &&
+            !Array.isArray(eventItem.data)
+          ) {
+            const dataObj = eventItem.data as Record<string, unknown>;
+            if (dataObj.title && typeof dataObj.title === "string") {
+              dataObj.title = `${dataObj.title} - Variant ${i + 1}`;
+            }
+            if (dataObj.address && typeof dataObj.address === "string") {
+              dataObj.address = `${dataObj.address} - Unit ${i + 1}`;
+            }
           }
           break;
-        case "users":
-          if (newItem.email) {
-            const [name, domain] = newItem.email.split("@");
-            newItem.email = `${name}+${i + 1}@${domain}`;
+        }
+        case "datasets": {
+          const datasetItem = newItem as unknown as Dataset;
+          if (datasetItem.name) {
+            datasetItem.name = `${datasetItem.name} - Extended ${i + 1}`;
           }
-          if (newItem.firstName) {
-            newItem.firstName = `${newItem.firstName}${i + 1}`;
+          if (datasetItem.slug) {
+            datasetItem.slug = `${datasetItem.slug}-ext-${i + 1}`;
           }
           break;
+        }
+        case "catalogs": {
+          const catalogItem = newItem as { name?: string; slug?: string };
+          if (catalogItem.name) {
+            catalogItem.name = `${catalogItem.name} - Branch ${i + 1}`;
+          }
+          if (catalogItem.slug) {
+            catalogItem.slug = `${catalogItem.slug}-branch-${i + 1}`;
+          }
+          break;
+        }
+        case "users": {
+          const userItem = newItem as unknown as User;
+          if (userItem.email) {
+            const [name, domain] = userItem.email.split("@");
+            userItem.email = `${name}+${i + 1}@${domain}`;
+          }
+          if (userItem.firstName) {
+            userItem.firstName = `${userItem.firstName}${i + 1}`;
+          }
+          break;
+        }
       }
 
       additional.push(newItem);
@@ -506,10 +557,10 @@ export class SeedManager {
    * Apply custom generator patterns (Phase 3 feature)
    */
   private async applyCustomGenerator(
-    seedData: any[],
+    seedData: SeedData,
     generatorName: string,
-    options: Record<string, any>,
-  ): Promise<any[]> {
+    options: Record<string, unknown>,
+  ): Promise<SeedData> {
     // This is where we would implement custom generators
     // For now, we'll return the data unchanged but log the intent
     logger.debug(
@@ -527,11 +578,11 @@ export class SeedManager {
    * Apply collection-specific options
    */
   private applyCollectionOptions(
-    seedData: any[],
-    options: Record<string, any>,
+    seedData: SeedData,
+    options: Record<string, unknown>,
     collectionName: string,
     environment: string,
-  ): any[] {
+  ): SeedData {
     let modifiedData = [...seedData];
 
     // Apply environment-specific options
@@ -542,45 +593,61 @@ export class SeedManager {
       case "events":
         if (options.useGeographicClustering === false) {
           // Spread events more evenly (simplified approach)
-          modifiedData = modifiedData.map((event) => ({
-            ...event,
-            location: {
-              ...event.location,
-              // Add small random offset to prevent perfect clustering
-              latitude: event.location?.latitude + (Math.random() - 0.5) * 0.1,
-              longitude:
-                event.location?.longitude + (Math.random() - 0.5) * 0.1,
-            },
-          }));
+          modifiedData = modifiedData.map((item) => {
+            const event = item as unknown as Event;
+            return {
+              ...event,
+              location: event.location
+                ? {
+                    ...event.location,
+                    // Add small random offset to prevent perfect clustering
+                    latitude:
+                      (event.location.latitude || 0) +
+                      (Math.random() - 0.5) * 0.1,
+                    longitude:
+                      (event.location.longitude || 0) +
+                      (Math.random() - 0.5) * 0.1,
+                  }
+                : event.location,
+            };
+          }) as SeedData;
         }
         if (options.temporalDistribution === "uniform") {
           // Distribute events evenly over time
-          modifiedData = modifiedData.map((event, index) => ({
-            ...event,
-            eventTimestamp: new Date(
-              Date.now() + index * 24 * 60 * 60 * 1000, // One event per day
-            ),
-          }));
+          modifiedData = modifiedData.map((item, index) => {
+            const event = item as unknown as Event;
+            return {
+              ...event,
+              eventTimestamp: new Date(
+                Date.now() + index * 24 * 60 * 60 * 1000, // One event per day
+              ),
+            };
+          }) as SeedData;
         }
         break;
 
       case "datasets":
         if (options.generateSchemas === false) {
           // Remove complex schema generation for faster testing
-          modifiedData = modifiedData.map((dataset) => ({
-            ...dataset,
-            schema: { type: "object", properties: {} }, // Minimal schema
-          }));
+          modifiedData = modifiedData.map((item) => {
+            const dataset = item as unknown as Dataset;
+            return {
+              ...dataset,
+              schema: { type: "object", properties: {} }, // Minimal schema
+            };
+          }) as SeedData;
         }
         break;
 
       case "users":
         if (options.includeTestUsers === false) {
           // Filter out test users (users with test-related emails)
-          modifiedData = modifiedData.filter(
-            (user) =>
-              !user.email?.includes("test") && !user.email?.includes("example"),
-          );
+          modifiedData = modifiedData.filter((item) => {
+            const user = item as unknown as User;
+            return (
+              !user.email?.includes("test") && !user.email?.includes("example")
+            );
+          });
         }
         break;
     }
@@ -588,7 +655,10 @@ export class SeedManager {
     return modifiedData;
   }
 
-  private async getSeedData(collectionOrGlobal: string, environment: string) {
+  private async getSeedData(
+    collectionOrGlobal: string,
+    environment: string,
+  ): Promise<SeedData> {
     switch (collectionOrGlobal) {
       case "users":
         return userSeeds(environment);
@@ -601,7 +671,7 @@ export class SeedManager {
       case "imports":
         return importSeeds(environment);
       case "main-menu":
-        return [mainMenuSeed] as any;
+        return [mainMenuSeed];
       case "pages":
         return pagesSeed;
       default:
@@ -805,10 +875,10 @@ export class SeedManager {
   private async findExistingItem(
     collection: string,
     item: Record<string, unknown>,
-  ): Promise<any> {
+  ): Promise<unknown | null> {
     try {
       // Define unique identifiers for each collection
-      const where: Record<string, any> = {};
+      const where: Where = {};
 
       switch (collection) {
         case "users":
@@ -830,23 +900,25 @@ export class SeedManager {
             where.name = { equals: item.name };
           }
           break;
-        case "events":
+        case "events": {
           // For events, check by a combination of fields to avoid exact duplicates
-          if (item.data && item.location) {
+          const eventItem = item as unknown as Event;
+          if (eventItem.data && eventItem.location) {
             where.and = [
               {
                 "location.latitude": {
-                  equals: (item.location as any)?.latitude,
+                  equals: eventItem.location.latitude,
                 },
               },
               {
                 "location.longitude": {
-                  equals: (item.location as any)?.longitude,
+                  equals: eventItem.location.longitude,
                 },
               },
             ];
           }
           break;
+        }
         case "imports":
           if (item.fileName) {
             where.fileName = { equals: item.fileName };
@@ -874,8 +946,14 @@ export class SeedManager {
     }
   }
 
-  private getDisplayName(item: any): string {
-    return item.name || item.email || item.fileName || item.id || "Unknown";
+  private getDisplayName(item: Record<string, unknown>): string {
+    return (
+      (item.name as string) ||
+      (item.email as string) ||
+      (item.fileName as string) ||
+      (item.id as string) ||
+      "Unknown"
+    );
   }
 }
 

@@ -164,16 +164,20 @@ export async function GET(request: NextRequest) {
 
     // Serialize the response to avoid JSON serialization issues
     const serializedEvents = {
-      docs: filteredEvents.map((event: any) => ({
+      docs: filteredEvents.map((event: Event) => ({
         id: event.id,
         data: event.data,
-        location: {
-          longitude: event.location?.longitude || null,
-          latitude: event.location?.latitude || null,
-        },
+        location: event.location
+          ? {
+              longitude: event.location.longitude,
+              latitude: event.location.latitude,
+            }
+          : { longitude: null, latitude: null },
         eventTimestamp: event.eventTimestamp,
         dataset:
-          typeof event.dataset === "object" ? event.dataset.id : event.dataset,
+          typeof event.dataset === "object" && event.dataset
+            ? event.dataset.id
+            : event.dataset,
         createdAt: event.createdAt,
         updatedAt: event.updatedAt,
       })),

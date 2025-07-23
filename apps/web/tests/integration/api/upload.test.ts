@@ -86,10 +86,7 @@ describe.sequential("Import API Endpoints", () => {
 
   describe.sequential("Upload Endpoint", () => {
     it("should pass health check", async () => {
-      const request = new NextRequest(
-        "http://localhost:3000/api/import/upload",
-      );
-      const response = await uploadHealthCheck(request);
+      const response = await uploadHealthCheck();
       const result = await response.json();
 
       expect(response.status).toBe(200);

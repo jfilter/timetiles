@@ -43,99 +43,68 @@ export async function GET(request: NextRequest) {
     }
 
     // Build filters object
-    const filters: Record<string, any> = {};
+    const filters: Record<string, unknown> = {};
     if (catalog) filters.catalog = catalog;
     if (datasets.length > 0 && datasets[0] !== "") filters.datasets = datasets;
     if (startDate) filters.startDate = startDate;
     if (endDate) filters.endDate = endDate;
 
-    // Check if clustering function exists (force fallback for tests)
-    const testMode = process.env.NODE_ENV === "test";
+    // Check if clustering function exists
     let functionExists = false;
 
-    if (!testMode) {
-      try {
-        const functionCheck = await payload.db.drizzle.execute(sql`
-          SELECT EXISTS (
-            SELECT 1 FROM pg_proc
-            WHERE proname = 'cluster_events'
-          ) as exists
-        `);
-        functionExists = functionCheck.rows[0]?.exists;
-        logger.debug("Clustering function check - exists:", {
-          functionExists,
-          testMode,
-        });
-      } catch (error) {
-        logger.warn("Function check failed, using fallback query:", {
-          error: (error as Error).message,
-        });
-        functionExists = false;
-      }
-    } else {
-      logger.debug("Test mode detected, using fallback query");
-    }
-
-    let result;
-    if (!functionExists || testMode) {
-      // Fallback to basic query without clustering
-      logger.warn("cluster_events function not found, using fallback query", {
+    try {
+      const functionCheck = (await payload.db.drizzle.execute(sql`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_proc
+          WHERE proname = 'cluster_events'
+        ) as exists
+      `)) as { rows: Array<{ exists: boolean }> };
+      functionExists = functionCheck.rows[0]?.exists ?? false;
+      logger.debug("Clustering function check - exists:", {
         functionExists,
-        testMode,
       });
-
-      result = await payload.db.drizzle.execute(sql`
-        SELECT
-          id::text as cluster_id,
-          location_longitude as longitude,
-          location_latitude as latitude,
-          1 as event_count,
-          id::text as event_id,
-          COALESCE(data->>'title', data->>'name', 'Event ' || id) as event_title
-        FROM payload.events
-        WHERE
-          location_longitude BETWEEN ${bounds.west}::double precision AND ${bounds.east}::double precision
-          AND location_latitude BETWEEN ${bounds.south}::double precision AND ${bounds.north}::double precision
-          AND location_longitude IS NOT NULL
-          AND location_latitude IS NOT NULL
-          ${catalog ? sql`AND dataset_id IN (SELECT id FROM payload.datasets WHERE catalog_id = ${parseInt(catalog)})` : sql``}
-          ${
-            datasets.length > 0
-              ? sql`AND dataset_id IN (${sql.join(
-                  datasets.map((d) => sql`${parseInt(d)}`),
-                  sql`, `,
-                )})`
-              : sql``
-          }
-          ${startDate ? sql`AND event_timestamp >= ${startDate}::timestamp` : sql``}
-          ${endDate ? sql`AND event_timestamp <= ${endDate}::timestamp` : sql``}
-        LIMIT 1000
-      `);
-    } else {
-      // Call the clustering function
-      result = await payload.db.drizzle.execute(sql`
-        SELECT * FROM cluster_events(
-          ${bounds.west}::double precision,
-          ${bounds.south}::double precision,
-          ${bounds.east}::double precision,
-          ${bounds.north}::double precision,
-          ${zoom}::integer,
-          ${JSON.stringify({
-            catalogId: catalog ? parseInt(catalog) : undefined,
-            datasetId:
-              datasets.length === 1 && datasets[0]
-                ? parseInt(datasets[0])
-                : undefined,
-            startDate,
-            endDate,
-          })}::jsonb
-        )
-      `);
+    } catch (error) {
+      logger.warn("Function check failed:", {
+        error: (error as Error).message,
+      });
+      functionExists = false;
     }
+
+    if (!functionExists) {
+      logger.error("Required cluster_events function not found in database");
+      return NextResponse.json(
+        {
+          error:
+            "Database function cluster_events not found. Please ensure migrations are run.",
+          code: "MISSING_DB_FUNCTION",
+        },
+        { status: 500 },
+      );
+    }
+
+    // Call the clustering function
+    const result = (await payload.db.drizzle.execute(sql`
+      SELECT * FROM cluster_events(
+        ${bounds.west}::double precision,
+        ${bounds.south}::double precision,
+        ${bounds.east}::double precision,
+        ${bounds.north}::double precision,
+        ${zoom}::integer,
+        ${JSON.stringify({
+          catalogId: catalog ? parseInt(catalog) : undefined,
+          datasetId:
+            datasets.length === 1 && datasets[0]
+              ? parseInt(datasets[0])
+              : undefined,
+          startDate,
+          endDate,
+        })}::jsonb
+      )
+    `)) as { rows: Array<Record<string, unknown>> };
 
     // Transform the result for the frontend
-    const clusters = result.rows.map((row: any) => {
-      const isCluster = row.event_count > 1;
+    const clusters = result.rows.map((row: Record<string, unknown>) => {
+      const isCluster = Number(row.event_count) > 1;
 
       if (isCluster) {
         logger.debug("Cluster found:", { row });
@@ -145,15 +114,19 @@ export async function GET(request: NextRequest) {
         type: "Feature",
         geometry: {
           type: "Point",
-          coordinates: [parseFloat(row.longitude), parseFloat(row.latitude)],
+          coordinates: [
+            parseFloat(String(row.longitude)),
+            parseFloat(String(row.latitude)),
+          ],
         },
         properties: {
           id: row.cluster_id || row.event_id,
           type: isCluster ? "event-cluster" : "event-point",
-          ...(isCluster && { count: row.event_count }),
-          ...(row.event_title && { title: row.event_title }),
-          ...(row.event_ids &&
-            row.event_count <= 10 && { eventIds: row.event_ids }),
+          ...(isCluster ? { count: Number(row.event_count) } : {}),
+          ...(row.event_title ? { title: String(row.event_title) } : {}),
+          ...(row.event_ids && Number(row.event_count) <= 10
+            ? { eventIds: row.event_ids }
+            : {}),
         },
       };
     });
@@ -166,7 +139,7 @@ export async function GET(request: NextRequest) {
     logger.error("Error fetching map clusters:", {
       error: error as Error,
       message: (error as Error).message,
-      stack: (error as any).stack,
+      stack: (error as Error).stack,
     });
     return NextResponse.json(
       {

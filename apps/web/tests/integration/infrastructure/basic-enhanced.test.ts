@@ -39,11 +39,11 @@ describe("Basic Enhanced Testing Infrastructure", () => {
         .withTags(["technology", "networking"])
         .build();
 
-      expect(event.title).toBe("Tech Conference 2024");
+      expect((event.data as Record<string, unknown>).title).toBe("Tech Conference 2024");
       expect(event.location).toEqual({ latitude: 40.7128, longitude: -74.006 });
-      expect(event.data?.category).toBe("Conference");
-      expect(event.data?.tags).toContain("technology");
-      expect(event.data?.address).toBe("123 Tech Street, New York, NY");
+      expect((event.data as Record<string, unknown>).category).toBe("Conference");
+      expect((event.data as Record<string, unknown>).tags).toContain("technology");
+      expect((event.data as Record<string, unknown>).address).toBe("123 Tech Street, New York, NY");
     });
 
     it("should create multiple events with variations", () => {
@@ -53,18 +53,18 @@ describe("Basic Enhanced Testing Infrastructure", () => {
         .nearLocation(40.7128, -74.006, 10) // Within 10km of NYC
         .buildMany(3, (event, i) => ({
           ...event,
-          title: `Meetup ${i + 1}`,
           data: {
-            ...event.data,
+            ...(typeof event.data === 'object' && event.data !== null && !Array.isArray(event.data) ? event.data : {}),
+            title: `Meetup ${i + 1}`,
             capacity: 50 + i * 10,
           },
         }));
 
       expect(events).toHaveLength(3);
       events.forEach((event, i) => {
-        expect(event.title).toBe(`Meetup ${i + 1}`);
-        expect(event.data?.category).toBe("Meetup");
-        expect(event.data?.capacity).toBe(50 + i * 10);
+        expect((event.data as Record<string, unknown>).title).toBe(`Meetup ${i + 1}`);
+        expect((event.data as Record<string, unknown>).category).toBe("Meetup");
+        expect((event.data as Record<string, unknown>).capacity).toBe(50 + i * 10);
 
         // Check coordinates are near NYC (within 10km)
         expect(event.location).toBeWithinRadius(TEST_COORDINATES.NYC, 10);

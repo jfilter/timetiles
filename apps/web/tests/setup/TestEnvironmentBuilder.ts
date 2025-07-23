@@ -85,7 +85,7 @@ export class TestEnvironmentBuilder {
       seedData = false,
       isolationLevel = "worker",
       customSeedData = {},
-      environment = "test",
+      environment = "test" as "test",
       createTempDir = true,
     } = options;
 
@@ -369,7 +369,7 @@ export class TestEnvironmentBuilder {
       // Use standard seeding
       await seedManager.seed({
         collections,
-        environment,
+        environment: environment as "production" | "development" | "test" | "staging",
         truncate: false, // Already truncated
       });
     }

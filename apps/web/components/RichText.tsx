@@ -1,7 +1,21 @@
 import React from "react";
 
+interface RichTextNode {
+  type: string;
+  children?: RichTextNode[];
+  text?: string;
+  url?: string;
+  [key: string]: unknown;
+}
+
+interface RootContent {
+  root: {
+    children: RichTextNode[];
+  };
+}
+
 interface RichTextProps {
-  content: any;
+  content: RootContent | RichTextNode[] | null | undefined;
 }
 
 export const RichText: React.FC<RichTextProps> = ({ content }) => {
@@ -10,10 +24,16 @@ export const RichText: React.FC<RichTextProps> = ({ content }) => {
   }
 
   // Handle Lexical JSON format
-  if (content.root && content.root.children) {
+  if (
+    typeof content === "object" &&
+    content !== null &&
+    "root" in content &&
+    content.root &&
+    content.root.children
+  ) {
     return (
       <div className="prose prose-lg dark:prose-invert mx-auto max-w-none">
-        {content.root.children.map((node: any, i: number) => {
+        {content.root.children.map((node: RichTextNode, i: number) => {
           return renderNode(node, i);
         })}
       </div>
@@ -21,20 +41,24 @@ export const RichText: React.FC<RichTextProps> = ({ content }) => {
   }
 
   // Handle array format (legacy)
-  return (
-    <div className="prose prose-lg dark:prose-invert mx-auto max-w-none">
-      {content.map((node: any, i: number) => {
-        return renderNode(node, i);
-      })}
-    </div>
-  );
+  if (Array.isArray(content)) {
+    return (
+      <div className="prose prose-lg dark:prose-invert mx-auto max-w-none">
+        {content.map((node: RichTextNode, i: number) => {
+          return renderNode(node, i);
+        })}
+      </div>
+    );
+  }
+
+  return null;
 };
 
-function renderNode(node: any, i: number): React.ReactNode {
+function renderNode(node: RichTextNode, i: number): React.ReactNode {
   if (node.type === "h1") {
     return (
       <h1 key={i}>
-        {node.children.map((child: any, j: number) => (
+        {node.children?.map((child: RichTextNode, j: number) => (
           <span key={j}>{child.text}</span>
         ))}
       </h1>
@@ -43,7 +67,7 @@ function renderNode(node: any, i: number): React.ReactNode {
   if (node.type === "h2") {
     return (
       <h2 key={i}>
-        {node.children.map((child: any, j: number) => (
+        {node.children?.map((child: RichTextNode, j: number) => (
           <span key={j}>{child.text}</span>
         ))}
       </h2>
@@ -52,7 +76,7 @@ function renderNode(node: any, i: number): React.ReactNode {
   if (node.type === "h3") {
     return (
       <h3 key={i}>
-        {node.children.map((child: any, j: number) => (
+        {node.children?.map((child: RichTextNode, j: number) => (
           <span key={j}>{child.text}</span>
         ))}
       </h3>
@@ -61,7 +85,7 @@ function renderNode(node: any, i: number): React.ReactNode {
   if (node.type === "h4") {
     return (
       <h4 key={i}>
-        {node.children.map((child: any, j: number) => (
+        {node.children?.map((child: RichTextNode, j: number) => (
           <span key={j}>{child.text}</span>
         ))}
       </h4>
@@ -70,7 +94,7 @@ function renderNode(node: any, i: number): React.ReactNode {
   if (node.type === "h5") {
     return (
       <h5 key={i}>
-        {node.children.map((child: any, j: number) => (
+        {node.children?.map((child: RichTextNode, j: number) => (
           <span key={j}>{child.text}</span>
         ))}
       </h5>
@@ -79,7 +103,7 @@ function renderNode(node: any, i: number): React.ReactNode {
   if (node.type === "h6") {
     return (
       <h6 key={i}>
-        {node.children.map((child: any, j: number) => (
+        {node.children?.map((child: RichTextNode, j: number) => (
           <span key={j}>{child.text}</span>
         ))}
       </h6>
@@ -88,7 +112,7 @@ function renderNode(node: any, i: number): React.ReactNode {
   if (node.type === "paragraph") {
     return (
       <p key={i}>
-        {node.children.map((child: any, j: number) => (
+        {node.children?.map((child: RichTextNode, j: number) => (
           <span key={j}>{child.text}</span>
         ))}
       </p>
@@ -97,7 +121,7 @@ function renderNode(node: any, i: number): React.ReactNode {
   if (node.type === "quote") {
     return (
       <blockquote key={i}>
-        {node.children.map((child: any, j: number) => (
+        {node.children?.map((child: RichTextNode, j: number) => (
           <span key={j}>{child.text}</span>
         ))}
       </blockquote>
@@ -106,9 +130,9 @@ function renderNode(node: any, i: number): React.ReactNode {
   if (node.type === "ul") {
     return (
       <ul key={i}>
-        {node.children.map((listItem: any, j: number) => (
+        {node.children?.map((listItem: RichTextNode, j: number) => (
           <li key={j}>
-            {listItem.children.map((child: any, k: number) => (
+            {listItem.children?.map((child: RichTextNode, k: number) => (
               <span key={k}>{child.text}</span>
             ))}
           </li>
@@ -119,9 +143,9 @@ function renderNode(node: any, i: number): React.ReactNode {
   if (node.type === "ol") {
     return (
       <ol key={i}>
-        {node.children.map((listItem: any, j: number) => (
+        {node.children?.map((listItem: RichTextNode, j: number) => (
           <li key={j}>
-            {listItem.children.map((child: any, k: number) => (
+            {listItem.children?.map((child: RichTextNode, k: number) => (
               <span key={k}>{child.text}</span>
             ))}
           </li>
@@ -132,7 +156,7 @@ function renderNode(node: any, i: number): React.ReactNode {
   if (node.type === "li") {
     return (
       <li key={i}>
-        {node.children.map((child: any, j: number) => (
+        {node.children?.map((child: RichTextNode, j: number) => (
           <span key={j}>{child.text}</span>
         ))}
       </li>
@@ -141,7 +165,7 @@ function renderNode(node: any, i: number): React.ReactNode {
   if (node.type === "link") {
     return (
       <a key={i} href={node.url}>
-        {node.children.map((child: any, j: number) => (
+        {node.children?.map((child: RichTextNode, j: number) => (
           <span key={j}>{child.text}</span>
         ))}
       </a>

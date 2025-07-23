@@ -314,11 +314,15 @@ export class GeocodingService {
               provider: "openstreetmap",
               formatter: null,
               osmServer:
-                (nominatimConfig as any).baseUrl ||
+                (nominatimConfig as { baseUrl?: string }).baseUrl ||
                 "https://nominatim.openstreetmap.org",
-              countrycodes: (nominatimConfig as any).countrycodes,
-              addressdetails: (nominatimConfig as any).addressdetails !== false,
-              extratags: (nominatimConfig as any).extratags === true,
+              countrycodes: (nominatimConfig as { countrycodes?: string })
+                .countrycodes,
+              addressdetails:
+                (nominatimConfig as { addressdetails?: boolean })
+                  .addressdetails !== false,
+              extratags:
+                (nominatimConfig as { extratags?: boolean }).extratags === true,
             } as NodeGeocoder.Options);
             break;
           }
@@ -350,7 +354,7 @@ export class GeocodingService {
                 northeast.lat != null &&
                 northeast.lng != null
               ) {
-                (geocoderOptions as any).bounds =
+                (geocoderOptions as { bounds?: unknown }).bounds =
                   `${southwest.lat},${southwest.lng},${northeast.lat},${northeast.lng}`;
               }
             }
@@ -633,7 +637,9 @@ export class GeocodingService {
       confidence: this.calculateConfidence(result, providerName),
       provider: providerName,
       normalizedAddress:
-        result.formattedAddress || (result as any).display_name || "",
+        result.formattedAddress ||
+        (result as { display_name?: string }).display_name ||
+        "",
       components: {
         streetNumber: result.streetNumber,
         streetName: result.streetName,
@@ -643,9 +649,9 @@ export class GeocodingService {
         country: result.country,
       },
       metadata: {
-        importance: (result as any).importance,
+        importance: (result as { importance?: number }).importance,
         placeId: result.extra?.googlePlaceId,
-        osmId: (result.extra as any)?.osm_id,
+        osmId: (result.extra as { osm_id?: string })?.osm_id,
         confidence: result.extra?.confidence,
       },
     };
@@ -656,19 +662,25 @@ export class GeocodingService {
 
     switch (providerName) {
       case "google":
-        if ((result.extra as any)?.confidence === "exact_match")
+        if (
+          (result.extra as { confidence?: string })?.confidence ===
+          "exact_match"
+        )
           confidence = 0.95;
-        else if ((result.extra as any)?.confidence === "approximate")
+        else if (
+          (result.extra as { confidence?: string })?.confidence ===
+          "approximate"
+        )
           confidence = 0.8;
         break;
 
       case "opencage":
-        confidence = ((result as any).confidence || 5) / 10; // OpenCage uses 1-10 scale
+        confidence = ((result as { confidence?: number }).confidence || 5) / 10; // OpenCage uses 1-10 scale
         break;
 
       case "nominatim":
-        confidence = (result as any).importance
-          ? Math.min((result as any).importance * 0.8, 0.9)
+        confidence = (result as { importance?: number }).importance
+          ? Math.min((result as { importance?: number }).importance! * 0.8, 0.9)
           : 0.6;
         break;
     }

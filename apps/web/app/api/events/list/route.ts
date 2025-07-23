@@ -4,6 +4,7 @@ import { getPayload } from "payload";
 import type { Where } from "payload";
 import config from "../../../../payload.config";
 import { logger } from "@/lib/logger";
+import type { Event } from "@/payload-types";
 
 export async function GET(request: NextRequest) {
   try {
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest) {
 
     // Date filters
     if (startDate || endDate) {
-      const dateFilter: any = {};
+      const dateFilter: Record<string, string> = {};
       if (startDate) dateFilter.greater_than_equal = startDate;
       if (endDate) dateFilter.less_than_equal = endDate;
 
@@ -113,24 +114,37 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform events for frontend
-    const events = result.docs.map((event: any) => ({
-      id: event.id,
-      dataset: {
-        id: event.dataset?.id,
-        title: event.dataset?.title,
-        catalog: event.dataset?.catalog?.title,
-      },
-      data: event.data,
-      location:
-        event.location?.longitude && event.location?.latitude
+    const events = result.docs.map((event: Event) => {
+      return {
+        id: event.id,
+        dataset: {
+          id:
+            typeof event.dataset === "object" && event.dataset
+              ? event.dataset.id
+              : event.dataset,
+          title:
+            typeof event.dataset === "object" && event.dataset
+              ? event.dataset.name
+              : undefined,
+          catalog:
+            typeof event.dataset === "object" &&
+            event.dataset &&
+            typeof event.dataset.catalog === "object" &&
+            event.dataset.catalog
+              ? event.dataset.catalog.name
+              : undefined,
+        },
+        data: event.data,
+        location: event.location
           ? {
               longitude: event.location.longitude,
               latitude: event.location.latitude,
             }
           : null,
-      eventTimestamp: event.eventTimestamp,
-      isValid: event.isValid,
-    }));
+        eventTimestamp: event.eventTimestamp,
+        isValid: event.isValid,
+      };
+    });
 
     return NextResponse.json({
       events,

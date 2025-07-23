@@ -39,7 +39,7 @@ export function Map({ onBoundsChange, events = [] }: MapProps) {
         logger.error("Map error:", e);
       });
 
-      map.current.on("webglcontextlost", (e: any) => {
+      map.current.on("webglcontextlost", (e: Event) => {
         e.preventDefault();
       });
 

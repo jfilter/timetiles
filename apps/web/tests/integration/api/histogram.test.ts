@@ -2,6 +2,11 @@ import type { Payload } from "payload";
 import { GET } from "../../../app/api/events/histogram/route";
 import { NextRequest } from "next/server";
 
+interface HistogramBucket {
+  date: string;
+  count: number;
+}
+
 describe("/api/events/histogram", () => {
   let payload: Payload;
   let testCatalogId: string;
@@ -181,19 +186,21 @@ describe("/api/events/histogram", () => {
     const data = await response.json();
 
     // We should have at least 4 buckets: Jan, Feb, Mar, Jun (may have others from other tests)
-    const monthsWithData = data.histogram.filter((b: any) => b.count > 0);
+    const monthsWithData = data.histogram.filter(
+      (b: HistogramBucket) => b.count > 0,
+    );
     expect(monthsWithData.length).toBeGreaterThanOrEqual(4);
 
     // January should have events
     const january = data.histogram.find(
-      (b: any) => new Date(b.date).getMonth() === 0,
+      (b: HistogramBucket) => new Date(b.date).getMonth() === 0,
     );
     expect(january).toBeDefined();
     expect(january.count).toBeGreaterThan(0);
 
     // February should have events
     const february = data.histogram.find(
-      (b: any) => new Date(b.date).getMonth() === 1,
+      (b: HistogramBucket) => new Date(b.date).getMonth() === 1,
     );
     expect(february).toBeDefined();
     expect(february.count).toBeGreaterThan(0);
@@ -228,12 +235,14 @@ describe("/api/events/histogram", () => {
     const data = await response.json();
 
     // Should have data for the months in range (may have more from other tests)
-    const monthsWithData = data.histogram.filter((b: any) => b.count > 0);
+    const monthsWithData = data.histogram.filter(
+      (b: HistogramBucket) => b.count > 0,
+    );
     expect(monthsWithData.length).toBeGreaterThan(0);
 
     // Should have some events in range
     const totalInRange = monthsWithData.reduce(
-      (sum: number, b: any) => sum + b.count,
+      (sum: number, b: HistogramBucket) => sum + b.count,
       0,
     );
     expect(totalInRange).toBeGreaterThan(0);
@@ -275,7 +284,9 @@ describe("/api/events/histogram", () => {
     const data = await response.json();
 
     // Should have daily buckets for January
-    const daysWithData = data.histogram.filter((b: any) => b.count > 0);
+    const daysWithData = data.histogram.filter(
+      (b: HistogramBucket) => b.count > 0,
+    );
     expect(daysWithData.length).toBeGreaterThan(0); // Should have at least some days
   });
 
@@ -289,7 +300,9 @@ describe("/api/events/histogram", () => {
     const data = await response.json();
 
     // Should have at least one bucket for 2024
-    const yearsWithData = data.histogram.filter((b: any) => b.count > 0);
+    const yearsWithData = data.histogram.filter(
+      (b: HistogramBucket) => b.count > 0,
+    );
     expect(yearsWithData.length).toBeGreaterThanOrEqual(1);
     expect(yearsWithData[0].count).toBeGreaterThan(0);
   });

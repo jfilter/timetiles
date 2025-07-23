@@ -192,7 +192,7 @@ async function checkPostGIS() {
       sql`SELECT 1 FROM pg_extension WHERE extname = 'postgis'`,
     );
 
-    const hasPostGIS = (postgisCheck as any).rowCount > 0;
+    const hasPostGIS = (postgisCheck as { rowCount: number }).rowCount > 0;
     logger.debug("PostGIS check complete", { hasPostGIS });
 
     return {

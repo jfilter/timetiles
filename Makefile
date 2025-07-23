@@ -1,4 +1,4 @@
-.PHONY: up down logs db-reset db-shell clean setup dev build lint format test seed help
+.PHONY: up down logs db-reset db-shell db-query clean setup dev build lint format test seed help
 
 # Start the development environment
 up:

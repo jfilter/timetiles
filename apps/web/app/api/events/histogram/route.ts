@@ -39,128 +39,54 @@ export async function GET(request: NextRequest) {
     }
 
     // Build filters object
-    const filters: Record<string, any> = {};
+    const filters: Record<string, unknown> = {};
     if (catalog) filters.catalog = catalog;
     if (datasets.length > 0 && datasets[0] !== "") filters.datasets = datasets;
     if (startDate) filters.startDate = startDate;
     if (endDate) filters.endDate = endDate;
 
-    // Check if histogram function exists (force fallback for tests)
-    const testMode = process.env.NODE_ENV === "test";
+    // Check if histogram function exists
     let functionExists = false;
 
-    if (!testMode) {
-      try {
-        const functionCheck = await payload.db.drizzle.execute(sql`
-          SELECT EXISTS (
-            SELECT 1 FROM pg_proc 
-            WHERE proname = 'calculate_event_histogram'
-          ) as exists
-        `);
-        functionExists = functionCheck.rows[0]?.exists;
-      } catch (error) {
-        logger.warn("Function check failed, using fallback query:", {
-          error: (error as Error).message,
-        });
-        functionExists = false;
-      }
+    try {
+      const functionCheck = (await payload.db.drizzle.execute(sql`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_proc 
+          WHERE proname = 'calculate_event_histogram'
+        ) as exists
+      `)) as { rows: Array<{ exists: boolean }> };
+      functionExists = functionCheck.rows[0]?.exists ?? false;
+    } catch (error) {
+      logger.warn("Function check failed:", {
+        error: (error as Error).message,
+      });
+      functionExists = false;
     }
 
-    let result;
+    let result:
+      | { rows: Array<{ bucket: string; event_count: number }> }
+      | undefined;
     let aggregations: {
       total?: number;
-      dateRange?: { min: any; max: any };
+      dateRange?: { min: string | null; max: string | null };
       counts?: { datasets: number; catalogs: number };
     } = {};
 
-    if (!functionExists || testMode) {
-      // Fallback to basic aggregation query
-      logger.warn(
-        "calculate_event_histogram function not found, using fallback query",
+    if (!functionExists) {
+      logger.error(
+        "Required calculate_event_histogram function not found in database",
       );
-
-      // Determine interval based on date range or granularity
-      let interval = granularity;
-      if (granularity === "auto") {
-        interval = "day"; // Default to day for simplicity
-      }
-
-      // Basic histogram query
-      result = await payload.db.drizzle.execute(sql`
-        SELECT 
-          date_trunc(${interval}, e.event_timestamp) as bucket,
-          COUNT(*) as event_count
-        FROM payload.events e
-        JOIN payload.datasets d ON e.dataset_id = d.id
-        WHERE e.event_timestamp IS NOT NULL
-          ${catalog ? sql`AND d.catalog_id = ${parseInt(catalog)}` : sql``}
-          ${
-            datasets.length > 0
-              ? sql`AND e.dataset_id IN (${sql.join(
-                  datasets.map((d) => sql`${parseInt(d)}`),
-                  sql`, `,
-                )})`
-              : sql``
-          }
-          ${startDate ? sql`AND e.event_timestamp >= ${startDate}::timestamp` : sql``}
-          ${endDate ? sql`AND e.event_timestamp <= ${endDate}::timestamp` : sql``}
-          ${
-            bounds
-              ? sql`
-            AND e.location_longitude BETWEEN ${bounds.west} AND ${bounds.east}
-            AND e.location_latitude BETWEEN ${bounds.south} AND ${bounds.north}
-          `
-              : sql``
-          }
-        GROUP BY bucket
-        ORDER BY bucket
-      `);
-
-      // Get total count and date range
-      const statsResult = await payload.db.drizzle.execute(sql`
-        SELECT 
-          COUNT(*) as total,
-          MIN(e.event_timestamp) as min_date,
-          MAX(e.event_timestamp) as max_date,
-          COUNT(DISTINCT e.dataset_id) as dataset_count,
-          COUNT(DISTINCT d.catalog_id) as catalog_count
-        FROM payload.events e
-        JOIN payload.datasets d ON e.dataset_id = d.id
-        WHERE e.event_timestamp IS NOT NULL
-          ${catalog ? sql`AND d.catalog_id = ${parseInt(catalog)}` : sql``}
-          ${
-            datasets.length > 0
-              ? sql`AND e.dataset_id IN (${sql.join(
-                  datasets.map((d) => sql`${parseInt(d)}`),
-                  sql`, `,
-                )})`
-              : sql``
-          }
-          ${startDate ? sql`AND e.event_timestamp >= ${startDate}::timestamp` : sql``}
-          ${endDate ? sql`AND e.event_timestamp <= ${endDate}::timestamp` : sql``}
-          ${
-            bounds
-              ? sql`
-            AND e.location_longitude BETWEEN ${bounds.west} AND ${bounds.east}
-            AND e.location_latitude BETWEEN ${bounds.south} AND ${bounds.north}
-          `
-              : sql``
-          }
-      `);
-
-      const stats = statsResult.rows[0] || {};
-      aggregations = {
-        total: parseInt(stats.total, 10) || 0,
-        dateRange: {
-          min: stats.min_date,
-          max: stats.max_date,
+      return NextResponse.json(
+        {
+          error:
+            "Database function calculate_event_histogram not found. Please ensure migrations are run.",
+          code: "MISSING_DB_FUNCTION",
         },
-        counts: {
-          datasets: parseInt(stats.dataset_count, 10) || 0,
-          catalogs: parseInt(stats.catalog_count, 10) || 0,
-        },
-      };
-    } else {
+        { status: 500 },
+      );
+    }
+
+    if (functionExists) {
       // Use the histogram function
       const filtersWithBounds = {
         catalogId: catalog ? parseInt(catalog) : undefined,
@@ -184,16 +110,16 @@ export async function GET(request: NextRequest) {
         interval = "day"; // Default for now
       }
 
-      result = await payload.db.drizzle.execute(sql`
+      result = (await payload.db.drizzle.execute(sql`
         SELECT * FROM calculate_event_histogram(
           ${interval}::text,
           ${JSON.stringify(filtersWithBounds)}::jsonb
         )
-      `);
+      `)) as { rows: Array<{ bucket: string; event_count: number }> };
 
       // Calculate total from result
       const total = result.rows.reduce(
-        (sum: number, row: any) => sum + parseInt(row.event_count, 10),
+        (sum: number, row) => sum + parseInt(String(row.event_count), 10),
         0,
       );
 
@@ -207,10 +133,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform the histogram data
-    const histogram = result.rows.map((row: any) => ({
-      date: row.bucket,
-      count: parseInt(row.event_count || row.count, 10),
-    }));
+    const histogram =
+      result?.rows.map((row) => ({
+        date: row.bucket,
+        count: parseInt(String(row.event_count), 10),
+      })) || [];
 
     return NextResponse.json({
       histogram,

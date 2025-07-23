@@ -29,7 +29,7 @@ export interface ResolutionStats {
 }
 
 export class RelationshipResolver {
-  private cache = new Map<string, Map<string, any>>();
+  private cache = new Map<string, Map<string, unknown>>();
   private stats = new Map<string, ResolutionStats>();
 
   constructor(private payload: Payload) {
@@ -162,7 +162,8 @@ export class RelationshipResolver {
         const relatedItem = await this.findRelatedItem(originalValue, config);
 
         if (relatedItem) {
-          resolved[config.field] = relatedItem.id;
+          const typedItem = relatedItem as { id: string | number };
+          resolved[config.field] = { id: typedItem.id };
         } else if (config.required) {
           // In test environments, be more lenient with missing relationships
           const isTestEnvironment =
@@ -213,7 +214,7 @@ export class RelationshipResolver {
   private async findRelatedItem(
     searchValue: string,
     config: RelationshipConfig,
-  ): Promise<any | null> {
+  ): Promise<unknown> {
     // Apply transformation if configured
     const transformedValue = config.transform
       ? config.transform(searchValue)
@@ -326,13 +327,22 @@ export class RelationshipResolver {
 
         const collectionCache = new Map();
 
-        result.docs.forEach((item: any) => {
+        result.docs.forEach((item: unknown) => {
           // Cache by common search fields using type assertion for flexibility
-          if (item.name) {
-            collectionCache.set(`${collection}:name:${item.name}`, item);
+          const typedItem = item as Record<string, unknown> & {
+            id: string | number;
+          };
+          if (typedItem.name) {
+            collectionCache.set(
+              `${collection}:name:${typedItem.name}`,
+              typedItem,
+            );
           }
-          if (item.slug) {
-            collectionCache.set(`${collection}:slug:${item.slug}`, item);
+          if (typedItem.slug) {
+            collectionCache.set(
+              `${collection}:slug:${typedItem.slug}`,
+              typedItem,
+            );
           }
         });
 

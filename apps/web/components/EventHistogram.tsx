@@ -140,8 +140,16 @@ export function EventHistogram({
         textStyle: {
           color: isDark ? "#f9fafb" : "#111827",
         },
-        formatter: (params: any) => {
+        formatter: (
+          params: Array<{
+            value: [string, number];
+            data: [string, number];
+            marker: string;
+            seriesName: string;
+          }>,
+        ) => {
           const point = params[0];
+          if (!point) return "";
           const date = new Date(point.data[0]);
           const count = point.data[1];
           return `
@@ -172,7 +180,7 @@ export function EventHistogram({
     };
   };
 
-  const handleChartClick = (params: any) => {
+  const handleChartClick = (params: { data: [string, number] }) => {
     if (params.data) {
       const date = new Date(params.data[0]);
       const formatDate = (d: Date) => {

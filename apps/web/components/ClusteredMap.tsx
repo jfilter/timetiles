@@ -1,14 +1,35 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import Map, { Source, Layer, Popup, type MapRef } from "react-map-gl/maplibre";
+import Map, {
+  Source,
+  Layer,
+  Popup,
+  type MapRef,
+  type MapLayerMouseEvent,
+} from "react-map-gl/maplibre";
 import type { LngLatBounds } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { createLogger } from "../lib/logger";
 
+export interface ClusterFeature {
+  type: "Feature";
+  geometry: {
+    type: "Point";
+    coordinates: [number, number];
+  };
+  properties: {
+    id: string | number;
+    type: "event-cluster" | "event-point";
+    count?: number;
+    title?: string;
+    eventIds?: unknown[];
+  };
+}
+
 interface ClusteredMapProps {
   onBoundsChange?: (bounds: LngLatBounds, zoom: number) => void;
-  clusters?: any[]; // GeoJSON features from the clustering API
+  clusters?: ClusterFeature[];
 }
 
 const logger = createLogger("ClusteredMap");
@@ -24,7 +45,9 @@ export function ClusteredMap({
   } | null>(null);
 
   const handleLoad = useCallback(
-    (evt: any) => {
+    (evt: {
+      target: { getBounds: () => LngLatBounds; getZoom: () => number };
+    }) => {
       const map = evt.target as MapRef;
       const bounds = map.getBounds();
       const zoom = map.getZoom();
@@ -41,7 +64,7 @@ export function ClusteredMap({
       });
 
       // Store map reference for manual source management
-      (window as any)._mapRef = map;
+      (window as { _mapRef?: unknown })._mapRef = map;
 
       // Trigger initial bounds change to load data
       if (onBoundsChange) {
@@ -51,28 +74,50 @@ export function ClusteredMap({
     [onBoundsChange],
   );
 
-  const handleClick = useCallback((event: any) => {
+  const handleClick = useCallback((event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
     if (!feature) return;
 
-    const { type } = feature.properties;
+    const { type } = feature.properties || {};
 
     if (type === "event-cluster") {
       // Zoom in on cluster click
-      const [longitude, latitude] = feature.geometry.coordinates;
-      event.target.flyTo({
-        center: [longitude, latitude],
-        zoom: event.target.getZoom() + 2,
-      });
+      const coordinates =
+        feature.geometry?.type === "Point"
+          ? feature.geometry.coordinates
+          : null;
+      if (
+        coordinates &&
+        Array.isArray(coordinates) &&
+        coordinates.length >= 2
+      ) {
+        const longitude = coordinates[0] as number;
+        const latitude = coordinates[1] as number;
+        event.target.flyTo({
+          center: [longitude, latitude],
+          zoom: event.target.getZoom() + 2,
+        });
+      }
     } else if (type === "event-point") {
       // Show popup for individual events
-      const [longitude, latitude] = feature.geometry.coordinates;
-      const { title, id } = feature.properties;
-      setPopupInfo({
-        longitude,
-        latitude,
-        title: title || `Event ${id}`,
-      });
+      const coordinates =
+        feature.geometry?.type === "Point"
+          ? feature.geometry.coordinates
+          : null;
+      if (
+        coordinates &&
+        Array.isArray(coordinates) &&
+        coordinates.length >= 2
+      ) {
+        const longitude = coordinates[0] as number;
+        const latitude = coordinates[1] as number;
+        const { title, id } = feature.properties || {};
+        setPopupInfo({
+          longitude,
+          latitude,
+          title: title || `Event ${id}`,
+        });
+      }
     }
   }, []);
 
@@ -85,11 +130,21 @@ export function ClusteredMap({
     return data;
   }, [clusters]);
 
-  const eventPointLayer: any = {
+  const eventPointFilter: ["==", ["get", string], string] = [
+    "==",
+    ["get", "type"],
+    "event-point",
+  ];
+  const clusterFilter: ["==", ["get", string], string] = [
+    "==",
+    ["get", "type"],
+    "event-cluster",
+  ];
+
+  const eventPointLayer = {
     id: "unclustered-point",
-    type: "circle",
-    // source: "all-features",
-    filter: ["==", ["get", "type"], "event-point"],
+    type: "circle" as const,
+    filter: eventPointFilter,
     paint: {
       "circle-color": "#11b4da",
       "circle-radius": 6,
@@ -98,11 +153,10 @@ export function ClusteredMap({
     },
   };
 
-  const clusterLayer: any = {
+  const clusterLayer = {
     id: "event-clusters",
-    type: "circle",
-    // source: "all-features",
-    filter: ["==", ["get", "type"], "event-cluster"],
+    type: "circle" as const,
+    filter: clusterFilter,
     paint: {
       "circle-radius": 30,
       "circle-color": "#ff6b6b",
@@ -112,7 +166,9 @@ export function ClusteredMap({
   };
 
   const handleMove = useCallback(
-    (evt: any) => {
+    (evt: {
+      target: { getBounds: () => LngLatBounds; getZoom: () => number };
+    }) => {
       const map = evt.target as MapRef;
       const bounds = map.getBounds();
       const zoom = map.getZoom();
