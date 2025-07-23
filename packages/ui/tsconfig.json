@@ -11,5 +11,5 @@
     "skipLibCheck": true
   },
   "include": ["."],
-  "exclude": ["node_modules", "dist", "src/components/charts/**/*"]
+  "exclude": ["node_modules", "dist"]
 }

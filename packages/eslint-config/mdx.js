@@ -1,53 +1,42 @@
 import js from "@eslint/js"
 import eslintConfigPrettier from "eslint-config-prettier"
 import onlyWarn from "eslint-plugin-only-warn"
-import prettierPlugin from "eslint-plugin-prettier"
-import reactPlugin from "eslint-plugin-react"
-import * as mdxPlugin from "eslint-plugin-mdx"
+import * as mdx from "eslint-plugin-mdx"
 
 /**
  * ESLint configuration for MDX files.
- * Catches common MDX parsing issues like unescaped angle brackets.
+ * Uses eslint-plugin-mdx to properly parse and lint MDX files.
  *
  * @type {import("eslint").Linter.Config}
  */
 export default [
-  js.configs.recommended,
-  eslintConfigPrettier,
   {
-    files: ["**/*.mdx"],
-    plugins: {
-      react: reactPlugin,
-      mdx: mdxPlugin,
-      prettier: prettierPlugin,
-    },
-    languageOptions: {
-      parser: mdxPlugin.parser,
-      parserOptions: {
-        ecmaFeatures: {
-          jsx: true,
-        },
-      },
-    },
+    ignores: [
+      "**/.next/**",
+      "**/out/**", 
+      "**/dist/**",
+      "**/build/**",
+      "**/node_modules/**",
+    ],
+  },
+  js.configs.recommended,
+  {
+    ...mdx.flat,
+    processor: mdx.createRemarkProcessor({
+      lintCodeBlocks: true,
+    }),
+  },
+  {
+    ...mdx.flatCodeBlocks,
     rules: {
-      // Catch unescaped angle brackets like <50, >30, etc.
-      "react/no-unescaped-entities": ["error", {
-        "forbid": ["<", ">", "{", "}", "'", "\""]
-      }],
-      
-      // Ensure proper JSX syntax
-      "react/jsx-curly-brace-presence": "error",
-      "react/jsx-no-undef": "error",
-      
-      // Prettier formatting
-      "prettier/prettier": "error",
-    },
-    settings: {
-      react: {
-        version: "detect",
-      },
+      ...mdx.flatCodeBlocks.rules,
+      // Override code block specific rules
+      "no-var": "error",
+      "prefer-const": "error",
+      "no-console": "warn",
     },
   },
+  eslintConfigPrettier,
   {
     plugins: {
       onlyWarn,
