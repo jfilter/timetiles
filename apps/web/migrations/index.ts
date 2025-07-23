@@ -6,6 +6,9 @@ import * as migration_20250719_update_clustering_distance from "./20250719_updat
 import * as migration_20250719_fix_histogram_function from "./20250719_fix_histogram_function";
 import * as migration_20250719_fix_histogram_timezone from "./20250719_fix_histogram_timezone";
 import * as migration_20250719_update_histogram_function from "./20250719_update_histogram_function";
+import * as migration_20250723_195307_force_fix_histogram from "./20250723_195307_force_fix_histogram";
+import * as migration_20250723_200030_fix_cluster_events_missing_fields from "./20250723_200030_fix_cluster_events_missing_fields";
+import * as migration_20250723_200530_fix_cluster_distance_zoom16 from "./20250723_200530_fix_cluster_distance_zoom16";
 
 export const migrations = [
   {
@@ -47,5 +50,20 @@ export const migrations = [
     up: migration_20250719_update_histogram_function.up,
     down: migration_20250719_update_histogram_function.down,
     name: "20250719_update_histogram_function",
+  },
+  {
+    up: migration_20250723_195307_force_fix_histogram.up,
+    down: migration_20250723_195307_force_fix_histogram.down,
+    name: "20250723_195307_force_fix_histogram",
+  },
+  {
+    up: migration_20250723_200030_fix_cluster_events_missing_fields.up,
+    down: migration_20250723_200030_fix_cluster_events_missing_fields.down,
+    name: "20250723_200030_fix_cluster_events_missing_fields",
+  },
+  {
+    up: migration_20250723_200530_fix_cluster_distance_zoom16.up,
+    down: migration_20250723_200530_fix_cluster_distance_zoom16.down,
+    name: "20250723_200530_fix_cluster_distance_zoom16",
   },
 ];

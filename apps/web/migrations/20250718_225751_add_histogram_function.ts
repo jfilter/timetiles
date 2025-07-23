@@ -10,10 +10,8 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       p_interval text, -- 'hour', 'day', 'week', 'month', 'year'
       p_filters jsonb DEFAULT '{}'::jsonb
     ) RETURNS TABLE(
-      bucket timestamp,
-      event_count bigint,
-      dataset_counts jsonb,
-      catalog_counts jsonb
+      bucket timestamp with time zone,
+      event_count bigint
     ) AS $$
     BEGIN
       RETURN QUERY
@@ -44,33 +42,15 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
             AND e.location_latitude BETWEEN (p_filters->'bounds'->>'minLat')::double precision 
               AND (p_filters->'bounds'->>'maxLat')::double precision
           ))
-      ),
-      -- First aggregate to get counts per dataset/catalog per bucket
-      time_buckets AS (
-        SELECT 
-          date_trunc(p_interval, event_timestamp) as bucket,
-          dataset_id,
-          catalog_id,
-          COUNT(*) as count
-        FROM filtered_events
-        WHERE event_timestamp IS NOT NULL
-        GROUP BY bucket, dataset_id, catalog_id
       )
-      -- Then aggregate into final result
+      -- Aggregate by time bucket only
       SELECT 
-        tb.bucket,
-        SUM(tb.count)::bigint as event_count,
-        jsonb_object_agg(
-          COALESCE(tb.dataset_id::text, 'unknown'), 
-          SUM(tb.count)
-        ) FILTER (WHERE tb.dataset_id IS NOT NULL) as dataset_counts,
-        jsonb_object_agg(
-          COALESCE(tb.catalog_id::text, 'unknown'), 
-          SUM(tb.count)
-        ) FILTER (WHERE tb.catalog_id IS NOT NULL) as catalog_counts
-      FROM time_buckets tb
-      GROUP BY tb.bucket
-      ORDER BY tb.bucket;
+        date_trunc(p_interval, event_timestamp) as bucket,
+        COUNT(*)::bigint as event_count
+      FROM filtered_events
+      WHERE event_timestamp IS NOT NULL
+      GROUP BY bucket
+      ORDER BY bucket;
     END;
     $$ LANGUAGE plpgsql STABLE;
   `);
