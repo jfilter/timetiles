@@ -7,6 +7,7 @@ import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { migrations } from "@/migrations";
 import { truncateAllTables } from "./database-setup";
 import { verifyDatabaseSchema } from "./verify-schema";
+import { logger } from "@/lib/logger";
 
 // Import collections
 import Catalogs from "@/lib/collections/Catalogs";
@@ -47,14 +48,12 @@ export async function createIsolatedTestEnvironment(): Promise<{
 
   // Use the database that was already set up by the global setup
   const dbName = `timetiles_test_${workerId}`;
-  const dbUrl = process.env.DATABASE_URL || `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
-
-  console.log(`[TEST-HELPER] Using test database: ${dbName}`);
+  const dbUrl =
+    process.env.DATABASE_URL ||
+    `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
 
   // Truncate all tables to ensure clean state for this test
-  console.log(`[TEST-HELPER] Truncating tables for clean test state...`);
   await truncateAllTables(dbUrl);
-  console.log(`[TEST-HELPER] Tables truncated successfully`);
 
   // Create test config (similar to setup.ts but using the existing database)
   const testConfig = buildConfig({
@@ -62,6 +61,15 @@ export async function createIsolatedTestEnvironment(): Promise<{
     admin: {
       user: Users.slug,
     },
+    logger:
+      process.env.LOG_LEVEL && process.env.LOG_LEVEL !== "silent"
+        ? undefined // Use Payload's default logger when debugging
+        : {
+            options: {
+              level: "fatal",
+            },
+          },
+    debug: false,
     collections: [
       Catalogs,
       Datasets,
@@ -93,9 +101,7 @@ export async function createIsolatedTestEnvironment(): Promise<{
     editor: lexicalEditor({}),
   });
 
-  console.log(`[TEST-HELPER] Initializing Payload for test...`);
   const payload = await getPayload({ config: testConfig });
-  console.log(`[TEST-HELPER] Payload initialized for test with DB: ${dbName}`);
 
   // Set global test payload for route handlers to use
   (global as any).__TEST_PAYLOAD__ = payload;
@@ -108,6 +114,21 @@ export async function createIsolatedTestEnvironment(): Promise<{
   seedManager.initialize = async () => {
     // Set the payload instance directly instead of creating a new one
     (seedManager as any).payload = payload;
+
+    // Initialize relationship resolver with the test payload instance
+    const { RelationshipResolver } = await import(
+      "../../lib/seed/RelationshipResolver"
+    );
+    (seedManager as any).relationshipResolver = new RelationshipResolver(
+      payload,
+    );
+
+    // Initialize database operations with the test payload instance
+    const { DatabaseOperations } = await import(
+      "../../lib/seed/DatabaseOperations"
+    );
+    (seedManager as any).databaseOperations = new DatabaseOperations(payload);
+
     return payload;
   };
 
@@ -117,7 +138,7 @@ export async function createIsolatedTestEnvironment(): Promise<{
         (global as any).__TEST_PAYLOAD__ = undefined;
       }
     } catch (error) {
-      console.warn("Failed to clean up global test payload:", error);
+      logger.warn("Failed to clean up global test payload:", error);
     }
 
     try {
@@ -125,14 +146,14 @@ export async function createIsolatedTestEnvironment(): Promise<{
         fs.rmSync(tempDir, { recursive: true, force: true });
       }
     } catch (error) {
-      console.warn("Failed to clean up temp directory:", error);
+      logger.warn("Failed to clean up temp directory:", error);
     }
 
     // Truncate tables for the next test
     try {
       await truncateAllTables(dbUrl);
     } catch (error) {
-      console.warn("Failed to truncate tables during cleanup:", error);
+      logger.warn("Failed to truncate tables during cleanup:", error);
     }
   };
 

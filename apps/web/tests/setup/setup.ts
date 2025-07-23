@@ -5,12 +5,15 @@ import fs from "fs";
 
 import { createTestDatabase } from "./database-setup";
 import { verifyDatabaseSchema } from "./verify-schema";
+import { logger } from "@/lib/logger";
 
 // Set test environment
 if (!process.env.NODE_ENV) {
   (process.env as any).NODE_ENV = "test";
 }
 process.env.PAYLOAD_SECRET = "test-secret-key";
+
+// Payload logging is now properly controlled via logger and loggingLevels configuration
 
 // Create isolated test database for each worker
 const workerId = process.env.VITEST_WORKER_ID || "1";
@@ -24,7 +27,9 @@ process.env.TEMP_DIR = tempDir;
 
 // Global setup to ensure clean test environment
 beforeAll(async () => {
-  console.log(`Setting up test environment for worker ${workerId}`);
+  if (process.env.LOG_LEVEL && process.env.LOG_LEVEL !== "silent") {
+    logger.info(`Setting up test environment for worker ${workerId}`);
+  }
 
   // Ensure temp directory exists
   if (!fs.existsSync(tempDir)) {
@@ -67,6 +72,15 @@ beforeAll(async () => {
       admin: {
         user: Users.slug,
       },
+      logger:
+        process.env.LOG_LEVEL && process.env.LOG_LEVEL !== "silent"
+          ? undefined // Use Payload's default logger when debugging
+          : {
+              options: {
+                level: "fatal",
+              },
+            },
+      debug: false,
       collections: [
         Catalogs,
         Datasets,
@@ -104,8 +118,8 @@ beforeAll(async () => {
     // Verify the schema was created correctly
     await verifyDatabaseSchema(dbUrl);
   } catch (error) {
-    console.error(`Migration FAILED for global setup ${testDbName}:`, error);
-    // Re-throw the error to fail the test setup
+    // Always show migration errors, regardless of log level
+    logger.error(`Migration FAILED for global setup ${testDbName}:`, error);
     throw error;
   }
 });
