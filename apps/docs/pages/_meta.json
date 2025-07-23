@@ -5,5 +5,6 @@
   "dynamic-filters": "Dynamic Filters",
   "commit-guidelines": "Commit Guidelines",
   "roadmap": "Roadmap",
-  "testing-guidelines": "Testing Guidelines"
+  "testing-guidelines": "Testing Guidelines",
+  "testing-debug-guide": "Test Debugging Guide"
 }
