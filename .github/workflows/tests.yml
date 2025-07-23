@@ -70,7 +70,7 @@ jobs:
           cd apps/web && pnpm typecheck
 
       - name: Run tests
-        run: pnpm test:verbose
+        run: pnpm test
         working-directory: apps/web
 
       - name: Setup E2E environment
