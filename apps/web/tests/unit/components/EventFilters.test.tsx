@@ -1,7 +1,11 @@
 import { describe, test, expect } from "vitest";
 import { renderWithProviders, screen, userEvent } from "../../setup/test-utils";
 import { EventFilters } from "@/components/EventFilters";
-import { createMockCatalogs, createMockDatasets, createRichText } from "../../mocks";
+import {
+  createMockCatalogs,
+  createMockDatasets,
+  createRichText,
+} from "../../mocks";
 import type { Catalog } from "@/payload-types";
 
 const mockCatalogs = createMockCatalogs(2);
@@ -14,9 +18,9 @@ describe("EventFilters", () => {
     );
 
     // Should show all datasets initially (no catalog selected - defaults to "All Catalogs")
-    expect(container).toHaveTextContent("Test Dataset 1");
-    expect(container).toHaveTextContent("Test Dataset 2");
-    expect(container).toHaveTextContent("Test Dataset 3");
+    expect(container).toHaveTextContent("Air Quality Measurements");
+    expect(container).toHaveTextContent("Water Quality Data");
+    expect(container).toHaveTextContent("GDP Growth Rates");
     expect(container).toHaveTextContent("All Catalogs");
   });
 
@@ -29,12 +33,12 @@ describe("EventFilters", () => {
       { searchParams },
     );
 
-    // Should only show datasets from catalog 1 (datasets 1 and 3)
-    expect(container).toHaveTextContent("Test Dataset 1");
-    expect(container).toHaveTextContent("Test Dataset 3");
+    // Should only show datasets from catalog 1 (Air Quality and GDP Growth Rates)
+    expect(container).toHaveTextContent("Air Quality Measurements");
+    expect(container).toHaveTextContent("GDP Growth Rates");
 
     // Should NOT show dataset from catalog 2
-    expect(container).not.toHaveTextContent("Test Dataset 2");
+    expect(container).not.toHaveTextContent("Water Quality Data");
   });
 
   test("shows all datasets when catalog is set to all via URL state", () => {
@@ -47,9 +51,9 @@ describe("EventFilters", () => {
     );
 
     // Should show all datasets
-    expect(container).toHaveTextContent("Test Dataset 1");
-    expect(container).toHaveTextContent("Test Dataset 2");
-    expect(container).toHaveTextContent("Test Dataset 3");
+    expect(container).toHaveTextContent("Air Quality Measurements");
+    expect(container).toHaveTextContent("Water Quality Data");
+    expect(container).toHaveTextContent("GDP Growth Rates");
   });
 
   test("manages dataset selection state correctly", async () => {

@@ -13,7 +13,7 @@ export const createCoordinateGrid = (
   centerLat: number,
   centerLng: number,
   count: number,
-  spread: number = 0.01
+  spread: number = 0.01,
 ) => {
   return Array.from({ length: count }, (_, i) => ({
     latitude: centerLat + (Math.random() - 0.5) * spread,
@@ -21,12 +21,16 @@ export const createCoordinateGrid = (
   }));
 };
 
-export const createTestFile = (name: string, content: string, type: string = "text/csv") => {
+export const createTestFile = (
+  name: string,
+  content: string,
+  type: string = "text/csv",
+) => {
   return new File([content], name, { type });
 };
 
 export const createCSVContent = (headers: string[], rows: string[][]) => {
-  const csvRows = [headers.join(","), ...rows.map(row => row.join(","))];
+  const csvRows = [headers.join(","), ...rows.map((row) => row.join(","))];
   return csvRows.join("\n");
 };
 
@@ -54,7 +58,10 @@ export const createRichText = (text: string) => ({
   },
 });
 
-export const createRichTextWithFormatting = (text: string, formatting: "bold" | "italic" = "bold") => ({
+export const createRichTextWithFormatting = (
+  text: string,
+  formatting: "bold" | "italic" = "bold",
+) => ({
   root: {
     type: "root",
     children: [

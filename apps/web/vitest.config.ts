@@ -11,8 +11,10 @@ export default defineConfig({
     setupFiles: ["tests/setup/setup.ts"],
     testTimeout: 30000,
     hookTimeout: 30000,
-    reporters: ["basic"],
+    reporters: process.env.TEST_QUIET ? ["basic"] : ["basic"],
     silent: true,
+    // Reduce console output noise
+    logHeapUsage: false,
     coverage: {
       provider: "v8",
       include: ["lib/**/*.ts", "scripts/**/*.ts"],
