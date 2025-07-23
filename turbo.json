@@ -27,7 +27,7 @@
       "dependsOn": ["^lint"]
     },
     "format": {
-      "inputs": ["**/*.{ts,tsx,js,jsx,md,json}"]
+      "inputs": ["**/*.{ts,tsx,js,jsx,md,json,yml,yaml}"]
     },
     "typecheck": {
       "dependsOn": ["^typecheck"]

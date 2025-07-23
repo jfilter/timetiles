@@ -3,39 +3,39 @@ name: Validate Payload Types
 on:
   pull_request:
     paths:
-      - 'apps/web/lib/collections/**'
-      - 'apps/web/payload.config.ts'
+      - "apps/web/lib/collections/**"
+      - "apps/web/payload.config.ts"
   push:
     branches: [main, develop]
     paths:
-      - 'apps/web/lib/collections/**'
-      - 'apps/web/payload.config.ts'
+      - "apps/web/lib/collections/**"
+      - "apps/web/payload.config.ts"
 
 jobs:
   validate-types:
     name: Validate Payload Types are in sync
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-          
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
           cache: "pnpm"
-          
+
       - name: Install dependencies
         run: pnpm install
-        
+
       - name: Validate Payload types
         run: pnpm payload:validate
         working-directory: apps/web
-          
+
       - name: Check for uncommitted changes
         run: |
           if [[ -n $(git status --porcelain) ]]; then

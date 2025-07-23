@@ -5,12 +5,13 @@ on:
     branches: [main]
     paths-ignore:
       - "apps/docs/**"
-      - ".github/workflows/docs.yml"
+      - "**.md"
+
   pull_request:
     branches: [main]
     paths-ignore:
       - "apps/docs/**"
-      - ".github/workflows/docs.yml"
+      - "**.md"
 
 jobs:
   test:
@@ -52,10 +53,10 @@ jobs:
             psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE $1;"
             psql -h localhost -U timetiles_user -d $1 -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE SCHEMA IF NOT EXISTS payload;"
           }
-          
+
           # Create main database
           setup_db timetiles
-          
+
           # Create test databases for parallel workers
           for i in {1..4}; do
             setup_db timetiles_test_$i
@@ -85,14 +86,14 @@ jobs:
           # Start server
           nohup pnpm start > server.log 2>&1 &
           echo $! > .server.pid
-          
+
           # Wait for server (simplified)
           npx wait-on http-get://localhost:3000/api/health --timeout 60000 || {
             echo "Server failed to start. Logs:"
             cat server.log
             exit 1
           }
-          
+
           # Run E2E tests
           pnpm test:e2e
         working-directory: apps/web

@@ -13,7 +13,7 @@
     "docs:dev": "turbo docs:dev",
     "docs:build": "turbo docs:build",
     "docs:export": "turbo docs:export",
-    "format": "turbo format",
+    "format": "turbo format && prettier --write **/*.{yml,yaml}",
     "typecheck": "turbo typecheck",
     "check": "pnpm lint && pnpm typecheck",
     "setup:git": "./scripts/setup-git.sh",
