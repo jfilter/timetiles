@@ -1,4 +1,3 @@
-import { describe, it, expect } from "vitest";
 import { userSeeds } from "../../../lib/seed/seeds/users";
 import { catalogSeeds } from "../../../lib/seed/seeds/catalogs";
 import { datasetSeeds } from "../../../lib/seed/seeds/datasets";

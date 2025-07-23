@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 import { userSeeds } from "../../../lib/seed/seeds/users";
 import { catalogSeeds } from "../../../lib/seed/seeds/catalogs";

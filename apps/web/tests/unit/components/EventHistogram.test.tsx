@@ -1,4 +1,3 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, cleanup, waitFor, act } from "@testing-library/react";
 import { renderWithProviders } from "../../setup/test-utils";
 import { EventHistogram } from "../../../components/EventHistogram";

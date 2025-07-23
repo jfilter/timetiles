@@ -1,5 +1,4 @@
 // Vitest setup file for tests that don't need database
-import { vi } from "vitest";
 import { randomUUID } from "crypto";
 import fs from "fs";
 

@@ -2,7 +2,6 @@ import React from "react";
 import { render, type RenderOptions } from "@testing-library/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { vi } from "vitest";
 
 interface CustomRenderOptions extends Omit<RenderOptions, "wrapper"> {
   searchParams?: URLSearchParams;

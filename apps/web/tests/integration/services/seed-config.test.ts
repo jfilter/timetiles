@@ -4,7 +4,6 @@
  * Tests the new seed.config.ts system and configuration-driven seeding
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 import {
   getCollectionConfig,

@@ -1,4 +1,3 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { DatasetBarChart } from "../../../components/DatasetBarChart";
 import type { Event, Dataset, Catalog } from "../../../payload-types";

@@ -6,7 +6,6 @@
  * distances, and geospatial relationships.
  */
 
-import { expect } from "vitest";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("geo-assertions");

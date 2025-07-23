@@ -1,4 +1,3 @@
-import { describe, it, expect, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 import { GET } from "../../../app/api/events/map-clusters/route";

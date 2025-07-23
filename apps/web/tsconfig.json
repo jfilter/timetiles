@@ -13,7 +13,7 @@
         "name": "next"
       }
     ],
-    "types": ["vitest", "node"]
+    "types": ["vitest/globals", "node"]
   },
   "include": [
     "next-env.d.ts",

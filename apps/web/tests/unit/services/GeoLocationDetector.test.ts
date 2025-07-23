@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeEach } from "vitest";
 import { GeoLocationDetector } from "../../../lib/services/import/GeoLocationDetector";
 
 describe("GeoLocationDetector", () => {

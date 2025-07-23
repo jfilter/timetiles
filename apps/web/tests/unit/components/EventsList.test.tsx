@@ -1,4 +1,3 @@
-import { describe, test, expect } from "vitest";
 import { renderWithProviders, screen } from "../../setup/test-utils";
 import { EventsList } from "@/components/EventsList";
 import type { Event } from "@/payload-types";

@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeEach } from "vitest";
 import { CoordinateValidator } from "../../../lib/services/import/CoordinateValidator";
 
 describe("CoordinateValidator", () => {

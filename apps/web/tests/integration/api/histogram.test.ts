@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import type { Payload } from "payload";
 import { GET } from "../../../app/api/events/histogram/route";
 import { NextRequest } from "next/server";

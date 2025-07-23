@@ -4,7 +4,6 @@
  * Simple test to verify the core functionality works
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   TestEnvironmentBuilder,
   type TestEnvironment,

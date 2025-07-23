@@ -1,4 +1,3 @@
-import { describe, test, expect } from "vitest";
 import { renderWithProviders, screen, userEvent } from "../../setup/test-utils";
 import { EventFilters } from "@/components/EventFilters";
 import {

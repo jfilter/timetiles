@@ -1,5 +1,4 @@
 // No mocking needed - use real file parsing libraries
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "fs";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";

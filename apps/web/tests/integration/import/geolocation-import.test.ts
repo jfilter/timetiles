@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 import type { Payload } from "payload";
 import type { Import } from "../../../payload-types";

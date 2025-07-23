@@ -1,4 +1,3 @@
-import { describe, test, expect, vi } from "vitest";
 import { renderWithProviders } from "../../setup/test-utils";
 import { Map } from "@/components/Map";
 import { createMapEvents } from "../../mocks";

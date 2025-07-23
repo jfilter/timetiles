@@ -8,7 +8,6 @@
  * - Efficient database operations
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   TestEnvironmentBuilder,
   type TestEnvironment,

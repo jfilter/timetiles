@@ -1,5 +1,4 @@
 // Vitest setup file
-import { beforeAll, afterAll, vi } from "vitest";
 import { randomUUID } from "crypto";
 import fs from "fs";
 

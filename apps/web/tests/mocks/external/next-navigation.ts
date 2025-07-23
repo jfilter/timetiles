@@ -1,4 +1,3 @@
-import { vi } from "vitest";
 
 export const mockNextNavigation = {
   redirect: vi.fn(),
