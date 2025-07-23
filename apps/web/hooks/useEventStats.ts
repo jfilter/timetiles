@@ -53,7 +53,7 @@ export function useEventStats(events: Event[]): EventStats {
 
       if (datasetId) {
         stats.eventsByDataset[datasetId] =
-          (stats.eventsByDataset[datasetId] || 0) + 1;
+          (stats.eventsByDataset[datasetId] ?? 0) + 1;
       }
 
       // Catalog stats (through dataset)
@@ -65,7 +65,7 @@ export function useEventStats(events: Event[]): EventStats {
 
         if (catalogId) {
           stats.eventsByCatalog[catalogId] =
-            (stats.eventsByCatalog[catalogId] || 0) + 1;
+            (stats.eventsByCatalog[catalogId] ?? 0) + 1;
         }
       }
     });
@@ -107,14 +107,14 @@ export function useEventsByDataset(
           ? String(event.dataset.id)
           : String(event.dataset);
 
-      eventCounts.set(datasetId, (eventCounts.get(datasetId) || 0) + 1);
+      eventCounts.set(datasetId, (eventCounts.get(datasetId) ?? 0) + 1);
     });
 
     return Array.from(eventCounts.entries())
       .map(([datasetId, count]) => {
         const dataset = datasetMap.get(datasetId);
         return {
-          label: dataset?.name || `Dataset ${datasetId}`,
+          label: dataset?.name ?? `Dataset ${datasetId}`,
           value: count,
           metadata: { datasetId, dataset },
         };
@@ -138,7 +138,7 @@ export function useEventsByCatalog(
             ? String(event.dataset.catalog.id)
             : String(event.dataset.catalog);
 
-        catalogCounts.set(catalogId, (catalogCounts.get(catalogId) || 0) + 1);
+        catalogCounts.set(catalogId, (catalogCounts.get(catalogId) ?? 0) + 1);
       }
     });
 
@@ -146,7 +146,7 @@ export function useEventsByCatalog(
       .map(([catalogId, count]) => {
         const catalog = catalogMap.get(catalogId);
         return {
-          label: catalog?.name || `Catalog ${catalogId}`,
+          label: catalog?.name ?? `Catalog ${catalogId}`,
           value: count,
           metadata: { catalogId, catalog },
         };

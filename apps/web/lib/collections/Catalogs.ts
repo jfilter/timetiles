@@ -1,5 +1,6 @@
-import type { CollectionConfig } from "payload";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
+import type { CollectionConfig } from "payload";
+
 import { createSlugHook } from "../utils/slug";
 
 const Catalogs: CollectionConfig = {

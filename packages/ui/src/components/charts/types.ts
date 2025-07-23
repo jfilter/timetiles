@@ -8,6 +8,48 @@ export interface ChartTheme {
   itemColor?: string | string[];
 }
 
+// ECharts event parameter types
+export interface EChartsEventParams {
+  componentType?: string;
+  seriesType?: string;
+  dataIndex?: number;
+  value?: unknown;
+  name?: string;
+  data?: unknown;
+}
+
+export interface EChartsFormatterParams {
+  dataIndex?: number;
+  value?: unknown;
+  name?: string;
+  data?: unknown;
+}
+
+// Type guards for ECharts parameters
+export function isValidEventParams(
+  params: unknown,
+): params is EChartsEventParams {
+  return (
+    typeof params === "object" && params !== null && "componentType" in params
+  );
+}
+
+export function isValidFormatterParams(
+  params: unknown,
+): params is EChartsFormatterParams {
+  return typeof params === "object" && params !== null && "dataIndex" in params;
+}
+
+export function isValidDataIndex(value: unknown): value is number {
+  return typeof value === "number" && value >= 0 && Number.isInteger(value);
+}
+
+export interface EChartsInstance {
+  resize: () => void;
+  getOption: () => EChartsOption;
+  setOption: (option: EChartsOption) => void;
+}
+
 export interface BaseChartProps {
   height?: number | string;
   width?: number | string;
@@ -15,8 +57,8 @@ export interface BaseChartProps {
   loading?: boolean;
   theme?: ChartTheme;
   config?: Partial<EChartsOption>;
-  onChartReady?: (chart: unknown) => void;
-  onEvents?: Record<string, (params: unknown) => void>;
+  onChartReady?: (chart: EChartsInstance) => void;
+  onEvents?: Record<string, (params: EChartsEventParams) => void>;
 }
 
 export interface HistogramBin<T = unknown> {
@@ -36,8 +78,8 @@ export interface HistogramProps<T = unknown> extends BaseChartProps {
   yLabel?: string;
   title?: string;
   formatter?: {
-    xAxis?: (value: unknown) => string;
-    yAxis?: (value: unknown) => string;
+    xAxis?: (value: Date | string | number) => string;
+    yAxis?: (value: number) => string;
     tooltip?: (bin: HistogramBin<T>) => string;
   };
 }

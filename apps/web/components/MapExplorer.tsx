@@ -1,19 +1,20 @@
 "use client";
 
+import type { LngLatBounds } from "maplibre-gl";
 import { useEffect, useState, useTransition, useMemo } from "react";
+
 import type { Catalog, Dataset, Event } from "../payload-types";
-import { ClusteredMap } from "./ClusteredMap";
-import type { ClusterFeature } from "./ClusteredMap";
-import { EventsList } from "./EventsList";
 import { ActiveFilters } from "./ActiveFilters";
 import { ChartSection } from "./ChartSection";
-import { FilterDrawer } from "./FilterDrawer";
+import type { ClusterFeature } from "./ClusteredMap";
+import { ClusteredMap } from "./ClusteredMap";
+import { EventsList } from "./EventsList";
 import { ExploreHeader } from "./ExploreHeader";
-import { useUIStore } from "../lib/store";
+import { FilterDrawer } from "./FilterDrawer";
 import { useFilters } from "../lib/filters";
 import { useDebounce } from "../lib/hooks/useDebounce";
-import type { LngLatBounds } from "maplibre-gl";
 import { createLogger } from "../lib/logger";
+import { useUIStore } from "../lib/store";
 
 interface MapExplorerProps {
   catalogs: Catalog[];
@@ -46,13 +47,13 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
   // Helper function to get catalog name by ID
   const getCatalogName = (catalogId: string): string => {
     const catalog = catalogs.find((c) => String(c.id) === catalogId);
-    return catalog?.name || "Unknown Catalog";
+    return catalog?.name ?? "Unknown Catalog";
   };
 
   // Helper function to get dataset name by ID
   const getDatasetName = (datasetId: string): string => {
     const dataset = datasets.find((d) => String(d.id) === datasetId);
-    return dataset?.name || "Unknown Dataset";
+    return dataset?.name ?? "Unknown Dataset";
   };
 
   // Get human-readable filter labels
@@ -234,7 +235,7 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
       }
     };
 
-    fetchEvents();
+    void fetchEvents();
 
     return () => {
       abortController.abort();

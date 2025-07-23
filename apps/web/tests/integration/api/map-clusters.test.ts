@@ -143,7 +143,6 @@ describe("/api/events/map-clusters", () => {
   });
 
   afterAll(async () => {
-
     // Clean up test environment
     if (testEnv?.cleanup) {
       try {
@@ -209,14 +208,13 @@ describe("/api/events/map-clusters", () => {
       expect(cluster.properties).toHaveProperty("count");
       expect(cluster.properties.count).toBeGreaterThan(1);
     }
-
   });
 
   it("should return individual events at high zoom", async () => {
     const bounds = {
       north: 38,
       south: 37.5,
-      east: -122.4,  // Changed from -122 to -122.4 to include SF events
+      east: -122.4, // Changed from -122 to -122.4 to include SF events
       west: -123,
     };
 
@@ -226,8 +224,7 @@ describe("/api/events/map-clusters", () => {
       )}&zoom=16`,
     );
 
-
-    // Instead of calling the API route (which uses main DB), 
+    // Instead of calling the API route (which uses main DB),
     // call the clustering function directly using the test DB
     const result = (await testEnv.payload.db.drizzle.execute(
       sql`
@@ -239,7 +236,7 @@ describe("/api/events/map-clusters", () => {
           16::integer,
           '{}'::jsonb
         )
-      `
+      `,
     )) as { rows: Array<Record<string, unknown>> };
 
     // Transform the result for the frontend (same logic as API route)
@@ -272,14 +269,11 @@ describe("/api/events/map-clusters", () => {
       features: clusters,
     };
 
-
     // At zoom level 16 in a small area, we should see individual events
     const singles = data.features.filter(
       (f: any) => f.properties.type === "event-point",
     );
 
-
-    
     expect(singles.length).toBeGreaterThan(0);
 
     // Check single event structure

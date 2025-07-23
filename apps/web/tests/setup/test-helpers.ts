@@ -132,7 +132,6 @@ export async function createIsolatedTestEnvironment(): Promise<{
   };
 
   const cleanup = async () => {
-
     try {
       if (fs.existsSync(tempDir)) {
         fs.rmSync(tempDir, { recursive: true, force: true });

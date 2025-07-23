@@ -38,7 +38,7 @@ export function EventsList({ events, loading }: EventsListProps) {
             className="hover:bg-accent/50 rounded-lg border p-4 transition-colors"
           >
             <h3 className="text-lg font-semibold">
-              {String(eventData.title || eventData.name || `Event ${event.id}`)}
+              {String(eventData.title ?? eventData.name ?? `Event ${event.id}`)}
             </h3>
             {eventData.description ? (
               <p className="text-muted-foreground mt-1 text-sm">
@@ -64,7 +64,7 @@ export function EventsList({ events, loading }: EventsListProps) {
             eventData.country ||
             event.geocodingInfo?.normalizedAddress ? (
               <div className="text-muted-foreground mt-1 text-sm">
-                {event.geocodingInfo?.normalizedAddress ||
+                {event.geocodingInfo?.normalizedAddress ??
                   [eventData.city, eventData.country]
                     .filter(Boolean)
                     .join(", ")}

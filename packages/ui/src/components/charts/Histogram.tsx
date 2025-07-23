@@ -1,9 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
+
 import { BaseChart } from "./BaseChart";
 import type { HistogramProps, BinningStrategy } from "./types";
+import {
+  isValidFormatterParams,
+  isValidEventParams,
+  isValidDataIndex,
+} from "./types";
 import {
   createHistogramBins,
   formatDateForBin,
@@ -80,11 +86,17 @@ export function Histogram<T = unknown>({
       tooltip: {
         trigger: "axis",
         formatter: (params: unknown) => {
-          const paramsArray = params as { dataIndex: number }[];
-          const dataIndex = paramsArray[0]?.dataIndex;
-          if (dataIndex === undefined) return "";
+          if (!Array.isArray(params) || params.length === 0) return "";
+
+          const firstParam = params[0] as unknown;
+          if (!isValidFormatterParams(firstParam)) return "";
+
+          const dataIndex = firstParam.dataIndex;
+          if (!isValidDataIndex(dataIndex)) return "";
+
           const bin = bins[dataIndex];
           if (!bin) return "";
+
           if (formatter.tooltip) {
             return formatter.tooltip(bin);
           }
@@ -124,9 +136,15 @@ export function Histogram<T = unknown>({
           itemStyle: {
             color:
               typeof color === "function"
-                ? (params: { dataIndex: number }) => {
-                    const bin = bins[params.dataIndex];
-                    return bin ? color(bin) : "#ccc";
+                ? (params: unknown) => {
+                    if (!isValidFormatterParams(params)) return "#ccc";
+
+                    const dataIndex = params.dataIndex;
+                    if (isValidDataIndex(dataIndex)) {
+                      const bin = bins[dataIndex];
+                      return bin ? color(bin) : "#ccc";
+                    }
+                    return "#ccc";
                   }
                 : color,
           },
@@ -163,16 +181,14 @@ export function Histogram<T = unknown>({
 
     if (onBarClick) {
       baseEvents.click = (params: unknown) => {
-        const eventParams = params as {
-          componentType: string;
-          seriesType: string;
-          dataIndex: number;
-        };
+        if (!isValidEventParams(params)) return;
+
         if (
-          eventParams.componentType === "series" &&
-          eventParams.seriesType === "bar"
+          params.componentType === "series" &&
+          params.seriesType === "bar" &&
+          isValidDataIndex(params.dataIndex)
         ) {
-          const bin = bins[eventParams.dataIndex];
+          const bin = bins[params.dataIndex];
           if (bin) {
             onBarClick(bin);
           }

@@ -1,8 +1,21 @@
 "use client";
 
+import ReactEChartsLib from "echarts-for-react";
+import type { EChartsReactProps } from "echarts-for-react";
 import { useEffect, useRef } from "react";
-import ReactECharts from "echarts-for-react";
-import type { BaseChartProps } from "./types";
+import * as React from "react";
+
+// Type the ReactECharts component properly for strict TypeScript
+// Add ref support to the props
+type ReactEChartsWithRef = React.ComponentType<
+  EChartsReactProps & {
+    ref?: React.Ref<ReactEChartsLib>;
+  }
+>;
+
+const ReactECharts = ReactEChartsLib as ReactEChartsWithRef;
+
+import type { BaseChartProps, EChartsInstance } from "./types";
 import { applyThemeToOption, defaultLightTheme } from "./utils/theme";
 import { cn } from "../../lib/utils";
 
@@ -16,11 +29,12 @@ export function BaseChart({
   onChartReady,
   onEvents = {},
 }: BaseChartProps) {
-  const chartRef = useRef<ReactECharts>(null);
+  const chartRef = useRef<ReactEChartsLib>(null);
 
   useEffect(() => {
     const handleResize = () => {
-      chartRef.current?.getEchartsInstance()?.resize();
+      const chartInstance = chartRef.current?.getEchartsInstance();
+      chartInstance?.resize();
     };
 
     window.addEventListener("resize", handleResize);
@@ -41,7 +55,17 @@ export function BaseChart({
         option={themedOption}
         style={{ height: "100%", width: "100%" }}
         showLoading={false}
-        onChartReady={onChartReady}
+        onChartReady={(chart: unknown) => {
+          if (
+            onChartReady != null &&
+            chart != null &&
+            typeof chart === "object" &&
+            "resize" in chart &&
+            typeof (chart as { resize?: unknown }).resize === "function"
+          ) {
+            onChartReady(chart as EChartsInstance);
+          }
+        }}
         onEvents={onEvents}
         notMerge={true}
         lazyUpdate={true}

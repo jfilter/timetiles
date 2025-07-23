@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+
 import type { Import } from "../payload-types";
 interface ImportProgress {
   importId: string;
@@ -113,8 +114,8 @@ export default function ImportUpload(): JSX.Element {
     };
 
     // Poll immediately and then every 2 seconds
-    pollProgress();
-    progressInterval.current = setInterval(pollProgress, 2000);
+    void pollProgress();
+    progressInterval.current = setInterval(() => void pollProgress(), 2000);
   };
 
   const resetForm = () => {
@@ -209,7 +210,7 @@ export default function ImportUpload(): JSX.Element {
 
           <div className="flex gap-2">
             <button
-              onClick={handleUpload}
+              onClick={() => void handleUpload()}
               disabled={!file || !catalogId || uploading || !!importId}
               className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
             >

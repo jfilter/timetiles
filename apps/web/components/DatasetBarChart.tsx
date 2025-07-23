@@ -1,6 +1,5 @@
 "use client";
 
-import { useTheme } from "next-themes";
 import {
   BarChart,
   type BarChartDataItem,
@@ -9,9 +8,11 @@ import {
   defaultLightTheme,
   defaultDarkTheme,
 } from "@workspace/ui/components/charts";
-import type { Event, Dataset, Catalog } from "../payload-types";
-import { useEventsByDataset, useEventsByCatalog } from "../hooks/useEventStats";
+import { useTheme } from "next-themes";
 import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
+
+import { useEventsByDataset, useEventsByCatalog } from "../hooks/useEventStats";
+import type { Event, Dataset, Catalog } from "../payload-types";
 
 interface DatasetBarChartProps {
   events: Event[];
@@ -47,10 +48,10 @@ export function DatasetBarChart({
   const handleBarClick = (item: BarChartDataItem) => {
     if (groupBy === "dataset") {
       // Toggle dataset selection
-      setSelectedDatasets((current) => {
+      void setSelectedDatasets((current) => {
         const metadata = item.metadata as { datasetId: string } | undefined;
         const datasetId = metadata?.datasetId;
-        if (!datasetId) return current;
+        if (datasetId === undefined || datasetId === null) return current;
 
         if (current.includes(datasetId)) {
           return current.filter((id) => id !== datasetId);
@@ -62,8 +63,8 @@ export function DatasetBarChart({
       // Set catalog filter
       const metadata = item.metadata as { catalogId: string } | undefined;
       const catalogId = metadata?.catalogId;
-      if (catalogId) {
-        setSelectedCatalog(catalogId);
+      if (catalogId !== undefined && catalogId !== null) {
+        void setSelectedCatalog(catalogId);
       }
     }
   };

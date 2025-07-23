@@ -448,7 +448,12 @@ describe.sequential("Import System Integration Tests", () => {
 
       // Find the specific event instead of assuming order
       const techConferenceEvent = events.docs.find(
-        (event: Event) => event.data && typeof event.data === 'object' && !Array.isArray(event.data) && (event.data as Record<string, unknown>).title === "Tech Conference 2024",
+        (event: Event) =>
+          event.data &&
+          typeof event.data === "object" &&
+          !Array.isArray(event.data) &&
+          (event.data as Record<string, unknown>).title ===
+            "Tech Conference 2024",
       );
       expect(techConferenceEvent).toBeDefined();
       expect(techConferenceEvent.data).toMatchObject({

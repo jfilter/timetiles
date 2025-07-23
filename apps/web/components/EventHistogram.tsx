@@ -1,11 +1,13 @@
 "use client";
 
-import { useQueryState } from "nuqs";
-import { useEffect, useState } from "react";
-import { useFilters } from "../lib/filters";
-import { useUIStore } from "../lib/store";
 import ReactECharts from "echarts-for-react";
 import { useTheme } from "next-themes";
+import { useQueryState } from "nuqs";
+import { useEffect, useState } from "react";
+
+import { useFilters } from "../lib/filters";
+import { useUIStore } from "../lib/store";
+
 import { logger } from "@/lib/logger";
 
 interface EventHistogramProps {
@@ -79,7 +81,7 @@ export function EventHistogram({
       }
     };
 
-    fetchHistogramData();
+    void fetchHistogramData();
   }, [filters, mapBounds]);
 
   // Create ECharts option for the histogram
@@ -189,8 +191,8 @@ export function EventHistogram({
         const day = String(d.getDate()).padStart(2, "0");
         return `${year}-${month}-${day}`;
       };
-      setStartDate(formatDate(date));
-      setEndDate(formatDate(date));
+      void setStartDate(formatDate(date));
+      void setEndDate(formatDate(date));
     }
   };
 

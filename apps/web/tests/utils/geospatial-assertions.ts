@@ -1,5 +1,5 @@
 /**
- * Geospatial Assertion Helpers - Phase 2.3 Implementation
+ * Geospatial Assertion Helpers
  *
  * Custom assertion helpers for geospatial data testing.
  * Extends Vitest's expect with specialized matchers for coordinates,

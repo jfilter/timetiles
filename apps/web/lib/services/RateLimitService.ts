@@ -1,4 +1,5 @@
 import type { Payload } from "payload";
+
 import { createLogger } from "../logger";
 
 const logger = createLogger("rate-limit-service");
@@ -278,7 +279,7 @@ export function getRateLimitService(payload: Payload): RateLimitService {
   if (!rateLimitService) {
     rateLimitService = new RateLimitService(payload);
   }
-  return rateLimitService!;
+  return rateLimitService;
 }
 
 // Helper function to get client identifier

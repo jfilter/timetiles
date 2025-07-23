@@ -1,9 +1,8 @@
-import { GeocodingService } from "../services/geocoding/GeocodingService";
-import { GeoLocationDetector } from "../services/import/GeoLocationDetector";
-import { CoordinateValidator } from "../services/import/CoordinateValidator";
-import Papa from "papaparse";
-import * as XLSX from "xlsx";
 import fs from "fs";
+import Papa from "papaparse";
+import type { Payload } from "payload";
+import * as XLSX from "xlsx";
+
 import type {
   Import,
   Dataset,
@@ -16,7 +15,9 @@ import type {
   EventsSelect,
 } from "../../payload-types";
 import { createJobLogger, logError, logPerformance } from "../logger";
-import type { Payload } from "payload";
+import { GeocodingService } from "../services/geocoding/GeocodingService";
+import { CoordinateValidator } from "../services/import/CoordinateValidator";
+import { GeoLocationDetector } from "../services/import/GeoLocationDetector";
 
 // Enhanced job payload types using Payload task types
 interface FileParsingJobPayload extends TaskFileParsing {
@@ -80,8 +81,7 @@ export const fileParsingJob = {
     }
     const input = (context.input ||
       context.job?.input) as FileParsingJobPayload["input"];
-    const { importId, filePath, fileType } =
-      input as FileParsingJobPayload["input"];
+    const { importId, filePath, fileType } = input;
 
     const jobId = context.job?.id || "unknown";
     const logger = createJobLogger(jobId, "file-parsing");
@@ -340,8 +340,7 @@ export const batchProcessingJob = {
     const payload = (context.req?.payload || context.payload) as Payload;
     const input = (context.input ||
       context.job?.input) as BatchProcessingJobPayload["input"];
-    const { importId, batchNumber, batchData } =
-      input as BatchProcessingJobPayload["input"];
+    const { importId, batchNumber, batchData } = input;
 
     const jobId = context.job?.id || "unknown";
     const logger = createJobLogger(jobId, "batch-processing");
@@ -509,8 +508,7 @@ export const eventCreationJob = {
     const payload = (context.req?.payload || context.payload) as Payload;
     const input = (context.input ||
       context.job?.input) as EventCreationJobPayload["input"];
-    const { importId, processedData, batchNumber } =
-      input as EventCreationJobPayload["input"];
+    const { importId, processedData, batchNumber } = input;
 
     const jobId = context.job?.id || "unknown";
     const logger = createJobLogger(jobId, "event-creation");
@@ -530,7 +528,7 @@ export const eventCreationJob = {
       // Get the catalog ID (it might be a relationship object)
       const catalogId =
         typeof currentImport.catalog === "object"
-          ? (currentImport.catalog as Catalog).id
+          ? currentImport.catalog.id
           : currentImport.catalog;
 
       // Get the dataset from the import's catalog
@@ -822,8 +820,7 @@ export const geocodingBatchJob = {
     }
     const input = (context.input ||
       context.job?.input) as GeocodingBatchJobPayload["input"];
-    const { importId, eventIds, batchNumber } =
-      input as GeocodingBatchJobPayload["input"];
+    const { importId, eventIds, batchNumber } = input;
 
     const jobId = context.job?.id || "unknown";
     const logger = createJobLogger(jobId, "geocoding-batch");
@@ -834,7 +831,7 @@ export const geocodingBatchJob = {
     const startTime = Date.now();
 
     try {
-      const geocodingService = new GeocodingService(payload as Payload);
+      const geocodingService = new GeocodingService(payload);
       let geocodedCount = 0; // Successfully geocoded events
       let processedCount = 0; // All processed events (success or failure)
 

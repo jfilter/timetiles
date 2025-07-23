@@ -1,4 +1,5 @@
 import type { CollectionConfig } from "payload";
+
 import { createSlugHook } from "../utils/slug";
 
 const Events: CollectionConfig = {

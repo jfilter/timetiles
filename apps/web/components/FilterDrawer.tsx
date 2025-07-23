@@ -1,8 +1,9 @@
 "use client";
 
+import { cn } from "@workspace/ui/lib/utils";
+
 import type { Catalog, Dataset } from "../payload-types";
 import { EventFilters } from "./EventFilters";
-import { cn } from "@workspace/ui/lib/utils";
 
 interface FilterDrawerProps {
   catalogs: Catalog[];

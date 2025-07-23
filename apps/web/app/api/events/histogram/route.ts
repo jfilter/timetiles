@@ -1,9 +1,29 @@
+import { sql } from "@payloadcms/db-postgres";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
-import { sql } from "@payloadcms/db-postgres";
+
 import config from "../../../../payload.config";
+
 import { logger, logError } from "@/lib/logger";
+
+interface MapBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+function isValidBounds(value: unknown): value is MapBounds {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Record<string, unknown>).north === "number" &&
+    typeof (value as Record<string, unknown>).south === "number" &&
+    typeof (value as Record<string, unknown>).east === "number" &&
+    typeof (value as Record<string, unknown>).west === "number"
+  );
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -14,19 +34,20 @@ export async function GET(request: NextRequest) {
   const datasets = searchParams.getAll("datasets");
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
-  const granularity = searchParams.get("granularity") || "auto";
+  const granularity = searchParams.get("granularity") ?? "auto";
 
   try {
     const payload = await getPayload({ config });
 
     // Parse bounds if provided
-    let bounds = null;
-    if (boundsParam) {
+    let bounds: MapBounds | null = null;
+    if (boundsParam !== null && boundsParam !== "") {
       try {
-        bounds = JSON.parse(boundsParam);
-        if (!bounds.north || !bounds.south || !bounds.east || !bounds.west) {
+        const parsedBounds = JSON.parse(boundsParam) as unknown;
+        if (!isValidBounds(parsedBounds)) {
           throw new Error("Invalid bounds format");
         }
+        bounds = parsedBounds;
       } catch {
         return NextResponse.json(
           {
@@ -40,10 +61,10 @@ export async function GET(request: NextRequest) {
 
     // Build filters object
     const filters: Record<string, unknown> = {};
-    if (catalog) filters.catalog = catalog;
+    if (catalog !== null && catalog !== "") filters.catalog = catalog;
     if (datasets.length > 0 && datasets[0] !== "") filters.datasets = datasets;
-    if (startDate) filters.startDate = startDate;
-    if (endDate) filters.endDate = endDate;
+    if (startDate !== null && startDate !== "") filters.startDate = startDate;
+    if (endDate !== null && endDate !== "") filters.endDate = endDate;
 
     // Check if histogram function exists
     let functionExists = false;
@@ -89,12 +110,13 @@ export async function GET(request: NextRequest) {
     if (functionExists) {
       // Use the histogram function
       const filtersWithBounds = {
-        catalogId: catalog ? parseInt(catalog) : undefined,
+        catalogId:
+          catalog !== null && catalog !== "" ? parseInt(catalog) : undefined,
         datasets:
           datasets.length > 0 ? datasets.map((d) => parseInt(d)) : undefined,
         startDate,
         endDate,
-        ...(bounds && {
+        ...(bounds != null && {
           bounds: {
             minLng: bounds.west,
             maxLng: bounds.east,
@@ -126,8 +148,8 @@ export async function GET(request: NextRequest) {
       aggregations = {
         total,
         dateRange: {
-          min: result.rows[0]?.bucket || null,
-          max: result.rows[result.rows.length - 1]?.bucket || null,
+          min: result.rows[0]?.bucket ?? null,
+          max: result.rows[result.rows.length - 1]?.bucket ?? null,
         },
       };
     }
@@ -137,14 +159,14 @@ export async function GET(request: NextRequest) {
       result?.rows.map((row) => ({
         date: row.bucket,
         count: parseInt(String(row.event_count), 10),
-      })) || [];
+      })) ?? [];
 
     return NextResponse.json({
       histogram,
       metadata: {
-        total: aggregations.total || 0,
-        dateRange: aggregations.dateRange || { min: null, max: null },
-        counts: aggregations.counts || { datasets: 0, catalogs: 0 },
+        total: aggregations.total ?? 0,
+        dateRange: aggregations.dateRange ?? { min: null, max: null },
+        counts: aggregations.counts ?? { datasets: 0, catalogs: 0 },
         // TODO: Add dataset/catalog breakdowns if needed
         topDatasets: [],
         topCatalogs: [],

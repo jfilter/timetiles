@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+
 import { runHealthChecks } from "../../../lib/health";
 import { createLogger } from "../../../lib/logger";
 
@@ -53,9 +54,11 @@ export async function GET() {
           : undefined,
       env: {
         NODE_ENV: process.env.NODE_ENV,
-        DATABASE_URL: process.env.DATABASE_URL ? "Set" : "Not set",
-        PAYLOAD_SECRET: process.env.PAYLOAD_SECRET ? "Set" : "Not set",
-        LOG_LEVEL: process.env.LOG_LEVEL || "default",
+        DATABASE_URL:
+          process.env.DATABASE_URL !== undefined ? "Set" : "Not set",
+        PAYLOAD_SECRET:
+          process.env.PAYLOAD_SECRET !== undefined ? "Set" : "Not set",
+        LOG_LEVEL: process.env.LOG_LEVEL ?? "default",
       },
     };
 

@@ -1,10 +1,11 @@
-import React from "react";
-import { redirect } from "next/navigation";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getPayload } from "payload";
-import config from "../../../payload.config";
+import React from "react";
+
 import { GeocodingTestPanel } from "../../../lib/components/GeocodingTestPanel";
 import { ProviderPriorityList } from "../../../lib/components/ProviderPriorityList";
+import config from "../../../payload.config";
 
 // Force dynamic rendering to prevent build-time database queries
 export const dynamic = "force-dynamic";
@@ -46,9 +47,9 @@ export default async function GeocodingAdminPage() {
   // Transform providers to display format
   const providerData = providers
     .map((provider) => ({
-      type: provider.type as "google" | "nominatim" | "opencage",
+      type: provider.type,
       name: provider.name,
-      enabled: provider.enabled || false,
+      enabled: provider.enabled ?? false,
       priority: provider.priority,
       color:
         provider.type === "google"
@@ -93,14 +94,12 @@ export default async function GeocodingAdminPage() {
 
             <ProviderPriorityList
               providers={providerData}
-              onReorder={async () => {
-                "use server";
+              onReorder={() => {
                 // This would be implemented with a server action
                 // For now, redirect to the admin panel
                 redirect("/admin/collections/geocoding-providers");
               }}
-              onToggle={async () => {
-                "use server";
+              onToggle={() => {
                 // This would be implemented with a server action
                 // For now, redirect to the admin panel
                 redirect("/admin/collections/geocoding-providers");

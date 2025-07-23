@@ -2,9 +2,29 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 import type { Where } from "payload";
+
 import config from "../../../../payload.config";
+
 import { logger } from "@/lib/logger";
 import type { Event } from "@/payload-types";
+
+interface MapBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+function isValidBounds(value: unknown): value is MapBounds {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Record<string, unknown>).north === "number" &&
+    typeof (value as Record<string, unknown>).south === "number" &&
+    typeof (value as Record<string, unknown>).east === "number" &&
+    typeof (value as Record<string, unknown>).west === "number"
+  );
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,19 +37,19 @@ export async function GET(request: NextRequest) {
     const datasets = searchParams.getAll("datasets");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
-    const page = parseInt(searchParams.get("page") || "1", 10);
+    const page = parseInt(searchParams.get("page") ?? "1", 10);
     const limit = Math.min(
-      parseInt(searchParams.get("limit") || "100", 10),
+      parseInt(searchParams.get("limit") ?? "100", 10),
       1000,
     );
-    const sort = searchParams.get("sort") || "-eventTimestamp";
+    const sort = searchParams.get("sort") ?? "-eventTimestamp";
 
     // Build where clause
     const where: Where = {};
 
     // Catalog and dataset filters
-    if (catalog || (datasets.length > 0 && datasets[0] !== "")) {
-      if (catalog && (datasets.length === 0 || datasets[0] === "")) {
+    if (catalog !== null || (datasets.length > 0 && datasets[0] !== "")) {
+      if (catalog !== null && (datasets.length === 0 || datasets[0] === "")) {
         where.and = [
           ...(Array.isArray(where.and) ? where.and : []),
           {
@@ -53,10 +73,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Bounds filter
-    if (boundsParam) {
+    if (boundsParam !== null) {
       try {
-        const bounds = JSON.parse(boundsParam);
-        if (bounds.north && bounds.south && bounds.east && bounds.west) {
+        const parsedBounds = JSON.parse(boundsParam) as unknown;
+        if (isValidBounds(parsedBounds)) {
+          const bounds = parsedBounds;
           where.and = [
             ...(Array.isArray(where.and) ? where.and : []),
             {
@@ -90,10 +111,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Date filters
-    if (startDate || endDate) {
+    if (startDate !== null || endDate !== null) {
       const dateFilter: Record<string, string> = {};
-      if (startDate) dateFilter.greater_than_equal = startDate;
-      if (endDate) dateFilter.less_than_equal = endDate;
+      if (startDate !== null) dateFilter.greater_than_equal = startDate;
+      if (endDate !== null) dateFilter.less_than_equal = endDate;
 
       where.and = [
         ...(Array.isArray(where.and) ? where.and : []),
@@ -119,18 +140,18 @@ export async function GET(request: NextRequest) {
         id: event.id,
         dataset: {
           id:
-            typeof event.dataset === "object" && event.dataset
+            typeof event.dataset === "object" && event.dataset !== null
               ? event.dataset.id
               : event.dataset,
           title:
-            typeof event.dataset === "object" && event.dataset
+            typeof event.dataset === "object" && event.dataset !== null
               ? event.dataset.name
               : undefined,
           catalog:
             typeof event.dataset === "object" &&
-            event.dataset &&
+            event.dataset !== null &&
             typeof event.dataset.catalog === "object" &&
-            event.dataset.catalog
+            event.dataset.catalog !== null
               ? event.dataset.catalog.name
               : undefined,
         },

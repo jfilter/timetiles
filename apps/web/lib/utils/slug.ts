@@ -1,4 +1,5 @@
 import type { PayloadRequest } from "payload";
+
 import type { Config } from "../../payload-types";
 
 /**

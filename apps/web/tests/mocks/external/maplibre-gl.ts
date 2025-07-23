@@ -1,4 +1,3 @@
-
 // Mock MapLibre GL JS
 class MockMap {
   private container: HTMLElement;

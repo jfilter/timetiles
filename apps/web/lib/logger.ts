@@ -8,7 +8,7 @@ const isProduction = process.env.NODE_ENV === "production";
 const getLogLevel = () => {
   if (isTest) {
     // In tests, default to silent unless LOG_LEVEL is explicitly set
-    return process.env.LOG_LEVEL || "silent";
+    return process.env.LOG_LEVEL ?? "silent";
   }
   if (isProduction) return "info";
   return "debug"; // Show all logs in development
@@ -16,7 +16,7 @@ const getLogLevel = () => {
 
 // Create base logger configuration
 const baseConfig: pino.LoggerOptions = {
-  level: process.env.LOG_LEVEL || getLogLevel(),
+  level: process.env.LOG_LEVEL ?? getLogLevel(),
   formatters: {
     level: (label) => {
       return { level: label.toUpperCase() };

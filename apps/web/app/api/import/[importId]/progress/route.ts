@@ -1,15 +1,16 @@
+import config from "@payload-config";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
-import config from "@payload-config";
+import { v4 as uuidv4 } from "uuid";
+
+import { createRequestLogger, logError } from "../../../../../lib/logger";
 import {
   getRateLimitService,
   getClientIdentifier,
   RATE_LIMITS,
 } from "../../../../../lib/services/RateLimitService";
 import type { Import } from "../../../../../payload-types";
-import { createRequestLogger, logError } from "../../../../../lib/logger";
-import { v4 as uuidv4 } from "uuid";
 
 // Use Payload types directly instead of custom interfaces
 type ProgressResponse = {
@@ -96,7 +97,7 @@ export async function GET(
     const createdEvents = importRecord.progress?.createdEvents ?? 0;
 
     const stageProgress = calculateStageProgress(
-      importRecord.processingStage || "file-parsing",
+      importRecord.processingStage ?? "file-parsing",
       {
         totalRows,
         processedRows,
@@ -111,7 +112,10 @@ export async function GET(
       status: string;
       progress: number;
     } | null = null;
-    if (importRecord.currentJobId) {
+    if (
+      importRecord.currentJobId !== null &&
+      importRecord.currentJobId !== undefined
+    ) {
       try {
         // In a real implementation, you would query the job queue
         // For now, we'll simulate job status
@@ -130,8 +134,8 @@ export async function GET(
 
     const response: ProgressResponse = {
       importId,
-      status: importRecord.status || "pending",
-      stage: importRecord.processingStage || "file-parsing",
+      status: importRecord.status ?? "pending",
+      stage: importRecord.processingStage ?? "file-parsing",
       progress: {
         current: processedRows,
         total: totalRows,
@@ -145,8 +149,8 @@ export async function GET(
         totalBatches: Number(importRecord.batchInfo?.totalBatches ?? 0),
         batchSize: Number(importRecord.batchInfo?.batchSize ?? 100),
       },
-      geocodingStats: importRecord.geocodingStats || {},
-      currentJob: currentJobStatus || undefined,
+      geocodingStats: importRecord.geocodingStats ?? {},
+      currentJob: currentJobStatus ?? undefined,
       estimatedTimeRemaining: calculateEstimatedTime(importRecord),
     };
 
@@ -201,11 +205,11 @@ function calculateStageProgress(
 
 function calculateEstimatedTime(importRecord: Import): number | undefined {
   // Simple estimation based on processing speed
-  const totalRows = importRecord.progress?.totalRows || 0;
-  const processedRows = importRecord.progress?.processedRows || 0;
+  const totalRows = importRecord.progress?.totalRows ?? 0;
+  const processedRows = importRecord.progress?.processedRows ?? 0;
   const remainingRows = totalRows - processedRows;
 
-  if (remainingRows <= 0 || !importRecord.importedAt) {
+  if (remainingRows <= 0 || importRecord.importedAt == null) {
     return undefined;
   }
 

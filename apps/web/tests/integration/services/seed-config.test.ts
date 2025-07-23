@@ -1,5 +1,5 @@
 /**
- * Configuration-Driven Seeding Tests - Phase 3 Implementation
+ * Configuration-Driven Seeding Tests
  *
  * Tests the new seed.config.ts system and configuration-driven seeding
  */
@@ -12,7 +12,7 @@ import {
   SEED_CONFIG,
 } from "../../../lib/seed/seed.config";
 
-describe.sequential("Configuration-Driven Seeding - Phase 3", () => {
+describe.sequential("Configuration-Driven Seeding", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
 
   beforeAll(async () => {

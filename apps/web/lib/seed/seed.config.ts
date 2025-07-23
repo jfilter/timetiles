@@ -1,5 +1,5 @@
 /**
- * Configuration-Driven Seeding System - Phase 3.1 Implementation
+ * Configuration-Driven Seeding System
  *
  * This configuration file centralizes all seeding behavior, making it easy to:
  * - Control collection counts per environment
@@ -375,7 +375,7 @@ export function getCollectionConfig(
   if (!baseConfig) return null;
 
   const envConfig = SEED_CONFIG.environments[environment];
-  if (!envConfig || !envConfig.enabled.includes(collection)) {
+  if (!envConfig?.enabled.includes(collection)) {
     // For disabled collections, still return the config but mark it as not enabled for this env
     // This allows tests to inspect the collection configuration even if it's disabled
     if (baseConfig.disabled) {

@@ -1,20 +1,30 @@
 import { getPayload } from "payload";
 import type { Where } from "payload";
+
 import config from "../../payload.config";
-import { userSeeds } from "./seeds/users";
+import { createLogger, logError, logPerformance } from "../logger";
+import { DatabaseOperations } from "./DatabaseOperations";
+import { RelationshipResolver } from "./RelationshipResolver";
+import { getDependencyOrder } from "./relationship-config";
+import {
+  getCollectionConfig,
+  getEnabledCollections,
+  getEnvironmentSettings,
+  type CollectionConfig,
+} from "./seed.config";
 import { catalogSeeds } from "./seeds/catalogs";
+import type { CatalogSeed } from "./seeds/catalogs";
 import { datasetSeeds } from "./seeds/datasets";
+import type { DatasetSeed } from "./seeds/datasets";
 import { eventSeeds } from "./seeds/events";
+import type { EventSeed } from "./seeds/events";
 import { importSeeds } from "./seeds/imports";
+import type { ImportSeed } from "./seeds/imports";
 import { mainMenuSeed } from "./seeds/main-menu";
 import { pagesSeed } from "./seeds/pages";
 import type { Config, Event, User, Dataset } from "../../payload-types";
 import type { UserSeed } from "./seeds/users";
-import type { CatalogSeed } from "./seeds/catalogs";
-import type { DatasetSeed } from "./seeds/datasets";
-import type { EventSeed } from "./seeds/events";
-import type { ImportSeed } from "./seeds/imports";
-import { createLogger, logError, logPerformance } from "../logger";
+import { userSeeds } from "./seeds/users";
 
 type SeedData =
   | UserSeed[]
@@ -24,15 +34,6 @@ type SeedData =
   | ImportSeed[]
   | Config["globals"]["main-menu"][]
   | unknown[];
-import { RelationshipResolver } from "./RelationshipResolver";
-import { getDependencyOrder } from "./relationship-config";
-import { DatabaseOperations } from "./DatabaseOperations";
-import {
-  getCollectionConfig,
-  getEnabledCollections,
-  getEnvironmentSettings,
-  type CollectionConfig,
-} from "./seed.config";
 
 const logger = createLogger("seed");
 
@@ -42,7 +43,7 @@ export interface SeedOptions {
   environment?: "development" | "test" | "production" | "staging";
   /** Override configuration for specific collections */
   configOverrides?: Record<string, Partial<CollectionConfig>>;
-  /** Use configuration-driven seeding (Phase 3) */
+  /** Use configuration-driven seeding */
   useConfig?: boolean;
 }
 
@@ -79,7 +80,7 @@ export class SeedManager {
   }
 
   /**
-   * Configuration-driven seeding (Phase 3)
+   * Configuration-driven seeding
    * Uses the seed.config.ts to determine what to seed and how
    */
   async seedWithConfig(options: SeedOptions = {}) {
@@ -315,7 +316,7 @@ export class SeedManager {
   }
 
   /**
-   * Seed a collection using configuration-driven approach (Phase 3)
+   * Seed a collection using configuration-driven approach
    */
   private async seedCollectionWithConfig(
     collectionName: string,
@@ -554,7 +555,7 @@ export class SeedManager {
   }
 
   /**
-   * Apply custom generator patterns (Phase 3 feature)
+   * Apply custom generator patterns
    */
   private async applyCustomGenerator(
     seedData: SeedData,
@@ -565,7 +566,7 @@ export class SeedManager {
     // For now, we'll return the data unchanged but log the intent
     logger.debug(
       { generator: generatorName, options },
-      `Custom generator ${generatorName} requested (Phase 3 feature - placeholder)`,
+      `Custom generator ${generatorName} requested (placeholder)`,
     );
 
     // TODO: Implement actual generators in a future enhancement
@@ -594,7 +595,7 @@ export class SeedManager {
         if (options.useGeographicClustering === false) {
           // Spread events more evenly (simplified approach)
           modifiedData = modifiedData.map((item) => {
-            const event = item as unknown as Event;
+            const event = item as Event;
             return {
               ...event,
               location: event.location
@@ -615,7 +616,7 @@ export class SeedManager {
         if (options.temporalDistribution === "uniform") {
           // Distribute events evenly over time
           modifiedData = modifiedData.map((item, index) => {
-            const event = item as unknown as Event;
+            const event = item as Event;
             return {
               ...event,
               eventTimestamp: new Date(
@@ -630,7 +631,7 @@ export class SeedManager {
         if (options.generateSchemas === false) {
           // Remove complex schema generation for faster testing
           modifiedData = modifiedData.map((item) => {
-            const dataset = item as unknown as Dataset;
+            const dataset = item as Dataset;
             return {
               ...dataset,
               schema: { type: "object", properties: {} }, // Minimal schema
@@ -643,7 +644,7 @@ export class SeedManager {
         if (options.includeTestUsers === false) {
           // Filter out test users (users with test-related emails)
           modifiedData = modifiedData.filter((item) => {
-            const user = item as unknown as User;
+            const user = item as User;
             return (
               !user.email?.includes("test") && !user.email?.includes("example")
             );

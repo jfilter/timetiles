@@ -1,14 +1,17 @@
 /**
- * DatabaseOperations - Phase 1.2 Completion
+ * DatabaseOperations
  *
  * Efficient bulk operations for the seeding system. Implements SQL TRUNCATE
  * with CASCADE fallback and batch operations for maximum performance.
- * This completes the missing piece from Phase 1.2 of the improvement plan.
+ * Efficient bulk operations for the seeding system.
  */
 
-import type { Payload } from "payload";
+import type { Payload, DataFromCollectionSlug } from "payload";
+
 import type { Config } from "../../payload-types";
 import { createLogger, logError, logPerformance } from "../logger";
+
+// Removed PayloadUpdateInput type as it was only used by commented out updateMany function
 
 const logger = createLogger("db-operations");
 
@@ -16,7 +19,7 @@ export interface BatchOperationResult {
   success: boolean;
   itemsProcessed: number;
   duration: number;
-  method: "sql-truncate" | "bulk-delete" | "batch-create";
+  method: "sql-truncate" | "bulk-delete";
   errors?: unknown[];
 }
 
@@ -76,263 +79,25 @@ export class DatabaseOperations {
     }
   }
 
-  /**
-   * Create multiple items efficiently using batch operations
-   */
-  async createMany<C extends keyof Config["collections"]>(
-    collection: C,
-    items: Config["collections"][C][],
-    batchSize: number = 100,
-  ): Promise<BatchOperationResult> {
-    if (items.length === 0) {
-      return {
-        success: true,
-        itemsProcessed: 0,
-        duration: 0,
-        method: "batch-create",
-      };
-    }
+  // createMany function removed - was not used anywhere in codebase
 
-    const startTime = performance.now();
-    const results: Config["collections"][C][] = [];
-    const errors: unknown[] = [];
-
-    logger.info(
-      `Creating ${items.length} items in ${collection} with batch size ${batchSize}`,
-    );
-
-    // Process items in batches to avoid overwhelming the database
-    for (let i = 0; i < items.length; i += batchSize) {
-      const batch = items.slice(i, i + batchSize);
-      const batchStartTime = performance.now();
-
-      try {
-        // Use Promise.allSettled to handle individual failures gracefully
-        const batchPromises = batch.map(async (item) => {
-          try {
-            const created = await this.payload.create({
-              collection: collection as keyof Config["collections"],
-              data: item as unknown as Record<string, unknown>,
-            });
-            return { success: true, result: created };
-          } catch (error) {
-            return { success: false, error, item };
-          }
-        });
-
-        const batchResults = await Promise.allSettled(batchPromises);
-
-        // Process batch results
-        batchResults.forEach((result, index) => {
-          if (result.status === "fulfilled") {
-            if (result.value.success) {
-              results.push(result.value.result as Config["collections"][C]);
-            } else {
-              errors.push({
-                batchIndex: Math.floor((i + index) / batchSize),
-                itemIndex: i + index,
-                error: result.value.error,
-                item: result.value.item,
-              });
-            }
-          } else {
-            errors.push({
-              batchIndex: Math.floor((i + index) / batchSize),
-              itemIndex: i + index,
-              error: result.reason,
-            });
-          }
-        });
-
-        const batchDuration = performance.now() - batchStartTime;
-        logger.debug(`Batch ${Math.floor(i / batchSize) + 1} completed`, {
-          itemsProcessed: batch.length,
-          successes: batch.length - errors.length,
-          failures: errors.length,
-          duration: `${batchDuration.toFixed(2)}ms`,
-        });
-      } catch (batchError) {
-        logError(batchError, `Batch creation failed for ${collection}`, {
-          batchIndex: Math.floor(i / batchSize),
-          itemsInBatch: batch.length,
-        });
-
-        errors.push({
-          batchIndex: Math.floor(i / batchSize),
-          error: batchError,
-          itemsInBatch: batch.length,
-        });
-      }
-    }
-
-    const duration = performance.now() - startTime;
-    const success = results.length > 0 && errors.length < items.length * 0.5; // Success if < 50% failures
-
-    logPerformance(`Batch create ${collection}`, duration, {
-      totalItems: items.length,
-      successfulItems: results.length,
-      failedItems: errors.length,
-      batchSize,
-    });
-
-    if (errors.length > 0) {
-      logger.warn(`Batch creation completed with ${errors.length} errors`, {
-        collection,
-        successRate: `${((results.length / items.length) * 100).toFixed(1)}%`,
-      });
-    }
-
-    return {
-      success,
-      itemsProcessed: results.length,
-      duration,
-      method: "batch-create",
-      errors: errors.length > 0 ? errors : undefined,
-    };
-  }
-
-  /**
-   * Update multiple items efficiently
-   */
+  // TODO: Implement updateMany when needed - currently causing TypeScript issues
+  // with Payload's complex type system. Function is not used anywhere in codebase.
+  /*
   async updateMany<C extends keyof Config["collections"]>(
     collection: C,
     updates: Array<{
       id: string | number;
-      data: Partial<Config["collections"][C]>;
+      data: Record<string, unknown>;
     }>,
     batchSize: number = 50,
   ): Promise<BatchOperationResult> {
-    const startTime = performance.now();
-    const results: unknown[] = [];
-    const errors: unknown[] = [];
-
-    logger.info(`Updating ${updates.length} items in ${collection}`);
-
-    for (let i = 0; i < updates.length; i += batchSize) {
-      const batch = updates.slice(i, i + batchSize);
-
-      try {
-        const batchPromises = batch.map(async ({ id, data }) => {
-          try {
-            const updated = await this.payload.update({
-              collection: collection as keyof Config["collections"],
-              id,
-              data: data as Record<string, unknown>,
-            });
-            return { success: true, result: updated };
-          } catch (error) {
-            return { success: false, error, id, data };
-          }
-        });
-
-        const batchResults = await Promise.allSettled(batchPromises);
-
-        batchResults.forEach((result, index) => {
-          if (result.status === "fulfilled") {
-            if (result.value.success) {
-              results.push(result.value.result);
-            } else {
-              errors.push({
-                itemIndex: i + index,
-                error: result.value.error,
-                id: result.value.id,
-              });
-            }
-          } else {
-            errors.push({
-              itemIndex: i + index,
-              error: result.reason,
-            });
-          }
-        });
-      } catch (batchError) {
-        errors.push({
-          batchIndex: Math.floor(i / batchSize),
-          error: batchError,
-        });
-      }
-    }
-
-    const duration = performance.now() - startTime;
-    const success = results.length > 0 && errors.length < updates.length * 0.5;
-
-    return {
-      success,
-      itemsProcessed: results.length,
-      duration,
-      method: "batch-create", // Reusing the enum value
-      errors: errors.length > 0 ? errors : undefined,
-    };
+    // Implementation commented out due to complex Payload type requirements
+    throw new Error("updateMany not implemented - use individual update calls");
   }
+  */
 
-  /**
-   * Get collection statistics efficiently
-   */
-  async getCollectionStats(collections: string[]): Promise<
-    Record<
-      string,
-      {
-        count: number;
-        estimatedSize?: string;
-        lastModified?: Date;
-      }
-    >
-  > {
-    const stats: Record<string, unknown> = {};
-
-    const promises = collections.map(async (collection) => {
-      try {
-        const startTime = performance.now();
-
-        // Get count efficiently
-        const result = await this.payload.find({
-          collection: collection as keyof Config["collections"],
-          limit: 0, // Only get count
-          depth: 0, // Minimal depth
-        });
-
-        const duration = performance.now() - startTime;
-
-        stats[collection] = {
-          count: result.totalDocs,
-          queryTime: `${duration.toFixed(2)}ms`,
-        };
-
-        // Try to get additional statistics if possible
-        try {
-          if (this.payload.db?.drizzle) {
-            // If using Drizzle, we might be able to get table stats
-            const tableStats = await this.getTableStats(collection);
-            if (
-              typeof tableStats === "object" &&
-              tableStats !== null &&
-              !Array.isArray(tableStats)
-            ) {
-              stats[collection] = Object.assign(
-                {},
-                stats[collection],
-                tableStats,
-              );
-            }
-          }
-        } catch {
-          // Ignore errors getting extended stats
-          logger.debug(`Could not get extended stats for ${collection}`);
-        }
-      } catch (error) {
-        stats[collection] = {
-          count: -1,
-          error: (error as Error).message,
-        };
-      }
-    });
-
-    await Promise.allSettled(promises);
-    return stats as Record<
-      string,
-      { count: number; estimatedSize?: string; lastModified?: Date }
-    >;
-  }
+  // getCollectionStats function removed - was not used anywhere in codebase
 
   /**
    * SQL TRUNCATE with CASCADE - most efficient method
@@ -569,45 +334,7 @@ export class DatabaseOperations {
     return { successful, errors };
   }
 
-  /**
-   * Get table statistics if using SQL database
-   */
-  private async getTableStats(
-    collection: string,
-  ): Promise<Record<string, unknown>> {
-    try {
-      if (!this.payload.db || typeof this.payload.db.execute !== "function") {
-        return {};
-      }
-
-      // Try to get PostgreSQL table stats
-      const query = `
-        SELECT 
-          schemaname,
-          tablename,
-          attname,
-          n_distinct,
-          correlation
-        FROM pg_stats 
-        WHERE tablename = $1 AND schemaname = 'payload'
-        LIMIT 5
-      `;
-
-      const result = await (
-        this.payload.db as {
-          execute: (query: string, params: unknown[]) => Promise<unknown>;
-        }
-      ).execute(query, [collection]);
-
-      return {
-        hasStats: true,
-        statsSample: result,
-      };
-    } catch {
-      // Ignore stats errors
-      return { hasStats: false };
-    }
-  }
+  // getTableStats function removed - was only used by removed getCollectionStats function
 }
 
 /**

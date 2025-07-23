@@ -1,4 +1,3 @@
-import type { Event } from "../../../payload-types";
 import {
   getEventsPerDataset,
   generateCoordinate,
@@ -6,6 +5,7 @@ import {
   getSchemaTypeForCatalog,
   getRegionForDataset,
 } from "./utils";
+import type { Event } from "../../../payload-types";
 
 // Use Payload type with specific modifications for seed data
 export type EventSeed = Omit<

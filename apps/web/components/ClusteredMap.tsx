@@ -1,5 +1,6 @@
 "use client";
 
+import type { LngLatBounds } from "maplibre-gl";
 import { useCallback, useMemo, useState } from "react";
 import Map, {
   Source,
@@ -8,7 +9,7 @@ import Map, {
   type MapRef,
   type MapLayerMouseEvent,
 } from "react-map-gl/maplibre";
-import type { LngLatBounds } from "maplibre-gl";
+
 import "maplibre-gl/dist/maplibre-gl.css";
 import { createLogger } from "../lib/logger";
 
@@ -67,7 +68,7 @@ export function ClusteredMap({
       (window as { _mapRef?: unknown })._mapRef = map;
 
       // Trigger initial bounds change to load data
-      if (onBoundsChange) {
+      if (onBoundsChange !== undefined) {
         onBoundsChange(bounds, zoom);
       }
     },
@@ -76,9 +77,9 @@ export function ClusteredMap({
 
   const handleClick = useCallback((event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
-    if (!feature) return;
+    if (feature === undefined || feature === null) return;
 
-    const { type } = feature.properties || {};
+    const { type } = feature.properties ?? {};
 
     if (type === "event-cluster") {
       // Zoom in on cluster click
@@ -111,11 +112,14 @@ export function ClusteredMap({
       ) {
         const longitude = coordinates[0] as number;
         const latitude = coordinates[1] as number;
-        const { title, id } = feature.properties || {};
+        const { title, id } = feature.properties ?? {};
         setPopupInfo({
           longitude,
           latitude,
-          title: title || `Event ${id}`,
+          title:
+            typeof title === "string"
+              ? title
+              : `Event ${String(id ?? "Unknown")}`,
         });
       }
     }

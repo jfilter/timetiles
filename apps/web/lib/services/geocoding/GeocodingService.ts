@@ -1,12 +1,13 @@
 import NodeGeocoder, { type Entry } from "node-geocoder";
 import type { Payload } from "payload";
+import type { Where } from "payload";
+
 import type {
   Config,
   GeocodingProvider,
   LocationCache,
 } from "../../../payload-types";
 import { createLogger, logError, logPerformance } from "../../logger";
-import type { Where } from "payload";
 
 const logger = createLogger("geocoding-service");
 
@@ -112,19 +113,19 @@ export class GeocodingService {
       enabled: process.env.GEOCODING_ENABLED !== "false",
       fallbackEnabled: process.env.GEOCODING_FALLBACK_ENABLED !== "false",
       providerSelection: {
-        strategy: process.env.GEOCODING_PROVIDER_STRATEGY || "priority",
-        requiredTags: process.env.GEOCODING_REQUIRED_TAGS?.split(",") || [],
+        strategy: process.env.GEOCODING_PROVIDER_STRATEGY ?? "priority",
+        requiredTags: process.env.GEOCODING_REQUIRED_TAGS?.split(",") ?? [],
       },
       caching: {
         enabled: process.env.GEOCODING_CACHING_ENABLED !== "false",
-        ttlDays: parseInt(process.env.GEOCODING_CACHE_TTL_DAYS || "365"),
+        ttlDays: parseInt(process.env.GEOCODING_CACHE_TTL_DAYS ?? "365"),
       },
     };
   }
 
   private async loadProviders(): Promise<void> {
-    const strategy = this.settings?.providerSelection?.strategy || "priority";
-    const requiredTags = this.settings?.providerSelection?.requiredTags || [];
+    const strategy = this.settings?.providerSelection?.strategy ?? "priority";
+    const requiredTags = this.settings?.providerSelection?.requiredTags ?? [];
 
     // Query providers from collection
     const query: {
@@ -308,13 +309,13 @@ export class GeocodingService {
             break;
 
           case "nominatim": {
-            const nominatimConfig = doc.config?.nominatim || {};
+            const nominatimConfig = doc.config?.nominatim ?? {};
             logger.info(`Creating Nominatim geocoder for '${doc.name}'`);
             geocoder = NodeGeocoder({
               provider: "openstreetmap",
               formatter: null,
               osmServer:
-                (nominatimConfig as { baseUrl?: string }).baseUrl ||
+                (nominatimConfig as { baseUrl?: string }).baseUrl ??
                 "https://nominatim.openstreetmap.org",
               countrycodes: (nominatimConfig as { countrycodes?: string })
                 .countrycodes,
@@ -338,7 +339,7 @@ export class GeocodingService {
               provider: "opencage",
               apiKey: opencageConfig.apiKey,
               formatter: null,
-              language: opencageConfig.language || "en",
+              language: opencageConfig.language ?? "en",
             } as NodeGeocoder.Options;
 
             // Add bounds if configured
@@ -371,7 +372,7 @@ export class GeocodingService {
         this.providers.push({
           name: doc.name,
           geocoder,
-          priority: doc.priority || 1,
+          priority: doc.priority ?? 1,
           enabled: true,
         });
 
@@ -536,7 +537,7 @@ export class GeocodingService {
       batchResults.forEach((settledResult) => {
         if (settledResult.status === "fulfilled") {
           const { address, result, error } = settledResult.value;
-          results.set(address, result || error);
+          results.set(address, result ?? error);
         }
       });
 
@@ -573,7 +574,7 @@ export class GeocodingService {
   ): Promise<Record<string, unknown>> {
     await this.initialize();
 
-    const address = testAddress || "London, UK";
+    const address = testAddress ?? "London, UK";
     const results: Record<string, unknown> = {};
 
     for (const provider of this.providers.filter((p) => p.enabled)) {
@@ -597,7 +598,7 @@ export class GeocodingService {
               latitude: result.latitude,
               longitude: result.longitude,
               confidence: this.calculateConfidence(result, provider.name),
-              normalizedAddress: result.formattedAddress || address,
+              normalizedAddress: result.formattedAddress ?? address,
             },
           };
         } else {
@@ -644,7 +645,7 @@ export class GeocodingService {
         streetNumber: result.streetNumber,
         streetName: result.streetName,
         city: result.city,
-        region: result.administrativeLevels?.level1short || result.state,
+        region: result.administrativeLevels?.level1short ?? result.state,
         postalCode: result.zipcode,
         country: result.country,
       },
@@ -675,7 +676,7 @@ export class GeocodingService {
         break;
 
       case "opencage":
-        confidence = ((result as { confidence?: number }).confidence || 5) / 10; // OpenCage uses 1-10 scale
+        confidence = ((result as { confidence?: number }).confidence ?? 5) / 10; // OpenCage uses 1-10 scale
         break;
 
       case "nominatim":

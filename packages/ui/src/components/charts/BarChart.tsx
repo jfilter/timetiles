@@ -1,9 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
+
 import { BaseChart } from "./BaseChart";
-import type { BarChartProps } from "./types";
+import type { BarChartProps, BarChartDataItem } from "./types";
+import {
+  isValidFormatterParams,
+  isValidEventParams,
+  isValidDataIndex,
+} from "./types";
 
 export function BarChart({
   data,
@@ -13,15 +19,15 @@ export function BarChart({
   yLabel = "",
   title = "",
   showValues = false,
-  valueFormatter = (v) => v.toString(),
-  labelFormatter = (l) => l,
+  valueFormatter = (v: number) => v.toString(),
+  labelFormatter = (l: string) => l,
   maxLabelLength = 20,
   sortBy = "none",
   sortOrder = "desc",
   ...baseProps
 }: BarChartProps) {
   const processedData = useMemo(() => {
-    const sorted = [...data];
+    const sorted: BarChartDataItem[] = [...data];
 
     if (sortBy !== "none") {
       sorted.sort((a, b) => {
@@ -48,7 +54,7 @@ export function BarChart({
       truncateLabel(labelFormatter(item.label)),
     );
     const values = processedData.map((item) => item.value);
-    const colors = processedData.map((item) => item.color || "#3b82f6");
+    const colors = processedData.map((item) => item.color ?? "#3b82f6");
 
     const baseOption: EChartsOption = {
       title: title
@@ -64,11 +70,17 @@ export function BarChart({
           type: "shadow",
         },
         formatter: (params: unknown) => {
-          const paramsArray = params as { dataIndex: number }[];
-          const dataIndex = paramsArray[0]?.dataIndex;
-          if (dataIndex === undefined) return "";
+          if (!Array.isArray(params) || params.length === 0) return "";
+
+          const firstParam = params[0] as unknown;
+          if (!isValidFormatterParams(firstParam)) return "";
+
+          const dataIndex = firstParam.dataIndex;
+          if (!isValidDataIndex(dataIndex)) return "";
+
           const item = processedData[dataIndex];
           if (!item) return "";
+
           return `
             <div style="padding: 8px;">
               <strong>${item.label}</strong><br/>
@@ -89,8 +101,14 @@ export function BarChart({
           type: "bar" as const,
           data: values,
           itemStyle: {
-            color: (params: { dataIndex: number }) =>
-              colors[params.dataIndex] || "#3b82f6",
+            color: (params: unknown) => {
+              if (!isValidFormatterParams(params)) return "#3b82f6";
+
+              const dataIndex = params.dataIndex;
+              return isValidDataIndex(dataIndex)
+                ? (colors[dataIndex] ?? "#3b82f6")
+                : "#3b82f6";
+            },
           },
           emphasis: {
             itemStyle: {
@@ -101,8 +119,9 @@ export function BarChart({
             ? {
                 show: true,
                 position: isHorizontal ? ("right" as const) : ("top" as const),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                formatter: (params: any) => {
+                formatter: (params: unknown) => {
+                  if (!isValidFormatterParams(params)) return valueFormatter(0);
+
                   const value =
                     typeof params.value === "number" ? params.value : 0;
                   return valueFormatter(value);
@@ -173,18 +192,16 @@ export function BarChart({
 
     if (onBarClick) {
       baseEvents.click = (params: unknown) => {
-        const eventParams = params as {
-          componentType: string;
-          seriesType: string;
-          dataIndex: number;
-        };
+        if (!isValidEventParams(params)) return;
+
         if (
-          eventParams.componentType === "series" &&
-          eventParams.seriesType === "bar"
+          params.componentType === "series" &&
+          params.seriesType === "bar" &&
+          isValidDataIndex(params.dataIndex)
         ) {
-          const item = processedData[eventParams.dataIndex];
+          const item = processedData[params.dataIndex];
           if (item) {
-            onBarClick(item, eventParams.dataIndex);
+            onBarClick(item, params.dataIndex);
           }
         }
       };

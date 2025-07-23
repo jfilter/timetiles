@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+
 import type { FilterState } from "../lib/store";
 
 interface FilterLabels {
@@ -46,7 +47,7 @@ export function ActiveFilters({
 
       <div className="flex flex-wrap gap-2">
         {/* Catalog Filter */}
-        {labels.catalog && (
+        {labels.catalog !== undefined && labels.catalog !== null && (
           <FilterPill
             label="Catalog"
             value={labels.catalog}
@@ -65,7 +66,7 @@ export function ActiveFilters({
         ))}
 
         {/* Date Range Filter */}
-        {labels.dateRange && (
+        {labels.dateRange !== undefined && labels.dateRange !== null && (
           <FilterPill
             label="Date Range"
             value={labels.dateRange}

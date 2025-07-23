@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+
 import type { MainMenu } from "../payload-types";
 import { TopMenuBar } from "./TopMenuBar";
 

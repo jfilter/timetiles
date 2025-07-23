@@ -48,8 +48,8 @@ export default buildConfig({
     ],
   },
   editor: lexicalEditor({}),
-  secret: process.env.PAYLOAD_SECRET || "your-secret-key",
-  serverURL: process.env.NEXT_PUBLIC_PAYLOAD_URL || "http://localhost:3000",
+  secret: process.env.PAYLOAD_SECRET ?? "your-secret-key",
+  serverURL: process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000",
   typescript: {
     outputFile: "./payload-types.ts",
   },
@@ -57,7 +57,7 @@ export default buildConfig({
     push: false, // Disable automatic schema updates
     pool: {
       connectionString:
-        process.env.DATABASE_URL ||
+        process.env.DATABASE_URL ??
         "postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles",
     },
     schemaName: "payload",

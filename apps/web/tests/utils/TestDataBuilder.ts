@@ -1,5 +1,5 @@
 /**
- * TestDataBuilder - Phase 2.2 Implementation
+ * TestDataBuilder
  *
  * Enhanced test utilities with builder patterns for creating realistic test data.
  * Provides fluent APIs for constructing events, catalogs, datasets, and other entities
@@ -67,7 +67,11 @@ export class EventBuilder extends BaseTestBuilder<Event> {
   }
 
   private ensureDataIsObject(): Record<string, unknown> {
-    if (typeof this.data.data === 'object' && this.data.data !== null && !Array.isArray(this.data.data)) {
+    if (
+      typeof this.data.data === "object" &&
+      this.data.data !== null &&
+      !Array.isArray(this.data.data)
+    ) {
       return this.data.data as Record<string, unknown>;
     }
     return {};
@@ -80,7 +84,7 @@ export class EventBuilder extends BaseTestBuilder<Event> {
   }
 
   withTitle(title: string): this {
-    return this.setDataProperty('title', title);
+    return this.setDataProperty("title", title);
   }
 
   withCoordinates(lat: number, lng: number): this {
@@ -97,27 +101,27 @@ export class EventBuilder extends BaseTestBuilder<Event> {
     const randomTime = new Date(
       start.getTime() + Math.random() * (end.getTime() - start.getTime()),
     );
-    return this.setDataProperty('date', randomTime.toISOString());
+    return this.setDataProperty("date", randomTime.toISOString());
   }
 
   withAddress(address: string): this {
-    return this.setDataProperty('address', address);
+    return this.setDataProperty("address", address);
   }
 
   withDescription(description: string): this {
-    return this.setDataProperty('description', description);
+    return this.setDataProperty("description", description);
   }
 
   withCategory(category: string): this {
-    return this.setDataProperty('category', category);
+    return this.setDataProperty("category", category);
   }
 
   withTags(tags: string[]): this {
-    return this.setDataProperty('tags', tags);
+    return this.setDataProperty("tags", tags);
   }
 
   withUrl(url: string): this {
-    return this.setDataProperty('url', url);
+    return this.setDataProperty("url", url);
   }
 
   nearLocation(centerLat: number, centerLng: number, radiusKm: number): this {
@@ -494,7 +498,14 @@ export class ImportBuilder extends BaseTestBuilder<Import> {
     return this;
   }
 
-  withStage(stage: 'file-parsing' | 'row-processing' | 'geocoding' | 'event-creation' | 'completed'): this {
+  withStage(
+    stage:
+      | "file-parsing"
+      | "row-processing"
+      | "geocoding"
+      | "event-creation"
+      | "completed",
+  ): this {
     this.data.processingStage = stage;
     return this;
   }
@@ -565,7 +576,11 @@ export class TestDataBuilder {
           .buildMany(10, (event, i) => ({
             ...event,
             data: {
-              ...(typeof event.data === 'object' && event.data !== null && !Array.isArray(event.data) ? event.data : {}),
+              ...(typeof event.data === "object" &&
+              event.data !== null &&
+              !Array.isArray(event.data)
+                ? event.data
+                : {}),
               title: `Tech Conference ${i + 1}`,
               address: `${100 + i} Tech Street, New York, NY`,
             },
@@ -596,7 +611,11 @@ export class TestDataBuilder {
           .buildMany(50, (event, i) => ({
             ...event,
             data: {
-              ...(typeof event.data === 'object' && event.data !== null && !Array.isArray(event.data) ? event.data : {}),
+              ...(typeof event.data === "object" &&
+              event.data !== null &&
+              !Array.isArray(event.data)
+                ? event.data
+                : {}),
               title: `Air Quality Reading ${i + 1}`,
               value: Math.random() * 100,
               unit: "AQI",
@@ -629,7 +648,11 @@ export class TestDataBuilder {
           .buildMany(20, (event, i) => ({
             ...event,
             data: {
-              ...(typeof event.data === 'object' && event.data !== null && !Array.isArray(event.data) ? event.data : {}),
+              ...(typeof event.data === "object" &&
+              event.data !== null &&
+              !Array.isArray(event.data)
+                ? event.data
+                : {}),
               title: `GDP Report Q${(i % 4) + 1} 2024`,
               indicator: "GDP Growth Rate",
               value: Math.random() * 4 + 1, // 1-5% growth

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
 import { Button } from "@workspace/ui/components/button";
+import React, { useState } from "react";
+
 import { logger } from "../logger";
 
 interface TestResult {
@@ -118,7 +119,7 @@ export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
               className="flex-1 rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
             />
             <Button
-              onClick={handleTest}
+              onClick={() => void handleTest()}
               disabled={testing || !testAddress.trim()}
               className="px-4 py-2"
             >

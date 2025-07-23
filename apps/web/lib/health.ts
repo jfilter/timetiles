@@ -1,7 +1,8 @@
-import { getPayload } from "payload";
 import { sql } from "@payloadcms/db-postgres";
 import fs from "fs/promises";
 import path from "path";
+import { getPayload } from "payload";
+
 import config from "../payload.config";
 import { createLogger } from "./logger";
 

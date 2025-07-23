@@ -1,22 +1,23 @@
+import config from "@payload-config";
+import { writeFile, mkdir } from "fs/promises";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getPayload } from "payload";
-import config from "@payload-config";
-import * as XLSX from "xlsx";
-import { v4 as uuidv4 } from "uuid";
-import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { getPayload } from "payload";
+import { v4 as uuidv4 } from "uuid";
+import * as XLSX from "xlsx";
+
+import {
+  createRequestLogger,
+  logError,
+  logPerformance,
+} from "../../../../lib/logger";
 import {
   getRateLimitService,
   getClientIdentifier,
   RATE_LIMITS,
 } from "../../../../lib/services/RateLimitService";
 import type { Catalog, Dataset, Import, User } from "../../../../payload-types";
-import {
-  createRequestLogger,
-  logError,
-  logPerformance,
-} from "../../../../lib/logger";
 
 // Type for creating new import records, excluding auto-generated fields
 type CreateImportData = Omit<Import, "id" | "createdAt" | "updatedAt">;
@@ -59,22 +60,24 @@ export async function POST(request: NextRequest) {
     const catalogId = catalogIdStr ? parseInt(catalogIdStr, 10) : null;
     const datasetIdStr = (datasetIdRaw as string | null)?.trim();
     const datasetId =
-      datasetIdStr && datasetIdStr !== "null"
+      datasetIdStr !== null &&
+      datasetIdStr !== undefined &&
+      datasetIdStr !== "null"
         ? parseInt(datasetIdStr, 10)
         : null;
-    const sessionId = (sessionIdRaw as string | null)?.trim() || null;
+    const sessionId = (sessionIdRaw as string | null)?.trim() ?? null;
 
     logger.debug({ catalogId, datasetId, sessionId }, "Parsed form data");
 
     // Validate required fields
-    if (!file) {
+    if (file === null) {
       return NextResponse.json(
         { success: false, message: "No file provided" },
         { status: 400 },
       );
     }
 
-    if (!catalogId || isNaN(catalogId)) {
+    if (catalogId === null || catalogId === 0 || isNaN(catalogId)) {
       return NextResponse.json(
         { success: false, message: "Valid catalog ID is required" },
         { status: 400 },
@@ -82,9 +85,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from request (if authenticated)
-    const user: Pick<User, "id"> | null = request.headers.get("authorization")
-      ? await getUserFromToken()
-      : null;
+    const authHeader = request.headers.get("authorization");
+    const user: Pick<User, "id"> | null =
+      authHeader !== null ? getUserFromToken() : null;
 
     logger.debug(
       {
@@ -177,7 +180,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify dataset exists if provided
-    if (datasetId) {
+    if (datasetId !== null) {
       try {
         const dataset: Dataset = await payload.findByID({
           collection: "datasets",
@@ -238,8 +241,8 @@ export async function POST(request: NextRequest) {
         catalog: catalogId,
         fileSize: file.size,
         mimeType: file.type,
-        user: user?.id || null,
-        sessionId: sessionId || null,
+        user: user?.id ?? null,
+        sessionId: sessionId ?? null,
         status: "pending",
         processingStage: "file-parsing",
         importedAt: new Date().toISOString(),
@@ -388,7 +391,7 @@ export async function GET() {
   }
 }
 
-async function getUserFromToken(): Promise<Pick<User, "id"> | null> {
+function getUserFromToken(): Pick<User, "id"> | null {
   // This would implement JWT token validation
   // For now, return null (unauthenticated)
   return null;

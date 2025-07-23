@@ -2,9 +2,29 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 import type { Where } from "payload";
+
 import type { Event } from "../../../payload-types";
 import config from "../../../payload.config";
+
 import { logger } from "@/lib/logger";
+
+interface MapBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+function isValidBounds(value: unknown): value is MapBounds {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Record<string, unknown>).north === "number" &&
+    typeof (value as Record<string, unknown>).south === "number" &&
+    typeof (value as Record<string, unknown>).east === "number" &&
+    typeof (value as Record<string, unknown>).west === "number"
+  );
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,8 +39,8 @@ export async function GET(request: NextRequest) {
 
     const where: Where = {};
 
-    if (catalog || (datasets.length > 0 && datasets[0] !== "")) {
-      if (catalog && (datasets.length === 0 || datasets[0] === "")) {
+    if (catalog !== null || (datasets.length > 0 && datasets[0] !== "")) {
+      if (catalog !== null && (datasets.length === 0 || datasets[0] === "")) {
         // Filter by catalog
         where.and = [
           ...(Array.isArray(where.and) ? where.and : []),
@@ -45,9 +65,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (boundsParam) {
+    if (boundsParam !== null) {
       try {
-        const bounds = JSON.parse(boundsParam);
+        const parsedBounds = JSON.parse(boundsParam) as unknown;
+        if (!isValidBounds(parsedBounds)) {
+          throw new Error("Invalid bounds format");
+        }
+        const bounds = parsedBounds;
         where.and = [
           ...(Array.isArray(where.and) ? where.and : []),
           {
@@ -69,11 +93,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Add date filtering - simplified
-    if (startDate || endDate) {
+    if (startDate !== null || endDate !== null) {
       try {
         const dateFilters: Record<string, string> = {};
 
-        if (startDate) {
+        if (startDate !== null) {
           const startDateTime = new Date(startDate);
           if (isNaN(startDateTime.getTime())) {
             throw new Error(`Invalid start date: ${startDate}`);
@@ -81,7 +105,7 @@ export async function GET(request: NextRequest) {
           dateFilters.greater_than_equal = startDateTime.toISOString();
         }
 
-        if (endDate) {
+        if (endDate !== null) {
           const endDateTime = new Date(endDate);
           if (isNaN(endDateTime.getTime())) {
             throw new Error(`Invalid end date: ${endDate}`);
@@ -109,16 +133,19 @@ export async function GET(request: NextRequest) {
     // Additional filtering by data fields (post-processing)
     let filteredEvents = events.docs;
 
-    if (startDate || endDate) {
-      const startDateTime = startDate ? new Date(startDate) : null;
-      const endDateTime = endDate ? new Date(endDate) : null;
-      if (endDateTime) {
+    if (startDate !== null || endDate !== null) {
+      const startDateTime = startDate !== null ? new Date(startDate) : null;
+      const endDateTime = endDate !== null ? new Date(endDate) : null;
+      if (endDateTime !== null) {
         endDateTime.setDate(endDateTime.getDate() + 1); // Include the entire end date
       }
 
       filteredEvents = events.docs.filter((event: Event) => {
         // Check eventTimestamp first
-        if (event.eventTimestamp) {
+        if (
+          event.eventTimestamp !== null &&
+          event.eventTimestamp !== undefined
+        ) {
           const eventDate = new Date(event.eventTimestamp);
           const matchesTimestamp =
             (!startDateTime || eventDate >= startDateTime) &&
@@ -138,15 +165,14 @@ export async function GET(request: NextRequest) {
         for (const dateField of commonDateFields) {
           const eventData = event.data;
           if (
-            eventData &&
+            eventData !== null &&
             typeof eventData === "object" &&
-            !Array.isArray(eventData) &&
-            eventData !== null
+            !Array.isArray(eventData)
           ) {
             const dataDateValue = (eventData as Record<string, unknown>)[
               dateField
             ];
-            if (dataDateValue && typeof dataDateValue === "string") {
+            if (dataDateValue != null && typeof dataDateValue === "string") {
               const dataDate = new Date(dataDateValue);
               if (!isNaN(dataDate.getTime())) {
                 const matchesDataField =
@@ -175,7 +201,7 @@ export async function GET(request: NextRequest) {
           : { longitude: null, latitude: null },
         eventTimestamp: event.eventTimestamp,
         dataset:
-          typeof event.dataset === "object" && event.dataset
+          typeof event.dataset === "object" && event.dataset !== null
             ? event.dataset.id
             : event.dataset,
         createdAt: event.createdAt,

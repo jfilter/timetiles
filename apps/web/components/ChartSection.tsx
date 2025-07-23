@@ -1,9 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { EventHistogram } from "./EventHistogram";
-import { DatasetBarChart } from "./DatasetBarChart";
-import type { Event, Dataset, Catalog } from "../payload-types";
 import {
   Select,
   SelectContent,
@@ -11,6 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select";
+import { useState } from "react";
+
+import { DatasetBarChart } from "./DatasetBarChart";
+import { EventHistogram } from "./EventHistogram";
+import type { Event, Dataset, Catalog } from "../payload-types";
 
 interface ChartSectionProps {
   events: Event[];

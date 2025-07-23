@@ -1,9 +1,10 @@
-import React from "react";
-import { getPayload } from "payload";
-import config from "@/payload.config";
 import { notFound } from "next/navigation";
-import { RichText } from "@/components/RichText";
+import { getPayload } from "payload";
+import React from "react";
+
 import { PageLayout } from "@/components/PageLayout";
+import { RichText } from "@/components/RichText";
+import config from "@/payload.config";
 
 interface PageProps {
   params: Promise<{

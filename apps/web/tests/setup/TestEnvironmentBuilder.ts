@@ -1,5 +1,5 @@
 /**
- * TestEnvironmentBuilder - Phase 2.1 Implementation
+ * TestEnvironmentBuilder
  *
  * Provides a simplified and flexible way to create test environments with
  * different isolation levels and seeding options. This replaces the basic
@@ -217,13 +217,11 @@ export class TestEnvironmentBuilder {
     const cleanupPromises = Array.from(
       TestEnvironmentBuilder.activeEnvironments,
     ).map((env) =>
-      env
-        .cleanup()
-        .catch((error) =>
-          logger.warn("Failed to cleanup test environment", {
-            error: error.message,
-          }),
-        ),
+      env.cleanup().catch((error) =>
+        logger.warn("Failed to cleanup test environment", {
+          error: error.message,
+        }),
+      ),
     );
 
     await Promise.all(cleanupPromises);
@@ -369,7 +367,11 @@ export class TestEnvironmentBuilder {
       // Use standard seeding
       await seedManager.seed({
         collections,
-        environment: environment as "production" | "development" | "test" | "staging",
+        environment: environment as
+          | "production"
+          | "development"
+          | "test"
+          | "staging",
         truncate: false, // Already truncated
       });
     }

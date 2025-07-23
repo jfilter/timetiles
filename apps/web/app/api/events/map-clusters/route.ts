@@ -1,9 +1,29 @@
+import { sql } from "@payloadcms/db-postgres";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
-import { sql } from "@payloadcms/db-postgres";
+
 import config from "../../../../payload.config";
+
 import { logger } from "@/lib/logger";
+
+interface MapBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+function isValidBounds(value: unknown): value is MapBounds {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Record<string, unknown>).north === "number" &&
+    typeof (value as Record<string, unknown>).south === "number" &&
+    typeof (value as Record<string, unknown>).east === "number" &&
+    typeof (value as Record<string, unknown>).west === "number"
+  );
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,14 +32,14 @@ export async function GET(request: NextRequest) {
 
     // Extract parameters
     const boundsParam = searchParams.get("bounds");
-    const zoom = parseInt(searchParams.get("zoom") || "10", 10);
+    const zoom = parseInt(searchParams.get("zoom") ?? "10", 10);
     const catalog = searchParams.get("catalog");
     const datasets = searchParams.getAll("datasets");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
     // Validate required parameters
-    if (!boundsParam) {
+    if (boundsParam === null) {
       return NextResponse.json(
         { error: "Missing bounds parameter" },
         { status: 400 },
@@ -27,12 +47,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse bounds
-    let bounds;
+    let bounds: MapBounds;
     try {
-      bounds = JSON.parse(boundsParam);
-      if (!bounds.north || !bounds.south || !bounds.east || !bounds.west) {
+      const parsedBounds = JSON.parse(boundsParam) as unknown;
+      if (!isValidBounds(parsedBounds)) {
         throw new Error("Invalid bounds format");
       }
+      bounds = parsedBounds;
     } catch {
       return NextResponse.json(
         {
@@ -44,10 +65,10 @@ export async function GET(request: NextRequest) {
 
     // Build filters object
     const filters: Record<string, unknown> = {};
-    if (catalog) filters.catalog = catalog;
+    if (catalog !== null) filters.catalog = catalog;
     if (datasets.length > 0 && datasets[0] !== "") filters.datasets = datasets;
-    if (startDate) filters.startDate = startDate;
-    if (endDate) filters.endDate = endDate;
+    if (startDate !== null) filters.startDate = startDate;
+    if (endDate !== null) filters.endDate = endDate;
 
     // Check if clustering function exists
     let functionExists = false;
@@ -91,9 +112,9 @@ export async function GET(request: NextRequest) {
         ${bounds.north}::double precision,
         ${zoom}::integer,
         ${JSON.stringify({
-          catalogId: catalog ? parseInt(catalog) : undefined,
+          catalogId: catalog !== null ? parseInt(catalog) : undefined,
           datasetId:
-            datasets.length === 1 && datasets[0]
+            datasets.length === 1 && datasets[0] !== undefined
               ? parseInt(datasets[0])
               : undefined,
           startDate,
@@ -120,11 +141,13 @@ export async function GET(request: NextRequest) {
           ],
         },
         properties: {
-          id: row.cluster_id || row.event_id,
+          id: row.cluster_id ?? row.event_id,
           type: isCluster ? "event-cluster" : "event-point",
           ...(isCluster ? { count: Number(row.event_count) } : {}),
-          ...(row.event_title ? { title: String(row.event_title) } : {}),
-          ...(row.event_ids && Number(row.event_count) <= 10
+          ...(row.event_title != null && typeof row.event_title === "string"
+            ? { title: row.event_title }
+            : {}),
+          ...(row.event_ids != null && Number(row.event_count) <= 10
             ? { eventIds: row.event_ids }
             : {}),
         },
