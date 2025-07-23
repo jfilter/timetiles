@@ -8,8 +8,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "happy-dom",
-    include: ["__tests__/components/**/*.{test,spec}.{js,ts,jsx,tsx}"],
-    setupFiles: ["__tests__/setup-components.ts"],
+    include: ["tests/unit/components/**/*.{test,spec}.{js,ts,jsx,tsx}"],
+    setupFiles: ["tests/setup/setup-components.ts"],
     testTimeout: 10000,
     pool: "forks",
   },

@@ -6,22 +6,22 @@ export default defineWorkspace([
       name: "unit",
       globals: true,
       environment: "node",
-      include: ["__tests__/**/*.unit.test.ts"],
-      setupFiles: ["__tests__/setup-no-db.ts"],
+      include: ["tests/unit/**/*.test.ts"],
+      setupFiles: ["tests/setup/setup-no-db.ts"],
     },
   },
   {
     extends: "./vitest.config.ts",
     test: {
       name: "integration",
-      include: ["__tests__/**/*.integration.test.ts"],
+      include: ["tests/integration/**/*.test.ts"],
     },
   },
   {
     extends: "./vitest.config.components.ts",
     test: {
       name: "components",
-      include: ["__tests__/**/*.component.test.tsx"],
+      include: ["tests/unit/components/**/*.test.tsx"],
     },
   },
 ]);
