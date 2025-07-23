@@ -11,7 +11,8 @@
     "start": "next start --port 3001",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "export": "next build && next export"
+    "export": "next build && next export",
+    "format": "prettier --write . --ignore-path ../../.prettierignore"
   },
   "dependencies": {
     "next": "^15.2.3",
@@ -27,6 +28,7 @@
     "@types/react-dom": "^18",
     "@workspace/eslint-config": "workspace:^",
     "@workspace/typescript-config": "workspace:*",
+    "eslint": "^9.20.1",
     "typescript": "^5.7.3"
   }
 }

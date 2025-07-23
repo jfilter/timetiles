@@ -15,6 +15,7 @@ Each commit message consists of a **title** and an optional **body**:
 ### Title (Required)
 
 The title is the first line of your commit message and must:
+
 - Be **no more than 72 characters**
 - Start with a type and optional scope
 - Use the imperative mood ("add" not "adds" or "added")
@@ -25,12 +26,14 @@ The title is the first line of your commit message and must:
 The type must be one of the following:
 
 **Feature & Fixes:**
+
 - **feat**: A new feature for the user (not a new feature for build script)
   - Example: `feat(import): add support for Excel file uploads`
 - **fix**: A bug fix for the user (not a fix to a build script)
   - Example: `fix(geocoding): handle addresses with special characters`
 
 **Code Quality:**
+
 - **refactor**: Code changes that neither fix bugs nor add features
   - Example: `refactor(api): extract validation logic into middleware`
 - **style**: Code style changes (formatting, missing semicolons, whitespace)
@@ -40,12 +43,14 @@ The type must be one of the following:
   - Example: `perf(import): reduce memory usage by streaming CSV files`
 
 **Testing & Documentation:**
+
 - **test**: Adding missing tests or correcting existing tests
   - Example: `test(events): add unit tests for date validation`
 - **docs**: Documentation only changes
   - Example: `docs(api): update endpoint examples with new fields`
 
 **Maintenance & Operations:**
+
 - **build**: Changes affecting build system or external dependencies
   - Example: `build(deps): upgrade to Next.js 15`
   - Example: `build(docker): optimize production image size`
@@ -53,6 +58,7 @@ The type must be one of the following:
   - Example: `chore(scripts): update seed data generation`
 
 **Special Types:**
+
 - **revert**: Reverts a previous commit
   - Example: `revert: feat(import): add Excel support`
   - Body should include: `This reverts commit <hash>`
@@ -65,12 +71,14 @@ The type must be one of the following:
 The scope provides additional context about what part of the codebase changed. Scopes are organized into three categories:
 
 **Apps & Packages** (where the code lives):
+
 - **web**: Next.js web application
 - **docs**: Documentation site (Nextra)
 - **ui**: Shared UI components package
 - **config**: Configuration packages (ESLint, TypeScript, etc.)
 
 **Core Features** (what functionality is affected):
+
 - **import**: File import system (CSV/Excel processing)
 - **geocoding**: Address geocoding and location services
 - **events**: Event data management
@@ -80,6 +88,7 @@ The scope provides additional context about what part of the codebase changed. S
 - **cache**: Caching strategies (location cache, etc.)
 
 **Technical Areas** (infrastructure & tooling):
+
 - **db**: Database operations, migrations, PostGIS
 - **api**: API endpoints (REST, GraphQL, tRPC)
 - **jobs**: Background job processing and queues
@@ -106,6 +115,7 @@ The body should use **bullet points** to clearly describe the changes. Use verbo
 #### When to Include a Body
 
 **Title-only commits** (no body needed):
+
 - Simple, self-explanatory changes
 - Single-file formatting fixes
 - Minor typos or corrections
@@ -113,6 +123,7 @@ The body should use **bullet points** to clearly describe the changes. Use verbo
 - Examples: `fix(import): prevent duplicate events`, `style(ui): format button component`
 
 **Commits with bodies** (bullet points recommended):
+
 - Multiple related changes in one commit
 - Complex logic changes requiring explanation
 - New features with multiple aspects
@@ -135,11 +146,13 @@ Wrap the body at 100 characters per line.
 ## Examples
 
 ### Simple Fix
+
 ```
 fix(import): handle empty CSV files gracefully
 ```
 
 ### Feature with Description
+
 ```
 feat(geocoding): add support for OpenCage provider
 
@@ -152,6 +165,7 @@ feat(geocoding): add support for OpenCage provider
 ```
 
 ### Breaking Change
+
 ```
 refactor(api): change import endpoint response format
 
@@ -167,6 +181,7 @@ instead of response.importId.
 ```
 
 ### Multiple Changes
+
 ```
 fix(web): correct type errors and improve error handling
 
@@ -178,6 +193,7 @@ fix(web): correct type errors and improve error handling
 ```
 
 ### Refactoring with Context
+
 ```
 refactor(geocoding): simplify provider initialization
 
@@ -189,6 +205,7 @@ refactor(geocoding): simplify provider initialization
 ```
 
 ### Bug Fix with Investigation Details
+
 ```
 fix(import): resolve memory leak in large file processing
 
@@ -206,6 +223,7 @@ Good commit messages tell a story about your changes. They should be written for
 ### Mechanical vs. Thoughtful Approach
 
 **❌ Mechanical (just listing what changed):**
+
 ```
 fix(import): update import-jobs.ts and add validation
 
@@ -216,6 +234,7 @@ fix(import): update import-jobs.ts and add validation
 ```
 
 **✅ Thoughtful (explaining why and impact):**
+
 ```
 fix(import): prevent memory leaks in large file processing
 
@@ -228,6 +247,7 @@ fix(import): prevent memory leaks in large file processing
 ### Focus on Business Value
 
 **❌ Technical details without context:**
+
 ```
 refactor(geocoding): extract provider logic into separate classes
 
@@ -238,6 +258,7 @@ refactor(geocoding): extract provider logic into separate classes
 ```
 
 **✅ Business value with technical context:**
+
 ```
 refactor(geocoding): improve provider extensibility for future integrations
 
@@ -252,6 +273,7 @@ refactor(geocoding): improve provider extensibility for future integrations
 Since Git tools (GitHub, GitLab, terminal git log, etc.) have varying markdown support, keep formatting minimal:
 
 **✅ Good formatting practices:**
+
 - Use plain text for maximum compatibility
 - Bullet points with simple dashes (-)
 - ALL CAPS for emphasis when needed (e.g., "BREAKING CHANGE:")
@@ -259,8 +281,9 @@ Since Git tools (GitHub, GitLab, terminal git log, etc.) have varying markdown s
 - Avoid bold, italic, or other markdown formatting in commit messages
 
 **❌ Avoid in commit messages:**
+
 - **Bold text** - not consistently rendered
-- *Italic text* - not consistently rendered  
+- _Italic text_ - not consistently rendered
 - `Code blocks` - can appear as plain text with backticks
 - [Links](url) - become plain text in many git tools
 - Complex formatting that relies on markdown parsing
@@ -311,7 +334,7 @@ Some combinations need special attention:
 5. **Avoid Mechanical Descriptions**: Don't just list file changes or technical details
    - ❌ Bad: "Modified 3 files, added 2 functions, updated 1 test"
    - ✅ Good: "Implement rate limiting to prevent API quota exhaustion"
-6. **Choose the Right Scope**: 
+6. **Choose the Right Scope**:
    - Use app/package scopes for changes isolated to that codebase
    - Use feature scopes for business logic changes
    - Use technical scopes for infrastructure/tooling changes
@@ -342,13 +365,13 @@ This project includes a commit message template at `.gitmessage` that is automat
 # - Use plain text formatting (no markdown bold/italic)
 
 # List your changes as bullet points (if body needed):
-# - 
-# - 
-# - 
-# 
+# -
+# -
+# -
+#
 # Add as many bullets as needed to describe all changes
 
-# BREAKING CHANGE: 
+# BREAKING CHANGE:
 # Describe any breaking changes here
 
 # References: #
@@ -356,6 +379,7 @@ This project includes a commit message template at `.gitmessage` that is automat
 ```
 
 The template is already configured for this repository. To use a similar template globally for all your projects:
+
 ```bash
 git config --global commit.template ~/.gitmessage
 ```
@@ -365,6 +389,7 @@ git config --global commit.template ~/.gitmessage
 ### Commitizen
 
 For interactive commit message creation:
+
 ```bash
 npm install -g commitizen
 npm install -g cz-conventional-changelog
@@ -380,6 +405,7 @@ The project uses Husky to enforce commit message standards. If your commit doesn
 ## Quick Reference
 
 ### Title-only commits (for simple, self-explanatory changes):
+
 ```
 fix(import): prevent duplicate event creation
 docs(api): update geocoding endpoint examples
@@ -396,6 +422,7 @@ security(import): add file type validation to prevent malicious uploads
 ```
 
 ### When to use title-only:
+
 - Single-file changes with obvious intent
 - Formatting or style fixes
 - Simple dependency updates
@@ -403,6 +430,7 @@ security(import): add file type validation to prevent malicious uploads
 - Clear bug fixes that don't need explanation
 
 ### Commits with bullet-point bodies:
+
 ```
 feat(web): add dark mode toggle
 
@@ -464,36 +492,42 @@ style(config): format TypeScript config files      # Code formatting
 ## Common Mistakes to Avoid
 
 ### 1. Listing File Changes
+
 ```
 ❌ Bad: "Updated GeocodingService.ts, modified config.ts, added tests"
 ✅ Good: "Add rate limiting to prevent geocoding API quota exhaustion"
 ```
 
 ### 2. Technical Details Without Context
+
 ```
 ❌ Bad: "Add new function processCoordinates() and refactor validation logic"
 ✅ Good: "Improve coordinate validation to handle edge cases and malformed data"
 ```
 
 ### 3. Using Present Tense Instead of Imperative
+
 ```
 ❌ Bad: "Adding support for Excel imports"
 ✅ Good: "Add support for Excel imports"
 ```
 
 ### 4. Vague or Generic Messages
+
 ```
 ❌ Bad: "Fix bug" or "Update code" or "Improvements"
 ✅ Good: "Fix memory leak in CSV parser for files over 100MB"
 ```
 
 ### 5. Too Much Technical Detail
+
 ```
 ❌ Bad: "Refactor AbstractGeocodingProvider to implement IGeocoder interface with async/await pattern"
 ✅ Good: "Standardize geocoding provider interface for easier testing and maintenance"
 ```
 
 ### 6. Missing Business Context
+
 ```
 ❌ Bad: "Add new provider class and update service configuration"
 ✅ Good: "Add OpenCage provider to improve geocoding accuracy for European addresses"

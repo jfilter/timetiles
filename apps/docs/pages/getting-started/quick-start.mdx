@@ -62,22 +62,25 @@ From `apps/web`:
 ## Docker Commands
 
 - `make up` - Start PostgreSQL
-- `make down` - Stop services  
+- `make down` - Stop services
 - `make logs` - View logs
 
 ## Troubleshooting
 
 ### Port 3000 in use
+
 ```bash
 lsof -ti:3000 | xargs kill -9
 ```
 
 ### Database connection issues
+
 ```bash
 make down && make up
 ```
 
 ### Reset everything
+
 ```bash
 make clean && make up
 ```

@@ -19,15 +19,15 @@ The filter generation system:
 
 The system analyzes each field to determine the best filter type:
 
-| Data Pattern | Generated Filter | Why |
-|-------------|-----------------|-----|
-| 5-20 unique values | Dropdown select | Easy selection from limited options |
-| Yes/No, True/False | Checkbox | Boolean toggle |
-| Numeric with range | Range slider | Visual range selection |
-| Dates/Timestamps | Date picker | Calendar interface |
-| Long text | Text search | Full-text search with operators |
-| Arrays | Multi-select | Select multiple values |
-| Coordinates | Map bounds | Geographic filtering |
+| Data Pattern          | Generated Filter | Why                                 |
+| --------------------- | ---------------- | ----------------------------------- |
+| 5 to 20 unique values | Dropdown select  | Easy selection from limited options |
+| Yes/No, True/False    | Checkbox         | Boolean toggle                      |
+| Numeric with range    | Range slider     | Visual range selection              |
+| Dates/Timestamps      | Date picker      | Calendar interface                  |
+| Long text             | Text search      | Full-text search with operators     |
+| Arrays                | Multi-select     | Select multiple values              |
+| Coordinates           | Map bounds       | Geographic filtering                |
 
 ### Editor Control
 
@@ -44,17 +44,20 @@ While filters are generated automatically, editors have full control:
 ### Intelligence Features
 
 **Enum Detection:**
-- Fields with <50 unique values become dropdowns
+
+- Fields with fewer than &lt;x unique values become dropdowns
 - Tracks value frequency for smart ordering
 - Auto-detects status fields, categories, types
 
 **Format Recognition:**
+
 - Email fields get email validation
 - URLs get URL validation
 - Dates get appropriate date pickers
 - Numbers get numeric validation
 
 **Geographic Intelligence:**
+
 - Pairs latitude/longitude fields
 - Enables radius search
 - Integrates with map interface
@@ -96,45 +99,45 @@ Editors can override any aspect of auto-generated filters:
   fieldPath: "temperature",
   enabled: true,  // Can disable filters that shouldn't be exposed
   displayMode: "advanced", // Override auto-detection: simple, advanced, both, hidden
-  
+
   // Override auto-generated labels
   labels: {
     en: "Temperature",
     de: "Temperatur",
     fr: "Température"
   },
-  
+
   // Add user-friendly descriptions
   descriptions: {
     en: "Filter by temperature in Celsius"
   },
-  
+
   // Provide helpful context
   helpText: {
     en: "Enter a temperature between -50 and 50°C"
   },
-  
+
   // Guide user input
   placeholders: {
     en: "e.g., 23.5"
   },
-  
+
   // Show common use cases
   examples: [
     { value: "20-25", description: "Room temperature" },
     { value: ">30", description: "Hot days" }
   ],
-  
+
   // Override detected type
   filterType: "range",  // Force range slider instead of text input
-  
+
   // Custom validation rules
   validation: {
     min: -50,
     max: 50,
     pattern: "^-?\\d+(\\.\\d{1,2})?$"
   },
-  
+
   // Track modification source
   source: "modified"  // auto, manual, modified
 }
@@ -271,13 +274,13 @@ Shows all available filters:
 
 The system selects operators based on data:
 
-| Data Type | Common Values | Selected Operators |
-|-----------|--------------|-------------------|
-| String | Many unique | contains, starts_with |
-| String | Few unique | equals, in |
-| Number | Wide range | between, gt, lt |
-| Number | Few values | equals, in |
-| Array | Any | contains, contains_all |
+| Data Type | Common Values | Selected Operators     |
+| --------- | ------------- | ---------------------- |
+| String    | Many unique   | contains, starts_with  |
+| String    | Few unique    | equals, in             |
+| Number    | Wide range    | between, gt, lt        |
+| Number    | Few values    | equals, in             |
+| Array     | Any           | contains, contains_all |
 
 ### Value Suggestions
 
@@ -306,7 +309,7 @@ Automatic validation based on data:
     max: stats.max * 1.1,
     isInteger: stats.allIntegers
   },
-  
+
   // For string fields
   validation: {
     pattern: detectPattern(samples), // e.g., email, phone
@@ -326,7 +329,7 @@ Organize filters into logical groups:
       id: "basic",
       labels: { en: "Basic Information" },
       order: 1,
-      filters: ["name", "status", "category"]
+      filters: ["name", "status", "category"],
     },
     {
       id: "location",
@@ -334,15 +337,15 @@ Organize filters into logical groups:
       order: 2,
       filters: ["city", "country", "coordinates"],
       collapsible: true,
-      defaultExpanded: false
+      defaultExpanded: false,
     },
     {
       id: "temporal",
       labels: { en: "Time & Date" },
       order: 3,
-      filters: ["createdAt", "eventDate", "year"]
-    }
-  ]
+      filters: ["createdAt", "eventDate", "year"],
+    },
+  ];
 }
 ```
 
@@ -366,8 +369,8 @@ All filters use the single GIN index:
 CREATE INDEX idx_events_data_gin ON events USING gin (data);
 
 -- Example query for filter
-SELECT * FROM events 
-WHERE dataset_id = ? 
+SELECT * FROM events
+WHERE dataset_id = ?
 AND data @> '{"status": "active"}'
 AND data->>'temperature' BETWEEN '20' AND '30';
 ```
@@ -463,7 +466,7 @@ Response:
 ### Handling Schema Changes
 
 1. **Let System Merge**: Allow automatic preservation of customizations
-2. **Review Conflicts**: Check _state="conflict" filters after updates
+2. **Review Conflicts**: Check \_state="conflict" filters after updates
 3. **Plan Migrations**: Document how to handle type changes
 4. **Test Thoroughly**: Verify filters still work with new data
 
@@ -566,11 +569,11 @@ Define filter relationships:
       child: "city",
       type: "values", // Filter city values based on country
       mapping: {
-        "USA": ["New York", "Los Angeles", "Chicago"],
-        "UK": ["London", "Manchester", "Birmingham"]
-      }
-    }
-  ]
+        USA: ["New York", "Los Angeles", "Chicago"],
+        UK: ["London", "Manchester", "Birmingham"],
+      },
+    },
+  ];
 }
 ```
 
@@ -586,9 +589,9 @@ Create filters from multiple fields:
       label: "Full Name",
       fields: ["firstName", "lastName"],
       operator: "concat",
-      searchable: true
-    }
-  ]
+      searchable: true,
+    },
+  ];
 }
 ```
 
@@ -605,6 +608,7 @@ The dynamic filter system provides:
 - **Real-time validation** for data integrity
 
 Key principles:
+
 1. Filters are generated automatically but never forced on users
 2. Editors decide which filters are exposed and how they appear
 3. Manual customizations are preserved when schemas evolve

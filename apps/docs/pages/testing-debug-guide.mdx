@@ -1,11 +1,13 @@
 # Test Debugging Guide
 
 ## Overview
+
 Tests are configured with minimal logging by default for clean output. When debugging is needed, there's a simple, unified approach using the standard `LOG_LEVEL` environment variable.
 
 ## Quick Debugging Commands
 
 ### 1. Enable Verbose Test Logging
+
 ```bash
 # Enable detailed logging and verbose reporter (recommended)
 pnpm test:debug
@@ -18,12 +20,14 @@ LOG_LEVEL=debug pnpm test tests/path/to/specific.test.ts
 ```
 
 ### 2. Run Tests with Maximum Verbosity
+
 ```bash
 # Full verbose output with reporter details
 cd apps/web && LOG_LEVEL=debug vitest run --reporter=verbose tests/path/to/test.ts
 ```
 
 ### 3. Watch Mode for Development
+
 ```bash
 # Watch tests with debugging enabled
 LOG_LEVEL=debug pnpm test:watch
@@ -33,16 +37,17 @@ LOG_LEVEL=debug pnpm test:watch
 
 The system uses a single `LOG_LEVEL` environment variable for all logging across development, production, and tests:
 
-| Environment | Default Level | Override | Effect |
-|-------------|---------------|----------|---------|
-| **Development** | `debug` | `LOG_LEVEL=info` | All logs visible by default |
-| **Production** | `info` | `LOG_LEVEL=error` | Info+ logs visible by default |  
-| **Tests** | `silent` | `LOG_LEVEL=debug` | No logs unless explicitly enabled |
+| Environment     | Default Level | Override          | Effect                            |
+| --------------- | ------------- | ----------------- | --------------------------------- |
+| **Development** | `debug`       | `LOG_LEVEL=info`  | All logs visible by default       |
+| **Production**  | `info`        | `LOG_LEVEL=error` | Info+ logs visible by default     |
+| **Tests**       | `silent`      | `LOG_LEVEL=debug` | No logs unless explicitly enabled |
 
 ### Available Log Levels
+
 - `silent` - No logs
 - `error` - Only errors
-- `warn` - Warnings and errors  
+- `warn` - Warnings and errors
 - `info` - Info, warnings, and errors
 - `debug` - All logs including debug info
 - `trace` - Maximum verbosity
@@ -51,36 +56,40 @@ The system uses a single `LOG_LEVEL` environment variable for all logging across
 
 1. **Payload Startup Logs**: Email adapter warnings, migration info, sharp warnings, etc.
 2. **Application Logs**: All pino logger output from the application (database operations, seeding, etc.)
-3. **Test Setup Details**: Test environment creation, cleanup operations 
+3. **Test Setup Details**: Test environment creation, cleanup operations
 4. **Database Operations**: Table truncation, seeding operations
 
 ## Default Behavior (No Debug Flags)
 
 - **All logs**: Suppressed (level: "silent")
-- **Test output**: Only test results and failures  
+- **Test output**: Only test results and failures
 - **Node.js warnings**: Suppressed via `NODE_OPTIONS="--no-warnings"`
 
 ## Common Debugging Scenarios
 
 ### Database Issues
+
 ```bash
 # See database operations and seeding
 LOG_LEVEL=debug pnpm test tests/integration/services/seed-config.test.ts
 ```
 
-### Import/Processing Issues  
+### Import/Processing Issues
+
 ```bash
 # Debug import job processing
 LOG_LEVEL=debug pnpm test tests/integration/import/
 ```
 
 ### Payload Configuration Issues
+
 ```bash
 # See Payload startup logs (email adapter, sharp warnings, migration info)
 LOG_LEVEL=debug pnpm test tests/integration/
 ```
 
 ### Application Logic Issues
+
 ```bash
 # See all application logger output
 LOG_LEVEL=debug pnpm test tests/integration/
@@ -94,7 +103,7 @@ The same `LOG_LEVEL` variable works consistently across all environments:
 # Development server with debug logs
 LOG_LEVEL=debug pnpm dev
 
-# Tests with debug logs  
+# Tests with debug logs
 LOG_LEVEL=debug pnpm test
 
 # Production with error-only logs

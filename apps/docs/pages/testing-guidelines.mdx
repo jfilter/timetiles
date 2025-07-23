@@ -6,44 +6,44 @@ This document outlines the conventions and practices for writing tests within th
 
 Unit and integration tests focus on individual components or small groups of components, ensuring their correct functionality in isolation or with minimal dependencies.
 
-*   **Naming Convention:** Test files for unit and integration tests should follow the `*.test.ts` naming convention.
-    *   **Examples:** `my-component.test.ts`, `user-service.integration.test.ts`
+- **Naming Convention:** Test files for unit and integration tests should follow the `*.test.ts` naming convention.
+  - **Examples:** `my-component.test.ts`, `user-service.integration.test.ts`
 
-*   **Location:** These test files are primarily located within the `apps/web/__tests__/` directory. They should generally mirror the directory structure of the code they are testing to make them easy to find and manage.
-    *   **Example:** If you are testing `apps/web/src/services/UserService.ts`, its tests would be in `apps/web/__tests__/services/UserService.test.ts`.
+- **Location:** These test files are primarily located within the `apps/web/__tests__/` directory. They should generally mirror the directory structure of the code they are testing to make them easy to find and manage.
+  - **Example:** If you are testing `apps/web/src/services/UserService.ts`, its tests would be in `apps/web/__tests__/services/UserService.test.ts`.
 
-*   **Framework:** [Vitest](https://vitest.dev/) is the testing framework used for unit and integration tests.
+- **Framework:** [Vitest](https://vitest.dev/) is the testing framework used for unit and integration tests.
 
-*   **Running Tests:**
-    *   To run all unit/integration tests: `pnpm test` (from `apps/web` directory)
-    *   To run tests in watch mode: `pnpm test:watch`
-    *   To run tests with verbose output: `pnpm test:verbose`
-    *   To generate coverage reports: `pnpm test:coverage`
+- **Running Tests:**
+  - To run all unit/integration tests: `pnpm test` (from `apps/web` directory)
+  - To run tests in watch mode: `pnpm test:watch`
+  - To run tests with verbose output: `pnpm test:verbose`
+  - To generate coverage reports: `pnpm test:coverage`
 
 ## 2. End-to-End (E2E) Tests
 
 End-to-end tests simulate real user scenarios to ensure that the entire application flow works as expected, from the user interface down to the database.
 
-*   **Naming Convention:** E2E test files should follow the `*.spec.ts` naming convention.
-    *   **Examples:** `login.spec.ts`, `explore-map.spec.ts`
+- **Naming Convention:** E2E test files should follow the `*.spec.ts` naming convention.
+  - **Examples:** `login.spec.ts`, `explore-map.spec.ts`
 
-*   **Location:** E2E test files are located in the `apps/web/e2e/specs/` directory.
+- **Location:** E2E test files are located in the `apps/web/e2e/specs/` directory.
 
-*   **Framework:** [Playwright](https://playwright.dev/) is the framework used for end-to-end testing.
+- **Framework:** [Playwright](https://playwright.dev/) is the framework used for end-to-end testing.
 
-*   **Running Tests:**
-    *   To run all E2E tests: `pnpm test:e2e` (from `apps/web` directory)
-    *   To run E2E tests with the UI mode: `pnpm test:e2e:ui`
-    *   To run E2E tests in headed mode (browser visible): `pnpm test:e2e:headed`
-    *   To debug E2E tests: `pnpm test:e2e:debug`
-    *   To show the Playwright test report: `pnpm test:e2e:report`
+- **Running Tests:**
+  - To run all E2E tests: `pnpm test:e2e` (from `apps/web` directory)
+  - To run E2E tests with the UI mode: `pnpm test:e2e:ui`
+  - To run E2E tests in headed mode (browser visible): `pnpm test:e2e:headed`
+  - To debug E2E tests: `pnpm test:e2e:debug`
+  - To show the Playwright test report: `pnpm test:e2e:report`
 
 ## 3. General Testing Practices
 
-*   **Test Coverage:** Strive for good test coverage, especially for critical business logic and complex components.
-*   **Clear Test Names:** Write descriptive test names that clearly indicate what the test is verifying.
-*   **Arrange-Act-Assert (AAA):** Structure your tests using the AAA pattern:
-    *   **Arrange:** Set up the test data and environment.
-    *   **Act:** Perform the action being tested.
-    *   **Assert:** Verify the expected outcome.
-*   **Mocking and Stubbing:** Use mocking and stubbing appropriately to isolate units under test and control external dependencies.
+- **Test Coverage:** Strive for good test coverage, especially for critical business logic and complex components.
+- **Clear Test Names:** Write descriptive test names that clearly indicate what the test is verifying.
+- **Arrange-Act-Assert (AAA):** Structure your tests using the AAA pattern:
+  - **Arrange:** Set up the test data and environment.
+  - **Act:** Perform the action being tested.
+  - **Assert:** Verify the expected outcome.
+- **Mocking and Stubbing:** Use mocking and stubbing appropriately to isolate units under test and control external dependencies.
