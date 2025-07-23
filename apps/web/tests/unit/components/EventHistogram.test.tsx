@@ -1,6 +1,6 @@
 import { screen, cleanup, waitFor, act } from "@testing-library/react";
 import { renderWithProviders } from "../../setup/test-utils";
-import { EventHistogram } from "../../../components/EventHistogram";
+import { EventHistogram } from "../../../components/event-histogram";
 
 // Mock next-themes is handled by ThemeProvider in test-utils
 

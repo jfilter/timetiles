@@ -2,8 +2,8 @@ import { notFound } from "next/navigation";
 import { getPayload } from "payload";
 import React from "react";
 
-import { PageLayout } from "@/components/PageLayout";
-import { RichText } from "@/components/RichText";
+import { PageLayout } from "@/components/page-layout";
+import { RichText } from "@/components/rich-text";
 import config from "@/payload.config";
 
 export default async function Page() {

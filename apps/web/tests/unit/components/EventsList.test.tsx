@@ -1,5 +1,5 @@
 import { renderWithProviders, screen } from "../../setup/test-utils";
-import { EventsList } from "@/components/EventsList";
+import { EventsList } from "@/components/events-list";
 import type { Event } from "@/payload-types";
 
 // Create realistic event data that matches actual Payload structure

@@ -11,8 +11,8 @@
 import {
   TestEnvironmentBuilder,
   type TestEnvironment,
-} from "../../setup/TestEnvironmentBuilder";
-import { TestDataBuilder } from "../../utils/TestDataBuilder";
+} from "../../setup/test-environment-builder";
+import { TestDataBuilder } from "../../utils/test-data-builder";
 import {
   GeospatialTestHelper,
   TEST_COORDINATES,

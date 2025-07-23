@@ -427,7 +427,7 @@ describe.sequential("Import API Endpoints", () => {
     it("should enforce rate limits for unauthenticated users", async () => {
       // Test rate limiting behavior by directly testing the service
       const { RateLimitService, RATE_LIMITS } = await import(
-        "../../../lib/services/RateLimitService"
+        "../../../lib/services/rate-limit-service"
       );
       const rateLimitService = new RateLimitService(payload);
 

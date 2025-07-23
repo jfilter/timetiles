@@ -47,7 +47,7 @@ const mockNominatimGeocoder = {
 import {
   GeocodingService,
   GeocodingError,
-} from "../../../lib/services/geocoding/GeocodingService";
+} from "../../../lib/services/geocoding/geocoding-service";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
 describe("GeocodingService", () => {

@@ -1,5 +1,5 @@
 import { render, screen, cleanup } from "@testing-library/react";
-import { DatasetBarChart } from "../../../components/DatasetBarChart";
+import { DatasetBarChart } from "../../../components/dataset-bar-chart";
 import type { Event, Dataset, Catalog } from "../../../payload-types";
 
 // Mock next-themes

@@ -3,8 +3,8 @@ import type { Where } from "payload";
 
 import config from "../../payload.config";
 import { createLogger, logError, logPerformance } from "../logger";
-import { DatabaseOperations } from "./DatabaseOperations";
-import { RelationshipResolver } from "./RelationshipResolver";
+import { DatabaseOperations } from "./database-operations";
+import { RelationshipResolver } from "./relationship-resolver";
 import { getDependencyOrder } from "./relationship-config";
 import {
   getCollectionConfig,

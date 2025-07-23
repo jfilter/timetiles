@@ -9,8 +9,8 @@ import {
 } from "@workspace/ui/components/select";
 import { useState } from "react";
 
-import { DatasetBarChart } from "./DatasetBarChart";
-import { EventHistogram } from "./EventHistogram";
+import { DatasetBarChart } from "./dataset-bar-chart";
+import { EventHistogram } from "./event-histogram";
 import type { Event, Dataset, Catalog } from "../payload-types";
 
 interface ChartSectionProps {

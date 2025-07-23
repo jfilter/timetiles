@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 
-import { useTheme } from "../lib/hooks/useTheme";
+import { useTheme } from "../lib/hooks/use-theme";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();

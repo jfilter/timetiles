@@ -4,16 +4,16 @@ import { postgresAdapter } from "@payloadcms/db-postgres";
 import sharp from "sharp";
 
 // Import collections
-import Catalogs from "./lib/collections/Catalogs";
-import Datasets from "./lib/collections/Datasets";
-import Imports from "./lib/collections/Imports";
-import Events from "./lib/collections/Events";
-import Users from "./lib/collections/Users";
-import Media from "./lib/collections/Media";
-import LocationCache from "./lib/collections/LocationCache";
-import GeocodingProviders from "./lib/collections/GeocodingProviders";
-import { MainMenu } from "./lib/collections/MainMenu";
-import { Pages } from "./lib/collections/Pages";
+import Catalogs from "./lib/collections/catalogs";
+import Datasets from "./lib/collections/datasets";
+import Imports from "./lib/collections/imports";
+import Events from "./lib/collections/events";
+import Users from "./lib/collections/users";
+import Media from "./lib/collections/media";
+import LocationCache from "./lib/collections/location-cache";
+import GeocodingProviders from "./lib/collections/geocoding-providers";
+import { MainMenu } from "./lib/collections/main-menu";
+import { Pages } from "./lib/collections/pages";
 
 // Import job definitions
 import {

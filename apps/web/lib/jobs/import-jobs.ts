@@ -15,9 +15,9 @@ import type {
   EventsSelect,
 } from "../../payload-types";
 import { createJobLogger, logError, logPerformance } from "../logger";
-import { GeocodingService } from "../services/geocoding/GeocodingService";
-import { CoordinateValidator } from "../services/import/CoordinateValidator";
-import { GeoLocationDetector } from "../services/import/GeoLocationDetector";
+import { GeocodingService } from "../services/geocoding/geocoding-service";
+import { CoordinateValidator } from "../services/import/coordinate-validator";
+import { GeoLocationDetector } from "../services/import/geo-location-detector";
 
 // Enhanced job payload types using Payload task types
 interface FileParsingJobPayload extends TaskFileParsing {

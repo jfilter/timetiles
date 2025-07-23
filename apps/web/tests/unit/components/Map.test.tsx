@@ -1,5 +1,5 @@
 import { renderWithProviders } from "../../setup/test-utils";
-import { Map } from "@/components/Map";
+import { Map } from "@/components/map";
 import { createMapEvents } from "../../mocks";
 
 describe("Map", () => {

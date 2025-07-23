@@ -1,4 +1,4 @@
-import { CoordinateValidator } from "../../../lib/services/import/CoordinateValidator";
+import { CoordinateValidator } from "../../../lib/services/import/coordinate-validator";
 
 describe("CoordinateValidator", () => {
   let validator: CoordinateValidator;

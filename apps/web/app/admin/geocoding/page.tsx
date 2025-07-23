@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 import React from "react";
 
-import { GeocodingTestPanel } from "../../../lib/components/GeocodingTestPanel";
-import { ProviderPriorityList } from "../../../lib/components/ProviderPriorityList";
+import { GeocodingTestPanel } from "../../../lib/components/geocoding-test-panel";
+import { ProviderPriorityList } from "../../../lib/components/provider-priority-list";
 import config from "../../../payload.config";
 
 // Force dynamic rendering to prevent build-time database queries
@@ -34,7 +34,7 @@ async function testGeocodingConfiguration(address: string) {
 
   // Import the geocoding service
   const { GeocodingService } = await import(
-    "../../../lib/services/geocoding/GeocodingService"
+    "../../../lib/services/geocoding/geocoding-service"
   );
 
   const service = new GeocodingService(payload);

@@ -21,7 +21,7 @@ import { writeFile } from "fs/promises";
 import * as XLSX from "xlsx";
 
 // Mock GeocodingService to avoid real HTTP calls
-vi.mock("../../../lib/services/geocoding/GeocodingService", () => {
+vi.mock("../../../lib/services/geocoding/geocoding-service", () => {
   return {
     GeocodingService: vi.fn().mockImplementation(() => ({
       geocode: vi.fn().mockResolvedValue({

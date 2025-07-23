@@ -1,5 +1,5 @@
 import { renderWithProviders, screen, userEvent } from "../../setup/test-utils";
-import { EventFilters } from "@/components/EventFilters";
+import { EventFilters } from "@/components/event-filters";
 import {
   createMockCatalogs,
   createMockDatasets,

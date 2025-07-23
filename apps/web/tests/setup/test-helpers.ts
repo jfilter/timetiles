@@ -10,16 +10,16 @@ import { verifyDatabaseSchema } from "./verify-schema";
 import { logger } from "@/lib/logger";
 
 // Import collections
-import Catalogs from "@/lib/collections/Catalogs";
-import Datasets from "@/lib/collections/Datasets";
-import Imports from "@/lib/collections/Imports";
-import Events from "@/lib/collections/Events";
-import Users from "@/lib/collections/Users";
-import Media from "@/lib/collections/Media";
-import LocationCache from "@/lib/collections/LocationCache";
-import GeocodingProviders from "@/lib/collections/GeocodingProviders";
-import { Pages } from "@/lib/collections/Pages";
-import { MainMenu } from "@/lib/collections/MainMenu";
+import Catalogs from "@/lib/collections/catalogs";
+import Datasets from "@/lib/collections/datasets";
+import Imports from "@/lib/collections/imports";
+import Events from "@/lib/collections/events";
+import Users from "@/lib/collections/users";
+import Media from "@/lib/collections/media";
+import LocationCache from "@/lib/collections/location-cache";
+import GeocodingProviders from "@/lib/collections/geocoding-providers";
+import { Pages } from "@/lib/collections/pages";
+import { MainMenu } from "@/lib/collections/main-menu";
 import {
   fileParsingJob,
   batchProcessingJob,
@@ -116,7 +116,7 @@ export async function createIsolatedTestEnvironment(): Promise<{
 
     // Initialize relationship resolver with the test payload instance
     const { RelationshipResolver } = await import(
-      "../../lib/seed/RelationshipResolver"
+      "../../lib/seed/relationship-resolver"
     );
     (seedManager as any).relationshipResolver = new RelationshipResolver(
       payload,
@@ -124,7 +124,7 @@ export async function createIsolatedTestEnvironment(): Promise<{
 
     // Initialize database operations with the test payload instance
     const { DatabaseOperations } = await import(
-      "../../lib/seed/DatabaseOperations"
+      "../../lib/seed/database-operations"
     );
     (seedManager as any).databaseOperations = new DatabaseOperations(payload);
 

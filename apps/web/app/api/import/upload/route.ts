@@ -16,7 +16,7 @@ import {
   getRateLimitService,
   getClientIdentifier,
   RATE_LIMITS,
-} from "../../../../lib/services/RateLimitService";
+} from "../../../../lib/services/rate-limit-service";
 import type { Catalog, Dataset, Import, User } from "../../../../payload-types";
 
 // Type for creating new import records, excluding auto-generated fields

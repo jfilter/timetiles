@@ -2,7 +2,7 @@ import { getPayload } from "payload";
 
 import type { MainMenu } from "../payload-types";
 import config from "../payload.config";
-import { ClientConditionalTopMenuBar } from "./ClientConditionalTopMenuBar";
+import { ClientConditionalTopMenuBar } from "./client-conditional-top-menu-bar";
 
 async function getMainMenu(): Promise<MainMenu> {
   const payload = await getPayload({ config });

@@ -46,19 +46,19 @@ beforeAll(async () => {
     const { migrations } = await import("../../migrations");
 
     // Import all collections to ensure proper migration
-    const Catalogs = (await import("../../lib/collections/Catalogs")).default;
-    const Datasets = (await import("../../lib/collections/Datasets")).default;
-    const Imports = (await import("../../lib/collections/Imports")).default;
-    const Events = (await import("../../lib/collections/Events")).default;
-    const Users = (await import("../../lib/collections/Users")).default;
-    const Media = (await import("../../lib/collections/Media")).default;
-    const LocationCache = (await import("../../lib/collections/LocationCache"))
+    const Catalogs = (await import("../../lib/collections/catalogs")).default;
+    const Datasets = (await import("../../lib/collections/datasets")).default;
+    const Imports = (await import("../../lib/collections/imports")).default;
+    const Events = (await import("../../lib/collections/events")).default;
+    const Users = (await import("../../lib/collections/users")).default;
+    const Media = (await import("../../lib/collections/media")).default;
+    const LocationCache = (await import("../../lib/collections/location-cache"))
       .default;
     const GeocodingProviders = (
-      await import("../../lib/collections/GeocodingProviders")
+      await import("../../lib/collections/geocoding-providers")
     ).default;
-    const { Pages } = await import("../../lib/collections/Pages");
-    const { MainMenu } = await import("../../lib/collections/MainMenu");
+    const { Pages } = await import("../../lib/collections/pages");
+    const { MainMenu } = await import("../../lib/collections/main-menu");
     const {
       fileParsingJob,
       batchProcessingJob,

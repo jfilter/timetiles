@@ -1,4 +1,4 @@
-import { GeoLocationDetector } from "../../../lib/services/import/GeoLocationDetector";
+import { GeoLocationDetector } from "../../../lib/services/import/geo-location-detector";
 
 describe("GeoLocationDetector", () => {
   let detector: GeoLocationDetector;

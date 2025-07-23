@@ -9,7 +9,7 @@ import {
   getRateLimitService,
   getClientIdentifier,
   RATE_LIMITS,
-} from "../../../../../lib/services/RateLimitService";
+} from "../../../../../lib/services/rate-limit-service";
 import type { Import } from "../../../../../payload-types";
 
 // Use Payload types directly instead of custom interfaces

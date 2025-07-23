@@ -14,20 +14,20 @@ import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { migrations } from "@/migrations";
 import { truncateAllTables } from "./database-setup";
 import { SeedManager } from "@/lib/seed/index";
-import { RelationshipResolver } from "@/lib/seed/RelationshipResolver";
+import { RelationshipResolver } from "@/lib/seed/relationship-resolver";
 import { createLogger } from "@/lib/logger";
 
 // Import collections
-import Catalogs from "@/lib/collections/Catalogs";
-import Datasets from "@/lib/collections/Datasets";
-import Imports from "@/lib/collections/Imports";
-import Events from "@/lib/collections/Events";
-import Users from "@/lib/collections/Users";
-import Media from "@/lib/collections/Media";
-import LocationCache from "@/lib/collections/LocationCache";
-import GeocodingProviders from "@/lib/collections/GeocodingProviders";
-import { Pages } from "@/lib/collections/Pages";
-import { MainMenu } from "@/lib/collections/MainMenu";
+import Catalogs from "@/lib/collections/catalogs";
+import Datasets from "@/lib/collections/datasets";
+import Imports from "@/lib/collections/imports";
+import Events from "@/lib/collections/events";
+import Users from "@/lib/collections/users";
+import Media from "@/lib/collections/media";
+import LocationCache from "@/lib/collections/location-cache";
+import GeocodingProviders from "@/lib/collections/geocoding-providers";
+import { Pages } from "@/lib/collections/pages";
+import { MainMenu } from "@/lib/collections/main-menu";
 import {
   fileParsingJob,
   batchProcessingJob,
@@ -313,7 +313,7 @@ export class TestEnvironmentBuilder {
 
       // Initialize database operations
       const { DatabaseOperations } = await import(
-        "../../lib/seed/DatabaseOperations"
+        "../../lib/seed/database-operations"
       );
       (seedManager as any).databaseOperations = new DatabaseOperations(payload);
 

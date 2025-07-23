@@ -13,7 +13,7 @@ import {
   getRateLimitService,
   getClientIdentifier,
   RATE_LIMITS,
-} from "../../../lib/services/RateLimitService";
+} from "../../../lib/services/rate-limit-service";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
 describe.sequential("RateLimitService", () => {

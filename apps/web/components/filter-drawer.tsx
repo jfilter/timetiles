@@ -3,7 +3,7 @@
 import { cn } from "@workspace/ui/lib/utils";
 
 import type { Catalog, Dataset } from "../payload-types";
-import { EventFilters } from "./EventFilters";
+import { EventFilters } from "./event-filters";
 
 interface FilterDrawerProps {
   catalogs: Catalog[];
