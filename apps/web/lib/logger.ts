@@ -6,7 +6,10 @@ const isProduction = process.env.NODE_ENV === "production";
 
 // Define log level based on environment
 const getLogLevel = () => {
-  if (isTest) return "error"; // Only show errors in test
+  if (isTest) {
+    // In tests, default to silent unless LOG_LEVEL is explicitly set
+    return process.env.LOG_LEVEL || "silent";
+  }
   if (isProduction) return "info";
   return "debug"; // Show all logs in development
 };
