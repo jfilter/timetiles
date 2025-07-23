@@ -7,7 +7,10 @@ import {
   afterAll,
   beforeEach,
 } from "vitest";
-import { createIsolatedTestEnvironment, createTestId } from "../../setup/test-helpers";
+import {
+  createIsolatedTestEnvironment,
+  createTestId,
+} from "../../setup/test-helpers";
 
 describe("Isolated Seed System Test Example", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;

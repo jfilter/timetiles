@@ -24,31 +24,31 @@ import * as XLSX from "xlsx";
 vi.mock("../../../lib/services/geocoding/GeocodingService", () => {
   return {
     GeocodingService: vi.fn().mockImplementation(() => ({
-        geocode: vi.fn().mockResolvedValue({
-          latitude: 37.7749,
-          longitude: -122.4194,
-          confidence: 0.9,
-          provider: "google",
-          normalizedAddress: "123 Main St, San Francisco, CA 94102, USA",
-          components: {
-            streetNumber: "123",
-            streetName: "Main St",
-            city: "San Francisco",
-            region: "CA",
-            postalCode: "94102",
-            country: "USA",
-          },
-          metadata: {},
-        }),
-        batchGeocode: vi.fn().mockResolvedValue({
-          results: new Map(),
-          summary: {
-            total: 0,
-            successful: 0,
-            failed: 0,
-            cached: 0,
-          },
-        }),
+      geocode: vi.fn().mockResolvedValue({
+        latitude: 37.7749,
+        longitude: -122.4194,
+        confidence: 0.9,
+        provider: "google",
+        normalizedAddress: "123 Main St, San Francisco, CA 94102, USA",
+        components: {
+          streetNumber: "123",
+          streetName: "Main St",
+          city: "San Francisco",
+          region: "CA",
+          postalCode: "94102",
+          country: "USA",
+        },
+        metadata: {},
+      }),
+      batchGeocode: vi.fn().mockResolvedValue({
+        results: new Map(),
+        summary: {
+          total: 0,
+          successful: 0,
+          failed: 0,
+          cached: 0,
+        },
+      }),
     })),
   };
 });

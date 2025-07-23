@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 import { userSeeds } from "../../../lib/seed/seeds/users";
 import { catalogSeeds } from "../../../lib/seed/seeds/catalogs";
@@ -22,6 +22,11 @@ describe.sequential("Seed System", () => {
       console.error("Error during cleanup:", error);
     }
   }, 60000); // 60 second timeout for cleanup
+
+  // Add beforeEach cleanup for proper test isolation like the working test
+  beforeEach(async () => {
+    await testEnv.seedManager.truncate();
+  });
 
   describe.sequential("Seed Data Functions", () => {
     it("should generate user seeds for different environments", () => {
@@ -96,14 +101,13 @@ describe.sequential("Seed System", () => {
 
   describe.sequential("Seeding Operations", () => {
     it("should seed all collections in correct order", async () => {
-      await testEnv.seedManager.truncate();
-
       // Seed all collections at once to ensure dependencies are resolved
+      // Use development environment which has comprehensive test data
       await testEnv.seedManager.seed({
-        environment: "test",
+        environment: "development",
       });
 
-      // Check that all collections have data
+      // Check that all collections have data in dependency order
       const collections = [
         "users",
         "catalogs",
@@ -117,6 +121,7 @@ describe.sequential("Seed System", () => {
           collection,
           limit: 1,
         });
+
         expect(result.docs.length).toBeGreaterThan(0);
       }
     });
