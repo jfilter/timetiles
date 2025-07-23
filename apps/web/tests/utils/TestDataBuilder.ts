@@ -54,8 +54,11 @@ export class EventBuilder extends BaseTestBuilder<Event> {
     super();
     // Set reasonable defaults
     this.data = {
-      title: "Test Event",
-      data: {},
+      id: Math.floor(Math.random() * 10000),
+      dataset: 1,
+      data: {
+        title: "Test Event",
+      },
       location: { latitude: 40.7128, longitude: -74.006 }, // NYC default
       coordinateSource: { type: "manual" },
       createdAt: new Date().toISOString(),
@@ -63,9 +66,21 @@ export class EventBuilder extends BaseTestBuilder<Event> {
     };
   }
 
-  withTitle(title: string): this {
-    this.data.title = title;
+  private ensureDataIsObject(): Record<string, unknown> {
+    if (typeof this.data.data === 'object' && this.data.data !== null && !Array.isArray(this.data.data)) {
+      return this.data.data as Record<string, unknown>;
+    }
+    return {};
+  }
+
+  private setDataProperty(key: string, value: unknown): this {
+    const currentData = this.ensureDataIsObject();
+    this.data.data = { ...currentData, [key]: value };
     return this;
+  }
+
+  withTitle(title: string): this {
+    return this.setDataProperty('title', title);
   }
 
   withCoordinates(lat: number, lng: number): this {
@@ -82,51 +97,27 @@ export class EventBuilder extends BaseTestBuilder<Event> {
     const randomTime = new Date(
       start.getTime() + Math.random() * (end.getTime() - start.getTime()),
     );
-    this.data.data = {
-      ...this.data.data,
-      date: randomTime.toISOString(),
-    };
-    return this;
+    return this.setDataProperty('date', randomTime.toISOString());
   }
 
   withAddress(address: string): this {
-    this.data.data = {
-      ...this.data.data,
-      address,
-    };
-    return this;
+    return this.setDataProperty('address', address);
   }
 
   withDescription(description: string): this {
-    this.data.data = {
-      ...this.data.data,
-      description,
-    };
-    return this;
+    return this.setDataProperty('description', description);
   }
 
   withCategory(category: string): this {
-    this.data.data = {
-      ...this.data.data,
-      category,
-    };
-    return this;
+    return this.setDataProperty('category', category);
   }
 
   withTags(tags: string[]): this {
-    this.data.data = {
-      ...this.data.data,
-      tags,
-    };
-    return this;
+    return this.setDataProperty('tags', tags);
   }
 
   withUrl(url: string): this {
-    this.data.data = {
-      ...this.data.data,
-      url,
-    };
-    return this;
+    return this.setDataProperty('url', url);
   }
 
   nearLocation(centerLat: number, centerLng: number, radiusKm: number): this {
@@ -169,7 +160,8 @@ export class EventBuilder extends BaseTestBuilder<Event> {
     };
 
     const presetData = presets[preset];
-    this.data.data = { ...this.data.data, ...presetData };
+    const currentData = this.ensureDataIsObject();
+    this.data.data = { ...currentData, ...presetData };
     return this;
   }
 
@@ -475,7 +467,7 @@ export class ImportBuilder extends BaseTestBuilder<Import> {
       fileSize: 1024,
       mimeType: "text/csv",
       status: "completed",
-      stage: "file-parsing",
+      processingStage: "file-parsing",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -502,8 +494,8 @@ export class ImportBuilder extends BaseTestBuilder<Import> {
     return this;
   }
 
-  withStage(stage: string): this {
-    this.data.stage = stage;
+  withStage(stage: 'file-parsing' | 'row-processing' | 'geocoding' | 'event-creation' | 'completed'): this {
+    this.data.processingStage = stage;
     return this;
   }
 
@@ -512,10 +504,11 @@ export class ImportBuilder extends BaseTestBuilder<Import> {
     return this;
   }
 
-  withDataset(dataset: number | { id: number }): this {
-    this.data.dataset = dataset;
-    return this;
-  }
+  // Import does not have a dataset field - removing this method
+  // withDataset(dataset: number | { id: number }): this {
+  //   this.data.dataset = dataset;
+  //   return this;
+  // }
 }
 
 /**
@@ -561,7 +554,7 @@ export class TestDataBuilder {
 
         const dataset = this.datasets()
           .withName("Tech Conference Schedule")
-          .withCatalog({ id: 1 })
+          .withCatalog(1)
           .withRealisticSchema("events")
           .build();
 
@@ -571,9 +564,9 @@ export class TestDataBuilder {
           .nearLocation(40.7128, -74.006, 50) // Within 50km of NYC
           .buildMany(10, (event, i) => ({
             ...event,
-            title: `Tech Conference ${i + 1}`,
             data: {
-              ...event.data,
+              ...(typeof event.data === 'object' && event.data !== null && !Array.isArray(event.data) ? event.data : {}),
+              title: `Tech Conference ${i + 1}`,
               address: `${100 + i} Tech Street, New York, NY`,
             },
           }));
@@ -593,7 +586,7 @@ export class TestDataBuilder {
 
         const dataset = this.datasets()
           .withName("Air Quality Measurements")
-          .withCatalog({ id: 1 })
+          .withCatalog(1)
           .withRealisticSchema("sensors")
           .build();
 
@@ -602,9 +595,9 @@ export class TestDataBuilder {
           .withCategory("Sensor Reading")
           .buildMany(50, (event, i) => ({
             ...event,
-            title: `Air Quality Reading ${i + 1}`,
             data: {
-              ...event.data,
+              ...(typeof event.data === 'object' && event.data !== null && !Array.isArray(event.data) ? event.data : {}),
+              title: `Air Quality Reading ${i + 1}`,
               value: Math.random() * 100,
               unit: "AQI",
               sensor_id: `sensor_${Math.floor(i / 10) + 1}`,
@@ -626,7 +619,7 @@ export class TestDataBuilder {
 
         const dataset = this.datasets()
           .withName("GDP Growth Rates")
-          .withCatalog({ id: 1 })
+          .withCatalog(1)
           .withRealisticSchema("economic")
           .build();
 
@@ -635,9 +628,9 @@ export class TestDataBuilder {
           .withCategory("Economic Indicator")
           .buildMany(20, (event, i) => ({
             ...event,
-            title: `GDP Report Q${(i % 4) + 1} 2024`,
             data: {
-              ...event.data,
+              ...(typeof event.data === 'object' && event.data !== null && !Array.isArray(event.data) ? event.data : {}),
+              title: `GDP Report Q${(i % 4) + 1} 2024`,
               indicator: "GDP Growth Rate",
               value: Math.random() * 4 + 1, // 1-5% growth
               period: `Q${(i % 4) + 1} 2024`,

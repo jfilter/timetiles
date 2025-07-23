@@ -91,11 +91,11 @@ describe("Enhanced Testing Infrastructure", () => {
         .withTags(["technology", "networking"])
         .build();
 
-      expect(event.title).toBe("Tech Conference 2024");
+      expect((event.data as Record<string, unknown>).title).toBe("Tech Conference 2024");
       expect(event.location).toEqual({ latitude: 40.7128, longitude: -74.006 });
-      expect(event.data?.category).toBe("Conference");
-      expect(event.data?.tags).toContain("technology");
-      expect(event.data?.address).toBe("123 Tech Street, New York, NY");
+      expect((event.data as Record<string, unknown>).category).toBe("Conference");
+      expect((event.data as Record<string, unknown>).tags).toContain("technology");
+      expect((event.data as Record<string, unknown>).address).toBe("123 Tech Street, New York, NY");
     });
 
     it("should create multiple events with variations", async () => {
@@ -105,18 +105,18 @@ describe("Enhanced Testing Infrastructure", () => {
         .nearLocation(40.7128, -74.006, 10) // Within 10km of NYC
         .buildMany(5, (event, i) => ({
           ...event,
-          title: `Meetup ${i + 1}`,
           data: {
-            ...event.data,
+            ...(typeof event.data === 'object' && event.data !== null && !Array.isArray(event.data) ? event.data : {}),
+            title: `Meetup ${i + 1}`,
             capacity: 50 + i * 10,
           },
         }));
 
       expect(events).toHaveLength(5);
       events.forEach((event, i) => {
-        expect(event.title).toBe(`Meetup ${i + 1}`);
-        expect(event.data?.category).toBe("Meetup");
-        expect(event.data?.capacity).toBe(50 + i * 10);
+        expect((event.data as Record<string, unknown>).title).toBe(`Meetup ${i + 1}`);
+        expect((event.data as Record<string, unknown>).category).toBe("Meetup");
+        expect((event.data as Record<string, unknown>).capacity).toBe(50 + i * 10);
 
         // Check coordinates are near NYC (within 10km)
         expect(event.location).toBeWithinRadius(TEST_COORDINATES.NYC, 10);
@@ -132,7 +132,7 @@ describe("Enhanced Testing Infrastructure", () => {
 
       const dataset = TestDataBuilder.datasets()
         .withName("Tech Conference Schedule")
-        .withCatalog({ id: 1 })
+        .withCatalog(1)
         .withRealisticSchema("events")
         .build();
 
@@ -141,9 +141,9 @@ describe("Enhanced Testing Infrastructure", () => {
       expect(catalog.status).toBe("active");
 
       expect(dataset.name).toBe("Tech Conference Schedule");
-      expect(dataset.catalog).toEqual({ id: 1 });
-      expect(dataset.schema?.properties).toHaveProperty("title");
-      expect(dataset.schema?.properties).toHaveProperty("date");
+      expect(dataset.catalog).toBe(1);
+      expect((dataset.schema as Record<string, unknown>)?.properties).toHaveProperty("title");
+      expect((dataset.schema as Record<string, unknown>)?.properties).toHaveProperty("date");
     });
 
     it("should create realistic test scenarios", async () => {
@@ -161,8 +161,8 @@ describe("Enhanced Testing Infrastructure", () => {
       expect(dataset?.name).toBe("Tech Conference Schedule");
 
       events.forEach((event, i) => {
-        expect(event.title).toBe(`Tech Conference ${i + 1}`);
-        expect(event.data?.category).toBe("Conference");
+        expect((event.data as Record<string, unknown>).title).toBe(`Tech Conference ${i + 1}`);
+        expect((event.data as Record<string, unknown>).category).toBe("Conference");
         expect(event.location).toBeWithinRadius(TEST_COORDINATES.NYC, 50);
       });
     });
