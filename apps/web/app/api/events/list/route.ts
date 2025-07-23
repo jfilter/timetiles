@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
             },
           ];
         }
-      } catch (error) {
+      } catch {
         return NextResponse.json(
           { error: "Invalid bounds format" },
           { status: 400 },

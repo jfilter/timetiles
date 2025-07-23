@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Map, { Source, Layer, Popup, type MapRef } from "react-map-gl/maplibre";
 import type { LngLatBounds } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -22,14 +22,12 @@ export function ClusteredMap({
     latitude: number;
     title: string;
   } | null>(null);
-  const [currentBounds, setCurrentBounds] = useState<LngLatBounds | null>(null);
 
   const handleLoad = useCallback(
     (evt: any) => {
       const map = evt.target as MapRef;
       const bounds = map.getBounds();
       const zoom = map.getZoom();
-      setCurrentBounds(bounds);
 
       logger.debug("Map initialized", {
         bounds: {
@@ -113,43 +111,11 @@ export function ClusteredMap({
     },
   };
 
-  const clusterCountLayer: any = {
-    id: "event-cluster-count",
-    type: "symbol",
-    // source: "all-features",
-    filter: ["==", ["get", "type"], "event-cluster"],
-    layout: {
-      "text-field": ["to-string", ["get", "count"]],
-      "text-size": 16,
-      "text-font": ["Noto Sans Regular"], // Use font from OpenMapTiles
-    },
-    paint: {
-      "text-color": "#ffffff",
-      "text-halo-color": "#000000",
-      "text-halo-width": 1,
-    },
-  };
-
-  // Debug layer to show ALL features
-  const debugLayer: any = {
-    id: "debug-all-features",
-    type: "circle",
-    source: "all-features",
-    paint: {
-      "circle-radius": 25,
-      "circle-color": "#ff0000", // Bright red
-      "circle-opacity": 1.0, // Fully opaque
-      "circle-stroke-width": 5,
-      "circle-stroke-color": "#ffff00", // Yellow border
-    },
-  };
-
   const handleMove = useCallback(
     (evt: any) => {
       const map = evt.target as MapRef;
       const bounds = map.getBounds();
       const zoom = map.getZoom();
-      setCurrentBounds(bounds);
 
       logger.trace("Map viewport changed", {
         zoom,

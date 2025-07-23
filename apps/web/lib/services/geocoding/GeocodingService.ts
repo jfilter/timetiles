@@ -1,4 +1,4 @@
-import NodeGeocoder, { Entry } from "node-geocoder";
+import NodeGeocoder, { type Entry } from "node-geocoder";
 import type { Payload } from "payload";
 import type {
   Config,

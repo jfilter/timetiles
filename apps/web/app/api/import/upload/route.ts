@@ -369,11 +369,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Use global test payload instance if available (for tests)
-    const payload =
-      (global as any).__TEST_PAYLOAD__ || (await getPayload({ config }));
+    await getPayload({ config });
 
     return NextResponse.json({
       success: true,

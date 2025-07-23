@@ -9,8 +9,8 @@
 import type { Payload } from "payload";
 import type { Config } from "../../payload-types";
 import { logger } from "../logger";
+import type { RelationshipConfig } from "./relationship-config";
 import {
-  RelationshipConfig,
   getRelationshipConfig,
   validateRelationshipConfig,
 } from "./relationship-config";

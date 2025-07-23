@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         if (!bounds.north || !bounds.south || !bounds.east || !bounds.west) {
           throw new Error("Invalid bounds format");
         }
-      } catch (error) {
+      } catch {
         return NextResponse.json(
           {
             error:

@@ -1,6 +1,6 @@
 import { getPayload } from "payload";
 import config from "../payload.config";
-import { MainMenu } from "../payload-types";
+import type { MainMenu } from "../payload-types";
 import { ClientConditionalTopMenuBar } from "./ClientConditionalTopMenuBar";
 
 async function getMainMenu(): Promise<MainMenu> {

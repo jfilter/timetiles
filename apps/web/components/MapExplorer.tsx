@@ -39,11 +39,8 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
   // Get UI state from Zustand store
   const isFilterDrawerOpen = useUIStore((state) => state.ui.isFilterDrawerOpen);
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
-  const selectedEvent = useUIStore((state) => state.ui.selectedEvent);
-
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
   const setMapBounds = useUIStore((state) => state.setMapBounds);
-  const setSelectedEvent = useUIStore((state) => state.setSelectedEvent);
 
   // Helper function to get catalog name by ID
   const getCatalogName = (catalogId: string): string => {
@@ -99,7 +96,7 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
       getEast: () => mapBounds.east,
       getWest: () => mapBounds.west,
     } as LngLatBounds;
-  }, [mapBounds?.north, mapBounds?.south, mapBounds?.east, mapBounds?.west]);
+  }, [mapBounds]);
 
   // Create a stable bounds key for comparison
   const boundsKey = useMemo(() => {

@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { MainMenu } from "../payload-types";
+import type { MainMenu } from "../payload-types";
 import { TopMenuBar } from "./TopMenuBar";
 
 interface ClientConditionalTopMenuBarProps {

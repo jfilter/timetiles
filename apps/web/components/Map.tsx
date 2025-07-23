@@ -56,7 +56,7 @@ export function Map({ onBoundsChange, events = [] }: MapProps) {
       map.current?.remove();
       map.current = null;
     };
-  }, []); // Remove onBoundsChange dependency to prevent constant rebuilds
+  }, [onBoundsChange]); // Include onBoundsChange in dependency array
 
   useEffect(() => {
     if (!map.current || !isLoaded) return;

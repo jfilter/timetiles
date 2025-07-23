@@ -279,7 +279,7 @@ export function generateMetadata(
   index: number,
 ): Record<string, unknown> {
   switch (schemaType) {
-    case "government":
+    case "government": {
       const agencies = ["EPA", "DOT", "HUD", "CDC", "FEMA"];
       const departments = [
         "Operations",
@@ -300,8 +300,9 @@ export function generateMetadata(
         reference_number: `REF-2024-${String(index + 1000).padStart(5, "0")}`,
         reported_date: new Date(Date.now() - index * 86400000).toISOString(), // Days ago
       };
+    }
 
-    case "environmental":
+    case "environmental": {
       const measurements = ["PM2.5", "PM10", "NO2", "O3", "SO2", "CO"];
       const units = ["μg/m³", "ppb", "ppm", "mg/m³"];
       const qualities = ["good", "moderate", "poor", "hazardous"];
@@ -316,8 +317,9 @@ export function generateMetadata(
         conditions: ["Clear", "Cloudy", "Rainy", "Foggy"][index % 4],
         timestamp: new Date(Date.now() - index * 3600000).toISOString(), // Hours ago
       };
+    }
 
-    case "academic":
+    case "academic": {
       const institutions = ["MIT", "Stanford", "Harvard", "Yale", "Princeton"];
       const disciplines = [
         "Computer Science",
@@ -344,8 +346,9 @@ export function generateMetadata(
           .split("T")[0],
         sample_size: 100 + index * 50,
       };
+    }
 
-    case "cultural":
+    case "cultural": {
       const venues = [
         "City Theater",
         "Music Hall",
@@ -365,8 +368,9 @@ export function generateMetadata(
         age_restriction: index % 3 === 0 ? "21+" : "All Ages",
         event_date: new Date(Date.now() + index * 86400000).toISOString(), // Days in future
       };
+    }
 
-    case "economic":
+    case "economic": {
       const indicators = [
         "GDP",
         "Unemployment",
@@ -399,6 +403,7 @@ export function generateMetadata(
         source: "Economic Research Bureau",
         confidence: ["high", "medium", "low"][index % 3],
       };
+    }
 
     default:
       return {};

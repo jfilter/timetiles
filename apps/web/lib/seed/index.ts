@@ -535,14 +535,14 @@ export class SeedManager {
     let modifiedData = [...seedData];
 
     // Apply environment-specific options
-    const envSettings = getEnvironmentSettings(environment);
+    getEnvironmentSettings(environment);
 
     // Collection-specific option handling
     switch (collectionName) {
       case "events":
         if (options.useGeographicClustering === false) {
           // Spread events more evenly (simplified approach)
-          modifiedData = modifiedData.map((event, index) => ({
+          modifiedData = modifiedData.map((event) => ({
             ...event,
             location: {
               ...event.location,

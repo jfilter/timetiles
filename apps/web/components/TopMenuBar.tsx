@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { MainMenu } from "../payload-types";
+import type { MainMenu } from "../payload-types";
 import { ThemeToggle } from "./ThemeToggle";
 
 interface TopMenuBarProps {

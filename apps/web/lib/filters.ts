@@ -1,7 +1,7 @@
 import { useQueryState, parseAsString, parseAsArrayOf } from "nuqs";
 import { useMemo } from "react";
+import type { FilterState } from "./store";
 import {
-  FilterState,
   getActiveFilterCount,
   hasActiveFilters,
   removeFilter,

@@ -302,7 +302,7 @@ export class DatabaseOperations {
             const tableStats = await this.getTableStats(collection);
             stats[collection] = { ...stats[collection], ...tableStats };
           }
-        } catch (error) {
+        } catch {
           // Ignore errors getting extended stats
           logger.debug(`Could not get extended stats for ${collection}`);
         }
@@ -413,7 +413,7 @@ export class DatabaseOperations {
               [ids],
             );
             totalDeleted += ids.length;
-          } catch (sqlError) {
+          } catch {
             // Fallback to individual deletes if SQL fails
             logger.debug(
               `SQL batch delete failed for ${collection}, falling back to individual deletes`,
@@ -578,7 +578,7 @@ export class DatabaseOperations {
         hasStats: true,
         statsSample: result,
       };
-    } catch (error) {
+    } catch {
       // Ignore stats errors
       return { hasStats: false };
     }

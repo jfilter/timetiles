@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Catalog, Dataset } from "../payload-types";
 import { EventFilters } from "./EventFilters";
 import { cn } from "@workspace/ui/lib/utils";
@@ -17,7 +15,6 @@ export function FilterDrawer({
   catalogs,
   datasets,
   isOpen,
-  onToggle,
 }: FilterDrawerProps) {
   return (
     <>
