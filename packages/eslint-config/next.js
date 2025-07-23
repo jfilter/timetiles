@@ -1,6 +1,7 @@
 import js from "@eslint/js"
 import pluginNext from "@next/eslint-plugin-next"
 import eslintConfigPrettier from "eslint-config-prettier"
+import pluginJsxA11y from "eslint-plugin-jsx-a11y"
 import pluginReact from "eslint-plugin-react"
 import pluginReactHooks from "eslint-plugin-react-hooks"
 import globals from "globals"
@@ -39,6 +40,7 @@ export default [
   {
     plugins: {
       "react-hooks": pluginReactHooks,
+      "jsx-a11y": pluginJsxA11y,
     },
     settings: { react: { version: "detect" } },
     rules: {
@@ -46,6 +48,12 @@ export default [
       // React scope no longer necessary with new JSX transform.
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
+      
+      // Phase 3: React/Next.js Safety Rules
+      "react-hooks/exhaustive-deps": "error",
+      "@next/next/no-img-element": "error",
+      "jsx-a11y/alt-text": "error",
+      "jsx-a11y/anchor-is-valid": "error",
     },
   },
 ]
