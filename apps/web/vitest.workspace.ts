@@ -7,7 +7,7 @@ export default defineWorkspace([
       globals: true,
       environment: "node",
       include: ["tests/unit/**/*.test.ts"],
-      setupFiles: ["tests/setup/setup-no-db.ts"],
+      setupFiles: ["tests/setup/unit.ts"],
     },
   },
   {

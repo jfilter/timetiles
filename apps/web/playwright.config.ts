@@ -6,7 +6,7 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e",
   /* Global setup to seed database before tests */
-  globalSetup: "./tests/e2e/setup/global-setup.ts",
+  globalSetup: "./tests/e2e/setup/global.ts",
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

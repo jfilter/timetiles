@@ -1,94 +1,11 @@
 import { describe, test, expect } from "vitest";
 import { renderWithProviders, screen, userEvent } from "../../setup/test-utils";
 import { EventFilters } from "@/components/EventFilters";
-import type { Catalog, Dataset } from "@/payload-types";
+import { createMockCatalogs, createMockDatasets, createRichText } from "../../mocks";
+import type { Catalog } from "@/payload-types";
 
-// Real Payload-compatible data structure
-const createRichTextDescription = (text: string) => ({
-  root: {
-    type: "root",
-    children: [
-      {
-        type: "paragraph",
-        version: 1,
-        children: [
-          {
-            type: "text",
-            text,
-            version: 1,
-          },
-        ],
-      },
-    ],
-    direction: "ltr" as const,
-    format: "" as const,
-    indent: 0,
-    version: 1,
-  },
-});
-
-const mockCatalogs: Catalog[] = [
-  {
-    id: 1,
-    name: "Environmental Data",
-    slug: "environmental-data",
-    description: createRichTextDescription("Environmental monitoring data"),
-    status: "active" as const,
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 2,
-    name: "Economic Indicators",
-    slug: "economic-indicators",
-    description: createRichTextDescription("Economic data and indicators"),
-    status: "active" as const,
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-];
-
-const mockDatasets: Dataset[] = [
-  {
-    id: 1,
-    catalog: mockCatalogs[0]!,
-    name: "Air Quality Measurements",
-    slug: "air-quality-measurements",
-    description: createRichTextDescription("Air quality monitoring data"),
-    language: "eng",
-    status: "active" as const,
-    isPublic: true,
-    schema: { type: "object", properties: {} },
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 2,
-    catalog: mockCatalogs[0]!,
-    name: "Water Quality Data",
-    slug: "water-quality-data",
-    description: createRichTextDescription("Water quality measurements"),
-    language: "eng",
-    status: "active" as const,
-    isPublic: true,
-    schema: { type: "object", properties: {} },
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 3,
-    catalog: mockCatalogs[1]!,
-    name: "GDP Growth Rates",
-    slug: "gdp-growth-rates",
-    description: createRichTextDescription("Economic growth data"),
-    language: "eng",
-    status: "active" as const,
-    isPublic: true,
-    schema: { type: "object", properties: {} },
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-];
+const mockCatalogs = createMockCatalogs(2);
+const mockDatasets = createMockDatasets(3);
 
 describe("EventFilters", () => {
   test("renders with all datasets initially when no catalog selected", () => {
@@ -97,14 +14,14 @@ describe("EventFilters", () => {
     );
 
     // Should show all datasets initially (no catalog selected - defaults to "All Catalogs")
-    expect(container).toHaveTextContent("Air Quality Measurements");
-    expect(container).toHaveTextContent("Water Quality Data");
-    expect(container).toHaveTextContent("GDP Growth Rates");
+    expect(container).toHaveTextContent("Test Dataset 1");
+    expect(container).toHaveTextContent("Test Dataset 2");
+    expect(container).toHaveTextContent("Test Dataset 3");
     expect(container).toHaveTextContent("All Catalogs");
   });
 
   test("filters datasets when catalog is selected via URL state", () => {
-    // Test the filtering logic by setting URL state to select Environmental Data catalog (id: 1)
+    // Test the filtering logic by setting URL state to select first catalog
     const searchParams = new URLSearchParams("catalog=1");
 
     const { container } = renderWithProviders(
@@ -112,12 +29,12 @@ describe("EventFilters", () => {
       { searchParams },
     );
 
-    // Should only show Environmental Data datasets (Air Quality and Water Quality)
-    expect(container).toHaveTextContent("Air Quality Measurements");
-    expect(container).toHaveTextContent("Water Quality Data");
+    // Should only show datasets from catalog 1 (datasets 1 and 3)
+    expect(container).toHaveTextContent("Test Dataset 1");
+    expect(container).toHaveTextContent("Test Dataset 3");
 
-    // Should NOT show Economic datasets
-    expect(container).not.toHaveTextContent("GDP Growth Rates");
+    // Should NOT show dataset from catalog 2
+    expect(container).not.toHaveTextContent("Test Dataset 2");
   });
 
   test("shows all datasets when catalog is set to all via URL state", () => {
@@ -130,9 +47,9 @@ describe("EventFilters", () => {
     );
 
     // Should show all datasets
-    expect(container).toHaveTextContent("Air Quality Measurements");
-    expect(container).toHaveTextContent("Water Quality Data");
-    expect(container).toHaveTextContent("GDP Growth Rates");
+    expect(container).toHaveTextContent("Test Dataset 1");
+    expect(container).toHaveTextContent("Test Dataset 2");
+    expect(container).toHaveTextContent("Test Dataset 3");
   });
 
   test("manages dataset selection state correctly", async () => {
@@ -260,7 +177,7 @@ describe("EventFilters", () => {
       id: 99,
       name: "Empty Catalog",
       slug: "empty-catalog",
-      description: createRichTextDescription("Empty catalog"),
+      description: createRichText("Empty catalog"),
       status: "active" as const,
       createdAt: "2024-01-01T00:00:00Z",
       updatedAt: "2024-01-01T00:00:00Z",

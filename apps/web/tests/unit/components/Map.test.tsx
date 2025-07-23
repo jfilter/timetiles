@@ -1,6 +1,7 @@
 import { describe, test, expect, vi } from "vitest";
 import { renderWithProviders } from "../../setup/test-utils";
 import { Map } from "@/components/Map";
+import { createMapEvents } from "../../mocks";
 
 describe("Map", () => {
   test("renders map container with correct structure", () => {
@@ -21,14 +22,7 @@ describe("Map", () => {
   });
 
   test("renders with events", () => {
-    const mockEvents = [
-      {
-        id: "1",
-        title: "Event 1",
-        latitude: 37.7749,
-        longitude: -122.4194,
-      },
-    ];
+    const mockEvents = createMapEvents(1);
 
     renderWithProviders(<Map events={mockEvents} />);
 

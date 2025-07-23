@@ -121,8 +121,5 @@ afterAll(async () => {
   // The next test run will reuse it
 });
 
-// Common mocks
-vi.mock("next/navigation", () => ({
-  redirect: vi.fn(),
-  notFound: vi.fn(),
-}));
+// Import centralized mocks
+import "../mocks/external/next-navigation";
