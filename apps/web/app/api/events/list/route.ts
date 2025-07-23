@@ -1,15 +1,13 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getPayloadHMR } from "@payloadcms/next/utilities";
+import { getPayload } from "payload";
 import type { Where } from "payload";
 import config from "../../../../payload.config";
 import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
-    // Use global test payload instance if available (for tests)
-    const payload =
-      (global as any).__TEST_PAYLOAD__ || (await getPayloadHMR({ config }));
+    const payload = await getPayload({ config });
     const searchParams = request.nextUrl.searchParams;
 
     // Extract parameters

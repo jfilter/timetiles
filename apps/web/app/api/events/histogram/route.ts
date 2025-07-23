@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getPayloadHMR } from "@payloadcms/next/utilities";
+import { getPayload } from "payload";
 import { sql } from "@payloadcms/db-postgres";
 import config from "../../../../payload.config";
 import { logger, logError } from "@/lib/logger";
@@ -17,9 +17,7 @@ export async function GET(request: NextRequest) {
   const granularity = searchParams.get("granularity") || "auto";
 
   try {
-    // Use global test payload instance if available (for tests)
-    const payload =
-      (global as any).__TEST_PAYLOAD__ || (await getPayloadHMR({ config }));
+    const payload = await getPayload({ config });
 
     // Parse bounds if provided
     let bounds = null;
@@ -48,10 +46,10 @@ export async function GET(request: NextRequest) {
     if (endDate) filters.endDate = endDate;
 
     // Check if histogram function exists (force fallback for tests)
-    const isTestMode = !!(global as any).__TEST_PAYLOAD__;
+    const testMode = process.env.NODE_ENV === "test";
     let functionExists = false;
 
-    if (!isTestMode) {
+    if (!testMode) {
       try {
         const functionCheck = await payload.db.drizzle.execute(sql`
           SELECT EXISTS (
@@ -75,7 +73,7 @@ export async function GET(request: NextRequest) {
       counts?: { datasets: number; catalogs: number };
     } = {};
 
-    if (!functionExists || isTestMode) {
+    if (!functionExists || testMode) {
       // Fallback to basic aggregation query
       logger.warn(
         "calculate_event_histogram function not found, using fallback query",

@@ -226,8 +226,7 @@ describe.sequential("Import System Integration Tests", () => {
     testEnv = await createIsolatedTestEnvironment();
     payload = testEnv.payload;
 
-    // Store payload globally for API routes to use in test mode
-    (global as any).__TEST_PAYLOAD__ = payload;
+    // API routes now use getPayload({ config }) directly
   }, 30000);
 
   afterAll(async () => {

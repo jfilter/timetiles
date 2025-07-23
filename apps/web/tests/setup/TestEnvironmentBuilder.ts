@@ -126,8 +126,7 @@ export class TestEnvironmentBuilder {
     const testConfig = this.buildTestConfig(dbUrl, collections);
     const payload = await getPayload({ config: testConfig });
 
-    // Set global test payload for route handlers
-    (global as any).__TEST_PAYLOAD__ = payload;
+    // Payload instances are now created as needed via getPayload({ config })
 
     // Create and configure SeedManager
     const seedManager = new SeedManager();
@@ -386,10 +385,7 @@ export class TestEnvironmentBuilder {
       // Remove from active environments
       TestEnvironmentBuilder.activeEnvironments.delete(testEnv);
 
-      // Clear global test payload
-      if ((global as any).__TEST_PAYLOAD__) {
-        (global as any).__TEST_PAYLOAD__ = undefined;
-      }
+      // Payload cleanup handled automatically by getPayload({ config })
 
       // Clean up temporary directory
       if (testEnv.tempDir && fs.existsSync(testEnv.tempDir)) {

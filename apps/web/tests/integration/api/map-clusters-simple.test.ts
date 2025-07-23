@@ -37,8 +37,7 @@ describe("Map-clusters API test", () => {
         }
       }
 
-      // Set up the global test payload for the route to use
-      (global as any).__TEST_PAYLOAD__ = testEnv.payload;
+      // API routes now use getPayload({ config }) directly
 
       // Create a mock request with bounds parameter
       const url = new URL("http://localhost:3000/api/events/map-clusters");
@@ -77,8 +76,7 @@ describe("Map-clusters API test", () => {
       console.error("API test error:", error);
       throw error;
     } finally {
-      // Clean up global test payload
-      (global as any).__TEST_PAYLOAD__ = undefined;
+      // Payload cleanup handled automatically
     }
   });
 });

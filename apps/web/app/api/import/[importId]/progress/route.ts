@@ -59,9 +59,7 @@ export async function GET(
 
   try {
     logger.debug("Handling progress check request");
-    // Use global test payload instance if available (for tests)
-    const payload =
-      (global as any).__TEST_PAYLOAD__ || (await getPayload({ config }));
+    const payload = await getPayload({ config });
     const resolvedParams = await params;
     const importId = resolvedParams.importId;
 

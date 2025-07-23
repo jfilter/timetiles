@@ -103,8 +103,7 @@ export async function createIsolatedTestEnvironment(): Promise<{
 
   const payload = await getPayload({ config: testConfig });
 
-  // Set global test payload for route handlers to use
-  (global as any).__TEST_PAYLOAD__ = payload;
+  // Payload instances are now created as needed via getPayload({ config })
 
   // Import the real SeedManager class
   const { SeedManager } = await import("../../lib/seed/index");
@@ -133,13 +132,6 @@ export async function createIsolatedTestEnvironment(): Promise<{
   };
 
   const cleanup = async () => {
-    try {
-      if ((global as any).__TEST_PAYLOAD__) {
-        (global as any).__TEST_PAYLOAD__ = undefined;
-      }
-    } catch (error) {
-      logger.warn("Failed to clean up global test payload:", error);
-    }
 
     try {
       if (fs.existsSync(tempDir)) {

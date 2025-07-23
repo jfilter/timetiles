@@ -39,9 +39,7 @@ export async function POST(request: NextRequest) {
 
   try {
     logger.debug("Processing import upload request");
-    // Use global test payload instance if available (for tests)
-    const payload =
-      (global as any).__TEST_PAYLOAD__ || (await getPayload({ config }));
+    const payload = await getPayload({ config });
 
     // Check rate limiting for unauthenticated users
     const clientId = getClientIdentifier(request);
@@ -371,13 +369,12 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    // Use global test payload instance if available (for tests)
     await getPayload({ config });
 
     return NextResponse.json({
       success: true,
       message: "Upload API is working",
-      hasGlobalPayload: !!(global as any).__TEST_PAYLOAD__,
+      testMode: process.env.NODE_ENV === "test",
     });
   } catch (error) {
     return NextResponse.json(

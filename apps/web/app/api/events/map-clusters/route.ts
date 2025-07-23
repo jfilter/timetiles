@@ -1,15 +1,13 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getPayloadHMR } from "@payloadcms/next/utilities";
+import { getPayload } from "payload";
 import { sql } from "@payloadcms/db-postgres";
 import config from "../../../../payload.config";
 import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
-    // Use global test payload instance if available (for tests)
-    const payload =
-      (global as any).__TEST_PAYLOAD__ || (await getPayloadHMR({ config }));
+    const payload = await getPayload({ config });
     const searchParams = request.nextUrl.searchParams;
 
     // Extract parameters
@@ -52,10 +50,10 @@ export async function GET(request: NextRequest) {
     if (endDate) filters.endDate = endDate;
 
     // Check if clustering function exists (force fallback for tests)
-    const isTestMode = !!(global as any).__TEST_PAYLOAD__;
+    const testMode = process.env.NODE_ENV === "test";
     let functionExists = false;
 
-    if (!isTestMode) {
+    if (!testMode) {
       try {
         const functionCheck = await payload.db.drizzle.execute(sql`
           SELECT EXISTS (
@@ -66,7 +64,7 @@ export async function GET(request: NextRequest) {
         functionExists = functionCheck.rows[0]?.exists;
         logger.debug("Clustering function check - exists:", {
           functionExists,
-          isTestMode,
+          testMode,
         });
       } catch (error) {
         logger.warn("Function check failed, using fallback query:", {
@@ -79,11 +77,11 @@ export async function GET(request: NextRequest) {
     }
 
     let result;
-    if (!functionExists || isTestMode) {
+    if (!functionExists || testMode) {
       // Fallback to basic query without clustering
       logger.warn("cluster_events function not found, using fallback query", {
         functionExists,
-        isTestMode,
+        testMode,
       });
 
       result = await payload.db.drizzle.execute(sql`

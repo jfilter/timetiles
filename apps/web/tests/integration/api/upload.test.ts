@@ -17,10 +17,7 @@ import { GET as progressHandler } from "../../../app/api/import/[importId]/progr
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 import fs from "fs";
 
-// Store the payload instance globally for test API routes to use
-declare global {
-  var __TEST_PAYLOAD__: any;
-}
+// API routes now use getPayload({ config }) directly
 
 describe.sequential("Import API Endpoints", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
@@ -32,8 +29,7 @@ describe.sequential("Import API Endpoints", () => {
     testEnv = await createIsolatedTestEnvironment();
     payload = testEnv.payload;
 
-    // Store payload globally for API routes to use in test mode
-    global.__TEST_PAYLOAD__ = payload;
+    // API routes now use getPayload({ config }) directly
   });
 
   afterAll(async () => {
@@ -98,7 +94,7 @@ describe.sequential("Import API Endpoints", () => {
 
       expect(response.status).toBe(200);
       expect(result.success).toBe(true);
-      expect(result.hasGlobalPayload).toBe(true);
+      expect(result.testMode).toBe(true);
     });
 
     const createMockFile = (
