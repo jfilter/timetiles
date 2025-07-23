@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayloadHMR } from "@payloadcms/next/utilities";
 import { sql } from "@payloadcms/db-postgres";
 import config from "../../../../payload.config";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,33 +63,27 @@ export async function GET(request: NextRequest) {
           ) as exists
         `);
         functionExists = functionCheck.rows[0]?.exists;
-        console.log(
-          "Clustering function check - exists:",
+        logger.debug("Clustering function check - exists:", {
           functionExists,
-          "isTestMode:",
           isTestMode,
-        );
+        });
       } catch (error) {
-        console.warn(
-          "Function check failed, using fallback query:",
-          (error as Error).message,
-        );
+        logger.warn("Function check failed, using fallback query:", {
+          error: (error as Error).message,
+        });
         functionExists = false;
       }
     } else {
-      console.log("Test mode detected, using fallback query");
+      logger.debug("Test mode detected, using fallback query");
     }
 
     let result;
     if (!functionExists || isTestMode) {
       // Fallback to basic query without clustering
-      console.warn("cluster_events function not found, using fallback query");
-      console.warn(
-        "functionExists:",
+      logger.warn("cluster_events function not found, using fallback query", {
         functionExists,
-        "isTestMode:",
         isTestMode,
-      );
+      });
 
       result = await payload.db.drizzle.execute(sql`
         SELECT
@@ -144,7 +139,7 @@ export async function GET(request: NextRequest) {
       const isCluster = row.event_count > 1;
 
       if (isCluster) {
-        console.log("Cluster found:", row);
+        logger.debug("Cluster found:", { row });
       }
 
       return {
@@ -169,9 +164,11 @@ export async function GET(request: NextRequest) {
       features: clusters,
     });
   } catch (error) {
-    console.error("Error fetching map clusters:", error as Error);
-    console.error("Error details:", (error as Error).message);
-    console.error("Error stack:", (error as any).stack);
+    logger.error("Error fetching map clusters:", {
+      error: error as Error,
+      message: (error as Error).message,
+      stack: (error as any).stack,
+    });
     return NextResponse.json(
       {
         error: "Failed to fetch map clusters",

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayloadHMR } from "@payloadcms/next/utilities";
 import { sql } from "@payloadcms/db-postgres";
 import config from "../../../../payload.config";
-import { logError } from "@/lib/logger";
+import { logger, logError } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -60,10 +60,9 @@ export async function GET(request: NextRequest) {
         `);
         functionExists = functionCheck.rows[0]?.exists;
       } catch (error) {
-        console.warn(
-          "Function check failed, using fallback query:",
-          (error as Error).message,
-        );
+        logger.warn("Function check failed, using fallback query:", {
+          error: (error as Error).message,
+        });
         functionExists = false;
       }
     }
@@ -77,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     if (!functionExists || isTestMode) {
       // Fallback to basic aggregation query
-      console.warn(
+      logger.warn(
         "calculate_event_histogram function not found, using fallback query",
       );
 

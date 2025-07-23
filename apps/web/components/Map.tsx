@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { logger } from "@/lib/logger";
 
 interface MapProps {
   onBoundsChange?: (bounds: maplibregl.LngLatBounds) => void;
@@ -35,7 +36,7 @@ export function Map({ onBoundsChange, events = [] }: MapProps) {
       });
 
       map.current.on("error", (e) => {
-        console.error("Map error:", e);
+        logger.error("Map error:", e);
       });
 
       map.current.on("webglcontextlost", (e: any) => {
@@ -48,7 +49,7 @@ export function Map({ onBoundsChange, events = [] }: MapProps) {
         }
       });
     } catch (error) {
-      console.error("Failed to initialize map:", error);
+      logger.error("Failed to initialize map:", error);
     }
 
     return () => {

@@ -3,6 +3,7 @@ import { getPayloadHMR } from "@payloadcms/next/utilities";
 import type { Where } from "payload";
 import type { Event } from "../../../payload-types";
 import config from "../../../payload.config";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
           },
         ];
       } catch (error) {
-        console.error("Invalid bounds parameter:", error);
+        logger.error("Invalid bounds parameter:", error);
       }
     }
 
@@ -94,7 +95,7 @@ export async function GET(request: NextRequest) {
         // Skip database-level date filtering - we'll do post-processing instead
         // This allows us to include events with null eventTimestamp and filter by data fields
       } catch (error) {
-        console.error("Error processing date filters:", error);
+        logger.error("Error processing date filters:", error);
         // Skip date filtering if there's an error
       }
     }
@@ -188,7 +189,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(serializedEvents);
   } catch (error) {
-    console.error("Error fetching events:", error);
+    logger.error("Error fetching events:", error);
     return NextResponse.json(
       { error: "Failed to fetch events" },
       { status: 500 },
