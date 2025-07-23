@@ -68,7 +68,7 @@ export function importSeeds(environment: string): ImportSeed[] {
       {
         fileName: "social_media_20240115.xlsx",
         originalName: "Social Media Engagement - January 15, 2024",
-        catalog: "social-media-analytics",
+        catalog: "community-events-portal",
         fileSize: 45600,
         mimeType:
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

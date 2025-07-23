@@ -152,4 +152,48 @@ describe("Seed Data Validation", () => {
       ).toBe(true);
     });
   });
+
+  describe("Relationship Validation", () => {
+    it("should have valid catalog references in imports", () => {
+      const environments = ["development", "production"];
+      
+      environments.forEach((env) => {
+        const catalogs = catalogSeeds(env);
+        const imports = importSeeds(env);
+        const catalogSlugs = catalogs.map((c) => c.slug);
+        
+        imports.forEach((imp) => {
+          expect(catalogSlugs).toContain(imp.catalog);
+        });
+      });
+    });
+
+    it("should have valid catalog references in datasets", () => {
+      const environments = ["development", "production"];
+      
+      environments.forEach((env) => {
+        const catalogs = catalogSeeds(env);
+        const datasets = datasetSeeds(env);
+        const catalogSlugs = catalogs.map((c) => c.slug);
+        
+        datasets.forEach((dataset) => {
+          expect(catalogSlugs).toContain(dataset.catalog);
+        });
+      });
+    });
+
+    it("should have valid dataset references in events", () => {
+      const environments = ["development", "production"];
+      
+      environments.forEach((env) => {
+        const datasets = datasetSeeds(env);
+        const events = eventSeeds(env);
+        const datasetSlugs = datasets.map((d) => d.slug).filter(Boolean);
+        
+        events.forEach((event) => {
+          expect(datasetSlugs).toContain(event.dataset);
+        });
+      });
+    });
+  });
 });
