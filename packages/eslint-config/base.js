@@ -22,6 +22,12 @@ export default [
     rules: {
       "turbo/no-undeclared-env-vars": "warn",
       "prettier/prettier": "error",
+      "no-console": "error",
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unused-vars": "error",
+      "@typescript-eslint/consistent-type-imports": "error",
+      "prefer-const": "error",
+      "no-case-declarations": "error",
     },
   },
   {
