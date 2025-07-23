@@ -6,6 +6,7 @@ import { useFilters } from "../lib/filters";
 import { useUIStore } from "../lib/store";
 import ReactECharts from "echarts-for-react";
 import { useTheme } from "next-themes";
+import { logger } from "@/lib/logger";
 
 interface EventHistogramProps {
   loading?: boolean;
@@ -72,7 +73,7 @@ export function EventHistogram({
           setHistogramData(data.histogram);
         }
       } catch (error) {
-        console.error("Failed to fetch histogram data:", error);
+        logger.error("Failed to fetch histogram data:", error);
       } finally {
         setLoading(false);
       }

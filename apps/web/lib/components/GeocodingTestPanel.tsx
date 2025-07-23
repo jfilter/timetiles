@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Button } from "@workspace/ui/components/button";
+import { logger } from "../logger";
 
 interface TestResult {
   success: boolean;
@@ -41,7 +42,7 @@ export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
       const testResults = await onTest(testAddress);
       setResults(testResults);
     } catch (error) {
-      console.error("Test failed:", error);
+      logger.error("Test failed:", error);
     } finally {
       setTesting(false);
     }

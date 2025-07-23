@@ -231,7 +231,7 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
         }
       } catch (error) {
         if (!abortController.signal.aborted) {
-          console.error("Failed to fetch events:", error);
+          logger.error("Failed to fetch events:", error);
         }
       }
     };

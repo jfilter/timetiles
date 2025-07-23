@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { getPayloadHMR } from "@payloadcms/next/utilities";
 import type { Where } from "payload";
 import config from "../../../../payload.config";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -146,7 +148,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching events list:", error);
+    logger.error("Error fetching events list:", error);
     return NextResponse.json(
       { error: "Failed to fetch events" },
       { status: 500 },
