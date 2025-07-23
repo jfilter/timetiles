@@ -4,6 +4,7 @@ import importPlugin from "eslint-plugin-import"
 import onlyWarn from "eslint-plugin-only-warn"
 import prettierPlugin from "eslint-plugin-prettier"
 import turboPlugin from "eslint-plugin-turbo"
+import unicornPlugin from "eslint-plugin-unicorn"
 import tseslint from "typescript-eslint"
 
 /**
@@ -72,6 +73,7 @@ export default [
       turbo: turboPlugin,
       prettier: prettierPlugin,
       import: importPlugin,
+      unicorn: unicornPlugin,
     },
     rules: {
       "turbo/no-undeclared-env-vars": "error",
@@ -106,6 +108,43 @@ export default [
           "message": "Don't import across app boundaries"
         }]
       }],
+      
+      // File naming convention
+      "unicorn/filename-case": [
+        "error",
+        {
+          case: "kebabCase",
+          ignore: [
+            // Next.js App Router conventions
+            "^page\\.tsx?$",
+            "^layout\\.tsx?$",
+            "^loading\\.tsx?$",
+            "^error\\.tsx?$",
+            "^not-found\\.tsx?$",
+            "^route\\.ts$",
+            "^middleware\\.ts$",
+            "^instrumentation\\.ts$",
+            
+            // Dynamic routes
+            "^\\[[\\w-]+\\]\\.tsx?$",
+            "^\\[\\[\\.\\.\\.\\w+\\]\\]\\.tsx?$",
+            
+            // Configuration files
+            "\\.config\\.(js|ts|mjs)$",
+            
+            // Type declarations
+            "\\.d\\.ts$",
+            
+            // Test files (if you prefer .test.ts over -test.ts)
+            "\\.test\\.tsx?$",
+            "\\.spec\\.tsx?$",
+            
+            // Documentation
+            "^README\\.md$",
+            "^CLAUDE\\.md$",
+          ]
+        }
+      ],
     },
   },
   {
