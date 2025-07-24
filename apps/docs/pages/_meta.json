@@ -1,8 +1,18 @@
 {
   "index": "Introduction",
+  "what-is-timetiles": "What is TimeTiles?",
+  "use-cases": "Use Cases & Examples", 
   "getting-started": "Getting Started",
+  "faq": "FAQ",
+  "---": {
+    "type": "separator"
+  },
+  "architecture": "Architecture & Tech Stack",
   "schema-detection": "Schema Detection",
   "dynamic-filters": "Dynamic Filters",
+  "---2": {
+    "type": "separator"  
+  },
   "commit-guidelines": "Commit Guidelines",
   "roadmap": "Roadmap",
   "testing-guidelines": "Testing Guidelines",

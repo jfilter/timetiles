@@ -1,6 +1,10 @@
 # TimeTiles
 
-Welcome to the TimeTiles monorepo! TimeTiles is a data explorer for data points that have a timestamp and geolocation, along with any number of other metadata attributes. This project is built with Next.js, Payload CMS, and PostgreSQL/PostGIS for spatial data management and content administration.
+Welcome to the TimeTiles monorepo!
+
+**TimeTiles is an open-source platform for creating interactive chronicles of geospatial events.** Designed for journalists, researchers, activists, and the general public, TimeTiles transforms datasets with location, time, and metadata into compelling, explorable stories that anyone can understand.
+
+This project is built with Next.js, Payload CMS, and PostgreSQL/PostGIS for spatial data management and content administration.
 
 This project is funded by the Prototype Fund.
 
@@ -42,6 +46,7 @@ For full documentation, setup instructions, and guides, please visit our documen
 ### Quick Links
 
 - [Development Setup](apps/docs/pages/development/setup.mdx)
+- [Architecture & Tech Stack](apps/docs/pages/architecture.mdx) - Complete technology overview and design decisions
 - [Import System Documentation](apps/web/docs/IMPORT_SYSTEM.md)
 - [API Reference](apps/web/docs/API.md)
 - [Troubleshooting Guide](apps/web/docs/TROUBLESHOOTING.md)

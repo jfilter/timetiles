@@ -1,0 +1,267 @@
+# Architecture & Tech Stack
+
+TimeTiles is built with a modern, scalable tech stack focused on developer experience, performance, and maintainability. This page provides an overview of our architectural decisions and the technologies that power the platform.
+
+## 🏗️ Architecture Overview
+
+TimeTiles follows a **full-stack monorepo architecture** with clear separation of concerns:
+
+- **Frontend**: Next.js app with React for interactive data exploration
+- **Backend**: Payload CMS providing both API and admin interface  
+- **Database**: PostgreSQL with PostGIS for spatial data management
+- **Build System**: Turbo monorepo with shared UI components
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Backend       │    │   Database      │
+│                 │    │                 │    │                 │
+│ • Next.js 15    │◄──►│ • Payload CMS   │◄──►│ • PostgreSQL    │
+│ • React 19      │    │ • Node.js       │    │ • PostGIS       │
+│ • TypeScript    │    │ • TypeScript    │    │ • Spatial Index │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+## 🛠️ Core Technologies
+
+### Frontend Framework
+
+**Next.js 15 with Turbopack**
+- **Why**: Full-stack React framework with excellent DX and performance
+- **Features**: App Router, Server Components, Turbopack bundler for faster builds
+- **Usage**: Powers the main web application and all user-facing interfaces
+
+**React 19**  
+- **Why**: Latest React with improved concurrent features and server components
+- **Features**: Enhanced Suspense, automatic batching, server components
+- **Usage**: Component library for all UI elements
+
+### State Management
+
+**React Query (TanStack Query)**
+- **Why**: Intelligent server state management with automatic caching
+- **Features**: Background refetching, request deduplication, optimistic updates
+- **Usage**: All API calls, data fetching, and server state synchronization
+- **Location**: `/apps/web/lib/hooks/use-events-queries.ts`
+
+**Zustand**
+- **Why**: Lightweight client state management without boilerplate
+- **Features**: Simple API, TypeScript support, devtools integration
+- **Usage**: UI state (modals, filters, map bounds)
+- **Location**: `/apps/web/lib/store.ts`
+
+**nuqs (Next.js URL State)**
+- **Why**: URL-first state management for filters and navigation
+- **Features**: Type-safe URL parameters, server/client sync
+- **Usage**: Search filters, pagination, shareable URLs
+- **Location**: `/apps/web/lib/filters.ts`
+
+### Backend & CMS
+
+**Payload CMS 3**
+- **Why**: Headless CMS with excellent TypeScript support and admin UI
+- **Features**: Auto-generated types, flexible collections, built-in auth
+- **Usage**: Content management, API generation, admin interface
+- **Location**: `/apps/web/payload.config.ts`
+
+**PostgreSQL 17 + PostGIS 3.5**
+- **Why**: Robust relational database with advanced spatial capabilities
+- **Features**: ACID compliance, spatial indexing, complex queries
+- **Usage**: Primary data store, geospatial queries, event storage
+- **Setup**: Automated via Docker with spatial extensions
+
+### Data Visualization
+
+**MapLibre GL JS**
+- **Why**: High-performance WebGL-based mapping library
+- **Features**: Vector tiles, smooth interactions, clustering
+- **Usage**: Interactive map visualization, event clustering
+- **Location**: `/apps/web/components/clustered-map.tsx`
+
+**Apache ECharts**
+- **Why**: Comprehensive charting library with React integration
+- **Features**: Interactive charts, theming, responsive design
+- **Usage**: Histogram charts, data analysis visualizations
+- **Location**: `/apps/web/components/event-histogram.tsx`
+
+### Development Tools
+
+**TypeScript**
+- **Why**: Type safety, better DX, catch errors at compile time
+- **Features**: Strict mode, auto-generated Payload types
+- **Usage**: Entire codebase with strict type checking
+
+**Turbo (Monorepo)**
+- **Why**: Fast, incremental builds and task orchestration
+- **Features**: Parallel builds, intelligent caching, workspace management
+- **Usage**: Build system for apps and packages
+- **Location**: `/turbo.json`
+
+**ESLint + Prettier**
+- **Why**: Consistent code style and quality enforcement
+- **Features**: TypeScript-aware rules, auto-formatting
+- **Usage**: Enforced via git hooks and CI
+
+## 📊 Data Flow Architecture
+
+### Server State (React Query)
+
+```typescript
+// Centralized data fetching with intelligent caching
+const { data: events, isLoading } = useEventsListQuery(filters, bounds);
+
+// Automatic request deduplication and background updates
+// Cache keys: ['events', 'list', { filters, bounds, limit }]
+```
+
+**Benefits**:
+- Automatic caching by filter combinations
+- Background refetching without blocking UI
+- Request deduplication across components
+- Optimistic updates for mutations
+
+### Client State (Zustand)
+
+```typescript
+// UI state management
+const isFilterDrawerOpen = useUIStore(state => state.ui.isFilterDrawerOpen);
+const mapBounds = useUIStore(state => state.ui.mapBounds);
+```
+
+### URL State (nuqs)
+
+```typescript
+// Shareable, type-safe URL parameters
+const [catalog, setCatalog] = useQueryState('catalog', parseAsString);
+const [datasets, setDatasets] = useQueryState('datasets', parseAsArrayOf(parseAsString));
+```
+
+## 🔄 Data Processing Pipeline
+
+### Import System Flow
+
+```
+File Upload → Parsing → Coordinate Detection → Geocoding → Event Creation
+     ↓           ↓            ↓              ↓            ↓
+  Validation   Schema      Location      Google Maps   Database
+               Analysis    Detection      / OSM APIs    Storage
+```
+
+**Technologies**:
+- **CSV/Excel Parsing**: Built-in Node.js libraries
+- **Geocoding**: Google Maps API with OpenStreetMap fallback
+- **Progress Tracking**: React Query polling with automatic termination
+- **Batch Processing**: Queue-based system with Payload jobs
+
+### Real-time Updates
+
+- **Progress Polling**: React Query automatically polls import progress
+- **Cache Invalidation**: Smart invalidation when data changes
+- **Background Sync**: Stale data refreshes without user intervention
+
+## 🎨 UI Component Architecture
+
+### Design System
+
+**Tailwind CSS**
+- **Why**: Utility-first CSS with excellent DX and performance
+- **Features**: JIT compilation, custom design tokens, responsive design
+- **Usage**: All styling throughout the application
+
+**Shared UI Package** (`/packages/ui`)
+- **Why**: Consistent components across the monorepo
+- **Features**: Reusable components, theme system, TypeScript definitions
+- **Usage**: Charts, buttons, forms, layout components
+
+### Theme Management
+
+```typescript
+// Dark/light theme support with system preference detection
+const { theme, setTheme } = useTheme();
+```
+
+## 🧪 Testing Strategy
+
+**Vitest**
+- **Why**: Fast, Vite-powered testing with excellent TypeScript support
+- **Usage**: Unit tests, component tests, utility testing
+- **Location**: `/apps/web/tests/`
+
+**Playwright**  
+- **Why**: Reliable end-to-end testing across browsers
+- **Usage**: Integration tests, user workflow validation
+- **Location**: `/apps/web/tests/e2e/`
+
+**Testing Patterns**:
+- **Unit**: Individual functions and components
+- **Integration**: API endpoints with test database
+- **E2E**: Complete user workflows
+
+## 🚢 Deployment & Infrastructure
+
+**Docker**
+- **Why**: Consistent environments and easy deployment
+- **Usage**: PostgreSQL, development environment
+- **Location**: `/docker-compose.yml`
+
+**Make**
+- **Why**: Simple, cross-platform build automation
+- **Usage**: Development shortcuts, database management
+- **Location**: `/Makefile`
+
+## 📈 Performance Optimizations
+
+### Frontend Performance
+
+- **Turbopack**: Next.js bundler for faster builds
+- **Server Components**: Reduced JavaScript bundle size
+- **React Query Caching**: Minimize redundant API calls
+- **Map Clustering**: Efficient rendering of large datasets
+- **Debounced Interactions**: Prevent excessive API calls during map panning
+
+### Database Performance
+
+- **PostGIS Indexing**: Spatial indexes for fast geospatial queries
+- **Query Optimization**: Efficient filtering and aggregation
+- **Connection Pooling**: Managed by Payload CMS
+
+### Build Performance
+
+- **Turbo Caching**: Incremental builds and task parallelization
+- **TypeScript Project References**: Faster type checking
+- **Import Optimization**: Tree shaking and code splitting
+
+## 🔒 Security & Data Privacy
+
+- **Input Validation**: Comprehensive validation at API boundaries
+- **Rate Limiting**: Public API protection
+- **SQL Injection Prevention**: Parameterized queries via Payload
+- **CORS Configuration**: Controlled cross-origin access
+- **File Upload Security**: Type validation and size limits
+
+## 🎯 Key Design Decisions
+
+### Why This Stack?
+
+1. **Developer Experience**: TypeScript everywhere, hot reloading, type safety
+2. **Performance**: React Query caching, PostGIS spatial indexing, Turbopack
+3. **Scalability**: Monorepo architecture, component reusability
+4. **Maintainability**: Strong typing, consistent patterns, automated testing
+5. **User Experience**: Real-time updates, smooth interactions, responsive design
+
+### Trade-offs Made
+
+- **Complexity vs Features**: Rich feature set requires sophisticated state management
+- **Bundle Size vs Functionality**: Comprehensive mapping and charting libraries
+- **Learning Curve vs Productivity**: Advanced patterns for better long-term maintenance
+
+## 📚 Further Reading
+
+- [TanStack Query Documentation](https://tanstack.com/query/latest)
+- [Payload CMS Documentation](https://payloadcms.com/docs)
+- [Next.js App Router](https://nextjs.org/docs/app)
+- [PostGIS Documentation](https://postgis.net/documentation/)
+- [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/)
+
+## 🔧 Local Development Setup
+
+For detailed setup instructions, see [Getting Started](./getting-started).
