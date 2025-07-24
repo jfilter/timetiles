@@ -82,36 +82,32 @@ export function ClusteredMap({
     const { type } = feature.properties ?? {};
 
     if (type === "event-cluster") {
-      // Zoom in on cluster click
-      const coordinates =
-        feature.geometry?.type === "Point"
-          ? feature.geometry.coordinates
-          : null;
-      if (
-        coordinates &&
-        Array.isArray(coordinates) &&
-        coordinates.length >= 2
-      ) {
-        const longitude = coordinates[0] as number;
-        const latitude = coordinates[1] as number;
+      handleClusterClick(event, feature);
+    } else if (type === "event-point") {
+      handleEventPointClick(feature);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleClusterClick = useCallback(
+    (event: MapLayerMouseEvent, feature: GeoJSON.Feature) => {
+      const coordinates = getValidCoordinates(feature);
+      if (coordinates) {
+        const [longitude, latitude] = coordinates;
         event.target.flyTo({
           center: [longitude, latitude],
           zoom: event.target.getZoom() + 2,
         });
       }
-    } else if (type === "event-point") {
-      // Show popup for individual events
-      const coordinates =
-        feature.geometry?.type === "Point"
-          ? feature.geometry.coordinates
-          : null;
-      if (
-        coordinates &&
-        Array.isArray(coordinates) &&
-        coordinates.length >= 2
-      ) {
-        const longitude = coordinates[0] as number;
-        const latitude = coordinates[1] as number;
+    },
+    [],
+  );
+
+  const handleEventPointClick = useCallback(
+    (feature: GeoJSON.Feature) => {
+      const coordinates = getValidCoordinates(feature);
+      if (coordinates) {
+        const [longitude, latitude] = coordinates;
         const { title, id } = feature.properties ?? {};
         setPopupInfo({
           longitude,
@@ -122,8 +118,21 @@ export function ClusteredMap({
               : `Event ${String(id ?? "Unknown")}`,
         });
       }
+    },
+    [setPopupInfo],
+  );
+
+  const getValidCoordinates = (
+    feature: GeoJSON.Feature,
+  ): [number, number] | null => {
+    const coordinates =
+      feature.geometry?.type === "Point" ? feature.geometry.coordinates : null;
+
+    if (coordinates && Array.isArray(coordinates) && coordinates.length >= 2) {
+      return [coordinates[0] as number, coordinates[1] as number];
     }
-  }, []);
+    return null;
+  };
 
   const geojsonData = useMemo(() => {
     const data = {

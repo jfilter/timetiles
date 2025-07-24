@@ -1,4 +1,4 @@
-import ImportUpload from "../../components/import-upload";
+import { ImportUpload } from "../../components/import-upload";
 import { PageLayout } from "../../components/page-layout";
 
 export default function ImportPage(): JSX.Element {

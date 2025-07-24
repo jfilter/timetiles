@@ -1,24 +1,19 @@
 "use client";
 
 import ReactECharts from "echarts-for-react";
+import type { LngLatBounds } from "maplibre-gl";
 import { useTheme } from "next-themes";
 import { useQueryState } from "nuqs";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import { useFilters } from "../lib/filters";
+import { useHistogramQuery } from "../lib/hooks/use-events-queries";
 import { useUIStore } from "../lib/store";
-
-import { logger } from "@/lib/logger";
 
 interface EventHistogramProps {
   loading?: boolean;
   height?: number | string;
   className?: string;
-}
-
-interface HistogramData {
-  date: string;
-  count: number;
 }
 
 export function EventHistogram({
@@ -29,60 +24,29 @@ export function EventHistogram({
   const { theme } = useTheme();
   const [, setStartDate] = useQueryState("startDate");
   const [, setEndDate] = useQueryState("endDate");
-  const [histogramData, setHistogramData] = useState<HistogramData[]>([]);
-  const [loading, setLoading] = useState(false);
 
   // Get filter state and map bounds
   const { filters } = useFilters();
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
 
-  // Fetch histogram data from API
-  useEffect(() => {
-    const fetchHistogramData = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
+  // Convert mapBounds to LngLatBounds format for React Query
+  const bounds: LngLatBounds | null = useMemo(() => {
+    if (!mapBounds) return null;
 
-        // Add filter params
-        if (filters.catalog) params.set("catalog", filters.catalog);
-        if (filters.datasets.length > 0) {
-          filters.datasets.forEach((dataset) =>
-            params.append("datasets", dataset),
-          );
-        }
-        if (filters.startDate) params.set("startDate", filters.startDate);
-        if (filters.endDate) params.set("endDate", filters.endDate);
+    return {
+      getNorth: () => mapBounds.north,
+      getSouth: () => mapBounds.south,
+      getEast: () => mapBounds.east,
+      getWest: () => mapBounds.west,
+    } as LngLatBounds;
+  }, [mapBounds]);
 
-        // Add map bounds if available
-        if (mapBounds) {
-          const bounds = {
-            north: mapBounds.north,
-            south: mapBounds.south,
-            east: mapBounds.east,
-            west: mapBounds.west,
-          };
-          params.set("bounds", JSON.stringify(bounds));
-        }
+  // Fetch histogram data using React Query
+  const { data: histogramData, isLoading } = useHistogramQuery(filters, bounds);
 
-        params.set("granularity", "auto");
-
-        const response = await fetch(
-          `/api/events/histogram?${params.toString()}`,
-        );
-        const data = await response.json();
-
-        if (data.histogram) {
-          setHistogramData(data.histogram);
-        }
-      } catch (error) {
-        logger.error("Failed to fetch histogram data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void fetchHistogramData();
-  }, [filters, mapBounds]);
+  // Extract histogram data, with fallback for error states
+  const histogram = histogramData?.histogram ?? [];
+  const loading = isLoading || externalLoading;
 
   // Create ECharts option for the histogram
   const getChartOption = () => {
@@ -165,7 +129,7 @@ export function EventHistogram({
       series: [
         {
           type: "bar",
-          data: histogramData.map((item) => [item.date, item.count]),
+          data: histogram.map((item) => [item.date, item.count]),
           itemStyle: {
             color: isDark ? "#60a5fa" : "#3b82f6",
             borderRadius: [2, 2, 0, 0],
@@ -183,7 +147,7 @@ export function EventHistogram({
   };
 
   const handleChartClick = (params: { data: [string, number] }) => {
-    if (params.data) {
+    if (params.data !== undefined && params.data !== null) {
       const date = new Date(params.data[0]);
       const formatDate = (d: Date) => {
         const year = d.getFullYear();
@@ -209,7 +173,7 @@ export function EventHistogram({
     );
   }
 
-  if (histogramData.length === 0) {
+  if (histogram.length === 0) {
     return (
       <div
         className={`flex items-center justify-center ${className}`}

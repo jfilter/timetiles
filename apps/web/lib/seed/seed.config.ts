@@ -372,20 +372,20 @@ export function getCollectionConfig(
   environment: string,
 ): CollectionConfig | null {
   const baseConfig = SEED_CONFIG.collections[collection];
-  if (!baseConfig) return null;
+  if (baseConfig === null || baseConfig === undefined) return null;
 
   const envConfig = SEED_CONFIG.environments[environment];
   if (!envConfig?.enabled.includes(collection)) {
     // For disabled collections, still return the config but mark it as not enabled for this env
     // This allows tests to inspect the collection configuration even if it's disabled
-    if (baseConfig.disabled) {
+    if (baseConfig.disabled === true) {
       return baseConfig; // Return the disabled collection config
     }
     return null; // Collection not enabled for this environment
   }
 
   // Apply environment-specific overrides
-  const overrides = envConfig.overrides?.[collection] || {};
+  const overrides = envConfig.overrides?.[collection] ?? {};
 
   return {
     ...baseConfig,
@@ -447,7 +447,7 @@ export function getEnabledCollections(environment: string): string[] {
 export function getEnvironmentSettings(
   environment: string,
 ): EnvironmentConfig["settings"] {
-  return SEED_CONFIG.environments[environment]?.settings || {};
+  return SEED_CONFIG.environments[environment]?.settings ?? {};
 }
 
 /**
@@ -456,5 +456,5 @@ export function getEnvironmentSettings(
 export function getGeneratorConfig(
   generatorName: string,
 ): GeneratorConfig | null {
-  return SEED_CONFIG.generators[generatorName] || null;
+  return SEED_CONFIG.generators[generatorName] ?? null;
 }

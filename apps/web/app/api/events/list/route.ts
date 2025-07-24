@@ -26,6 +26,103 @@ function isValidBounds(value: unknown): value is MapBounds {
   );
 }
 
+function addCatalogFilter(where: Where, catalog: string) {
+  where.and = [
+    ...(Array.isArray(where.and) ? where.and : []),
+    {
+      "dataset.catalog.slug": {
+        equals: catalog,
+      },
+    },
+  ];
+}
+
+function addDatasetFilter(where: Where, datasets: string[]) {
+  where.and = [
+    ...(Array.isArray(where.and) ? where.and : []),
+    {
+      "dataset.slug": {
+        in: datasets,
+      },
+    },
+  ];
+}
+
+function addBoundsFilter(where: Where, bounds: MapBounds) {
+  where.and = [
+    ...(Array.isArray(where.and) ? where.and : []),
+    {
+      "location.latitude": {
+        greater_than_equal: bounds.south,
+      },
+    },
+    {
+      "location.latitude": {
+        less_than_equal: bounds.north,
+      },
+    },
+    {
+      "location.longitude": {
+        greater_than_equal: bounds.west,
+      },
+    },
+    {
+      "location.longitude": {
+        less_than_equal: bounds.east,
+      },
+    },
+  ];
+}
+
+function addDateFilter(
+  where: Where,
+  startDate: string | null,
+  endDate: string | null,
+) {
+  const dateFilter: Record<string, string> = {};
+  if (startDate !== null) dateFilter.greater_than_equal = startDate;
+  if (endDate !== null) dateFilter.less_than_equal = endDate;
+
+  where.and = [
+    ...(Array.isArray(where.and) ? where.and : []),
+    {
+      eventTimestamp: dateFilter,
+    },
+  ];
+}
+
+function transformEvent(event: Event) {
+  return {
+    id: event.id,
+    dataset: {
+      id:
+        typeof event.dataset === "object" && event.dataset !== null
+          ? event.dataset.id
+          : event.dataset,
+      title:
+        typeof event.dataset === "object" && event.dataset !== null
+          ? event.dataset.name
+          : undefined,
+      catalog:
+        typeof event.dataset === "object" &&
+        event.dataset !== null &&
+        typeof event.dataset.catalog === "object" &&
+        event.dataset.catalog !== null
+          ? event.dataset.catalog.name
+          : undefined,
+    },
+    data: event.data,
+    location: event.location
+      ? {
+          longitude: event.location.longitude,
+          latitude: event.location.latitude,
+        }
+      : null,
+    eventTimestamp: event.eventTimestamp,
+    isValid: event.isValid,
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
@@ -50,25 +147,11 @@ export async function GET(request: NextRequest) {
     // Catalog and dataset filters
     if (catalog !== null || (datasets.length > 0 && datasets[0] !== "")) {
       if (catalog !== null && (datasets.length === 0 || datasets[0] === "")) {
-        where.and = [
-          ...(Array.isArray(where.and) ? where.and : []),
-          {
-            "dataset.catalog.slug": {
-              equals: catalog,
-            },
-          },
-        ];
+        addCatalogFilter(where, catalog);
       }
 
       if (datasets.length > 0 && datasets[0] !== "") {
-        where.and = [
-          ...(Array.isArray(where.and) ? where.and : []),
-          {
-            "dataset.slug": {
-              in: datasets,
-            },
-          },
-        ];
+        addDatasetFilter(where, datasets);
       }
     }
 
@@ -77,30 +160,7 @@ export async function GET(request: NextRequest) {
       try {
         const parsedBounds = JSON.parse(boundsParam) as unknown;
         if (isValidBounds(parsedBounds)) {
-          const bounds = parsedBounds;
-          where.and = [
-            ...(Array.isArray(where.and) ? where.and : []),
-            {
-              "location.latitude": {
-                greater_than_equal: bounds.south,
-              },
-            },
-            {
-              "location.latitude": {
-                less_than_equal: bounds.north,
-              },
-            },
-            {
-              "location.longitude": {
-                greater_than_equal: bounds.west,
-              },
-            },
-            {
-              "location.longitude": {
-                less_than_equal: bounds.east,
-              },
-            },
-          ];
+          addBoundsFilter(where, parsedBounds);
         }
       } catch {
         return NextResponse.json(
@@ -112,16 +172,7 @@ export async function GET(request: NextRequest) {
 
     // Date filters
     if (startDate !== null || endDate !== null) {
-      const dateFilter: Record<string, string> = {};
-      if (startDate !== null) dateFilter.greater_than_equal = startDate;
-      if (endDate !== null) dateFilter.less_than_equal = endDate;
-
-      where.and = [
-        ...(Array.isArray(where.and) ? where.and : []),
-        {
-          eventTimestamp: dateFilter,
-        },
-      ];
+      addDateFilter(where, startDate, endDate);
     }
 
     // Query events with pagination
@@ -135,37 +186,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform events for frontend
-    const events = result.docs.map((event: Event) => {
-      return {
-        id: event.id,
-        dataset: {
-          id:
-            typeof event.dataset === "object" && event.dataset !== null
-              ? event.dataset.id
-              : event.dataset,
-          title:
-            typeof event.dataset === "object" && event.dataset !== null
-              ? event.dataset.name
-              : undefined,
-          catalog:
-            typeof event.dataset === "object" &&
-            event.dataset !== null &&
-            typeof event.dataset.catalog === "object" &&
-            event.dataset.catalog !== null
-              ? event.dataset.catalog.name
-              : undefined,
-        },
-        data: event.data,
-        location: event.location
-          ? {
-              longitude: event.location.longitude,
-              latitude: event.location.latitude,
-            }
-          : null,
-        eventTimestamp: event.eventTimestamp,
-        isValid: event.isValid,
-      };
-    });
+    const events = result.docs.map(transformEvent);
 
     return NextResponse.json({
       events,

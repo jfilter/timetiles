@@ -6,7 +6,7 @@
  * Efficient bulk operations for the seeding system.
  */
 
-import type { Payload, DataFromCollectionSlug } from "payload";
+import type { Payload } from "payload";
 
 import type { Config } from "../../payload-types";
 import { createLogger, logError, logPerformance } from "../logger";
@@ -110,8 +110,7 @@ export class DatabaseOperations {
     try {
       // Check if we have direct database access
       if (
-        !this.payload.db ||
-        !this.payload.db.drizzle ||
+        this.payload.db?.drizzle == null ||
         typeof this.payload.db.execute !== "function"
       ) {
         logger.debug(`No direct database access available for ${collection}`);
@@ -181,8 +180,7 @@ export class DatabaseOperations {
 
         // Delete in batches using SQL if possible, otherwise use Payload API
         if (
-          this.payload.db &&
-          this.payload.db.drizzle &&
+          this.payload.db?.drizzle != null &&
           typeof this.payload.db.execute === "function"
         ) {
           // Use SQL batch delete for efficiency
@@ -238,7 +236,10 @@ export class DatabaseOperations {
 
           failed.forEach((failure, index) => {
             if (failure.status === "rejected") {
-              errors.push({ error: failure.reason, itemIndex: index });
+              errors.push({ 
+                error: failure.reason instanceof Error ? failure.reason : new Error(String(failure.reason)), 
+                itemIndex: index 
+              });
             } else if (failure.status === "fulfilled") {
               errors.push({
                 error: (failure.value as { error: unknown; id: unknown }).error,
@@ -318,7 +319,7 @@ export class DatabaseOperations {
 
     results.forEach((result, index) => {
       if (result.status === "fulfilled") {
-        if (result.value.success) {
+        if (result.value.success === true) {
           successful++;
         } else {
           errors.push({
@@ -327,7 +328,10 @@ export class DatabaseOperations {
           });
         }
       } else {
-        errors.push({ error: result.reason, itemIndex: index });
+        errors.push({ 
+          error: result.reason instanceof Error ? result.reason : new Error(String(result.reason)), 
+          itemIndex: index 
+        });
       }
     });
 

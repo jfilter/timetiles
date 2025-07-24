@@ -124,18 +124,22 @@ export interface FilterState {
 // Helper functions for filter operations (to be used with nuqs)
 export const getActiveFilterCount = (filters: FilterState): number => {
   let count = 0;
-  if (filters.catalog) count++;
+  if (filters.catalog !== null && filters.catalog !== "") count++;
   if (filters.datasets.length > 0) count += filters.datasets.length;
-  if (filters.startDate || filters.endDate) count++; // Date range counts as one filter
+  if (
+    (filters.startDate !== null && filters.startDate !== "") ||
+    (filters.endDate !== null && filters.endDate !== "")
+  )
+    count++; // Date range counts as one filter
   return count;
 };
 
 export const hasActiveFilters = (filters: FilterState): boolean => {
   return !!(
-    filters.catalog ||
+    (filters.catalog !== null && filters.catalog !== "") ||
     filters.datasets.length > 0 ||
-    filters.startDate ||
-    filters.endDate
+    (filters.startDate !== null && filters.startDate !== "") ||
+    (filters.endDate !== null && filters.endDate !== "")
   );
 };
 
@@ -154,7 +158,7 @@ export const removeFilter = (
       newFilters.datasets = [];
       break;
     case "datasets":
-      if (value) {
+      if (value !== null && value !== undefined && value !== "") {
         newFilters.datasets = newFilters.datasets.filter((id) => id !== value);
       } else {
         newFilters.datasets = [];

@@ -104,14 +104,16 @@ export function datasetSeeds(environment: string): DatasetSeed[] {
   catalogs.forEach((catalog, catalogIndex) => {
     const numDatasets = getDatasetsPerCatalog(catalogIndex, catalog.type);
     const templates =
-      DATASET_TEMPLATES[catalog.type as keyof typeof DATASET_TEMPLATES] ||
+      DATASET_TEMPLATES[catalog.type as keyof typeof DATASET_TEMPLATES] ??
       DATASET_TEMPLATES.academic;
     const schemaType = getSchemaTypeForCatalog(catalog.type);
-    const schema = DATASET_SCHEMAS[schemaType];
+    const schema = Object.prototype.hasOwnProperty.call(DATASET_SCHEMAS, schemaType) 
+      ? DATASET_SCHEMAS[schemaType] 
+      : null;
 
     for (let i = 0; i < numDatasets && i < templates.length; i++) {
       const template = templates[i];
-      if (!template) continue;
+      if (template === null || template === undefined) continue;
       const isArchived = catalog.slug === "historical-records";
 
       datasets.push({

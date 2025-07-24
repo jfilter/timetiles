@@ -2,135 +2,76 @@
 
 import { useState, useRef } from "react";
 
-import type { Import } from "../payload-types";
-interface ImportProgress {
-  importId: string;
-  status: Import["status"];
-  stage: Import["processingStage"];
-  progress: {
-    current: number;
-    total: number;
-    percentage: number;
-    createdEvents: number;
-  };
-  stageProgress: {
-    stage: string;
-    percentage: number;
-  };
-  batchInfo: {
-    currentBatch: number;
-    totalBatches: number;
-    batchSize: number;
-  };
-  geocodingStats: Import["geocodingStats"];
-  currentJob?: {
-    id: string;
-    status: string;
-    progress: number;
-  };
-  estimatedTimeRemaining?: number;
-}
+import {
+  useImportUploadMutation,
+  useImportProgressQuery,
+} from "../lib/hooks/use-events-queries";
 
-export default function ImportUpload(): JSX.Element {
+export function ImportUpload(): JSX.Element {
   const [file, setFile] = useState<File | null>(null);
   const [catalogId, setCatalogId] = useState("");
-  const [uploading, setUploading] = useState(false);
   const [importId, setImportId] = useState<string | null>(null);
-  const [progress, setProgress] = useState<ImportProgress | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const progressInterval = useRef<NodeJS.Timeout | null>(null);
+
+  // React Query hooks
+  const uploadMutation = useImportUploadMutation();
+  const { data: progress } = useImportProgressQuery(importId);
+
+  // Get upload state from mutation
+  const uploading = uploadMutation.isPending;
+  const error = uploadMutation.error?.message ?? null;
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
-      setError(null);
+      uploadMutation.reset(); // Clear any previous errors
     }
   };
 
   const handleUpload = async () => {
     if (!file || !catalogId) {
-      setError("Please select a file and enter a catalog ID");
       return;
     }
 
-    setUploading(true);
-    setError(null);
     setSuccess(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("catalogId", catalogId);
-      formData.append("sessionId", `session_${Date.now()}`);
-
-      const response = await fetch("/api/import/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Upload failed");
-      }
-
-      setImportId(result.importId);
-      setSuccess("File uploaded successfully! Processing started...");
-
-      // Start polling for progress
-      startProgressPolling(result.importId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setUploading(false);
-    }
+    await performUpload();
   };
 
-  const startProgressPolling = (id: string) => {
-    const pollProgress = async () => {
-      try {
-        const response = await fetch(`/api/import/${id}/progress`);
-        if (response.ok) {
-          const progressData = await response.json();
-          setProgress(progressData);
+  const performUpload = async () => {
+    if (!file || !catalogId) return;
 
-          // Stop polling if completed or failed
-          if (
-            progressData.status === "completed" ||
-            progressData.status === "failed"
-          ) {
-            if (progressInterval.current) {
-              clearInterval(progressInterval.current);
-              progressInterval.current = null;
-            }
-          }
-        }
-      } catch {
-        // Silently handle progress fetch errors
-      }
-    };
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("catalogId", catalogId);
+    formData.append("sessionId", `session_${Date.now()}`);
 
-    // Poll immediately and then every 2 seconds
-    void pollProgress();
-    progressInterval.current = setInterval(() => void pollProgress(), 2000);
+    return new Promise<void>((resolve, reject) => {
+      uploadMutation.mutate(
+        { formData },
+        {
+          onSuccess: (result) => {
+            setImportId(result.importId);
+            setSuccess("File uploaded successfully! Processing started...");
+            resolve();
+          },
+          onError: (error) => {
+            reject(error);
+          },
+        },
+      );
+    });
   };
 
   const resetForm = () => {
     setFile(null);
     setCatalogId("");
     setImportId(null);
-    setProgress(null);
-    setError(null);
     setSuccess(null);
+    uploadMutation.reset();
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
-    }
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-      progressInterval.current = null;
     }
   };
 
@@ -151,7 +92,7 @@ export default function ImportUpload(): JSX.Element {
           processed and geocoded automatically.
         </p>
 
-        {error && (
+        {error !== null && error !== "" && (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-4">
             <div className="flex items-center">
               <span className="mr-2 text-red-600">⚠️</span>
@@ -160,7 +101,7 @@ export default function ImportUpload(): JSX.Element {
           </div>
         )}
 
-        {success && (
+        {success !== null && success !== "" && (
           <div className="mb-4 rounded-md border border-green-200 bg-green-50 p-4">
             <div className="flex items-center">
               <span className="mr-2 text-green-600">✅</span>
@@ -183,7 +124,7 @@ export default function ImportUpload(): JSX.Element {
               placeholder="Enter catalog ID"
               value={catalogId}
               onChange={(e) => setCatalogId(e.target.value)}
-              disabled={uploading || !!importId}
+              disabled={uploading || (importId !== null && importId !== "")}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
             />
           </div>
@@ -198,10 +139,10 @@ export default function ImportUpload(): JSX.Element {
               type="file"
               accept=".csv,.xlsx,.xls"
               onChange={handleFileSelect}
-              disabled={uploading || !!importId}
+              disabled={uploading || (importId !== null && importId !== "")}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
             />
-            {file && (
+            {file !== null && (
               <p className="mt-1 text-sm text-gray-600">
                 Selected: {file.name} ({Math.round(file.size / 1024)} KB)
               </p>
@@ -211,7 +152,12 @@ export default function ImportUpload(): JSX.Element {
           <div className="flex gap-2">
             <button
               onClick={() => void handleUpload()}
-              disabled={!file || !catalogId || uploading || !!importId}
+              disabled={
+                file === null ||
+                catalogId === "" ||
+                uploading ||
+                (importId !== null && importId !== "")
+              }
               className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
             >
               {uploading ? (
@@ -224,7 +170,7 @@ export default function ImportUpload(): JSX.Element {
               )}
             </button>
 
-            {importId && (
+            {importId !== null && importId !== "" && (
               <button
                 onClick={resetForm}
                 className="rounded-md bg-gray-600 px-4 py-2 text-white hover:bg-gray-700"
@@ -301,12 +247,14 @@ export default function ImportUpload(): JSX.Element {
               </div>
             )}
 
-            {progress.estimatedTimeRemaining && (
-              <div className="text-sm text-gray-600">
-                Estimated time remaining:{" "}
-                {formatTime(progress.estimatedTimeRemaining)}
-              </div>
-            )}
+            {progress.estimatedTimeRemaining !== null &&
+              progress.estimatedTimeRemaining !== undefined &&
+              progress.estimatedTimeRemaining !== 0 && (
+                <div className="text-sm text-gray-600">
+                  Estimated time remaining:{" "}
+                  {formatTime(progress.estimatedTimeRemaining)}
+                </div>
+              )}
 
             {progress.geocodingStats &&
               Object.keys(progress.geocodingStats).length > 0 && (

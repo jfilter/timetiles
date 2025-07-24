@@ -3,6 +3,10 @@ import eslintConfigPrettier from "eslint-config-prettier"
 import importPlugin from "eslint-plugin-import"
 import onlyWarn from "eslint-plugin-only-warn"
 import prettierPlugin from "eslint-plugin-prettier"
+import promisePlugin from "eslint-plugin-promise"
+import regexpPlugin from "eslint-plugin-regexp"
+import securityPlugin from "eslint-plugin-security"
+import sonarPlugin from "eslint-plugin-sonarjs"
 import turboPlugin from "eslint-plugin-turbo"
 import unicornPlugin from "eslint-plugin-unicorn"
 import tseslint from "typescript-eslint"
@@ -57,6 +61,15 @@ export default [
           "match": false
         }
       }],
+      
+      // 2024 TypeScript Enhancements
+      "@typescript-eslint/no-base-to-string": "error",
+      "@typescript-eslint/no-meaningless-void-operator": "error",
+      "@typescript-eslint/no-mixed-enums": "error",
+      "@typescript-eslint/no-unnecessary-template-expression": "error",
+      "@typescript-eslint/only-throw-error": "error",
+      "@typescript-eslint/prefer-find": "error",
+      "@typescript-eslint/prefer-promise-reject-errors": "error",
     },
   },
   // Config files and other JS files without type checking
@@ -74,6 +87,10 @@ export default [
       prettier: prettierPlugin,
       import: importPlugin,
       unicorn: unicornPlugin,
+      security: securityPlugin,
+      promise: promisePlugin,
+      sonarjs: sonarPlugin,
+      regexp: regexpPlugin,
     },
     rules: {
       "turbo/no-undeclared-env-vars": "error",
@@ -89,6 +106,45 @@ export default [
       "no-async-promise-executor": "error",
       "require-atomic-updates": "error",
       
+      // Security Rules (Critical for production)
+      "security/detect-object-injection": "error",
+      "security/detect-buffer-noassert": "error",
+      "security/detect-child-process": "error",
+      "security/detect-disable-mustache-escape": "error",
+      "security/detect-eval-with-expression": "error",
+      "security/detect-no-csrf-before-method-override": "error",
+      "security/detect-possible-timing-attacks": "warn",
+      "security/detect-pseudoRandomBytes": "error",
+      "security/detect-unsafe-regex": "error",
+      
+      // Promise Best Practices
+      "promise/always-return": "error",
+      "promise/no-return-wrap": "error",
+      "promise/param-names": "error",
+      "promise/catch-or-return": "error",
+      "promise/no-new-statics": "error",
+      "promise/no-return-in-finally": "error",
+      "promise/valid-params": "error",
+      "promise/prefer-await-to-then": "warn",
+      
+      // Code Quality (SonarJS)
+      "sonarjs/cognitive-complexity": ["error", 15],
+      "sonarjs/no-duplicate-string": ["error", { "threshold": 3 }],
+      "sonarjs/no-small-switch": "error",
+      "sonarjs/prefer-single-boolean-return": "error",
+      "sonarjs/no-redundant-boolean": "error",
+      "sonarjs/no-identical-functions": "error",
+      "sonarjs/no-inverted-boolean-check": "error",
+      "sonarjs/prefer-while": "error",
+      
+      // RegExp Safety & Performance
+      "regexp/no-super-linear-backtracking": "error",
+      "regexp/no-potentially-useless-backreference": "error",
+      "regexp/optimal-quantifier-concatenation": "error",
+      "regexp/prefer-regexp-exec": "error",
+      "regexp/no-useless-escape": "error",
+      "regexp/no-empty-capturing-group": "error",
+      
       // Phase 2: Import/Export Organization
       "import/order": ["error", {
         "groups": [
@@ -100,13 +156,35 @@ export default [
       }],
       "import/no-default-export": "warn",
       "import/no-cycle": "error",
+      "import/no-namespace": "warn", // Discourages import * as foo
+      "import/no-self-import": "error", // Prevent importing from self
       
       // Phase 4: Monorepo Governance
       "no-restricted-imports": ["error", {
-        "patterns": [{
-          "group": ["../**/apps/*"],
-          "message": "Don't import across app boundaries"
-        }]
+        "patterns": [
+          {
+            "group": ["../**/apps/*"],
+            "message": "Don't import across app boundaries"
+          },
+          {
+            "group": [
+              "*/index", 
+              "*/index.js", 
+              "*/index.ts", 
+              "*/index.tsx"
+            ],
+            "message": "Avoid barrel imports. Import directly from source files for better tree-shaking and clearer dependencies."
+          },
+          {
+            "group": [
+              "./index", 
+              "./index.js", 
+              "./index.ts", 
+              "./index.tsx"
+            ],
+            "message": "Avoid importing from local index files. Import directly from the source file."
+          }
+        ]
       }],
       
       // File naming convention
@@ -145,6 +223,15 @@ export default [
           ]
         }
       ],
+      
+      // Unicorn rules that prevent barrel file patterns
+      "unicorn/prefer-export-from": ["error", {"ignoreUsedVariables": true}], // Prevent unnecessary re-export patterns
+      
+      // High-value unicorn rules for code quality
+      "unicorn/prefer-includes": "error", // arr.includes(x) vs arr.indexOf(x) !== -1
+      "unicorn/prefer-string-starts-ends-with": "error", // str.startsWith() vs str.indexOf() === 0
+      "unicorn/throw-new-error": "error", // throw new Error() vs throw "string"  
+      "unicorn/no-instanceof-array": "error", // Array.isArray() vs instanceof Array
     },
   },
   {

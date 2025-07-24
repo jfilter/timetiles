@@ -1,5 +1,6 @@
 import React from "react";
 import { render, type RenderOptions } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { ThemeProvider } from "@/components/theme-provider";
 
@@ -14,10 +15,22 @@ function AllTheProviders({
   children: React.ReactNode;
   searchParams?: URLSearchParams;
 }) {
+  // Create a new QueryClient for each test to avoid cross-test pollution
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false, // Disable retries in tests
+        gcTime: 0, // Disable caching in tests
+      },
+    },
+  });
+
   return (
-    <NuqsTestingAdapter searchParams={searchParams}>
-      <ThemeProvider>{children}</ThemeProvider>
-    </NuqsTestingAdapter>
+    <QueryClientProvider client={queryClient}>
+      <NuqsTestingAdapter searchParams={searchParams}>
+        <ThemeProvider>{children}</ThemeProvider>
+      </NuqsTestingAdapter>
+    </QueryClientProvider>
   );
 }
 

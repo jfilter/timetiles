@@ -114,7 +114,8 @@ const Events: CollectionConfig = {
             },
           ],
           admin: {
-            condition: (data) => data.coordinateSource?.type === "import",
+            condition: (data) =>
+              (data.coordinateSource as { type?: string })?.type === "import",
           },
         },
         {
@@ -167,7 +168,7 @@ const Events: CollectionConfig = {
       type: "json",
       admin: {
         description: "Validation errors if any",
-        condition: (data) => !data.isValid,
+        condition: (data) => data.isValid !== true,
       },
     },
     {

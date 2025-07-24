@@ -76,7 +76,7 @@ async function checkSlugUniqueness<T extends keyof Config["collections"]>(
 ): Promise<boolean> {
   const where = {
     slug: { equals: slug },
-    ...(currentId && { id: { not_equals: currentId } }),
+    ...(currentId != null && { id: { not_equals: currentId } }),
   };
 
   const result = await req.payload.find({
@@ -127,25 +127,23 @@ export function createSlugHook<T extends keyof Config["collections"]>(
     originalDoc?: Record<string, unknown>;
   }) => {
     // Helper to get nested value by dot notation
-    function getNested(obj: Record<string, unknown>, path: string): unknown {
-      return path
-        .split(".")
-        .reduce(
-          (o: unknown, k) =>
-            o && typeof o === "object" && k in o
-              ? (o as Record<string, unknown>)[k]
-              : undefined,
-          obj,
-        );
-    }
+    const getNested = createNestedValueGetter();
     const sourceField = options?.sourceField;
     let sourceValue = data?.name;
-    if (sourceField && data) {
+    if (
+      sourceField !== null &&
+      sourceField !== undefined &&
+      sourceField !== "" &&
+      data !== null &&
+      data !== undefined
+    ) {
       sourceValue = getNested(data, sourceField);
     }
     if (
-      !value &&
-      sourceValue &&
+      (value === null || value === undefined || value === "") &&
+      sourceValue !== null &&
+      sourceValue !== undefined &&
+      sourceValue !== "" &&
       (operation === "create" || operation === "update")
     ) {
       // For tests, generate simple slug without async uniqueness check
@@ -170,7 +168,14 @@ export function createSlugHook<T extends keyof Config["collections"]>(
         return generateSlug(sourceValue as string) + "-" + Date.now();
       }
     }
-    if (value && operation === "update" && req) {
+    if (
+      value !== null &&
+      value !== undefined &&
+      value !== "" &&
+      operation === "update" &&
+      req !== null &&
+      req !== undefined
+    ) {
       try {
         const currentId = originalDoc?.id as string | number | undefined;
         const isUnique = await checkSlugUniqueness(
@@ -188,5 +193,19 @@ export function createSlugHook<T extends keyof Config["collections"]>(
       }
     }
     return value;
+  };
+}
+
+function createNestedValueGetter(): (obj: Record<string, unknown>, path: string) => unknown {
+  return (obj: Record<string, unknown>, path: string): unknown => {
+    return path
+      .split(".")
+      .reduce(
+        (o: unknown, k) =>
+          o !== null && o !== undefined && typeof o === "object" && k in o
+            ? (o as Record<string, unknown>)[k]
+            : undefined,
+        obj,
+      );
   };
 }

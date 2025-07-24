@@ -1,5 +1,20 @@
 import React from "react";
 
+function getMaxWidthClass(
+  maxWidth: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "full",
+  maxWidthClasses: Record<string, string>,
+): string {
+  // Safe property access to avoid object injection with enhanced validation
+  if (
+    typeof maxWidth === "string" &&
+    !Object.prototype.hasOwnProperty.call(Object.prototype, maxWidth) &&
+    Object.prototype.hasOwnProperty.call(maxWidthClasses, maxWidth)
+  ) {
+    return maxWidthClasses[maxWidth] ?? "";
+  }
+  return "";
+}
+
 interface PageLayoutProps {
   children: React.ReactNode;
   title?: string;
@@ -19,7 +34,7 @@ export function PageLayout({
   centered = true,
   showTitle = true,
 }: PageLayoutProps) {
-  const maxWidthClasses = {
+  const maxWidthClasses: Record<typeof maxWidth, string> = {
     sm: "max-w-sm",
     md: "max-w-md",
     lg: "max-w-lg",
@@ -35,16 +50,24 @@ export function PageLayout({
       <div className="container mx-auto max-w-4xl px-6">
         {centered ? (
           <div className="flex justify-center">
-            <div className={`w-full ${maxWidthClasses[maxWidth]}`}>
-              {showTitle && title && (
-                <h1 className={titleClassName}>{title}</h1>
-              )}
+            <div
+              className={`w-full ${getMaxWidthClass(maxWidth, maxWidthClasses)}`}
+            >
+              {showTitle === true &&
+                title !== null &&
+                title !== undefined &&
+                title !== "" && <h1 className={titleClassName}>{title}</h1>}
               <div className={contentClassName}>{children}</div>
             </div>
           </div>
         ) : (
-          <div className={`w-full ${maxWidthClasses[maxWidth]}`}>
-            {showTitle && title && <h1 className={titleClassName}>{title}</h1>}
+          <div
+            className={`w-full ${getMaxWidthClass(maxWidth, maxWidthClasses)}`}
+          >
+            {showTitle === true &&
+              title !== null &&
+              title !== undefined &&
+              title !== "" && <h1 className={titleClassName}>{title}</h1>}
             <div className={contentClassName}>{children}</div>
           </div>
         )}

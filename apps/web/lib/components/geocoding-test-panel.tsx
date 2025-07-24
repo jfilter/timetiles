@@ -82,7 +82,7 @@ export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
         <div className="space-y-1">
           <div className="font-medium text-red-600">✗ Failed</div>
           <div className="text-sm text-red-500">
-            {result.error || "Unknown error"}
+            {result.error ?? "Unknown error"}
           </div>
         </div>
       );

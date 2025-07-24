@@ -8,10 +8,26 @@ import { createLogger } from "./logger";
 
 const logger = createLogger("health-checks");
 
-async function checkEnvironmentVariables() {
+function getEnvValue(key: string): string | undefined {
+  // Enhanced safe property access to avoid object injection
+  if (
+    typeof key === "string" &&
+    key.length > 0 &&
+    !Object.prototype.hasOwnProperty.call(Object.prototype, key) &&
+    Object.prototype.hasOwnProperty.call(process.env, key)
+  ) {
+    return process.env[key];
+  }
+  return undefined;
+}
+
+function checkEnvironmentVariables() {
   logger.debug("Checking environment variables");
   const requiredVars = ["PAYLOAD_SECRET", "DATABASE_URL"];
-  const missingVars = requiredVars.filter((v) => !process.env[v]);
+  const missingVars = requiredVars.filter((v) => {
+    const envValue = getEnvValue(v);
+    return envValue === undefined || envValue === null || envValue === "";
+  });
 
   if (missingVars.length > 0) {
     logger.warn("Missing required environment variables", { missingVars });
@@ -28,15 +44,18 @@ async function checkEnvironmentVariables() {
 async function checkUploadsDirectory() {
   logger.debug("Checking uploads directory");
   // Find the project root by looking for package.json
-  let currentDir = __dirname;
+  let currentDir = process.cwd();
   let projectRoot = currentDir;
 
+  // Constants for path matching
+  const APPS_WEB_PATH = "/apps/web/";
+  const APPS_WEB_SUFFIX = "/apps/web";
   // Walk up directories to find the web app root (where package.json is)
-  while (!projectRoot.endsWith("/apps/web") && projectRoot !== "/") {
-    if (currentDir.includes("/apps/web/")) {
+  while (!projectRoot.endsWith(APPS_WEB_SUFFIX) && projectRoot !== "/") {
+    if (currentDir.includes(APPS_WEB_PATH)) {
       projectRoot = currentDir.substring(
         0,
-        currentDir.indexOf("/apps/web/") + "/apps/web".length,
+        currentDir.indexOf(APPS_WEB_PATH) + APPS_WEB_PATH.length,
       );
       break;
     }
@@ -128,16 +147,20 @@ async function checkMigrations() {
     logger.debug("Getting Payload instance for migrations check");
     const payload = await getPayload({ config });
 
+    // Constants for path matching
+    const APPS_WEB_PATH = "/apps/web/";
+    const APPS_WEB_SUFFIX = "/apps/web";
+
     // Find the project root by looking for the web app directory
-    let currentDir = __dirname;
+    let currentDir = process.cwd();
     let projectRoot = currentDir;
 
     // Walk up directories to find the web app root (where package.json is)
-    while (!projectRoot.endsWith("/apps/web") && projectRoot !== "/") {
-      if (currentDir.includes("/apps/web/")) {
+    while (!projectRoot.endsWith(APPS_WEB_SUFFIX) && projectRoot !== "/") {
+      if (currentDir.includes(APPS_WEB_PATH)) {
         projectRoot = currentDir.substring(
           0,
-          currentDir.indexOf("/apps/web/") + "/apps/web".length,
+          currentDir.indexOf(APPS_WEB_PATH) + APPS_WEB_SUFFIX.length,
         );
         break;
       }
@@ -214,50 +237,56 @@ export async function runHealthChecks() {
 
   const [env, uploads, geocoding, cms, migrations, postgis] = await Promise.all(
     [
-      checkEnvironmentVariables().catch((e) => {
-        logger.error("Environment check threw exception", { error: e.message });
+      Promise.resolve(checkEnvironmentVariables()).catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : String(e);
+        logger.error("Environment check threw exception", { error: message });
         return {
           status: "error" as const,
-          message: `Environment check failed: ${e.message}`,
+          message: `Environment check failed: ${message}`,
         };
       }),
-      checkUploadsDirectory().catch((e) => {
+      checkUploadsDirectory().catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : String(e);
         logger.error("Uploads directory check threw exception", {
-          error: e.message,
+          error: message,
         });
         return {
           status: "error" as const,
-          message: `Uploads directory check failed: ${e.message}`,
+          message: `Uploads directory check failed: ${message}`,
         };
       }),
-      checkGeocodingService().catch((e) => {
+      checkGeocodingService().catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : String(e);
         logger.error("Geocoding service check threw exception", {
-          error: e.message,
+          error: message,
         });
         return {
           status: "error" as const,
-          message: `Geocoding service check failed: ${e.message}`,
+          message: `Geocoding service check failed: ${message}`,
         };
       }),
-      checkPayloadCMS().catch((e) => {
-        logger.error("Payload CMS check threw exception", { error: e.message });
+      checkPayloadCMS().catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : String(e);
+        logger.error("Payload CMS check threw exception", { error: message });
         return {
           status: "error" as const,
-          message: `Payload CMS check failed: ${e.message}`,
+          message: `Payload CMS check failed: ${message}`,
         };
       }),
-      checkMigrations().catch((e) => {
-        logger.error("Migrations check threw exception", { error: e.message });
+      checkMigrations().catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : String(e);
+        logger.error("Migrations check threw exception", { error: message });
         return {
           status: "error" as const,
-          message: `Migrations check failed: ${e.message}`,
+          message: `Migrations check failed: ${message}`,
         };
       }),
-      checkPostGIS().catch((e) => {
-        logger.error("PostGIS check threw exception", { error: e.message });
+      checkPostGIS().catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : String(e);
+        logger.error("PostGIS check threw exception", { error: message });
         return {
           status: "error" as const,
-          message: `PostGIS check failed: ${e.message}`,
+          message: `PostGIS check failed: ${message}`,
         };
       }),
     ],

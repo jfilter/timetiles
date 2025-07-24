@@ -43,10 +43,7 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
     <div className="space-y-6">
       <div>
         <Label htmlFor="catalog-select">Catalog</Label>
-        <Select
-          value={filters.catalog ?? "all"}
-          onValueChange={(value) => void setCatalog(value)}
-        >
+        <Select value={filters.catalog ?? "all"} onValueChange={setCatalog}>
           <SelectTrigger id="catalog-select" className="mt-2">
             <SelectValue placeholder="Select a catalog" />
           </SelectTrigger>
@@ -94,7 +91,7 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
             type="date"
             id="start-date"
             value={filters.startDate ?? ""}
-            onChange={(e) => void setStartDate(e.target.value || null)}
+            onChange={(e) => setStartDate(e.target.value || null)}
             className="border-input placeholder:text-muted-foreground focus-visible:ring-ring mt-2 flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
@@ -105,7 +102,7 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
             type="date"
             id="end-date"
             value={filters.endDate ?? ""}
-            onChange={(e) => void setEndDate(e.target.value || null)}
+            onChange={(e) => setEndDate(e.target.value || null)}
             className="border-input placeholder:text-muted-foreground focus-visible:ring-ring mt-2 flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
@@ -113,8 +110,8 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
         {(filters.startDate !== null || filters.endDate !== null) && (
           <button
             onClick={() => {
-              void setStartDate(null);
-              void setEndDate(null);
+              setStartDate(null);
+              setEndDate(null);
             }}
             className="text-muted-foreground hover:text-foreground text-sm"
           >

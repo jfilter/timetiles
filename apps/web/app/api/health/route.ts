@@ -5,6 +5,49 @@ import { createLogger } from "../../../lib/logger";
 
 const logger = createLogger("health-api");
 
+function determineHealthStatus(results: Record<string, { status: string }>) {
+  const hasError = Object.values(results).some((r) => r.status === "error");
+  const hasPending = results.migrations?.status === "pending";
+  const postgisNotFound = results.postgis?.status === "not found";
+  const hasWarning = Object.values(results).some((r) => r.status === "warning");
+
+  if (hasError || postgisNotFound) {
+    logger.warn("Health check returning 503 due to errors", {
+      hasError,
+      postgisNotFound,
+      results,
+    });
+    return 503;
+  } else if (hasPending || hasWarning) {
+    logger.info("Health check has warnings but returning 200", {
+      hasPending,
+      hasWarning,
+    });
+    return 200;
+  } else {
+    logger.info("Health check passed successfully");
+    return 200;
+  }
+}
+
+function createErrorResponse(error: unknown) {
+  return {
+    error: "Health check failed",
+    message: error instanceof Error ? error.message : "Unknown error",
+    stack:
+      process.env.NODE_ENV !== "production"
+        ? (error as Error).stack
+        : undefined,
+    env: {
+      NODE_ENV: process.env.NODE_ENV,
+      DATABASE_URL: process.env.DATABASE_URL !== undefined ? "Set" : "Not set",
+      PAYLOAD_SECRET:
+        process.env.PAYLOAD_SECRET !== undefined ? "Set" : "Not set",
+      LOG_LEVEL: process.env.LOG_LEVEL ?? "default",
+    },
+  };
+}
+
 export async function GET() {
   logger.info("Health check endpoint called");
 
@@ -12,31 +55,7 @@ export async function GET() {
     const results = await runHealthChecks();
     logger.debug("Health check results:", results);
 
-    const hasError = Object.values(results).some((r) => r.status === "error");
-    const hasPending = results.migrations.status === "pending";
-    const postgisNotFound = results.postgis.status === "not found";
-    const hasWarning = Object.values(results).some(
-      (r) => r.status === "warning",
-    );
-
-    let overallStatus = 200;
-    if (hasError || postgisNotFound) {
-      overallStatus = 503;
-      logger.warn("Health check returning 503 due to errors", {
-        hasError,
-        postgisNotFound,
-        results,
-      });
-    } else if (hasPending || hasWarning) {
-      overallStatus = 200; // Still healthy, but with a warning
-      logger.info("Health check has warnings but returning 200", {
-        hasPending,
-        hasWarning,
-      });
-    } else {
-      logger.info("Health check passed successfully");
-    }
-
+    const overallStatus = determineHealthStatus(results);
     return NextResponse.json(results, { status: overallStatus });
   } catch (error) {
     logger.error("Health check failed with exception", {
@@ -44,24 +63,7 @@ export async function GET() {
       stack: error instanceof Error ? error.stack : undefined,
     });
 
-    // Return a more detailed error response for debugging
-    const errorResponse = {
-      error: "Health check failed",
-      message: error instanceof Error ? error.message : "Unknown error",
-      stack:
-        process.env.NODE_ENV !== "production"
-          ? (error as Error).stack
-          : undefined,
-      env: {
-        NODE_ENV: process.env.NODE_ENV,
-        DATABASE_URL:
-          process.env.DATABASE_URL !== undefined ? "Set" : "Not set",
-        PAYLOAD_SECRET:
-          process.env.PAYLOAD_SECRET !== undefined ? "Set" : "Not set",
-        LOG_LEVEL: process.env.LOG_LEVEL ?? "default",
-      },
-    };
-
+    const errorResponse = createErrorResponse(error);
     return NextResponse.json(errorResponse, { status: 500 });
   }
 }

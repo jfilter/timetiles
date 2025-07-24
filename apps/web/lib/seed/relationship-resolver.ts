@@ -130,7 +130,7 @@ export class RelationshipResolver {
     collection: string,
     configs?: RelationshipConfig[],
   ): Promise<ResolvedItem | null> {
-    const relationshipConfigs = configs || getRelationshipConfig(collection);
+    const relationshipConfigs = configs ?? getRelationshipConfig(collection);
     if (relationshipConfigs.length === 0) {
       return item as ResolvedItem;
     }
@@ -141,7 +141,7 @@ export class RelationshipResolver {
       const originalValue = item[config.field];
 
       if (originalValue === null || originalValue === undefined) {
-        if (config.required) {
+        if (config.required === true) {
           throw new Error(
             `Required relationship field '${config.field}' is missing or null in ${collection}`,
           );
@@ -162,10 +162,10 @@ export class RelationshipResolver {
       try {
         const relatedItem = await this.findRelatedItem(originalValue, config);
 
-        if (relatedItem) {
+        if (relatedItem !== null && relatedItem !== undefined) {
           const typedItem = relatedItem as { id: string | number };
           resolved[config.field] = { id: typedItem.id };
-        } else if (config.required) {
+        } else if (config.required === true) {
           // In test environments, be more lenient with missing relationships
           const isTestEnvironment =
             process.env.NODE_ENV === "test" || process.env.VITEST === "true";
@@ -224,7 +224,7 @@ export class RelationshipResolver {
     // Check cache first
     const cacheKey = `${config.targetCollection}:${config.searchField}:${transformedValue}`;
     const collectionCache = this.cache.get(config.targetCollection);
-    if (collectionCache?.has(cacheKey)) {
+    if (collectionCache?.has(cacheKey) === true) {
       return collectionCache.get(cacheKey);
     }
 
@@ -236,7 +236,11 @@ export class RelationshipResolver {
     );
 
     // Fallback search if configured and primary search failed
-    if (result.docs.length === 0 && config.fallbackSearch) {
+    if (
+      result.docs.length === 0 &&
+      config.fallbackSearch !== null &&
+      config.fallbackSearch !== undefined
+    ) {
       logger.debug(
         `Primary search failed for '${transformedValue}' in ${config.targetCollection}.${config.searchField}, ` +
           `trying fallback search in ${config.fallbackSearch}`,
@@ -266,7 +270,7 @@ export class RelationshipResolver {
       );
     }
 
-    const relatedItem = result.docs[0] || null;
+    const relatedItem = result.docs[0] ?? null;
 
     // Cache the result (including null results to avoid repeated lookups)
     if (!this.cache.has(config.targetCollection)) {
@@ -333,15 +337,15 @@ export class RelationshipResolver {
           const typedItem = item as Record<string, unknown> & {
             id: string | number;
           };
-          if (typedItem.name) {
+          if (typedItem.name !== null && typedItem.name !== undefined) {
             collectionCache.set(
-              `${collection}:name:${typedItem.name}`,
+              `${collection}:name:${typeof typedItem.name === "string" ? typedItem.name : String(typedItem.name)}`,
               typedItem,
             );
           }
-          if (typedItem.slug) {
+          if (typedItem.slug !== null && typedItem.slug !== undefined) {
             collectionCache.set(
-              `${collection}:slug:${typedItem.slug}`,
+              `${collection}:slug:${typeof typedItem.slug === "string" ? typedItem.slug : String(typedItem.slug)}`,
               typedItem,
             );
           }

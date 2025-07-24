@@ -1,5 +1,7 @@
 import type { CollectionConfig } from "payload";
 
+import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
+
 const Imports: CollectionConfig = {
   slug: "imports",
   admin: {
@@ -88,7 +90,7 @@ const Imports: CollectionConfig = {
         },
         {
           label: "Completed",
-          value: "completed",
+          value: PROCESSING_STAGE.COMPLETED,
         },
         {
           label: "Failed",
@@ -106,23 +108,23 @@ const Imports: CollectionConfig = {
       options: [
         {
           label: "File Parsing",
-          value: "file-parsing",
+          value: PROCESSING_STAGE.FILE_PARSING,
         },
         {
           label: "Row Processing",
-          value: "row-processing",
+          value: PROCESSING_STAGE.ROW_PROCESSING,
         },
         {
           label: "Geocoding",
-          value: "geocoding",
+          value: PROCESSING_STAGE.GEOCODING,
         },
         {
           label: "Event Creation",
-          value: "event-creation",
+          value: PROCESSING_STAGE.EVENT_CREATION,
         },
         {
           label: "Completed",
-          value: "completed",
+          value: PROCESSING_STAGE.COMPLETED,
         },
       ],
       defaultValue: "file-parsing",
@@ -363,7 +365,7 @@ const Imports: CollectionConfig = {
           options: [
             {
               label: "File Parsing",
-              value: "file-parsing",
+              value: PROCESSING_STAGE.FILE_PARSING,
             },
             {
               label: "Batch Processing",
@@ -375,7 +377,7 @@ const Imports: CollectionConfig = {
             },
             {
               label: "Event Creation",
-              value: "event-creation",
+              value: PROCESSING_STAGE.EVENT_CREATION,
             },
           ],
           required: true,
@@ -394,7 +396,7 @@ const Imports: CollectionConfig = {
             },
             {
               label: "Completed",
-              value: "completed",
+              value: PROCESSING_STAGE.COMPLETED,
             },
             {
               label: "Failed",
@@ -462,7 +464,9 @@ const Imports: CollectionConfig = {
             { label: "Not Detected", value: "none" },
           ],
           admin: {
-            condition: (data) => data.coordinateDetection?.detected,
+            condition: (data) =>
+              (data as { coordinateDetection?: { detected?: boolean } })
+                .coordinateDetection?.detected === true,
           },
         },
         {
@@ -495,7 +499,9 @@ const Imports: CollectionConfig = {
             },
           ],
           admin: {
-            condition: (data) => data.coordinateDetection?.detected,
+            condition: (data) =>
+              (data as { coordinateDetection?: { detected?: boolean } })
+                .coordinateDetection?.detected === true,
           },
         },
         {

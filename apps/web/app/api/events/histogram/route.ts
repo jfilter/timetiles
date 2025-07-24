@@ -1,7 +1,7 @@
 import { sql } from "@payloadcms/db-postgres";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getPayload } from "payload";
+import { getPayload, type Payload } from "payload";
 
 import config from "../../../../payload.config";
 
@@ -25,6 +25,60 @@ function isValidBounds(value: unknown): value is MapBounds {
   );
 }
 
+function parseBounds(boundsParam: string): MapBounds {
+  const parsedBounds = JSON.parse(boundsParam) as unknown;
+  if (!isValidBounds(parsedBounds)) {
+    throw new Error("Invalid bounds format");
+  }
+  return parsedBounds;
+}
+
+async function checkHistogramFunction(payload: Payload): Promise<boolean> {
+  try {
+    const functionCheck = (await payload.db.drizzle.execute(sql`
+      SELECT EXISTS (
+        SELECT 1 FROM pg_proc 
+        WHERE proname = 'calculate_event_histogram'
+      ) as exists
+    `)) as { rows: Array<{ exists: boolean }> };
+    return functionCheck.rows[0]?.exists ?? false;
+  } catch (error) {
+    logger.warn("Function check failed:", {
+      error: (error as Error).message,
+    });
+    return false;
+  }
+}
+
+function buildFiltersWithBounds(params: {
+  catalog: string | null;
+  datasets: string[];
+  startDate: string | null;
+  endDate: string | null;
+  bounds: MapBounds | null;
+}) {
+  return {
+    catalogId:
+      params.catalog !== null && params.catalog !== ""
+        ? parseInt(params.catalog)
+        : undefined,
+    datasets:
+      params.datasets.length > 0
+        ? params.datasets.map((d) => parseInt(d))
+        : undefined,
+    startDate: params.startDate,
+    endDate: params.endDate,
+    ...(params.bounds != null && {
+      bounds: {
+        minLng: params.bounds.west,
+        maxLng: params.bounds.east,
+        minLat: params.bounds.south,
+        maxLat: params.bounds.north,
+      },
+    }),
+  };
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
 
@@ -43,11 +97,7 @@ export async function GET(request: NextRequest) {
     let bounds: MapBounds | null = null;
     if (boundsParam !== null && boundsParam !== "") {
       try {
-        const parsedBounds = JSON.parse(boundsParam) as unknown;
-        if (!isValidBounds(parsedBounds)) {
-          throw new Error("Invalid bounds format");
-        }
-        bounds = parsedBounds;
+        bounds = parseBounds(boundsParam);
       } catch {
         return NextResponse.json(
           {
@@ -59,39 +109,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Build filters object
-    const filters: Record<string, unknown> = {};
-    if (catalog !== null && catalog !== "") filters.catalog = catalog;
-    if (datasets.length > 0 && datasets[0] !== "") filters.datasets = datasets;
-    if (startDate !== null && startDate !== "") filters.startDate = startDate;
-    if (endDate !== null && endDate !== "") filters.endDate = endDate;
+    // Filters will be built with bounds later
 
     // Check if histogram function exists
-    let functionExists = false;
-
-    try {
-      const functionCheck = (await payload.db.drizzle.execute(sql`
-        SELECT EXISTS (
-          SELECT 1 FROM pg_proc 
-          WHERE proname = 'calculate_event_histogram'
-        ) as exists
-      `)) as { rows: Array<{ exists: boolean }> };
-      functionExists = functionCheck.rows[0]?.exists ?? false;
-    } catch (error) {
-      logger.warn("Function check failed:", {
-        error: (error as Error).message,
-      });
-      functionExists = false;
-    }
-
-    let result:
-      | { rows: Array<{ bucket: string; event_count: number }> }
-      | undefined;
-    let aggregations: {
-      total?: number;
-      dateRange?: { min: string | null; max: string | null };
-      counts?: { datasets: number; catalogs: number };
-    } = {};
+    const functionExists = await checkHistogramFunction(payload);
 
     if (!functionExists) {
       logger.error(
@@ -107,66 +128,51 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (functionExists) {
-      // Use the histogram function
-      const filtersWithBounds = {
-        catalogId:
-          catalog !== null && catalog !== "" ? parseInt(catalog) : undefined,
-        datasets:
-          datasets.length > 0 ? datasets.map((d) => parseInt(d)) : undefined,
-        startDate,
-        endDate,
-        ...(bounds != null && {
-          bounds: {
-            minLng: bounds.west,
-            maxLng: bounds.east,
-            minLat: bounds.south,
-            maxLat: bounds.north,
-          },
-        }),
-      };
+    // Use the histogram function
+    const filtersWithBounds = buildFiltersWithBounds({
+      catalog,
+      datasets,
+      startDate,
+      endDate,
+      bounds,
+    });
 
-      // Determine interval
-      let interval = granularity;
-      if (granularity === "auto") {
-        interval = "day"; // Default for now
-      }
+    // Determine interval
+    const interval = granularity === "auto" ? "day" : granularity;
 
-      result = (await payload.db.drizzle.execute(sql`
-        SELECT * FROM calculate_event_histogram(
-          ${interval}::text,
-          ${JSON.stringify(filtersWithBounds)}::jsonb
-        )
-      `)) as { rows: Array<{ bucket: string; event_count: number }> };
+    const result = (await payload.db.drizzle.execute(sql`
+      SELECT * FROM calculate_event_histogram(
+        ${interval}::text,
+        ${JSON.stringify(filtersWithBounds)}::jsonb
+      )
+    `)) as { rows: Array<{ bucket: string; event_count: number }> };
 
-      // Calculate total from result
-      const total = result.rows.reduce(
-        (sum: number, row) => sum + parseInt(String(row.event_count), 10),
-        0,
-      );
+    // Calculate total from result
+    const total = result.rows.reduce(
+      (sum: number, row) => sum + parseInt(String(row.event_count), 10),
+      0,
+    );
 
-      aggregations = {
-        total,
-        dateRange: {
-          min: result.rows[0]?.bucket ?? null,
-          max: result.rows[result.rows.length - 1]?.bucket ?? null,
-        },
-      };
-    }
+    const aggregations = {
+      total,
+      dateRange: {
+        min: result.rows[0]?.bucket ?? null,
+        max: result.rows[result.rows.length - 1]?.bucket ?? null,
+      },
+    };
 
     // Transform the histogram data
-    const histogram =
-      result?.rows.map((row) => ({
-        date: row.bucket,
-        count: parseInt(String(row.event_count), 10),
-      })) ?? [];
+    const histogram = result.rows.map((row) => ({
+      date: row.bucket,
+      count: parseInt(String(row.event_count), 10),
+    }));
 
     return NextResponse.json({
       histogram,
       metadata: {
-        total: aggregations.total ?? 0,
-        dateRange: aggregations.dateRange ?? { min: null, max: null },
-        counts: aggregations.counts ?? { datasets: 0, catalogs: 0 },
+        total: aggregations.total,
+        dateRange: aggregations.dateRange,
+        counts: { datasets: 0, catalogs: 0 },
         // TODO: Add dataset/catalog breakdowns if needed
         topDatasets: [],
         topCatalogs: [],

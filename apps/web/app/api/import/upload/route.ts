@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { join } from "path";
 import { getPayload } from "payload";
 import { v4 as uuidv4 } from "uuid";
-import * as XLSX from "xlsx";
+import { read as xlsxRead, utils as xlsxUtils } from "xlsx";
 
 import {
   createRequestLogger,
@@ -33,6 +33,72 @@ const MAX_FILE_SIZE = {
   unauthenticated: 10 * 1024 * 1024, // 10MB
 };
 
+interface ValidatedFormData {
+  file: File;
+  catalogId: number | null;
+  datasetId: number | null;
+  sessionId: string | null;
+}
+
+function validateFormData(formData: FormData): ValidatedFormData {
+  const file = formData.get("file") as File;
+  const catalogIdRaw = formData.get("catalogId");
+  const datasetIdRaw = formData.get("datasetId");
+  const sessionIdRaw = formData.get("sessionId");
+
+  const catalogId = parseCatalogId(catalogIdRaw as string);
+  const datasetId = parseDatasetId(datasetIdRaw as string | null);
+  const sessionId = (sessionIdRaw as string | null)?.trim() ?? null;
+
+  return { file, catalogId, datasetId, sessionId };
+}
+
+function parseCatalogId(catalogIdRaw: string): number | null {
+  const catalogIdStr = catalogIdRaw?.trim();
+  return catalogIdStr ? parseInt(catalogIdStr, 10) : null;
+}
+
+function parseDatasetId(datasetIdRaw: string | null): number | null {
+  const datasetIdStr = datasetIdRaw?.trim();
+  return datasetIdStr !== null &&
+    datasetIdStr !== undefined &&
+    datasetIdStr !== "null"
+    ? parseInt(datasetIdStr, 10)
+    : null;
+}
+
+function validateFileUpload(file: File, user: Pick<User, "id"> | null) {
+  if (file === null) {
+    return { error: "No file provided", status: 400 };
+  }
+
+  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    return {
+      error: `Unsupported file type. Allowed types: ${ALLOWED_MIME_TYPES.join(", ")}`,
+      status: 400,
+    };
+  }
+
+  const maxSize = user
+    ? MAX_FILE_SIZE.authenticated
+    : MAX_FILE_SIZE.unauthenticated;
+  if (file.size > maxSize) {
+    return {
+      error: `File too large. Maximum size: ${Math.round(maxSize / 1024 / 1024)}MB`,
+      status: 400,
+    };
+  }
+
+  return null;
+}
+
+function validateCatalogId(catalogId: number | null) {
+  if (catalogId === null || catalogId === 0 || isNaN(catalogId)) {
+    return { error: "Valid catalog ID is required", status: 400 };
+  }
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   const requestId = uuidv4();
   const logger = createRequestLogger(requestId);
@@ -49,38 +115,25 @@ export async function POST(request: NextRequest) {
 
     // Parse form data
     const formData = await request.formData();
-    const file = formData.get("file") as File;
-    const catalogIdRaw = formData.get("catalogId");
-    const datasetIdRaw = formData.get("datasetId");
-    const sessionIdRaw = formData.get("sessionId");
-
-    logger.debug({ catalogIdRaw, datasetIdRaw, sessionIdRaw }, "Raw form data");
-
-    const catalogIdStr = (catalogIdRaw as string)?.trim();
-    const catalogId = catalogIdStr ? parseInt(catalogIdStr, 10) : null;
-    const datasetIdStr = (datasetIdRaw as string | null)?.trim();
-    const datasetId =
-      datasetIdStr !== null &&
-      datasetIdStr !== undefined &&
-      datasetIdStr !== "null"
-        ? parseInt(datasetIdStr, 10)
-        : null;
-    const sessionId = (sessionIdRaw as string | null)?.trim() ?? null;
+    const { file, catalogId, datasetId, sessionId } =
+      validateFormData(formData);
 
     logger.debug({ catalogId, datasetId, sessionId }, "Parsed form data");
 
     // Validate required fields
-    if (file === null) {
+    const fileValidation = validateFileUpload(file, null);
+    if (fileValidation) {
       return NextResponse.json(
-        { success: false, message: "No file provided" },
-        { status: 400 },
+        { success: false, message: fileValidation.error },
+        { status: fileValidation.status },
       );
     }
 
-    if (catalogId === null || catalogId === 0 || isNaN(catalogId)) {
+    const catalogValidation = validateCatalogId(catalogId);
+    if (catalogValidation) {
       return NextResponse.json(
-        { success: false, message: "Valid catalog ID is required" },
-        { status: 400 },
+        { success: false, message: catalogValidation.error },
+        { status: catalogValidation.status },
       );
     }
 
@@ -100,28 +153,12 @@ export async function POST(request: NextRequest) {
       "Processing file upload request",
     );
 
-    // Validate file type
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    // Additional file validation with user context
+    const userFileValidation = validateFileUpload(file, user);
+    if (userFileValidation) {
       return NextResponse.json(
-        {
-          success: false,
-          message: `Unsupported file type. Allowed types: ${ALLOWED_MIME_TYPES.join(", ")}`,
-        },
-        { status: 400 },
-      );
-    }
-
-    // Check file size limits
-    const maxSize = user
-      ? MAX_FILE_SIZE.authenticated
-      : MAX_FILE_SIZE.unauthenticated;
-    if (file.size > maxSize) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: `File too large. Maximum size: ${Math.round(maxSize / 1024 / 1024)}MB`,
-        },
-        { status: 400 },
+        { success: false, message: userFileValidation.error },
+        { status: userFileValidation.status },
       );
     }
 
@@ -150,6 +187,14 @@ export async function POST(request: NextRequest) {
           },
         );
       }
+    }
+
+    // Ensure catalogId is not null after validation
+    if (catalogId === null) {
+      return NextResponse.json(
+        { success: false, message: "Valid catalog ID is required" },
+        { status: 400 },
+      );
     }
 
     // Verify catalog exists
@@ -209,23 +254,7 @@ export async function POST(request: NextRequest) {
     await writeFile(filePath, buffer);
 
     // Parse file to get row count
-    let rowCount = 0;
-    try {
-      if (file.type === "text/csv") {
-        const content = buffer.toString("utf-8");
-        rowCount = content.split("\n").length - 1; // Subtract header row
-      } else {
-        // Excel file
-        const workbook = XLSX.read(buffer, { type: "buffer" });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName!];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet!);
-        rowCount = jsonData.length;
-      }
-    } catch (error) {
-      logger.warn({ error }, "Failed to parse file for row count");
-      rowCount = 0;
-    }
+    const rowCount = parseFileRowCount(buffer, file.type, logger);
 
     // Create import record
     let importRecord: Import;
@@ -388,6 +417,29 @@ export async function GET() {
       },
       { status: 500 },
     );
+  }
+}
+
+function parseFileRowCount(
+  buffer: Buffer,
+  fileType: string,
+  logger: ReturnType<typeof createRequestLogger>,
+): number {
+  try {
+    if (fileType === "text/csv") {
+      const content = buffer.toString("utf-8");
+      return content.split("\n").length - 1; // Subtract header row
+    } else {
+      // Excel file
+      const workbook = xlsxRead(buffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName!];
+      const jsonData = xlsxUtils.sheet_to_json(worksheet!);
+      return jsonData.length;
+    }
+  } catch (error) {
+    logger.warn({ error }, "Failed to parse file for row count");
+    return 0;
   }
 }
 

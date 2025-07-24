@@ -337,7 +337,7 @@ export function generateMetadata(
         discipline: disciplines[index % disciplines.length],
         keywords: [
           "research",
-          disciplines[index % disciplines.length]?.toLowerCase() || "unknown",
+          disciplines[index % disciplines.length]?.toLowerCase() ?? "unknown",
           "study",
         ],
         doi: `10.1234/example.${index + 1000}`,

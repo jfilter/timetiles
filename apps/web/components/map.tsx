@@ -69,7 +69,7 @@ export function Map({ onBoundsChange, events = [] }: MapProps) {
         .setLngLat([event.longitude, event.latitude])
         .setPopup(
           new maplibregl.Popup({ offset: 25 }).setHTML(
-            `<h3>${event.title || "Event"}</h3>`,
+            `<h3>${event.title ?? "Event"}</h3>`,
           ),
         )
         .addTo(map.current!);

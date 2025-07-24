@@ -205,7 +205,11 @@ export class GeocodingService {
     const defaultProviders = [];
 
     // Add Google provider if API key is available
-    if (process.env.GOOGLE_MAPS_API_KEY) {
+    if (
+      process.env.GOOGLE_MAPS_API_KEY !== null &&
+      process.env.GOOGLE_MAPS_API_KEY !== undefined &&
+      process.env.GOOGLE_MAPS_API_KEY !== ""
+    ) {
       defaultProviders.push({
         name: "Google Maps (Default)",
         type: "google" as const,
@@ -227,7 +231,12 @@ export class GeocodingService {
       name: "Nominatim (Default)",
       type: "nominatim" as const,
       enabled: true,
-      priority: process.env.GOOGLE_MAPS_API_KEY ? 2 : 1,
+      priority:
+        process.env.GOOGLE_MAPS_API_KEY !== null &&
+        process.env.GOOGLE_MAPS_API_KEY !== undefined &&
+        process.env.GOOGLE_MAPS_API_KEY !== ""
+          ? 2
+          : 1,
       rateLimit: 1,
       config: {
         nominatim: {
@@ -241,7 +250,11 @@ export class GeocodingService {
     });
 
     // Add OpenCage provider if API key is available
-    if (process.env.OPENCAGE_API_KEY) {
+    if (
+      process.env.OPENCAGE_API_KEY !== null &&
+      process.env.OPENCAGE_API_KEY !== undefined &&
+      process.env.OPENCAGE_API_KEY !== ""
+    ) {
       defaultProviders.push({
         name: "OpenCage (Default)",
         type: "opencage" as const,
@@ -281,7 +294,7 @@ export class GeocodingService {
     logger.info(`Initializing ${docs.length} providers from docs`);
 
     for (const doc of docs) {
-      if (!doc.enabled || !doc.type) {
+      if (doc.enabled !== true || doc.type === null || doc.type === undefined) {
         logger.warn(`Skipping disabled or invalid provider: ${doc.name}`);
         continue;
       }
@@ -293,74 +306,21 @@ export class GeocodingService {
         let geocoder: NodeGeocoder.Geocoder;
 
         switch (doc.type) {
-          case "google":
-            if (!doc.config?.google?.apiKey) {
-              logger.warn(`Google provider '${doc.name}' missing API key`);
-              continue;
-            }
-            logger.info(`Creating Google geocoder for '${doc.name}'`);
-            geocoder = NodeGeocoder({
-              provider: "google",
-              apiKey: doc.config.google.apiKey,
-              formatter: null,
-              region: doc.config.google.region ?? undefined,
-              language: doc.config.google.language ?? "en",
-            });
-            break;
-
-          case "nominatim": {
-            const nominatimConfig = doc.config?.nominatim ?? {};
-            logger.info(`Creating Nominatim geocoder for '${doc.name}'`);
-            geocoder = NodeGeocoder({
-              provider: "openstreetmap",
-              formatter: null,
-              osmServer:
-                (nominatimConfig as { baseUrl?: string }).baseUrl ??
-                "https://nominatim.openstreetmap.org",
-              countrycodes: (nominatimConfig as { countrycodes?: string })
-                .countrycodes,
-              addressdetails:
-                (nominatimConfig as { addressdetails?: boolean })
-                  .addressdetails !== false,
-              extratags:
-                (nominatimConfig as { extratags?: boolean }).extratags === true,
-            } as NodeGeocoder.Options);
+          case "google": {
+            const googleGeocoder = this.createGoogleGeocoder(doc);
+            if (!googleGeocoder) continue;
+            geocoder = googleGeocoder;
             break;
           }
 
+          case "nominatim":
+            geocoder = this.createNominatimGeocoder(doc);
+            break;
+
           case "opencage": {
-            if (!doc.config?.opencage?.apiKey) {
-              logger.warn(`OpenCage provider '${doc.name}' missing API key`);
-              continue;
-            }
-            logger.info(`Creating OpenCage geocoder for '${doc.name}'`);
-            const opencageConfig = doc.config.opencage;
-            const geocoderOptions: NodeGeocoder.Options = {
-              provider: "opencage",
-              apiKey: opencageConfig.apiKey,
-              formatter: null,
-              language: opencageConfig.language ?? "en",
-            } as NodeGeocoder.Options;
-
-            // Add bounds if configured
-            if (
-              opencageConfig.bounds?.enabled &&
-              opencageConfig.bounds.southwest &&
-              opencageConfig.bounds.northeast
-            ) {
-              const { southwest, northeast } = opencageConfig.bounds;
-              if (
-                southwest.lat != null &&
-                southwest.lng != null &&
-                northeast.lat != null &&
-                northeast.lng != null
-              ) {
-                (geocoderOptions as { bounds?: unknown }).bounds =
-                  `${southwest.lat},${southwest.lng},${northeast.lat},${northeast.lng}`;
-              }
-            }
-
-            geocoder = NodeGeocoder(geocoderOptions);
+            const opencageGeocoder = this.createOpenCageGeocoder(doc);
+            if (!opencageGeocoder) continue;
+            geocoder = opencageGeocoder;
             break;
           }
 
@@ -392,6 +352,115 @@ export class GeocodingService {
     );
   }
 
+  private createGoogleGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder | null {
+    if (
+      doc.config?.google?.apiKey === null ||
+      doc.config?.google?.apiKey === undefined ||
+      doc.config?.google?.apiKey === ""
+    ) {
+      logger.warn(`Google provider '${doc.name}' missing API key`);
+      return null;
+    }
+    
+    logger.info(`Creating Google geocoder for '${doc.name}'`);
+    return NodeGeocoder({
+      provider: "google",
+      apiKey: doc.config.google.apiKey,
+      formatter: null,
+      region: doc.config.google.region ?? undefined,
+      language: doc.config.google.language ?? "en",
+    });
+  }
+
+  private createNominatimGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder {
+    const nominatimConfig = doc.config?.nominatim ?? {};
+    logger.info(`Creating Nominatim geocoder for '${doc.name}'`);
+    return NodeGeocoder({
+      provider: "openstreetmap",
+      formatter: null,
+      osmServer:
+        (nominatimConfig as { baseUrl?: string }).baseUrl ??
+        "https://nominatim.openstreetmap.org",
+      countrycodes: (nominatimConfig as { countrycodes?: string })
+        .countrycodes,
+      addressdetails:
+        (nominatimConfig as { addressdetails?: boolean })
+          .addressdetails !== false,
+      extratags:
+        (nominatimConfig as { extratags?: boolean }).extratags === true,
+    } as NodeGeocoder.Options);
+  }
+
+  private createOpenCageGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder | null {
+    if (
+      doc.config?.opencage?.apiKey === null ||
+      doc.config?.opencage?.apiKey === undefined ||
+      doc.config?.opencage?.apiKey === ""
+    ) {
+      logger.warn(`OpenCage provider '${doc.name}' missing API key`);
+      return null;
+    }
+    
+    logger.info(`Creating OpenCage geocoder for '${doc.name}'`);
+    const opencageConfig = doc.config.opencage;
+    const geocoderOptions: NodeGeocoder.Options = {
+      provider: "opencage",
+      apiKey: opencageConfig.apiKey,
+      formatter: null,
+      language: opencageConfig.language ?? "en",
+    } as NodeGeocoder.Options;
+
+    // Add bounds if configured
+    if (
+      opencageConfig.bounds?.enabled === true &&
+      opencageConfig.bounds.southwest !== null &&
+      opencageConfig.bounds.southwest !== undefined &&
+      opencageConfig.bounds.northeast !== null &&
+      opencageConfig.bounds.northeast !== undefined
+    ) {
+      const { southwest, northeast } = opencageConfig.bounds;
+      if (
+        southwest.lat != null &&
+        southwest.lng != null &&
+        northeast.lat != null &&
+        northeast.lng != null
+      ) {
+        (geocoderOptions as { bounds?: unknown }).bounds =
+          `${southwest.lat},${southwest.lng},${northeast.lat},${northeast.lng}`;
+      }
+    }
+
+    return NodeGeocoder(geocoderOptions);
+  }
+
+  private async checkCache(
+    address: string,
+    startTime: number,
+  ): Promise<GeocodingResult | null> {
+    if (this.settings?.caching?.enabled === true) {
+      const cached = await this.getCachedResult(address);
+      if (cached !== null && cached !== undefined) {
+        await this.updateCacheHit(cached.id);
+        logPerformance("Geocoding (cache hit)", Date.now() - startTime, {
+          address,
+        });
+        return this.convertCachedResult(cached);
+      }
+    }
+    return null;
+  }
+
+  private getEnabledProviders() {
+    const enabledProviders = this.providers.filter((p) => p.enabled);
+    if (enabledProviders.length === 0) {
+      throw new GeocodingError(
+        "No geocoding providers available",
+        "NO_PROVIDERS_AVAILABLE",
+      );
+    }
+    return enabledProviders;
+  }
+
   async geocode(address: string): Promise<GeocodingResult> {
     await this.initialize();
 
@@ -400,27 +469,13 @@ export class GeocodingService {
 
     try {
       // Check cache first
-      if (this.settings?.caching?.enabled) {
-        const cached = await this.getCachedResult(address);
-        if (cached) {
-          await this.updateCacheHit(cached.id);
-          logPerformance("Geocoding (cache hit)", Date.now() - startTime, {
-            address,
-          });
-
-          return this.convertCachedResult(cached);
-        }
+      const cachedResult = await this.checkCache(address, startTime);
+      if (cachedResult) {
+        return cachedResult;
       }
 
       // Try providers in order
-      const enabledProviders = this.providers.filter((p) => p.enabled);
-
-      if (enabledProviders.length === 0) {
-        throw new GeocodingError(
-          "No geocoding providers available",
-          "NO_PROVIDERS_AVAILABLE",
-        );
-      }
+      const enabledProviders = this.getEnabledProviders();
 
       for (const provider of enabledProviders) {
         try {
@@ -431,7 +486,7 @@ export class GeocodingService {
 
           // Add timeout to prevent hanging
           const geocodePromise = provider.geocoder.geocode(address);
-          const timeoutPromise = new Promise((_, reject) =>
+          const timeoutPromise = new Promise((_resolve, reject) =>
             setTimeout(() => reject(new Error("Provider timeout")), 10000),
           );
 
@@ -440,7 +495,13 @@ export class GeocodingService {
             timeoutPromise,
           ])) as Entry[];
 
-          if (results && results.length > 0 && results[0]) {
+          if (
+            results !== null &&
+            results !== undefined &&
+            results.length > 0 &&
+            results[0] !== null &&
+            results[0] !== undefined
+          ) {
             const result = this.convertNodeGeocoderResult(
               results[0],
               provider.name,
@@ -458,7 +519,7 @@ export class GeocodingService {
               );
 
               // Cache the result
-              if (this.settings?.caching?.enabled) {
+              if (this.settings?.caching?.enabled === true) {
                 await this.cacheResult(address, result);
               }
 
@@ -477,7 +538,7 @@ export class GeocodingService {
           );
 
           // If fallback is disabled, throw error
-          if (!this.settings?.fallbackEnabled) {
+          if (this.settings?.fallbackEnabled !== true) {
             throw error;
           }
           continue;
@@ -577,11 +638,11 @@ export class GeocodingService {
     const address = testAddress ?? "London, UK";
     const results: Record<string, unknown> = {};
 
-    for (const provider of this.providers.filter((p) => p.enabled)) {
+    for (const provider of this.providers.filter((p) => p.enabled === true)) {
       try {
         // Add timeout to prevent hanging
         const geocodePromise = provider.geocoder.geocode(address);
-        const timeoutPromise = new Promise((_, reject) =>
+        const timeoutPromise = new Promise((_resolve, reject) =>
           setTimeout(() => reject(new Error("Geocoding timeout")), 5000),
         );
 
@@ -638,8 +699,8 @@ export class GeocodingService {
       confidence: this.calculateConfidence(result, providerName),
       provider: providerName,
       normalizedAddress:
-        result.formattedAddress ||
-        (result as { display_name?: string }).display_name ||
+        result.formattedAddress ??
+        (result as { display_name?: string }).display_name ??
         "",
       components: {
         streetNumber: result.streetNumber,
@@ -693,16 +754,16 @@ export class GeocodingService {
     return {
       latitude: cached.latitude,
       longitude: cached.longitude,
-      confidence: cached.confidence || 0,
+      confidence: cached.confidence ?? 0,
       provider: cached.provider,
       normalizedAddress: cached.normalizedAddress,
       components: {
-        streetNumber: cached.components?.streetNumber || undefined,
-        streetName: cached.components?.streetName || undefined,
-        city: cached.components?.city || undefined,
-        region: cached.components?.region || undefined,
-        postalCode: cached.components?.postalCode || undefined,
-        country: cached.components?.country || undefined,
+        streetNumber: cached.components?.streetNumber ?? undefined,
+        streetName: cached.components?.streetName ?? undefined,
+        city: cached.components?.city ?? undefined,
+        region: cached.components?.region ?? undefined,
+        postalCode: cached.components?.postalCode ?? undefined,
+        country: cached.components?.country ?? undefined,
       },
       metadata: cached.metadata,
       fromCache: true,
@@ -751,8 +812,9 @@ export class GeocodingService {
   }
 
   private isCacheExpired(cached: LocationCache): boolean {
-    if (!cached.createdAt) return true;
-    const ttl = (this.settings?.caching?.ttlDays || 365) * 24 * 60 * 60 * 1000;
+    if (cached.createdAt === null || cached.createdAt === undefined)
+      return true;
+    const ttl = (this.settings?.caching?.ttlDays ?? 365) * 24 * 60 * 60 * 1000;
     return Date.now() - new Date(cached.createdAt).getTime() > ttl;
   }
 
@@ -767,7 +829,7 @@ export class GeocodingService {
         collection: "location-cache",
         id: cacheId,
         data: {
-          hitCount: (cached.hitCount || 0) + 1,
+          hitCount: (cached.hitCount ?? 0) + 1,
           lastUsed: new Date().toISOString(),
         },
       });
@@ -830,7 +892,7 @@ export class GeocodingService {
   async cleanupCache(): Promise<void> {
     try {
       const ttl =
-        (this.settings?.caching?.ttlDays || 365) * 24 * 60 * 60 * 1000;
+        (this.settings?.caching?.ttlDays ?? 365) * 24 * 60 * 60 * 1000;
       const cutoffDate = new Date(Date.now() - ttl);
 
       // Find old cache entries based on lastUsed date

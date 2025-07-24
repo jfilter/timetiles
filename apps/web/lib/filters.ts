@@ -9,6 +9,9 @@ import {
   clearAllFilters,
 } from "./store";
 
+// Re-export FilterState for external use
+export type { FilterState };
+
 // Custom parsers for nuqs
 const parseAsStringOrNull = parseAsString.withDefault("");
 const parseAsArrayOfStrings = parseAsArrayOf(parseAsString).withDefault([]);
@@ -41,7 +44,7 @@ export const useFilters = () => {
   // Enhanced setCatalog that also clears datasets when catalog changes
   const handleSetCatalog = (newCatalog: string | null) => {
     const catalogValue = newCatalog === "all" ? null : newCatalog;
-    void setCatalog(catalogValue || "");
+    void setCatalog(catalogValue ?? "");
     // Clear datasets when catalog changes
     if (catalogValue !== catalog) {
       void setDatasets([]);
@@ -56,10 +59,10 @@ export const useFilters = () => {
     const newFilters = removeFilter(filters, filterType, value);
 
     // Update URL state
-    void setCatalog(newFilters.catalog || "");
+    void setCatalog(newFilters.catalog ?? "");
     void setDatasets(newFilters.datasets);
-    void setStartDate(newFilters.startDate || "");
-    void setEndDate(newFilters.endDate || "");
+    void setStartDate(newFilters.startDate ?? "");
+    void setEndDate(newFilters.endDate ?? "");
   };
 
   // Helper function to clear all filters
@@ -67,10 +70,10 @@ export const useFilters = () => {
     const newFilters = clearAllFilters();
 
     // Update URL state
-    void setCatalog(newFilters.catalog || "");
+    void setCatalog(newFilters.catalog ?? "");
     void setDatasets(newFilters.datasets);
-    void setStartDate(newFilters.startDate || "");
-    void setEndDate(newFilters.endDate || "");
+    void setStartDate(newFilters.startDate ?? "");
+    void setEndDate(newFilters.endDate ?? "");
   };
 
   // Computed values
@@ -90,8 +93,8 @@ export const useFilters = () => {
     // Individual filter setters
     setCatalog: handleSetCatalog,
     setDatasets,
-    setStartDate: (value: string | null) => void setStartDate(value || ""),
-    setEndDate: (value: string | null) => void setEndDate(value || ""),
+    setStartDate: (value: string | null) => void setStartDate(value ?? ""),
+    setEndDate: (value: string | null) => void setEndDate(value ?? ""),
 
     // Helper functions
     removeFilter: handleRemoveFilter,

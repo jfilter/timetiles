@@ -46,7 +46,7 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
           "academic-research": "Academic Research",
           "government-data": "Government Data",
         };
-        return mappings[value] || value;
+        return mappings[value] ?? value;
       },
     },
   ],
@@ -69,7 +69,7 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
           "cultural-participation": "Cultural Participation Rates",
           "research-publications": "Research Publications Database",
         };
-        return mappings[value] || value;
+        return mappings[value] ?? value;
       },
     },
   ],
@@ -99,7 +99,7 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
 export function getRelationshipConfig(
   collection: string,
 ): RelationshipConfig[] {
-  return RELATIONSHIP_CONFIG[collection] || [];
+  return RELATIONSHIP_CONFIG[collection] ?? [];
 }
 
 /**
@@ -149,14 +149,14 @@ export function getDependencyOrder(collections: string[]): string[] {
   // Build dependency map
   Object.entries(RELATIONSHIP_CONFIG).forEach(([collection, configs]) => {
     const deps = configs
-      .filter((config) => config.required)
+      .filter((config) => config.required === true)
       .map((config) => config.targetCollection);
     dependencies.set(collection, deps);
   });
 
   // Add collections without relationships
   collections.forEach((collection) => {
-    if (!dependencies.has(collection)) {
+    if (dependencies.has(collection) === false) {
       dependencies.set(collection, []);
     }
   });
@@ -166,7 +166,7 @@ export function getDependencyOrder(collections: string[]): string[] {
     if (visited.has(collection)) return;
     visited.add(collection);
 
-    const deps = dependencies.get(collection) || [];
+    const deps = dependencies.get(collection) ?? [];
     deps.forEach((dep) => {
       if (collections.includes(dep)) {
         visit(dep);

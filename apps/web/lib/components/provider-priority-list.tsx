@@ -2,6 +2,23 @@
 
 import React, { useState, useCallback } from "react";
 
+function getProviderAtIndex(
+  providers: Provider[],
+  index: number,
+): Provider | undefined {
+  // Enhanced safe array access to avoid object injection
+  if (
+    Array.isArray(providers) &&
+    Number.isInteger(index) &&
+    index >= 0 &&
+    index < providers.length &&
+    Object.prototype.hasOwnProperty.call(providers, index)
+  ) {
+    return Object.prototype.hasOwnProperty.call(providers, index) ? providers[index] : undefined;
+  }
+  return undefined;
+}
+
 interface Provider {
   type: "google" | "nominatim" | "opencage";
   name: string;
@@ -54,7 +71,7 @@ export const ProviderPriorityList: React.FC<ProviderPriorityListProps> = ({
       }
 
       const newProviders = [...sortedProviders];
-      const draggedProvider = newProviders[draggedItem];
+      const draggedProvider = getProviderAtIndex(newProviders, draggedItem);
 
       if (!draggedProvider) {
         setDraggedItem(null);

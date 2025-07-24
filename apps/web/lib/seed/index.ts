@@ -4,8 +4,8 @@ import type { Where } from "payload";
 import config from "../../payload.config";
 import { createLogger, logError, logPerformance } from "../logger";
 import { DatabaseOperations } from "./database-operations";
-import { RelationshipResolver } from "./relationship-resolver";
 import { getDependencyOrder } from "./relationship-config";
+import { RelationshipResolver } from "./relationship-resolver";
 import {
   getCollectionConfig,
   getEnabledCollections,
@@ -122,7 +122,7 @@ export class SeedManager {
     // Seed each collection according to its configuration
     for (const collectionName of collectionsToSeed) {
       const config = getCollectionConfig(collectionName, environment);
-      if (!config || config.disabled) {
+      if (config === null || config === undefined || config.disabled === true) {
         logger.debug(`Skipping disabled collection: ${collectionName}`);
         continue;
       }
@@ -130,10 +130,16 @@ export class SeedManager {
       // Apply any config overrides
       const finalConfig = {
         ...config,
-        ...configOverrides[collectionName],
+        ...(typeof collectionName === "string" && 
+            Object.prototype.hasOwnProperty.call(configOverrides, collectionName)
+          ? configOverrides[collectionName]
+          : {}),
         options: {
           ...config.options,
-          ...configOverrides[collectionName]?.options,
+          ...(typeof collectionName === "string" && 
+              Object.prototype.hasOwnProperty.call(configOverrides, collectionName)
+            ? configOverrides[collectionName]?.options
+            : {}),
         },
       };
 
@@ -162,7 +168,7 @@ export class SeedManager {
    */
   async seed(options: SeedOptions = {}) {
     // If useConfig is true, delegate to the new configuration-driven method
-    if (options.useConfig) {
+    if (options.useConfig === true) {
       return this.seedWithConfig(options);
     }
     const {
@@ -233,7 +239,7 @@ export class SeedManager {
       environment,
     );
 
-    if (!seedData || seedData.length === 0) {
+    if (seedData === null || seedData === undefined || seedData.length === 0) {
       logger.warn(`No seed data found for ${collectionOrGlobal}`);
       return;
     }
@@ -241,7 +247,7 @@ export class SeedManager {
     if (collectionOrGlobal === "main-menu") {
       try {
         logger.info("Seeding main-menu global...");
-        const menuData = Array.isArray(seedData) ? seedData[0] : seedData;
+        const menuData = Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : seedData;
         await this.payload!.updateGlobal({
           slug: "main-menu",
           data: menuData as Config["globals"]["main-menu"],
@@ -250,7 +256,7 @@ export class SeedManager {
       } catch (error) {
         logError(error, "Failed to seed main-menu global", {
           global: "main-menu",
-          data: seedData[0],
+          data: Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : {},
         });
       }
       return;
@@ -274,10 +280,18 @@ export class SeedManager {
     for (const resolvedItem of resolvedSeedData) {
       try {
         // For test environment, add timestamp to slug to ensure uniqueness
-        if (environment === "test" && resolvedItem.slug) {
+        if (
+          environment === "test" &&
+          resolvedItem.slug !== null &&
+          resolvedItem.slug !== undefined
+        ) {
           const timestamp = Date.now();
           const randomSuffix = Math.random().toString(36).substring(2, 8);
-          resolvedItem.slug = `${resolvedItem.slug}-${timestamp}-${randomSuffix}`;
+          const slugValue =
+            typeof resolvedItem.slug === "string"
+              ? resolvedItem.slug
+              : String(resolvedItem.slug);
+          resolvedItem.slug = `${String(slugValue)}-${timestamp}-${randomSuffix}`;
         }
 
         // Check if item already exists to avoid duplicate key errors
@@ -285,7 +299,7 @@ export class SeedManager {
           collectionOrGlobal,
           resolvedItem,
         );
-        if (existingItem) {
+        if (existingItem !== null && existingItem !== undefined) {
           const displayName = this.getDisplayName(resolvedItem);
           logger.debug(
             { collection: collectionOrGlobal, displayName },
@@ -332,16 +346,20 @@ export class SeedManager {
     const count =
       typeof config.count === "function"
         ? config.count(environment)
-        : config.count || 0;
+        : (config.count ?? 0);
 
-    if (count <= 0) {
+    if (count !== null && count !== undefined && count <= 0) {
       logger.debug(`Skipping ${collectionName}: count is ${count}`);
       return;
     }
 
     // Get base seed data
     const baseSeedData = await this.getSeedData(collectionName, environment);
-    if (!baseSeedData || baseSeedData.length === 0) {
+    if (
+      baseSeedData === null ||
+      baseSeedData === undefined ||
+      baseSeedData.length === 0
+    ) {
       logger.warn(`No seed data found for ${collectionName}`);
       return;
     }
@@ -371,11 +389,14 @@ export class SeedManager {
     }
 
     // Apply custom generator if specified
-    if (config.customGenerator) {
+    if (
+      config.customGenerator !== null &&
+      config.customGenerator !== undefined
+    ) {
       seedData = await this.applyCustomGenerator(
         seedData,
         config.customGenerator,
-        config.options || {},
+        config.options ?? {},
       );
     }
 
@@ -402,7 +423,7 @@ export class SeedManager {
     // Handle globals (like main-menu)
     if (collectionName === "main-menu") {
       try {
-        const menuData = Array.isArray(seedData) ? seedData[0] : seedData;
+        const menuData = Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : seedData;
         await this.payload!.updateGlobal({
           slug: "main-menu",
           data: menuData as Config["globals"]["main-menu"],
@@ -411,7 +432,7 @@ export class SeedManager {
       } catch (error) {
         logError(error, "Failed to seed main-menu global", {
           global: "main-menu",
-          data: seedData[0],
+          data: Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : {},
         });
       }
       return;
@@ -430,10 +451,18 @@ export class SeedManager {
     for (const resolvedItem of resolvedSeedData) {
       try {
         // For test environment, add timestamp to slug to ensure uniqueness
-        if (environment === "test" && resolvedItem.slug) {
+        if (
+          environment === "test" &&
+          resolvedItem.slug !== null &&
+          resolvedItem.slug !== undefined
+        ) {
           const timestamp = Date.now();
           const randomSuffix = Math.random().toString(36).substring(2, 8);
-          resolvedItem.slug = `${resolvedItem.slug}-${timestamp}-${randomSuffix}`;
+          const slugValue =
+            typeof resolvedItem.slug === "string"
+              ? resolvedItem.slug
+              : String(resolvedItem.slug);
+          resolvedItem.slug = `${String(slugValue)}-${timestamp}-${randomSuffix}`;
         }
 
         // Check if item already exists to avoid duplicate key errors
@@ -441,7 +470,7 @@ export class SeedManager {
           collectionName,
           resolvedItem,
         );
-        if (existingItem) {
+        if (existingItem !== null && existingItem !== undefined) {
           const displayName = this.getDisplayName(resolvedItem);
           logger.debug(
             { collection: collectionName, displayName },
@@ -498,18 +527,14 @@ export class SeedManager {
       // Make variations based on collection type
       switch (collectionName) {
         case "events": {
-          const eventItem = newItem as unknown as Event;
-          if (
-            eventItem.data &&
-            typeof eventItem.data === "object" &&
-            eventItem.data !== null &&
-            !Array.isArray(eventItem.data)
-          ) {
-            const dataObj = eventItem.data as Record<string, unknown>;
-            if (dataObj.title && typeof dataObj.title === "string") {
-              dataObj.title = `${dataObj.title} - Variant ${i + 1}`;
-            }
-            if (dataObj.address && typeof dataObj.address === "string") {
+          const eventItem = newItem as { data?: Record<string, unknown> };
+          if (eventItem.data) {
+            const dataObj = eventItem.data;
+            if (
+              dataObj.address !== null &&
+              dataObj.address !== undefined &&
+              typeof dataObj.address === "string"
+            ) {
               dataObj.address = `${dataObj.address} - Unit ${i + 1}`;
             }
           }
@@ -517,20 +542,20 @@ export class SeedManager {
         }
         case "datasets": {
           const datasetItem = newItem as unknown as Dataset;
-          if (datasetItem.name) {
+          if (datasetItem.name !== null && datasetItem.name !== undefined) {
             datasetItem.name = `${datasetItem.name} - Extended ${i + 1}`;
           }
-          if (datasetItem.slug) {
+          if (datasetItem.slug !== null && datasetItem.slug !== undefined) {
             datasetItem.slug = `${datasetItem.slug}-ext-${i + 1}`;
           }
           break;
         }
         case "catalogs": {
           const catalogItem = newItem as { name?: string; slug?: string };
-          if (catalogItem.name) {
+          if (catalogItem.name !== null && catalogItem.name !== undefined) {
             catalogItem.name = `${catalogItem.name} - Branch ${i + 1}`;
           }
-          if (catalogItem.slug) {
+          if (catalogItem.slug !== null && catalogItem.slug !== undefined) {
             catalogItem.slug = `${catalogItem.slug}-branch-${i + 1}`;
           }
           break;
@@ -541,7 +566,7 @@ export class SeedManager {
             const [name, domain] = userItem.email.split("@");
             userItem.email = `${name}+${i + 1}@${domain}`;
           }
-          if (userItem.firstName) {
+          if (userItem.firstName !== null && userItem.firstName !== undefined) {
             userItem.firstName = `${userItem.firstName}${i + 1}`;
           }
           break;
@@ -552,6 +577,51 @@ export class SeedManager {
     }
 
     return additional;
+  }
+
+  private applyCollectionVariations(
+    item: Record<string, unknown>,
+    collectionName: string,
+    index: number,
+  ): void {
+    switch (collectionName) {
+      case "events": {
+        const eventItem = item as { data?: Record<string, unknown> };
+        if (eventItem.data) {
+          this.applyEventVariations(eventItem.data, index);
+        }
+        break;
+      }
+      case "datasets": {
+        this.applyDatasetVariations(item, index);
+        break;
+      }
+      default:
+        // Add generic variations for other collections
+        this.applyGenericVariations(item, index);
+        break;
+    }
+  }
+
+  private applyEventVariations(data: Record<string, unknown>, index: number): void {
+    if (data.title && typeof data.title === "string") {
+      data.title = `${data.title} - Variant ${index + 1}`;
+    }
+    if (data.address && typeof data.address === "string") {
+      data.address = `${data.address} - Unit ${index + 1}`;
+    }
+  }
+
+  private applyDatasetVariations(item: Record<string, unknown>, index: number): void {
+    if (item.name && typeof item.name === "string") {
+      item.name = `${item.name} - Copy ${index + 1}`;
+    }
+  }
+
+  private applyGenericVariations(item: Record<string, unknown>, index: number): void {
+    if (item.name && typeof item.name === "string") {
+      item.name = `${item.name} - ${index + 1}`;
+    }
   }
 
   /**
@@ -598,18 +668,19 @@ export class SeedManager {
             const event = item as Event;
             return {
               ...event,
-              location: event.location
-                ? {
-                    ...event.location,
-                    // Add small random offset to prevent perfect clustering
-                    latitude:
-                      (event.location.latitude || 0) +
-                      (Math.random() - 0.5) * 0.1,
-                    longitude:
-                      (event.location.longitude || 0) +
-                      (Math.random() - 0.5) * 0.1,
-                  }
-                : event.location,
+              location:
+                event.location !== null && event.location !== undefined
+                  ? {
+                      ...event.location,
+                      // Add small random offset to prevent perfect clustering
+                      latitude:
+                        (event.location.latitude ?? 0) +
+                        (Math.random() - 0.5) * 0.1,
+                      longitude:
+                        (event.location.longitude ?? 0) +
+                        (Math.random() - 0.5) * 0.1,
+                    }
+                  : event.location,
             };
           }) as SeedData;
         }
@@ -672,7 +743,7 @@ export class SeedManager {
       case "imports":
         return importSeeds(environment);
       case "main-menu":
-        return [mainMenuSeed];
+        return Array.isArray(mainMenuSeed) ? mainMenuSeed : [mainMenuSeed];
       case "pages":
         return pagesSeed;
       default:
@@ -750,14 +821,14 @@ export class SeedManager {
             logger.warn(
               {
                 collection,
-                errors: result.errors?.length || 0,
+                errors: result.errors?.length ?? 0,
                 method: result.method,
               },
               `Truncation failed for ${collection}`,
             );
 
             // Log specific errors if available
-            if (result.errors) {
+            if (result.errors !== null && result.errors !== undefined) {
               result.errors.forEach((error, index) => {
                 logError(
                   error,
@@ -786,15 +857,14 @@ export class SeedManager {
 
       // Try to close the database connection pool with timeout
       if (
-        this.payload.db &&
-        this.payload.db.pool &&
-        !(this.payload.db.pool as { ended?: boolean }).ended
+        this.payload.db?.pool != null &&
+        (this.payload.db.pool as { ended?: boolean }).ended !== true
       ) {
         logger.debug("Closing database pool...");
         try {
           await Promise.race([
             this.payload.db.pool.end(),
-            new Promise((_, reject) =>
+            new Promise((_resolve, reject) =>
               setTimeout(() => reject(new Error("Pool.end() timeout")), 3000),
             ),
           ]);
@@ -808,12 +878,8 @@ export class SeedManager {
 
       // Try to close Drizzle client if it exists
       if (
-        this.payload.db &&
-        this.payload.db.drizzle &&
-        (this.payload.db.drizzle as { $client?: { ended?: boolean } })
-          .$client &&
-        !(this.payload.db.drizzle as { $client?: { ended?: boolean } }).$client
-          ?.ended
+        this.payload.db?.drizzle != null &&
+        typeof (this.payload.db.drizzle as any).end === "function"
       ) {
         logger.debug("Closing drizzle client...");
         try {
@@ -821,7 +887,7 @@ export class SeedManager {
             (
               this.payload.db.drizzle as unknown as { end: () => Promise<void> }
             ).end(),
-            new Promise((_, reject) =>
+            new Promise((_resolve, reject) =>
               setTimeout(
                 () => reject(new Error("Drizzle client.end() timeout")),
                 2000,
@@ -835,12 +901,16 @@ export class SeedManager {
       }
 
       // Try to destroy the database instance
-      if (this.payload.db && typeof this.payload.db.destroy === "function") {
+      if (
+        this.payload.db !== null &&
+        this.payload.db !== undefined &&
+        typeof this.payload.db.destroy === "function"
+      ) {
         logger.debug("Destroying database instance...");
         try {
           await Promise.race([
             this.payload.db.destroy(),
-            new Promise((_, reject) =>
+            new Promise((_resolve, reject) =>
               setTimeout(
                 () => reject(new Error("Database destroy timeout")),
                 2000,
@@ -883,28 +953,33 @@ export class SeedManager {
 
       switch (collection) {
         case "users":
-          if (item.email) {
+          if (item.email !== null && item.email !== undefined) {
             where.email = { equals: item.email };
           }
           break;
         case "catalogs":
-          if (item.slug) {
+          if (item.slug !== null && item.slug !== undefined) {
             where.slug = { equals: item.slug };
-          } else if (item.name) {
+          } else if (item.name !== null && item.name !== undefined) {
             where.name = { equals: item.name };
           }
           break;
         case "datasets":
-          if (item.slug) {
+          if (item.slug !== null && item.slug !== undefined) {
             where.slug = { equals: item.slug };
-          } else if (item.name) {
+          } else if (item.name !== null && item.name !== undefined) {
             where.name = { equals: item.name };
           }
           break;
         case "events": {
           // For events, check by a combination of fields to avoid exact duplicates
           const eventItem = item as unknown as Event;
-          if (eventItem.data && eventItem.location) {
+          if (
+            eventItem.data !== null &&
+            eventItem.data !== undefined &&
+            eventItem.location !== null &&
+            eventItem.location !== undefined
+          ) {
             where.and = [
               {
                 "location.latitude": {
@@ -921,7 +996,11 @@ export class SeedManager {
           break;
         }
         case "imports":
-          if (item.fileName) {
+          if (
+            item.fileName !== null &&
+            item.fileName !== undefined &&
+            item.fileName !== ""
+          ) {
             where.fileName = { equals: item.fileName };
           }
           break;
@@ -939,7 +1018,9 @@ export class SeedManager {
         limit: 1,
       });
 
-      return existing.docs.length > 0 ? existing.docs[0] : null;
+      return existing.docs.length > 0 && existing.docs[0] !== undefined 
+        ? existing.docs[0] 
+        : null;
     } catch (error) {
       // If we can't check for existence, just proceed with creation
       logger.debug(`Could not check for existing ${collection} item:`, error);
@@ -949,12 +1030,38 @@ export class SeedManager {
 
   private getDisplayName(item: Record<string, unknown>): string {
     return (
-      (item.name as string) ||
-      (item.email as string) ||
-      (item.fileName as string) ||
-      (item.id as string) ||
+      (item.name as string) ??
+      (item.email as string) ??
+      (item.fileName as string) ??
+      (item.id as string) ??
       "Unknown"
     );
+  }
+
+  private determineCollectionCount(config: CollectionConfig, environment: string): number {
+    return typeof config.count === "function"
+      ? config.count(environment)
+      : (config.count ?? 0);
+  }
+
+  private isValidCount(count: number, collectionName: string): boolean {
+    if (count !== null && count !== undefined && count <= 0) {
+      logger.debug(`Skipping ${collectionName}: count is ${count}`);
+      return false;
+    }
+    return true;
+  }
+
+  private isValidSeedData(baseSeedData: SeedData | null, collectionName: string): boolean {
+    if (
+      baseSeedData === null ||
+      baseSeedData === undefined ||
+      baseSeedData.length === 0
+    ) {
+      logger.warn(`No seed data found for ${collectionName}`);
+      return false;
+    }
+    return true;
   }
 }
 

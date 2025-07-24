@@ -1,13 +1,44 @@
 import fs from "fs";
 import Papa from "papaparse";
 import type { Payload } from "payload";
-import * as XLSX from "xlsx";
+import { read as xlsxRead, utils as xlsxUtils } from "xlsx";
+
+function setObjectProperty(
+  obj: Record<string, unknown>,
+  key: string,
+  value: unknown,
+): void {
+  // Safe property assignment
+  if (
+    typeof key === "string" &&
+    key.length > 0 &&
+    !Object.prototype.hasOwnProperty.call(Object.prototype, key)
+  ) {
+    obj[key] = value;
+  }
+}
+
+function getObjectProperty(obj: Record<string, unknown>, key: string): unknown {
+  // Safe property access to avoid object injection
+  if (
+    typeof key === "string" &&
+    Object.prototype.hasOwnProperty.call(obj, key)
+  ) {
+    return obj[key];
+  }
+  return undefined;
+}
+
+// Constants to reduce string duplication
+const BATCH_PROCESSING_TASK = "batch-processing";
+const TASK_EVENT_CREATION = "event-creation";
+const TASK_GEOCODING_BATCH = "geocoding-batch";
+const ERROR_PROCESSING_MESSAGE = "processing failed";
 
 import type {
   Import,
   Dataset,
   Event,
-  Catalog,
   TaskFileParsing,
   TaskBatchProcessing,
   TaskEventCreation,
@@ -18,6 +49,8 @@ import { createJobLogger, logError, logPerformance } from "../logger";
 import { GeocodingService } from "../services/geocoding/geocoding-service";
 import { CoordinateValidator } from "../services/import/coordinate-validator";
 import { GeoLocationDetector } from "../services/import/geo-location-detector";
+
+import { JOB_TYPES } from "@/lib/constants/import-constants";
 
 // Enhanced job payload types using Payload task types
 interface FileParsingJobPayload extends TaskFileParsing {
@@ -72,18 +105,18 @@ type JobHandlerContext<T = unknown> = {
 
 // File parsing job
 export const fileParsingJob = {
-  slug: "file-parsing",
+  slug: JOB_TYPES.FILE_PARSING,
   handler: async (context: JobHandlerContext) => {
     // Support both new format (req.payload) and legacy format (payload directly)
-    const payload = (context.req?.payload || context.payload) as Payload;
-    if (!payload) {
+    const payload = (context.req?.payload ?? context.payload) as Payload;
+    if (payload === null || payload === undefined) {
       throw new Error("Payload instance not found in job context");
     }
-    const input = (context.input ||
+    const input = (context.input ??
       context.job?.input) as FileParsingJobPayload["input"];
     const { importId, filePath, fileType } = input;
 
-    const jobId = context.job?.id || "unknown";
+    const jobId = context.job?.id ?? "unknown";
     const logger = createJobLogger(jobId, "file-parsing");
     logger.info({ importId, filePath, fileType }, "Starting file parsing job");
     const startTime = Date.now();
@@ -130,10 +163,10 @@ export const fileParsingJob = {
       } else if (fileType === "xlsx") {
         // Read as buffer to avoid file access issues
         const fileBuffer = fs.readFileSync(filePath);
-        const workbook = XLSX.read(fileBuffer, { type: "buffer" });
+        const workbook = xlsxRead(fileBuffer, { type: "buffer" });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName!];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet!, {
+        const jsonData = xlsxUtils.sheet_to_json(worksheet!, {
           header: 1,
           defval: "",
         });
@@ -146,7 +179,14 @@ export const fileParsingJob = {
             const obj: Record<string, unknown> = {};
             const rowArray = row as unknown[];
             headers.forEach((header, index) => {
-              obj[header] = rowArray[index] || "";
+              if (typeof header === "string" && header.length > 0) {
+                setObjectProperty(obj, header, rowArray[index] ?? "");
+              } else {
+                const safeHeader = String(header);
+                if (typeof safeHeader === "string" && safeHeader.length > 0) {
+                  setObjectProperty(obj, safeHeader, rowArray[index] ?? "");
+                }
+              }
             });
             return obj;
           });
@@ -162,9 +202,18 @@ export const fileParsingJob = {
       // Validate required fields
       const requiredFields = ["title", "date"];
       const validRows = parsedData.filter((row) => {
-        return requiredFields.every(
-          (field) => row[field] && (row[field] as string).toString().trim(),
-        );
+        return requiredFields.every((field) => {
+          const value = getObjectProperty(row, field);
+          return (
+            value !== undefined &&
+            value !== null &&
+            value !== "" &&
+            (typeof value === "string" ? value.trim() : 
+             typeof value === "number" || typeof value === "boolean" ? String(value).trim() :
+             typeof value === "object" && value !== null ? JSON.stringify(value).trim() : 
+             String(value).trim()) !== ""
+          );
+        });
       });
 
       if (validRows.length === 0) {
@@ -186,7 +235,7 @@ export const fileParsingJob = {
 
       // Detect coordinate columns
       const geoDetector = new GeoLocationDetector();
-      const headers = Object.keys(parsedData[0] || {});
+      const headers = Object.keys(parsedData[0] ?? {});
       const sampleRows = parsedData.slice(0, Math.min(20, parsedData.length));
       const geoColumns = geoDetector.detectGeoColumns(headers, sampleRows);
 
@@ -203,17 +252,17 @@ export const fileParsingJob = {
       // Update import with coordinate detection results
       const coordinateDetectionData = {
         detected: geoColumns.found,
-        detectionMethod: (geoColumns.detectionMethod || "none") as
+        detectionMethod: (geoColumns.detectionMethod ?? "none") as
           | "pattern"
           | "heuristic"
           | "manual"
           | "none",
         columnMapping: geoColumns.found
           ? {
-              latitudeColumn: geoColumns.latColumn || null,
-              longitudeColumn: geoColumns.lonColumn || null,
-              combinedColumn: geoColumns.combinedColumn || null,
-              coordinateFormat: (geoColumns.format || "decimal") as
+              latitudeColumn: geoColumns.latColumn ?? null,
+              longitudeColumn: geoColumns.lonColumn ?? null,
+              combinedColumn: geoColumns.combinedColumn ?? null,
+              coordinateFormat: (geoColumns.format ?? "decimal") as
                 | "decimal"
                 | "dms"
                 | "combined_comma"
@@ -221,11 +270,11 @@ export const fileParsingJob = {
                 | "geojson",
             }
           : {},
-        detectionConfidence: geoColumns.confidence || 0,
+        detectionConfidence: geoColumns.confidence ?? 0,
         sampleValidation: {
           validSamples: 0,
           invalidSamples: 0,
-          swappedCoordinates: geoColumns.swappedCoordinates || false,
+          swappedCoordinates: geoColumns.swappedCoordinates ?? false,
         },
       };
 
@@ -284,7 +333,7 @@ export const fileParsingJob = {
         );
 
         await payload.jobs.queue({
-          task: "batch-processing",
+          task: BATCH_PROCESSING_TASK,
           input: {
             importId,
             batchNumber: i + 1,
@@ -335,15 +384,15 @@ export const fileParsingJob = {
 
 // Batch processing job
 export const batchProcessingJob = {
-  slug: "batch-processing",
+  slug: BATCH_PROCESSING_TASK,
   handler: async (context: JobHandlerContext) => {
-    const payload = (context.req?.payload || context.payload) as Payload;
-    const input = (context.input ||
+    const payload = (context.req?.payload ?? context.payload) as Payload;
+    const input = (context.input ??
       context.job?.input) as BatchProcessingJobPayload["input"];
     const { importId, batchNumber, batchData } = input;
 
-    const jobId = context.job?.id || "unknown";
-    const logger = createJobLogger(jobId, "batch-processing");
+    const jobId = context.job?.id ?? "unknown";
+    const logger = createJobLogger(jobId, BATCH_PROCESSING_TASK);
     logger.info(
       { importId, batchNumber, itemCount: batchData.length },
       "Starting batch processing job",
@@ -378,79 +427,40 @@ export const batchProcessingJob = {
       // Initialize coordinate validator
       const coordinateValidator = new CoordinateValidator();
       const hasCoordinates =
-        currentImport.coordinateDetection?.detected || false;
+        currentImport.coordinateDetection?.detected === true;
       const columnMapping = currentImport.coordinateDetection?.columnMapping;
 
       const processedData = batchData.map((row) => {
         // Normalize and validate data
         const processedRow: Record<string, unknown> = {
-          title: (row.title as string)?.toString().trim(),
-          description: (row.description as string)?.toString().trim() || "",
-          date: parseDate(row.date as string),
-          endDate: row.enddate ? parseDate(row.enddate as string) : null,
-          location: (row.location as string)?.toString().trim() || "",
-          address: (row.address as string)?.toString().trim() || "",
-          url: (row.url as string)?.toString().trim() || "",
-          category: (row.category as string)?.toString().trim() || "",
-          tags: (row.tags as string)
-            ? (row.tags as string)
-                .toString()
-                .split(",")
-                .map((t: string) => t.trim())
-                .filter(Boolean)
-            : [],
+          title: safeStringValue(row, "title"),
+          description: safeStringValue(row, "description") ?? "",
+          date: parseDate(safeStringValue(row, "date") ?? ""),
+          endDate: hasValidProperty(row, "enddate")
+            ? parseDate(safeStringValue(row, "enddate") ?? "")
+            : null,
+          location: safeStringValue(row, "location") ?? "",
+          address: safeStringValue(row, "address") ?? "",
+          url: safeStringValue(row, "url") ?? "",
+          category: safeStringValue(row, "category") ?? "",
+          tags: parseTagsFromRow(row),
           originalData: row,
         };
 
         // Extract coordinates if detected
         if (hasCoordinates && columnMapping) {
-          let extractedCoords: {
-            latitude: number | null;
-            longitude: number | null;
-          } | null = null;
+          const extractedCoords = extractCoordinatesFromRow(
+            row,
+            columnMapping,
+            coordinateValidator,
+          );
 
-          if (columnMapping.latitudeColumn && columnMapping.longitudeColumn) {
-            // Separate columns
-            const latValue = row[columnMapping.latitudeColumn];
-            const lonValue = row[columnMapping.longitudeColumn];
-            const lat = coordinateValidator.parseCoordinate(latValue);
-            const lon = coordinateValidator.parseCoordinate(lonValue);
-
-            const validated = coordinateValidator.validateCoordinates(
-              lat,
-              lon,
-              true,
-            );
-            if (validated.isValid) {
-              extractedCoords = {
-                latitude: validated.latitude,
-                longitude: validated.longitude,
-              };
-              processedRow.coordinateValidation = validated;
-            }
-          } else if (columnMapping.combinedColumn) {
-            // Combined column
-            const combinedValue = row[columnMapping.combinedColumn];
-            const extraction = coordinateValidator.extractFromCombined(
-              combinedValue,
-              columnMapping.coordinateFormat || "combined_comma",
-            );
-
-            if (
-              extraction.isValid &&
-              extraction.latitude !== null &&
-              extraction.longitude !== null
-            ) {
-              extractedCoords = {
-                latitude: extraction.latitude,
-                longitude: extraction.longitude,
-              };
-            }
-          }
-
-          if (extractedCoords) {
-            processedRow.preExistingCoordinates = extractedCoords;
+          if (extractedCoords.coordinates) {
+            processedRow.preExistingCoordinates = extractedCoords.coordinates;
             processedRow.skipGeocoding = true;
+            if (extractedCoords.validation) {
+              processedRow.coordinateValidation = extractedCoords.validation;
+            }
           }
         }
 
@@ -464,7 +474,7 @@ export const batchProcessingJob = {
       );
 
       await payload.jobs.queue({
-        task: "event-creation",
+        task: TASK_EVENT_CREATION,
         input: {
           importId,
           processedData,
@@ -491,7 +501,7 @@ export const batchProcessingJob = {
         },
         data: {
           errorCount: 1,
-          errorLog: `Batch ${batchNumber} processing failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+          errorLog: `Batch ${batchNumber} ${ERROR_PROCESSING_MESSAGE}: ${error instanceof Error ? error.message : "Unknown error"}`,
         },
       });
 
@@ -503,14 +513,14 @@ export const batchProcessingJob = {
 
 // Event creation job
 export const eventCreationJob = {
-  slug: "event-creation",
+  slug: TASK_EVENT_CREATION,
   handler: async (context: JobHandlerContext) => {
-    const payload = (context.req?.payload || context.payload) as Payload;
-    const input = (context.input ||
+    const payload = (context.req?.payload ?? context.payload) as Payload;
+    const input = (context.input ??
       context.job?.input) as EventCreationJobPayload["input"];
     const { importId, processedData, batchNumber } = input;
 
-    const jobId = context.job?.id || "unknown";
+    const jobId = context.job?.id ?? "unknown";
     const logger = createJobLogger(jobId, "event-creation");
     logger.info(
       { importId, batchNumber, eventCount: processedData.length },
@@ -573,7 +583,7 @@ export const eventCreationJob = {
           const eventCreateData: EventCreationPayload = {
             dataset: dataset.id,
             import: importId,
-            data: (eventData.originalData || eventData) as Event["data"],
+            data: (eventData.originalData ?? eventData) as Event["data"],
             eventTimestamp: eventData.date as string,
             geocodingInfo: {
               originalAddress: eventData.address as string,
@@ -584,12 +594,21 @@ export const eventCreationJob = {
           };
 
           // Add pre-existing coordinates if available
-          if (eventData.preExistingCoordinates && eventData.skipGeocoding) {
+          if (
+            eventData.preExistingCoordinates !== null &&
+            eventData.preExistingCoordinates !== undefined &&
+            eventData.skipGeocoding === true
+          ) {
             const coords = eventData.preExistingCoordinates as {
               latitude: number;
               longitude: number;
             };
-            if (coords.latitude !== null && coords.longitude !== null) {
+            if (
+              coords.latitude !== null &&
+              coords.latitude !== undefined &&
+              coords.longitude !== null &&
+              coords.longitude !== undefined
+            ) {
               eventCreateData.location = {
                 latitude: coords.latitude,
                 longitude: coords.longitude,
@@ -601,7 +620,7 @@ export const eventCreationJob = {
                     eventData as {
                       coordinateValidation?: { confidence?: number };
                     }
-                  ).coordinateValidation?.confidence || 0.9,
+                  ).coordinateValidation?.confidence ?? 0.9,
                 validationStatus:
                   ((
                     eventData as {
@@ -614,20 +633,20 @@ export const eventCreationJob = {
                     | "swapped"
                     | "invalid"
                     | null
-                    | undefined) || "valid",
+                    | undefined) ?? "valid",
                 importColumns: {
                   latitudeColumn:
                     currentImport.coordinateDetection?.columnMapping
-                      ?.latitudeColumn || null,
+                      ?.latitudeColumn ?? null,
                   longitudeColumn:
                     currentImport.coordinateDetection?.columnMapping
-                      ?.longitudeColumn || null,
+                      ?.longitudeColumn ?? null,
                   combinedColumn:
                     currentImport.coordinateDetection?.columnMapping
-                      ?.combinedColumn || null,
+                      ?.combinedColumn ?? null,
                   format:
                     currentImport.coordinateDetection?.columnMapping
-                      ?.coordinateFormat || "decimal",
+                      ?.coordinateFormat ?? "decimal",
                 },
               };
               preExistingCoordinateCount++;
@@ -742,7 +761,7 @@ export const eventCreationJob = {
         );
 
         await payload.jobs.queue({
-          task: "geocoding-batch",
+          task: TASK_GEOCODING_BATCH,
           input: {
             importId,
             eventIds: eventsNeedingGeocoding,
@@ -812,17 +831,17 @@ export const eventCreationJob = {
 
 // Geocoding batch job
 export const geocodingBatchJob = {
-  slug: "geocoding-batch",
+  slug: TASK_GEOCODING_BATCH,
   handler: async (context: JobHandlerContext) => {
-    const payload = (context.req?.payload || context.payload) as Payload;
-    if (!payload) {
+    const payload = (context.req?.payload ?? context.payload) as Payload;
+    if (payload === null || payload === undefined) {
       throw new Error("Payload instance not found in job context");
     }
-    const input = (context.input ||
+    const input = (context.input ??
       context.job?.input) as GeocodingBatchJobPayload["input"];
     const { importId, eventIds, batchNumber } = input;
 
-    const jobId = context.job?.id || "unknown";
+    const jobId = context.job?.id ?? "unknown";
     const logger = createJobLogger(jobId, "geocoding-batch");
     logger.info(
       { importId, batchNumber, eventCount: eventIds.length },
@@ -842,7 +861,11 @@ export const geocodingBatchJob = {
             id: eventId,
           });
 
-          if (!event.geocodingInfo?.originalAddress) {
+          if (
+            event.geocodingInfo?.originalAddress === null ||
+            event.geocodingInfo?.originalAddress === undefined ||
+            event.geocodingInfo?.originalAddress === ""
+          ) {
             logger.debug({ eventId }, "Event has no address to geocode");
             processedCount++; // Count as processed even if no address
             continue;
@@ -860,7 +883,7 @@ export const geocodingBatchJob = {
             event.geocodingInfo.originalAddress,
           );
 
-          if (geocodingResult) {
+          if (geocodingResult !== null && geocodingResult !== undefined) {
             logger.debug(
               {
                 eventId,
@@ -884,7 +907,7 @@ export const geocodingBatchJob = {
                 },
                 coordinateSource: {
                   type: "geocoded",
-                  confidence: geocodingResult.confidence || 0.8,
+                  confidence: geocodingResult.confidence ?? 0.8,
                   validationStatus: "valid",
                 },
                 geocodingInfo: {
@@ -995,7 +1018,8 @@ export const geocodingBatchJob = {
 
 // Utility function to parse dates
 function parseDate(dateString: string | number | Date): string {
-  if (!dateString) return new Date().toISOString();
+  if (dateString === null || dateString === undefined || dateString === "")
+    return new Date().toISOString();
 
   const date = new Date(dateString.toString());
   if (isNaN(date.getTime())) {
@@ -1020,4 +1044,152 @@ function parseDate(dateString: string | number | Date): string {
   }
 
   return date.toISOString();
+}
+
+function safeStringValue(
+  row: Record<string, unknown>,
+  key: string,
+): string | null {
+  const value = getObjectProperty(row, key);
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value).trim();
+  }
+  // Type checking before String() to avoid @typescript-eslint/no-base-to-string
+  if (typeof value === "object" && value !== null) {
+    return JSON.stringify(value);
+  }
+  return String(value).trim();
+}
+
+function hasValidProperty(obj: Record<string, unknown>, key: string): boolean {
+  // Safe property access to avoid object injection
+  const value = getObjectProperty(obj, key);
+  return value !== null && value !== undefined;
+}
+
+function parseTagsFromRow(row: Record<string, unknown>): string[] {
+  const tags = getObjectProperty(row, "tags");
+  if (tags === null || tags === undefined || tags === "") {
+    return [];
+  }
+
+  if (typeof tags === "string") {
+    return tags
+      .split(",")
+      .map((t: string) => t.trim())
+      .filter((t) => t !== "");
+  }
+  if (typeof tags === "number" || typeof tags === "boolean") {
+    return String(tags)
+      .split(",")
+      .map((t: string) => t.trim())
+      .filter((t) => t !== "");
+  }
+  // Enhanced type checking before String() to avoid @typescript-eslint/no-base-to-string
+  if (typeof tags === "object" && tags !== null) {
+    return JSON.stringify(tags)
+      .split(",")
+      .map((t: string) => t.trim())
+      .filter((t) => t !== "");
+  }
+  if (typeof tags === "string") {
+    return tags
+      .split(",")
+      .map((t: string) => t.trim())
+      .filter((t) => t !== "");
+  }
+  if (typeof tags === "number" || typeof tags === "boolean") {
+    return String(tags)
+      .split(",")
+      .map((t: string) => t.trim())
+      .filter((t) => t !== "");
+  }
+  return String(tags)
+    .split(",")
+    .map((t: string) => t.trim())
+    .filter((t) => t !== "");
+}
+
+function extractCoordinatesFromRow(
+  row: Record<string, unknown>,
+  columnMapping: NonNullable<Import["coordinateDetection"]>["columnMapping"],
+  coordinateValidator: CoordinateValidator,
+): {
+  coordinates: { latitude: number; longitude: number } | null;
+  validation?: ReturnType<CoordinateValidator["validateCoordinates"]>;
+} {
+  if (columnMapping === null || columnMapping === undefined) {
+    return { coordinates: null };
+  }
+
+  const hasLatLonColumns =
+    columnMapping.latitudeColumn !== null &&
+    columnMapping.latitudeColumn !== undefined &&
+    columnMapping.latitudeColumn !== "" &&
+    columnMapping.longitudeColumn !== null &&
+    columnMapping.longitudeColumn !== undefined &&
+    columnMapping.longitudeColumn !== "";
+
+  if (hasLatLonColumns) {
+    const latColumn = columnMapping.latitudeColumn;
+    const lonColumn = columnMapping.longitudeColumn;
+
+    if (
+      latColumn !== null &&
+      latColumn !== undefined &&
+      latColumn !== "" &&
+      lonColumn !== null &&
+      lonColumn !== undefined &&
+      lonColumn !== ""
+    ) {
+      const latValue = getObjectProperty(row, latColumn);
+      const lonValue = getObjectProperty(row, lonColumn);
+      const lat = coordinateValidator.parseCoordinate(latValue);
+      const lon = coordinateValidator.parseCoordinate(lonValue);
+
+      const validated = coordinateValidator.validateCoordinates(lat, lon, true);
+      if (validated.isValid) {
+        return {
+          coordinates: {
+            latitude: validated.latitude,
+            longitude: validated.longitude,
+          },
+          validation: validated,
+        };
+      }
+    }
+  }
+
+  const hasCombinedColumn =
+    columnMapping.combinedColumn !== null &&
+    columnMapping.combinedColumn !== undefined &&
+    columnMapping.combinedColumn !== "";
+  if (hasCombinedColumn) {
+    const combinedValue = getObjectProperty(row, columnMapping.combinedColumn!);
+    const extraction = coordinateValidator.extractFromCombined(
+      combinedValue,
+      columnMapping.coordinateFormat ?? "combined_comma",
+    );
+
+    if (
+      extraction.isValid &&
+      extraction.latitude !== null &&
+      extraction.longitude !== null
+    ) {
+      return {
+        coordinates: {
+          latitude: extraction.latitude,
+          longitude: extraction.longitude,
+        },
+      };
+    }
+  }
+
+  return { coordinates: null };
 }

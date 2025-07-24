@@ -110,7 +110,8 @@ export class CoordinateValidator {
       return { latitude: null, longitude: null, format, isValid: false };
     }
 
-    const strValue = String(value).trim();
+    const strValue =
+      typeof value === "string" ? value.trim() : String(value).trim();
 
     switch (format) {
       case "combined_comma":
@@ -132,10 +133,11 @@ export class CoordinateValidator {
    * Extract from comma-separated format
    */
   private extractCommaFormat(value: string): CoordinateExtraction {
-    const match = value.match(/^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/);
-    if (match?.[1] && match[2]) {
-      const lat = parseFloat(match[1]);
-      const lon = parseFloat(match[2]);
+    const regex = /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/;
+    const match = regex.exec(value);
+    if (match && isValidMatchGroup(match, 1) && isValidMatchGroup(match, 2)) {
+      const lat = parseFloat(match[1]!);
+      const lon = parseFloat(match[2]!);
       const validated = this.validateCoordinates(lat, lon);
 
       return {
@@ -157,10 +159,11 @@ export class CoordinateValidator {
    * Extract from space-separated format
    */
   private extractSpaceFormat(value: string): CoordinateExtraction {
-    const match = value.match(/^(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/);
-    if (match?.[1] && match[2]) {
-      const lat = parseFloat(match[1]);
-      const lon = parseFloat(match[2]);
+    const regex = /^(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/;
+    const match = regex.exec(value);
+    if (match && isValidMatchGroup(match, 1) && isValidMatchGroup(match, 2)) {
+      const lat = parseFloat(match[1]!);
+      const lon = parseFloat(match[2]!);
       const validated = this.validateCoordinates(lat, lon);
 
       return {
@@ -185,7 +188,8 @@ export class CoordinateValidator {
     try {
       const parsed = typeof value === "string" ? JSON.parse(value) : value;
       if (
-        parsed &&
+        parsed !== null &&
+        parsed !== undefined &&
         parsed.type === "Point" &&
         Array.isArray(parsed.coordinates)
       ) {
@@ -223,10 +227,14 @@ export class CoordinateValidator {
     if (spaceResult.isValid) return spaceResult;
 
     // Try brackets format [lat, lon]
-    const bracketMatch = value.match(
-      /^\[?\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\s*\]?$/,
-    );
-    if (bracketMatch?.[1] && bracketMatch[2]) {
+    const bracketRegex = /^\[?\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\s*\]?$/;
+    const bracketMatch = bracketRegex.exec(value);
+    if (
+      bracketMatch?.[1] !== null &&
+      bracketMatch?.[1] !== undefined &&
+      bracketMatch[2] !== null &&
+      bracketMatch[2] !== undefined
+    ) {
       const lat = parseFloat(bracketMatch[1]);
       const lon = parseFloat(bracketMatch[2]);
       const validated = this.validateCoordinates(lat, lon);
@@ -291,13 +299,20 @@ export class CoordinateValidator {
     }
 
     // Convert to string and clean
-    const str = String(value).trim();
+    const str = typeof value === "string" ? value.trim() : String(value).trim();
 
     // Try DMS format first (e.g., "40°42'46"N" or "40° 42' 46" N")
-    const dmsMatch = str.match(
-      /^(-?\d+)[°\s]+(\d+)['′\s]+(\d+(?:\.\d+)?)["″\s]*([NSEW])?$/i,
-    );
-    if (dmsMatch?.[1] && dmsMatch[2] && dmsMatch[3]) {
+    const dmsRegex =
+      /^(-?\d+)[°\s]+(\d+)['′\s]+(\d+(?:\.\d+)?)["″\s]*([NSEW])?$/i;
+    const dmsMatch = dmsRegex.exec(str);
+    if (
+      dmsMatch?.[1] !== null &&
+      dmsMatch?.[1] !== undefined &&
+      dmsMatch[2] !== null &&
+      dmsMatch[2] !== undefined &&
+      dmsMatch[3] !== null &&
+      dmsMatch[3] !== undefined
+    ) {
       const degrees = parseFloat(dmsMatch[1]);
       const minutes = parseFloat(dmsMatch[2]);
       const seconds = parseFloat(dmsMatch[3]);
@@ -307,7 +322,8 @@ export class CoordinateValidator {
 
       // Apply negative sign for South/West or if degrees were originally negative
       if (
-        (direction &&
+        (direction !== null &&
+          direction !== undefined &&
           (direction.toUpperCase() === "S" ||
             direction.toUpperCase() === "W")) ||
         degrees < 0
@@ -319,10 +335,16 @@ export class CoordinateValidator {
     }
 
     // Try degrees and decimal minutes (e.g., "40°42.768'N")
-    const dmMatch = str.match(
-      /^(-?\d+)[°\s]+(\d+(?:\.\d+)?)['′\s]*([NSEW])?$/i,
-    );
-    if (dmMatch?.[1] && dmMatch[2]) {
+    const dmRegex = /^(-?\d+)[°\s]+(\d+(?:\.\d+)?)['′\s]*([NSEW])?$/i;
+    const dmMatch = dmRegex.exec(str);
+    if (
+      dmMatch?.[1] !== null &&
+      dmMatch?.[1] !== undefined &&
+      dmMatch?.[1] !== "" &&
+      dmMatch[2] !== null &&
+      dmMatch[2] !== undefined &&
+      dmMatch[2] !== ""
+    ) {
       const degrees = parseFloat(dmMatch[1]);
       const minutes = parseFloat(dmMatch[2]);
       const direction = dmMatch[3];
@@ -330,7 +352,8 @@ export class CoordinateValidator {
       let result = Math.abs(degrees) + minutes / 60;
 
       if (
-        (direction &&
+        (direction !== null &&
+          direction !== undefined &&
           (direction.toUpperCase() === "S" ||
             direction.toUpperCase() === "W")) ||
         degrees < 0
@@ -342,8 +365,16 @@ export class CoordinateValidator {
     }
 
     // Try degrees with direction (e.g., "40.7128 N" or "40.7128N")
-    const directionMatch = str.match(/^(-?\d+(?:\.\d+)?)\s*([NSEW])$/i);
-    if (directionMatch?.[1] && directionMatch[2]) {
+    const directionRegex = /^(-?\d+(?:\.\d+)?)\s*([NSEW])$/i;
+    const directionMatch = directionRegex.exec(str);
+    if (
+      directionMatch?.[1] !== null &&
+      directionMatch?.[1] !== undefined &&
+      directionMatch?.[1] !== "" &&
+      directionMatch[2] !== null &&
+      directionMatch[2] !== undefined &&
+      directionMatch[2] !== ""
+    ) {
       const value = Math.abs(parseFloat(directionMatch[1]));
       const direction = directionMatch[2];
 
@@ -398,4 +429,8 @@ export class CoordinateValidator {
 
     return confidence;
   }
+}
+
+function isValidMatchGroup(match: RegExpExecArray, index: number): match is RegExpExecArray & { [K in typeof index]: string } {
+  return match[index] !== undefined && match[index] !== null;
 }

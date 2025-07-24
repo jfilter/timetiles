@@ -90,7 +90,7 @@ export const GeocodingProviders: CollectionConfig = {
           type: "group",
           label: "Google Maps Settings",
           admin: {
-            condition: (data) => data?.type === "google",
+            condition: (data) => (data as { type?: string })?.type === "google",
           },
           fields: [
             {
@@ -130,7 +130,8 @@ export const GeocodingProviders: CollectionConfig = {
           type: "group",
           label: "Nominatim Settings",
           admin: {
-            condition: (data) => data?.type === "nominatim",
+            condition: (data) =>
+              (data as { type?: string })?.type === "nominatim",
           },
           fields: [
             {
@@ -199,7 +200,8 @@ export const GeocodingProviders: CollectionConfig = {
           type: "group",
           label: "OpenCage Settings",
           admin: {
-            condition: (data) => data?.type === "opencage",
+            condition: (data) =>
+              (data as { type?: string })?.type === "opencage",
           },
           fields: [
             {
@@ -251,7 +253,8 @@ export const GeocodingProviders: CollectionConfig = {
                   type: "group",
                   label: "Southwest Corner",
                   admin: {
-                    condition: (data, siblingData) => siblingData?.enabled,
+                    condition: (data, siblingData) =>
+                      (siblingData as { enabled?: boolean })?.enabled === true,
                   },
                   fields: [
                     {
@@ -275,7 +278,8 @@ export const GeocodingProviders: CollectionConfig = {
                   type: "group",
                   label: "Northeast Corner",
                   admin: {
-                    condition: (data, siblingData) => siblingData?.enabled,
+                    condition: (data, siblingData) =>
+                      (siblingData as { enabled?: boolean })?.enabled === true,
                   },
                   fields: [
                     {

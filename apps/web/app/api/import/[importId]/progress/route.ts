@@ -12,6 +12,8 @@ import {
 } from "../../../../../lib/services/rate-limit-service";
 import type { Import } from "../../../../../payload-types";
 
+import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
+
 // Use Payload types directly instead of custom interfaces
 type ProgressResponse = {
   importId: string;
@@ -97,7 +99,7 @@ export async function GET(
     const createdEvents = importRecord.progress?.createdEvents ?? 0;
 
     const stageProgress = calculateStageProgress(
-      importRecord.processingStage ?? "file-parsing",
+      importRecord.processingStage ?? PROCESSING_STAGE.FILE_PARSING,
       {
         totalRows,
         processedRows,
@@ -135,7 +137,7 @@ export async function GET(
     const response: ProgressResponse = {
       importId,
       status: importRecord.status ?? "pending",
-      stage: importRecord.processingStage ?? "file-parsing",
+      stage: importRecord.processingStage ?? PROCESSING_STAGE.FILE_PARSING,
       progress: {
         current: processedRows,
         total: totalRows,
@@ -179,7 +181,7 @@ function calculateStageProgress(
   counts: ProgressCounts,
 ) {
   switch (stage) {
-    case "file-parsing":
+    case PROCESSING_STAGE.FILE_PARSING:
       return { stage: "Parsing file...", percentage: 10 };
     case "row-processing":
       return {

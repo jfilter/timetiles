@@ -28,8 +28,8 @@ export const RichText: React.FC<RichTextProps> = ({ content }) => {
     typeof content === "object" &&
     content !== null &&
     "root" in content &&
-    content.root &&
-    content.root.children
+    content.root?.children !== null &&
+    content.root?.children !== undefined
   ) {
     return (
       <div className="prose prose-lg dark:prose-invert mx-auto max-w-none">
@@ -173,7 +173,7 @@ function renderNode(node: RichTextNode, i: number): React.ReactNode {
   }
 
   // Handle text nodes
-  if (node.text) {
+  if (node.text !== null && node.text !== undefined && node.text !== "") {
     return <span key={i}>{node.text}</span>;
   }
 

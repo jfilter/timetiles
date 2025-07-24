@@ -1,19 +1,21 @@
 "use client";
 
 import type { LngLatBounds } from "maplibre-gl";
-import { useEffect, useState, useTransition, useMemo } from "react";
+import { useMemo, useState } from "react";
 
-import type { Catalog, Dataset, Event } from "../payload-types";
+import type { Catalog, Dataset } from "../payload-types";
 import { ActiveFilters } from "./active-filters";
 import { ChartSection } from "./chart-section";
-import type { ClusterFeature } from "./clustered-map";
 import { ClusteredMap } from "./clustered-map";
 import { EventsList } from "./events-list";
 import { ExploreHeader } from "./explore-header";
 import { FilterDrawer } from "./filter-drawer";
 import { useFilters } from "../lib/filters";
 import { useDebounce } from "../lib/hooks/use-debounce";
-import { createLogger } from "../lib/logger";
+import {
+  useEventsListQuery,
+  useMapClustersQuery,
+} from "../lib/hooks/use-events-queries";
 import { useUIStore } from "../lib/store";
 
 interface MapExplorerProps {
@@ -21,13 +23,8 @@ interface MapExplorerProps {
   datasets: Dataset[];
 }
 
-const logger = createLogger("MapExplorer");
-
 export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [clusters, setClusters] = useState<ClusterFeature[]>([]);
   const [mapZoom, setMapZoom] = useState(9);
-  const [isPending, startTransition] = useTransition();
 
   // Get filter state from URL (nuqs)
   const {
@@ -44,6 +41,36 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
   const setMapBounds = useUIStore((state) => state.setMapBounds);
 
+  // Convert mapBounds to LngLatBounds format for compatibility with React Query
+  const bounds: LngLatBounds | null = useMemo(() => {
+    if (!mapBounds) return null;
+
+    return {
+      getNorth: () => mapBounds.north,
+      getSouth: () => mapBounds.south,
+      getEast: () => mapBounds.east,
+      getWest: () => mapBounds.west,
+    } as LngLatBounds;
+  }, [mapBounds]);
+
+  // Debounce bounds changes to avoid excessive API calls during map panning
+  const debouncedBounds = useDebounce(bounds, 300);
+
+  // React Query hooks for data fetching
+  const { data: eventsData, isLoading: eventsLoading } = useEventsListQuery(
+    filters,
+    debouncedBounds,
+    1000,
+  );
+
+  const { data: clustersData, isLoading: clustersLoading } =
+    useMapClustersQuery(filters, debouncedBounds, mapZoom);
+
+  // Extract data from queries
+  const events = eventsData?.events ?? [];
+  const clusters = clustersData?.features ?? [];
+  const isLoading = eventsLoading || clustersLoading;
+
   // Helper function to get catalog name by ID
   const getCatalogName = (catalogId: string): string => {
     const catalog = catalogs.find((c) => String(c.id) === catalogId);
@@ -56,65 +83,55 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
     return dataset?.name ?? "Unknown Dataset";
   };
 
+  // Helper function for date range formatting
+  const formatDateRange = () => {
+    const hasStartDate =
+      filters.startDate !== null &&
+      filters.startDate !== undefined &&
+      filters.startDate !== "";
+    const hasEndDate =
+      filters.endDate !== null &&
+      filters.endDate !== undefined &&
+      filters.endDate !== "";
+
+    if (!hasStartDate && !hasEndDate) {
+      return undefined;
+    }
+
+    const start = hasStartDate
+      ? new Date(filters.startDate!).toLocaleDateString()
+      : "Start";
+    const end = hasEndDate
+      ? new Date(filters.endDate!).toLocaleDateString()
+      : "End";
+
+    if (hasStartDate && hasEndDate) {
+      return `${start} - ${end}`;
+    } else if (hasStartDate) {
+      return `From ${start}`;
+    } else if (hasEndDate) {
+      return `Until ${end}`;
+    }
+    return undefined;
+  };
+
   // Get human-readable filter labels
   const getFilterLabels = () => {
     const labels = {
-      catalog: filters.catalog ? getCatalogName(filters.catalog) : undefined,
+      catalog:
+        filters.catalog !== null &&
+        filters.catalog !== undefined &&
+        filters.catalog !== ""
+          ? getCatalogName(filters.catalog)
+          : undefined,
       datasets: filters.datasets.map((id) => ({
         id,
         name: getDatasetName(id),
       })),
-      dateRange: (() => {
-        if (filters.startDate || filters.endDate) {
-          const start = filters.startDate
-            ? new Date(filters.startDate).toLocaleDateString()
-            : "Start";
-          const end = filters.endDate
-            ? new Date(filters.endDate).toLocaleDateString()
-            : "End";
-
-          if (filters.startDate && filters.endDate) {
-            return `${start} - ${end}`;
-          } else if (filters.startDate) {
-            return `From ${start}`;
-          } else if (filters.endDate) {
-            return `Until ${end}`;
-          }
-        }
-        return undefined;
-      })(),
+      dateRange: formatDateRange(),
     };
     return labels;
   };
-
-  // Convert mapBounds to LngLatBounds format for compatibility
-  // Memoize bounds to prevent object recreation on every render
-  const bounds: LngLatBounds | null = useMemo(() => {
-    if (!mapBounds) return null;
-
-    return {
-      getNorth: () => mapBounds.north,
-      getSouth: () => mapBounds.south,
-      getEast: () => mapBounds.east,
-      getWest: () => mapBounds.west,
-    } as LngLatBounds;
-  }, [mapBounds]);
-
-  // Create a stable bounds key for comparison
-  const boundsKey = useMemo(() => {
-    if (!bounds) return null;
-    return `${bounds.getNorth()}-${bounds.getSouth()}-${bounds.getEast()}-${bounds.getWest()}`;
-  }, [bounds]);
-
-  // Debounce bounds changes to avoid excessive API calls during map interaction
-  // Wait 300ms after user stops panning/zooming before making API call
-  const debouncedBoundsKey = useDebounce(boundsKey, 300);
-
-  // Get the actual bounds object when the debounced key changes
-  const debouncedBounds = useMemo(() => {
-    if (!debouncedBoundsKey || !bounds) return null;
-    return bounds;
-  }, [debouncedBoundsKey, bounds]);
 
   const handleBoundsChange = (
     newBounds: LngLatBounds | null,
@@ -134,120 +151,6 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
       setMapBounds(null);
     }
   };
-
-  useEffect(() => {
-    // Cancel any previous requests if pending
-    const abortController = new AbortController();
-
-    const fetchEvents = async () => {
-      // Debug logging to verify deduplication is working
-      logger.debug("Fetching events with bounds", {
-        bounds: debouncedBounds
-          ? {
-              north: debouncedBounds.getNorth(),
-              south: debouncedBounds.getSouth(),
-              east: debouncedBounds.getEast(),
-              west: debouncedBounds.getWest(),
-            }
-          : null,
-      });
-
-      const params = new URLSearchParams();
-
-      if (filters.catalog) {
-        params.append("catalog", filters.catalog);
-      }
-
-      filters.datasets.forEach((datasetId) => {
-        params.append("datasets", datasetId);
-      });
-
-      if (filters.startDate) {
-        params.append("startDate", filters.startDate);
-      }
-
-      if (filters.endDate) {
-        params.append("endDate", filters.endDate);
-      }
-
-      if (debouncedBounds) {
-        params.append(
-          "bounds",
-          JSON.stringify({
-            west: debouncedBounds.getWest(),
-            south: debouncedBounds.getSouth(),
-            east: debouncedBounds.getEast(),
-            north: debouncedBounds.getNorth(),
-          }),
-        );
-      } else {
-        // Use default NYC area bounds if no bounds are available yet
-        params.append(
-          "bounds",
-          JSON.stringify({
-            west: -74.2,
-            south: 40.5,
-            east: -73.6,
-            north: 40.9,
-          }),
-        );
-      }
-
-      // Add zoom parameter for clustering
-      params.append("zoom", mapZoom.toString());
-
-      try {
-        // Fetch clustered data for map
-        const clusterResponse = await fetch(
-          `/api/events/map-clusters?${params.toString()}`,
-          {
-            signal: abortController.signal,
-          },
-        );
-
-        // Also fetch events list for the sidebar
-        const listParams = new URLSearchParams(params);
-        listParams.set("limit", "1000"); // Limit list view to 100 items
-        const listResponse = await fetch(
-          `/api/events/list?${listParams.toString()}`,
-          {
-            signal: abortController.signal,
-          },
-        );
-
-        if (
-          clusterResponse.ok &&
-          listResponse.ok &&
-          !abortController.signal.aborted
-        ) {
-          const clusterData = await clusterResponse.json();
-          const listData = await listResponse.json();
-
-          startTransition(() => {
-            setClusters(clusterData.features || []);
-            setEvents(listData.events || []);
-          });
-        }
-      } catch (error) {
-        if (!abortController.signal.aborted) {
-          logger.error("Failed to fetch events:", error);
-        }
-      }
-    };
-
-    void fetchEvents();
-
-    return () => {
-      abortController.abort();
-    };
-  }, [
-    filters.catalog,
-    filters.datasets,
-    filters.startDate,
-    filters.endDate,
-    debouncedBounds,
-    mapZoom,
-  ]);
 
   return (
     <div className="flex h-screen">
@@ -287,7 +190,7 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
                   events={events}
                   datasets={datasets}
                   catalogs={catalogs}
-                  loading={isPending}
+                  loading={isLoading}
                 />
               </div>
 
@@ -296,7 +199,7 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
                 <h2 className="mb-4 text-lg font-semibold">
                   Events ({events.length})
                 </h2>
-                <EventsList events={events} loading={isPending} />
+                <EventsList events={events} loading={isLoading} />
               </div>
             </div>
           </div>

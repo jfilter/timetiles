@@ -8,6 +8,22 @@ import config from "../../../payload.config";
 
 import { logger } from "@/lib/logger";
 
+function getEventDataValue(
+  data: Record<string, unknown>,
+  field: string,
+): unknown {
+  // Safe property access to avoid object injection - additional validation
+  if (
+    typeof field === "string" &&
+    field.length > 0 &&
+    !Object.prototype.hasOwnProperty.call(Object.prototype, field) &&
+    Object.prototype.hasOwnProperty.call(data, field)
+  ) {
+    return data[field];
+  }
+  return undefined;
+}
+
 interface MapBounds {
   north: number;
   south: number;
@@ -26,6 +42,168 @@ function isValidBounds(value: unknown): value is MapBounds {
   );
 }
 
+function addCatalogFilter(where: Where, catalog: string) {
+  where.and = [
+    ...(Array.isArray(where.and) ? where.and : []),
+    {
+      "dataset.catalog.slug": {
+        equals: catalog,
+      },
+    },
+  ];
+}
+
+function addDatasetFilter(where: Where, datasets: string[]) {
+  where.and = [
+    ...(Array.isArray(where.and) ? where.and : []),
+    {
+      "dataset.slug": {
+        in: datasets,
+      },
+    },
+  ];
+}
+
+function addBoundsFilter(where: Where, bounds: MapBounds) {
+  where.and = [
+    ...(Array.isArray(where.and) ? where.and : []),
+    {
+      "location.latitude": {
+        greater_than_equal: bounds.south,
+      },
+    },
+    {
+      "location.latitude": {
+        less_than_equal: bounds.north,
+      },
+    },
+    {
+      "location.longitude": {
+        greater_than_equal: bounds.west,
+      },
+    },
+    {
+      "location.longitude": {
+        less_than_equal: bounds.east,
+      },
+    },
+  ];
+}
+
+function addDateFilter(
+  where: Where,
+  startDate: string | null,
+  endDate: string | null,
+) {
+  const dateFilter: Record<string, string> = {};
+  if (startDate !== null) dateFilter.greater_than_equal = startDate;
+  if (endDate !== null) dateFilter.less_than_equal = endDate;
+
+  where.and = [
+    ...(Array.isArray(where.and) ? where.and : []),
+    {
+      eventTimestamp: dateFilter,
+    },
+  ];
+}
+
+function filterEventsByDate(
+  events: Event[],
+  startDate: string | null,
+  endDate: string | null,
+): Event[] {
+  if (startDate === null && endDate === null) {
+    return events;
+  }
+
+  const startDateTime = startDate !== null ? new Date(startDate) : null;
+  const endDateTime = endDate !== null ? new Date(endDate) : null;
+  if (endDateTime !== null) {
+    endDateTime.setDate(endDateTime.getDate() + 1);
+  }
+
+  return events.filter((event: Event) => {
+    // Check eventTimestamp first
+    if (matchesEventTimestamp(event, startDateTime, endDateTime)) {
+      return true;
+    }
+
+    // Check data fields for date
+    return matchesDataFieldDates(event, startDateTime, endDateTime);
+  });
+}
+
+function matchesEventTimestamp(
+  event: Event,
+  startDateTime: Date | null,
+  endDateTime: Date | null,
+): boolean {
+  if (event.eventTimestamp === null || event.eventTimestamp === undefined) {
+    return false;
+  }
+
+  const eventDate = new Date(event.eventTimestamp);
+  return (
+    (!startDateTime || eventDate >= startDateTime) &&
+    (!endDateTime || eventDate < endDateTime)
+  );
+}
+
+function matchesDataFieldDates(
+  event: Event,
+  startDateTime: Date | null,
+  endDateTime: Date | null,
+): boolean {
+  const commonDateFields = [
+    "date",
+    "startDate",
+    "start_date",
+    "eventDate",
+    "event_date",
+  ];
+
+  for (const dateField of commonDateFields) {
+    if (matchesDataFieldDate(event, dateField, startDateTime, endDateTime)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function matchesDataFieldDate(
+  event: Event,
+  dateField: string,
+  startDateTime: Date | null,
+  endDateTime: Date | null,
+): boolean {
+  const eventData = event.data;
+  if (
+    eventData === null ||
+    typeof eventData !== "object" ||
+    Array.isArray(eventData)
+  ) {
+    return false;
+  }
+
+  const dataDateValue = getEventDataValue(
+    eventData as Record<string, unknown>,
+    dateField,
+  );
+  if (dataDateValue == null || typeof dataDateValue !== "string") {
+    return false;
+  }
+
+  const dataDate = new Date(dataDateValue);
+  if (isNaN(dataDate.getTime())) {
+    return false;
+  }
+
+  return (
+    (!startDateTime || dataDate >= startDateTime) &&
+    (!endDateTime || dataDate < endDateTime)
+  );
+}
+
 export async function GET(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
@@ -39,88 +217,32 @@ export async function GET(request: NextRequest) {
 
     const where: Where = {};
 
+    // Apply catalog and dataset filters
     if (catalog !== null || (datasets.length > 0 && datasets[0] !== "")) {
       if (catalog !== null && (datasets.length === 0 || datasets[0] === "")) {
-        // Filter by catalog
-        where.and = [
-          ...(Array.isArray(where.and) ? where.and : []),
-          {
-            "dataset.catalog.slug": {
-              equals: catalog,
-            },
-          },
-        ];
+        addCatalogFilter(where, catalog);
       }
 
       if (datasets.length > 0 && datasets[0] !== "") {
-        // Filter by specific datasets
-        where.and = [
-          ...(Array.isArray(where.and) ? where.and : []),
-          {
-            "dataset.slug": {
-              in: datasets,
-            },
-          },
-        ];
+        addDatasetFilter(where, datasets);
       }
     }
 
+    // Apply bounds filter
     if (boundsParam !== null) {
       try {
         const parsedBounds = JSON.parse(boundsParam) as unknown;
-        if (!isValidBounds(parsedBounds)) {
-          throw new Error("Invalid bounds format");
+        if (isValidBounds(parsedBounds)) {
+          addBoundsFilter(where, parsedBounds);
         }
-        const bounds = parsedBounds;
-        where.and = [
-          ...(Array.isArray(where.and) ? where.and : []),
-          {
-            "location.longitude": {
-              greater_than_equal: bounds.west,
-              less_than_equal: bounds.east,
-            },
-          },
-          {
-            "location.latitude": {
-              greater_than_equal: bounds.south,
-              less_than_equal: bounds.north,
-            },
-          },
-        ];
       } catch (error) {
         logger.error("Invalid bounds parameter:", error);
       }
     }
 
-    // Add date filtering - simplified
+    // Apply date filter
     if (startDate !== null || endDate !== null) {
-      try {
-        const dateFilters: Record<string, string> = {};
-
-        if (startDate !== null) {
-          const startDateTime = new Date(startDate);
-          if (isNaN(startDateTime.getTime())) {
-            throw new Error(`Invalid start date: ${startDate}`);
-          }
-          dateFilters.greater_than_equal = startDateTime.toISOString();
-        }
-
-        if (endDate !== null) {
-          const endDateTime = new Date(endDate);
-          if (isNaN(endDateTime.getTime())) {
-            throw new Error(`Invalid end date: ${endDate}`);
-          }
-          // Add 1 day to include the entire end date
-          endDateTime.setDate(endDateTime.getDate() + 1);
-          dateFilters.less_than = endDateTime.toISOString();
-        }
-
-        // Skip database-level date filtering - we'll do post-processing instead
-        // This allows us to include events with null eventTimestamp and filter by data fields
-      } catch (error) {
-        logger.error("Error processing date filters:", error);
-        // Skip date filtering if there's an error
-      }
+      addDateFilter(where, startDate, endDate);
     }
 
     const events = await payload.find({
@@ -131,62 +253,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Additional filtering by data fields (post-processing)
-    let filteredEvents = events.docs;
-
-    if (startDate !== null || endDate !== null) {
-      const startDateTime = startDate !== null ? new Date(startDate) : null;
-      const endDateTime = endDate !== null ? new Date(endDate) : null;
-      if (endDateTime !== null) {
-        endDateTime.setDate(endDateTime.getDate() + 1); // Include the entire end date
-      }
-
-      filteredEvents = events.docs.filter((event: Event) => {
-        // Check eventTimestamp first
-        if (
-          event.eventTimestamp !== null &&
-          event.eventTimestamp !== undefined
-        ) {
-          const eventDate = new Date(event.eventTimestamp);
-          const matchesTimestamp =
-            (!startDateTime || eventDate >= startDateTime) &&
-            (!endDateTime || eventDate < endDateTime);
-          if (matchesTimestamp) return true;
-        }
-
-        // If no eventTimestamp or eventTimestamp doesn't match, check data fields
-        const commonDateFields = [
-          "date",
-          "startDate",
-          "start_date",
-          "eventDate",
-          "event_date",
-        ];
-
-        for (const dateField of commonDateFields) {
-          const eventData = event.data;
-          if (
-            eventData !== null &&
-            typeof eventData === "object" &&
-            !Array.isArray(eventData)
-          ) {
-            const dataDateValue = (eventData as Record<string, unknown>)[
-              dateField
-            ];
-            if (dataDateValue != null && typeof dataDateValue === "string") {
-              const dataDate = new Date(dataDateValue);
-              if (!isNaN(dataDate.getTime())) {
-                const matchesDataField =
-                  (!startDateTime || dataDate >= startDateTime) &&
-                  (!endDateTime || dataDate < endDateTime);
-                if (matchesDataField) return true;
-              }
-            }
-          }
-        }
-
-        return false;
-      });
-    }
+    const filteredEvents = filterEventsByDate(events.docs, startDate, endDate);
 
     // Serialize the response to avoid JSON serialization issues
     const serializedEvents = {

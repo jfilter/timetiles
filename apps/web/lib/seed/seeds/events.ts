@@ -102,23 +102,10 @@ export function eventSeeds(environment: string): EventSeed[] {
       });
 
       // Determine event timestamp based on dataset type
-      let eventTimestamp: Date;
-      if (config.catalogType === "cultural" && metadata.event_date) {
-        eventTimestamp = new Date(metadata.event_date as string);
-      } else if (
-        config.catalogType === "academic" &&
-        metadata.publication_date
-      ) {
-        eventTimestamp = new Date(metadata.publication_date as string);
-      } else if (metadata.timestamp) {
-        eventTimestamp = new Date(metadata.timestamp as string);
-      } else if (metadata.reported_date) {
-        eventTimestamp = new Date(metadata.reported_date as string);
-      } else {
-        // Default: spread events over the past year
-        const daysAgo = Math.floor(Math.random() * 365);
-        eventTimestamp = new Date(Date.now() - daysAgo * 86400000);
-      }
+      const eventTimestamp = determineEventTimestamp(
+        config.catalogType,
+        metadata,
+      );
 
       // For economic data, some events don't need location
       const needsLocation =
@@ -147,4 +134,37 @@ export function eventSeeds(environment: string): EventSeed[] {
   });
 
   return events;
+}
+
+function determineEventTimestamp(
+  catalogType: string,
+  metadata: Record<string, unknown>,
+): Date {
+  if (catalogType === "cultural" && hasValidProperty(metadata, "event_date")) {
+    return new Date(metadata.event_date as string);
+  }
+
+  if (
+    catalogType === "academic" &&
+    hasValidProperty(metadata, "publication_date")
+  ) {
+    return new Date(metadata.publication_date as string);
+  }
+
+  if (hasValidProperty(metadata, "timestamp")) {
+    return new Date(metadata.timestamp as string);
+  }
+
+  if (hasValidProperty(metadata, "reported_date")) {
+    return new Date(metadata.reported_date as string);
+  }
+
+  // Default: spread events over the past year
+  const daysAgo = Math.floor(Math.random() * 365);
+  return new Date(Date.now() - daysAgo * 86400000);
+}
+
+function hasValidProperty(obj: Record<string, unknown>, key: string): boolean {
+  const value = Object.prototype.hasOwnProperty.call(obj, key) ? obj[key] : undefined;
+  return value !== null && value !== undefined;
 }

@@ -1,6 +1,7 @@
 import { screen, cleanup, waitFor, act } from "@testing-library/react";
 import { renderWithProviders } from "../../setup/test-utils";
 import { EventHistogram } from "../../../components/event-histogram";
+import { useHistogramQuery } from "../../../lib/hooks/use-events-queries";
 
 // Mock next-themes is handled by ThemeProvider in test-utils
 
@@ -28,6 +29,11 @@ vi.mock("../../../lib/store", () => ({
   },
 }));
 
+// Mock the React Query hook
+vi.mock("../../../lib/hooks/use-events-queries", () => ({
+  useHistogramQuery: vi.fn(),
+}));
+
 // Mock ECharts component
 vi.mock("echarts-for-react", () => ({
   default: ({ option }: any) => {
@@ -39,13 +45,13 @@ vi.mock("echarts-for-react", () => ({
   },
 }));
 
+const mockUseHistogramQuery = useHistogramQuery as any;
+
 describe.sequential("EventHistogram", () => {
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();
     vi.resetModules();
-    // Reset fetch mock
-    global.fetch = vi.fn();
   });
 
   afterEach(() => {
@@ -54,14 +60,23 @@ describe.sequential("EventHistogram", () => {
   });
 
   it("renders loading state", () => {
+    // Mock the query as loading
+    mockUseHistogramQuery.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+    });
+
     renderWithProviders(<EventHistogram loading={true} />);
     expect(screen.getByText("Loading histogram...")).toBeInTheDocument();
   });
 
   it("renders no data state when histogram data is empty", async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ histogram: [] }),
+    // Mock the query with empty data
+    mockUseHistogramQuery.mockReturnValue({
+      data: { histogram: [] },
+      isLoading: false,
+      error: null,
     });
 
     renderWithProviders(<EventHistogram />);
@@ -78,9 +93,11 @@ describe.sequential("EventHistogram", () => {
       { date: "2024-01-02", count: 10 },
     ];
 
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ histogram: mockHistogramData }),
+    // Mock the query with data
+    mockUseHistogramQuery.mockReturnValue({
+      data: { histogram: mockHistogramData },
+      isLoading: false,
+      error: null,
     });
 
     renderWithProviders(<EventHistogram />);

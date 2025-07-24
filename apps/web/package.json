@@ -31,6 +31,8 @@
     "@payloadcms/db-postgres": "^3.46.0",
     "@payloadcms/next": "^3.46.0",
     "@payloadcms/richtext-lexical": "^3.46.0",
+    "@tanstack/react-query": "^5.83.0",
+    "@tanstack/react-query-devtools": "^5.83.0",
     "@types/maplibre-gl": "^1.14.0",
     "@types/node-geocoder": "^4.2.6",
     "@types/papaparse": "^5.3.16",

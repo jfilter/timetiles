@@ -79,7 +79,12 @@ export class GeoLocationDetector {
       this.longitudePatterns,
     );
 
-    if (latColumn && lonColumn) {
+    if (
+      latColumn !== null &&
+      latColumn !== undefined &&
+      lonColumn !== null &&
+      lonColumn !== undefined
+    ) {
       const validation = this.validateCoordinatePairs(
         sampleRows,
         latColumn,
@@ -103,9 +108,9 @@ export class GeoLocationDetector {
       headers,
       this.combinedPatterns,
     );
-    if (combinedColumn) {
+    if (combinedColumn !== null && combinedColumn !== undefined) {
       const format = this.detectCombinedFormat(sampleRows, combinedColumn);
-      if (format) {
+      if (format !== null && format !== undefined) {
         return {
           found: true,
           type: "combined",
@@ -236,8 +241,8 @@ export class GeoLocationDetector {
           lon,
           isValid: this.isValidCoordinate(lat, lon),
           originalValues: {
-            lat: String(latValue),
-            lon: String(lonValue),
+            lat: typeof latValue === "string" ? latValue : String(latValue),
+            lon: typeof lonValue === "string" ? lonValue : String(lonValue),
           },
         });
       }
@@ -260,7 +265,7 @@ export class GeoLocationDetector {
     }
 
     // Convert to string and clean
-    const str = String(value).trim();
+    const str = typeof value === "string" ? value.trim() : String(value).trim();
 
     // Try to parse as decimal degrees
     const decimal = parseFloat(str);
@@ -272,7 +277,14 @@ export class GeoLocationDetector {
     const dmsMatch = str.match(
       /^(-?\d+)[°\s]+(\d+)['\s]+(\d+(?:\.\d+)?)["\s]*([NSEW])?$/i,
     );
-    if (dmsMatch?.[1] && dmsMatch[2] && dmsMatch[3]) {
+    if (
+      dmsMatch?.[1] !== null &&
+      dmsMatch?.[1] !== undefined &&
+      dmsMatch[2] !== null &&
+      dmsMatch[2] !== undefined &&
+      dmsMatch[3] !== null &&
+      dmsMatch[3] !== undefined
+    ) {
       const degrees = parseFloat(dmsMatch[1]);
       const minutes = parseFloat(dmsMatch[2]);
       const seconds = parseFloat(dmsMatch[3]);
@@ -281,7 +293,8 @@ export class GeoLocationDetector {
       let result = degrees + minutes / 60 + seconds / 3600;
 
       if (
-        direction &&
+        direction !== null &&
+        direction !== undefined &&
         (direction.toUpperCase() === "S" || direction.toUpperCase() === "W")
       ) {
         result = -result;
@@ -292,7 +305,12 @@ export class GeoLocationDetector {
 
     // Try degrees with direction (e.g., "40.7128 N")
     const directionMatch = str.match(/^(-?\d+(?:\.\d+)?)\s*([NSEW])$/i);
-    if (directionMatch?.[1] && directionMatch[2]) {
+    if (
+      directionMatch?.[1] !== null &&
+      directionMatch?.[1] !== undefined &&
+      directionMatch[2] !== null &&
+      directionMatch[2] !== undefined
+    ) {
       const value = parseFloat(directionMatch[1]);
       const direction = directionMatch[2];
 
@@ -345,7 +363,12 @@ export class GeoLocationDetector {
     // Check for comma-separated format
     const commaFormat = samples.filter((s) => {
       const match = String(s).match(/^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/);
-      if (match?.[1] && match[2]) {
+      if (
+        match?.[1] !== null &&
+        match?.[1] !== undefined &&
+        match[2] !== null &&
+        match[2] !== undefined
+      ) {
         const lat = parseFloat(match[1]);
         const lon = parseFloat(match[2]);
         return this.isValidCoordinate(lat, lon);
@@ -363,7 +386,12 @@ export class GeoLocationDetector {
     // Check for space-separated format
     const spaceFormat = samples.filter((s) => {
       const match = String(s).match(/^(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)$/);
-      if (match?.[1] && match[2]) {
+      if (
+        match?.[1] !== null &&
+        match?.[1] !== undefined &&
+        match[2] !== null &&
+        match[2] !== undefined
+      ) {
         const lat = parseFloat(match[1]);
         const lon = parseFloat(match[2]);
         return this.isValidCoordinate(lat, lon);
@@ -383,7 +411,8 @@ export class GeoLocationDetector {
       try {
         const parsed = typeof s === "string" ? JSON.parse(s) : s;
         if (
-          parsed &&
+          parsed !== null &&
+          parsed !== undefined &&
           parsed.type === "Point" &&
           Array.isArray(parsed.coordinates)
         ) {
@@ -496,8 +525,12 @@ export class GeoLocationDetector {
     }
 
     if (
-      bestLat &&
-      bestLon &&
+      bestLat !== null &&
+      bestLat !== undefined &&
+      bestLat !== "" &&
+      bestLon !== null &&
+      bestLon !== undefined &&
+      bestLon !== "" &&
       bestLat !== bestLon &&
       bestLatScore >= 0.7 &&
       bestLonScore >= 0.7

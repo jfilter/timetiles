@@ -289,15 +289,19 @@ export function getClientIdentifier(request: Request): string {
   const realIp = request.headers.get("x-real-ip");
   const cfConnectingIp = request.headers.get("cf-connecting-ip");
 
-  if (forwarded) {
-    return forwarded.split(",")[0]?.trim() || "unknown";
+  if (forwarded !== null && forwarded !== undefined && forwarded !== "") {
+    return forwarded.split(",")[0]?.trim() ?? "unknown";
   }
 
-  if (realIp) {
+  if (realIp !== null && realIp !== undefined && realIp !== "") {
     return realIp;
   }
 
-  if (cfConnectingIp) {
+  if (
+    cfConnectingIp !== null &&
+    cfConnectingIp !== undefined &&
+    cfConnectingIp !== ""
+  ) {
     return cfConnectingIp;
   }
 
