@@ -17,7 +17,7 @@ const getStatusIcon = (status: string): string => {
   }
 };
 
-export const ImportUpload = (): JSX.Element => {
+export const ImportUpload = () => {
   const [file, setFile] = useState<File | null>(null);
   const [catalogId, setCatalogId] = useState("");
   const [importId, setImportId] = useState<string | null>(null);

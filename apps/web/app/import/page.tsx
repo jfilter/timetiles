@@ -1,7 +1,7 @@
 import { ImportUpload } from "@/components/import-upload";
 import { PageLayout } from "@/components/page-layout";
 
-export default function ImportPage(): JSX.Element {
+export default function ImportPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <PageLayout title="Event Data Import System" maxWidth="4xl" centered={false} contentClassName="text-left">

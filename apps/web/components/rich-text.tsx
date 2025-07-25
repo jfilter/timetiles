@@ -74,7 +74,7 @@ const renderListItems = (children: RichTextNode[] | undefined): React.ReactEleme
 
 // Helper function to create heading elements
 const createHeading = (level: 1 | 2 | 3 | 4 | 5 | 6, node: RichTextNode, key: number): React.ReactElement => {
-  const HeadingTag = `h${level}` as keyof JSX.IntrinsicElements;
+  const HeadingTag = `h${level}` as keyof React.JSX.IntrinsicElements;
   return React.createElement(HeadingTag, { key }, renderChildren(node.children));
 };
 
