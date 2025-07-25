@@ -8,6 +8,7 @@
     "moduleResolution": "Bundler",
     "allowJs": true,
     "jsx": "preserve",
+    "jsxImportSource": "react",
     "noEmit": true
   }
 }
