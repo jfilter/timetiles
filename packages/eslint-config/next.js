@@ -92,6 +92,8 @@ export default [
     ],
     rules: {
       "import/no-default-export": "off",
+      // Allow regular function declarations in API routes and config files for clarity
+      "prefer-arrow-functions/prefer-arrow-functions": "off",
     },
   },
 ]

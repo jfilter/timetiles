@@ -13,7 +13,7 @@
     "docs:dev": "turbo docs:dev",
     "docs:build": "turbo docs:build",
     "docs:export": "turbo docs:export",
-    "format": "turbo format && prettier --write **/*.{yml,yaml}",
+    "format": "turbo format",
     "typecheck": "turbo typecheck",
     "check": "pnpm lint && pnpm typecheck",
     "setup:git": "./scripts/setup-git.sh",
@@ -29,7 +29,7 @@
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.6.13",
     "turbo": "^2.5.4",
-    "typescript": "5.7.3"
+    "typescript": "^5.7.3"
   },
   "packageManager": "pnpm@10.12.4",
   "engines": {
