@@ -12,21 +12,21 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "export": "next build && next export",
-    "format": "prettier --write . --ignore-path ../../.prettierignore"
+    "format": "next lint --fix --quiet && prettier --write . --ignore-path ../../.prettierignore --log-level error"
   },
   "dependencies": {
     "next": "^15.2.3",
     "nextra": "^2.13.4",
     "nextra-theme-docs": "^2.13.4",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "@workspace/ui": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "@workspace/eslint-config": "workspace:^",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "^9.20.1",
     "typescript": "^5.7.3"

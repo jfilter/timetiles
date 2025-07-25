@@ -1,0 +1,105 @@
+# Installation Options
+
+TimeTiles can be deployed in several ways depending on your needs and technical requirements.
+
+## Cloud Deployment (Recommended for Most Users)
+
+_Coming soon - we're working on cloud hosting options for easy access._
+
+## Self-Hosted Deployment
+
+For organizations that need full control over their data or want to customize the platform.
+
+### System Requirements
+
+- **Node.js**: 24 or higher
+- **Database**: PostgreSQL 17+ with PostGIS 3.5+ extension
+- **Memory**: Minimum 4GB RAM (8GB+ recommended for production)
+- **Storage**: SSD recommended for optimal performance
+
+### Docker Deployment (Recommended)
+
+The fastest way to get TimeTiles running locally or on your own infrastructure:
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/timetiles.git
+cd timetiles
+
+# Start with Docker
+make up    # Starts PostgreSQL with PostGIS
+make dev   # Starts the application
+```
+
+The application will be available at:
+
+- **Main App**: http://localhost:3000
+- **Admin Panel**: http://localhost:3000/admin
+- **Documentation**: http://localhost:3001
+
+### Manual Installation
+
+For developers or advanced users who want full control:
+
+1. **Clone and Install Dependencies**
+
+   ```bash
+   git clone https://github.com/yourusername/timetiles.git
+   cd timetiles
+   pnpm install
+   ```
+
+2. **Database Setup**
+
+   ```bash
+   # Install PostgreSQL 17+ with PostGIS extension
+   # Create database and user
+   createdb timetiles
+   psql timetiles -c "CREATE EXTENSION postgis;"
+   ```
+
+3. **Environment Configuration**
+
+   ```bash
+   # Copy environment template
+   cp apps/web/.env.example apps/web/.env.local
+
+   # Edit with your database credentials
+   # DATABASE_URL=postgresql://user:password@localhost:5432/timetiles
+   ```
+
+4. **Run Migrations and Start**
+   ```bash
+   cd apps/web
+   pnpm payload:migrate
+   cd ../..
+   pnpm dev
+   ```
+
+## Production Deployment
+
+For production deployments, additional considerations include:
+
+- **Environment Variables**: Proper secrets management
+- **Database**: Connection pooling and backups
+- **File Storage**: Configure cloud storage for uploads
+- **Rate Limiting**: API protection for public imports
+- **Monitoring**: Application and database performance
+- **Security**: HTTPS, CORS, and authentication settings
+
+See the [Developer Documentation](/developers) for detailed production deployment guides.
+
+## Next Steps
+
+Once installed, check out the [User Guides](/users) to learn how to:
+
+- Import your first dataset
+- Create interactive timelines
+- Configure filters and visualizations
+- Share your chronicles
+
+## Need Help?
+
+- **Technical Issues**: Check the [Developer Documentation](/developers/development)
+- **General Questions**: See the [FAQ](/getting-started/faq)
+- **Community Support**: Join our discussions on GitHub

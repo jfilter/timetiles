@@ -1,20 +1,25 @@
 {
   "index": "Introduction",
-  "what-is-timetiles": "What is TimeTiles?",
-  "use-cases": "Use Cases & Examples", 
-  "getting-started": "Getting Started",
-  "faq": "FAQ",
+  "getting-started": {
+    "title": "Getting Started",
+    "type": "menu"
+  },
   "---": {
     "type": "separator"
   },
-  "architecture": "Architecture & Tech Stack",
-  "schema-detection": "Schema Detection",
-  "dynamic-filters": "Dynamic Filters",
-  "---2": {
-    "type": "separator"  
+  "users": {
+    "title": "User Guide",
+    "type": "menu"
   },
-  "commit-guidelines": "Commit Guidelines",
-  "roadmap": "Roadmap",
-  "testing-guidelines": "Testing Guidelines",
-  "testing-debug-guide": "Test Debugging Guide"
+  "developers": {
+    "title": "Developer Docs",
+    "type": "menu"
+  },
+  "---2": {
+    "type": "separator"
+  },
+  "reference": {
+    "title": "Reference",
+    "type": "menu"
+  }
 }

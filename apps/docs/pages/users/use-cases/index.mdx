@@ -5,14 +5,17 @@ TimeTiles excels at transforming complex geospatial datasets into accessible, in
 ## Investigative Journalism
 
 ### Police Accountability
+
 **Scenario**: Document and analyze patterns in police use of force across multiple years and jurisdictions.
 
-**Data Sources**: 
+**Data Sources**:
+
 - Police incident reports (CSV exports)
 - Court records with location data
 - Victim demographic information
 
 **TimeTiles Approach**:
+
 - Import incident data with victim demographics, officer information, and outcome details
 - Enable public filtering by victim race, age, weapon status, and time of day
 - Reveal geographic clustering and temporal patterns that might indicate systemic issues
@@ -21,15 +24,18 @@ TimeTiles excels at transforming complex geospatial datasets into accessible, in
 **Impact**: Readers can discover patterns themselves rather than being told what to think, increasing engagement and understanding.
 
 ### Environmental Investigations
+
 **Scenario**: Track industrial accidents, spills, or permit violations across time to identify regulatory patterns.
 
 **Data Sources**:
+
 - EPA violation databases
-- Corporate permit records  
+- Corporate permit records
 - News reports with geocoded locations
 - Community health data
 
 **TimeTiles Approach**:
+
 - Combine regulatory data with community demographics
 - Show correlation between industrial activity and health outcomes
 - Enable filtering by company, violation type, and demographic factors
@@ -38,30 +44,36 @@ TimeTiles excels at transforming complex geospatial datasets into accessible, in
 ## Academic Research
 
 ### Conflict Documentation
+
 **Scenario**: Document human rights violations during conflicts for academic study and legal proceedings.
 
 **Data Sources**:
+
 - Witness testimony with location references
 - Satellite imagery analysis results
 - Open source intelligence (OSINT) data
 - Medical records and casualty reports
 
 **TimeTiles Approach**:
+
 - Create detailed chronicles of specific conflicts or incidents
 - Include victim information, perpetrator data, and evidence links
 - Enable temporal filtering to show escalation patterns
 - Maintain detailed metadata for legal documentation while presenting accessible public interface
 
 ### Urban Studies
+
 **Scenario**: Analyze gentrification patterns by tracking business closures, rent increases, and demographic changes.
 
 **Data Sources**:
+
 - Business license databases
 - Real estate transaction records
 - Census demographic data
 - Community survey responses
 
 **TimeTiles Approach**:
+
 - Import multi-year datasets showing neighborhood changes
 - Correlate business data with demographic shifts
 - Enable exploration of specific time periods and geographic areas
@@ -70,30 +82,36 @@ TimeTiles excels at transforming complex geospatial datasets into accessible, in
 ## Activism & Advocacy
 
 ### Community Organizing
+
 **Scenario**: Document landlord negligence across multiple properties to support tenant organizing efforts.
 
 **Data Sources**:
+
 - Building violation records
 - Tenant complaint databases
 - Property ownership records
 - Health department citations
 
 **TimeTiles Approach**:
+
 - Map violations by property owner across entire city
 - Show patterns of negligence by landlord and neighborhood
 - Enable filtering by violation type and severity
 - Create compelling evidence for policy advocacy
 
 ### Human Rights Documentation
+
 **Scenario**: Track and document systematic persecution or discrimination for international advocacy.
 
 **Data Sources**:
+
 - Incident reports from affected communities
 - Government document leaks
 - Witness testimony with location data
 - Medical or legal documentation
 
 **TimeTiles Approach**:
+
 - Create secure, private chronicles for sensitive documentation
 - Enable detailed metadata for legal proceedings
 - Support both public advocacy and confidential research
@@ -102,30 +120,36 @@ TimeTiles excels at transforming complex geospatial datasets into accessible, in
 ## NGO & Non-Profit Work
 
 ### Disaster Response
+
 **Scenario**: Track disaster impacts and recovery efforts to inform resource allocation and future preparedness.
 
 **Data Sources**:
+
 - Damage assessment surveys
 - Insurance claim data
 - Government response records
 - Community needs assessments
 
 **TimeTiles Approach**:
+
 - Combine immediate impact data with long-term recovery information
 - Show disparities in response and recovery across communities
 - Enable filtering by damage type, assistance received, and demographic factors
 - Support both public transparency and internal operational planning
 
 ### Public Health
+
 **Scenario**: Document disease outbreaks or health disparities to inform policy and resource allocation.
 
 **Data Sources**:
+
 - Epidemiological surveillance data
 - Healthcare facility records
 - Environmental monitoring data
 - Social determinant indicators
 
 **TimeTiles Approach**:
+
 - Create interactive chronicles showing disease patterns over time
 - Correlate health outcomes with environmental and social factors
 - Enable exploration by demographic groups and geographic areas
@@ -134,6 +158,7 @@ TimeTiles excels at transforming complex geospatial datasets into accessible, in
 ## Data Characteristics That Work Well
 
 ### Ideal Dataset Properties
+
 - **10-100,000+ events**: TimeTiles handles large datasets efficiently through server-side clustering
 - **Rich metadata**: 5-20 attributes per event for meaningful filtering and exploration
 - **Geographic precision**: Coordinates or geocodable addresses for accurate mapping
@@ -141,7 +166,9 @@ TimeTiles excels at transforming complex geospatial datasets into accessible, in
 - **Categorical variables**: Demographics, types, statuses that enable meaningful filtering
 
 ### Common Data Transformations
+
 TimeTiles can work with messy real-world data by:
+
 - **Geocoding addresses** when only text locations are available
 - **Parsing timestamps** from various formats
 - **Detecting categorical variables** for automatic filter generation
@@ -151,18 +178,21 @@ TimeTiles can work with messy real-world data by:
 ## Implementation Patterns
 
 ### Public Chronicles
+
 - **Open data**: Make publicly available with full filtering capabilities
 - **Storytelling focus**: Guide readers through key findings with narrative elements
 - **Accessibility**: Ensure non-experts can understand and explore the data
 - **Verification**: Include data sources and methodology information
 
-### Research Instances  
+### Research Instances
+
 - **Access control**: Restrict viewing to authorized researchers
 - **Detailed metadata**: Include all available information for thorough analysis
 - **Multiple datasets**: Combine related datasets for comprehensive analysis
 - **Export capabilities**: Support further analysis in other tools
 
 ### Advocacy Tools
+
 - **Compelling presentation**: Focus on visual impact and clear patterns
 - **Specific messaging**: Configure to highlight particular findings or arguments
 - **Public engagement**: Enable easy sharing and exploration by target audiences

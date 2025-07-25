@@ -1,0 +1,165 @@
+# Development Setup
+
+Welcome to TimeTiles development! This section covers everything you need to know to contribute to the project, from initial setup to advanced debugging techniques.
+
+## Quick Start for Developers
+
+### Prerequisites
+
+- **Node.js**: 24 or higher
+- **pnpm**: v10.12.4 (package manager)
+- **PostgreSQL**: 17+ with PostGIS 3.5+ extension
+- **Git**: For version control
+
+### Development Environment Setup
+
+1. **Clone the Repository**
+
+   ```bash
+   git clone https://github.com/yourusername/timetiles.git
+   cd timetiles
+   ```
+
+2. **Install Dependencies**
+
+   ```bash
+   pnpm install
+   ```
+
+3. **Database Setup**
+
+   ```bash
+   # Start PostgreSQL with PostGIS
+   make up
+
+   # Copy environment configuration
+   cp apps/web/.env.example apps/web/.env.local
+   ```
+
+4. **Run Migrations**
+
+   ```bash
+   cd apps/web
+   pnpm payload:migrate
+   cd ../..
+   ```
+
+5. **Start Development Server**
+   ```bash
+   pnpm dev
+   ```
+
+The application will be available at:
+
+- **Main App**: http://localhost:3000
+- **Documentation**: http://localhost:3001
+
+## Essential Commands
+
+### Development
+
+```bash
+make dev          # Start all apps with database
+pnpm dev          # Start just the dev servers
+pnpm lint         # Run linter (ALWAYS run after changes)
+pnpm typecheck    # TypeScript check (ALWAYS run after changes)
+```
+
+### Testing
+
+```bash
+pnpm test                           # Run all tests
+cd apps/web && pnpm test:debug      # Debug tests with logs
+cd apps/web && pnpm test:e2e        # End-to-end tests
+```
+
+### Database
+
+```bash
+cd apps/web && pnpm payload:migrate:create  # Create new migration
+cd apps/web && pnpm payload:migrate         # Run migrations
+make db-reset                               # Reset database
+```
+
+## Development Workflow
+
+### Making Changes
+
+1. Create a feature branch: `git checkout -b feature/your-feature`
+2. Make your changes following the existing code patterns
+3. **ALWAYS run**: `pnpm lint && pnpm typecheck`
+4. Write tests for new functionality
+5. Update documentation if needed
+
+### Code Standards
+
+- Use **pino logger**, never `console.log`
+- Follow existing import patterns and path aliases
+- Handle errors explicitly with proper logging
+- Use React Query for server state management
+- Follow TypeScript best practices
+
+### Commit Guidelines
+
+We use [Conventional Commits](./commit-guidelines) for consistent commit messages:
+
+```bash
+feat(web): add new timeline component
+fix(api): resolve import validation error
+docs(readme): update installation instructions
+```
+
+## Architecture Overview
+
+TimeTiles uses a modern, performant tech stack:
+
+- **Frontend**: Next.js 15 with Turbopack, React 19
+- **CMS**: Payload CMS 3 for content management
+- **Database**: PostgreSQL 17 + PostGIS 3.5 for geospatial data
+- **State Management**: React Query + Zustand + nuqs
+- **Styling**: Tailwind CSS with shadcn/ui components
+
+For detailed architecture information, see the [Architecture Documentation](../architecture).
+
+## Testing Strategy
+
+We maintain three levels of testing:
+
+1. **Unit Tests**: Fast, isolated component and utility tests
+2. **Integration Tests**: API endpoint tests with test database
+3. **E2E Tests**: Full user workflow tests with Playwright
+
+See [Testing Guidelines](./testing-guidelines) and [Test Debugging Guide](./testing-debug-guide) for detailed information.
+
+## Common Issues & Solutions
+
+### Port Already in Use
+
+```bash
+lsof -ti:3000 | xargs kill -9
+```
+
+### Database Connection Issues
+
+```bash
+make down && make up
+```
+
+### Clean Reset
+
+```bash
+make clean && make up
+```
+
+## Next Steps
+
+- **Architecture Deep Dive**: [Architecture & Tech Stack](../architecture)
+- **API Development**: [API Reference](../api) _(coming soon)_
+- **Deployment**: [Deployment Guides](../deployment) _(coming soon)_
+- **Contributing**: Check the project README for contribution guidelines
+
+## Need Help?
+
+- **Issues**: Report bugs on GitHub Issues
+- **Discussions**: Join community discussions
+- **Code Review**: All PRs require review before merging

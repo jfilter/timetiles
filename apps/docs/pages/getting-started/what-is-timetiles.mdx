@@ -8,7 +8,7 @@ Traditional tools fall short when it comes to geospatial storytelling:
 
 - **Excel/Sheets**: Can't handle maps or large datasets effectively
 - **BI Dashboards** (Metabase, Superset): Too complex for non-experts, dashboard-focused rather than narrative
-- **GIS Tools** (QGIS, ArcGIS): Require technical expertise, not designed for public consumption  
+- **GIS Tools** (QGIS, ArcGIS): Require technical expertise, not designed for public consumption
 - **Custom Solutions**: Time-intensive to build, hard to maintain
 
 TimeTiles bridges this gap by providing a **ready-made platform** specifically designed for creating interactive chronicles of geospatial events.
@@ -16,39 +16,49 @@ TimeTiles bridges this gap by providing a **ready-made platform** specifically d
 ## Core Concepts
 
 ### Interactive Chronicles
+
 Unlike static reports or complex dashboards, TimeTiles creates **interactive chronicles** - explorable datasets with narrative elements that allow readers to discover patterns and stories within your data.
 
 ### Event-Centric Design
+
 Every data point in TimeTiles represents an **event** that happened at a specific:
+
 - **Location** (latitude/longitude)
-- **Time** (date/timestamp)  
+- **Time** (date/timestamp)
 - **Context** (rich metadata like victim info, categories, descriptions)
 
 ### Non-Expert Friendly
+
 TimeTiles is designed for **storytelling**, not analysis. Your audience doesn't need to understand SQL queries or statistical concepts - they can simply pan, zoom, and filter to explore your data intuitively.
 
 ## How It Works
 
 ### 1. Import Your Data
+
 ```
 CSV/Excel → TimeTiles → Interactive Chronicle
 ```
 
 Bring your data from:
+
 - **CSV/Excel files** with location and timestamp columns
 - **JSON datasets** from investigations or APIs
 - **API endpoints** for live data feeds
 - **Manual entry** for smaller datasets
 
 ### 2. Automatic Processing
+
 TimeTiles automatically:
+
 - **Detects schema** and suggests optimal field mappings
 - **Geocodes addresses** when only text locations are available
 - **Clusters nearby events** for performance with large datasets
 - **Generates visualizations** appropriate for your data
 
 ### 3. Share Your Chronicle
+
 Deploy as:
+
 - **Public website** for maximum reach
 - **Private instance** for internal research
 - **Embeddable widgets** (future feature) for integration into articles
@@ -56,21 +66,24 @@ Deploy as:
 ## Real-World Examples
 
 ### Journalist: Police Shooting Database
-*"I have a database of fatal police shootings and want to display it to the general public (non-experts in exploring data)."*
+
+_"I have a database of fatal police shootings and want to display it to the general public (non-experts in exploring data)."_
 
 **Challenge**: Making 5 years of police shooting data accessible to readers who aren't data analysts.
 
 **TimeTiles Solution**: Import CSV data with victim demographics, location coordinates, and incident details. Readers can explore patterns by filtering by victim age, race, or weapon status while seeing geographic and temporal clusters.
 
-### Researcher: Investigation Dataset  
-*"I have a dump of 100k points coming out of a journalistic investigation and want to explore the data."*
+### Researcher: Investigation Dataset
+
+_"I have a dump of 100k points coming out of a journalistic investigation and want to explore the data."_
 
 **Challenge**: Analyzing massive datasets to find newsworthy patterns and stories.
 
 **TimeTiles Solution**: Import the full dataset and use server-side clustering to maintain performance. Filter by metadata fields to identify trends, then create focused chronicles highlighting specific findings.
 
 ### Activist: Environmental Justice
-*"Document pollution incidents in marginalized communities over the past decade."*
+
+_"Document pollution incidents in marginalized communities over the past decade."_
 
 **Challenge**: Connecting environmental data to demographic patterns in a way that's compelling for policy advocacy.
 
@@ -81,12 +94,14 @@ Deploy as:
 TimeTiles serves both **end users** and **developers**:
 
 ### Ready-to-Use Application
+
 - Deploy TimeTiles as a complete web application
 - Import data through the admin interface
 - Configure public/private access controls
 - Self-host or use managed hosting (coming soon)
 
 ### Customizable Library
+
 - Use TimeTiles components in your own applications
 - Integrate with existing data pipelines
 - Customize visualizations and branding
@@ -94,13 +109,13 @@ TimeTiles serves both **end users** and **developers**:
 
 ## Comparison to Similar Tools
 
-| Tool | Focus | Audience | Strengths | Limitations |
-|------|-------|----------|-----------|-------------|
-| **TimeTiles** | Interactive chronicles | Non-technical storytellers | Narrative-focused, ready-to-use, geospatial | Newer ecosystem |
-| **Timemap** | Incident monitoring | Activists/researchers | Proven in conflict documentation | No longer maintained |
-| **Datawrapper** | Data visualization | Journalists | Easy embedding, great design | Limited geospatial features |
-| **Metabase** | Business dashboards | Data analysts | Powerful querying | Too complex for public audiences |
-| **uMap** | Collaborative mapping | General users | Simple map creation | Limited temporal features |
+| Tool            | Focus                  | Audience                   | Strengths                                   | Limitations                      |
+| --------------- | ---------------------- | -------------------------- | ------------------------------------------- | -------------------------------- |
+| **TimeTiles**   | Interactive chronicles | Non-technical storytellers | Narrative-focused, ready-to-use, geospatial | Newer ecosystem                  |
+| **Timemap**     | Incident monitoring    | Activists/researchers      | Proven in conflict documentation            | No longer maintained             |
+| **Datawrapper** | Data visualization     | Journalists                | Easy embedding, great design                | Limited geospatial features      |
+| **Metabase**    | Business dashboards    | Data analysts              | Powerful querying                           | Too complex for public audiences |
+| **uMap**        | Collaborative mapping  | General users              | Simple map creation                         | Limited temporal features        |
 
 ## Getting Started
 

@@ -6,8 +6,7 @@ const config: DocsThemeConfig = {
   project: {
     link: "https://github.com/jfilter/timetiles",
   },
-  docsRepositoryBase:
-    "https://github.com/jfilter/timetiles/tree/main/apps/docs",
+  docsRepositoryBase: "https://github.com/jfilter/timetiles/tree/main/apps/docs",
   footer: {
     text: "TimeTiles Documentation",
   },

@@ -1,0 +1,68 @@
+# API Reference
+
+_Coming soon - comprehensive API documentation for TimeTiles._
+
+## Overview
+
+TimeTiles provides a REST API for programmatic access to data import, query, and export functionality. This section will include:
+
+### REST Endpoints
+
+- **Import API**: Upload and process geospatial datasets
+- **Events API**: Query and filter event data
+- **Export API**: Generate exports in various formats
+- **Admin API**: Manage content and configurations
+
+### WebSocket Events
+
+- **Real-time Updates**: Import progress and status notifications
+- **Live Data**: Real-time event streaming for dynamic visualizations
+
+### Data Formats
+
+- **Request/Response Schemas**: JSON schemas for all API endpoints
+- **Error Handling**: Standardized error codes and messages
+- **Rate Limiting**: API usage limits and authentication
+
+### Authentication
+
+- **API Keys**: Generate and manage API access keys
+- **Permissions**: Role-based access control
+- **Security**: Best practices for secure API usage
+
+## Quick Examples
+
+### Import Dataset
+
+```bash
+curl -X POST https://api.timetiles.app/v1/import \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/data.csv", "name": "My Dataset"}'
+```
+
+### Query Events
+
+```bash
+curl "https://api.timetiles.app/v1/events?start_date=2024-01-01&end_date=2024-12-31" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Export Data
+
+```bash
+curl "https://api.timetiles.app/v1/export?format=geojson&dataset_id=123" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Coming Soon
+
+This documentation is being actively developed. Check back soon for:
+
+- Complete endpoint documentation
+- Interactive API explorer
+- SDK examples in multiple languages
+- Webhook documentation
+- Rate limiting details
+
+In the meantime, explore the codebase at `apps/web/app/api/` for current API implementations.
