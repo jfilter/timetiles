@@ -1,5 +1,6 @@
-import { defineConfig } from "vitest/config";
 import path from "path";
+import { defineConfig } from "vitest/config";
+
 import baseConfig from "./vitest.config.base";
 
 export default defineConfig({
@@ -9,8 +10,8 @@ export default defineConfig({
     environment: "jsdom",
     exclude: ["**/node_modules/**"],
     setupFiles: ["tests/setup/setup.ts"],
-    testTimeout: 30000,
-    hookTimeout: 30000,
+    testTimeout: 15000,
+    hookTimeout: 15000,
     reporters: process.env.TEST_QUIET ? ["basic"] : ["basic"],
     silent: true,
     // Reduce console output noise

@@ -25,10 +25,7 @@ export interface BoundingBox {
 /**
  * Calculate the distance between two points using the Haversine formula
  */
-export function calculateDistance(
-  point1: Coordinates,
-  point2: Coordinates,
-): number {
+export const calculateDistance = (point1: Coordinates, point2: Coordinates): number => {
   const R = 6371; // Earth's radius in kilometers
   const dLat = (point2.latitude - point1.latitude) * (Math.PI / 180);
   const dLon = (point2.longitude - point1.longitude) * (Math.PI / 180);
@@ -41,33 +38,22 @@ export function calculateDistance(
       Math.sin(dLon / 2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c;
-
-  return distance;
-}
+  return R * c;
+};
 
 /**
  * Check if a point is within a bounding box
  */
-export function isWithinBounds(
-  point: Coordinates,
-  bounds: BoundingBox,
-): boolean {
-  return (
-    point.latitude >= bounds.south &&
-    point.latitude <= bounds.north &&
-    point.longitude >= bounds.west &&
-    point.longitude <= bounds.east
-  );
-}
+export const isWithinBounds = (point: Coordinates, bounds: BoundingBox): boolean =>
+  point.latitude >= bounds.south &&
+  point.latitude <= bounds.north &&
+  point.longitude >= bounds.west &&
+  point.longitude <= bounds.east;
 
 /**
  * Generate a random point within a radius of a center point
  */
-export function generateRandomPointWithinRadius(
-  center: Coordinates,
-  radiusKm: number,
-): Coordinates {
+export const generateRandomPointWithinRadius = (center: Coordinates, radiusKm: number): Coordinates => {
   const radiusDeg = radiusKm / 111; // Rough conversion: 1 degree ≈ 111 km
   const angle = Math.random() * 2 * Math.PI;
   const distance = Math.random() * radiusDeg;
@@ -76,15 +62,12 @@ export function generateRandomPointWithinRadius(
     latitude: center.latitude + distance * Math.cos(angle),
     longitude: center.longitude + distance * Math.sin(angle),
   };
-}
+};
 
 /**
  * Create a bounding box around a center point with given radius
  */
-export function createBoundingBox(
-  center: Coordinates,
-  radiusKm: number,
-): BoundingBox {
+export const createBoundingBox = (center: Coordinates, radiusKm: number): BoundingBox => {
   const radiusDeg = radiusKm / 111; // Rough conversion
 
   return {
@@ -93,12 +76,12 @@ export function createBoundingBox(
     east: center.longitude + radiusDeg,
     west: center.longitude - radiusDeg,
   };
-}
+};
 
 /**
  * Calculate the center point of multiple coordinates
  */
-export function calculateCentroid(points: Coordinates[]): Coordinates {
+export const calculateCentroid = (points: Coordinates[]): Coordinates => {
   if (points.length === 0) {
     throw new Error("Cannot calculate centroid of empty array");
   }
@@ -115,12 +98,12 @@ export function calculateCentroid(points: Coordinates[]): Coordinates {
     latitude: sum.latitude / points.length,
     longitude: sum.longitude / points.length,
   };
-}
+};
 
 /**
  * Find the furthest distance between any two points in an array
  */
-export function findMaxDistance(points: Coordinates[]): number {
+export const findMaxDistance = (points: Coordinates[]): number => {
   if (points.length < 2) return 0;
 
   let maxDistance = 0;
@@ -137,21 +120,18 @@ export function findMaxDistance(points: Coordinates[]): number {
   }
 
   return maxDistance;
-}
+};
 
 /**
  * Check if coordinates are valid (within Earth's bounds)
  */
-export function areValidCoordinates(coords: Coordinates): boolean {
-  return (
-    coords.latitude >= -90 &&
-    coords.latitude <= 90 &&
-    coords.longitude >= -180 &&
-    coords.longitude <= 180 &&
-    !isNaN(coords.latitude) &&
-    !isNaN(coords.longitude)
-  );
-}
+export const areValidCoordinates = (coords: Coordinates): boolean =>
+  coords.latitude >= -90 &&
+  coords.latitude <= 90 &&
+  coords.longitude >= -180 &&
+  coords.longitude <= 180 &&
+  !isNaN(coords.latitude) &&
+  !isNaN(coords.longitude);
 
 // Extend Vitest's expect with custom geospatial matchers
 declare module "vitest" {
@@ -180,23 +160,14 @@ declare module "vitest" {
 
 // Extend expect with geospatial matchers
 expect.extend({
-  toBeWithinRadius(
-    received: Coordinates | { location?: Coordinates },
-    center: Coordinates,
-    radiusKm: number,
-  ) {
+  toBeWithinRadius: (received: Coordinates | { location?: Coordinates }, center: Coordinates, radiusKm: number) => {
     // Handle both direct coordinates and objects with location property
     const coords = "latitude" in received ? received : received.location;
 
-    if (
-      !coords ||
-      typeof coords.latitude !== "number" ||
-      typeof coords.longitude !== "number"
-    ) {
+    if (!coords || typeof coords.latitude !== "number" || typeof coords.longitude !== "number") {
       return {
         pass: false,
-        message: () =>
-          `Expected to receive coordinates, but got: ${JSON.stringify(received)}`,
+        message: () => `Expected to receive coordinates, but got: ${JSON.stringify(received)}`,
       };
     }
 
@@ -212,22 +183,19 @@ expect.extend({
     };
   },
 
-  toHaveValidCoordinates(received: Coordinates | { location?: Coordinates }) {
+  toHaveValidCoordinates: (received: Coordinates | { location?: Coordinates }) => {
     // Handle both direct coordinates and objects with location property
     const coords = "latitude" in received ? received : received.location;
 
     if (!coords) {
       return {
         pass: false,
-        message: () =>
-          `Expected to receive coordinates, but location was undefined`,
+        message: () => `Expected to receive coordinates, but location was undefined`,
       };
     }
 
     const isValid = areValidCoordinates(coords);
-    const hasValidTypes =
-      typeof coords.latitude === "number" &&
-      typeof coords.longitude === "number";
+    const hasValidTypes = typeof coords.latitude === "number" && typeof coords.longitude === "number";
 
     const pass = isValid && hasValidTypes;
 
@@ -240,7 +208,7 @@ expect.extend({
     };
   },
 
-  toBeWithinBounds(received: Coordinates, bounds: BoundingBox) {
+  toBeWithinBounds: (received: Coordinates, bounds: BoundingBox) => {
     const pass = isWithinBounds(received, bounds);
 
     return {
@@ -252,11 +220,7 @@ expect.extend({
     };
   },
 
-  toBeCloserThan(
-    received: Coordinates,
-    other: Coordinates,
-    maxDistanceKm: number,
-  ) {
+  toBeCloserThan: (received: Coordinates, other: Coordinates, maxDistanceKm: number) => {
     const distance = calculateDistance(received, other);
     const pass = distance < maxDistanceKm;
 
@@ -269,11 +233,7 @@ expect.extend({
     };
   },
 
-  toBeFurtherThan(
-    received: Coordinates,
-    other: Coordinates,
-    minDistanceKm: number,
-  ) {
+  toBeFurtherThan: (received: Coordinates, other: Coordinates, minDistanceKm: number) => {
     const distance = calculateDistance(received, other);
     const pass = distance > minDistanceKm;
 
@@ -286,11 +246,7 @@ expect.extend({
     };
   },
 
-  toHaveCoordinatesNear(
-    received: Coordinates,
-    expected: Coordinates,
-    toleranceKm: number = 0.1,
-  ) {
+  toHaveCoordinatesNear: (received: Coordinates, expected: Coordinates, toleranceKm: number = 0.1) => {
     const distance = calculateDistance(received, expected);
     const pass = distance <= toleranceKm;
 
@@ -303,11 +259,7 @@ expect.extend({
     };
   },
 
-  toBeACentroidOf(
-    received: Coordinates,
-    points: Coordinates[],
-    toleranceKm: number = 1.0,
-  ) {
+  toBeACentroidOf: (received: Coordinates, points: Coordinates[], toleranceKm: number = 1.0) => {
     const actualCentroid = calculateCentroid(points);
     const distance = calculateDistance(received, actualCentroid);
     const pass = distance <= toleranceKm;
@@ -321,14 +273,8 @@ expect.extend({
     };
   },
 
-  toBeWithinCluster(
-    received: Coordinates,
-    points: Coordinates[],
-    maxClusterRadiusKm: number,
-  ) {
-    const distancesToCluster = points.map((point) =>
-      calculateDistance(received, point),
-    );
+  toBeWithinCluster: (received: Coordinates, points: Coordinates[], maxClusterRadiusKm: number) => {
+    const distancesToCluster = points.map((point) => calculateDistance(received, point));
     const minDistance = Math.min(...distancesToCluster);
     const pass = minDistance <= maxClusterRadiusKm;
 
@@ -349,14 +295,8 @@ export class GeospatialTestHelper {
   /**
    * Create a cluster of points around a center
    */
-  static createCluster(
-    center: Coordinates,
-    count: number,
-    radiusKm: number,
-  ): Coordinates[] {
-    return Array.from({ length: count }, () =>
-      generateRandomPointWithinRadius(center, radiusKm),
-    );
+  static createCluster(center: Coordinates, count: number, radiusKm: number): Coordinates[] {
+    return Array.from({ length: count }, () => generateRandomPointWithinRadius(center, radiusKm));
   }
 
   /**
@@ -367,20 +307,13 @@ export class GeospatialTestHelper {
     pointsPerCluster: number,
     clusterRadiusKm: number,
   ): Coordinates[][] {
-    return centers.map((center) =>
-      this.createCluster(center, pointsPerCluster, clusterRadiusKm),
-    );
+    return centers.map((center) => this.createCluster(center, pointsPerCluster, clusterRadiusKm));
   }
 
   /**
    * Create a grid of points for testing spatial queries
    */
-  static createGrid(
-    southWest: Coordinates,
-    northEast: Coordinates,
-    rows: number,
-    cols: number,
-  ): Coordinates[] {
+  static createGrid(southWest: Coordinates, northEast: Coordinates, rows: number, cols: number): Coordinates[] {
     const points: Coordinates[] = [];
     const latStep = (northEast.latitude - southWest.latitude) / (rows - 1);
     const lngStep = (northEast.longitude - southWest.longitude) / (cols - 1);
@@ -400,11 +333,7 @@ export class GeospatialTestHelper {
   /**
    * Create a line of points between two coordinates
    */
-  static createLine(
-    start: Coordinates,
-    end: Coordinates,
-    pointCount: number,
-  ): Coordinates[] {
+  static createLine(start: Coordinates, end: Coordinates, pointCount: number): Coordinates[] {
     const points: Coordinates[] = [];
     const latStep = (end.latitude - start.latitude) / (pointCount - 1);
     const lngStep = (end.longitude - start.longitude) / (pointCount - 1);
@@ -452,27 +381,20 @@ export class GeospatialTestHelper {
     const maxDistance = findMaxDistance(points);
 
     const distances = points.flatMap((point, i) =>
-      points
-        .slice(i + 1)
-        .map((otherPoint) => calculateDistance(point, otherPoint)),
+      points.slice(i + 1).map((otherPoint) => calculateDistance(point, otherPoint)),
     );
-    const averageDistance =
-      distances.reduce((sum, d) => sum + d, 0) / distances.length;
+    const averageDistance = distances.reduce((sum, d) => sum + d, 0) / distances.length;
 
     // Check for clustering (points too close together)
     const veryClosePoints = distances.filter((d) => d < 0.001).length; // Less than 1 meter
     if (veryClosePoints > points.length * 0.1) {
-      issues.push(
-        `${veryClosePoints} pairs of points are suspiciously close (< 1m)`,
-      );
+      issues.push(`${veryClosePoints} pairs of points are suspiciously close (< 1m)`);
     }
 
     // Check for unrealistic spread
     if (maxDistance > 20000) {
       // More than half the Earth's circumference
-      issues.push(
-        `Maximum distance ${maxDistance.toFixed(2)}km is unrealistically large`,
-      );
+      issues.push(`Maximum distance ${maxDistance.toFixed(2)}km is unrealistically large`);
     }
 
     return {

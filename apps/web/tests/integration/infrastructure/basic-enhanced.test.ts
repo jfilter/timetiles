@@ -4,22 +4,18 @@
  * Simple test to verify the core functionality works
  */
 
-import {
-  TestEnvironmentBuilder,
-  type TestEnvironment,
-} from "../../setup/test-environment-builder";
-import { TestDataBuilder } from "../../utils/test-data-builder";
+import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 import { TEST_COORDINATES } from "../../utils/geospatial-assertions";
+import { TestDataBuilder } from "../../utils/test-data-builder";
 
 // Import geospatial assertions
 import "../../utils/geospatial-assertions";
 
 describe("Basic Enhanced Testing Infrastructure", () => {
-  let testEnv: TestEnvironment;
+  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
 
   beforeAll(async () => {
-    const builder = new TestEnvironmentBuilder();
-    testEnv = await builder.createUnitTestEnvironment();
+    testEnv = await createIsolatedTestEnvironment();
   });
 
   afterAll(async () => {
@@ -39,19 +35,11 @@ describe("Basic Enhanced Testing Infrastructure", () => {
         .withTags(["technology", "networking"])
         .build();
 
-      expect((event.data as Record<string, unknown>).title).toBe(
-        "Tech Conference 2024",
-      );
+      expect((event.data as Record<string, unknown>).title).toBe("Tech Conference 2024");
       expect(event.location).toEqual({ latitude: 40.7128, longitude: -74.006 });
-      expect((event.data as Record<string, unknown>).category).toBe(
-        "Conference",
-      );
-      expect((event.data as Record<string, unknown>).tags).toContain(
-        "technology",
-      );
-      expect((event.data as Record<string, unknown>).address).toBe(
-        "123 Tech Street, New York, NY",
-      );
+      expect((event.data as Record<string, unknown>).category).toBe("Conference");
+      expect((event.data as Record<string, unknown>).tags).toContain("technology");
+      expect((event.data as Record<string, unknown>).address).toBe("123 Tech Street, New York, NY");
     });
 
     it("should create multiple events with variations", () => {
@@ -62,11 +50,7 @@ describe("Basic Enhanced Testing Infrastructure", () => {
         .buildMany(3, (event, i) => ({
           ...event,
           data: {
-            ...(typeof event.data === "object" &&
-            event.data !== null &&
-            !Array.isArray(event.data)
-              ? event.data
-              : {}),
+            ...(typeof event.data === "object" && event.data !== null && !Array.isArray(event.data) ? event.data : {}),
             title: `Meetup ${i + 1}`,
             capacity: 50 + i * 10,
           },
@@ -74,13 +58,9 @@ describe("Basic Enhanced Testing Infrastructure", () => {
 
       expect(events).toHaveLength(3);
       events.forEach((event, i) => {
-        expect((event.data as Record<string, unknown>).title).toBe(
-          `Meetup ${i + 1}`,
-        );
+        expect((event.data as Record<string, unknown>).title).toBe(`Meetup ${i + 1}`);
         expect((event.data as Record<string, unknown>).category).toBe("Meetup");
-        expect((event.data as Record<string, unknown>).capacity).toBe(
-          50 + i * 10,
-        );
+        expect((event.data as Record<string, unknown>).capacity).toBe(50 + i * 10);
 
         // Check coordinates are near NYC (within 10km)
         expect(event.location).toBeWithinRadius(TEST_COORDINATES.NYC, 10);
@@ -112,15 +92,15 @@ describe("Basic Enhanced Testing Infrastructure", () => {
 
   describe("Basic Database Operations", () => {
     it("should handle collection counts", async () => {
-      const count = await testEnv.getCollectionCount("users");
-      expect(typeof count).toBe("number");
-      expect(count).toBeGreaterThanOrEqual(0);
+      const result = await testEnv.payload.find({ collection: "users", limit: 1 });
+      expect(typeof result.totalDocs).toBe("number");
+      expect(result.totalDocs).toBeGreaterThanOrEqual(0);
     });
 
     it("should truncate collections", async () => {
-      await testEnv.truncateCollections(["users"]);
-      const count = await testEnv.getCollectionCount("users");
-      expect(count).toBe(0);
+      await testEnv.seedManager.truncate(["users"]);
+      const result = await testEnv.payload.find({ collection: "users", limit: 1 });
+      expect(result.totalDocs).toBe(0);
     });
   });
 });

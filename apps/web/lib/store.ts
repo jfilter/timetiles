@@ -26,6 +26,18 @@ interface UIStore {
   setTheme: (theme: "light" | "dark" | "system") => void;
 }
 
+// Helper function to create UI state setters
+const createUIStateSetter =
+  <T>(set: (fn: (state: UIStore) => UIStore) => void, key: keyof UIState) =>
+  (value: T) =>
+    set((state: UIStore) => ({
+      ...state,
+      ui: {
+        ...state.ui,
+        [key]: value,
+      },
+    }));
+
 export const useUIStore = create<UIStore>()(
   devtools(
     persist(
@@ -39,65 +51,20 @@ export const useUIStore = create<UIStore>()(
         },
 
         // UI actions
-        setFilterDrawerOpen: (isOpen) =>
-          set(
-            (state) => ({
-              ui: {
-                ...state.ui,
-                isFilterDrawerOpen: isOpen,
-              },
-            }),
-            false,
-            "setFilterDrawerOpen",
-          ),
+        setFilterDrawerOpen: createUIStateSetter(set, "isFilterDrawerOpen"),
 
         toggleFilterDrawer: () =>
-          set(
-            (state) => ({
-              ui: {
-                ...state.ui,
-                isFilterDrawerOpen: !state.ui.isFilterDrawerOpen,
-              },
-            }),
-            false,
-            "toggleFilterDrawer",
-          ),
+          set((state) => ({
+            ...state,
+            ui: {
+              ...state.ui,
+              isFilterDrawerOpen: !state.ui.isFilterDrawerOpen,
+            },
+          })),
 
-        setMapBounds: (bounds) =>
-          set(
-            (state) => ({
-              ui: {
-                ...state.ui,
-                mapBounds: bounds,
-              },
-            }),
-            false,
-            "setMapBounds",
-          ),
-
-        setSelectedEvent: (eventId) =>
-          set(
-            (state) => ({
-              ui: {
-                ...state.ui,
-                selectedEvent: eventId,
-              },
-            }),
-            false,
-            "setSelectedEvent",
-          ),
-
-        setTheme: (theme) =>
-          set(
-            (state) => ({
-              ui: {
-                ...state.ui,
-                theme,
-              },
-            }),
-            false,
-            "setTheme",
-          ),
+        setMapBounds: createUIStateSetter(set, "mapBounds"),
+        setSelectedEvent: createUIStateSetter(set, "selectedEvent"),
+        setTheme: createUIStateSetter(set, "theme"),
       }),
       {
         name: "timetiles-ui-store",
@@ -124,31 +91,24 @@ export interface FilterState {
 // Helper functions for filter operations (to be used with nuqs)
 export const getActiveFilterCount = (filters: FilterState): number => {
   let count = 0;
-  if (filters.catalog !== null && filters.catalog !== "") count++;
+  if (filters.catalog != null && filters.catalog !== "") count++;
   if (filters.datasets.length > 0) count += filters.datasets.length;
-  if (
-    (filters.startDate !== null && filters.startDate !== "") ||
-    (filters.endDate !== null && filters.endDate !== "")
-  )
+  if ((filters.startDate != null && filters.startDate !== "") || (filters.endDate != null && filters.endDate !== ""))
     count++; // Date range counts as one filter
   return count;
 };
 
 export const hasActiveFilters = (filters: FilterState): boolean => {
   return !!(
-    (filters.catalog !== null && filters.catalog !== "") ||
+    (filters.catalog != null && filters.catalog !== "") ||
     filters.datasets.length > 0 ||
-    (filters.startDate !== null && filters.startDate !== "") ||
-    (filters.endDate !== null && filters.endDate !== "")
+    (filters.startDate != null && filters.startDate !== "") ||
+    (filters.endDate != null && filters.endDate !== "")
   );
 };
 
 // Helper function to remove a specific filter
-export const removeFilter = (
-  filters: FilterState,
-  filterType: keyof FilterState,
-  value?: string,
-): FilterState => {
+export const removeFilter = (filters: FilterState, filterType: keyof FilterState, value?: string): FilterState => {
   const newFilters = { ...filters };
 
   switch (filterType) {
@@ -158,7 +118,7 @@ export const removeFilter = (
       newFilters.datasets = [];
       break;
     case "datasets":
-      if (value !== null && value !== undefined && value !== "") {
+      if (value != null && value !== "") {
         newFilters.datasets = newFilters.datasets.filter((id) => id !== value);
       } else {
         newFilters.datasets = [];

@@ -7,15 +7,15 @@
  * Run this in CI/CD to ensure types are always up-to-date.
  */
 
-import fs from "fs";
 import { execSync } from "child_process";
-import path from "path";
+import fs from "fs";
+
 import { createLogger, logError } from "../lib/logger.js";
 
 const logger = createLogger("type-validation");
 
-async function validateTypes() {
-  console.log("🔍 Validating Payload types are in sync...");
+const validateTypes = () => {
+  logger.info("🔍 Validating Payload types are in sync...");
   logger.info("Starting type validation process");
 
   const typesFile = "./payload-types.ts";
@@ -38,13 +38,13 @@ async function validateTypes() {
 
       if (originalContent !== newContent) {
         logger.error("Types are out of sync with collection definitions");
-        console.error("❌ Types are out of sync!");
-        console.error('Run "pnpm payload:generate" to update types.');
+        logger.error("❌ Types are out of sync!");
+        logger.error('Run "pnpm payload:generate" to update types.');
         process.exit(1);
       }
     }
 
-    console.log("✅ Types are in sync!");
+    logger.info("✅ Types are in sync!");
     logger.info("Type validation completed successfully");
 
     // Cleanup
@@ -53,7 +53,7 @@ async function validateTypes() {
     }
   } catch (error) {
     logError(error, "Type validation failed");
-    console.error("❌ Type validation failed");
+    logger.error("❌ Type validation failed");
 
     // Restore backup if it exists
     if (fs.existsSync(backupFile)) {
@@ -64,6 +64,6 @@ async function validateTypes() {
 
     process.exit(1);
   }
-}
+};
 
 validateTypes();

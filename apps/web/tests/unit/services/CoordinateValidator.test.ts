@@ -119,10 +119,7 @@ describe("CoordinateValidator", () => {
 
   describe("combined format extraction", () => {
     it("extracts comma-separated coordinates", () => {
-      const result = validator.extractFromCombined(
-        "40.7128,-74.0060",
-        "combined_comma",
-      );
+      const result = validator.extractFromCombined("40.7128,-74.0060", "combined_comma");
       expect(result.isValid).toBe(true);
       expect(result.latitude).toBe(40.7128);
       expect(result.longitude).toBe(-74.006);
@@ -130,10 +127,7 @@ describe("CoordinateValidator", () => {
     });
 
     it("extracts space-separated coordinates", () => {
-      const result = validator.extractFromCombined(
-        "40.7128 -74.0060",
-        "combined_space",
-      );
+      const result = validator.extractFromCombined("40.7128 -74.0060", "combined_space");
       expect(result.isValid).toBe(true);
       expect(result.latitude).toBe(40.7128);
       expect(result.longitude).toBe(-74.006);
@@ -150,30 +144,21 @@ describe("CoordinateValidator", () => {
     });
 
     it("auto-detects comma format", () => {
-      const result = validator.extractFromCombined(
-        "51.5074,-0.1278",
-        "unknown",
-      );
+      const result = validator.extractFromCombined("51.5074,-0.1278", "unknown");
       expect(result.isValid).toBe(true);
       expect(result.latitude).toBe(51.5074);
       expect(result.longitude).toBe(-0.1278);
     });
 
     it("auto-detects bracket format", () => {
-      const result = validator.extractFromCombined(
-        "[40.7128, -74.0060]",
-        "unknown",
-      );
+      const result = validator.extractFromCombined("[40.7128, -74.0060]", "unknown");
       expect(result.isValid).toBe(true);
       expect(result.latitude).toBe(40.7128);
       expect(result.longitude).toBe(-74.006);
     });
 
     it("handles invalid combined formats", () => {
-      const result1 = validator.extractFromCombined(
-        "not-coordinates",
-        "combined_comma",
-      );
+      const result1 = validator.extractFromCombined("not-coordinates", "combined_comma");
       expect(result1.isValid).toBe(false);
       expect(result1.latitude).toBe(null);
       expect(result1.longitude).toBe(null);

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+
 import { ExplorePage } from "../pages/explore.page";
 
 test.describe("Explore Page - Basic Functionality", () => {
@@ -11,9 +12,7 @@ test.describe("Explore Page - Basic Functionality", () => {
 
   test("should load the explore page with all components", async ({ page }) => {
     // Check page heading
-    await expect(
-      page.getByRole("heading", { name: "Event Explorer" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Event Explorer" })).toBeVisible();
 
     // Check main components are visible
     await expect(explorePage.map).toBeVisible();
@@ -110,9 +109,7 @@ test.describe("Explore Page - Basic Functionality", () => {
     });
 
     // We should be on some interactive element (select, input, or button)
-    expect(["SELECT", "INPUT", "BUTTON", "DIV"]).toContain(
-      focusedElement.tagName,
-    );
+    expect(["SELECT", "INPUT", "BUTTON", "DIV"]).toContain(focusedElement.tagName);
 
     // Continue tabbing to ensure we can navigate through the form
     for (let i = 0; i < 5; i++) {
@@ -120,9 +117,7 @@ test.describe("Explore Page - Basic Functionality", () => {
     }
 
     // Verify we're still on an interactive element
-    const laterElement = await page.evaluate(
-      () => document.activeElement?.tagName,
-    );
+    const laterElement = await page.evaluate(() => document.activeElement?.tagName);
     expect(["SELECT", "INPUT", "BUTTON", "DIV"]).toContain(laterElement);
   });
 

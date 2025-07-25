@@ -1,6 +1,7 @@
-import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 import type { Payload } from "payload";
+
 import type { Import } from "../../../payload-types";
+import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
 describe("Import with existing coordinates", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
@@ -94,7 +95,6 @@ describe("Import with existing coordinates", () => {
       });
       datasetId = dataset.id;
     } catch (error) {
-      console.error("Setup failed:", error);
       throw error;
     }
   }, 30000); // 30 second timeout
@@ -336,8 +336,7 @@ describe("Import with existing coordinates", () => {
         catalog: catalogId,
         status: "processing",
         rowCount: 2,
-        mimeType:
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         coordinateDetection: {
           detected: true,
           detectionMethod: "heuristic",

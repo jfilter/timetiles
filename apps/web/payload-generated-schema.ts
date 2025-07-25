@@ -693,7 +693,7 @@ export const geocoding_providers = db_schema.table(
     config_nominatim_extratags: boolean("config_nominatim_extratags").default(
       false,
     ),
-    config_opencage_apiKey: varchar("config_opencage_api_key"),
+    config_opencage_apiKey: varchar("config_GEOCODING_OPENCAGE_API_KEY"),
     config_opencage_language: varchar("config_opencage_language").default("en"),
     config_opencage_countrycode: varchar("config_opencage_countrycode"),
     config_opencage_bounds_enabled: boolean(

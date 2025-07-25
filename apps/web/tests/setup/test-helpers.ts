@@ -1,42 +1,38 @@
+import { postgresAdapter } from "@payloadcms/db-postgres";
+import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { randomUUID } from "crypto";
 import fs from "fs";
 import path from "path";
 import { getPayload, buildConfig } from "payload";
-import { postgresAdapter } from "@payloadcms/db-postgres";
-import { lexicalEditor } from "@payloadcms/richtext-lexical";
-import { migrations } from "@/migrations";
+
 import { truncateAllTables } from "./database-setup";
 import { verifyDatabaseSchema } from "./verify-schema";
-import { logger } from "@/lib/logger";
 
 // Import collections
 import Catalogs from "@/lib/collections/catalogs";
 import Datasets from "@/lib/collections/datasets";
-import Imports from "@/lib/collections/imports";
 import Events from "@/lib/collections/events";
-import Users from "@/lib/collections/users";
-import Media from "@/lib/collections/media";
-import LocationCache from "@/lib/collections/location-cache";
 import GeocodingProviders from "@/lib/collections/geocoding-providers";
-import { Pages } from "@/lib/collections/pages";
+import Imports from "@/lib/collections/imports";
+import LocationCache from "@/lib/collections/location-cache";
 import { MainMenu } from "@/lib/collections/main-menu";
-import {
-  fileParsingJob,
-  batchProcessingJob,
-  eventCreationJob,
-  geocodingBatchJob,
-} from "@/lib/jobs/import-jobs";
+import Media from "@/lib/collections/media";
+import { Pages } from "@/lib/collections/pages";
+import Users from "@/lib/collections/users";
+import { fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob } from "@/lib/jobs/import-jobs";
+import { logger } from "@/lib/logger";
+import { migrations } from "@/migrations";
 
 /**
  * Creates an isolated test environment for each test
  * Uses the database already set up by the global setup, just truncates tables
  */
-export async function createIsolatedTestEnvironment(): Promise<{
+export const createIsolatedTestEnvironment = async (): Promise<{
   seedManager: any;
   payload: any;
   cleanup: () => Promise<void>;
   tempDir: string;
-}> {
+}> => {
   const testId = randomUUID();
   const workerId = process.env.VITEST_WORKER_ID || "1";
   const tempDir = `/tmp/timetiles-test-${workerId}-${testId}`;
@@ -48,9 +44,7 @@ export async function createIsolatedTestEnvironment(): Promise<{
 
   // Use the database that was already set up by the global setup
   const dbName = `timetiles_test_${workerId}`;
-  const dbUrl =
-    process.env.DATABASE_URL ||
-    `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
+  const dbUrl = process.env.DATABASE_URL || `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
 
   // Truncate all tables to ensure clean state for this test
   await truncateAllTables(dbUrl);
@@ -70,25 +64,10 @@ export async function createIsolatedTestEnvironment(): Promise<{
             },
           },
     debug: false,
-    collections: [
-      Catalogs,
-      Datasets,
-      Imports,
-      Events,
-      Users,
-      Media,
-      LocationCache,
-      GeocodingProviders,
-      Pages,
-    ],
+    collections: [Catalogs, Datasets, Imports, Events, Users, Media, LocationCache, GeocodingProviders, Pages],
     globals: [MainMenu],
     jobs: {
-      tasks: [
-        fileParsingJob,
-        batchProcessingJob,
-        eventCreationJob,
-        geocodingBatchJob,
-      ],
+      tasks: [fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob],
     },
     db: postgresAdapter({
       pool: {
@@ -115,17 +94,11 @@ export async function createIsolatedTestEnvironment(): Promise<{
     (seedManager as any).payload = payload;
 
     // Initialize relationship resolver with the test payload instance
-    const { RelationshipResolver } = await import(
-      "../../lib/seed/relationship-resolver"
-    );
-    (seedManager as any).relationshipResolver = new RelationshipResolver(
-      payload,
-    );
+    const { RelationshipResolver } = await import("../../lib/seed/relationship-resolver");
+    (seedManager as any).relationshipResolver = new RelationshipResolver(payload);
 
     // Initialize database operations with the test payload instance
-    const { DatabaseOperations } = await import(
-      "../../lib/seed/database-operations"
-    );
+    const { DatabaseOperations } = await import("../../lib/seed/database-operations");
     (seedManager as any).databaseOperations = new DatabaseOperations(payload);
 
     return payload;
@@ -149,19 +122,17 @@ export async function createIsolatedTestEnvironment(): Promise<{
   };
 
   return { seedManager, payload, cleanup, tempDir };
-}
+};
 
 /**
  * Helper to create unique identifiers for tests
  */
-export function createTestId(): string {
-  return `test-${Date.now()}-${randomUUID().split("-")[0]}`;
-}
+export const createTestId = (): string => `test-${Date.now()}-${randomUUID().split("-")[0]}`;
 
 /**
  * Helper to create unique file paths
  */
-export function createTempFilePath(tempDir: string, filename: string): string {
+export const createTempFilePath = (tempDir: string, filename: string): string => {
   const testId = createTestId();
   return `${tempDir}/${testId}-${filename}`;
-}
+};

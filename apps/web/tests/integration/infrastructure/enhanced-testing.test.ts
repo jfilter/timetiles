@@ -8,26 +8,18 @@
  * - Efficient database operations
  */
 
-import {
-  TestEnvironmentBuilder,
-  type TestEnvironment,
-} from "../../setup/test-environment-builder";
+import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
+import { GeospatialTestHelper, TEST_COORDINATES } from "../../utils/geospatial-assertions";
 import { TestDataBuilder } from "../../utils/test-data-builder";
-import {
-  GeospatialTestHelper,
-  TEST_COORDINATES,
-} from "../../utils/geospatial-assertions";
 
 // Import geospatial assertions (they extend expect automatically)
 import "../../utils/geospatial-assertions";
 
 describe("Enhanced Testing Infrastructure", () => {
-  let testEnv: TestEnvironment;
-  let builder: TestEnvironmentBuilder;
+  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
 
   beforeAll(async () => {
-    builder = new TestEnvironmentBuilder();
-    testEnv = await builder.createIntegrationTestEnvironment();
+    testEnv = await createIsolatedTestEnvironment();
   });
 
   afterAll(async () => {
@@ -36,47 +28,24 @@ describe("Enhanced Testing Infrastructure", () => {
     }
   });
 
-  describe("TestEnvironmentBuilder", () => {
-    it("should create isolated test environments with different configurations", async () => {
-      // Test unit test environment
-      const unitEnv = await builder.createUnitTestEnvironment();
-      expect(unitEnv.payload).toBeDefined();
-      expect(unitEnv.seedManager).toBeDefined();
-      expect(unitEnv.tempDir).toBeUndefined(); // Unit tests don't need temp dirs
-
-      // Test integration environment
-      const integrationEnv = await builder.createIntegrationTestEnvironment();
-      expect(integrationEnv.payload).toBeDefined();
-      expect(integrationEnv.seedManager).toBeDefined();
-      expect(integrationEnv.tempDir).toBeDefined();
-
-      // Test custom environment
-      const customEnv = await builder.createTestEnvironment({
-        collections: ["events", "catalogs"],
-        seedData: false,
-        isolationLevel: "test",
-        createTempDir: true,
-      });
-      expect(customEnv.payload).toBeDefined();
-      expect(customEnv.tempDir).toBeDefined();
-
-      // Cleanup
-      await Promise.all([
-        unitEnv.cleanup(),
-        integrationEnv.cleanup(),
-        customEnv.cleanup(),
-      ]);
+  describe("Test Environment", () => {
+    it("should provide isolated test environment with core components", async () => {
+      // Test that environment provides essential components
+      expect(testEnv.payload).toBeDefined();
+      expect(testEnv.seedManager).toBeDefined();
+      expect(testEnv.tempDir).toBeDefined();
+      expect(testEnv.cleanup).toBeDefined();
     });
 
     it("should provide helper methods for common operations", async () => {
       // Test collection count
-      const initialCount = await testEnv.getCollectionCount("users");
-      expect(typeof initialCount).toBe("number");
+      const result = await testEnv.payload.find({ collection: "users", limit: 1 });
+      expect(typeof result.totalDocs).toBe("number");
 
       // Test truncation
-      await testEnv.truncateCollections(["users"]);
-      const afterTruncateCount = await testEnv.getCollectionCount("users");
-      expect(afterTruncateCount).toBe(0);
+      await testEnv.seedManager.truncate(["users"]);
+      const afterResult = await testEnv.payload.find({ collection: "users", limit: 1 });
+      expect(afterResult.totalDocs).toBe(0);
     });
   });
 
@@ -91,19 +60,11 @@ describe("Enhanced Testing Infrastructure", () => {
         .withTags(["technology", "networking"])
         .build();
 
-      expect((event.data as Record<string, unknown>).title).toBe(
-        "Tech Conference 2024",
-      );
+      expect((event.data as Record<string, unknown>).title).toBe("Tech Conference 2024");
       expect(event.location).toEqual({ latitude: 40.7128, longitude: -74.006 });
-      expect((event.data as Record<string, unknown>).category).toBe(
-        "Conference",
-      );
-      expect((event.data as Record<string, unknown>).tags).toContain(
-        "technology",
-      );
-      expect((event.data as Record<string, unknown>).address).toBe(
-        "123 Tech Street, New York, NY",
-      );
+      expect((event.data as Record<string, unknown>).category).toBe("Conference");
+      expect((event.data as Record<string, unknown>).tags).toContain("technology");
+      expect((event.data as Record<string, unknown>).address).toBe("123 Tech Street, New York, NY");
     });
 
     it("should create multiple events with variations", async () => {
@@ -114,11 +75,7 @@ describe("Enhanced Testing Infrastructure", () => {
         .buildMany(5, (event, i) => ({
           ...event,
           data: {
-            ...(typeof event.data === "object" &&
-            event.data !== null &&
-            !Array.isArray(event.data)
-              ? event.data
-              : {}),
+            ...(typeof event.data === "object" && event.data !== null && !Array.isArray(event.data) ? event.data : {}),
             title: `Meetup ${i + 1}`,
             capacity: 50 + i * 10,
           },
@@ -126,13 +83,9 @@ describe("Enhanced Testing Infrastructure", () => {
 
       expect(events).toHaveLength(5);
       events.forEach((event, i) => {
-        expect((event.data as Record<string, unknown>).title).toBe(
-          `Meetup ${i + 1}`,
-        );
+        expect((event.data as Record<string, unknown>).title).toBe(`Meetup ${i + 1}`);
         expect((event.data as Record<string, unknown>).category).toBe("Meetup");
-        expect((event.data as Record<string, unknown>).capacity).toBe(
-          50 + i * 10,
-        );
+        expect((event.data as Record<string, unknown>).capacity).toBe(50 + i * 10);
 
         // Check coordinates are near NYC (within 10km)
         expect(event.location).toBeWithinRadius(TEST_COORDINATES.NYC, 10);
@@ -158,12 +111,8 @@ describe("Enhanced Testing Infrastructure", () => {
 
       expect(dataset.name).toBe("Tech Conference Schedule");
       expect(dataset.catalog).toBe(1);
-      expect(
-        (dataset.schema as Record<string, unknown>)?.properties,
-      ).toHaveProperty("title");
-      expect(
-        (dataset.schema as Record<string, unknown>)?.properties,
-      ).toHaveProperty("date");
+      expect((dataset.schema as Record<string, unknown>)?.properties).toHaveProperty("title");
+      expect((dataset.schema as Record<string, unknown>)?.properties).toHaveProperty("date");
     });
 
     it("should create realistic test scenarios", async () => {
@@ -181,12 +130,8 @@ describe("Enhanced Testing Infrastructure", () => {
       expect(dataset?.name).toBe("Tech Conference Schedule");
 
       events.forEach((event, i) => {
-        expect((event.data as Record<string, unknown>).title).toBe(
-          `Tech Conference ${i + 1}`,
-        );
-        expect((event.data as Record<string, unknown>).category).toBe(
-          "Conference",
-        );
+        expect((event.data as Record<string, unknown>).title).toBe(`Tech Conference ${i + 1}`);
+        expect((event.data as Record<string, unknown>).category).toBe("Conference");
         expect(event.location).toBeWithinRadius(TEST_COORDINATES.NYC, 50);
       });
     });
@@ -224,11 +169,7 @@ describe("Enhanced Testing Infrastructure", () => {
 
     it("should work with GeospatialTestHelper utilities", () => {
       // Create a cluster of points
-      const cluster = GeospatialTestHelper.createCluster(
-        TEST_COORDINATES.NYC,
-        10,
-        5,
-      );
+      const cluster = GeospatialTestHelper.createCluster(TEST_COORDINATES.NYC, 10, 5);
       expect(cluster).toHaveLength(10);
 
       cluster.forEach((point) => {
@@ -283,19 +224,17 @@ describe("Enhanced Testing Infrastructure", () => {
 
   describe("Enhanced Database Operations", () => {
     it("should handle collection counts", async () => {
-      const count = await testEnv.getCollectionCount("users");
-      expect(typeof count).toBe("number");
-      expect(count).toBeGreaterThanOrEqual(0);
+      const result = await testEnv.payload.find({ collection: "users", limit: 1 });
+      expect(typeof result.totalDocs).toBe("number");
+      expect(result.totalDocs).toBeGreaterThanOrEqual(0);
     });
 
     it("should truncate collections without errors", async () => {
       // Test that truncation doesn't throw errors
-      await expect(
-        testEnv.truncateCollections(["users"]),
-      ).resolves.not.toThrow();
+      await expect(testEnv.seedManager.truncate(["users"])).resolves.not.toThrow();
 
-      const afterCount = await testEnv.getCollectionCount("users");
-      expect(afterCount).toBe(0);
+      const result = await testEnv.payload.find({ collection: "users", limit: 1 });
+      expect(result.totalDocs).toBe(0);
     });
   });
 
@@ -311,9 +250,9 @@ describe("Enhanced Testing Infrastructure", () => {
       ).resolves.not.toThrow();
 
       // Test that we can get the count (infrastructure test)
-      const userCount = await testEnv.getCollectionCount("users");
-      expect(typeof userCount).toBe("number");
-      expect(userCount).toBeGreaterThanOrEqual(0);
+      const result = await testEnv.payload.find({ collection: "users", limit: 1 });
+      expect(typeof result.totalDocs).toBe("number");
+      expect(result.totalDocs).toBeGreaterThanOrEqual(0);
     });
 
     it("should provide test environment isolation", () => {
@@ -321,8 +260,7 @@ describe("Enhanced Testing Infrastructure", () => {
       expect(testEnv.payload).toBeDefined();
       expect(testEnv.seedManager).toBeDefined();
       expect(testEnv.cleanup).toBeDefined();
-      expect(typeof testEnv.getCollectionCount).toBe("function");
-      expect(typeof testEnv.truncateCollections).toBe("function");
+      expect(typeof testEnv.tempDir).toBe("string");
     });
   });
 });

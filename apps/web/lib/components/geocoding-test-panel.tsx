@@ -27,10 +27,7 @@ interface GeocodingTestPanelProps {
   onTest: (address: string) => Promise<TestResults>;
 }
 
-export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
-  testAddress: initialTestAddress,
-  onTest,
-}) => {
+export const GeocodingTestPanel = ({ testAddress: initialTestAddress, onTest }: GeocodingTestPanelProps) => {
   const [testAddress, setTestAddress] = useState(initialTestAddress);
   const [testing, setTesting] = useState(false);
   const [results, setResults] = useState<TestResults | null>(null);
@@ -49,16 +46,9 @@ export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
     }
   };
 
-  const renderResult = (
-    providerName: string,
-    result: TestResult | undefined,
-  ) => {
+  const renderResult = (providerName: string, result: TestResult | undefined) => {
     if (!result) {
-      return (
-        <div className="text-sm text-gray-500">
-          Not configured or not tested
-        </div>
-      );
+      return <div className="text-sm text-gray-500">Not configured or not tested</div>;
     }
 
     if (result.success && result.result) {
@@ -68,9 +58,7 @@ export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
           <div className="text-sm text-gray-600">
             <div>Lat: {result.result.latitude.toFixed(6)}</div>
             <div>Lng: {result.result.longitude.toFixed(6)}</div>
-            <div>
-              Confidence: {(result.result.confidence * 100).toFixed(1)}%
-            </div>
+            <div>Confidence: {(result.result.confidence * 100).toFixed(1)}%</div>
             <div className="truncate" title={result.result.normalizedAddress}>
               {result.result.normalizedAddress}
             </div>
@@ -81,9 +69,7 @@ export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
       return (
         <div className="space-y-1">
           <div className="font-medium text-red-600">✗ Failed</div>
-          <div className="text-sm text-red-500">
-            {result.error ?? "Unknown error"}
-          </div>
+          <div className="text-sm text-red-500">{result.error ?? "Unknown error"}</div>
         </div>
       );
     }
@@ -92,21 +78,15 @@ export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
   return (
     <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
       <div>
-        <h3 className="mb-2 text-lg font-medium text-gray-900">
-          Test Geocoding Configuration
-        </h3>
+        <h3 className="mb-2 text-lg font-medium text-gray-900">Test Geocoding Configuration</h3>
         <p className="mb-4 text-sm text-gray-600">
-          Test your geocoding providers with a sample address to verify
-          they&apos;re working correctly.
+          Test your geocoding providers with a sample address to verify they&apos;re working correctly.
         </p>
       </div>
 
       <div className="space-y-3">
         <div>
-          <label
-            htmlFor="test-address"
-            className="mb-1 block text-sm font-medium text-gray-700"
-          >
+          <label htmlFor="test-address" className="mb-1 block text-sm font-medium text-gray-700">
             Test Address
           </label>
           <div className="flex space-x-2">
@@ -118,11 +98,7 @@ export const GeocodingTestPanel: React.FC<GeocodingTestPanelProps> = ({
               placeholder="Enter an address to test..."
               className="flex-1 rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
             />
-            <Button
-              onClick={() => void handleTest()}
-              disabled={testing || !testAddress.trim()}
-              className="px-4 py-2"
-            >
+            <Button onClick={() => void handleTest()} disabled={testing || !testAddress.trim()} className="px-4 py-2">
               {testing ? "Testing..." : "Test All"}
             </Button>
           </div>

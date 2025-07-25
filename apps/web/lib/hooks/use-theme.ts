@@ -3,7 +3,7 @@ import { useEffect } from "react";
 
 import { useUIStore } from "../store";
 
-export function useTheme() {
+export const useTheme = () => {
   const theme = useUIStore((state) => state.ui.theme);
   const setTheme = useUIStore((state) => state.setTheme);
 
@@ -44,4 +44,4 @@ export function useTheme() {
     theme,
     setTheme,
   };
-}
+};

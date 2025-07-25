@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@workspace/ui/components/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { useState } from "react";
 
 import { DatasetBarChart } from "./dataset-bar-chart";
@@ -22,22 +16,14 @@ interface ChartSectionProps {
 
 type ChartType = "timeline" | "dataset-bar" | "catalog-bar";
 
-export function ChartSection({
-  events,
-  datasets,
-  catalogs,
-  loading,
-}: ChartSectionProps) {
+export const ChartSection = ({ events, datasets, catalogs, loading }: Readonly<ChartSectionProps>) => {
   const [chartType, setChartType] = useState<ChartType>("timeline");
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Data Visualization</h2>
-        <Select
-          value={chartType}
-          onValueChange={(value) => setChartType(value as ChartType)}
-        >
+        <Select value={chartType} onValueChange={(value) => setChartType(value as ChartType)}>
           <SelectTrigger className="w-48">
             <SelectValue />
           </SelectTrigger>
@@ -72,4 +58,4 @@ export function ChartSection({
       </div>
     </div>
   );
-}
+};

@@ -1,31 +1,21 @@
 // Create mock geocoder instances with proper typing - must be defined before mocking
-import {
-  vi,
-  describe,
-  it,
-  expect,
-  beforeAll,
-  afterAll,
-  beforeEach,
-  afterEach,
-} from "vitest";
+import { vi, describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 
 // Use vi.hoisted to ensure mocks are set up before imports
-const { mockGoogleGeocode, mockNominatimGeocode, mockNodeGeocoder } =
-  vi.hoisted(() => {
-    const mockGoogleGeocode = vi.fn();
-    const mockNominatimGeocode = vi.fn();
+const { mockGoogleGeocode, mockNominatimGeocode, mockNodeGeocoder } = vi.hoisted(() => {
+  const mockGoogleGeocode = vi.fn();
+  const mockNominatimGeocode = vi.fn();
 
-    const mockNodeGeocoder = vi.fn().mockImplementation((config: any) => {
-      if (config && config.provider === "google") {
-        return { geocode: mockGoogleGeocode };
-      } else {
-        return { geocode: mockNominatimGeocode };
-      }
-    });
-
-    return { mockGoogleGeocode, mockNominatimGeocode, mockNodeGeocoder };
+  const mockNodeGeocoder = vi.fn().mockImplementation((config: any) => {
+    if (config && config.provider === "google") {
+      return { geocode: mockGoogleGeocode };
+    } else {
+      return { geocode: mockNominatimGeocode };
+    }
   });
+
+  return { mockGoogleGeocode, mockNominatimGeocode, mockNodeGeocoder };
+});
 
 // Mock node-geocoder module
 vi.mock("node-geocoder", () => ({
@@ -44,10 +34,7 @@ const mockNominatimGeocoder = {
   },
 };
 
-import {
-  GeocodingService,
-  GeocodingError,
-} from "../../../lib/services/geocoding/geocoding-service";
+import { GeocodingService, GeocodingError } from "../../../lib/services/geocoding/geocoding-service";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
 describe("GeocodingService", () => {
@@ -93,7 +80,6 @@ describe("GeocodingService", () => {
         }
       }
     } catch (error) {
-      console.warn("Failed to truncate collections:", error);
     }
 
     // Reset the mock functions completely for each test
@@ -101,7 +87,7 @@ describe("GeocodingService", () => {
     mockNominatimGeocode.mockReset();
 
     // Reset environment variables - let each test set its own
-    delete process.env.GOOGLE_MAPS_API_KEY;
+    delete process.env.GEOCODING_GOOGLE_MAPS_API_KEY;
 
     // Don't create the service here - let each test create it after setting up environment
     // This ensures clean state for each test
@@ -114,13 +100,13 @@ describe("GeocodingService", () => {
 
   describe.sequential("constructor", () => {
     it("should initialize with Google geocoder when API key is available", () => {
-      process.env.GOOGLE_MAPS_API_KEY = "test-api-key";
+      process.env.GEOCODING_GOOGLE_MAPS_API_KEY = "test-api-key";
       const service = new GeocodingService(payload);
       expect(service).toBeDefined();
     });
 
     it("should initialize without Google geocoder when API key is not available", () => {
-      delete process.env.GOOGLE_MAPS_API_KEY;
+      delete process.env.GEOCODING_GOOGLE_MAPS_API_KEY;
       const service = new GeocodingService(payload);
       expect(service).toBeDefined();
     });
@@ -135,7 +121,7 @@ describe("GeocodingService", () => {
     };
 
     if (withGoogleApi) {
-      process.env.GOOGLE_MAPS_API_KEY = "test-api-key";
+      process.env.GEOCODING_GOOGLE_MAPS_API_KEY = "test-api-key";
       const googleName = `Google Maps (Test ${uniqueId})`;
       await payload.create({
         collection: "geocoding-providers",
@@ -156,7 +142,7 @@ describe("GeocodingService", () => {
       });
       providerNames.google = googleName;
     } else {
-      delete process.env.GOOGLE_MAPS_API_KEY;
+      delete process.env.GEOCODING_GOOGLE_MAPS_API_KEY;
     }
 
     // Always create Nominatim provider for tests
@@ -246,9 +232,7 @@ describe("GeocodingService", () => {
       // Set up mocks BEFORE creating service
       mockGoogleGeocoder.geocode.mockResolvedValue([mockGoogleResult]);
       // Ensure Nominatim is not called by setting it to fail
-      mockNominatimGeocoder.geocode.mockRejectedValue(
-        new Error("Should not reach Nominatim"),
-      );
+      mockNominatimGeocoder.geocode.mockRejectedValue(new Error("Should not reach Nominatim"));
 
       // Set up environment and recreate service to include Google geocoder AFTER setting up mocks
       const providerNames = await ensureServiceCreated(true);
@@ -282,9 +266,7 @@ describe("GeocodingService", () => {
       const uniqueAddress = `5678 Fallback Ave, San Francisco, CA ${testCounter}-${Date.now()}`;
 
       // Set up mocks BEFORE creating service
-      mockGoogleGeocoder.geocode.mockRejectedValue(
-        new Error("Google API error"),
-      );
+      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google API error"));
       mockNominatimGeocoder.geocode.mockResolvedValue([
         {
           latitude: 37.7749,
@@ -316,9 +298,7 @@ describe("GeocodingService", () => {
 
     it("should use Nominatim when Google API key is not available", async () => {
       // Set up mocks BEFORE creating service
-      mockGoogleGeocoder.geocode.mockRejectedValue(
-        new Error("Google not available"),
-      );
+      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
       mockNominatimGeocoder.geocode.mockResolvedValue([
         {
           latitude: 37.7749,
@@ -355,16 +335,22 @@ describe("GeocodingService", () => {
 
       const uniqueAddress = `111 Cache St, San Francisco, CA ${Date.now()}-${Math.random()}`;
 
-      // Create a cached result
+      // Create a cached result using the same normalization as CacheManager
+      const normalizedAddress = uniqueAddress
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, " ") // Replace multiple spaces with single space
+        .replace(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
+        .replace(/,{2,}/g, ",") // Replace multiple commas with single comma
+        .replace(/^[\s,]+/, "") // Remove leading whitespace and commas
+        .trimEnd()
+        .replace(/,$/, ""); // Remove single trailing comma
+
       const cachedResult = await payload.create({
         collection: "location-cache",
         data: {
           originalAddress: uniqueAddress,
-          normalizedAddress: uniqueAddress
-            .toLowerCase()
-            .replace(/[^a-z0-9\s]/g, "")
-            .replace(/\s+/g, " ")
-            .trim(),
+          normalizedAddress: normalizedAddress,
           latitude: 37.7749,
           longitude: -122.4194,
           provider: providerNames.nominatim,
@@ -406,26 +392,16 @@ describe("GeocodingService", () => {
       const uniqueAddress = `${mockAddress} ${testCounter}`;
 
       // Set up mocks to fail for this test
-      mockGoogleGeocoder.geocode.mockRejectedValue(
-        new Error("Google not available"),
-      );
-      mockNominatimGeocoder.geocode.mockRejectedValue(
-        new Error("Nominatim error"),
-      );
+      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
+      mockNominatimGeocoder.geocode.mockRejectedValue(new Error("Nominatim error"));
 
-      await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow(
-        GeocodingError,
-      );
-      await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow(
-        "All geocoding providers failed",
-      );
+      await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow(GeocodingError);
+      await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow("All geocoding providers failed");
     });
 
     it("should reject results with low confidence", async () => {
       // Reset mocks and set up failure scenario
-      mockGoogleGeocoder.geocode.mockRejectedValue(
-        new Error("Google not available"),
-      );
+      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
       mockNominatimGeocoder.geocode.mockResolvedValue([
         {
           latitude: 91, // Invalid latitude (> 90)
@@ -440,9 +416,7 @@ describe("GeocodingService", () => {
 
       const uniqueAddress = `${mockAddress} ${testCounter}`;
 
-      await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow(
-        GeocodingError,
-      );
+      await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow(GeocodingError);
     });
 
     it("should reject results with invalid coordinates", async () => {
@@ -459,9 +433,7 @@ describe("GeocodingService", () => {
       };
 
       // Set up mocks BEFORE creating service: Google fails, Nominatim returns invalid coordinates
-      mockGoogleGeocoder.geocode.mockRejectedValue(
-        new Error("Google not available"),
-      );
+      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
       mockNominatimGeocoder.geocode.mockResolvedValue([invalidResult]);
 
       // Create service instance for this test AFTER setting up mocks
@@ -469,44 +441,32 @@ describe("GeocodingService", () => {
 
       const uniqueAddress = `${mockAddress} ${testCounter}`;
 
-      await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow(
-        GeocodingError,
-      );
+      await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow(GeocodingError);
     });
 
     it("should handle empty results from provider", async () => {
       const uniqueAddress = `${mockAddress} Empty Results ${testCounter} ${Date.now()}-${Math.random()}`;
 
       // Set up mocks BEFORE creating service: Google fails, Nominatim returns empty array
-      mockGoogleGeocoder.geocode.mockRejectedValue(
-        new Error("Google not available"),
-      );
+      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
       mockNominatimGeocoder.geocode.mockResolvedValue([]);
 
       // Create service instance for this test AFTER setting up mocks
       await ensureServiceCreated();
 
-      await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow(
-        GeocodingError,
-      );
+      await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow(GeocodingError);
     });
   });
 
   describe.sequential("batchGeocode", () => {
-    const addresses = [
-      "123 Main St, San Francisco, CA",
-      "456 Oak Ave, New York, NY",
-      "789 Pine Rd, Austin, TX",
-    ];
+    const addresses = ["123 Main St, San Francisco, CA", "456 Oak Ave, New York, NY", "789 Pine Rd, Austin, TX"];
 
     it("should process multiple addresses in batches", async () => {
       // Create service instance for this test
       await ensureServiceCreated();
 
       // Set up mocks: Google fails, Nominatim succeeds for all addresses
-      mockGoogleGeocoder.geocode.mockRejectedValue(
-        new Error("Google not available"),
-      );
+      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
       mockNominatimGeocoder.geocode.mockImplementation((address: string) => {
         // Ensure all addresses get valid coordinates and components
         return Promise.resolve([
@@ -547,9 +507,7 @@ describe("GeocodingService", () => {
       ];
 
       // Set up mocks BEFORE creating service
-      mockGoogleGeocoder.geocode.mockRejectedValue(
-        new Error("Google not available"),
-      );
+      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
       mockNominatimGeocoder.geocode.mockImplementation((address: string) => {
         if (address.includes("Mixed Main St")) {
           return Promise.resolve([
@@ -597,16 +555,22 @@ describe("GeocodingService", () => {
         `789 Batch Rd, Austin, TX ${Date.now()}-${Math.random()}`,
       ];
 
-      // Create cached result for first address
+      // Create cached result for first address using correct normalization
+      const normalizedAddress = uniqueAddresses[0]!
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, " ") // Replace multiple spaces with single space
+        .replace(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
+        .replace(/,{2,}/g, ",") // Replace multiple commas with single comma
+        .replace(/^[\s,]+/, "") // Remove leading whitespace and commas
+        .trimEnd()
+        .replace(/,$/, ""); // Remove single trailing comma
+
       await payload.create({
         collection: "location-cache",
         data: {
           originalAddress: uniqueAddresses[0]!,
-          normalizedAddress: uniqueAddresses[0]!
-            .toLowerCase()
-            .replace(/[^a-z0-9\s]/g, "")
-            .replace(/\s+/g, " ")
-            .trim(),
+          normalizedAddress: normalizedAddress,
           latitude: 37.7749,
           longitude: -122.4194,
           provider: "Test Nominatim",
@@ -657,9 +621,7 @@ describe("GeocodingService", () => {
 
       // Set up mocks BEFORE creating service
       mockGoogleGeocoder.geocode.mockResolvedValue([resultWithPlaceId]);
-      mockNominatimGeocoder.geocode.mockRejectedValue(
-        new Error("Should not reach Nominatim"),
-      );
+      mockNominatimGeocoder.geocode.mockRejectedValue(new Error("Should not reach Nominatim"));
 
       // Create service with Google API enabled AFTER setting up mocks
       await ensureServiceCreated(true);
@@ -684,17 +646,13 @@ describe("GeocodingService", () => {
       };
 
       // Set up mocks BEFORE creating service
-      mockGoogleGeocoder.geocode.mockRejectedValue(
-        new Error("Google not available"),
-      );
+      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
       mockNominatimGeocoder.geocode.mockResolvedValue([nominatimResult]);
 
       // Create service instance for this test AFTER setting up mocks
       await ensureServiceCreated();
 
-      const result = await geocodingService.geocode(
-        "123 Main St, San Francisco, CA",
-      );
+      const result = await geocodingService.geocode("123 Main St, San Francisco, CA");
 
       expect(result.confidence).toBeGreaterThan(0.5);
       expect(result.confidence).toBeLessThanOrEqual(1.0);
@@ -705,14 +663,10 @@ describe("GeocodingService", () => {
     it("should normalize addresses for better cache matching", async () => {
       const baseAddress = `123 Cache Normalize St, San Francisco, CA ${testCounter}-${Date.now()}-${Math.random()}`;
       const address1 = baseAddress;
-      const address2 =
-        baseAddress.toUpperCase().replace(/,/g, ", ").replace(/\s+/g, "  ") +
-        "!!!";
+      const address2 = baseAddress.toUpperCase().replace(/,/g, ", ").replace(/\s+/g, "  ") + "!!!";
 
       // Set up mocks BEFORE creating service
-      mockGoogleGeocoder.geocode.mockRejectedValue(
-        new Error("Google not available"),
-      );
+      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
       mockNominatimGeocoder.geocode.mockResolvedValue([
         {
           latitude: 37.7749,
@@ -747,19 +701,26 @@ describe("GeocodingService", () => {
       // Create service instance for this test
       await ensureServiceCreated();
 
-      // Create old cache entry (older than default 365 day TTL)
-      const oldDate = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000); // 400 days ago
+      // Create old cache entry (older than default 30 day TTL)
+      const oldDate = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000); // 40 days ago
       const uniqueAddress = `Old Address ${Date.now()}-${Math.random()}`;
 
-      await payload.create({
+      // Use correct address normalization
+      const normalizedAddress = uniqueAddress
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, " ") // Replace multiple spaces with single space
+        .replace(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
+        .replace(/,{2,}/g, ",") // Replace multiple commas with single comma
+        .replace(/^[\s,]+/, "") // Remove leading whitespace and commas
+        .trimEnd()
+        .replace(/,$/, ""); // Remove single trailing comma
+
+      const oldEntry = await payload.create({
         collection: "location-cache",
         data: {
           originalAddress: uniqueAddress,
-          normalizedAddress: uniqueAddress
-            .toLowerCase()
-            .replace(/[^a-z0-9\s]/g, "")
-            .replace(/\s+/g, " ")
-            .trim(),
+          normalizedAddress: normalizedAddress,
           latitude: 37.7749,
           longitude: -122.4194,
           provider: "nominatim",
@@ -768,6 +729,15 @@ describe("GeocodingService", () => {
           lastUsed: oldDate.toISOString(),
           components: {},
           metadata: {},
+        },
+      });
+
+      // Manually update the createdAt field to make it old (cleanup uses createdAt, not lastUsed)
+      await payload.update({
+        collection: "location-cache",
+        id: oldEntry.id,
+        data: {
+          createdAt: oldDate.toISOString(),
         },
       });
 
@@ -831,16 +801,10 @@ describe("GeocodingService", () => {
       const uniqueAddress = `Test Address ${testCounter}`;
 
       // Set up mocks: Both providers fail with network errors
-      mockGoogleGeocoder.geocode.mockRejectedValue(
-        new Error("Google network error"),
-      );
-      mockNominatimGeocoder.geocode.mockRejectedValue(
-        new Error("Network error"),
-      );
+      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google network error"));
+      mockNominatimGeocoder.geocode.mockRejectedValue(new Error("Network error"));
 
-      await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow(
-        GeocodingError,
-      );
+      await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow(GeocodingError);
     });
 
     it("should continue processing batch even when individual geocodes fail", async () => {
@@ -851,9 +815,7 @@ describe("GeocodingService", () => {
       ];
 
       // Set up mocks BEFORE creating service
-      mockGoogleGeocoder.geocode.mockRejectedValue(
-        new Error("Google not available"),
-      );
+      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
       mockNominatimGeocoder.geocode.mockImplementation((address: string) => {
         if (address.includes("Bad Continue Address")) {
           throw new Error("Geocoding failed");
@@ -880,9 +842,7 @@ describe("GeocodingService", () => {
 
       expect(result.summary.successful).toBe(2);
       expect(result.summary.failed).toBe(1);
-      expect(result.results.get(testAddresses[1]!)).toBeInstanceOf(
-        GeocodingError,
-      );
+      expect(result.results.get(testAddresses[1]!)).toBeInstanceOf(GeocodingError);
     });
 
     it("should handle cache errors gracefully", async () => {
@@ -897,15 +857,9 @@ describe("GeocodingService", () => {
       const originalUpdate = payload.update;
       const originalCreate = payload.create;
 
-      payload.find = vi
-        .fn()
-        .mockRejectedValue(new Error("Database error")) as any;
-      payload.update = vi
-        .fn()
-        .mockRejectedValue(new Error("Database error")) as any;
-      payload.create = vi
-        .fn()
-        .mockRejectedValue(new Error("Database error")) as any;
+      payload.find = vi.fn().mockRejectedValue(new Error("Database error")) as any;
+      payload.update = vi.fn().mockRejectedValue(new Error("Database error")) as any;
+      payload.create = vi.fn().mockRejectedValue(new Error("Database error")) as any;
 
       mockNominatimGeocoder.geocode.mockResolvedValue([
         {

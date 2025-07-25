@@ -1,25 +1,42 @@
-import {
-  getDatasetsPerCatalog,
-  DATASET_SCHEMAS,
-  getSchemaTypeForCatalog,
-} from "./utils";
-import type { Dataset } from "../../../payload-types";
+import { getDatasetsPerCatalog, DATASET_SCHEMAS, getSchemaTypeForCatalog } from "./utils";
+
+import type { Dataset } from "@/payload-types";
 
 // Use Payload type with specific modifications for seed data
-export type DatasetSeed = Omit<
-  Dataset,
-  "id" | "createdAt" | "updatedAt" | "catalog"
-> & {
+export type DatasetSeed = Omit<Dataset, "id" | "createdAt" | "updatedAt" | "catalog"> & {
   catalog: string; // This will be resolved to catalog ID during seeding
 };
+
+// Helper function to create rich text description
+const createDescription = (text: string) => ({
+  root: {
+    type: "root",
+    children: [
+      {
+        type: "paragraph",
+        version: 1,
+        children: [
+          {
+            type: "text",
+            text,
+            version: 1,
+          },
+        ],
+      },
+    ],
+    direction: "ltr" as const,
+    format: "" as const,
+    indent: 0,
+    version: 1,
+  },
+});
 
 // Dataset templates for different catalog types
 const DATASET_TEMPLATES = {
   environmental: [
     {
       name: "Air Quality Measurements",
-      description:
-        "Real-time air quality measurements from monitoring stations",
+      description: "Real-time air quality measurements from monitoring stations",
       slug: "air-quality-measurements",
     },
     {
@@ -29,8 +46,7 @@ const DATASET_TEMPLATES = {
     },
     {
       name: "Climate Station Data",
-      description:
-        "Temperature, precipitation, and weather data from climate stations",
+      description: "Temperature, precipitation, and weather data from climate stations",
       slug: "climate-station-data",
     },
   ],
@@ -84,84 +100,76 @@ const DATASET_TEMPLATES = {
   ],
 };
 
-export function datasetSeeds(environment: string): DatasetSeed[] {
-  const catalogs = [
+// Get catalog configurations
+const getCatalogConfigs = (environment: string) => {
+  const baseCatalogs = [
     { slug: "environmental-data", type: "environmental" },
     { slug: "economic-indicators", type: "economic" },
     { slug: "academic-research-portal", type: "academic" },
   ];
 
   if (environment === "development") {
-    catalogs.push(
+    baseCatalogs.push(
       { slug: "community-events-portal", type: "community" },
       { slug: "cultural-heritage-archives", type: "cultural" },
       { slug: "historical-records", type: "academic" }, // Treat as academic for schema
     );
   }
 
+  return baseCatalogs;
+};
+
+// Create dataset from template
+const createDatasetFromTemplate = (
+  template: { name: string; description: string; slug: string },
+  catalog: { slug: string; type: string },
+  schema: { [k: string]: unknown } | null,
+  datasetIndex: number,
+): DatasetSeed => {
+  const isArchived = catalog.slug === "historical-records";
+
+  return {
+    name: template.name,
+    description: createDescription(template.description),
+    slug: `${catalog.slug}-${template.slug}`,
+    catalog: catalog.slug,
+    language: "eng",
+    status: isArchived ? "archived" : "active",
+    isPublic: catalog.type !== "community", // Community datasets are private
+    schema: schema,
+    metadata: {
+      update_frequency: isArchived ? "none" : getUpdateFrequency(catalog.type),
+      data_source: getDataSource(catalog.type),
+      catalog_type: catalog.type,
+      dataset_index: datasetIndex,
+    },
+  };
+};
+
+export const datasetSeeds = (environment: string): DatasetSeed[] => {
+  const catalogs = getCatalogConfigs(environment);
   const datasets: DatasetSeed[] = [];
 
   catalogs.forEach((catalog, catalogIndex) => {
     const numDatasets = getDatasetsPerCatalog(catalogIndex, catalog.type);
-    const templates =
-      DATASET_TEMPLATES[catalog.type as keyof typeof DATASET_TEMPLATES] ??
-      DATASET_TEMPLATES.academic;
+    const templates = DATASET_TEMPLATES[catalog.type as keyof typeof DATASET_TEMPLATES] ?? DATASET_TEMPLATES.academic;
     const schemaType = getSchemaTypeForCatalog(catalog.type);
-    const schema = Object.prototype.hasOwnProperty.call(DATASET_SCHEMAS, schemaType) 
-      ? DATASET_SCHEMAS[schemaType] 
+    const schema = Object.prototype.hasOwnProperty.call(DATASET_SCHEMAS, schemaType)
+      ? DATASET_SCHEMAS[schemaType]
       : null;
 
     for (let i = 0; i < numDatasets && i < templates.length; i++) {
       const template = templates[i];
-      if (template === null || template === undefined) continue;
-      const isArchived = catalog.slug === "historical-records";
+      if (template == null || template == undefined) continue;
 
-      datasets.push({
-        name: template.name,
-        description: {
-          root: {
-            type: "root",
-            children: [
-              {
-                type: "paragraph",
-                version: 1,
-                children: [
-                  {
-                    type: "text",
-                    text: template.description,
-                    version: 1,
-                  },
-                ],
-              },
-            ],
-            direction: "ltr",
-            format: "",
-            indent: 0,
-            version: 1,
-          },
-        },
-        slug: `${catalog.slug}-${template.slug}`,
-        catalog: catalog.slug,
-        language: "eng",
-        status: isArchived ? "archived" : "active",
-        isPublic: catalog.type !== "community", // Community datasets are private
-        schema: schema,
-        metadata: {
-          update_frequency: isArchived
-            ? "none"
-            : getUpdateFrequency(catalog.type),
-          data_source: getDataSource(catalog.type),
-          catalog_type: catalog.type,
-          dataset_index: i,
-        },
-      });
+      datasets.push(createDatasetFromTemplate(template, catalog, schema, i));
     }
   });
 
   return datasets;
-}
+};
 
-function getUpdateFrequency(catalogType: string): string {
+const getUpdateFrequency = (catalogType: string): string => {
   switch (catalogType) {
     case "environmental":
       return "hourly";
@@ -176,9 +184,9 @@ function getUpdateFrequency(catalogType: string): string {
     default:
       return "monthly";
   }
-}
+};
 
-function getDataSource(catalogType: string): string {
+const getDataSource = (catalogType: string): string => {
   switch (catalogType) {
     case "environmental":
       return "EPA and NOAA";
@@ -193,4 +201,4 @@ function getDataSource(catalogType: string): string {
     default:
       return "Various Sources";
   }
-}
+};

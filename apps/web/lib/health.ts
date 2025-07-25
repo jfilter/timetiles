@@ -8,7 +8,12 @@ import { createLogger } from "./logger";
 
 const logger = createLogger("health-checks");
 
-function getEnvValue(key: string): string | undefined {
+export interface HealthCheckResult {
+  status: "healthy" | "error" | "degraded";
+  message: string;
+}
+
+const getEnvValue = (key: string): string | undefined => {
   // Enhanced safe property access to avoid object injection
   if (
     typeof key === "string" &&
@@ -19,14 +24,14 @@ function getEnvValue(key: string): string | undefined {
     return process.env[key];
   }
   return undefined;
-}
+};
 
-function checkEnvironmentVariables() {
+const checkEnvironmentVariables = (): HealthCheckResult => {
   logger.debug("Checking environment variables");
   const requiredVars = ["PAYLOAD_SECRET", "DATABASE_URL"];
   const missingVars = requiredVars.filter((v) => {
     const envValue = getEnvValue(v);
-    return envValue === undefined || envValue === null || envValue === "";
+    return envValue == undefined || envValue == null || envValue === "";
   });
 
   if (missingVars.length > 0) {
@@ -36,12 +41,15 @@ function checkEnvironmentVariables() {
   }
 
   return {
-    status: missingVars.length > 0 ? "error" : "ok",
-    missing: missingVars,
+    status: missingVars.length > 0 ? "error" : "healthy",
+    message:
+      missingVars.length > 0
+        ? `Missing required environment variables: ${missingVars.join(", ")}`
+        : "All required environment variables are set",
   };
-}
+};
 
-async function checkUploadsDirectory() {
+const checkUploadsDirectory = async (): Promise<HealthCheckResult> => {
   logger.debug("Checking uploads directory");
   // Find the project root by looking for package.json
   let currentDir = process.cwd();
@@ -53,10 +61,7 @@ async function checkUploadsDirectory() {
   // Walk up directories to find the web app root (where package.json is)
   while (!projectRoot.endsWith(APPS_WEB_SUFFIX) && projectRoot !== "/") {
     if (currentDir.includes(APPS_WEB_PATH)) {
-      projectRoot = currentDir.substring(
-        0,
-        currentDir.indexOf(APPS_WEB_PATH) + APPS_WEB_PATH.length,
-      );
+      projectRoot = currentDir.substring(0, currentDir.indexOf(APPS_WEB_PATH) + APPS_WEB_PATH.length);
       break;
     }
     currentDir = path.dirname(currentDir);
@@ -67,7 +72,7 @@ async function checkUploadsDirectory() {
   try {
     await fs.access(uploadsDir, fs.constants.W_OK);
     logger.debug("Uploads directory is writable", { path: uploadsDir });
-    return { status: "ok" };
+    return { status: "healthy", message: "Uploads directory is writable" };
   } catch (error) {
     logger.warn("Uploads directory not writable", {
       path: uploadsDir,
@@ -76,15 +81,15 @@ async function checkUploadsDirectory() {
     // In CI, treat missing uploads directory as a warning instead of error
     if (process.env.CI === "true") {
       return {
-        status: "warning",
+        status: "degraded",
         message: "Uploads directory not writable (CI environment)",
       };
     }
     return { status: "error", message: "Uploads directory not writable" };
   }
-}
+};
 
-async function checkGeocodingService() {
+const checkGeocodingService = async (): Promise<HealthCheckResult> => {
   logger.debug("Checking geocoding service");
 
   try {
@@ -109,7 +114,19 @@ async function checkGeocodingService() {
       totalProviders: providers.totalDocs,
     });
 
-    return { status, message };
+    let healthStatus: "healthy" | "degraded" | "error";
+    if (status === "ok") {
+      healthStatus = "healthy";
+    } else if (status === "warning") {
+      healthStatus = "degraded";
+    } else {
+      healthStatus = "error";
+    }
+
+    return {
+      status: healthStatus,
+      message,
+    };
   } catch (error) {
     logger.error("Geocoding service check failed", {
       error: (error as Error).message,
@@ -117,9 +134,9 @@ async function checkGeocodingService() {
     });
     return { status: "error", message: (error as Error).message };
   }
-}
+};
 
-async function checkPayloadCMS() {
+const checkPayloadCMS = async (): Promise<HealthCheckResult> => {
   logger.debug("Checking Payload CMS");
 
   try {
@@ -130,7 +147,7 @@ async function checkPayloadCMS() {
     await payload.find({ collection: "users", limit: 1 });
 
     logger.debug("Payload CMS check passed");
-    return { status: "ok" };
+    return { status: "healthy", message: "Payload CMS is accessible" };
   } catch (error) {
     logger.error("Payload CMS check failed", {
       error: (error as Error).message,
@@ -138,9 +155,9 @@ async function checkPayloadCMS() {
     });
     return { status: "error", message: (error as Error).message };
   }
-}
+};
 
-async function checkMigrations() {
+const checkMigrations = async (): Promise<HealthCheckResult> => {
   logger.debug("Checking migrations");
 
   try {
@@ -158,10 +175,7 @@ async function checkMigrations() {
     // Walk up directories to find the web app root (where package.json is)
     while (!projectRoot.endsWith(APPS_WEB_SUFFIX) && projectRoot !== "/") {
       if (currentDir.includes(APPS_WEB_PATH)) {
-        projectRoot = currentDir.substring(
-          0,
-          currentDir.indexOf(APPS_WEB_PATH) + APPS_WEB_SUFFIX.length,
-        );
+        projectRoot = currentDir.substring(0, currentDir.indexOf(APPS_WEB_PATH) + APPS_WEB_SUFFIX.length);
         break;
       }
       currentDir = path.dirname(currentDir);
@@ -180,9 +194,7 @@ async function checkMigrations() {
 
     const executedMigrationNames = executedMigrations.docs.map((m) => m.name);
     const pendingMigrations = migrationFiles.filter(
-      (f) =>
-        f.endsWith(".ts") &&
-        !executedMigrationNames.includes(f.replace(".ts", "")),
+      (f) => f.endsWith(".ts") && !executedMigrationNames.includes(f.replace(".ts", "")),
     );
 
     logger.debug("Migration status", {
@@ -192,8 +204,11 @@ async function checkMigrations() {
     });
 
     return {
-      status: pendingMigrations.length > 0 ? "pending" : "ok",
-      pending: pendingMigrations,
+      status: pendingMigrations.length > 0 ? "degraded" : "healthy",
+      message:
+        pendingMigrations.length > 0
+          ? `${pendingMigrations.length} pending migrations: ${pendingMigrations.join(", ")}`
+          : "All migrations are up to date",
     };
   } catch (error) {
     logger.error("Migrations check failed", {
@@ -202,9 +217,9 @@ async function checkMigrations() {
     });
     throw error; // Re-throw to be caught by the wrapper
   }
-}
+};
 
-async function checkPostGIS() {
+const checkPostGIS = async (): Promise<HealthCheckResult> => {
   logger.debug("Checking PostGIS extension");
 
   try {
@@ -212,15 +227,14 @@ async function checkPostGIS() {
     const payload = await getPayload({ config });
 
     logger.debug("Querying for PostGIS extension");
-    const postgisCheck = await payload.db.drizzle.execute(
-      sql`SELECT 1 FROM pg_extension WHERE extname = 'postgis'`,
-    );
+    const postgisCheck = await payload.db.drizzle.execute(sql`SELECT 1 FROM pg_extension WHERE extname = 'postgis'`);
 
     const hasPostGIS = (postgisCheck as { rowCount: number }).rowCount > 0;
     logger.debug("PostGIS check complete", { hasPostGIS });
 
     return {
-      status: hasPostGIS ? "ok" : "not found",
+      status: hasPostGIS ? "healthy" : "error",
+      message: hasPostGIS ? "PostGIS extension is enabled" : "PostGIS extension not found",
     };
   } catch (error) {
     logger.error("PostGIS check failed", {
@@ -229,88 +243,60 @@ async function checkPostGIS() {
     });
     return { status: "error", message: (error as Error).message };
   }
-}
+};
 
-export async function runHealthChecks() {
+const wrapHealthCheck = async (
+  checkFn: () => Promise<HealthCheckResult>,
+  checkName: string,
+): Promise<HealthCheckResult> => {
+  try {
+    return await checkFn();
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    logger.error(`${checkName} check threw exception`, { error: message });
+    return {
+      status: "error" as const,
+      message: `${checkName} check failed: ${message}`,
+    };
+  }
+};
+
+const createHealthSummary = (results: {
+  env: HealthCheckResult;
+  uploads: HealthCheckResult;
+  geocoding: HealthCheckResult;
+  cms: HealthCheckResult;
+  migrations: HealthCheckResult;
+  postgis: HealthCheckResult;
+}) => ({
+  env: results.env.status,
+  uploads: results.uploads.status,
+  geocoding: results.geocoding.status,
+  cms: results.cms.status,
+  migrations: results.migrations.status,
+  postgis: results.postgis.status,
+});
+
+export const runHealthChecks = async () => {
   logger.info("Starting health checks");
   const startTime = Date.now();
 
-  const [env, uploads, geocoding, cms, migrations, postgis] = await Promise.all(
-    [
-      Promise.resolve(checkEnvironmentVariables()).catch((e: unknown) => {
-        const message = e instanceof Error ? e.message : String(e);
-        logger.error("Environment check threw exception", { error: message });
-        return {
-          status: "error" as const,
-          message: `Environment check failed: ${message}`,
-        };
-      }),
-      checkUploadsDirectory().catch((e: unknown) => {
-        const message = e instanceof Error ? e.message : String(e);
-        logger.error("Uploads directory check threw exception", {
-          error: message,
-        });
-        return {
-          status: "error" as const,
-          message: `Uploads directory check failed: ${message}`,
-        };
-      }),
-      checkGeocodingService().catch((e: unknown) => {
-        const message = e instanceof Error ? e.message : String(e);
-        logger.error("Geocoding service check threw exception", {
-          error: message,
-        });
-        return {
-          status: "error" as const,
-          message: `Geocoding service check failed: ${message}`,
-        };
-      }),
-      checkPayloadCMS().catch((e: unknown) => {
-        const message = e instanceof Error ? e.message : String(e);
-        logger.error("Payload CMS check threw exception", { error: message });
-        return {
-          status: "error" as const,
-          message: `Payload CMS check failed: ${message}`,
-        };
-      }),
-      checkMigrations().catch((e: unknown) => {
-        const message = e instanceof Error ? e.message : String(e);
-        logger.error("Migrations check threw exception", { error: message });
-        return {
-          status: "error" as const,
-          message: `Migrations check failed: ${message}`,
-        };
-      }),
-      checkPostGIS().catch((e: unknown) => {
-        const message = e instanceof Error ? e.message : String(e);
-        logger.error("PostGIS check threw exception", { error: message });
-        return {
-          status: "error" as const,
-          message: `PostGIS check failed: ${message}`,
-        };
-      }),
-    ],
-  );
+  const [env, uploads, geocoding, cms, migrations, postgis] = await Promise.all([
+    wrapHealthCheck(() => Promise.resolve(checkEnvironmentVariables()), "Environment"),
+    wrapHealthCheck(checkUploadsDirectory, "Uploads directory"),
+    wrapHealthCheck(checkGeocodingService, "Geocoding service"),
+    wrapHealthCheck(checkPayloadCMS, "Payload CMS"),
+    wrapHealthCheck(checkMigrations, "Migrations"),
+    wrapHealthCheck(checkPostGIS, "PostGIS"),
+  ]);
 
+  const results = { env, uploads, geocoding, cms, migrations, postgis };
   const duration = Date.now() - startTime;
+
   logger.info("Health checks completed", {
     duration,
-    summary: {
-      env: env.status,
-      uploads: uploads.status,
-      geocoding: geocoding.status,
-      cms: cms.status,
-      migrations: migrations.status,
-      postgis: postgis.status,
-    },
+    summary: createHealthSummary(results),
   });
 
-  return {
-    env,
-    uploads,
-    geocoding,
-    cms,
-    migrations,
-    postgis,
-  };
-}
+  return results;
+};

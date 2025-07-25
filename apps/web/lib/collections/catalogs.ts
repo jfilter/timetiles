@@ -34,8 +34,7 @@ const Catalogs: CollectionConfig = {
       unique: true,
       admin: {
         position: "sidebar",
-        description:
-          "URL-friendly identifier (auto-generated from name if not provided)",
+        description: "URL-friendly identifier (auto-generated from name if not provided)",
       },
       hooks: {
         beforeValidate: [createSlugHook("catalogs")],

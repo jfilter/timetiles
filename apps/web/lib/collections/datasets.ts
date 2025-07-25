@@ -7,14 +7,7 @@ const Datasets: CollectionConfig = {
   slug: "datasets",
   admin: {
     useAsTitle: "name",
-    defaultColumns: [
-      "name",
-      "catalog",
-      "language",
-      "status",
-      "isPublic",
-      "createdAt",
-    ],
+    defaultColumns: ["name", "catalog", "language", "status", "isPublic", "createdAt"],
   },
   access: {
     read: () => true,

@@ -1,16 +1,6 @@
-import {
-  vi,
-  describe,
-  it,
-  expect,
-  beforeAll,
-  afterAll,
-  beforeEach,
-} from "vitest";
-import {
-  createIsolatedTestEnvironment,
-  createTestId,
-} from "../../setup/test-helpers";
+import { vi, describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+
+import { createIsolatedTestEnvironment, createTestId } from "../../setup/test-helpers";
 
 describe("Isolated Seed System Test Example", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
@@ -49,9 +39,7 @@ describe("Isolated Seed System Test Example", () => {
       });
 
       expect(users.docs.length).toBeGreaterThan(0);
-      expect(
-        users.docs.some((user: any) => user.email === "admin@example.com"),
-      ).toBe(true);
+      expect(users.docs.some((user: any) => user.email === "admin@example.com")).toBe(true);
     });
 
     it("should handle concurrent operations within same test file", async () => {

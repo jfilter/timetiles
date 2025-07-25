@@ -1,10 +1,6 @@
-import {
-  type MigrateUpArgs,
-  type MigrateDownArgs,
-  sql,
-} from "@payloadcms/db-postgres";
+import { type MigrateUpArgs, type MigrateDownArgs, sql } from "@payloadcms/db-postgres";
 
-export async function up({ db }: MigrateUpArgs): Promise<void> {
+export const up = async ({ db }: MigrateUpArgs): Promise<void> => {
   // FORCE drop any existing function with this name
   await db.execute(sql`
     DROP FUNCTION IF EXISTS calculate_event_histogram(text, jsonb) CASCADE;
@@ -66,10 +62,10 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     END;
     $$ LANGUAGE plpgsql STABLE;
   `);
-}
+};
 
-export async function down({ db }: MigrateDownArgs): Promise<void> {
+export const down = async ({ db }: MigrateDownArgs): Promise<void> => {
   await db.execute(sql`
     DROP FUNCTION IF EXISTS calculate_event_histogram(text, jsonb);
   `);
-}
+};

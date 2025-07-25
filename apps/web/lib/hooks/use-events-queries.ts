@@ -3,10 +3,22 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { LngLatBounds } from "maplibre-gl";
 
-import type { ClusterFeature } from "../../components/clustered-map";
-import type { Event } from "../../payload-types";
 import type { FilterState } from "../filters";
 import { createLogger } from "../logger";
+
+import type { ClusterFeature } from "@/components/clustered-map";
+import type { Event } from "@/payload-types";
+
+// Helper function to determine polling interval
+// Returns false to stop polling or number for interval - React Query expects this pattern
+// eslint-disable-next-line sonarjs/function-return-type
+const getPollingInterval = (query: { state: { data?: { status?: string } } }): number | false => {
+  const data = query.state.data;
+  if (data?.status === "completed" || data?.status === "failed") {
+    return false;
+  }
+  return 2000;
+};
 
 const logger = createLogger("EventsQueries");
 
@@ -67,19 +79,15 @@ export interface ImportProgressResponse {
 }
 
 // Helper to build query parameters
-function buildEventParams(
+const buildEventParams = (
   filters: FilterState,
   bounds: LngLatBounds | null,
   additionalParams: Record<string, string> = {},
-): URLSearchParams {
+): URLSearchParams => {
   const params = new URLSearchParams();
 
   // Add filters
-  if (
-    filters.catalog !== null &&
-    filters.catalog !== undefined &&
-    filters.catalog !== ""
-  ) {
+  if (filters.catalog != null && filters.catalog !== "") {
     params.append("catalog", filters.catalog);
   }
 
@@ -87,19 +95,11 @@ function buildEventParams(
     params.append("datasets", datasetId);
   });
 
-  if (
-    filters.startDate !== null &&
-    filters.startDate !== undefined &&
-    filters.startDate !== ""
-  ) {
+  if (filters.startDate != null && filters.startDate !== "") {
     params.append("startDate", filters.startDate);
   }
 
-  if (
-    filters.endDate !== null &&
-    filters.endDate !== undefined &&
-    filters.endDate !== ""
-  ) {
+  if (filters.endDate != null && filters.endDate !== "") {
     params.append("endDate", filters.endDate);
   }
 
@@ -133,15 +133,15 @@ function buildEventParams(
   });
 
   return params;
-}
+};
 
 // Fetch functions
-async function fetchEvents(
+const fetchEvents = async (
   filters: FilterState,
   bounds: LngLatBounds | null,
   limit: number = 1000,
   signal?: AbortSignal,
-): Promise<EventsListResponse> {
+): Promise<EventsListResponse> => {
   const params = buildEventParams(filters, bounds, { limit: limit.toString() });
 
   logger.debug("Fetching events list", { filters, bounds, limit });
@@ -155,35 +155,32 @@ async function fetchEvents(
   }
 
   return response.json() as Promise<EventsListResponse>;
-}
+};
 
-async function fetchMapClusters(
+const fetchMapClusters = async (
   filters: FilterState,
   bounds: LngLatBounds | null,
   zoom: number,
   signal?: AbortSignal,
-): Promise<MapClustersResponse> {
+): Promise<MapClustersResponse> => {
   const params = buildEventParams(filters, bounds, { zoom: zoom.toString() });
 
   logger.debug("Fetching map clusters", { filters, bounds, zoom });
 
-  const response = await fetch(
-    `/api/events/map-clusters?${params.toString()}`,
-    { signal },
-  );
+  const response = await fetch(`/api/events/map-clusters?${params.toString()}`, { signal });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch map clusters: ${response.statusText}`);
   }
 
   return response.json() as Promise<MapClustersResponse>;
-}
+};
 
-async function fetchHistogram(
+const fetchHistogram = async (
   filters: FilterState,
   bounds: LngLatBounds | null,
   signal?: AbortSignal,
-): Promise<HistogramResponse> {
+): Promise<HistogramResponse> => {
   const params = buildEventParams(filters, bounds);
 
   logger.debug("Fetching histogram", { filters, bounds });
@@ -197,12 +194,9 @@ async function fetchHistogram(
   }
 
   return response.json() as Promise<HistogramResponse>;
-}
+};
 
-async function fetchImportProgress(
-  importId: string,
-  signal?: AbortSignal,
-): Promise<ImportProgressResponse> {
+const fetchImportProgress = async (importId: string, signal?: AbortSignal): Promise<ImportProgressResponse> => {
   logger.debug("Fetching import progress", { importId });
 
   const response = await fetch(`/api/import/${importId}/progress`, { signal });
@@ -212,12 +206,9 @@ async function fetchImportProgress(
   }
 
   return response.json() as Promise<ImportProgressResponse>;
-}
+};
 
-async function uploadImport(
-  formData: FormData,
-  signal?: AbortSignal,
-): Promise<{ importId: string }> {
+const uploadImport = async (formData: FormData, signal?: AbortSignal): Promise<{ importId: string }> => {
   logger.debug("Uploading import file");
 
   const response = await fetch("/api/import/upload", {
@@ -235,7 +226,7 @@ async function uploadImport(
     success: boolean;
     message?: string;
   }>;
-}
+};
 
 // Query key factories
 export const eventsQueryKeys = {
@@ -250,18 +241,17 @@ export const eventsQueryKeys = {
   histogram: (filters: FilterState, bounds: LngLatBounds | null) =>
     [...eventsQueryKeys.histograms(), { filters, bounds }] as const,
   imports: () => ["imports"] as const,
-  importProgress: (importId: string) =>
-    [...eventsQueryKeys.imports(), "progress", importId] as const,
+  importProgress: (importId: string) => [...eventsQueryKeys.imports(), "progress", importId] as const,
 };
 
 // Query hooks
-export function useEventsListQuery(
+export const useEventsListQuery = (
   filters: FilterState,
   bounds: LngLatBounds | null,
   limit: number = 1000,
   enabled: boolean = true,
-) {
-  return useQuery({
+) =>
+  useQuery({
     queryKey: eventsQueryKeys.list(filters, bounds, limit),
     queryFn: ({ signal }) => fetchEvents(filters, bounds, limit, signal),
     enabled,
@@ -269,15 +259,14 @@ export function useEventsListQuery(
     gcTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
   });
-}
 
-export function useMapClustersQuery(
+export const useMapClustersQuery = (
   filters: FilterState,
   bounds: LngLatBounds | null,
   zoom: number,
   enabled: boolean = true,
-) {
-  return useQuery({
+) =>
+  useQuery({
     queryKey: eventsQueryKeys.cluster(filters, bounds, zoom),
     queryFn: ({ signal }) => fetchMapClusters(filters, bounds, zoom, signal),
     enabled,
@@ -285,14 +274,9 @@ export function useMapClustersQuery(
     gcTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
   });
-}
 
-export function useHistogramQuery(
-  filters: FilterState,
-  bounds: LngLatBounds | null,
-  enabled: boolean = true,
-) {
-  return useQuery({
+export const useHistogramQuery = (filters: FilterState, bounds: LngLatBounds | null, enabled: boolean = true) =>
+  useQuery({
     queryKey: eventsQueryKeys.histogram(filters, bounds),
     queryFn: ({ signal }) => fetchHistogram(filters, bounds, signal),
     enabled,
@@ -301,39 +285,24 @@ export function useHistogramQuery(
     refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData, // Show previous data while loading new
   });
-}
 
-export function useImportProgressQuery(importId: string | null) {
-  return useQuery({
+export const useImportProgressQuery = (importId: string | null) =>
+  useQuery({
     queryKey: eventsQueryKeys.importProgress(importId!),
     queryFn: ({ signal }) => fetchImportProgress(importId!, signal),
-    enabled: importId !== null,
-    refetchInterval: (query) => {
-      // Stop polling if completed or failed
-      const data = query.state.data;
-      if (data?.status === "completed" || data?.status === "failed") {
-        return false;
-      }
-      return 2000; // Poll every 2 seconds
-    },
+    enabled: importId != null,
+    refetchInterval: (query) => getPollingInterval(query),
     retry: 3,
     staleTime: 0, // Always fresh for progress updates
     gcTime: 30 * 1000, // Clean up quickly after completion
   });
-}
 
 // Mutation hooks
-export function useImportUploadMutation() {
+export const useImportUploadMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      formData,
-      signal,
-    }: {
-      formData: FormData;
-      signal?: AbortSignal;
-    }) => uploadImport(formData, signal),
+    mutationFn: ({ formData, signal }: { formData: FormData; signal?: AbortSignal }) => uploadImport(formData, signal),
     onSuccess: (data) => {
       logger.info("Import upload successful", { importId: data.importId });
       // Invalidate import progress queries to start polling
@@ -345,10 +314,10 @@ export function useImportUploadMutation() {
       logger.error("Import upload failed", error);
     },
   });
-}
+};
 
 // Utility hook to invalidate related queries when data changes
-export function useInvalidateEventsQueries() {
+export const useInvalidateEventsQueries = () => {
   const queryClient = useQueryClient();
 
   return {
@@ -369,4 +338,4 @@ export function useInvalidateEventsQueries() {
       });
     },
   };
-}
+};

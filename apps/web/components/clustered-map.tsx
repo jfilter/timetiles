@@ -2,13 +2,7 @@
 
 import type { LngLatBounds } from "maplibre-gl";
 import { useCallback, useMemo, useState } from "react";
-import Map, {
-  Source,
-  Layer,
-  Popup,
-  type MapRef,
-  type MapLayerMouseEvent,
-} from "react-map-gl/maplibre";
+import Map, { Source, Layer, Popup, type MapRef, type MapLayerMouseEvent } from "react-map-gl/maplibre";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 import { createLogger } from "../lib/logger";
@@ -35,10 +29,7 @@ interface ClusteredMapProps {
 
 const logger = createLogger("ClusteredMap");
 
-export function ClusteredMap({
-  onBoundsChange,
-  clusters = [],
-}: ClusteredMapProps) {
+export const ClusteredMap = ({ onBoundsChange, clusters = [] }: Readonly<ClusteredMapProps>) => {
   const [popupInfo, setPopupInfo] = useState<{
     longitude: number;
     latitude: number;
@@ -46,9 +37,7 @@ export function ClusteredMap({
   } | null>(null);
 
   const handleLoad = useCallback(
-    (evt: {
-      target: { getBounds: () => LngLatBounds; getZoom: () => number };
-    }) => {
+    (evt: { target: { getBounds: () => LngLatBounds; getZoom: () => number } }) => {
       const map = evt.target as MapRef;
       const bounds = map.getBounds();
       const zoom = map.getZoom();
@@ -68,7 +57,7 @@ export function ClusteredMap({
       (window as { _mapRef?: unknown })._mapRef = map;
 
       // Trigger initial bounds change to load data
-      if (onBoundsChange !== undefined) {
+      if (onBoundsChange != undefined) {
         onBoundsChange(bounds, zoom);
       }
     },
@@ -77,7 +66,7 @@ export function ClusteredMap({
 
   const handleClick = useCallback((event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
-    if (feature === undefined || feature === null) return;
+    if (feature == undefined || feature == null) return;
 
     const { type } = feature.properties ?? {};
 
@@ -89,19 +78,16 @@ export function ClusteredMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleClusterClick = useCallback(
-    (event: MapLayerMouseEvent, feature: GeoJSON.Feature) => {
-      const coordinates = getValidCoordinates(feature);
-      if (coordinates) {
-        const [longitude, latitude] = coordinates;
-        event.target.flyTo({
-          center: [longitude, latitude],
-          zoom: event.target.getZoom() + 2,
-        });
-      }
-    },
-    [],
-  );
+  const handleClusterClick = useCallback((event: MapLayerMouseEvent, feature: GeoJSON.Feature) => {
+    const coordinates = getValidCoordinates(feature);
+    if (coordinates) {
+      const [longitude, latitude] = coordinates;
+      event.target.flyTo({
+        center: [longitude, latitude],
+        zoom: event.target.getZoom() + 2,
+      });
+    }
+  }, []);
 
   const handleEventPointClick = useCallback(
     (feature: GeoJSON.Feature) => {
@@ -112,21 +98,15 @@ export function ClusteredMap({
         setPopupInfo({
           longitude,
           latitude,
-          title:
-            typeof title === "string"
-              ? title
-              : `Event ${String(id ?? "Unknown")}`,
+          title: typeof title === "string" ? title : `Event ${String(id ?? "Unknown")}`,
         });
       }
     },
     [setPopupInfo],
   );
 
-  const getValidCoordinates = (
-    feature: GeoJSON.Feature,
-  ): [number, number] | null => {
-    const coordinates =
-      feature.geometry?.type === "Point" ? feature.geometry.coordinates : null;
+  const getValidCoordinates = (feature: GeoJSON.Feature): [number, number] | null => {
+    const coordinates = feature.geometry?.type === "Point" ? feature.geometry.coordinates : null;
 
     if (coordinates && Array.isArray(coordinates) && coordinates.length >= 2) {
       return [coordinates[0] as number, coordinates[1] as number];
@@ -135,24 +115,14 @@ export function ClusteredMap({
   };
 
   const geojsonData = useMemo(() => {
-    const data = {
+    return {
       type: "FeatureCollection" as const,
       features: clusters,
     };
-
-    return data;
   }, [clusters]);
 
-  const eventPointFilter: ["==", ["get", string], string] = [
-    "==",
-    ["get", "type"],
-    "event-point",
-  ];
-  const clusterFilter: ["==", ["get", string], string] = [
-    "==",
-    ["get", "type"],
-    "event-cluster",
-  ];
+  const eventPointFilter: ["==", ["get", string], string] = ["==", ["get", "type"], "event-point"];
+  const clusterFilter: ["==", ["get", string], string] = ["==", ["get", "type"], "event-cluster"];
 
   const eventPointLayer = {
     id: "unclustered-point",
@@ -179,9 +149,7 @@ export function ClusteredMap({
   };
 
   const handleMove = useCallback(
-    (evt: {
-      target: { getBounds: () => LngLatBounds; getZoom: () => number };
-    }) => {
+    (evt: { target: { getBounds: () => LngLatBounds; getZoom: () => number } }) => {
       const map = evt.target as MapRef;
       const bounds = map.getBounds();
       const zoom = map.getZoom();
@@ -218,12 +186,7 @@ export function ClusteredMap({
       interactiveLayerIds={["event-clusters", "unclustered-point"]}
       cursor="auto"
     >
-      <Source
-        type="geojson"
-        data={geojsonData}
-        id="clustered-map-source"
-        key={"clustered-map-source"}
-      >
+      <Source type="geojson" data={geojsonData} id="clustered-map-source" key={"clustered-map-source"}>
         <Layer {...eventPointLayer} />
         <Layer {...clusterLayer} />
       </Source>
@@ -240,4 +203,4 @@ export function ClusteredMap({
       )}
     </Map>
   );
-}
+};

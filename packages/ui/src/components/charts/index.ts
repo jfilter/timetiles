@@ -10,13 +10,5 @@ export type {
   ChartTheme,
   BinningStrategy,
 } from "./types";
-export {
-  createHistogramBins,
-  formatDateForBin,
-  determineBinningStrategy,
-} from "./utils/data-transform";
-export {
-  defaultLightTheme,
-  defaultDarkTheme,
-  applyThemeToOption,
-} from "./utils/theme";
+export { createHistogramBins, formatDateForBin, determineBinningStrategy } from "./utils/data-transform";
+export { defaultLightTheme, defaultDarkTheme, applyThemeToOption } from "./utils/theme";

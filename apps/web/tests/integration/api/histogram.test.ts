@@ -1,6 +1,7 @@
-import type { Payload } from "payload";
-import { GET } from "../../../app/api/events/histogram/route";
 import { NextRequest } from "next/server";
+import type { Payload } from "payload";
+
+import { GET } from "../../../app/api/events/histogram/route";
 
 interface HistogramBucket {
   date: string;
@@ -11,14 +12,12 @@ describe("/api/events/histogram", () => {
   let payload: Payload;
   let testCatalogId: string;
   let testDatasetId: string;
-  let testEventIds: string[] = [];
+  const testEventIds: string[] = [];
   let testEnv: any;
   const uniqueSuffix = Date.now().toString();
 
   beforeAll(async () => {
-    const { createIsolatedTestEnvironment } = await import(
-      "../../setup/test-helpers"
-    );
+    const { createIsolatedTestEnvironment } = await import("../../setup/test-helpers");
     testEnv = await createIsolatedTestEnvironment();
     payload = testEnv.payload;
 
@@ -135,23 +134,18 @@ describe("/api/events/histogram", () => {
   });
 
   afterAll(async () => {
-    // Skip cleanup for debugging
-    console.log("Skipping cleanup for debugging");
 
     // Clean up test environment
     if (testEnv?.cleanup) {
       try {
         await testEnv.cleanup();
       } catch (error) {
-        console.warn("Cleanup failed:", (error as Error).message);
       }
     }
   });
 
   it("should return histogram data with auto granularity", async () => {
-    const request = new NextRequest(
-      "http://localhost:3000/api/events/histogram",
-    );
+    const request = new NextRequest("http://localhost:3000/api/events/histogram");
     const response = await GET(request);
 
     expect(response.status).toBe(200);
@@ -177,39 +171,29 @@ describe("/api/events/histogram", () => {
   });
 
   it("should use month granularity for our test data", async () => {
-    const request = new NextRequest(
-      "http://localhost:3000/api/events/histogram?granularity=month",
-    );
+    const request = new NextRequest("http://localhost:3000/api/events/histogram?granularity=month");
     const response = await GET(request);
 
     expect(response.status).toBe(200);
     const data = await response.json();
 
     // We should have at least 4 buckets: Jan, Feb, Mar, Jun (may have others from other tests)
-    const monthsWithData = data.histogram.filter(
-      (b: HistogramBucket) => b.count > 0,
-    );
+    const monthsWithData = data.histogram.filter((b: HistogramBucket) => b.count > 0);
     expect(monthsWithData.length).toBeGreaterThanOrEqual(4);
 
     // January should have events
-    const january = data.histogram.find(
-      (b: HistogramBucket) => new Date(b.date).getMonth() === 0,
-    );
+    const january = data.histogram.find((b: HistogramBucket) => new Date(b.date).getMonth() === 0);
     expect(january).toBeDefined();
     expect(january.count).toBeGreaterThan(0);
 
     // February should have events
-    const february = data.histogram.find(
-      (b: HistogramBucket) => new Date(b.date).getMonth() === 1,
-    );
+    const february = data.histogram.find((b: HistogramBucket) => new Date(b.date).getMonth() === 1);
     expect(february).toBeDefined();
     expect(february.count).toBeGreaterThan(0);
   });
 
   it("should filter by dataset", async () => {
-    const request = new NextRequest(
-      `http://localhost:3000/api/events/histogram?datasets=${testDatasetId}`,
-    );
+    const request = new NextRequest(`http://localhost:3000/api/events/histogram?datasets=${testDatasetId}`);
     const response = await GET(request);
 
     expect(response.status).toBe(200);
@@ -235,16 +219,11 @@ describe("/api/events/histogram", () => {
     const data = await response.json();
 
     // Should have data for the months in range (may have more from other tests)
-    const monthsWithData = data.histogram.filter(
-      (b: HistogramBucket) => b.count > 0,
-    );
+    const monthsWithData = data.histogram.filter((b: HistogramBucket) => b.count > 0);
     expect(monthsWithData.length).toBeGreaterThan(0);
 
     // Should have some events in range
-    const totalInRange = monthsWithData.reduce(
-      (sum: number, b: HistogramBucket) => sum + b.count,
-      0,
-    );
+    const totalInRange = monthsWithData.reduce((sum: number, b: HistogramBucket) => sum + b.count, 0);
     expect(totalInRange).toBeGreaterThan(0);
   });
 
@@ -257,9 +236,7 @@ describe("/api/events/histogram", () => {
     };
 
     const request = new NextRequest(
-      `http://localhost:3000/api/events/histogram?bounds=${encodeURIComponent(
-        JSON.stringify(bounds),
-      )}`,
+      `http://localhost:3000/api/events/histogram?bounds=${encodeURIComponent(JSON.stringify(bounds))}`,
     );
     const response = await GET(request);
 
@@ -284,33 +261,25 @@ describe("/api/events/histogram", () => {
     const data = await response.json();
 
     // Should have daily buckets for January
-    const daysWithData = data.histogram.filter(
-      (b: HistogramBucket) => b.count > 0,
-    );
+    const daysWithData = data.histogram.filter((b: HistogramBucket) => b.count > 0);
     expect(daysWithData.length).toBeGreaterThan(0); // Should have at least some days
   });
 
   it("should handle year granularity", async () => {
-    const request = new NextRequest(
-      "http://localhost:3000/api/events/histogram?granularity=year",
-    );
+    const request = new NextRequest("http://localhost:3000/api/events/histogram?granularity=year");
     const response = await GET(request);
 
     expect(response.status).toBe(200);
     const data = await response.json();
 
     // Should have at least one bucket for 2024
-    const yearsWithData = data.histogram.filter(
-      (b: HistogramBucket) => b.count > 0,
-    );
+    const yearsWithData = data.histogram.filter((b: HistogramBucket) => b.count > 0);
     expect(yearsWithData.length).toBeGreaterThanOrEqual(1);
     expect(yearsWithData[0].count).toBeGreaterThan(0);
   });
 
   it("should handle invalid bounds format", async () => {
-    const request = new NextRequest(
-      "http://localhost:3000/api/events/histogram?bounds=invalid",
-    );
+    const request = new NextRequest("http://localhost:3000/api/events/histogram?bounds=invalid");
     const response = await GET(request);
 
     expect(response.status).toBe(400);

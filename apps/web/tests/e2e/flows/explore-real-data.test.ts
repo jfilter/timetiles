@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+
 import { ExplorePage } from "../pages/explore.page";
 
 test.describe("Explore Page - Real Data Tests", () => {
@@ -26,14 +27,10 @@ test.describe("Explore Page - Real Data Tests", () => {
     if (catalogOptions > 1) {
       // Should have at least "All Catalogs" + actual catalogs
       // Get the first real catalog (not "All Catalogs")
-      const firstCatalog = await page
-        .locator('[role="option"]:not(:has-text("All Catalogs"))')
-        .first();
+      const firstCatalog = await page.locator('[role="option"]:not(:has-text("All Catalogs"))').first();
       const catalogName = await firstCatalog.textContent();
 
       if (catalogName) {
-        console.log(`Testing with catalog: ${catalogName}`);
-
         // Select the first available catalog
         await firstCatalog.click();
 
@@ -41,23 +38,16 @@ test.describe("Explore Page - Real Data Tests", () => {
         await page.waitForTimeout(1000);
 
         // Check if any datasets are available
-        const datasetCheckboxes = await page
-          .locator('input[type="checkbox"]')
-          .count();
+        const datasetCheckboxes = await page.locator('input[type="checkbox"]').count();
 
         if (datasetCheckboxes > 0) {
           // Select the first dataset
-          const firstDatasetCheckbox = page
-            .locator('input[type="checkbox"]')
-            .first();
+          const firstDatasetCheckbox = page.locator('input[type="checkbox"]').first();
           await firstDatasetCheckbox.check();
 
           // Wait for API response
           try {
-            await page.waitForResponse(
-              (response) => response.url().includes("/api/events"),
-              { timeout: 10000 },
-            );
+            await page.waitForResponse((response) => response.url().includes("/api/events"), { timeout: 10000 });
 
             // Wait for events to load
             await explorePage.waitForEventsToLoad();
@@ -65,18 +55,12 @@ test.describe("Explore Page - Real Data Tests", () => {
             // Check that the page shows some result (events count should be visible)
             await expect(explorePage.eventsCount).toBeVisible();
 
-            console.log("✅ Successfully tested filtering with real data");
           } catch (error) {
-            console.log(
-              "⚠️ API response timeout - this might be expected if no events exist",
-            );
           }
         } else {
-          console.log("⚠️ No datasets available for this catalog");
         }
       }
     } else {
-      console.log("⚠️ No catalogs available in database");
     }
   });
 
@@ -103,9 +87,7 @@ test.describe("Explore Page - Real Data Tests", () => {
     }
   });
 
-  test("should maintain map functionality regardless of data", async ({
-    page,
-  }) => {
+  test("should maintain map functionality regardless of data", async ({ page }) => {
     // Map should be interactive
     await expect(explorePage.map).toBeVisible();
 
@@ -130,12 +112,9 @@ test.describe("Explore Page - Real Data Tests", () => {
     const noDatasetsVisible = await explorePage.noDatasetsMessage.isVisible();
     const noEventsVisible = await explorePage.noEventsMessage.isVisible();
 
-    console.log(`No datasets message visible: ${noDatasetsVisible}`);
-    console.log(`No events message visible: ${noEventsVisible}`);
 
     // Either should show datasets/events, or show appropriate empty state messages
-    const hasDatasets =
-      (await page.locator('input[type="checkbox"]').count()) > 0;
+    const hasDatasets = (await page.locator('input[type="checkbox"]').count()) > 0;
     const hasEvents = (await explorePage.getEventCount()) > 0;
 
     if (!hasDatasets) {
@@ -155,10 +134,7 @@ test.describe("Explore Page - Real Data Tests", () => {
     await explorePage.setEndDate("9999-12-31");
 
     try {
-      await page.waitForResponse(
-        (response) => response.url().includes("/api/events"),
-        { timeout: 5000 },
-      );
+      await page.waitForResponse((response) => response.url().includes("/api/events"), { timeout: 5000 });
     } catch {
       // Timeout is OK - might happen if no data matches
     }

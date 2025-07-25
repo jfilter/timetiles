@@ -6,8 +6,8 @@
  * with realistic relationships and constraints.
  */
 
-import type { Event, Catalog, Dataset, User, Import } from "@/payload-types";
 import { createLogger } from "@/lib/logger";
+import type { Event, Catalog, Dataset, User, Import } from "@/payload-types";
 
 const logger = createLogger("test-data");
 
@@ -27,10 +27,7 @@ abstract class BaseTestBuilder<T> {
   /**
    * Build multiple objects with incremental changes
    */
-  buildMany(
-    count: number,
-    modifier?: (item: Partial<T>, index: number) => Partial<T>,
-  ): Partial<T>[] {
+  buildMany(count: number, modifier?: (item: Partial<T>, index: number) => Partial<T>): Partial<T>[] {
     return Array.from({ length: count }, (_, i) => {
       const baseItem = { ...this.data };
       return modifier ? { ...baseItem, ...modifier(baseItem, i) } : baseItem;
@@ -67,11 +64,7 @@ export class EventBuilder extends BaseTestBuilder<Event> {
   }
 
   private ensureDataIsObject(): Record<string, unknown> {
-    if (
-      typeof this.data.data === "object" &&
-      this.data.data !== null &&
-      !Array.isArray(this.data.data)
-    ) {
+    if (typeof this.data.data === "object" && this.data.data !== null && !Array.isArray(this.data.data)) {
       return this.data.data as Record<string, unknown>;
     }
     return {};
@@ -98,9 +91,7 @@ export class EventBuilder extends BaseTestBuilder<Event> {
   }
 
   inTimeRange(start: Date, end: Date): this {
-    const randomTime = new Date(
-      start.getTime() + Math.random() * (end.getTime() - start.getTime()),
-    );
+    const randomTime = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
     return this.setDataProperty("date", randomTime.toISOString());
   }
 
@@ -125,16 +116,11 @@ export class EventBuilder extends BaseTestBuilder<Event> {
   }
 
   nearLocation(centerLat: number, centerLng: number, radiusKm: number): this {
-    const { lat, lng } = this.generateNearbyCoordinate(
-      { latitude: centerLat, longitude: centerLng },
-      radiusKm,
-    );
+    const { lat, lng } = this.generateNearbyCoordinate({ latitude: centerLat, longitude: centerLng }, radiusKm);
     return this.withCoordinates(lat, lng);
   }
 
-  withRealisticData(
-    preset: "conference" | "meetup" | "workshop" | "festival" | "seminar",
-  ): this {
+  withRealisticData(preset: "conference" | "meetup" | "workshop" | "festival" | "seminar"): this {
     const presets = {
       conference: {
         category: "Conference",
@@ -316,9 +302,7 @@ export class DatasetBuilder extends BaseTestBuilder<Dataset> {
     return this;
   }
 
-  withRealisticSchema(
-    type: "events" | "sensors" | "economic" | "social",
-  ): this {
+  withRealisticSchema(type: "events" | "sensors" | "economic" | "social"): this {
     const schemas = {
       events: {
         type: "object",
@@ -447,15 +431,11 @@ export class UserBuilder extends BaseTestBuilder<User> {
   }
 
   asAdmin(): this {
-    return this.withRole("admin")
-      .withEmail("admin@example.com")
-      .withName("Admin", "User");
+    return this.withRole("admin").withEmail("admin@example.com").withName("Admin", "User");
   }
 
   asAnalyst(): this {
-    return this.withRole("analyst")
-      .withEmail("analyst@example.com")
-      .withName("Data", "Analyst");
+    return this.withRole("analyst").withEmail("analyst@example.com").withName("Data", "Analyst");
   }
 }
 
@@ -498,14 +478,7 @@ export class ImportBuilder extends BaseTestBuilder<Import> {
     return this;
   }
 
-  withStage(
-    stage:
-      | "file-parsing"
-      | "row-processing"
-      | "geocoding"
-      | "event-creation"
-      | "completed",
-  ): this {
+  withStage(stage: "file-parsing" | "row-processing" | "geocoding" | "event-creation" | "completed"): this {
     this.data.processingStage = stage;
     return this;
   }
@@ -549,9 +522,7 @@ export class TestDataBuilder {
   /**
    * Create a realistic test scenario with related data
    */
-  static createScenario(
-    name: "conference-events" | "sensor-data" | "economic-indicators",
-  ): {
+  static createScenario(name: "conference-events" | "sensor-data" | "economic-indicators"): {
     catalogs: Partial<Catalog>[];
     datasets: Partial<Dataset>[];
     events: Partial<Event>[];
@@ -576,9 +547,7 @@ export class TestDataBuilder {
           .buildMany(10, (event, i) => ({
             ...event,
             data: {
-              ...(typeof event.data === "object" &&
-              event.data !== null &&
-              !Array.isArray(event.data)
+              ...(typeof event.data === "object" && event.data !== null && !Array.isArray(event.data)
                 ? event.data
                 : {}),
               title: `Tech Conference ${i + 1}`,
@@ -611,9 +580,7 @@ export class TestDataBuilder {
           .buildMany(50, (event, i) => ({
             ...event,
             data: {
-              ...(typeof event.data === "object" &&
-              event.data !== null &&
-              !Array.isArray(event.data)
+              ...(typeof event.data === "object" && event.data !== null && !Array.isArray(event.data)
                 ? event.data
                 : {}),
               title: `Air Quality Reading ${i + 1}`,
@@ -648,9 +615,7 @@ export class TestDataBuilder {
           .buildMany(20, (event, i) => ({
             ...event,
             data: {
-              ...(typeof event.data === "object" &&
-              event.data !== null &&
-              !Array.isArray(event.data)
+              ...(typeof event.data === "object" && event.data !== null && !Array.isArray(event.data)
                 ? event.data
                 : {}),
               title: `GDP Report Q${(i % 4) + 1} 2024`,

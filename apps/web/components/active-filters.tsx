@@ -20,12 +20,12 @@ interface ActiveFiltersProps {
   };
 }
 
-export function ActiveFilters({
+export const ActiveFilters = ({
   labels,
   hasActiveFilters,
   activeFilterCount,
   actions,
-}: ActiveFiltersProps) {
+}: Readonly<ActiveFiltersProps>) => {
   if (!hasActiveFilters) {
     return null;
   }
@@ -33,9 +33,7 @@ export function ActiveFilters({
   return (
     <div className="bg-muted/30 mb-4 rounded-lg border p-3">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-foreground text-sm font-medium">
-          Active Filters ({activeFilterCount})
-        </h3>
+        <h3 className="text-foreground text-sm font-medium">Active Filters ({activeFilterCount})</h3>
         <button
           onClick={actions.clearAllFilters}
           className="text-muted-foreground hover:text-foreground text-xs transition-colors"
@@ -47,12 +45,8 @@ export function ActiveFilters({
 
       <div className="flex flex-wrap gap-2">
         {/* Catalog Filter */}
-        {labels.catalog !== undefined && labels.catalog !== null && (
-          <FilterPill
-            label="Catalog"
-            value={labels.catalog}
-            onRemove={() => actions.removeFilter("catalog")}
-          />
+        {labels.catalog != null && (
+          <FilterPill label="Catalog" value={labels.catalog} onRemove={() => actions.removeFilter("catalog")} />
         )}
 
         {/* Dataset Filters */}
@@ -66,7 +60,7 @@ export function ActiveFilters({
         ))}
 
         {/* Date Range Filter */}
-        {labels.dateRange !== undefined && labels.dateRange !== null && (
+        {labels.dateRange != null && (
           <FilterPill
             label="Date Range"
             value={labels.dateRange}
@@ -80,7 +74,7 @@ export function ActiveFilters({
       </div>
     </div>
   );
-}
+};
 
 interface FilterPillProps {
   label: string;
@@ -88,18 +82,16 @@ interface FilterPillProps {
   onRemove: () => void;
 }
 
-function FilterPill({ label, value, onRemove }: FilterPillProps) {
-  return (
-    <div className="bg-background inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm shadow-sm">
-      <span className="text-muted-foreground">{label}:</span>
-      <span className="font-medium">{value}</span>
-      <button
-        onClick={onRemove}
-        className="hover:bg-muted ml-1 rounded p-0.5 transition-colors"
-        aria-label={`Remove ${label}: ${value}`}
-      >
-        <X className="h-3 w-3" />
-      </button>
-    </div>
-  );
-}
+const FilterPill = ({ label, value, onRemove }: Readonly<FilterPillProps>) => (
+  <div className="bg-background inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm shadow-sm">
+    <span className="text-muted-foreground">{label}:</span>
+    <span className="font-medium">{value}</span>
+    <button
+      onClick={onRemove}
+      className="hover:bg-muted ml-1 rounded p-0.5 transition-colors"
+      aria-label={`Remove ${label}: ${value}`}
+    >
+      <X className="h-3 w-3" />
+    </button>
+  </div>
+);

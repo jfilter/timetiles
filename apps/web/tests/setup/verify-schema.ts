@@ -3,9 +3,7 @@ import { Client } from "pg";
 /**
  * Verifies that the database schema has been properly set up with all required tables
  */
-export async function verifyDatabaseSchema(
-  connectionString: string,
-): Promise<void> {
+export const verifyDatabaseSchema = async (connectionString: string): Promise<void> => {
   const client = new Client({ connectionString });
 
   try {
@@ -63,13 +61,9 @@ export async function verifyDatabaseSchema(
       }
     }
 
-    console.log(
-      `[VERIFY] Database schema verified successfully - all ${requiredTables.length} required tables exist`,
-    );
   } catch (error) {
-    console.error("[VERIFY] Database schema verification failed:", error);
     throw error;
   } finally {
     await client.end();
   }
-}
+};

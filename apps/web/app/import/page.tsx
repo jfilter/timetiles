@@ -1,20 +1,14 @@
-import { ImportUpload } from "../../components/import-upload";
-import { PageLayout } from "../../components/page-layout";
+import { ImportUpload } from "@/components/import-upload";
+import { PageLayout } from "@/components/page-layout";
 
 export default function ImportPage(): JSX.Element {
   return (
     <div className="min-h-screen bg-gray-50">
-      <PageLayout
-        title="Event Data Import System"
-        maxWidth="4xl"
-        centered={false}
-        contentClassName="text-left"
-      >
+      <PageLayout title="Event Data Import System" maxWidth="4xl" centered={false} contentClassName="text-left">
         <div className="mb-8 text-center">
           <p className="mx-auto max-w-2xl text-lg text-gray-600">
-            Upload your event data files (CSV or Excel) and watch them get
-            processed, geocoded, and imported into the system with real-time
-            progress tracking.
+            Upload your event data files (CSV or Excel) and watch them get processed, geocoded, and imported into the
+            system with real-time progress tracking.
           </p>
         </div>
 
@@ -22,30 +16,23 @@ export default function ImportPage(): JSX.Element {
 
         <div className="mx-auto mt-12 max-w-4xl">
           <div className="rounded-lg bg-white p-6 shadow-md">
-            <h2 className="mb-4 text-2xl font-bold">
-              📋 File Format Requirements
-            </h2>
+            <h2 className="mb-4 text-2xl font-bold">📋 File Format Requirements</h2>
 
             <div className="grid gap-6 md:grid-cols-2">
               <div>
-                <h3 className="mb-3 text-lg font-semibold text-green-600">
-                  ✅ Required Fields
-                </h3>
+                <h3 className="mb-3 text-lg font-semibold text-green-600">✅ Required Fields</h3>
                 <ul className="space-y-2 text-sm">
                   <li>
                     <strong>title</strong> - Event name/title
                   </li>
                   <li>
-                    <strong>date</strong> - Event date (YYYY-MM-DD, MM/DD/YYYY,
-                    etc.)
+                    <strong>date</strong> - Event date (YYYY-MM-DD, MM/DD/YYYY, etc.)
                   </li>
                 </ul>
               </div>
 
               <div>
-                <h3 className="mb-3 text-lg font-semibold text-blue-600">
-                  📝 Optional Fields
-                </h3>
+                <h3 className="mb-3 text-lg font-semibold text-blue-600">📝 Optional Fields</h3>
                 <ul className="space-y-2 text-sm">
                   <li>
                     <strong>description</strong> - Event description
@@ -79,9 +66,7 @@ export default function ImportPage(): JSX.Element {
                 <li>• Use consistent date formats</li>
                 <li>• Maximum file size: 10MB for unauthenticated users</li>
                 <li>• Supported formats: CSV, XLSX, XLS</li>
-                <li>
-                  • Rate limit: 5 uploads per hour for unauthenticated users
-                </li>
+                <li>• Rate limit: 5 uploads per hour for unauthenticated users</li>
               </ul>
             </div>
           </div>
@@ -96,9 +81,7 @@ export default function ImportPage(): JSX.Element {
                 </div>
                 <div>
                   <h3 className="font-semibold">File Parsing</h3>
-                  <p className="text-sm text-gray-600">
-                    Your file is parsed and validated for required fields
-                  </p>
+                  <p className="text-sm text-gray-600">Your file is parsed and validated for required fields</p>
                 </div>
               </div>
 
@@ -108,9 +91,7 @@ export default function ImportPage(): JSX.Element {
                 </div>
                 <div>
                   <h3 className="font-semibold">Batch Processing</h3>
-                  <p className="text-sm text-gray-600">
-                    Data is processed in batches for optimal performance
-                  </p>
+                  <p className="text-sm text-gray-600">Data is processed in batches for optimal performance</p>
                 </div>
               </div>
 
@@ -120,9 +101,7 @@ export default function ImportPage(): JSX.Element {
                 </div>
                 <div>
                   <h3 className="font-semibold">Event Creation</h3>
-                  <p className="text-sm text-gray-600">
-                    Events are created in the database
-                  </p>
+                  <p className="text-sm text-gray-600">Events are created in the database</p>
                 </div>
               </div>
 
@@ -133,8 +112,7 @@ export default function ImportPage(): JSX.Element {
                 <div>
                   <h3 className="font-semibold">Geocoding</h3>
                   <p className="text-sm text-gray-600">
-                    Addresses are geocoded using Google Maps API with
-                    OpenStreetMap fallback
+                    Addresses are geocoded using Google Maps API with OpenStreetMap fallback
                   </p>
                 </div>
               </div>
@@ -145,9 +123,7 @@ export default function ImportPage(): JSX.Element {
                 </div>
                 <div>
                   <h3 className="font-semibold">Completed</h3>
-                  <p className="text-sm text-gray-600">
-                    All events are imported and ready to use
-                  </p>
+                  <p className="text-sm text-gray-600">All events are imported and ready to use</p>
                 </div>
               </div>
             </div>

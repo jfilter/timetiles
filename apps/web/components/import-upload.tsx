@@ -2,12 +2,22 @@
 
 import { useState, useRef } from "react";
 
-import {
-  useImportUploadMutation,
-  useImportProgressQuery,
-} from "../lib/hooks/use-events-queries";
+import { useImportUploadMutation, useImportProgressQuery } from "../lib/hooks/use-events-queries";
 
-export function ImportUpload(): JSX.Element {
+const getStatusIcon = (status: string): string => {
+  switch (status) {
+    case "completed":
+      return "✅";
+    case "failed":
+      return "❌";
+    case "processing":
+      return "⏳";
+    default:
+      return "📄";
+  }
+};
+
+export const ImportUpload = (): JSX.Element => {
   const [file, setFile] = useState<File | null>(null);
   const [catalogId, setCatalogId] = useState("");
   const [importId, setImportId] = useState<string | null>(null);
@@ -84,15 +94,12 @@ export function ImportUpload(): JSX.Element {
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-6">
       <div className="rounded-lg bg-white p-6 shadow-md">
-        <h2 className="mb-2 flex items-center gap-2 text-2xl font-bold">
-          📤 Event Data Import
-        </h2>
+        <h2 className="mb-2 flex items-center gap-2 text-2xl font-bold">📤 Event Data Import</h2>
         <p className="mb-6 text-gray-600">
-          Upload CSV or Excel files to import event data. Files will be
-          processed and geocoded automatically.
+          Upload CSV or Excel files to import event data. Files will be processed and geocoded automatically.
         </p>
 
-        {error !== null && error !== "" && (
+        {error != null && error !== "" && (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-4">
             <div className="flex items-center">
               <span className="mr-2 text-red-600">⚠️</span>
@@ -101,7 +108,7 @@ export function ImportUpload(): JSX.Element {
           </div>
         )}
 
-        {success !== null && success !== "" && (
+        {success != null && success !== "" && (
           <div className="mb-4 rounded-md border border-green-200 bg-green-50 p-4">
             <div className="flex items-center">
               <span className="mr-2 text-green-600">✅</span>
@@ -112,10 +119,7 @@ export function ImportUpload(): JSX.Element {
 
         <div className="space-y-4">
           <div>
-            <label
-              htmlFor="catalogId"
-              className="mb-2 block text-sm font-medium"
-            >
+            <label htmlFor="catalogId" className="mb-2 block text-sm font-medium">
               Catalog ID
             </label>
             <input
@@ -124,7 +128,7 @@ export function ImportUpload(): JSX.Element {
               placeholder="Enter catalog ID"
               value={catalogId}
               onChange={(e) => setCatalogId(e.target.value)}
-              disabled={uploading || (importId !== null && importId !== "")}
+              disabled={uploading || (importId != null && importId !== "")}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
             />
           </div>
@@ -139,10 +143,10 @@ export function ImportUpload(): JSX.Element {
               type="file"
               accept=".csv,.xlsx,.xls"
               onChange={handleFileSelect}
-              disabled={uploading || (importId !== null && importId !== "")}
+              disabled={uploading || (importId != null && importId !== "")}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
             />
-            {file !== null && (
+            {file != null && (
               <p className="mt-1 text-sm text-gray-600">
                 Selected: {file.name} ({Math.round(file.size / 1024)} KB)
               </p>
@@ -152,12 +156,7 @@ export function ImportUpload(): JSX.Element {
           <div className="flex gap-2">
             <button
               onClick={() => void handleUpload()}
-              disabled={
-                file === null ||
-                catalogId === "" ||
-                uploading ||
-                (importId !== null && importId !== "")
-              }
+              disabled={file == null || catalogId === "" || uploading || (importId != null && importId !== "")}
               className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
             >
               {uploading ? (
@@ -170,11 +169,8 @@ export function ImportUpload(): JSX.Element {
               )}
             </button>
 
-            {importId !== null && importId !== "" && (
-              <button
-                onClick={resetForm}
-                className="rounded-md bg-gray-600 px-4 py-2 text-white hover:bg-gray-700"
-              >
+            {importId != null && importId !== "" && (
+              <button onClick={resetForm} className="rounded-md bg-gray-600 px-4 py-2 text-white hover:bg-gray-700">
                 Start New Import
               </button>
             )}
@@ -185,13 +181,7 @@ export function ImportUpload(): JSX.Element {
       {progress && (
         <div className="rounded-lg bg-white p-6 shadow-md">
           <h3 className="mb-2 flex items-center gap-2 text-xl font-bold">
-            {progress.status === "completed"
-              ? "✅"
-              : progress.status === "failed"
-                ? "❌"
-                : progress.status === "processing"
-                  ? "⏳"
-                  : "📄"}
+            {getStatusIcon(progress.status)}
             Import Progress
           </h3>
           <p className="mb-4 text-gray-600">Import ID: {progress.importId}</p>
@@ -218,12 +208,10 @@ export function ImportUpload(): JSX.Element {
                 <span className="font-medium">Stage:</span> {progress.stage}
               </div>
               <div>
-                <span className="font-medium">Processed:</span>{" "}
-                {progress.progress.current} / {progress.progress.total}
+                <span className="font-medium">Processed:</span> {progress.progress.current} / {progress.progress.total}
               </div>
               <div>
-                <span className="font-medium">Overall:</span>{" "}
-                {progress.progress.percentage}%
+                <span className="font-medium">Overall:</span> {progress.progress.percentage}%
               </div>
             </div>
 
@@ -232,8 +220,7 @@ export function ImportUpload(): JSX.Element {
                 <div className="mb-1 flex justify-between text-sm">
                   <span>Batch Progress</span>
                   <span>
-                    {progress.batchInfo.currentBatch} /{" "}
-                    {progress.batchInfo.totalBatches}
+                    {progress.batchInfo.currentBatch} / {progress.batchInfo.totalBatches}
                   </span>
                 </div>
                 <div className="h-1 w-full rounded-full bg-gray-200">
@@ -247,38 +234,29 @@ export function ImportUpload(): JSX.Element {
               </div>
             )}
 
-            {progress.estimatedTimeRemaining !== null &&
-              progress.estimatedTimeRemaining !== undefined &&
+            {progress.estimatedTimeRemaining != null &&
+              progress.estimatedTimeRemaining != undefined &&
               progress.estimatedTimeRemaining !== 0 && (
                 <div className="text-sm text-gray-600">
-                  Estimated time remaining:{" "}
-                  {formatTime(progress.estimatedTimeRemaining)}
+                  Estimated time remaining: {formatTime(progress.estimatedTimeRemaining)}
                 </div>
               )}
 
-            {progress.geocodingStats &&
-              Object.keys(progress.geocodingStats).length > 0 && (
-                <div className="border-t pt-3">
-                  <h4 className="mb-2 text-sm font-medium">
-                    Geocoding Statistics
-                  </h4>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    {Object.entries(progress.geocodingStats).map(
-                      ([key, value]) => (
-                        <div key={key}>
-                          <span className="capitalize">
-                            {key.replace(/([A-Z])/g, " $1")}:
-                          </span>{" "}
-                          {String(value)}
-                        </div>
-                      ),
-                    )}
-                  </div>
+            {progress.geocodingStats && Object.keys(progress.geocodingStats).length > 0 && (
+              <div className="border-t pt-3">
+                <h4 className="mb-2 text-sm font-medium">Geocoding Statistics</h4>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {Object.entries(progress.geocodingStats).map(([key, value]) => (
+                    <div key={key}>
+                      <span className="capitalize">{key.replace(/([A-Z])/g, " $1")}:</span> {String(value)}
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
           </div>
         </div>
       )}
     </div>
   );
-}
+};

@@ -165,23 +165,26 @@ export const GEOGRAPHIC_REGIONS = {
 /**
  * Generate a random coordinate within bounds with optional clustering
  */
-export function generateCoordinate(
+export const generateCoordinate = (
   region: keyof typeof GEOGRAPHIC_REGIONS,
   options: {
     cluster?: boolean;
     clusterRadius?: number; // in degrees
   } = {},
-): { latitude: number; longitude: number } {
+): { latitude: number; longitude: number } => {
   const regionData = GEOGRAPHIC_REGIONS[region];
   const { cluster = true, clusterRadius = 0.1 } = options;
 
+  // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
   if (cluster && Math.random() < 0.7) {
     // 70% chance to cluster around a center
-    const center =
-      regionData.centers[Math.floor(Math.random() * regionData.centers.length)];
+    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+    const center = regionData.centers[Math.floor(Math.random() * regionData.centers.length)];
     if (center) {
       return {
+        // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
         latitude: center.lat + (Math.random() - 0.5) * clusterRadius * 2,
+        // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
         longitude: center.lng + (Math.random() - 0.5) * clusterRadius * 2,
       };
     }
@@ -189,38 +192,23 @@ export function generateCoordinate(
 
   // Random within bounds (fallback)
   return {
-    latitude:
-      regionData.bounds.south +
-      Math.random() * (regionData.bounds.north - regionData.bounds.south),
-    longitude:
-      regionData.bounds.west +
-      Math.random() * (regionData.bounds.east - regionData.bounds.west),
+    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+    latitude: regionData.bounds.south + Math.random() * (regionData.bounds.north - regionData.bounds.south),
+    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+    longitude: regionData.bounds.west + Math.random() * (regionData.bounds.east - regionData.bounds.west),
   };
-}
+};
 
 /**
  * Determine number of datasets for a catalog based on its type
  */
-export function getDatasetsPerCatalog(
-  catalogIndex: number,
-  catalogType: string,
-): number {
+export const getDatasetsPerCatalog = (catalogIndex: number, catalogType: string): number => {
   // Deterministic but varied distribution
-  if (
-    catalogType.includes("government") ||
-    catalogType.includes("federal") ||
-    catalogType.includes("environmental")
-  ) {
+  if (catalogType.includes("government") || catalogType.includes("federal") || catalogType.includes("environmental")) {
     return 3; // Government/Environmental catalogs are comprehensive
-  } else if (
-    catalogType.includes("academic") ||
-    catalogType.includes("research")
-  ) {
+  } else if (catalogType.includes("academic") || catalogType.includes("research")) {
     return 2; // Academic catalogs are focused
-  } else if (
-    catalogType.includes("community") ||
-    catalogType.includes("local")
-  ) {
+  } else if (catalogType.includes("community") || catalogType.includes("local")) {
     return 1; // Community catalogs are single-purpose
   } else if (catalogType.includes("cultural")) {
     return 2; // Cultural catalogs have moderate scope
@@ -230,264 +218,192 @@ export function getDatasetsPerCatalog(
     // Default pattern: 1, 2, 3, 1, 2, 3...
     return (catalogIndex % 3) + 1;
   }
-}
+};
 
 /**
  * Determine number of events for a dataset based on its characteristics
  */
-export function getEventsPerDataset(
-  datasetIndex: number,
-  datasetName: string,
-): number {
+export const getEventsPerDataset = (datasetIndex: number, datasetName: string): number => {
   const name = datasetName.toLowerCase();
 
   // Large datasets (national/state level)
-  if (
-    name.includes("national") ||
-    name.includes("federal") ||
-    name.includes("state")
-  ) {
+  if (name.includes("national") || name.includes("federal") || name.includes("state")) {
     return 50 + ((datasetIndex * 10) % 51); // 50-100 events
   }
   // Medium datasets (city/regional)
-  else if (
-    name.includes("city") ||
-    name.includes("regional") ||
-    name.includes("metropolitan")
-  ) {
+  else if (name.includes("city") || name.includes("regional") || name.includes("metropolitan")) {
     return 20 + ((datasetIndex * 5) % 31); // 20-50 events
   }
   // Small datasets (local/specialized)
-  else if (
-    name.includes("local") ||
-    name.includes("community") ||
-    name.includes("pilot")
-  ) {
+  else if (name.includes("local") || name.includes("community") || name.includes("pilot")) {
     return 5 + ((datasetIndex * 3) % 16); // 5-20 events
   }
   // Default: use a deterministic formula
   else {
     return 5 + ((datasetIndex * 15) % 96); // 5-100 events
   }
-}
+};
+
+/**
+ * Generate government metadata
+ */
+const generateGovernmentMetadata = (index: number): Record<string, unknown> => {
+  const agencies = ["EPA", "DOT", "HUD", "CDC", "FEMA"];
+  const departments = ["Operations", "Compliance", "Research", "Public Affairs", "Emergency Response"];
+  const statuses = ["open", "in-progress", "resolved", "closed"];
+  const severities = ["low", "medium", "high", "critical"];
+
+  return {
+    agency: agencies[index % agencies.length],
+    department: departments[(index + 1) % departments.length],
+    contact: `contact-${index}@agency.gov`,
+    severity: severities[index % severities.length],
+    status: statuses[index % statuses.length],
+    reference_number: `REF-2024-${String(index + 1000).padStart(5, "0")}`,
+    reported_date: new Date(Date.now() - index * 86400000).toISOString(), // Days ago
+  };
+};
+
+/**
+ * Generate environmental metadata
+ */
+const generateEnvironmentalMetadata = (index: number): Record<string, unknown> => {
+  const measurements = ["PM2.5", "PM10", "NO2", "O3", "SO2", "CO"];
+  const units = ["μg/m³", "ppb", "ppm", "mg/m³"];
+  const qualities = ["good", "moderate", "poor", "hazardous"];
+
+  return {
+    station_id: `ENV-${String(index + 100).padStart(3, "0")}`,
+    measurement_type: measurements[index % measurements.length],
+    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+    value: Math.round(Math.random() * 100 * 10) / 10,
+    unit: units[index % units.length],
+    sensor_id: `SENSOR-${index + 1000}`,
+    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+    quality: qualities[Math.floor(Math.random() * qualities.length)],
+    conditions: ["Clear", "Cloudy", "Rainy", "Foggy"][index % 4],
+    timestamp: new Date(Date.now() - index * 3600000).toISOString(), // Hours ago
+  };
+};
+
+/**
+ * Generate academic metadata
+ */
+const generateAcademicMetadata = (index: number): Record<string, unknown> => {
+  const institutions = ["MIT", "Stanford", "Harvard", "Yale", "Princeton"];
+  const disciplines = ["Computer Science", "Biology", "Physics", "Economics", "Psychology"];
+  const funders = ["NSF", "NIH", "DOE", "NASA", "Private Foundation"];
+
+  return {
+    institution: institutions[index % institutions.length],
+    researcher: `Dr. ${["Smith", "Johnson", "Williams", "Brown", "Jones"][index % 5]}`,
+    funding: funders[index % funders.length],
+    discipline: disciplines[index % disciplines.length],
+    keywords: ["research", disciplines[index % disciplines.length]?.toLowerCase() ?? "unknown", "study"],
+    doi: `10.1234/example.${index + 1000}`,
+    publication_date: new Date(Date.now() - index * 86400000).toISOString().split("T")[0],
+    sample_size: 100 + index * 50,
+  };
+};
+
+/**
+ * Generate cultural metadata
+ */
+const generateCulturalMetadata = (index: number): Record<string, unknown> => {
+  const venues = ["City Theater", "Music Hall", "Art Gallery", "Convention Center", "Stadium"];
+  const genres = ["Rock", "Classical", "Jazz", "Pop", "Electronic"];
+
+  return {
+    venue: venues[index % venues.length],
+    performer: `Artist ${index + 1}`,
+    ticket_price: 25 + (index % 10) * 5,
+    capacity: 500 + (index % 10) * 100,
+    genre: genres[index % genres.length],
+    duration_minutes: 90 + (index % 6) * 30,
+    age_restriction: index % 3 === 0 ? "21+" : "All Ages",
+    event_date: new Date(Date.now() + index * 86400000).toISOString(), // Days in future
+  };
+};
+
+/**
+ * Generate economic metadata
+ */
+const generateEconomicMetadata = (index: number): Record<string, unknown> => {
+  const indicators = ["GDP", "Unemployment", "Inflation", "Trade Balance", "Consumer Confidence"];
+  const regions = ["North America", "Europe", "Asia", "South America", "Africa"];
+  const sectors = ["Technology", "Healthcare", "Finance", "Manufacturing", "Retail"];
+
+  return {
+    indicator: indicators[index % indicators.length],
+    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+    value: Math.round(Math.random() * 1000) / 10,
+    unit: "%",
+    region: regions[index % regions.length],
+    sector: sectors[index % sectors.length],
+    period: `Q${(index % 4) + 1} 2024`,
+    source: "Economic Research Bureau",
+    confidence: ["high", "medium", "low"][index % 3],
+  };
+};
 
 /**
  * Generate metadata based on schema type
  */
-export function generateMetadata(
-  schemaType: keyof typeof DATASET_SCHEMAS,
-  index: number,
-): Record<string, unknown> {
+export const generateMetadata = (schemaType: keyof typeof DATASET_SCHEMAS, index: number): Record<string, unknown> => {
   switch (schemaType) {
-    case "government": {
-      const agencies = ["EPA", "DOT", "HUD", "CDC", "FEMA"];
-      const departments = [
-        "Operations",
-        "Compliance",
-        "Research",
-        "Public Affairs",
-        "Emergency Response",
-      ];
-      const statuses = ["open", "in-progress", "resolved", "closed"];
-      const severities = ["low", "medium", "high", "critical"];
-
-      return {
-        agency: agencies[index % agencies.length],
-        department: departments[(index + 1) % departments.length],
-        contact: `contact-${index}@agency.gov`,
-        severity: severities[index % severities.length],
-        status: statuses[index % statuses.length],
-        reference_number: `REF-2024-${String(index + 1000).padStart(5, "0")}`,
-        reported_date: new Date(Date.now() - index * 86400000).toISOString(), // Days ago
-      };
-    }
-
-    case "environmental": {
-      const measurements = ["PM2.5", "PM10", "NO2", "O3", "SO2", "CO"];
-      const units = ["μg/m³", "ppb", "ppm", "mg/m³"];
-      const qualities = ["good", "moderate", "poor", "hazardous"];
-
-      return {
-        station_id: `ENV-${String(index + 100).padStart(3, "0")}`,
-        measurement_type: measurements[index % measurements.length],
-        value: Math.round(Math.random() * 100 * 10) / 10,
-        unit: units[index % units.length],
-        sensor_id: `SENSOR-${index + 1000}`,
-        quality: qualities[Math.floor(Math.random() * qualities.length)],
-        conditions: ["Clear", "Cloudy", "Rainy", "Foggy"][index % 4],
-        timestamp: new Date(Date.now() - index * 3600000).toISOString(), // Hours ago
-      };
-    }
-
-    case "academic": {
-      const institutions = ["MIT", "Stanford", "Harvard", "Yale", "Princeton"];
-      const disciplines = [
-        "Computer Science",
-        "Biology",
-        "Physics",
-        "Economics",
-        "Psychology",
-      ];
-      const funders = ["NSF", "NIH", "DOE", "NASA", "Private Foundation"];
-
-      return {
-        institution: institutions[index % institutions.length],
-        researcher: `Dr. ${["Smith", "Johnson", "Williams", "Brown", "Jones"][index % 5]}`,
-        funding: funders[index % funders.length],
-        discipline: disciplines[index % disciplines.length],
-        keywords: [
-          "research",
-          disciplines[index % disciplines.length]?.toLowerCase() ?? "unknown",
-          "study",
-        ],
-        doi: `10.1234/example.${index + 1000}`,
-        publication_date: new Date(Date.now() - index * 86400000)
-          .toISOString()
-          .split("T")[0],
-        sample_size: 100 + index * 50,
-      };
-    }
-
-    case "cultural": {
-      const venues = [
-        "City Theater",
-        "Music Hall",
-        "Art Gallery",
-        "Convention Center",
-        "Stadium",
-      ];
-      const genres = ["Rock", "Classical", "Jazz", "Pop", "Electronic"];
-
-      return {
-        venue: venues[index % venues.length],
-        performer: `Artist ${index + 1}`,
-        ticket_price: 25 + (index % 10) * 5,
-        capacity: 500 + (index % 10) * 100,
-        genre: genres[index % genres.length],
-        duration_minutes: 90 + (index % 6) * 30,
-        age_restriction: index % 3 === 0 ? "21+" : "All Ages",
-        event_date: new Date(Date.now() + index * 86400000).toISOString(), // Days in future
-      };
-    }
-
-    case "economic": {
-      const indicators = [
-        "GDP",
-        "Unemployment",
-        "Inflation",
-        "Trade Balance",
-        "Consumer Confidence",
-      ];
-      const regions = [
-        "North America",
-        "Europe",
-        "Asia",
-        "South America",
-        "Africa",
-      ];
-      const sectors = [
-        "Technology",
-        "Healthcare",
-        "Finance",
-        "Manufacturing",
-        "Retail",
-      ];
-
-      return {
-        indicator: indicators[index % indicators.length],
-        value: Math.round(Math.random() * 1000) / 10,
-        unit: "%",
-        region: regions[index % regions.length],
-        sector: sectors[index % sectors.length],
-        period: `Q${(index % 4) + 1} 2024`,
-        source: "Economic Research Bureau",
-        confidence: ["high", "medium", "low"][index % 3],
-      };
-    }
-
+    case "government":
+      return generateGovernmentMetadata(index);
+    case "environmental":
+      return generateEnvironmentalMetadata(index);
+    case "academic":
+      return generateAcademicMetadata(index);
+    case "cultural":
+      return generateCulturalMetadata(index);
+    case "economic":
+      return generateEconomicMetadata(index);
     default:
       return {};
   }
-}
+};
 
 /**
  * Get the appropriate schema type for a catalog
  */
-export function getSchemaTypeForCatalog(
-  catalogName: string,
-): keyof typeof DATASET_SCHEMAS {
+export const getSchemaTypeForCatalog = (catalogName: string): keyof typeof DATASET_SCHEMAS => {
   const name = catalogName.toLowerCase();
 
-  if (
-    name.includes("environmental") ||
-    name.includes("climate") ||
-    name.includes("weather")
-  ) {
+  if (name.includes("environmental") || name.includes("climate") || name.includes("weather")) {
     return "environmental";
-  } else if (
-    name.includes("economic") ||
-    name.includes("financial") ||
-    name.includes("market")
-  ) {
+  } else if (name.includes("economic") || name.includes("financial") || name.includes("market")) {
     return "economic";
-  } else if (
-    name.includes("academic") ||
-    name.includes("research") ||
-    name.includes("university")
-  ) {
+  } else if (name.includes("academic") || name.includes("research") || name.includes("university")) {
     return "academic";
-  } else if (
-    name.includes("cultural") ||
-    name.includes("arts") ||
-    name.includes("entertainment")
-  ) {
+  } else if (name.includes("cultural") || name.includes("arts") || name.includes("entertainment")) {
     return "cultural";
-  } else if (
-    name.includes("government") ||
-    name.includes("federal") ||
-    name.includes("municipal")
-  ) {
+  } else if (name.includes("government") || name.includes("federal") || name.includes("municipal")) {
     return "government";
   }
 
   // Default to government for any unmatched catalogs
   return "government";
-}
+};
 
 /**
  * Get geographic region for a dataset
  */
-export function getRegionForDataset(
-  datasetName: string,
-): keyof typeof GEOGRAPHIC_REGIONS {
+export const getRegionForDataset = (datasetName: string): keyof typeof GEOGRAPHIC_REGIONS => {
   const name = datasetName.toLowerCase();
 
-  if (
-    name.includes("california") ||
-    name.includes("west coast") ||
-    name.includes("pacific")
-  ) {
+  if (name.includes("california") || name.includes("west coast") || name.includes("pacific")) {
     return "california";
-  } else if (
-    name.includes("texas") ||
-    name.includes("southwest") ||
-    name.includes("gulf")
-  ) {
+  } else if (name.includes("texas") || name.includes("southwest") || name.includes("gulf")) {
     return "texas";
-  } else if (
-    name.includes("europe") ||
-    name.includes("eu") ||
-    name.includes("european")
-  ) {
+  } else if (name.includes("europe") || name.includes("eu") || name.includes("european")) {
     return "europe";
-  } else if (
-    name.includes("new york") ||
-    name.includes("northeast") ||
-    name.includes("atlantic")
-  ) {
+  } else if (name.includes("new york") || name.includes("northeast") || name.includes("atlantic")) {
     return "new-york-metro";
   }
 
   // Default to New York metro area
   return "new-york-metro";
-}
+};

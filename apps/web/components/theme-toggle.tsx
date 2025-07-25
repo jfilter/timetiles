@@ -3,17 +3,17 @@ import { useState, useRef, useEffect } from "react";
 
 import { useTheme } from "../lib/hooks/use-theme";
 
-export function ThemeToggle() {
+export const ThemeToggle = () => {
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    const handleClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
       }
-    }
+    };
     if (open) {
       document.addEventListener("mousedown", handleClick);
     } else {
@@ -44,12 +44,7 @@ export function ThemeToggle() {
         </span>
         <span className="ml-1 h-3 w-3 flex-shrink-0">
           <svg viewBox="0 0 10 6" fill="none" className="h-3 w-3">
-            <path
-              d="M1 1l4 4 4-4"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
+            <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </span>
       </button>
@@ -80,4 +75,4 @@ export function ThemeToggle() {
       )}
     </div>
   );
-}
+};

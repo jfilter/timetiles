@@ -12,7 +12,7 @@ interface PageProps {
   }>;
 }
 
-export default async function Page({ params }: PageProps) {
+export default async function Page({ params }: Readonly<PageProps>) {
   const { slug } = await params;
   const payload = await getPayload({
     config,

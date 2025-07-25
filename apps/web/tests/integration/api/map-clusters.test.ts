@@ -1,7 +1,8 @@
-import type { Payload } from "payload";
-import { GET } from "../../../app/api/events/map-clusters/route";
-import { NextRequest } from "next/server";
 import { sql } from "@payloadcms/db-postgres";
+import { NextRequest } from "next/server";
+import type { Payload } from "payload";
+
+import { GET } from "../../../app/api/events/map-clusters/route";
 
 interface MapClusterFeature {
   type: "Feature";
@@ -21,14 +22,12 @@ describe("/api/events/map-clusters", () => {
   let payload: Payload;
   let testCatalogId: string;
   let testDatasetId: string;
-  let testEventIds: string[] = [];
+  const testEventIds: string[] = [];
   let testEnv: any;
   const uniqueSuffix = Date.now().toString();
 
   beforeAll(async () => {
-    const { createIsolatedTestEnvironment } = await import(
-      "../../setup/test-helpers"
-    );
+    const { createIsolatedTestEnvironment } = await import("../../setup/test-helpers");
     testEnv = await createIsolatedTestEnvironment();
     payload = testEnv.payload;
 
@@ -148,7 +147,6 @@ describe("/api/events/map-clusters", () => {
       try {
         await testEnv.cleanup();
       } catch (error) {
-        console.warn("Cleanup failed:", (error as Error).message);
       }
     }
   });
@@ -162,37 +160,27 @@ describe("/api/events/map-clusters", () => {
     };
 
     const request = new NextRequest(
-      `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(
-        JSON.stringify(bounds),
-      )}&zoom=2`,
+      `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=2`,
     );
 
     const response = await GET(request);
 
     if (response.status !== 200) {
       const error = await response.json();
-      throw new Error(
-        `API returned ${response.status}: ${JSON.stringify(error)}`,
-      );
+      throw new Error(`API returned ${response.status}: ${JSON.stringify(error)}`);
     }
 
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    console.log("Response data:", JSON.stringify(data, null, 2));
-    console.log("Created test events:", testEventIds.length);
 
     expect(data).toHaveProperty("type", "FeatureCollection");
     expect(data).toHaveProperty("features");
     expect(Array.isArray(data.features)).toBe(true);
 
     // At zoom level 2, we should have clusters
-    const clusters = data.features.filter(
-      (f: MapClusterFeature) => f.properties.type === "event-cluster",
-    );
-    const singles = data.features.filter(
-      (f: MapClusterFeature) => f.properties.type === "event-point",
-    );
+    const clusters = data.features.filter((f: MapClusterFeature) => f.properties.type === "event-cluster");
+    const singles = data.features.filter((f: MapClusterFeature) => f.properties.type === "event-point");
 
     expect(data.features.length).toBeGreaterThan(0);
     expect(clusters.length + singles.length).toBeGreaterThan(0);
@@ -219,9 +207,7 @@ describe("/api/events/map-clusters", () => {
     };
 
     const request = new NextRequest(
-      `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(
-        JSON.stringify(bounds),
-      )}&zoom=16`,
+      `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=16`,
     );
 
     // Instead of calling the API route (which uses main DB),
@@ -247,19 +233,14 @@ describe("/api/events/map-clusters", () => {
         type: "Feature",
         geometry: {
           type: "Point",
-          coordinates: [
-            parseFloat(String(row.longitude)),
-            parseFloat(String(row.latitude)),
-          ],
+          coordinates: [parseFloat(String(row.longitude)), parseFloat(String(row.latitude))],
         },
         properties: {
           id: row.cluster_id || row.event_id,
           type: isCluster ? "event-cluster" : "event-point",
           ...(isCluster ? { count: Number(row.event_count) } : {}),
           ...(row.event_title ? { title: String(row.event_title) } : {}),
-          ...(row.event_ids && Number(row.event_count) <= 10
-            ? { eventIds: row.event_ids }
-            : {}),
+          ...(row.event_ids && Number(row.event_count) <= 10 ? { eventIds: row.event_ids } : {}),
         },
       };
     });
@@ -270,9 +251,7 @@ describe("/api/events/map-clusters", () => {
     };
 
     // At zoom level 16 in a small area, we should see individual events
-    const singles = data.features.filter(
-      (f: any) => f.properties.type === "event-point",
-    );
+    const singles = data.features.filter((f: any) => f.properties.type === "event-point");
 
     expect(singles.length).toBeGreaterThan(0);
 
@@ -303,21 +282,16 @@ describe("/api/events/map-clusters", () => {
 
     if (response.status !== 200) {
       const error = await response.json();
-      throw new Error(
-        `API returned ${response.status}: ${JSON.stringify(error)}`,
-      );
+      throw new Error(`API returned ${response.status}: ${JSON.stringify(error)}`);
     }
 
     expect(response.status).toBe(200);
     const data = await response.json();
 
     // Should only return our test events
-    const totalEvents = data.features.reduce(
-      (sum: number, feature: MapClusterFeature) => {
-        return sum + (feature.properties.count || 1);
-      },
-      0,
-    );
+    const totalEvents = data.features.reduce((sum: number, feature: MapClusterFeature) => {
+      return sum + (feature.properties.count || 1);
+    }, 0);
 
     expect(totalEvents).toBe(testEventIds.length);
   });
@@ -343,27 +317,18 @@ describe("/api/events/map-clusters", () => {
 
     if (response.status !== 200) {
       const error = await response.json();
-      throw new Error(
-        `API returned ${response.status}: ${JSON.stringify(error)}`,
-      );
+      throw new Error(`API returned ${response.status}: ${JSON.stringify(error)}`);
     }
 
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    console.log("Date range filter test data:", JSON.stringify(data, null, 2));
-    console.log("Expected date range:", startDate, "to", endDate);
-    console.log("Test events created:", testEventIds.length);
 
     // Should only return events from Jan 5-8
-    const totalEvents = data.features.reduce(
-      (sum: number, feature: MapClusterFeature) => {
-        return sum + (feature.properties.count || 1);
-      },
-      0,
-    );
+    const totalEvents = data.features.reduce((sum: number, feature: MapClusterFeature) => {
+      return sum + (feature.properties.count || 1);
+    }, 0);
 
-    console.log("Total events returned:", totalEvents);
     // Since there may be other events in the test database,
     // let's just verify that we get fewer events with date filtering than without
     expect(totalEvents).toBeGreaterThan(0);
@@ -371,9 +336,7 @@ describe("/api/events/map-clusters", () => {
   });
 
   it("should handle missing bounds parameter", async () => {
-    const request = new NextRequest(
-      "http://localhost:3000/api/events/map-clusters?zoom=10",
-    );
+    const request = new NextRequest("http://localhost:3000/api/events/map-clusters?zoom=10");
 
     const response = await GET(request);
 
@@ -383,9 +346,7 @@ describe("/api/events/map-clusters", () => {
   });
 
   it("should handle invalid bounds format", async () => {
-    const request = new NextRequest(
-      `http://localhost:3000/api/events/map-clusters?bounds=invalid&zoom=10`,
-    );
+    const request = new NextRequest(`http://localhost:3000/api/events/map-clusters?bounds=invalid&zoom=10`);
 
     const response = await GET(request);
 

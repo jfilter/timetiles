@@ -1,29 +1,33 @@
-import React from "react";
-import { render, type RenderOptions } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, type RenderOptions } from "@testing-library/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
+import React from "react";
+
 import { ThemeProvider } from "@/components/theme-provider";
 
 interface CustomRenderOptions extends Omit<RenderOptions, "wrapper"> {
   searchParams?: URLSearchParams;
 }
 
-function AllTheProviders({
+const AllTheProviders = ({
   children,
   searchParams = new URLSearchParams(),
 }: {
   children: React.ReactNode;
   searchParams?: URLSearchParams;
-}) {
+}) => {
   // Create a new QueryClient for each test to avoid cross-test pollution
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false, // Disable retries in tests
-        gcTime: 0, // Disable caching in tests
-      },
-    },
-  });
+  const [queryClient] = React.useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false, // Disable retries in tests
+            gcTime: 0, // Disable caching in tests
+          },
+        },
+      }),
+  );
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -32,21 +36,19 @@ function AllTheProviders({
       </NuqsTestingAdapter>
     </QueryClientProvider>
   );
-}
+};
 
-export function renderWithProviders(
+export const renderWithProviders = (
   ui: React.ReactElement,
   options?: CustomRenderOptions,
-): ReturnType<typeof render> {
+): ReturnType<typeof render> => {
   const { searchParams, ...renderOptions } = options || {};
 
   return render(ui, {
-    wrapper: ({ children }) => (
-      <AllTheProviders searchParams={searchParams}>{children}</AllTheProviders>
-    ),
+    wrapper: ({ children }) => <AllTheProviders searchParams={searchParams}>{children}</AllTheProviders>,
     ...renderOptions,
   });
-}
+};
 
 // MapLibre GL is mocked globally in setup-components.ts
 

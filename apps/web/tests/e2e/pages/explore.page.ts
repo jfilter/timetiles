@@ -77,9 +77,7 @@ export class ExplorePage {
       await this.page.waitForSelector(`text=${datasetName}`, { timeout: 5000 });
 
       // Use more specific selector to find checkboxes within dataset labels
-      const datasetCheckbox = this.page.locator(
-        `label:has-text("${datasetName}") input[type="checkbox"]`,
-      );
+      const datasetCheckbox = this.page.locator(`label:has-text("${datasetName}") input[type="checkbox"]`);
 
       // Wait for the checkbox to be visible and enabled
       await datasetCheckbox.waitFor({ state: "visible", timeout: 3000 });
@@ -152,22 +150,19 @@ export class ExplorePage {
     try {
       // Check if the page is still available
       if (this.page.isClosed()) {
-        console.warn("Page is closed, returning 0 for event count");
         return 0;
       }
 
       const text = await this.eventsCount.textContent({ timeout: 3000 });
       const match = text?.match(/Events \((\d+)\)/);
-      return match && match[1] ? parseInt(match[1], 10) : 0;
+      return match?.[1] ? parseInt(match[1], 10) : 0;
     } catch (error) {
-      console.warn("Failed to get event count:", error);
       return 0;
     }
   }
 
   async getEventTitles(): Promise<string[]> {
-    const events = await this.eventsList.locator("h3").allTextContents();
-    return events;
+    return this.eventsList.locator("h3").allTextContents();
   }
 
   async clickMapMarker(markerIndex: number) {
@@ -177,20 +172,18 @@ export class ExplorePage {
 
   async getPopupContent(): Promise<string | null> {
     const popup = this.page.locator(".maplibregl-popup-content");
-    return await popup.textContent();
+    return popup.textContent();
   }
 
   async waitForEventsToLoad() {
     try {
       // Check if the page is still available
       if (this.page.isClosed()) {
-        console.warn("Page is closed, skipping wait for events to load");
         return;
       }
 
       await expect(this.loadingIndicator).not.toBeVisible({ timeout: 5000 });
     } catch (error) {
-      console.warn("Failed to wait for events to load:", error);
       // If loading indicator check fails, just continue
     }
   }
@@ -198,8 +191,7 @@ export class ExplorePage {
   async waitForApiResponse() {
     try {
       await this.page.waitForResponse(
-        (response) =>
-          response.url().includes("/api/events") && response.status() === 200,
+        (response) => response.url().includes("/api/events") && response.status() === 200,
         { timeout: 5000 },
       );
     } catch (error) {
@@ -244,9 +236,7 @@ export class ExplorePage {
       }
 
       // Check if we can access a basic element
-      await this.page
-        .locator("h1")
-        .waitFor({ state: "visible", timeout: 1000 });
+      await this.page.locator("h1").waitFor({ state: "visible", timeout: 1000 });
       return true;
     } catch {
       return false;

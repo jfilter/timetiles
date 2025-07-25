@@ -114,8 +114,7 @@ const Events: CollectionConfig = {
             },
           ],
           admin: {
-            condition: (data) =>
-              (data.coordinateSource as { type?: string })?.type === "import",
+            condition: (data) => (data.coordinateSource as { type?: string })?.type === "import",
           },
         },
         {
@@ -232,13 +231,10 @@ const Events: CollectionConfig = {
       unique: true,
       admin: {
         position: "sidebar",
-        description:
-          "URL-friendly identifier (auto-generated from event title if not provided)",
+        description: "URL-friendly identifier (auto-generated from event title if not provided)",
       },
       hooks: {
-        beforeValidate: [
-          createSlugHook("events", { sourceField: "data.title" }),
-        ],
+        beforeValidate: [createSlugHook("events", { sourceField: "data.title" })],
       },
     },
   ],

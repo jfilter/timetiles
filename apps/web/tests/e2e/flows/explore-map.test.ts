@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+
 import { ExplorePage } from "../pages/explore.page";
 
 test.describe("Explore Page - Map Interactions", () => {
@@ -23,10 +24,7 @@ test.describe("Explore Page - Map Interactions", () => {
     // Set up response interception to check for bounds parameter
     let boundsRequested = false;
     page.on("request", (request) => {
-      if (
-        request.url().includes("/api/events") &&
-        request.url().includes("bounds=")
-      ) {
+      if (request.url().includes("/api/events") && request.url().includes("bounds=")) {
         boundsRequested = true;
       }
     });
@@ -78,10 +76,7 @@ test.describe("Explore Page - Map Interactions", () => {
     // Set up request interception
     let zoomRequestMade = false;
     page.on("request", (request) => {
-      if (
-        request.url().includes("/api/events") &&
-        request.url().includes("bounds=")
-      ) {
+      if (request.url().includes("/api/events") && request.url().includes("bounds=")) {
         zoomRequestMade = true;
       }
     });
@@ -157,13 +152,9 @@ test.describe("Explore Page - Map Interactions", () => {
 
     // The test passes if we have API requests (the map functionality is working)
     // Bounds filtering may or may not be implemented yet
-    console.log("API requests made:", apiRequests);
-    console.log("Bounds requests:", boundsRequests);
   });
 
-  test.skip("should maintain performance with many events", async ({
-    page,
-  }) => {
+  test.skip("should maintain performance with many events", async ({ page }) => {
     // Load a catalog that might have many events
     await explorePage.selectCatalog("Environmental Data");
     await page.waitForTimeout(500);
@@ -182,7 +173,6 @@ test.describe("Explore Page - Map Interactions", () => {
     // Check page stability before proceeding
     const isStable = await explorePage.isPageStable();
     if (!isStable) {
-      console.warn("Page became unstable during performance test");
       return; // Skip the rest of the test if page crashed
     }
 
@@ -194,10 +184,6 @@ test.describe("Explore Page - Map Interactions", () => {
       await explorePage.panMap(50, 50);
     } catch (error) {
       // If panning fails due to page instability, log and continue
-      console.warn(
-        "Pan operation failed, likely due to page instability:",
-        error,
-      );
     }
     await page.waitForTimeout(500);
 

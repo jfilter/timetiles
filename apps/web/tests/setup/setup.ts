@@ -4,6 +4,7 @@ import fs from "fs";
 
 import { createTestDatabase } from "./database-setup";
 import { verifyDatabaseSchema } from "./verify-schema";
+
 import { logger } from "@/lib/logger";
 
 // Set test environment
@@ -52,19 +53,13 @@ beforeAll(async () => {
     const Events = (await import("../../lib/collections/events")).default;
     const Users = (await import("../../lib/collections/users")).default;
     const Media = (await import("../../lib/collections/media")).default;
-    const LocationCache = (await import("../../lib/collections/location-cache"))
-      .default;
-    const GeocodingProviders = (
-      await import("../../lib/collections/geocoding-providers")
-    ).default;
+    const LocationCache = (await import("../../lib/collections/location-cache")).default;
+    const GeocodingProviders = (await import("../../lib/collections/geocoding-providers")).default;
     const { Pages } = await import("../../lib/collections/pages");
     const { MainMenu } = await import("../../lib/collections/main-menu");
-    const {
-      fileParsingJob,
-      batchProcessingJob,
-      eventCreationJob,
-      geocodingBatchJob,
-    } = await import("../../lib/jobs/import-jobs");
+    const { fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob } = await import(
+      "../../lib/jobs/import-jobs"
+    );
 
     const testConfig = buildConfig({
       secret: process.env.PAYLOAD_SECRET || "test-secret-key",
@@ -80,25 +75,10 @@ beforeAll(async () => {
               },
             },
       debug: false,
-      collections: [
-        Catalogs,
-        Datasets,
-        Imports,
-        Events,
-        Users,
-        Media,
-        LocationCache,
-        GeocodingProviders,
-        Pages,
-      ],
+      collections: [Catalogs, Datasets, Imports, Events, Users, Media, LocationCache, GeocodingProviders, Pages],
       globals: [MainMenu],
       jobs: {
-        tasks: [
-          fileParsingJob,
-          batchProcessingJob,
-          eventCreationJob,
-          geocodingBatchJob,
-        ],
+        tasks: [fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob],
       },
       db: postgresAdapter({
         pool: {

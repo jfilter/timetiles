@@ -43,8 +43,7 @@ const developmentConfig: pino.LoggerOptions = {
 };
 
 // Create the logger instance
-export const logger =
-  isDevelopment && !isTest ? pino(developmentConfig) : pino(baseConfig);
+export const logger = isDevelopment && !isTest ? pino(developmentConfig) : pino(baseConfig);
 
 // Create child loggers for different modules
 export const createLogger = (module: string) => {
@@ -52,10 +51,7 @@ export const createLogger = (module: string) => {
 };
 
 // Helper to create request logger
-export const createRequestLogger = (
-  requestId: string,
-  userId?: string | number,
-) => {
+export const createRequestLogger = (requestId: string, userId?: string | number) => {
   return logger.child({
     requestId,
     userId,
@@ -73,11 +69,7 @@ export const createJobLogger = (jobId: string | number, taskType: string) => {
 };
 
 // Performance logging helper
-export const logPerformance = (
-  operation: string,
-  duration: number,
-  metadata?: Record<string, unknown>,
-) => {
+export const logPerformance = (operation: string, duration: number, metadata?: Record<string, unknown>) => {
   logger.info(
     {
       type: "performance",
@@ -90,11 +82,7 @@ export const logPerformance = (
 };
 
 // Error logging helper with context
-export const logError = (
-  error: unknown,
-  context: string,
-  metadata?: Record<string, unknown>,
-) => {
+export const logError = (error: unknown, context: string, metadata?: Record<string, unknown>) => {
   const err = error instanceof Error ? error : new Error(String(error));
   logger.error(
     {

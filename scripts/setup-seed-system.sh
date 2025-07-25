@@ -46,14 +46,14 @@ async function verify() {
 
   for (const collection of collections) {
     const result = await payload.find({ collection, limit: 1 });
-    console.log(\`✅ \${collection}: \${result.docs.length} items\`);
+    process.stdout.write(\`✅ \${collection}: \${result.docs.length} items\\n\`);
   }
 
   await seedManager.cleanup();
 }
 
 verify().catch(err => {
-  console.error('❌ Verification failed:', err.message);
+  process.stderr.write('❌ Verification failed: ' + err.message + '\\n');
   process.exit(1);
 });
 "

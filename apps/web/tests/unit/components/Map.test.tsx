@@ -1,10 +1,11 @@
-import { renderWithProviders } from "../../setup/test-utils";
-import { Map } from "@/components/map";
 import { createMapEvents } from "../../mocks";
+import { renderWithProviders } from "../../setup/test-utils";
+
+import { MapComponent } from "@/components/map";
 
 describe("Map", () => {
   test("renders map container with correct structure", () => {
-    renderWithProviders(<Map />);
+    renderWithProviders(<MapComponent />);
 
     // Should render the map container
     const mapContainer = document.querySelector(".w-full.h-full");
@@ -13,7 +14,7 @@ describe("Map", () => {
   });
 
   test("renders with empty events array", () => {
-    renderWithProviders(<Map events={[]} />);
+    renderWithProviders(<MapComponent events={[]} />);
 
     // Should render the map container even with no events
     const mapContainer = document.querySelector(".w-full.h-full");
@@ -23,7 +24,7 @@ describe("Map", () => {
   test("renders with events", () => {
     const mockEvents = createMapEvents(1);
 
-    renderWithProviders(<Map events={mockEvents} />);
+    renderWithProviders(<MapComponent events={mockEvents} />);
 
     // Should render the map container
     const mapContainer = document.querySelector(".w-full.h-full");
@@ -32,7 +33,7 @@ describe("Map", () => {
 
   test("calls onBoundsChange when provided", () => {
     const mockOnBoundsChange = vi.fn();
-    renderWithProviders(<Map onBoundsChange={mockOnBoundsChange} />);
+    renderWithProviders(<MapComponent onBoundsChange={mockOnBoundsChange} />);
 
     // Component should render without error
     const mapContainer = document.querySelector(".w-full.h-full");

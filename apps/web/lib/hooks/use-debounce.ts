@@ -24,7 +24,7 @@ import { useEffect, useState } from "react";
  * }, [debouncedSearchTerm]);
  * ```
  */
-export function useDebounce<T>(value: T, delay: number): T {
+export const useDebounce = <T>(value: T, delay: number): T => {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export function useDebounce<T>(value: T, delay: number): T {
   }, [value, delay]);
 
   return debouncedValue;
-}
+};
 
 /**
  * Debounce hook with deep comparison for objects
@@ -51,19 +51,13 @@ export function useDebounce<T>(value: T, delay: number): T {
  * @param compare - Custom comparison function (optional)
  * @returns The debounced value
  */
-export function useDebounceWithComparison<T>(
-  value: T,
-  delay: number,
-  compare?: (prev: T, next: T) => boolean,
-): T {
+export const useDebounceWithComparison = <T>(value: T, delay: number, compare?: (prev: T, next: T) => boolean): T => {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
   useEffect(() => {
     const handler = setTimeout(() => {
       // Only update if values are actually different
-      if (
-        compare ? !compare(debouncedValue, value) : debouncedValue !== value
-      ) {
+      if (compare ? !compare(debouncedValue, value) : debouncedValue !== value) {
         setDebouncedValue(value);
       }
     }, delay);
@@ -74,4 +68,4 @@ export function useDebounceWithComparison<T>(
   }, [value, delay, debouncedValue, compare]);
 
   return debouncedValue;
-}
+};

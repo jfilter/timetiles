@@ -96,17 +96,14 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
 /**
  * Get relationship configuration for a collection
  */
-export function getRelationshipConfig(
-  collection: string,
-): RelationshipConfig[] {
-  return RELATIONSHIP_CONFIG[collection] ?? [];
-}
+export const getRelationshipConfig = (collection: string): RelationshipConfig[] =>
+  RELATIONSHIP_CONFIG[collection] ?? [];
 
 /**
  * Validate relationship configuration
  * Ensures all required fields are present and configuration is valid
  */
-export function validateRelationshipConfig(): void {
+export const validateRelationshipConfig = (): void => {
   const errors: string[] = [];
 
   Object.entries(RELATIONSHIP_CONFIG).forEach(([collection, configs]) => {
@@ -124,33 +121,27 @@ export function validateRelationshipConfig(): void {
   });
 
   if (errors.length > 0) {
-    throw new Error(
-      `Invalid relationship configuration:\n${errors.join("\n")}`,
-    );
+    throw new Error(`Invalid relationship configuration:\n${errors.join("\n")}`);
   }
-}
+};
 
 /**
  * Get all collections that have relationship dependencies
  */
-export function getCollectionsWithRelationships(): string[] {
-  return Object.keys(RELATIONSHIP_CONFIG);
-}
+export const getCollectionsWithRelationships = (): string[] => Object.keys(RELATIONSHIP_CONFIG);
 
 /**
  * Get dependency order for collections
  * Returns collections in the order they should be seeded (dependencies first)
  */
-export function getDependencyOrder(collections: string[]): string[] {
+export const getDependencyOrder = (collections: string[]): string[] => {
   const dependencies = new Map<string, string[]>();
   const visited = new Set<string>();
   const result: string[] = [];
 
   // Build dependency map
   Object.entries(RELATIONSHIP_CONFIG).forEach(([collection, configs]) => {
-    const deps = configs
-      .filter((config) => config.required === true)
-      .map((config) => config.targetCollection);
+    const deps = configs.filter((config) => config.required === true).map((config) => config.targetCollection);
     dependencies.set(collection, deps);
   });
 
@@ -162,7 +153,7 @@ export function getDependencyOrder(collections: string[]): string[] {
   });
 
   // Topological sort
-  function visit(collection: string) {
+  const visit = (collection: string) => {
     if (visited.has(collection)) return;
     visited.add(collection);
 
@@ -176,8 +167,8 @@ export function getDependencyOrder(collections: string[]): string[] {
     if (collections.includes(collection)) {
       result.push(collection);
     }
-  }
+  };
 
   collections.forEach((collection) => visit(collection));
   return result;
-}
+};

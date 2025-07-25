@@ -49,63 +49,82 @@ export class RateLimitService {
    * @param windowMs - Time window in milliseconds
    * @returns { allowed: boolean, remaining: number, resetTime: number }
    */
-  async checkRateLimit(
+  checkRateLimit(
     identifier: string,
     limit: number = 10,
     windowMs: number = 60 * 60 * 1000, // 1 hour default
-  ): Promise<{
+  ): {
     allowed: boolean;
     remaining: number;
     resetTime: number;
     blocked: boolean;
-  }> {
+  } {
     const now = Date.now();
     const entry = this.cache.get(identifier);
 
     // If no entry exists or window has expired, create new entry
     if (!entry || now >= entry.resetTime) {
-      const newEntry: RateLimitEntry = {
-        count: 1,
-        resetTime: now + windowMs,
-        blocked: false,
-      };
-      this.cache.set(identifier, newEntry);
-
-      return {
-        allowed: true,
-        remaining: limit - 1,
-        resetTime: newEntry.resetTime,
-        blocked: false,
-      };
+      return this.createNewRateLimitEntry(identifier, limit, now, windowMs);
     }
 
     // If already blocked, deny request
     if (entry.blocked) {
-      logger.debug(
-        { identifier, resetTime: new Date(entry.resetTime) },
-        "Request denied - identifier blocked",
-      );
-      return {
-        allowed: false,
-        remaining: 0,
-        resetTime: entry.resetTime,
-        blocked: true,
-      };
+      return this.handleBlockedRequest(identifier, entry);
     }
 
+    // Increment count and check limit
+    return this.processRateLimitCheck(identifier, entry, limit);
+  }
+
+  private createNewRateLimitEntry(
+    identifier: string,
+    limit: number,
+    now: number,
+    windowMs: number,
+  ): { allowed: boolean; remaining: number; resetTime: number; blocked: boolean } {
+    const newEntry: RateLimitEntry = {
+      count: 1,
+      resetTime: now + windowMs,
+      blocked: false,
+    };
+    this.cache.set(identifier, newEntry);
+
+    return {
+      allowed: true,
+      remaining: limit - 1,
+      resetTime: newEntry.resetTime,
+      blocked: false,
+    };
+  }
+
+  private handleBlockedRequest(
+    identifier: string,
+    entry: RateLimitEntry,
+  ): { allowed: boolean; remaining: number; resetTime: number; blocked: boolean } {
+    logger.debug({ identifier, resetTime: new Date(entry.resetTime) }, "Request denied - identifier blocked");
+    return {
+      allowed: false,
+      remaining: 0,
+      resetTime: entry.resetTime,
+      blocked: true,
+    };
+  }
+
+  private processRateLimitCheck(
+    identifier: string,
+    entry: RateLimitEntry,
+    limit: number,
+  ): { allowed: boolean; remaining: number; resetTime: number; blocked: boolean } {
     // Increment count
     entry.count++;
 
     // Check if limit exceeded
     if (entry.count > limit) {
       entry.blocked = true;
-      logger.info(
-        { identifier, count: entry.count, limit },
-        "Rate limit exceeded - blocking identifier",
-      );
+      logger.info({ identifier, count: entry.count, limit }, "Rate limit exceeded - blocking identifier");
 
       // Log rate limit violation
-      await this.logRateLimitViolation(identifier, entry.count, limit);
+      this.logRateLimitViolation(identifier, entry.count, limit);
 
       return {
         allowed: false,
@@ -148,10 +167,7 @@ export class RateLimitService {
   /**
    * Block an identifier immediately
    */
-  blockIdentifier(
-    identifier: string,
-    durationMs: number = 24 * 60 * 60 * 1000,
-  ): void {
+  blockIdentifier(identifier: string, durationMs: number = 24 * 60 * 60 * 1000): void {
     const entry: RateLimitEntry = {
       count: 999999,
       resetTime: Date.now() + durationMs,
@@ -164,19 +180,14 @@ export class RateLimitService {
   /**
    * Get rate limit headers for HTTP responses
    */
-  getRateLimitHeaders(
-    identifier: string,
-    limit: number,
-  ): Record<string, string> {
+  getRateLimitHeaders(identifier: string, limit: number): Record<string, string> {
     const status = this.getRateLimitStatus(identifier);
 
     if (!status) {
       return {
         "X-RateLimit-Limit": limit.toString(),
         "X-RateLimit-Remaining": limit.toString(),
-        "X-RateLimit-Reset": new Date(
-          Date.now() + 60 * 60 * 1000,
-        ).toISOString(),
+        "X-RateLimit-Reset": new Date(Date.now() + 60 * 60 * 1000).toISOString(),
       };
     }
 
@@ -208,11 +219,7 @@ export class RateLimitService {
   /**
    * Log rate limit violations for monitoring
    */
-  private async logRateLimitViolation(
-    identifier: string,
-    attemptedCount: number,
-    limit: number,
-  ): Promise<void> {
+  private logRateLimitViolation(identifier: string, attemptedCount: number, limit: number): void {
     try {
       logger.warn(
         {
@@ -270,7 +277,7 @@ export class RateLimitService {
 // Singleton instance - but allow per-test isolation
 let rateLimitService: RateLimitService | null = null;
 
-export function getRateLimitService(payload: Payload): RateLimitService {
+export const getRateLimitService = (payload: Payload): RateLimitService => {
   // In test environment, always create a new instance for isolation
   if (process.env.NODE_ENV === "test") {
     return new RateLimitService(payload);
@@ -280,34 +287,30 @@ export function getRateLimitService(payload: Payload): RateLimitService {
     rateLimitService = new RateLimitService(payload);
   }
   return rateLimitService;
-}
+};
 
 // Helper function to get client identifier
-export function getClientIdentifier(request: Request): string {
+export const getClientIdentifier = (request: Request): string => {
   // Try to get IP from various headers
   const forwarded = request.headers.get("x-forwarded-for");
   const realIp = request.headers.get("x-real-ip");
   const cfConnectingIp = request.headers.get("cf-connecting-ip");
 
-  if (forwarded !== null && forwarded !== undefined && forwarded !== "") {
+  if (forwarded != null && forwarded !== "") {
     return forwarded.split(",")[0]?.trim() ?? "unknown";
   }
 
-  if (realIp !== null && realIp !== undefined && realIp !== "") {
+  if (realIp != null && realIp !== "") {
     return realIp;
   }
 
-  if (
-    cfConnectingIp !== null &&
-    cfConnectingIp !== undefined &&
-    cfConnectingIp !== ""
-  ) {
+  if (cfConnectingIp != null && cfConnectingIp !== "") {
     return cfConnectingIp;
   }
 
   // Fallback to a default identifier
   return "unknown";
-}
+};
 
 // Rate limit configurations for different endpoints
 export const RATE_LIMITS = {

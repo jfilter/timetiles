@@ -1,10 +1,6 @@
-import {
-  type MigrateUpArgs,
-  type MigrateDownArgs,
-  sql,
-} from "@payloadcms/db-postgres";
+import { type MigrateUpArgs, type MigrateDownArgs, sql } from "@payloadcms/db-postgres";
 
-export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
+export const up = async ({ db }: MigrateUpArgs): Promise<void> => {
   await db.execute(sql`
    CREATE SCHEMA IF NOT EXISTS payload;
    CREATE TYPE "payload"."enum_catalogs_status" AS ENUM('active', 'archived');
@@ -33,7 +29,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
   	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
+
   CREATE TABLE "payload"."datasets" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"name" varchar NOT NULL,
@@ -48,7 +44,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
   	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
+
   CREATE TABLE "payload"."imports_job_history" (
   	"_order" integer NOT NULL,
   	"_parent_id" integer NOT NULL,
@@ -61,7 +57,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"error" varchar,
   	"result" jsonb
   );
-  
+
   CREATE TABLE "payload"."imports" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"file_name" varchar NOT NULL,
@@ -110,7 +106,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
   	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
+
   CREATE TABLE "payload"."events" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"dataset_id" integer NOT NULL,
@@ -136,7 +132,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
   	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
+
   CREATE TABLE "payload"."users_sessions" (
   	"_order" integer NOT NULL,
   	"_parent_id" integer NOT NULL,
@@ -144,7 +140,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"created_at" timestamp(3) with time zone,
   	"expires_at" timestamp(3) with time zone NOT NULL
   );
-  
+
   CREATE TABLE "payload"."users" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"first_name" varchar,
@@ -162,7 +158,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"login_attempts" numeric DEFAULT 0,
   	"lock_until" timestamp(3) with time zone
   );
-  
+
   CREATE TABLE "payload"."media" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"alt" varchar,
@@ -196,7 +192,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"sizes_tablet_filesize" numeric,
   	"sizes_tablet_filename" varchar
   );
-  
+
   CREATE TABLE "payload"."location_cache" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"original_address" varchar NOT NULL,
@@ -217,14 +213,14 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
   	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
+
   CREATE TABLE "payload"."geocoding_providers_tags" (
   	"order" integer NOT NULL,
   	"parent_id" integer NOT NULL,
   	"value" "payload"."enum_geocoding_providers_tags",
   	"id" serial PRIMARY KEY NOT NULL
   );
-  
+
   CREATE TABLE "payload"."geocoding_providers" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"name" varchar NOT NULL,
@@ -241,7 +237,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"config_nominatim_countrycodes" varchar,
   	"config_nominatim_addressdetails" boolean DEFAULT true,
   	"config_nominatim_extratags" boolean DEFAULT false,
-  	"config_opencage_api_key" varchar,
+  	"config_GEOCODING_OPENCAGE_API_KEY" varchar,
   	"config_opencage_language" varchar DEFAULT 'en',
   	"config_opencage_countrycode" varchar,
   	"config_opencage_bounds_enabled" boolean DEFAULT false,
@@ -260,7 +256,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
   	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
+
   CREATE TABLE "payload"."pages" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"title" varchar NOT NULL,
@@ -269,7 +265,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
   	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
+
   CREATE TABLE "payload"."payload_jobs_log" (
   	"_order" integer NOT NULL,
   	"_parent_id" integer NOT NULL,
@@ -283,7 +279,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"state" "payload"."enum_payload_jobs_log_state" NOT NULL,
   	"error" jsonb
   );
-  
+
   CREATE TABLE "payload"."payload_jobs" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"input" jsonb,
@@ -298,14 +294,14 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
   	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
+
   CREATE TABLE "payload"."payload_locked_documents" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"global_slug" varchar,
   	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
   	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
+
   CREATE TABLE "payload"."payload_locked_documents_rels" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"order" integer,
@@ -322,7 +318,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"pages_id" integer,
   	"payload_jobs_id" integer
   );
-  
+
   CREATE TABLE "payload"."payload_preferences" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"key" varchar,
@@ -330,7 +326,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
   	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
+
   CREATE TABLE "payload"."payload_preferences_rels" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"order" integer,
@@ -338,7 +334,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"path" varchar NOT NULL,
   	"users_id" integer
   );
-  
+
   CREATE TABLE "payload"."payload_migrations" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"name" varchar,
@@ -346,7 +342,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
   	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
+
   CREATE TABLE "payload"."main_menu_nav_items" (
   	"_order" integer NOT NULL,
   	"_parent_id" integer NOT NULL,
@@ -354,13 +350,13 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"label" varchar NOT NULL,
   	"url" varchar NOT NULL
   );
-  
+
   CREATE TABLE "payload"."main_menu" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"updated_at" timestamp(3) with time zone,
   	"created_at" timestamp(3) with time zone
   );
-  
+
   ALTER TABLE "payload"."datasets" ADD CONSTRAINT "datasets_catalog_id_catalogs_id_fk" FOREIGN KEY ("catalog_id") REFERENCES "payload"."catalogs"("id") ON DELETE set null ON UPDATE no action;
   ALTER TABLE "payload"."imports_job_history" ADD CONSTRAINT "imports_job_history_parent_id_fk" FOREIGN KEY ("_parent_id") REFERENCES "payload"."imports"("id") ON DELETE cascade ON UPDATE no action;
   ALTER TABLE "payload"."imports" ADD CONSTRAINT "imports_catalog_id_catalogs_id_fk" FOREIGN KEY ("catalog_id") REFERENCES "payload"."catalogs"("id") ON DELETE set null ON UPDATE no action;
@@ -465,13 +461,9 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "payload_migrations_created_at_idx" ON "payload"."payload_migrations" USING btree ("created_at");
   CREATE INDEX "main_menu_nav_items_order_idx" ON "payload"."main_menu_nav_items" USING btree ("_order");
   CREATE INDEX "main_menu_nav_items_parent_id_idx" ON "payload"."main_menu_nav_items" USING btree ("_parent_id");`);
-}
+};
 
-export async function down({
-  db,
-  payload,
-  req,
-}: MigrateDownArgs): Promise<void> {
+export const down = async ({ db }: MigrateDownArgs): Promise<void> => {
   await db.execute(sql`
    DROP TABLE "payload"."catalogs" CASCADE;
   DROP TABLE "payload"."datasets" CASCADE;
@@ -511,4 +503,4 @@ export async function down({
   DROP TYPE "payload"."enum_payload_jobs_log_task_slug";
   DROP TYPE "payload"."enum_payload_jobs_log_state";
   DROP TYPE "payload"."enum_payload_jobs_task_slug";`);
-}
+};

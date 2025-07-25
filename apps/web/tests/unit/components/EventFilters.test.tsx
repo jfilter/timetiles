@@ -1,10 +1,7 @@
+import { createMockCatalogs, createMockDatasets, createRichText } from "../../mocks";
 import { renderWithProviders, screen, userEvent } from "../../setup/test-utils";
+
 import { EventFilters } from "@/components/event-filters";
-import {
-  createMockCatalogs,
-  createMockDatasets,
-  createRichText,
-} from "../../mocks";
 import type { Catalog } from "@/payload-types";
 
 const mockCatalogs = createMockCatalogs(2);
@@ -12,9 +9,7 @@ const mockDatasets = createMockDatasets(3);
 
 describe("EventFilters", () => {
   test("renders with all datasets initially when no catalog selected", () => {
-    const { container } = renderWithProviders(
-      <EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />,
-    );
+    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />);
 
     // Should show all datasets initially (no catalog selected - defaults to "All Catalogs")
     expect(container).toHaveTextContent("Air Quality Measurements");
@@ -27,10 +22,9 @@ describe("EventFilters", () => {
     // Test the filtering logic by setting URL state to select first catalog
     const searchParams = new URLSearchParams("catalog=1");
 
-    const { container } = renderWithProviders(
-      <EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />,
-      { searchParams },
-    );
+    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />, {
+      searchParams,
+    });
 
     // Should only show datasets from catalog 1 (Air Quality and GDP Growth Rates)
     expect(container).toHaveTextContent("Air Quality Measurements");
@@ -44,10 +38,9 @@ describe("EventFilters", () => {
     // Test that null catalog value shows all datasets
     const searchParams = new URLSearchParams();
 
-    const { container } = renderWithProviders(
-      <EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />,
-      { searchParams },
-    );
+    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />, {
+      searchParams,
+    });
 
     // Should show all datasets
     expect(container).toHaveTextContent("Air Quality Measurements");
@@ -58,14 +51,10 @@ describe("EventFilters", () => {
   test("manages dataset selection state correctly", async () => {
     const user = userEvent.setup();
 
-    const { container } = renderWithProviders(
-      <EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />,
-    );
+    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />);
 
     // Find the checkbox for Air Quality Measurements within this container
-    const airQualityCheckbox = container.querySelector(
-      'input[type="checkbox"]',
-    ) as HTMLInputElement;
+    const airQualityCheckbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
     expect(airQualityCheckbox).toBeInTheDocument();
 
     // Initially should not be checked
@@ -84,10 +73,9 @@ describe("EventFilters", () => {
     // Test that datasets selected via URL are checked
     const searchParams = new URLSearchParams("datasets=1&datasets=2");
 
-    const { container } = renderWithProviders(
-      <EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />,
-      { searchParams },
-    );
+    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />, {
+      searchParams,
+    });
 
     // Debug: let's see what the actual checkbox states are
     const checkboxes = container.querySelectorAll('input[type="checkbox"]');
@@ -102,9 +90,7 @@ describe("EventFilters", () => {
     const waterQualityCheckbox = Array.from(checkboxes).find(
       (cb) => cb.nextElementSibling?.textContent === "Water Quality Data",
     );
-    const gdpCheckbox = Array.from(checkboxes).find(
-      (cb) => cb.nextElementSibling?.textContent === "GDP Growth Rates",
-    );
+    const gdpCheckbox = Array.from(checkboxes).find((cb) => cb.nextElementSibling?.textContent === "GDP Growth Rates");
 
     // Verify checkboxes are found
     expect(airQualityCheckbox).toBeInTheDocument();
@@ -116,21 +102,14 @@ describe("EventFilters", () => {
   });
 
   test("renders date filter inputs with correct values from URL state", () => {
-    const searchParams = new URLSearchParams(
-      "startDate=2024-01-01&endDate=2024-12-31",
-    );
+    const searchParams = new URLSearchParams("startDate=2024-01-01&endDate=2024-12-31");
 
-    const { container } = renderWithProviders(
-      <EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />,
-      { searchParams },
-    );
+    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />, {
+      searchParams,
+    });
 
-    const startDateInput = container.querySelector(
-      "#start-date",
-    ) as HTMLInputElement;
-    const endDateInput = container.querySelector(
-      "#end-date",
-    ) as HTMLInputElement;
+    const startDateInput = container.querySelector("#start-date") as HTMLInputElement;
+    const endDateInput = container.querySelector("#end-date") as HTMLInputElement;
 
     // Should render date inputs with correct values from URL
     expect(startDateInput).toBeInTheDocument();
@@ -142,32 +121,25 @@ describe("EventFilters", () => {
   });
 
   test("shows clear date filters button when dates are set", () => {
-    const searchParams = new URLSearchParams(
-      "startDate=2024-01-01&endDate=2024-12-31",
-    );
+    const searchParams = new URLSearchParams("startDate=2024-01-01&endDate=2024-12-31");
 
-    const { container } = renderWithProviders(
-      <EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />,
-      { searchParams },
-    );
+    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />, {
+      searchParams,
+    });
 
     // Should show the clear button when dates are set
     expect(container).toHaveTextContent("Clear date filters");
   });
 
   test("does not show clear date filters button when no dates are set", () => {
-    const { container } = renderWithProviders(
-      <EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />,
-    );
+    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />);
 
     // Should not show the clear button when no dates are set
     expect(container).not.toHaveTextContent("Clear date filters");
   });
 
   test("shows appropriate empty state when no datasets available", () => {
-    const { container } = renderWithProviders(
-      <EventFilters catalogs={[]} datasets={[]} />,
-    );
+    const { container } = renderWithProviders(<EventFilters catalogs={[]} datasets={[]} />);
 
     // Should show no datasets available message
     expect(container).toHaveTextContent("No datasets available");
@@ -189,10 +161,7 @@ describe("EventFilters", () => {
     const searchParams = new URLSearchParams("catalog=99");
 
     const { container } = renderWithProviders(
-      <EventFilters
-        catalogs={[...mockCatalogs, catalogWithNoDatasets]}
-        datasets={mockDatasets}
-      />,
+      <EventFilters catalogs={[...mockCatalogs, catalogWithNoDatasets]} datasets={mockDatasets} />,
       { searchParams },
     );
 

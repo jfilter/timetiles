@@ -8,8 +8,9 @@
 
 import type { Payload } from "payload";
 
-import type { Config } from "../../payload-types";
 import { createLogger, logError, logPerformance } from "../logger";
+
+import type { Config } from "@/payload-types";
 
 // Removed PayloadUpdateInput type as it was only used by commented out updateMany function
 
@@ -29,9 +30,7 @@ export class DatabaseOperations {
   /**
    * Efficiently truncate a collection using SQL TRUNCATE with CASCADE fallback
    */
-  async truncateCollectionEfficient(
-    collection: string,
-  ): Promise<BatchOperationResult> {
+  async truncateCollectionEfficient(collection: string): Promise<BatchOperationResult> {
     const startTime = performance.now();
     logger.info(`Starting efficient truncation of ${collection}`);
 
@@ -50,9 +49,7 @@ export class DatabaseOperations {
         };
       }
 
-      logger.warn(
-        `SQL TRUNCATE failed for ${collection}, falling back to bulk delete`,
-      );
+      logger.warn(`SQL TRUNCATE failed for ${collection}, falling back to bulk delete`);
 
       // Fallback: Bulk delete if TRUNCATE fails
       const bulkResult = await this.bulkDeleteCollection(collection);
@@ -109,10 +106,7 @@ export class DatabaseOperations {
   }> {
     try {
       // Check if we have direct database access
-      if (
-        this.payload.db?.drizzle == null ||
-        typeof this.payload.db.execute !== "function"
-      ) {
+      if (this.payload.db?.drizzle == null || typeof this.payload.db.execute !== "function") {
         logger.debug(`No direct database access available for ${collection}`);
         return { success: false, itemsProcessed: 0 };
       }
@@ -122,9 +116,9 @@ export class DatabaseOperations {
 
       // Execute SQL TRUNCATE with CASCADE
       const tableName = `payload."${collection}"`;
-      await (
-        this.payload.db as { execute: (query: string) => Promise<unknown> }
-      ).execute(`TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`);
+      await (this.payload.db as { execute: (query: string) => Promise<unknown> }).execute(
+        `TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`,
+      );
 
       logger.info(`SQL TRUNCATE succeeded for ${collection}`, {
         itemsRemoved: initialCount,
@@ -149,6 +143,105 @@ export class DatabaseOperations {
   }
 
   /**
+   * Execute SQL batch delete
+   */
+  private async executeSqlBatchDelete(
+    collection: string,
+    ids: string[],
+  ): Promise<{ success: boolean; deletedCount: number }> {
+    try {
+      await (
+        this.payload.db as {
+          execute: (query: string, params: unknown[]) => Promise<unknown>;
+        }
+      ).execute(`DELETE FROM payload."${collection}" WHERE id = ANY($1)`, [ids]);
+      return { success: true, deletedCount: ids.length };
+    } catch {
+      logger.debug(`SQL batch delete failed for ${collection}, falling back to individual deletes`);
+      return { success: false, deletedCount: 0 };
+    }
+  }
+
+  /**
+   * Process individual deletes for a batch
+   */
+  private async processIndividualDeletes(
+    items: Array<{ id: string }>,
+    collection: string,
+  ): Promise<{ successful: number; errors: unknown[] }> {
+    const deletePromises = items.map(async (item) => {
+      try {
+        await this.payload.delete({
+          collection: collection as keyof Config["collections"],
+          id: item.id,
+        });
+        return { success: true };
+      } catch (error) {
+        return { success: false, error, id: item.id };
+      }
+    });
+
+    const results = await Promise.allSettled(deletePromises);
+    const successful = results.filter((r) => r.status === "fulfilled" && r.value.success).length;
+    const errors: unknown[] = [];
+
+    const failed = results.filter((r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.success));
+
+    failed.forEach((failure, index) => {
+      if (failure.status === "rejected") {
+        errors.push({
+          error: failure.reason instanceof Error ? failure.reason : new Error(String(failure.reason)),
+          itemIndex: index,
+        });
+      } else if (failure.status === "fulfilled") {
+        errors.push({
+          error: (failure.value as { error: unknown; id: unknown }).error,
+          id: (failure.value as { error: unknown; id: unknown }).id,
+        });
+      }
+    });
+
+    return { successful, errors };
+  }
+
+  /**
+   * Process a single batch of items for deletion
+   */
+  private async processDeletionBatch(
+    items: Array<{ id: string }>,
+    collection: string,
+  ): Promise<{ deletedCount: number; errors: unknown[] }> {
+    const errors: unknown[] = [];
+
+    // Try SQL batch delete first if available
+    if (this.payload.db?.drizzle != null && typeof this.payload.db.execute === "function") {
+      const ids = items.map((doc) => doc.id);
+      const sqlResult = await this.executeSqlBatchDelete(collection, ids);
+
+      if (sqlResult.success) {
+        return { deletedCount: sqlResult.deletedCount, errors };
+      }
+
+      // SQL failed, fallback to individual deletes
+      const fallbackResult = await this.fallbackIndividualDeletes(
+        items as unknown as Array<{ id: string }>,
+        collection,
+      );
+      return {
+        deletedCount: fallbackResult.successful,
+        errors: fallbackResult.errors,
+      };
+    }
+
+    // Use individual deletes
+    const result = await this.processIndividualDeletes(items, collection);
+    return {
+      deletedCount: result.successful,
+      errors: result.errors,
+    };
+  }
+
+  /**
    * Bulk delete fallback method
    */
   private async bulkDeleteCollection(collection: string): Promise<{
@@ -161,9 +254,7 @@ export class DatabaseOperations {
     let totalDeleted = 0;
     const errors: unknown[] = [];
 
-    logger.info(
-      `Starting bulk delete for ${collection} with batch size ${batchSize}`,
-    );
+    logger.info(`Starting bulk delete for ${collection} with batch size ${batchSize}`);
 
     while (hasMore) {
       try {
@@ -174,86 +265,18 @@ export class DatabaseOperations {
         });
 
         if (items.docs.length === 0) {
-          hasMore = false;
           break;
         }
 
-        // Delete in batches using SQL if possible, otherwise use Payload API
-        if (
-          this.payload.db?.drizzle != null &&
-          typeof this.payload.db.execute === "function"
-        ) {
-          // Use SQL batch delete for efficiency
-          const ids = items.docs.map((doc) => doc.id);
-          try {
-            await (
-              this.payload.db as {
-                execute: (query: string, params: unknown[]) => Promise<unknown>;
-              }
-            ).execute(
-              `DELETE FROM payload."${collection}" WHERE id = ANY($1)`,
-              [ids],
-            );
-            totalDeleted += ids.length;
-          } catch {
-            // Fallback to individual deletes if SQL fails
-            logger.debug(
-              `SQL batch delete failed for ${collection}, falling back to individual deletes`,
-            );
-            const deleteResults = await this.fallbackIndividualDeletes(
-              items.docs,
-              collection,
-            );
-            totalDeleted += deleteResults.successful;
-            errors.push(...deleteResults.errors);
-          }
-        } else {
-          // Fallback to individual deletes
-          const deletePromises = items.docs.map(async (item) => {
-            try {
-              await this.payload.delete({
-                collection: collection as keyof Config["collections"],
-                id: item.id,
-              });
-              return { success: true };
-            } catch (error) {
-              return { success: false, error, id: item.id };
-            }
-          });
-
-          const results = await Promise.allSettled(deletePromises);
-          const successful = results.filter(
-            (r) => r.status === "fulfilled" && r.value.success,
-          ).length;
-
-          totalDeleted += successful;
-
-          const failed = results.filter(
-            (r) =>
-              r.status === "rejected" ||
-              (r.status === "fulfilled" && !r.value.success),
-          );
-
-          failed.forEach((failure, index) => {
-            if (failure.status === "rejected") {
-              errors.push({ 
-                error: failure.reason instanceof Error ? failure.reason : new Error(String(failure.reason)), 
-                itemIndex: index 
-              });
-            } else if (failure.status === "fulfilled") {
-              errors.push({
-                error: (failure.value as { error: unknown; id: unknown }).error,
-                id: (failure.value as { error: unknown; id: unknown }).id,
-              });
-            }
-          });
-        }
+        const batchResult = await this.processDeletionBatch(items.docs as unknown as Array<{ id: string }>, collection);
+        totalDeleted += batchResult.deletedCount;
+        errors.push(...batchResult.errors);
 
         hasMore = items.docs.length === batchSize;
       } catch (error) {
         logError(error, `Bulk delete batch failed for ${collection}`);
         errors.push(error);
-        hasMore = false; // Stop on batch error
+        hasMore = false;
       }
     }
 
@@ -328,9 +351,9 @@ export class DatabaseOperations {
           });
         }
       } else {
-        errors.push({ 
-          error: result.reason instanceof Error ? result.reason : new Error(String(result.reason)), 
-          itemIndex: index 
+        errors.push({
+          error: result.reason instanceof Error ? result.reason : new Error(String(result.reason)),
+          itemIndex: index,
         });
       }
     });
@@ -344,6 +367,4 @@ export class DatabaseOperations {
 /**
  * Convenience function to create DatabaseOperations instance
  */
-export function createDatabaseOperations(payload: Payload): DatabaseOperations {
-  return new DatabaseOperations(payload);
-}
+export const createDatabaseOperations = (payload: Payload): DatabaseOperations => new DatabaseOperations(payload);

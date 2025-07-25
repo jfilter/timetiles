@@ -1,4 +1,4 @@
-import type { MainMenu } from "../../../payload-types";
+import type { MainMenu } from "@/payload-types";
 
 export const mainMenuSeed: Partial<MainMenu> = {
   navItems: [

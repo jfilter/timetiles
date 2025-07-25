@@ -1,9 +1,10 @@
 // No mocking needed - use real file parsing libraries
 import fs from "fs";
-import Papa from "papaparse";
-import * as XLSX from "xlsx";
-import path from "path";
 import os from "os";
+import Papa from "papaparse";
+import path from "path";
+import { utils, write, read } from "xlsx";
+
 import type { Event, Dataset } from "../../../payload-types";
 
 describe("File Parsing", () => {
@@ -98,9 +99,7 @@ describe("File Parsing", () => {
       expect(parseResult.data.length).toBeGreaterThan(0);
 
       // The valid row should parse correctly
-      const validRow = parseResult.data.find((row: any) =>
-        row.title?.includes("Valid Event"),
-      );
+      const validRow = parseResult.data.find((row: any) => row.title?.includes("Valid Event"));
       expect(validRow).toBeDefined();
     });
 
@@ -153,46 +152,38 @@ Event 2,2024-03-16
   describe("Excel Parsing", () => {
     it("should parse Excel content successfully", () => {
       // Create a real Excel workbook in memory
-      const workbook = XLSX.utils.book_new();
+      const workbook = utils.book_new();
       const worksheetData = [
         ["title", "description", "date"],
         ["Conference 2024", "Tech event", "2024-03-15"],
         ["Art Show", "Gallery opening", "2024-03-20"],
       ];
-      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+      const worksheet = utils.aoa_to_sheet(worksheetData);
+      utils.book_append_sheet(workbook, worksheet, "Sheet1");
 
       // Write to buffer instead of file
-      const excelBuffer = XLSX.write(workbook, {
+      const excelBuffer = write(workbook, {
         type: "buffer",
         bookType: "xlsx",
       });
 
       // Read from buffer (simulating real file reading)
-      const readWorkbook = XLSX.read(excelBuffer, { type: "buffer" });
+      const readWorkbook = read(excelBuffer, { type: "buffer" });
       const sheetName = readWorkbook.SheetNames[0];
       const readWorksheet = readWorkbook.Sheets[sheetName!];
-      const jsonData = XLSX.utils.sheet_to_json(readWorksheet!, {
+      const jsonData = utils.sheet_to_json(readWorksheet!, {
         header: 1,
         defval: "",
       });
 
       expect(jsonData).toHaveLength(3);
       expect(jsonData[0]).toEqual(["title", "description", "date"]);
-      expect(jsonData[1]).toEqual([
-        "Conference 2024",
-        "Tech event",
-        "2024-03-15",
-      ]);
-      expect(jsonData[2]).toEqual([
-        "Art Show",
-        "Gallery opening",
-        "2024-03-20",
-      ]);
+      expect(jsonData[1]).toEqual(["Conference 2024", "Tech event", "2024-03-15"]);
+      expect(jsonData[2]).toEqual(["Art Show", "Gallery opening", "2024-03-20"]);
     });
 
     it("should handle Excel files with multiple sheets", () => {
-      const workbook = XLSX.utils.book_new();
+      const workbook = utils.book_new();
 
       // Add multiple sheets
       const sheet1Data = [
@@ -204,18 +195,18 @@ Event 2,2024-03-16
         ["Event 2", "New York"],
       ];
 
-      const worksheet1 = XLSX.utils.aoa_to_sheet(sheet1Data);
-      const worksheet2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+      const worksheet1 = utils.aoa_to_sheet(sheet1Data);
+      const worksheet2 = utils.aoa_to_sheet(sheet2Data);
 
-      XLSX.utils.book_append_sheet(workbook, worksheet1, "Events");
-      XLSX.utils.book_append_sheet(workbook, worksheet2, "Locations");
+      utils.book_append_sheet(workbook, worksheet1, "Events");
+      utils.book_append_sheet(workbook, worksheet2, "Locations");
 
       // Write to buffer and read back
-      const excelBuffer = XLSX.write(workbook, {
+      const excelBuffer = write(workbook, {
         type: "buffer",
         bookType: "xlsx",
       });
-      const readWorkbook = XLSX.read(excelBuffer, { type: "buffer" });
+      const readWorkbook = read(excelBuffer, { type: "buffer" });
 
       expect(readWorkbook.SheetNames).toHaveLength(2);
       expect(readWorkbook.SheetNames).toContain("Events");
@@ -223,52 +214,38 @@ Event 2,2024-03-16
 
       // Parse first sheet
       const firstSheet = readWorkbook.Sheets[readWorkbook.SheetNames[0]!];
-      const firstSheetData = firstSheet
-        ? XLSX.utils.sheet_to_json(firstSheet, { header: 1 })
-        : [];
+      const firstSheetData = firstSheet ? utils.sheet_to_json(firstSheet, { header: 1 }) : [];
       expect(firstSheetData[0]).toEqual(["title", "date"]);
       expect(firstSheetData[1]).toEqual(["Event 1", "2024-03-15"]);
     });
 
     it("should convert Excel data to object format", () => {
-      const workbook = XLSX.utils.book_new();
+      const workbook = utils.book_new();
       const worksheetData = [
         ["Title", "Description", "Date", "Location"],
-        [
-          "Tech Conference 2024",
-          "Annual technology conference",
-          "2024-03-15",
-          "Convention Center",
-        ],
-        [
-          "Art Gallery Opening",
-          "Contemporary art exhibition",
-          "2024-03-20",
-          "Modern Art Gallery",
-        ],
+        ["Tech Conference 2024", "Annual technology conference", "2024-03-15", "Convention Center"],
+        ["Art Gallery Opening", "Contemporary art exhibition", "2024-03-20", "Modern Art Gallery"],
       ];
-      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+      const worksheet = utils.aoa_to_sheet(worksheetData);
+      utils.book_append_sheet(workbook, worksheet, "Sheet1");
 
       // Write to buffer and read back
-      const excelBuffer = XLSX.write(workbook, {
+      const excelBuffer = write(workbook, {
         type: "buffer",
         bookType: "xlsx",
       });
-      const readWorkbook = XLSX.read(excelBuffer, { type: "buffer" });
+      const readWorkbook = read(excelBuffer, { type: "buffer" });
       const sheetName = readWorkbook.SheetNames[0];
       const readWorksheet = readWorkbook.Sheets[sheetName!];
       const rawData = readWorksheet
-        ? XLSX.utils.sheet_to_json(readWorksheet, {
+        ? utils.sheet_to_json(readWorksheet, {
             header: 1,
             defval: "",
           })
         : ([] as any[]);
 
       // Convert to object format (same logic as in import jobs)
-      const headers = (rawData[0] as string[]).map((h) =>
-        h.toString().trim().toLowerCase(),
-      );
+      const headers = (rawData[0] as string[]).map((h) => h.toString().trim().toLowerCase());
       const parsedData = rawData.slice(1).map((row: any[]) => {
         const obj: any = {};
         headers.forEach((header, index) => {
@@ -293,19 +270,19 @@ Event 2,2024-03-16
     });
 
     it("should handle empty Excel files", () => {
-      const workbook = XLSX.utils.book_new();
-      const worksheet = XLSX.utils.aoa_to_sheet([]);
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Empty");
+      const workbook = utils.book_new();
+      const worksheet = utils.aoa_to_sheet([]);
+      utils.book_append_sheet(workbook, worksheet, "Empty");
 
       // Write to buffer and read back
-      const excelBuffer = XLSX.write(workbook, {
+      const excelBuffer = write(workbook, {
         type: "buffer",
         bookType: "xlsx",
       });
-      const readWorkbook = XLSX.read(excelBuffer, { type: "buffer" });
+      const readWorkbook = read(excelBuffer, { type: "buffer" });
       const sheetName = readWorkbook.SheetNames[0];
       const readWorksheet = readWorkbook.Sheets[sheetName!];
-      const jsonData = XLSX.utils.sheet_to_json(readWorksheet!, {
+      const jsonData = utils.sheet_to_json(readWorksheet!, {
         header: 1,
         defval: "",
       });
@@ -326,9 +303,7 @@ Event 2,2024-03-16
 
       const validRows = testData.filter((row) => {
         return requiredFields.every(
-          (field) =>
-            row[field as keyof typeof row] &&
-            row[field as keyof typeof row]?.toString().trim(),
+          (field) => row[field as keyof typeof row] && row[field as keyof typeof row]?.toString().trim(),
         );
       });
 
@@ -347,9 +322,7 @@ Event 2,2024-03-16
 
       const validRows = testData.filter((row) => {
         return requiredFields.every(
-          (field) =>
-            row[field as keyof typeof row] &&
-            row[field as keyof typeof row]?.toString().trim(),
+          (field) => row[field as keyof typeof row] && row[field as keyof typeof row]?.toString().trim(),
         );
       });
 
@@ -367,11 +340,7 @@ Event 2,2024-03-16
       ];
 
       const validRows = testData.filter((row) => {
-        return requiredFields.every(
-          (field) =>
-            row[field as keyof typeof row] &&
-            row[field as keyof typeof row]?.toString().trim(),
-        );
+        return requiredFields.every((field) => row[field as keyof typeof row]?.toString().trim());
       });
 
       expect(validRows).toHaveLength(1);
@@ -388,9 +357,7 @@ Event 2,2024-03-16
       // All should be valid since they can be converted to strings
       const validRows = testData.filter((row) => {
         return ["title", "date"].every(
-          (field) =>
-            row[field as keyof typeof row] &&
-            row[field as keyof typeof row]?.toString().trim(),
+          (field) => row[field as keyof typeof row] && row[field as keyof typeof row]?.toString().trim(),
         );
       });
 
@@ -423,9 +390,7 @@ Event 2,2024-03-16
 
         // Title variations
         const titleVariations = ["title", "event_name", "name", "event_title"];
-        const titleMatch = lowerHeaders.find((h) =>
-          titleVariations.includes(h),
-        );
+        const titleMatch = lowerHeaders.find((h) => titleVariations.includes(h));
         if (titleMatch) mapping.title = titleMatch;
 
         // Date variations
@@ -435,9 +400,7 @@ Event 2,2024-03-16
 
         // Location variations
         const locationVariations = ["location", "venue", "place", "where"];
-        const locationMatch = lowerHeaders.find((h) =>
-          locationVariations.includes(h),
-        );
+        const locationMatch = lowerHeaders.find((h) => locationVariations.includes(h));
         if (locationMatch) mapping.location = locationMatch;
 
         return mapping;
@@ -458,9 +421,7 @@ Event 2,2024-03-16
         const lowerHeaders = headers.map((h) => h.toLowerCase().trim());
 
         const titleVariations = ["title", "event_name", "name"];
-        const titleMatch = lowerHeaders.find((h) =>
-          titleVariations.includes(h),
-        );
+        const titleMatch = lowerHeaders.find((h) => titleVariations.includes(h));
         if (titleMatch) {
           const originalIndex = lowerHeaders.indexOf(titleMatch);
           if (originalIndex !== -1) {

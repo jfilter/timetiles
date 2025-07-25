@@ -1,18 +1,13 @@
 "use client";
 
-import {
-  BarChart,
-  type BarChartDataItem,
-} from "@workspace/ui/components/charts";
-import {
-  defaultLightTheme,
-  defaultDarkTheme,
-} from "@workspace/ui/components/charts";
+import { BarChart, type BarChartDataItem } from "@workspace/ui/components/charts";
+import { defaultLightTheme, defaultDarkTheme } from "@workspace/ui/components/charts";
 import { useTheme } from "next-themes";
 import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
 
-import { useEventsByDataset, useEventsByCatalog } from "../hooks/useEventStats";
 import type { Event, Dataset, Catalog } from "../payload-types";
+
+import { useEventsByDataset, useEventsByCatalog } from "@/lib/hooks/use-event-stats";
 
 interface DatasetBarChartProps {
   events: Event[];
@@ -24,7 +19,7 @@ interface DatasetBarChartProps {
   className?: string;
 }
 
-export function DatasetBarChart({
+export const DatasetBarChart = ({
   events,
   datasets,
   catalogs,
@@ -32,12 +27,9 @@ export function DatasetBarChart({
   loading = false,
   height = 300,
   className,
-}: DatasetBarChartProps) {
+}: Readonly<DatasetBarChartProps>) => {
   const { theme } = useTheme();
-  const [, setSelectedDatasets] = useQueryState(
-    "datasets",
-    parseAsArrayOf(parseAsString).withDefault([]),
-  );
+  const [, setSelectedDatasets] = useQueryState("datasets", parseAsArrayOf(parseAsString).withDefault([]));
   const [, setSelectedCatalog] = useQueryState("catalog");
 
   const datasetData = useEventsByDataset(events, datasets);
@@ -51,7 +43,7 @@ export function DatasetBarChart({
       void setSelectedDatasets((current) => {
         const metadata = item.metadata as { datasetId: string } | undefined;
         const datasetId = metadata?.datasetId;
-        if (datasetId === undefined || datasetId === null) return current;
+        if (datasetId == undefined || datasetId == null) return current;
 
         if (current.includes(datasetId)) {
           return current.filter((id) => id !== datasetId);
@@ -63,7 +55,7 @@ export function DatasetBarChart({
       // Set catalog filter
       const metadata = item.metadata as { catalogId: string } | undefined;
       const catalogId = metadata?.catalogId;
-      if (catalogId !== undefined && catalogId !== null) {
+      if (catalogId != null) {
         void setSelectedCatalog(catalogId);
       }
     }
@@ -71,22 +63,8 @@ export function DatasetBarChart({
 
   // Generate colors based on theme
   const getBarColor = (index: number) => {
-    const lightColors = [
-      "#3b82f6",
-      "#10b981",
-      "#f59e0b",
-      "#ef4444",
-      "#8b5cf6",
-      "#14b8a6",
-    ];
-    const darkColors = [
-      "#60a5fa",
-      "#34d399",
-      "#fbbf24",
-      "#f87171",
-      "#a78bfa",
-      "#2dd4bf",
-    ];
+    const lightColors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#14b8a6"];
+    const darkColors = ["#60a5fa", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#2dd4bf"];
     const colors = theme === "dark" ? darkColors : lightColors;
     return colors[index % colors.length];
   };
@@ -105,7 +83,7 @@ export function DatasetBarChart({
       loading={loading}
       theme={theme === "dark" ? defaultDarkTheme : defaultLightTheme}
       onBarClick={handleBarClick}
-      xLabel={groupBy === "dataset" ? "" : ""}
+      xLabel=""
       yLabel="Number of Events"
       showValues={true}
       valueFormatter={(value) => value.toLocaleString()}
@@ -114,4 +92,4 @@ export function DatasetBarChart({
       sortOrder="desc"
     />
   );
-}
+};

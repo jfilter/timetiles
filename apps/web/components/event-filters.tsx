@@ -1,13 +1,7 @@
 "use client";
 
 import { Label } from "@workspace/ui/components/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@workspace/ui/components/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 
 import { useFilters } from "../lib/filters";
 import type { Catalog, Dataset } from "../payload-types";
@@ -17,17 +11,13 @@ interface EventFiltersProps {
   datasets: Dataset[];
 }
 
-export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
-  const { filters, setCatalog, setDatasets, setStartDate, setEndDate } =
-    useFilters();
+export const EventFilters = ({ catalogs, datasets }: Readonly<EventFiltersProps>) => {
+  const { filters, setCatalog, setDatasets, setStartDate, setEndDate } = useFilters();
 
   const filteredDatasets =
-    filters.catalog !== null
+    filters.catalog != null
       ? datasets.filter(
-          (d) =>
-            typeof d.catalog === "object" &&
-            d.catalog !== null &&
-            String(d.catalog.id) === filters.catalog,
+          (d) => typeof d.catalog === "object" && d.catalog != null && String(d.catalog.id) === filters.catalog,
         )
       : datasets;
 
@@ -62,9 +52,7 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
         <Label>Datasets</Label>
         <div className="mt-2 max-h-64 space-y-2 overflow-y-auto">
           {filteredDatasets.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No datasets available
-            </p>
+            <p className="text-muted-foreground text-sm">No datasets available</p>
           ) : (
             filteredDatasets.map((dataset) => (
               <label
@@ -107,7 +95,7 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
           />
         </div>
 
-        {(filters.startDate !== null || filters.endDate !== null) && (
+        {(filters.startDate != null || filters.endDate != null) && (
           <button
             onClick={() => {
               setStartDate(null);
@@ -121,4 +109,4 @@ export function EventFilters({ catalogs, datasets }: EventFiltersProps) {
       </div>
     </div>
   );
-}
+};

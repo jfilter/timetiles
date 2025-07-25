@@ -1,9 +1,8 @@
 import { getPayload } from "payload";
 import { Suspense } from "react";
 
-import config from "../../payload.config";
-
 import { MapExplorer } from "@/components/map-explorer";
+import config from "@/payload.config";
 
 // Force dynamic rendering to prevent build-time database queries
 export const dynamic = "force-dynamic";

@@ -26,17 +26,11 @@ export interface EChartsFormatterParams {
 }
 
 // Type guards for ECharts parameters
-export function isValidEventParams(
-  params: unknown,
-): params is EChartsEventParams {
-  return (
-    typeof params === "object" && params !== null && "componentType" in params
-  );
+export function isValidEventParams(params: unknown): params is EChartsEventParams {
+  return typeof params === "object" && params !== null && "componentType" in params;
 }
 
-export function isValidFormatterParams(
-  params: unknown,
-): params is EChartsFormatterParams {
+export function isValidFormatterParams(params: unknown): params is EChartsFormatterParams {
   return typeof params === "object" && params !== null && "dataIndex" in params;
 }
 

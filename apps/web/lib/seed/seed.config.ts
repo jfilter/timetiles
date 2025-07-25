@@ -12,6 +12,15 @@
 import type { RelationshipConfig } from "./relationship-config";
 import { RELATIONSHIP_CONFIG } from "./relationship-config";
 
+// Constants for collection names
+const GEOCODING_PROVIDERS_COLLECTION = "geocoding-providers";
+
+function getLocationCacheCount(env: string): number {
+  if (env === "development") return 50;
+  if (env === "test") return 10;
+  return 0;
+}
+
 export interface CollectionConfig {
   /** Number of items to create, or function returning count based on environment */
   count?: number | ((env: string) => number);
@@ -174,7 +183,7 @@ export const SEED_CONFIG: SeedConfiguration = {
 
     // Location cache - geocoding support
     "location-cache": {
-      count: (env) => (env === "development" ? 50 : env === "test" ? 10 : 0),
+      count: (env) => getLocationCacheCount(env),
       dependencies: [],
       options: {
         includeCommonLocations: true,
@@ -182,7 +191,7 @@ export const SEED_CONFIG: SeedConfiguration = {
     },
 
     // Geocoding providers - service configuration
-    "geocoding-providers": {
+    [GEOCODING_PROVIDERS_COLLECTION]: {
       count: (env) => (env === "development" ? 3 : 1),
       dependencies: [],
       options: {
@@ -196,15 +205,7 @@ export const SEED_CONFIG: SeedConfiguration = {
 
   environments: {
     development: {
-      enabled: [
-        "users",
-        "catalogs",
-        "datasets",
-        "events",
-        "imports",
-        "location-cache",
-        "geocoding-providers",
-      ],
+      enabled: ["users", "catalogs", "datasets", "events", "imports", "location-cache", GEOCODING_PROVIDERS_COLLECTION],
       overrides: {
         events: {
           customGenerator: "realistic-temporal-spatial-patterns",
@@ -230,15 +231,7 @@ export const SEED_CONFIG: SeedConfiguration = {
     },
 
     test: {
-      enabled: [
-        "users",
-        "catalogs",
-        "datasets",
-        "events",
-        "imports",
-        "location-cache",
-        "geocoding-providers",
-      ],
+      enabled: ["users", "catalogs", "datasets", "events", "imports", "location-cache", GEOCODING_PROVIDERS_COLLECTION],
       overrides: {
         events: {
           customGenerator: "simple-patterns",
@@ -264,7 +257,7 @@ export const SEED_CONFIG: SeedConfiguration = {
     production: {
       enabled: [
         "users", // Admin users only
-        "geocoding-providers", // Service configuration
+        GEOCODING_PROVIDERS_COLLECTION, // Service configuration
       ],
       overrides: {
         users: {
@@ -283,13 +276,7 @@ export const SEED_CONFIG: SeedConfiguration = {
     },
 
     staging: {
-      enabled: [
-        "users",
-        "catalogs",
-        "datasets",
-        "events",
-        "geocoding-providers",
-      ],
+      enabled: ["users", "catalogs", "datasets", "events", GEOCODING_PROVIDERS_COLLECTION],
       overrides: {
         events: {
           count: 100, // Smaller dataset for staging
@@ -367,15 +354,16 @@ export const SEED_CONFIG: SeedConfiguration = {
 /**
  * Get configuration for a specific collection and environment
  */
-export function getCollectionConfig(
-  collection: string,
-  environment: string,
-): CollectionConfig | null {
-  const baseConfig = SEED_CONFIG.collections[collection];
-  if (baseConfig === null || baseConfig === undefined) return null;
+export function getCollectionConfig(collection: string, environment: string): CollectionConfig | null {
+  const baseConfig = Object.prototype.hasOwnProperty.call(SEED_CONFIG.collections, collection)
+    ? SEED_CONFIG.collections[collection]
+    : undefined;
+  if (baseConfig == null || baseConfig == undefined) return null;
 
-  const envConfig = SEED_CONFIG.environments[environment];
-  if (!envConfig?.enabled.includes(collection)) {
+  const envConfig = Object.prototype.hasOwnProperty.call(SEED_CONFIG.environments, environment)
+    ? SEED_CONFIG.environments[environment]
+    : undefined;
+  if (envConfig?.enabled.includes(collection) !== true) {
     // For disabled collections, still return the config but mark it as not enabled for this env
     // This allows tests to inspect the collection configuration even if it's disabled
     if (baseConfig.disabled === true) {
@@ -401,7 +389,9 @@ export function getCollectionConfig(
  * Get all enabled collections for an environment in dependency order
  */
 export function getEnabledCollections(environment: string): string[] {
-  const envConfig = SEED_CONFIG.environments[environment];
+  const envConfig = Object.prototype.hasOwnProperty.call(SEED_CONFIG.environments, environment)
+    ? SEED_CONFIG.environments[environment]
+    : undefined;
   if (!envConfig) {
     throw new Error(`Unknown environment: ${environment}`);
   }
@@ -419,7 +409,9 @@ export function getEnabledCollections(environment: string): string[] {
 
     visiting.add(collection);
 
-    const config = SEED_CONFIG.collections[collection];
+    const config = Object.prototype.hasOwnProperty.call(SEED_CONFIG.collections, collection)
+      ? SEED_CONFIG.collections[collection]
+      : undefined;
     if (config?.dependencies) {
       for (const dep of config.dependencies) {
         if (enabled.includes(dep)) {
@@ -444,17 +436,13 @@ export function getEnabledCollections(environment: string): string[] {
 /**
  * Get environment settings
  */
-export function getEnvironmentSettings(
-  environment: string,
-): EnvironmentConfig["settings"] {
+export function getEnvironmentSettings(environment: string): EnvironmentConfig["settings"] {
   return SEED_CONFIG.environments[environment]?.settings ?? {};
 }
 
 /**
  * Get generator configuration
  */
-export function getGeneratorConfig(
-  generatorName: string,
-): GeneratorConfig | null {
+export function getGeneratorConfig(generatorName: string): GeneratorConfig | null {
   return SEED_CONFIG.generators[generatorName] ?? null;
 }

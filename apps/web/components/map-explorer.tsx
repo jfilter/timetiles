@@ -12,10 +12,7 @@ import { ExploreHeader } from "./explore-header";
 import { FilterDrawer } from "./filter-drawer";
 import { useFilters } from "../lib/filters";
 import { useDebounce } from "../lib/hooks/use-debounce";
-import {
-  useEventsListQuery,
-  useMapClustersQuery,
-} from "../lib/hooks/use-events-queries";
+import { useEventsListQuery, useMapClustersQuery } from "../lib/hooks/use-events-queries";
 import { useUIStore } from "../lib/store";
 
 interface MapExplorerProps {
@@ -23,17 +20,11 @@ interface MapExplorerProps {
   datasets: Dataset[];
 }
 
-export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
+export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) => {
   const [mapZoom, setMapZoom] = useState(9);
 
   // Get filter state from URL (nuqs)
-  const {
-    filters,
-    activeFilterCount,
-    hasActiveFilters,
-    removeFilter,
-    clearAllFilters,
-  } = useFilters();
+  const { filters, activeFilterCount, hasActiveFilters, removeFilter, clearAllFilters } = useFilters();
 
   // Get UI state from Zustand store
   const isFilterDrawerOpen = useUIStore((state) => state.ui.isFilterDrawerOpen);
@@ -57,14 +48,9 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
   const debouncedBounds = useDebounce(bounds, 300);
 
   // React Query hooks for data fetching
-  const { data: eventsData, isLoading: eventsLoading } = useEventsListQuery(
-    filters,
-    debouncedBounds,
-    1000,
-  );
+  const { data: eventsData, isLoading: eventsLoading } = useEventsListQuery(filters, debouncedBounds, 1000);
 
-  const { data: clustersData, isLoading: clustersLoading } =
-    useMapClustersQuery(filters, debouncedBounds, mapZoom);
+  const { data: clustersData, isLoading: clustersLoading } = useMapClustersQuery(filters, debouncedBounds, mapZoom);
 
   // Extract data from queries
   const events = eventsData?.events ?? [];
@@ -85,25 +71,15 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
 
   // Helper function for date range formatting
   const formatDateRange = () => {
-    const hasStartDate =
-      filters.startDate !== null &&
-      filters.startDate !== undefined &&
-      filters.startDate !== "";
-    const hasEndDate =
-      filters.endDate !== null &&
-      filters.endDate !== undefined &&
-      filters.endDate !== "";
+    const hasStartDate = filters.startDate != null && filters.startDate !== "";
+    const hasEndDate = filters.endDate != null && filters.endDate !== "";
 
     if (!hasStartDate && !hasEndDate) {
       return undefined;
     }
 
-    const start = hasStartDate
-      ? new Date(filters.startDate!).toLocaleDateString()
-      : "Start";
-    const end = hasEndDate
-      ? new Date(filters.endDate!).toLocaleDateString()
-      : "End";
+    const start = hasStartDate ? new Date(filters.startDate!).toLocaleDateString() : "Start";
+    const end = hasEndDate ? new Date(filters.endDate!).toLocaleDateString() : "End";
 
     if (hasStartDate && hasEndDate) {
       return `${start} - ${end}`;
@@ -117,26 +93,17 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
 
   // Get human-readable filter labels
   const getFilterLabels = () => {
-    const labels = {
-      catalog:
-        filters.catalog !== null &&
-        filters.catalog !== undefined &&
-        filters.catalog !== ""
-          ? getCatalogName(filters.catalog)
-          : undefined,
+    return {
+      catalog: filters.catalog != null && filters.catalog !== "" ? getCatalogName(filters.catalog) : undefined,
       datasets: filters.datasets.map((id) => ({
         id,
         name: getDatasetName(id),
       })),
       dateRange: formatDateRange(),
     };
-    return labels;
   };
 
-  const handleBoundsChange = (
-    newBounds: LngLatBounds | null,
-    zoom?: number,
-  ) => {
+  const handleBoundsChange = (newBounds: LngLatBounds | null, zoom?: number) => {
     if (newBounds) {
       setMapBounds({
         north: newBounds.getNorth(),
@@ -144,7 +111,7 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
         east: newBounds.getEast(),
         west: newBounds.getWest(),
       });
-      if (zoom !== undefined) {
+      if (zoom != undefined) {
         setMapZoom(Math.round(zoom));
       }
     } else {
@@ -186,19 +153,12 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
 
               {/* Chart Section */}
               <div className="mb-6 border-t pt-6">
-                <ChartSection
-                  events={events}
-                  datasets={datasets}
-                  catalogs={catalogs}
-                  loading={isLoading}
-                />
+                <ChartSection events={events} datasets={datasets} catalogs={catalogs} loading={isLoading} />
               </div>
 
               {/* Events List */}
               <div className="border-t pt-6">
-                <h2 className="mb-4 text-lg font-semibold">
-                  Events ({events.length})
-                </h2>
+                <h2 className="mb-4 text-lg font-semibold">Events ({events.length})</h2>
                 <EventsList events={events} loading={isLoading} />
               </div>
             </div>
@@ -215,4 +175,4 @@ export function MapExplorer({ catalogs, datasets }: MapExplorerProps) {
       </div>
     </div>
   );
-}
+};

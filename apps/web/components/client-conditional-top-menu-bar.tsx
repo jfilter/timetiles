@@ -10,9 +10,7 @@ interface ClientConditionalTopMenuBarProps {
   mainMenu: MainMenu;
 }
 
-export function ClientConditionalTopMenuBar({
-  mainMenu,
-}: ClientConditionalTopMenuBarProps) {
+export const ClientConditionalTopMenuBar = ({ mainMenu }: Readonly<ClientConditionalTopMenuBarProps>) => {
   const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(true);
   const [shouldRender, setShouldRender] = useState(true);
@@ -44,12 +42,8 @@ export function ClientConditionalTopMenuBar({
   }
 
   return (
-    <div
-      className={`transition-opacity duration-300 ease-in-out ${
-        isVisible ? "opacity-100" : "opacity-0"
-      }`}
-    >
+    <div className={`transition-opacity duration-300 ease-in-out ${isVisible ? "opacity-100" : "opacity-0"}`}>
       <TopMenuBar mainMenu={mainMenu} />
     </div>
   );
-}
+};

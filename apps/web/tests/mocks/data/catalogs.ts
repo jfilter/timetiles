@@ -23,9 +23,7 @@ const createRichTextDescription = (text: string) => ({
   },
 });
 
-export const createMockCatalog = (
-  overrides: Partial<Catalog> = {},
-): Catalog => ({
+export const createMockCatalog = (overrides: Partial<Catalog> = {}): Catalog => ({
   id: 1,
   name: "Test Catalog",
   description: createRichTextDescription("A test catalog description"),
@@ -42,9 +40,7 @@ export const createMockCatalogs = (count: number = 3): Catalog[] => {
       id: i + 1,
       name: `Test Catalog ${i + 1}`,
       slug: `test-catalog-${i + 1}`,
-      description: createRichTextDescription(
-        `Description for catalog ${i + 1}`,
-      ),
+      description: createRichTextDescription(`Description for catalog ${i + 1}`),
     }),
   );
 };

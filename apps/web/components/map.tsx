@@ -16,7 +16,7 @@ interface MapProps {
   }>;
 }
 
-export function Map({ onBoundsChange, events = [] }: MapProps) {
+export const MapComponent = ({ onBoundsChange, events = [] }: Readonly<MapProps>) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -67,11 +67,7 @@ export function Map({ onBoundsChange, events = [] }: MapProps) {
     events.forEach((event) => {
       const marker = new maplibregl.Marker()
         .setLngLat([event.longitude, event.latitude])
-        .setPopup(
-          new maplibregl.Popup({ offset: 25 }).setHTML(
-            `<h3>${event.title ?? "Event"}</h3>`,
-          ),
-        )
+        .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(`<h3>${event.title ?? "Event"}</h3>`))
         .addTo(map.current!);
 
       markers.push(marker);
@@ -83,12 +79,6 @@ export function Map({ onBoundsChange, events = [] }: MapProps) {
   }, [events, isLoaded]);
 
   return (
-    <div
-      ref={mapContainer}
-      className="h-full w-full"
-      role="region"
-      aria-label="Map"
-      style={{ minHeight: "400px" }}
-    />
+    <div ref={mapContainer} className="h-full w-full" role="region" aria-label="Map" style={{ minHeight: "400px" }} />
   );
-}
+};

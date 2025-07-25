@@ -4,16 +4,15 @@ import type { MainMenu } from "../payload-types";
 import config from "../payload.config";
 import { ClientConditionalTopMenuBar } from "./client-conditional-top-menu-bar";
 
-async function getMainMenu(): Promise<MainMenu> {
+const getMainMenu = async (): Promise<MainMenu> => {
   const payload = await getPayload({ config });
-  const mainMenu = await payload.findGlobal({
+  return payload.findGlobal({
     slug: "main-menu",
   });
-  return mainMenu;
-}
+};
 
-export async function ConditionalTopMenuBar() {
+export const ConditionalTopMenuBar = async () => {
   const mainMenu = await getMainMenu();
 
   return <ClientConditionalTopMenuBar mainMenu={mainMenu} />;
-}
+};

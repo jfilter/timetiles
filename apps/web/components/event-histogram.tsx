@@ -16,11 +16,11 @@ interface EventHistogramProps {
   className?: string;
 }
 
-export function EventHistogram({
+export const EventHistogram = ({
   loading: externalLoading = false,
   height = 200,
   className,
-}: EventHistogramProps) {
+}: Readonly<EventHistogramProps>) => {
   const { theme } = useTheme();
   const [, setStartDate] = useQueryState("startDate");
   const [, setEndDate] = useQueryState("endDate");
@@ -48,9 +48,93 @@ export function EventHistogram({
   const histogram = histogramData?.histogram ?? [];
   const loading = isLoading || externalLoading;
 
+  // Helper functions for chart configuration
+  const getAxisConfig = (isDark: boolean) => ({
+    xAxis: {
+      type: "time",
+      boundaryGap: false,
+      axisLabel: {
+        color: isDark ? "#9ca3af" : "#6b7280",
+        fontSize: 11,
+      },
+      axisLine: {
+        lineStyle: {
+          color: isDark ? "#374151" : "#e5e7eb",
+        },
+      },
+      splitLine: {
+        show: false,
+      },
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: {
+        color: isDark ? "#9ca3af" : "#6b7280",
+        fontSize: 11,
+      },
+      axisLine: {
+        show: false,
+      },
+      axisTick: {
+        show: false,
+      },
+      splitLine: {
+        lineStyle: {
+          color: isDark ? "#374151" : "#f3f4f6",
+          type: "dashed",
+        },
+      },
+    },
+  });
+
+  const getTooltipConfig = (isDark: boolean) => ({
+    trigger: "axis",
+    backgroundColor: isDark ? "#1f2937" : "#ffffff",
+    borderColor: isDark ? "#374151" : "#e5e7eb",
+    textStyle: {
+      color: isDark ? "#f9fafb" : "#111827",
+    },
+    formatter: (
+      params: Array<{
+        value: [string, number];
+        data: [string, number];
+        marker: string;
+        seriesName: string;
+      }>,
+    ) => {
+      const point = params[0];
+      if (!point) return "";
+      const date = new Date(point.data[0]);
+      const count = point.data[1];
+      return `
+        <div style="padding: 4px 8px;">
+          <div style="font-weight: 600;">${date.toLocaleDateString()}</div>
+          <div>Events: ${count}</div>
+        </div>
+      `;
+    },
+  });
+
+  const getSeriesConfig = (isDark: boolean) => [
+    {
+      type: "bar",
+      data: histogram.map((item) => [item.date, item.count]),
+      itemStyle: {
+        color: isDark ? "#60a5fa" : "#3b82f6",
+        borderRadius: [2, 2, 0, 0],
+      },
+      emphasis: {
+        itemStyle: {
+          color: isDark ? "#93c5fd" : "#1d4ed8",
+        },
+      },
+    },
+  ];
+
   // Create ECharts option for the histogram
   const getChartOption = () => {
     const isDark = theme === "dark";
+    const axisConfig = getAxisConfig(isDark);
 
     return {
       backgroundColor: "transparent",
@@ -64,121 +148,41 @@ export function EventHistogram({
         top: "10%",
         containLabel: true,
       },
-      xAxis: {
-        type: "time",
-        boundaryGap: false,
-        axisLabel: {
-          color: isDark ? "#9ca3af" : "#6b7280",
-          fontSize: 11,
-        },
-        axisLine: {
-          lineStyle: {
-            color: isDark ? "#374151" : "#e5e7eb",
-          },
-        },
-        splitLine: {
-          show: false,
-        },
-      },
-      yAxis: {
-        type: "value",
-        axisLabel: {
-          color: isDark ? "#9ca3af" : "#6b7280",
-          fontSize: 11,
-        },
-        axisLine: {
-          show: false,
-        },
-        axisTick: {
-          show: false,
-        },
-        splitLine: {
-          lineStyle: {
-            color: isDark ? "#374151" : "#f3f4f6",
-            type: "dashed",
-          },
-        },
-      },
-      tooltip: {
-        trigger: "axis",
-        backgroundColor: isDark ? "#1f2937" : "#ffffff",
-        borderColor: isDark ? "#374151" : "#e5e7eb",
-        textStyle: {
-          color: isDark ? "#f9fafb" : "#111827",
-        },
-        formatter: (
-          params: Array<{
-            value: [string, number];
-            data: [string, number];
-            marker: string;
-            seriesName: string;
-          }>,
-        ) => {
-          const point = params[0];
-          if (!point) return "";
-          const date = new Date(point.data[0]);
-          const count = point.data[1];
-          return `
-            <div style="padding: 4px 8px;">
-              <div style="font-weight: 600;">${date.toLocaleDateString()}</div>
-              <div>Events: ${count}</div>
-            </div>
-          `;
-        },
-      },
-      series: [
-        {
-          type: "bar",
-          data: histogram.map((item) => [item.date, item.count]),
-          itemStyle: {
-            color: isDark ? "#60a5fa" : "#3b82f6",
-            borderRadius: [2, 2, 0, 0],
-          },
-          emphasis: {
-            itemStyle: {
-              color: isDark ? "#93c5fd" : "#1d4ed8",
-            },
-          },
-        },
-      ],
+      ...axisConfig,
+      tooltip: getTooltipConfig(isDark),
+      series: getSeriesConfig(isDark),
       animation: true,
       animationDuration: 300,
     };
   };
 
+  const formatDate = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const handleChartClick = (params: { data: [string, number] }) => {
-    if (params.data !== undefined && params.data !== null) {
+    if (params.data != null) {
       const date = new Date(params.data[0]);
-      const formatDate = (d: Date) => {
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-      };
-      void setStartDate(formatDate(date));
-      void setEndDate(formatDate(date));
+      const formattedDate = formatDate(date);
+      void setStartDate(formattedDate);
+      void setEndDate(formattedDate);
     }
   };
 
   if (loading || externalLoading) {
     return (
-      <div
-        className={`flex items-center justify-center ${className}`}
-        style={{ height }}
-      >
-        <div className="text-muted-foreground text-sm">
-          Loading histogram...
-        </div>
+      <div className={`flex items-center justify-center ${className}`} style={{ height }}>
+        <div className="text-muted-foreground text-sm">Loading histogram...</div>
       </div>
     );
   }
 
   if (histogram.length === 0) {
     return (
-      <div
-        className={`flex items-center justify-center ${className}`}
-        style={{ height }}
-      >
+      <div className={`flex items-center justify-center ${className}`} style={{ height }}>
         <div className="text-muted-foreground text-sm">No data available</div>
       </div>
     );
@@ -196,4 +200,4 @@ export function EventHistogram({
       />
     </div>
   );
-}
+};

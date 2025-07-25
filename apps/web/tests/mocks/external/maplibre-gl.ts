@@ -25,9 +25,7 @@ class MockMap {
 
   off(event: string, handler: Function) {
     if (this.listeners[event]) {
-      this.listeners[event] = this.listeners[event].filter(
-        (h) => h !== handler,
-      );
+      this.listeners[event] = this.listeners[event].filter((h) => h !== handler);
     }
     return this;
   }

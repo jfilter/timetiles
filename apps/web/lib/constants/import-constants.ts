@@ -32,8 +32,6 @@ export const COLLECTION_NAMES = {
 } as const;
 
 export type ImportStatus = (typeof IMPORT_STATUS)[keyof typeof IMPORT_STATUS];
-export type ProcessingStage =
-  (typeof PROCESSING_STAGE)[keyof typeof PROCESSING_STAGE];
+export type ProcessingStage = (typeof PROCESSING_STAGE)[keyof typeof PROCESSING_STAGE];
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];
-export type CollectionName =
-  (typeof COLLECTION_NAMES)[keyof typeof COLLECTION_NAMES];
+export type CollectionName = (typeof COLLECTION_NAMES)[keyof typeof COLLECTION_NAMES];

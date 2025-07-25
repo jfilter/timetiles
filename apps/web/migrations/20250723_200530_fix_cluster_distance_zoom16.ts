@@ -1,10 +1,6 @@
-import {
-  type MigrateUpArgs,
-  type MigrateDownArgs,
-  sql,
-} from "@payloadcms/db-postgres";
+import { type MigrateUpArgs, type MigrateDownArgs, sql } from "@payloadcms/db-postgres";
 
-export async function up({ db }: MigrateUpArgs): Promise<void> {
+export const up = async ({ db }: MigrateUpArgs): Promise<void> => {
   // Drop existing function first since we're changing the clustering logic
   await db.execute(sql`
     DROP FUNCTION IF EXISTS cluster_events(
@@ -107,9 +103,9 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     END;
     $$ LANGUAGE plpgsql STABLE;
   `);
-}
+};
 
-export async function down({ db }: MigrateDownArgs): Promise<void> {
+export const down = async ({ db }: MigrateDownArgs): Promise<void> => {
   // Revert to previous version
   await db.execute(sql`
     DROP FUNCTION IF EXISTS cluster_events(
@@ -212,4 +208,4 @@ export async function down({ db }: MigrateDownArgs): Promise<void> {
     END;
     $$ LANGUAGE plpgsql STABLE;
   `);
-}
+};

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { runHealthChecks } from "../../../lib/health";
-import { createLogger } from "../../../lib/logger";
+import { runHealthChecks } from "@/lib/health";
+import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("health-api");
 
@@ -34,15 +34,11 @@ function createErrorResponse(error: unknown) {
   return {
     error: "Health check failed",
     message: error instanceof Error ? error.message : "Unknown error",
-    stack:
-      process.env.NODE_ENV !== "production"
-        ? (error as Error).stack
-        : undefined,
+    stack: process.env.NODE_ENV !== "production" ? (error as Error).stack : undefined,
     env: {
       NODE_ENV: process.env.NODE_ENV,
-      DATABASE_URL: process.env.DATABASE_URL !== undefined ? "Set" : "Not set",
-      PAYLOAD_SECRET:
-        process.env.PAYLOAD_SECRET !== undefined ? "Set" : "Not set",
+      DATABASE_URL: process.env.DATABASE_URL != undefined ? "Set" : "Not set",
+      PAYLOAD_SECRET: process.env.PAYLOAD_SECRET != undefined ? "Set" : "Not set",
       LOG_LEVEL: process.env.LOG_LEVEL ?? "default",
     },
   };

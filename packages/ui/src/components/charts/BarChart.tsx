@@ -5,11 +5,7 @@ import { useMemo } from "react";
 
 import { BaseChart } from "./BaseChart";
 import type { BarChartProps, BarChartDataItem } from "./types";
-import {
-  isValidFormatterParams,
-  isValidEventParams,
-  isValidDataIndex,
-} from "./types";
+import { isValidFormatterParams, isValidEventParams, isValidDataIndex } from "./types";
 
 export function BarChart({
   data,
@@ -31,10 +27,7 @@ export function BarChart({
 
     if (sortBy !== "none") {
       sorted.sort((a, b) => {
-        const compareValue =
-          sortBy === "value"
-            ? a.value - b.value
-            : a.label.localeCompare(b.label);
+        const compareValue = sortBy === "value" ? a.value - b.value : a.label.localeCompare(b.label);
         return sortOrder === "asc" ? compareValue : -compareValue;
       });
     }
@@ -50,9 +43,7 @@ export function BarChart({
       return label.slice(0, maxLabelLength - 3) + "...";
     };
 
-    const labels = processedData.map((item) =>
-      truncateLabel(labelFormatter(item.label)),
-    );
+    const labels = processedData.map((item) => truncateLabel(labelFormatter(item.label)));
     const values = processedData.map((item) => item.value);
     const colors = processedData.map((item) => item.color ?? "#3b82f6");
 
@@ -105,9 +96,7 @@ export function BarChart({
               if (!isValidFormatterParams(params)) return "#3b82f6";
 
               const dataIndex = params.dataIndex;
-              return isValidDataIndex(dataIndex)
-                ? (colors[dataIndex] ?? "#3b82f6")
-                : "#3b82f6";
+              return isValidDataIndex(dataIndex) ? (colors[dataIndex] ?? "#3b82f6") : "#3b82f6";
             },
           },
           emphasis: {
@@ -122,8 +111,7 @@ export function BarChart({
                 formatter: (params: unknown) => {
                   if (!isValidFormatterParams(params)) return valueFormatter(0);
 
-                  const value =
-                    typeof params.value === "number" ? params.value : 0;
+                  const value = typeof params.value === "number" ? params.value : 0;
                   return valueFormatter(value);
                 },
               }
@@ -175,17 +163,7 @@ export function BarChart({
         },
       };
     }
-  }, [
-    processedData,
-    orientation,
-    xLabel,
-    yLabel,
-    title,
-    showValues,
-    valueFormatter,
-    labelFormatter,
-    maxLabelLength,
-  ]);
+  }, [processedData, orientation, xLabel, yLabel, title, showValues, valueFormatter, labelFormatter, maxLabelLength]);
 
   const events = useMemo(() => {
     const baseEvents = { ...baseProps.onEvents };
@@ -194,11 +172,7 @@ export function BarChart({
       baseEvents.click = (params: unknown) => {
         if (!isValidEventParams(params)) return;
 
-        if (
-          params.componentType === "series" &&
-          params.seriesType === "bar" &&
-          isValidDataIndex(params.dataIndex)
-        ) {
+        if (params.componentType === "series" && params.seriesType === "bar" && isValidDataIndex(params.dataIndex)) {
           const item = processedData[params.dataIndex];
           if (item) {
             onBarClick(item, params.dataIndex);

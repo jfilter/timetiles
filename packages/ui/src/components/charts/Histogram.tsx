@@ -5,16 +5,8 @@ import { useMemo } from "react";
 
 import { BaseChart } from "./BaseChart";
 import type { HistogramProps, BinningStrategy } from "./types";
-import {
-  isValidFormatterParams,
-  isValidEventParams,
-  isValidDataIndex,
-} from "./types";
-import {
-  createHistogramBins,
-  formatDateForBin,
-  determineBinningStrategy,
-} from "./utils/data-transform";
+import { isValidFormatterParams, isValidEventParams, isValidDataIndex } from "./types";
+import { createHistogramBins, formatDateForBin, determineBinningStrategy } from "./utils/data-transform";
 
 export function Histogram<T = unknown>({
   data,
@@ -44,9 +36,7 @@ export function Histogram<T = unknown>({
                 Math.min(
                   ...data.map((d) => {
                     const val = xAccessor(d);
-                    return val instanceof Date
-                      ? val.getTime()
-                      : new Date(val).getTime();
+                    return val instanceof Date ? val.getTime() : new Date(val).getTime();
                   }),
                 ),
               ),
@@ -54,9 +44,7 @@ export function Histogram<T = unknown>({
                 Math.max(
                   ...data.map((d) => {
                     const val = xAccessor(d);
-                    return val instanceof Date
-                      ? val.getTime()
-                      : new Date(val).getTime();
+                    return val instanceof Date ? val.getTime() : new Date(val).getTime();
                   }),
                 ),
               ),
@@ -65,15 +53,10 @@ export function Histogram<T = unknown>({
 
       return formatter.xAxis
         ? formatter.xAxis(start)
-        : formatDateForBin(
-            start instanceof Date ? start : new Date(start),
-            strategy as BinningStrategy,
-          );
+        : formatDateForBin(start instanceof Date ? start : new Date(start), strategy as BinningStrategy);
     });
 
-    const yAxisData = bins.map((bin) =>
-      yAccessor ? yAccessor(bin.items) : bin.count,
-    );
+    const yAxisData = bins.map((bin) => (yAccessor ? yAccessor(bin.items) : bin.count));
 
     return {
       title: title
@@ -163,18 +146,7 @@ export function Histogram<T = unknown>({
         containLabel: true,
       },
     };
-  }, [
-    bins,
-    data,
-    xAccessor,
-    yAccessor,
-    binning,
-    color,
-    xLabel,
-    yLabel,
-    title,
-    formatter,
-  ]);
+  }, [bins, data, xAccessor, yAccessor, binning, color, xLabel, yLabel, title, formatter]);
 
   const events = useMemo(() => {
     const baseEvents = { ...baseProps.onEvents };
@@ -183,11 +155,7 @@ export function Histogram<T = unknown>({
       baseEvents.click = (params: unknown) => {
         if (!isValidEventParams(params)) return;
 
-        if (
-          params.componentType === "series" &&
-          params.seriesType === "bar" &&
-          isValidDataIndex(params.dataIndex)
-        ) {
+        if (params.componentType === "series" && params.seriesType === "bar" && isValidDataIndex(params.dataIndex)) {
           const bin = bins[params.dataIndex];
           if (bin) {
             onBarClick(bin);

@@ -7,7 +7,7 @@ import { type ReactNode, useState } from "react";
 
 import { ThemeProvider } from "./theme-provider";
 
-export function Providers({ children }: { children: ReactNode }) {
+export const Providers = ({ children }: Readonly<{ children: ReactNode }>) => {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -41,4 +41,4 @@ export function Providers({ children }: { children: ReactNode }) {
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
-}
+};

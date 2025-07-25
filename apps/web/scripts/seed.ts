@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 
-import { createSeedManager } from "../lib/seed/index.js";
 import { createLogger, logError } from "../lib/logger.js";
+import { createSeedManager } from "../lib/seed/index.js";
 
 const logger = createLogger("seed-cli");
 
-async function main() {
+const main = async () => {
   const args = process.argv.slice(2);
   const command = args[0];
 
-  if (!command) {
-    console.log(`
+  if (command == null || command === "") {
+    logger.info(`
 Usage: npm run seed [command] [options]
 
 Commands:
@@ -32,7 +32,7 @@ Examples:
 
   try {
     if (command === "help") {
-      console.log(`
+      logger.info(`
 Usage: npm run seed [command] [options]
 
 Commands:
@@ -58,11 +58,8 @@ Examples:
 
       // Parse arguments
       if (args.length > 0) {
-        if (
-          args[0] &&
-          ["development", "test", "production"].includes(args[0])
-        ) {
-          environment = args[0] as any;
+        if (args[0] != null && args[0] !== "" && ["development", "test", "production"].includes(args[0])) {
+          environment = args[0] as "development" | "test" | "production";
           collections = args.slice(1);
         } else {
           collections = args;
@@ -71,19 +68,19 @@ Examples:
 
       logger.info({ environment, collections }, "Starting seed operation");
       await seedManager.seed({
-        environment: environment as any,
+        environment: environment as "development" | "test" | "production",
         collections: collections.length > 0 ? collections : undefined,
         truncate: false,
       });
     }
   } catch (error) {
     logError(error, "Seed operation failed", { command, args });
-    console.error("❌ Seed operation failed"); // User-facing error
+    logger.error("❌ Seed operation failed"); // User-facing error
     process.exit(1);
   } finally {
     await seedManager.cleanup();
     process.exit(0);
   }
-}
+};
 
-main();
+void main();

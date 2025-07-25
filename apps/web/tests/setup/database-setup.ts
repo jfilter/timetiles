@@ -1,10 +1,11 @@
 import { Client } from "pg";
+
 import { logger } from "../../lib/logger";
 
 /**
  * Creates isolated test database for each worker
  */
-export async function createTestDatabase(dbName: string): Promise<void> {
+export const createTestDatabase = async (dbName: string): Promise<void> => {
   const client = new Client({
     host: "localhost",
     port: 5432,
@@ -17,10 +18,7 @@ export async function createTestDatabase(dbName: string): Promise<void> {
     await client.connect();
 
     // Check if database already exists
-    const result = await client.query(
-      `SELECT 1 FROM pg_database WHERE datname = $1`,
-      [dbName],
-    );
+    const result = await client.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [dbName]);
 
     if (result.rows.length === 0) {
       // Create new database
@@ -30,10 +28,7 @@ export async function createTestDatabase(dbName: string): Promise<void> {
       logger.debug(`Test database already exists: ${dbName}`);
     }
   } catch (error) {
-    logger.error(
-      { err: error, dbName },
-      `Failed to create or check test database ${dbName}`,
-    );
+    logger.error({ err: error, dbName }, `Failed to create or check test database ${dbName}`);
     throw error;
   } finally {
     await client.end();
@@ -58,23 +53,19 @@ export async function createTestDatabase(dbName: string): Promise<void> {
     // Create the payload schema
     await targetClient.query(`CREATE SCHEMA IF NOT EXISTS payload`);
 
-    logger.debug(
-      `Ensured PostGIS extensions and payload schema in test database: ${dbName}`,
-    );
+    logger.debug(`Ensured PostGIS extensions and payload schema in test database: ${dbName}`);
   } catch (error) {
-    logger.warn(
-      `Failed to set up PostGIS extension in ${dbName}: ${(error as Error).message}`,
-    );
+    logger.warn(`Failed to set up PostGIS extension in ${dbName}: ${(error as Error).message}`);
     throw error;
   } finally {
     await targetClient.end();
   }
-}
+};
 
 /**
  * Truncates all tables in the test database
  */
-export async function truncateAllTables(dbUrl?: string): Promise<void> {
+export const truncateAllTables = async (dbUrl?: string): Promise<void> => {
   const connectionString = dbUrl || process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error("No database URL provided");
@@ -108,12 +99,12 @@ export async function truncateAllTables(dbUrl?: string): Promise<void> {
   } finally {
     await client.end();
   }
-}
+};
 
 /**
  * Cleans up test database
  */
-export async function dropTestDatabase(dbName: string): Promise<void> {
+export const dropTestDatabase = async (dbName: string): Promise<void> => {
   const client = new Client({
     host: "localhost",
     port: 5432,
@@ -138,19 +129,16 @@ export async function dropTestDatabase(dbName: string): Promise<void> {
 
     logger.debug(`Dropped test database: ${dbName}`);
   } catch (error) {
-    logger.warn(
-      { err: error, dbName },
-      `Failed to drop test database ${dbName}`,
-    );
+    logger.warn({ err: error, dbName }, `Failed to drop test database ${dbName}`);
   } finally {
     await client.end();
   }
-}
+};
 
 /**
  * Extract database name from connection URL
  */
-export function getDatabaseName(url: string): string {
+export const getDatabaseName = (url: string): string => {
   const match = url.match(/\/([^/?]+)(\?|$)/);
   return match?.[1] || "timetiles_test";
-}
+};

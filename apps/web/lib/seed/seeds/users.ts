@@ -1,4 +1,4 @@
-import type { User } from "../../../payload-types";
+import type { User } from "@/payload-types";
 
 // Use Payload type with specific omissions for seed data
 export type UserSeed = Omit<
@@ -16,11 +16,15 @@ export type UserSeed = Omit<
   password: string; // Plain password for seeding, will be hashed
 };
 
-export function userSeeds(environment: string): UserSeed[] {
+export const userSeeds = (environment: string): UserSeed[] => {
+  // Note: These are development/test seed passwords only.
+  // In production, users should be created through proper authentication flows.
+
   const baseUsers: UserSeed[] = [
     {
       email: "admin@example.com",
-      password: "admin123",
+      // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+      password: "admin123", // Development seed password only
       firstName: "Admin",
       lastName: "User",
       role: "admin",
@@ -28,7 +32,8 @@ export function userSeeds(environment: string): UserSeed[] {
     },
     {
       email: "analyst@example.com",
-      password: "analyst123",
+      // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+      password: "analyst123", // Development seed password only
       firstName: "Data",
       lastName: "Analyst",
       role: "analyst",
@@ -41,7 +46,8 @@ export function userSeeds(environment: string): UserSeed[] {
       ...baseUsers,
       {
         email: "john.doe@example.com",
-        password: "password123",
+        // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+        password: "password123", // Development seed password only
         firstName: "John",
         lastName: "Doe",
         role: "user",
@@ -49,7 +55,8 @@ export function userSeeds(environment: string): UserSeed[] {
       },
       {
         email: "jane.smith@example.com",
-        password: "password123",
+        // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+        password: "password123", // Development seed password only
         firstName: "Jane",
         lastName: "Smith",
         role: "user",
@@ -57,7 +64,8 @@ export function userSeeds(environment: string): UserSeed[] {
       },
       {
         email: "inactive.user@example.com",
-        password: "password123",
+        // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+        password: "password123", // Development seed password only
         firstName: "Inactive",
         lastName: "User",
         role: "user",
@@ -67,4 +75,4 @@ export function userSeeds(environment: string): UserSeed[] {
   }
 
   return baseUsers;
-}
+};

@@ -2,12 +2,7 @@ import { useQueryState, parseAsString, parseAsArrayOf } from "nuqs";
 import { useMemo } from "react";
 
 import type { FilterState } from "./store";
-import {
-  getActiveFilterCount,
-  hasActiveFilters,
-  removeFilter,
-  clearAllFilters,
-} from "./store";
+import { getActiveFilterCount, hasActiveFilters, removeFilter, clearAllFilters } from "./store";
 
 // Re-export FilterState for external use
 export type { FilterState };
@@ -20,14 +15,8 @@ const parseAsArrayOfStrings = parseAsArrayOf(parseAsString).withDefault([]);
 export const useFilters = () => {
   // URL state management with nuqs
   const [catalog, setCatalog] = useQueryState("catalog", parseAsStringOrNull);
-  const [datasets, setDatasets] = useQueryState(
-    "datasets",
-    parseAsArrayOfStrings,
-  );
-  const [startDate, setStartDate] = useQueryState(
-    "startDate",
-    parseAsStringOrNull,
-  );
+  const [datasets, setDatasets] = useQueryState("datasets", parseAsArrayOfStrings);
+  const [startDate, setStartDate] = useQueryState("startDate", parseAsStringOrNull);
   const [endDate, setEndDate] = useQueryState("endDate", parseAsStringOrNull);
 
   // Create filter state object
@@ -52,10 +41,7 @@ export const useFilters = () => {
   };
 
   // Helper function to remove a specific filter
-  const handleRemoveFilter = (
-    filterType: keyof FilterState,
-    value?: string,
-  ) => {
+  const handleRemoveFilter = (filterType: keyof FilterState, value?: string) => {
     const newFilters = removeFilter(filters, filterType, value);
 
     // Update URL state
@@ -77,14 +63,8 @@ export const useFilters = () => {
   };
 
   // Computed values
-  const activeFilterCount = useMemo(
-    () => getActiveFilterCount(filters),
-    [filters],
-  );
-  const hasActiveFiltersValue = useMemo(
-    () => hasActiveFilters(filters),
-    [filters],
-  );
+  const activeFilterCount = useMemo(() => getActiveFilterCount(filters), [filters]);
+  const hasActiveFiltersValue = useMemo(() => hasActiveFilters(filters), [filters]);
 
   return {
     // Filter state

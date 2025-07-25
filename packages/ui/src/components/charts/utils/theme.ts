@@ -40,10 +40,7 @@ function safeSpreadAxis(axis: unknown): Record<string, unknown> {
   return {};
 }
 
-export function applyThemeToOption(
-  option: EChartsOption,
-  theme: ChartTheme,
-): EChartsOption {
+export function applyThemeToOption(option: EChartsOption, theme: ChartTheme): EChartsOption {
   const result: EChartsOption = {
     ...option,
     backgroundColor: theme.backgroundColor,
@@ -99,9 +96,7 @@ export function applyThemeToOption(
         ...s,
         itemStyle: {
           ...(s.itemStyle ?? {}),
-          color: Array.isArray(theme.itemColor)
-            ? theme.itemColor[0]
-            : theme.itemColor,
+          color: Array.isArray(theme.itemColor) ? theme.itemColor[0] : theme.itemColor,
         },
       } satisfies SeriesOption;
     });

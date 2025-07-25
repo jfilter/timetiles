@@ -1,9 +1,9 @@
 import React from "react";
 
-function getMaxWidthClass(
+const getMaxWidthClass = (
   maxWidth: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "full",
   maxWidthClasses: Record<string, string>,
-): string {
+): string => {
   // Safe property access to avoid object injection with enhanced validation
   if (
     typeof maxWidth === "string" &&
@@ -13,7 +13,7 @@ function getMaxWidthClass(
     return maxWidthClasses[maxWidth] ?? "";
   }
   return "";
-}
+};
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -25,7 +25,7 @@ interface PageLayoutProps {
   showTitle?: boolean;
 }
 
-export function PageLayout({
+export const PageLayout = ({
   children,
   title,
   titleClassName = "mb-8 text-center text-4xl font-bold",
@@ -33,7 +33,7 @@ export function PageLayout({
   maxWidth = "3xl",
   centered = true,
   showTitle = true,
-}: PageLayoutProps) {
+}: Readonly<PageLayoutProps>) => {
   const maxWidthClasses: Record<typeof maxWidth, string> = {
     sm: "max-w-sm",
     md: "max-w-md",
@@ -50,28 +50,18 @@ export function PageLayout({
       <div className="container mx-auto max-w-4xl px-6">
         {centered ? (
           <div className="flex justify-center">
-            <div
-              className={`w-full ${getMaxWidthClass(maxWidth, maxWidthClasses)}`}
-            >
-              {showTitle === true &&
-                title !== null &&
-                title !== undefined &&
-                title !== "" && <h1 className={titleClassName}>{title}</h1>}
+            <div className={`w-full ${getMaxWidthClass(maxWidth, maxWidthClasses)}`}>
+              {showTitle === true && title != null && title !== "" && <h1 className={titleClassName}>{title}</h1>}
               <div className={contentClassName}>{children}</div>
             </div>
           </div>
         ) : (
-          <div
-            className={`w-full ${getMaxWidthClass(maxWidth, maxWidthClasses)}`}
-          >
-            {showTitle === true &&
-              title !== null &&
-              title !== undefined &&
-              title !== "" && <h1 className={titleClassName}>{title}</h1>}
+          <div className={`w-full ${getMaxWidthClass(maxWidth, maxWidthClasses)}`}>
+            {showTitle === true && title != null && title !== "" && <h1 className={titleClassName}>{title}</h1>}
             <div className={contentClassName}>{children}</div>
           </div>
         )}
       </div>
     </div>
   );
-}
+};

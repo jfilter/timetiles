@@ -1,9 +1,9 @@
-import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
-import { userSeeds } from "../../../lib/seed/seeds/users";
 import { catalogSeeds } from "../../../lib/seed/seeds/catalogs";
 import { datasetSeeds } from "../../../lib/seed/seeds/datasets";
 import { eventSeeds } from "../../../lib/seed/seeds/events";
 import { importSeeds } from "../../../lib/seed/seeds/imports";
+import { userSeeds } from "../../../lib/seed/seeds/users";
+import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
 describe.sequential("Isolated Seed System", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
@@ -53,12 +53,8 @@ describe.sequential("Isolated Seed System", () => {
       // Development should have more catalogs than production
       expect(devCatalogs.length).toBeGreaterThan(prodCatalogs.length);
       // All catalogs should have required fields
-      expect(devCatalogs.every((catalog) => catalog.name && catalog.slug)).toBe(
-        true,
-      );
-      expect(
-        prodCatalogs.every((catalog) => catalog.name && catalog.slug),
-      ).toBe(true);
+      expect(devCatalogs.every((catalog) => catalog.name && catalog.slug)).toBe(true);
+      expect(prodCatalogs.every((catalog) => catalog.name && catalog.slug)).toBe(true);
     });
 
     it("should generate dataset seeds for different environments", () => {
@@ -68,12 +64,8 @@ describe.sequential("Isolated Seed System", () => {
       // Development should have more datasets than production
       expect(devDatasets.length).toBeGreaterThan(prodDatasets.length);
       // All datasets should have required fields
-      expect(
-        devDatasets.every((dataset) => dataset.name && dataset.schema),
-      ).toBe(true);
-      expect(
-        prodDatasets.every((dataset) => dataset.name && dataset.schema),
-      ).toBe(true);
+      expect(devDatasets.every((dataset) => dataset.name && dataset.schema)).toBe(true);
+      expect(prodDatasets.every((dataset) => dataset.name && dataset.schema)).toBe(true);
     });
 
     it("should generate event seeds for different environments", () => {
@@ -83,12 +75,8 @@ describe.sequential("Isolated Seed System", () => {
       // Development should have more events than production
       expect(devEvents.length).toBeGreaterThan(prodEvents.length);
       // All events should have required fields
-      expect(devEvents.every((event) => event.dataset && event.data)).toBe(
-        true,
-      );
-      expect(prodEvents.every((event) => event.dataset && event.data)).toBe(
-        true,
-      );
+      expect(devEvents.every((event) => event.dataset && event.data)).toBe(true);
+      expect(prodEvents.every((event) => event.dataset && event.data)).toBe(true);
     });
 
     it("should generate import seeds for different environments", () => {
@@ -99,9 +87,7 @@ describe.sequential("Isolated Seed System", () => {
       expect(devImports.length).toBeGreaterThan(prodImports.length);
       // All imports should have required fields
       expect(devImports.every((imp) => imp.fileName && imp.catalog)).toBe(true);
-      expect(prodImports.every((imp) => imp.fileName && imp.catalog)).toBe(
-        true,
-      );
+      expect(prodImports.every((imp) => imp.fileName && imp.catalog)).toBe(true);
     });
   });
 
@@ -119,9 +105,7 @@ describe.sequential("Isolated Seed System", () => {
       });
 
       expect(users.docs.length).toBeGreaterThan(0);
-      expect(
-        users.docs.some((user: any) => user.email === "admin@example.com"),
-      ).toBe(true);
+      expect(users.docs.some((user: any) => user.email === "admin@example.com")).toBe(true);
     });
 
     it("should seed catalogs collection", async () => {
@@ -137,11 +121,7 @@ describe.sequential("Isolated Seed System", () => {
       });
 
       expect(catalogs.docs.length).toBeGreaterThan(0);
-      expect(
-        catalogs.docs.some(
-          (catalog: any) => catalog.name === "Environmental Data",
-        ),
-      ).toBe(true);
+      expect(catalogs.docs.some((catalog: any) => catalog.name === "Environmental Data")).toBe(true);
     });
 
     it("should seed datasets with proper catalog relationships", async () => {
@@ -167,9 +147,7 @@ describe.sequential("Isolated Seed System", () => {
 
       expect(datasets.docs.length).toBeGreaterThan(0);
       // Look for a dataset that should exist in development environment
-      const airQualityDataset = datasets.docs.find(
-        (dataset: any) => dataset.name === "Air Quality Measurements",
-      );
+      const airQualityDataset = datasets.docs.find((dataset: any) => dataset.name === "Air Quality Measurements");
       expect(airQualityDataset).toBeDefined();
       expect(airQualityDataset.catalog).toBeDefined();
       expect(typeof airQualityDataset.catalog).toBe("object"); // Should be populated
@@ -197,9 +175,7 @@ describe.sequential("Isolated Seed System", () => {
       });
 
       expect(events.docs.length).toBeGreaterThan(0);
-      const anyEvent = events.docs.find(
-        (event: any) => event.data && typeof event.data === "object",
-      );
+      const anyEvent = events.docs.find((event: any) => event.data && typeof event.data === "object");
       expect(anyEvent).toBeDefined();
       expect(anyEvent.dataset).toBeDefined();
       expect(typeof anyEvent.dataset).toBe("object"); // Should be populated
@@ -227,9 +203,7 @@ describe.sequential("Isolated Seed System", () => {
       });
 
       expect(imports.docs.length).toBeGreaterThan(0);
-      const airQualityImport = imports.docs.find(
-        (imp: any) => imp.fileName === "air_quality_2024_01_15.csv",
-      );
+      const airQualityImport = imports.docs.find((imp: any) => imp.fileName === "air_quality_2024_01_15.csv");
       expect(airQualityImport).toBeDefined();
       expect(airQualityImport.catalog).toBeDefined();
       expect(typeof airQualityImport.catalog).toBe("object"); // Should be populated
@@ -242,13 +216,7 @@ describe.sequential("Isolated Seed System", () => {
       });
 
       // Check that all collections have data
-      const collections = [
-        "users",
-        "catalogs",
-        "datasets",
-        "events",
-        "imports",
-      ];
+      const collections = ["users", "catalogs", "datasets", "events", "imports"];
 
       for (const collection of collections) {
         const docs = await testEnv.payload.find({
@@ -272,8 +240,7 @@ describe.sequential("Isolated Seed System", () => {
       ).resolves.toBeUndefined();
 
       // Verify no datasets were actually created due to missing catalogs
-      const datasetCount =
-        await testEnv.seedManager.getCollectionCount("datasets");
+      const datasetCount = await testEnv.seedManager.getCollectionCount("datasets");
       expect(datasetCount).toBe(0);
     });
 

@@ -1,4 +1,5 @@
 import { render, screen, cleanup } from "@testing-library/react";
+
 import { DatasetBarChart } from "../../../components/dataset-bar-chart";
 import type { Event, Dataset, Catalog } from "../../../payload-types";
 
@@ -97,14 +98,7 @@ describe("DatasetBarChart", () => {
   ];
 
   it("renders bar chart with dataset grouping", () => {
-    render(
-      <DatasetBarChart
-        events={mockEvents}
-        datasets={mockDatasets}
-        catalogs={mockCatalogs}
-        groupBy="dataset"
-      />,
-    );
+    render(<DatasetBarChart events={mockEvents} datasets={mockDatasets} catalogs={mockCatalogs} groupBy="dataset" />);
 
     const chart = screen.getByTestId("echarts-bar-mock");
     expect(chart).toBeInTheDocument();
@@ -116,12 +110,7 @@ describe("DatasetBarChart", () => {
 
   it("renders bar chart with catalog grouping", () => {
     const { container } = render(
-      <DatasetBarChart
-        events={mockEvents}
-        datasets={mockDatasets}
-        catalogs={mockCatalogs}
-        groupBy="catalog"
-      />,
+      <DatasetBarChart events={mockEvents} datasets={mockDatasets} catalogs={mockCatalogs} groupBy="catalog" />,
     );
 
     const chart = container.querySelector('[data-testid="echarts-bar-mock"]');
@@ -129,14 +118,7 @@ describe("DatasetBarChart", () => {
   });
 
   it("shows loading state", () => {
-    render(
-      <DatasetBarChart
-        events={[]}
-        datasets={mockDatasets}
-        catalogs={mockCatalogs}
-        loading={true}
-      />,
-    );
+    render(<DatasetBarChart events={[]} datasets={mockDatasets} catalogs={mockCatalogs} loading={true} />);
 
     // Check for loading indicator
     const loadingElement = document.querySelector(".animate-spin");

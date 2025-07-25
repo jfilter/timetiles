@@ -6,34 +6,30 @@
  * test-helpers with a more robust and configurable system.
  */
 
+import { postgresAdapter } from "@payloadcms/db-postgres";
+import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { randomUUID } from "crypto";
 import fs from "fs";
 import { getPayload, buildConfig } from "payload";
-import { postgresAdapter } from "@payloadcms/db-postgres";
-import { lexicalEditor } from "@payloadcms/richtext-lexical";
-import { migrations } from "@/migrations";
+
 import { truncateAllTables } from "./database-setup";
-import { SeedManager } from "@/lib/seed/index";
-import { RelationshipResolver } from "@/lib/seed/relationship-resolver";
-import { createLogger } from "@/lib/logger";
 
 // Import collections
 import Catalogs from "@/lib/collections/catalogs";
 import Datasets from "@/lib/collections/datasets";
-import Imports from "@/lib/collections/imports";
 import Events from "@/lib/collections/events";
-import Users from "@/lib/collections/users";
-import Media from "@/lib/collections/media";
-import LocationCache from "@/lib/collections/location-cache";
 import GeocodingProviders from "@/lib/collections/geocoding-providers";
-import { Pages } from "@/lib/collections/pages";
+import Imports from "@/lib/collections/imports";
+import LocationCache from "@/lib/collections/location-cache";
 import { MainMenu } from "@/lib/collections/main-menu";
-import {
-  fileParsingJob,
-  batchProcessingJob,
-  eventCreationJob,
-  geocodingBatchJob,
-} from "@/lib/jobs/import-jobs";
+import Media from "@/lib/collections/media";
+import { Pages } from "@/lib/collections/pages";
+import Users from "@/lib/collections/users";
+import { fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob } from "@/lib/jobs/import-jobs";
+import { createLogger } from "@/lib/logger";
+import { SeedManager } from "@/lib/seed/index";
+import { RelationshipResolver } from "@/lib/seed/relationship-resolver";
+import { migrations } from "@/migrations";
 
 const logger = createLogger("test-env");
 
@@ -77,15 +73,13 @@ export class TestEnvironmentBuilder {
   /**
    * Create a new test environment with the specified options
    */
-  async createTestEnvironment(
-    options: TestEnvironmentOptions = {},
-  ): Promise<TestEnvironment> {
+  async createTestEnvironment(options: TestEnvironmentOptions = {}): Promise<TestEnvironment> {
     const {
       collections = ["events", "catalogs", "datasets", "users"],
       seedData = false,
       isolationLevel = "worker",
       customSeedData = {},
-      environment = "test" as "test",
+      environment = "test" as const,
       createTempDir = true,
     } = options;
 
@@ -98,7 +92,7 @@ export class TestEnvironmentBuilder {
     // Generate unique identifiers
     const testId = randomUUID();
     const workerId = process.env.VITEST_WORKER_ID || "1";
-    const dbName = this.generateTestDbName(isolationLevel, workerId);
+    const dbName = this.generateTestDbName(isolationLevel, workerId, testId);
 
     // Create temporary directory if requested
     let tempDir: string | undefined;
@@ -109,13 +103,12 @@ export class TestEnvironmentBuilder {
       }
     }
 
-    // Use existing test database
+    // Use shared test database instead of creating unique ones to avoid connection issues
     const dbUrl =
-      process.env.DATABASE_URL ||
-      `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
+      process.env.DATABASE_URL || `postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test`;
 
     logger.debug("Initializing test database", {
-      dbName,
+      dbName: "shared",
       collections: collections.length,
     });
 
@@ -134,12 +127,7 @@ export class TestEnvironmentBuilder {
 
     // Seed data if requested
     if (seedData || Object.keys(customSeedData).length > 0) {
-      await this.seedTestData(
-        seedManager,
-        customSeedData,
-        environment,
-        collections,
-      );
+      await this.seedTestData(seedManager, customSeedData, environment, collections);
     }
 
     // Create test environment
@@ -150,8 +138,7 @@ export class TestEnvironmentBuilder {
       dbName,
       tempDir,
       cleanup: () => this.cleanup(testEnv),
-      getCollectionCount: (collection: string) =>
-        seedManager.getCollectionCount(collection),
+      getCollectionCount: (collection: string) => seedManager.getCollectionCount(collection),
       truncateCollections: (colls: string[]) => seedManager.truncate(colls),
     };
 
@@ -182,9 +169,7 @@ export class TestEnvironmentBuilder {
   /**
    * Create a full integration test environment
    */
-  async createIntegrationTestEnvironment(
-    customData?: Record<string, any[]>,
-  ): Promise<TestEnvironment> {
+  async createIntegrationTestEnvironment(customData?: Record<string, any[]>): Promise<TestEnvironment> {
     return this.createTestEnvironment({
       collections: ["users", "catalogs", "datasets", "events", "imports"],
       seedData: false, // Don't seed automatically to avoid relationship issues
@@ -210,13 +195,9 @@ export class TestEnvironmentBuilder {
    * Clean up all active test environments
    */
   static async cleanupAll(): Promise<void> {
-    logger.info(
-      `Cleaning up ${TestEnvironmentBuilder.activeEnvironments.size} active test environments`,
-    );
+    logger.info(`Cleaning up ${TestEnvironmentBuilder.activeEnvironments.size} active test environments`);
 
-    const cleanupPromises = Array.from(
-      TestEnvironmentBuilder.activeEnvironments,
-    ).map((env) =>
+    const cleanupPromises = Array.from(TestEnvironmentBuilder.activeEnvironments).map((env) =>
       env.cleanup().catch((error) =>
         logger.warn("Failed to cleanup test environment", {
           error: error.message,
@@ -233,9 +214,10 @@ export class TestEnvironmentBuilder {
   /**
    * Generate a unique test database name based on isolation level
    */
-  private generateTestDbName(isolationLevel: string, workerId: string): string {
-    const timestamp = Date.now();
-    return `timetiles_test_${isolationLevel}_${workerId}_${timestamp}`;
+  private generateTestDbName(isolationLevel: string, workerId: string, testId: string): string {
+    // Use UUID prefix for true uniqueness instead of timestamp to prevent collisions
+    const uniqueId = testId.substring(0, 8);
+    return `timetiles_test_${isolationLevel}_${workerId}_${uniqueId}`;
   }
 
   /**
@@ -255,9 +237,7 @@ export class TestEnvironmentBuilder {
       pages: Pages,
     };
 
-    const selectedCollections = collections
-      .map((name) => collectionMap[name])
-      .filter(Boolean);
+    const selectedCollections = collections.map((name) => collectionMap[name]).filter(Boolean);
 
     return buildConfig({
       secret: process.env.PAYLOAD_SECRET || "test-secret-key",
@@ -277,12 +257,7 @@ export class TestEnvironmentBuilder {
       collections: selectedCollections,
       globals: [MainMenu],
       jobs: {
-        tasks: [
-          fileParsingJob,
-          batchProcessingJob,
-          eventCreationJob,
-          geocodingBatchJob,
-        ],
+        tasks: [fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob],
       },
       db: postgresAdapter({
         pool: {
@@ -300,21 +275,14 @@ export class TestEnvironmentBuilder {
   /**
    * Configure SeedManager for the test environment
    */
-  private async configureSeedManager(
-    seedManager: SeedManager,
-    payload: any,
-  ): Promise<void> {
+  private async configureSeedManager(seedManager: SeedManager, payload: any): Promise<void> {
     // Override initialize to use our test payload
     seedManager.initialize = async () => {
       (seedManager as any).payload = payload;
-      (seedManager as any).relationshipResolver = new RelationshipResolver(
-        payload,
-      );
+      (seedManager as any).relationshipResolver = new RelationshipResolver(payload);
 
       // Initialize database operations
-      const { DatabaseOperations } = await import(
-        "../../lib/seed/database-operations"
-      );
+      const { DatabaseOperations } = await import("../../lib/seed/database-operations");
       (seedManager as any).databaseOperations = new DatabaseOperations(payload);
 
       return payload;
@@ -341,12 +309,8 @@ export class TestEnvironmentBuilder {
       for (const [collection, data] of Object.entries(customData)) {
         if (data.length > 0) {
           // Use the RelationshipResolver to handle relationships
-          const resolver = (seedManager as any)
-            .relationshipResolver as RelationshipResolver;
-          const resolvedData = await resolver.resolveCollectionRelationships(
-            data,
-            collection,
-          );
+          const resolver = (seedManager as any).relationshipResolver as RelationshipResolver;
+          const resolvedData = await resolver.resolveCollectionRelationships(data, collection);
 
           // Create items efficiently
           for (const item of resolvedData) {
@@ -367,11 +331,7 @@ export class TestEnvironmentBuilder {
       // Use standard seeding
       await seedManager.seed({
         collections,
-        environment: environment as
-          | "production"
-          | "development"
-          | "test"
-          | "staging",
+        environment: environment as "production" | "development" | "test" | "staging",
         truncate: false, // Already truncated
       });
     }
@@ -399,8 +359,7 @@ export class TestEnvironmentBuilder {
 
       // Truncate tables for next test
       await truncateAllTables(
-        process.env.DATABASE_URL ||
-          `postgresql://timetiles_user:timetiles_password@localhost:5432/${testEnv.dbName}`,
+        process.env.DATABASE_URL || `postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test`,
       );
 
       logger.debug("Test environment cleanup completed", {
@@ -418,27 +377,25 @@ export class TestEnvironmentBuilder {
 /**
  * Convenience function for creating test environments
  */
-export async function createTestEnvironment(
-  options?: TestEnvironmentOptions,
-): Promise<TestEnvironment> {
+export const createTestEnvironment = async (options?: TestEnvironmentOptions): Promise<TestEnvironment> => {
   const builder = new TestEnvironmentBuilder();
   return builder.createTestEnvironment(options);
-}
+};
 
 /**
  * Convenience function for creating unit test environments
  */
-export async function createUnitTestEnvironment(): Promise<TestEnvironment> {
+export const createUnitTestEnvironment = async (): Promise<TestEnvironment> => {
   const builder = new TestEnvironmentBuilder();
   return builder.createUnitTestEnvironment();
-}
+};
 
 /**
  * Convenience function for creating integration test environments
  */
-export async function createIntegrationTestEnvironment(
+export const createIntegrationTestEnvironment = async (
   customData?: Record<string, any[]>,
-): Promise<TestEnvironment> {
+): Promise<TestEnvironment> => {
   const builder = new TestEnvironmentBuilder();
   return builder.createIntegrationTestEnvironment(customData);
-}
+};

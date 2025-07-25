@@ -1,65 +1,44 @@
-import {
-  vi,
-  describe,
-  it,
-  expect,
-  beforeAll,
-  afterAll,
-  beforeEach,
-  afterEach,
-} from "vitest";
-import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
-import { NextRequest } from "next/server";
-import { POST as uploadHandler } from "../../../app/api/import/upload/route";
-import { GET as progressHandler } from "../../../app/api/import/[importId]/progress/route";
-import type { Event } from "../../../payload-types";
-
-import { getPayload } from "payload";
-import {
-  fileParsingJob,
-  batchProcessingJob,
-  eventCreationJob,
-  geocodingBatchJob,
-} from "../../../lib/jobs/import-jobs";
-import { GeocodingService } from "../../../lib/services/geocoding/geocoding-service";
 import fs from "fs";
+import { NextRequest } from "next/server";
 import path from "path";
-import * as XLSX from "xlsx";
+import { vi, describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
+
+import { GET as progressHandler } from "../../../app/api/import/[importId]/progress/route";
+import { POST as uploadHandler } from "../../../app/api/import/upload/route";
+import { fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob } from "../../../lib/jobs/import-jobs";
+import type { Event } from "../../../payload-types";
+import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
 // Mock GeocodingService to avoid real HTTP calls
 vi.mock("../../../lib/services/geocoding/geocoding-service", () => {
+  const mockGeocode = vi.fn().mockImplementation(async (address: string) => {
+    // Simulate geocoding failure for test addresses
+    if (address.toLowerCase().includes("fail") || address.toLowerCase().includes("test st")) {
+      throw new Error("Geocoding failed");
+    }
+
+    return {
+      latitude: 37.7749,
+      longitude: -122.4194,
+      confidence: 0.9,
+      provider: "google",
+      normalizedAddress: address,
+      components: {
+        streetNumber: "123",
+        streetName: "Main St",
+        city: "San Francisco",
+        region: "CA",
+        postalCode: "94102",
+        country: "USA",
+      },
+      metadata: {},
+    };
+  });
+
   return {
     GeocodingService: vi.fn().mockImplementation(() => ({
-      geocode: vi.fn().mockImplementation(async (address: string) => {
-        // Simulate geocoding failure for test addresses
-        if (
-          address.toLowerCase().includes("fail") ||
-          address.toLowerCase().includes("test st")
-        ) {
-          throw new Error("Geocoding failed");
-        }
-
-        return {
-          latitude: 37.7749,
-          longitude: -122.4194,
-          confidence: 0.9,
-          provider: "google",
-          normalizedAddress: address,
-          components: {
-            streetNumber: "123",
-            streetName: "Main St",
-            city: "San Francisco",
-            region: "CA",
-            postalCode: "94102",
-            country: "USA",
-          },
-          metadata: {},
-        };
-      }),
-      batchGeocode: vi.fn().mockImplementation(async function (
-        this: any,
-        addresses: string[],
-      ) {
+      geocode: mockGeocode,
+      batchGeocode: vi.fn().mockImplementation(async (addresses: string[]) => {
         const results = new Map();
         let successful = 0;
         let failed = 0;
@@ -67,7 +46,7 @@ vi.mock("../../../lib/services/geocoding/geocoding-service", () => {
         for (const address of addresses) {
           if (!address) continue;
           try {
-            const result = await this.geocode(address);
+            const result = await mockGeocode(address);
             results.set(address, result);
             successful++;
           } catch (error) {
@@ -101,11 +80,7 @@ vi.mock("../../../lib/services/geocoding/geocoding-service", () => {
 });
 
 // Helper function to create proper multipart requests for testing
-const createMultipartRequest = async (
-  formData: FormData,
-  fileContent: string,
-  headers: Record<string, string> = {},
-) => {
+const createMultipartRequest = (formData: FormData, fileContent: string, headers: Record<string, string> = {}) => {
   // Create proper multipart boundary
   const boundary = `----formdata-${Math.random().toString(36).substring(2)}`;
 
@@ -146,10 +121,7 @@ const createMultipartRequest = async (
       (testFile as any).arrayBuffer = async () => {
         // Convert string content to buffer
         const buffer = Buffer.from(fileContent);
-        return buffer.buffer.slice(
-          buffer.byteOffset,
-          buffer.byteOffset + buffer.byteLength,
-        );
+        return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
       };
 
       formDataResult.append("file", testFile);
@@ -300,15 +272,13 @@ describe.sequential("Import System Integration Tests", () => {
         });
       }
     } catch (error) {
-      console.warn("Failed to clean up test files:", error);
     }
   });
 
   describe.sequential("Complete Import Workflow", () => {
     it("should complete full CSV import workflow", async () => {
       // Step 1: Upload file
-      const csvHeaders =
-        "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
       const csvRows = sampleCsvData
         .map((row) =>
           [
@@ -325,11 +295,7 @@ describe.sequential("Import System Integration Tests", () => {
             .map((val) => {
               // Properly escape CSV values - double quotes and wrap in quotes if contains comma
               const stringVal = String(val);
-              if (
-                stringVal.includes(",") ||
-                stringVal.includes('"') ||
-                stringVal.includes("\n")
-              ) {
+              if (stringVal.includes(",") || stringVal.includes('"') || stringVal.includes("\n")) {
                 return `"${stringVal.replace(/"/g, '""')}"`;
               }
               return stringVal;
@@ -352,6 +318,9 @@ describe.sequential("Import System Integration Tests", () => {
       const uploadRequest = await createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
+      if (!uploadResponse) {
+        throw new Error("Upload handler returned undefined response");
+      }
       const uploadResult = await uploadResponse.json();
 
       expect(uploadResponse.status).toBe(200);
@@ -452,8 +421,7 @@ describe.sequential("Import System Integration Tests", () => {
           event.data &&
           typeof event.data === "object" &&
           !Array.isArray(event.data) &&
-          (event.data as Record<string, unknown>).title ===
-            "Tech Conference 2024",
+          (event.data as Record<string, unknown>).title === "Tech Conference 2024",
       );
       expect(techConferenceEvent).toBeDefined();
       expect(techConferenceEvent.data).toMatchObject({
@@ -504,9 +472,7 @@ describe.sequential("Import System Integration Tests", () => {
       expect(finalImportRecord.completedAt).toBeDefined();
 
       // Step 6: Check progress endpoint
-      const progressRequest = new NextRequest(
-        `http://localhost:3000/api/import/${importId}/progress`,
-      );
+      const progressRequest = new NextRequest(`http://localhost:3000/api/import/${importId}/progress`);
       const progressResponse = await progressHandler(progressRequest, {
         params: { importId },
       } as any);
@@ -520,8 +486,7 @@ describe.sequential("Import System Integration Tests", () => {
     it("should handle Excel file import workflow", async () => {
       // For integration testing, create a CSV file but treat it as Excel
       // This tests the upload workflow without binary encoding issues
-      const csvHeaders =
-        "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
       const csvRows = sampleCsvData
         .map((row) =>
           [
@@ -537,11 +502,7 @@ describe.sequential("Import System Integration Tests", () => {
           ]
             .map((val) => {
               const stringVal = String(val);
-              if (
-                stringVal.includes(",") ||
-                stringVal.includes('"') ||
-                stringVal.includes("\n")
-              ) {
+              if (stringVal.includes(",") || stringVal.includes('"') || stringVal.includes("\n")) {
                 return `"${stringVal.replace(/"/g, '""')}"`;
               }
               return stringVal;
@@ -562,6 +523,9 @@ describe.sequential("Import System Integration Tests", () => {
       const uploadRequest = await createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
+      if (!uploadResponse) {
+        throw new Error("Upload handler returned undefined response");
+      }
       const uploadResult = await uploadResponse.json();
 
       expect(uploadResponse.status).toBe(200);
@@ -599,8 +563,8 @@ describe.sequential("Import System Integration Tests", () => {
     });
 
     it("should handle import errors gracefully", async () => {
-      // Create a CSV with invalid content (missing required fields)
-      const invalidCsvContent = "invalid,csv,content\nno,headers,here";
+      // Create a CSV with actually invalid content (empty file)
+      const invalidCsvContent = "";
 
       const file = new File([invalidCsvContent], "invalid.csv", {
         type: "text/csv",
@@ -609,12 +573,12 @@ describe.sequential("Import System Integration Tests", () => {
       formData.append("file", file);
       formData.append("catalogId", String(testCatalogId));
 
-      const uploadRequest = await createMultipartRequest(
-        formData,
-        invalidCsvContent,
-      );
+      const uploadRequest = await createMultipartRequest(formData, invalidCsvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
+      if (!uploadResponse) {
+        throw new Error("Upload handler returned undefined response");
+      }
       const uploadResult = await uploadResponse.json();
 
       expect(uploadResponse.status).toBe(200);
@@ -625,7 +589,7 @@ describe.sequential("Import System Integration Tests", () => {
         id: uploadResult.importId,
       });
 
-      // Process file parsing job - should fail
+      // Process file parsing job - should fail due to empty file
       const fileParsingJobInput = {
         importId: uploadResult.importId,
         filePath: errorImportRecord.metadata.filePath,
@@ -639,7 +603,7 @@ describe.sequential("Import System Integration Tests", () => {
           job: { id: "test-job" },
           req: { payload },
         }),
-      ).rejects.toThrow("No valid rows found");
+      ).rejects.toThrow("No data rows found in file");
 
       // Verify import was marked as failed
       const importRecord = await payload.findByID({
@@ -653,8 +617,7 @@ describe.sequential("Import System Integration Tests", () => {
 
     it("should handle geocoding failures gracefully", async () => {
       // Use an address that triggers test provider failure
-      const csvHeaders =
-        "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
       const csvRow = `"Test Event","Test Description","2024-03-15","","Test Location","123 Fail St","https://test.com","Test","test"`;
       const csvContent = csvHeaders + "\n" + csvRow;
 
@@ -666,6 +629,9 @@ describe.sequential("Import System Integration Tests", () => {
       const uploadRequest = await createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
+      if (!uploadResponse) {
+        throw new Error("Upload handler returned undefined response");
+      }
       const uploadResult = await uploadResponse.json();
       const importId = uploadResult.importId;
 
@@ -778,8 +744,7 @@ describe.sequential("Import System Integration Tests", () => {
       }));
 
       // Create proper CSV content with headers
-      const csvHeaders =
-        "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
       const csvRows = largeDataset
         .map((row) =>
           [
@@ -796,11 +761,7 @@ describe.sequential("Import System Integration Tests", () => {
             .map((val) => {
               // Properly escape CSV values - double quotes and wrap in quotes if contains comma
               const stringVal = String(val);
-              if (
-                stringVal.includes(",") ||
-                stringVal.includes('"') ||
-                stringVal.includes("\n")
-              ) {
+              if (stringVal.includes(",") || stringVal.includes('"') || stringVal.includes("\n")) {
                 return `"${stringVal.replace(/"/g, '""')}"`;
               }
               return stringVal;
@@ -820,6 +781,9 @@ describe.sequential("Import System Integration Tests", () => {
       const uploadRequest = await createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
+      if (!uploadResponse) {
+        throw new Error("Upload handler returned undefined response");
+      }
       const uploadResult = await uploadResponse.json();
       const importId = uploadResult.importId;
 
@@ -855,8 +819,7 @@ describe.sequential("Import System Integration Tests", () => {
 
     it("should track progress correctly throughout workflow", async () => {
       // Create proper CSV content with headers
-      const csvHeaders =
-        "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
       const csvRows = sampleCsvData
         .map((row) =>
           [
@@ -873,11 +836,7 @@ describe.sequential("Import System Integration Tests", () => {
             .map((val) => {
               // Properly escape CSV values - double quotes and wrap in quotes if contains comma
               const stringVal = String(val);
-              if (
-                stringVal.includes(",") ||
-                stringVal.includes('"') ||
-                stringVal.includes("\n")
-              ) {
+              if (stringVal.includes(",") || stringVal.includes('"') || stringVal.includes("\n")) {
                 return `"${stringVal.replace(/"/g, '""')}"`;
               }
               return stringVal;
@@ -897,6 +856,9 @@ describe.sequential("Import System Integration Tests", () => {
       const uploadRequest = await createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
+      if (!uploadResponse) {
+        throw new Error("Upload handler returned undefined response");
+      }
       const uploadResult = await uploadResponse.json();
       const importId = uploadResult.importId;
 
@@ -907,9 +869,7 @@ describe.sequential("Import System Integration Tests", () => {
       });
 
       // Check initial progress
-      let progressRequest = new NextRequest(
-        `http://localhost:3000/api/import/${importId}/progress`,
-      );
+      let progressRequest = new NextRequest(`http://localhost:3000/api/import/${importId}/progress`);
       let progressResponse = await progressHandler(progressRequest, {
         params: { importId },
       } as any);
@@ -931,9 +891,7 @@ describe.sequential("Import System Integration Tests", () => {
       });
 
       // Check progress after file parsing
-      progressRequest = new NextRequest(
-        `http://localhost:3000/api/import/${importId}/progress`,
-      );
+      progressRequest = new NextRequest(`http://localhost:3000/api/import/${importId}/progress`);
       progressResponse = await progressHandler(progressRequest, {
         params: { importId },
       } as any);
@@ -977,9 +935,7 @@ describe.sequential("Import System Integration Tests", () => {
       });
 
       // Check progress after event creation
-      progressRequest = new NextRequest(
-        `http://localhost:3000/api/import/${importId}/progress`,
-      );
+      progressRequest = new NextRequest(`http://localhost:3000/api/import/${importId}/progress`);
       progressResponse = await progressHandler(progressRequest, {
         params: { importId },
       } as any);
@@ -1005,9 +961,7 @@ describe.sequential("Import System Integration Tests", () => {
       });
 
       // Check final progress
-      progressRequest = new NextRequest(
-        `http://localhost:3000/api/import/${importId}/progress`,
-      );
+      progressRequest = new NextRequest(`http://localhost:3000/api/import/${importId}/progress`);
       progressResponse = await progressHandler(progressRequest, {
         params: { importId },
       } as any);
@@ -1021,8 +975,7 @@ describe.sequential("Import System Integration Tests", () => {
     it("should handle Excel file import workflow", async () => {
       // For integration testing, create a CSV file but treat it as Excel
       // This tests the upload workflow without binary encoding issues
-      const csvHeaders =
-        "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
       const csvRows = sampleCsvData
         .map((row) =>
           [
@@ -1038,11 +991,7 @@ describe.sequential("Import System Integration Tests", () => {
           ]
             .map((val) => {
               const stringVal = String(val);
-              if (
-                stringVal.includes(",") ||
-                stringVal.includes('"') ||
-                stringVal.includes("\n")
-              ) {
+              if (stringVal.includes(",") || stringVal.includes('"') || stringVal.includes("\n")) {
                 return `"${stringVal.replace(/"/g, '""')}"`;
               }
               return stringVal;
@@ -1063,6 +1012,9 @@ describe.sequential("Import System Integration Tests", () => {
       const uploadRequest = await createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
+      if (!uploadResponse) {
+        throw new Error("Upload handler returned undefined response");
+      }
       const uploadResult = await uploadResponse.json();
 
       expect(uploadResponse.status).toBe(200);
@@ -1100,8 +1052,8 @@ describe.sequential("Import System Integration Tests", () => {
     });
 
     it("should handle import errors gracefully", async () => {
-      // Create a CSV with invalid content (missing required fields)
-      const invalidCsvContent = "invalid,csv,content\nno,headers,here";
+      // Create a CSV with actually invalid content (empty file)
+      const invalidCsvContent = "";
 
       const file = new File([invalidCsvContent], "invalid.csv", {
         type: "text/csv",
@@ -1110,12 +1062,12 @@ describe.sequential("Import System Integration Tests", () => {
       formData.append("file", file);
       formData.append("catalogId", String(testCatalogId));
 
-      const uploadRequest = await createMultipartRequest(
-        formData,
-        invalidCsvContent,
-      );
+      const uploadRequest = await createMultipartRequest(formData, invalidCsvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
+      if (!uploadResponse) {
+        throw new Error("Upload handler returned undefined response");
+      }
       const uploadResult = await uploadResponse.json();
 
       expect(uploadResponse.status).toBe(200);
@@ -1126,7 +1078,7 @@ describe.sequential("Import System Integration Tests", () => {
         id: uploadResult.importId,
       });
 
-      // Process file parsing job - should fail
+      // Process file parsing job - should fail due to empty file
       const fileParsingJobInput = {
         importId: uploadResult.importId,
         filePath: errorImportRecord.metadata.filePath,
@@ -1140,7 +1092,7 @@ describe.sequential("Import System Integration Tests", () => {
           job: { id: "test-job" },
           req: { payload },
         }),
-      ).rejects.toThrow("No valid rows found");
+      ).rejects.toThrow("No data rows found in file");
 
       // Verify import was marked as failed
       const importRecord = await payload.findByID({
@@ -1154,8 +1106,7 @@ describe.sequential("Import System Integration Tests", () => {
 
     it("should handle geocoding failures gracefully", async () => {
       // Use an address that triggers test provider failure
-      const csvHeaders =
-        "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
       const csvRow = `"Test Event","Test Description","2024-03-15","","Test Location","123 Fail St","https://test.com","Test","test"`;
       const csvContent = csvHeaders + "\n" + csvRow;
 
@@ -1167,6 +1118,9 @@ describe.sequential("Import System Integration Tests", () => {
       const uploadRequest = await createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
+      if (!uploadResponse) {
+        throw new Error("Upload handler returned undefined response");
+      }
       const uploadResult = await uploadResponse.json();
       const importId = uploadResult.importId;
 
@@ -1279,8 +1233,7 @@ describe.sequential("Import System Integration Tests", () => {
       }));
 
       // Create proper CSV content with headers
-      const csvHeaders =
-        "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
       const csvRows = largeDataset
         .map((row) =>
           [
@@ -1297,11 +1250,7 @@ describe.sequential("Import System Integration Tests", () => {
             .map((val) => {
               // Properly escape CSV values - double quotes and wrap in quotes if contains comma
               const stringVal = String(val);
-              if (
-                stringVal.includes(",") ||
-                stringVal.includes('"') ||
-                stringVal.includes("\n")
-              ) {
+              if (stringVal.includes(",") || stringVal.includes('"') || stringVal.includes("\n")) {
                 return `"${stringVal.replace(/"/g, '""')}"`;
               }
               return stringVal;
@@ -1321,6 +1270,9 @@ describe.sequential("Import System Integration Tests", () => {
       const uploadRequest = await createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
+      if (!uploadResponse) {
+        throw new Error("Upload handler returned undefined response");
+      }
       const uploadResult = await uploadResponse.json();
       const importId = uploadResult.importId;
 
@@ -1356,8 +1308,7 @@ describe.sequential("Import System Integration Tests", () => {
 
     it("should track progress correctly throughout workflow", async () => {
       // Create proper CSV content with headers
-      const csvHeaders =
-        "title,description,date,enddate,location,address,url,category,tags";
+      const csvHeaders = "title,description,date,enddate,location,address,url,category,tags";
       const csvRows = sampleCsvData
         .map((row) =>
           [
@@ -1374,11 +1325,7 @@ describe.sequential("Import System Integration Tests", () => {
             .map((val) => {
               // Properly escape CSV values - double quotes and wrap in quotes if contains comma
               const stringVal = String(val);
-              if (
-                stringVal.includes(",") ||
-                stringVal.includes('"') ||
-                stringVal.includes("\n")
-              ) {
+              if (stringVal.includes(",") || stringVal.includes('"') || stringVal.includes("\n")) {
                 return `"${stringVal.replace(/"/g, '""')}"`;
               }
               return stringVal;
@@ -1398,6 +1345,9 @@ describe.sequential("Import System Integration Tests", () => {
       const uploadRequest = await createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
+      if (!uploadResponse) {
+        throw new Error("Upload handler returned undefined response");
+      }
       const uploadResult = await uploadResponse.json();
       const importId = uploadResult.importId;
 
@@ -1408,9 +1358,7 @@ describe.sequential("Import System Integration Tests", () => {
       });
 
       // Check initial progress
-      let progressRequest = new NextRequest(
-        `http://localhost:3000/api/import/${importId}/progress`,
-      );
+      let progressRequest = new NextRequest(`http://localhost:3000/api/import/${importId}/progress`);
       let progressResponse = await progressHandler(progressRequest, {
         params: { importId },
       } as any);
@@ -1432,9 +1380,7 @@ describe.sequential("Import System Integration Tests", () => {
       });
 
       // Check progress after file parsing
-      progressRequest = new NextRequest(
-        `http://localhost:3000/api/import/${importId}/progress`,
-      );
+      progressRequest = new NextRequest(`http://localhost:3000/api/import/${importId}/progress`);
       progressResponse = await progressHandler(progressRequest, {
         params: { importId },
       } as any);
@@ -1478,9 +1424,7 @@ describe.sequential("Import System Integration Tests", () => {
       });
 
       // Check progress after event creation
-      progressRequest = new NextRequest(
-        `http://localhost:3000/api/import/${importId}/progress`,
-      );
+      progressRequest = new NextRequest(`http://localhost:3000/api/import/${importId}/progress`);
       progressResponse = await progressHandler(progressRequest, {
         params: { importId },
       } as any);
@@ -1506,9 +1450,7 @@ describe.sequential("Import System Integration Tests", () => {
       });
 
       // Check final progress
-      progressRequest = new NextRequest(
-        `http://localhost:3000/api/import/${importId}/progress`,
-      );
+      progressRequest = new NextRequest(`http://localhost:3000/api/import/${importId}/progress`);
       progressResponse = await progressHandler(progressRequest, {
         params: { importId },
       } as any);

@@ -1,4 +1,5 @@
 import { renderWithProviders, screen } from "../../setup/test-utils";
+
 import { EventsList } from "@/components/events-list";
 import type { Event } from "@/payload-types";
 
@@ -173,14 +174,10 @@ describe("EventsList", () => {
     expect(screen.getByText("Paris, France")).toBeInTheDocument();
 
     // Event with no location fields should not display location
-    expect(
-      screen.getByText("Event with no location fields"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Event with no location fields")).toBeInTheDocument();
 
     // Should prioritize geocoded address when available
-    expect(
-      screen.getByText("4 Pennsylvania Plaza, New York, NY 10001, USA"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("4 Pennsylvania Plaza, New York, NY 10001, USA")).toBeInTheDocument();
   });
 
   test("handles events with non-object data field", () => {
@@ -277,9 +274,7 @@ describe("EventsList", () => {
       }),
     );
 
-    const { container } = renderWithProviders(
-      <EventsList events={manyEvents} />,
-    );
+    const { container } = renderWithProviders(<EventsList events={manyEvents} />);
 
     // Should render all events (using getAllByText to handle multiple test instances)
     expect(screen.getAllByText("Event 1")[0]).toBeInTheDocument();

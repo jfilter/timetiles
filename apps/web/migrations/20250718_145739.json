@@ -1979,8 +1979,8 @@
           "notNull": false,
           "default": false
         },
-        "config_opencage_api_key": {
-          "name": "config_opencage_api_key",
+        "config_GEOCODING_OPENCAGE_API_KEY": {
+          "name": "config_GEOCODING_OPENCAGE_API_KEY",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
@@ -3511,12 +3511,7 @@
     "payload.enum_imports_job_history_job_type": {
       "name": "enum_imports_job_history_job_type",
       "schema": "payload",
-      "values": [
-        "file-parsing",
-        "batch-processing",
-        "geocoding-batch",
-        "event-creation"
-      ]
+      "values": ["file-parsing", "batch-processing", "geocoding-batch", "event-creation"]
     },
     "payload.enum_imports_job_history_status": {
       "name": "enum_imports_job_history_status",
@@ -3531,13 +3526,7 @@
     "payload.enum_imports_processing_stage": {
       "name": "enum_imports_processing_stage",
       "schema": "payload",
-      "values": [
-        "file-parsing",
-        "row-processing",
-        "geocoding",
-        "event-creation",
-        "completed"
-      ]
+      "values": ["file-parsing", "row-processing", "geocoding", "event-creation", "completed"]
     },
     "payload.enum_imports_coordinate_detection_detection_method": {
       "name": "enum_imports_coordinate_detection_detection_method",
@@ -3547,13 +3536,7 @@
     "payload.coord_fmt": {
       "name": "coord_fmt",
       "schema": "payload",
-      "values": [
-        "decimal",
-        "dms",
-        "combined_comma",
-        "combined_space",
-        "geojson"
-      ]
+      "values": ["decimal", "dms", "combined_comma", "combined_space", "geojson"]
     },
     "payload.enum_events_coordinate_source_type": {
       "name": "enum_events_coordinate_source_type",
@@ -3563,13 +3546,7 @@
     "payload.enum_events_coordinate_source_validation_status": {
       "name": "enum_events_coordinate_source_validation_status",
       "schema": "payload",
-      "values": [
-        "valid",
-        "out_of_range",
-        "suspicious_zero",
-        "swapped",
-        "invalid"
-      ]
+      "values": ["valid", "out_of_range", "suspicious_zero", "swapped", "invalid"]
     },
     "payload.enum_events_geocoding_info_provider": {
       "name": "enum_events_geocoding_info_provider",
@@ -3609,13 +3586,7 @@
     "payload.enum_payload_jobs_log_task_slug": {
       "name": "enum_payload_jobs_log_task_slug",
       "schema": "payload",
-      "values": [
-        "inline",
-        "file-parsing",
-        "batch-processing",
-        "event-creation",
-        "geocoding-batch"
-      ]
+      "values": ["inline", "file-parsing", "batch-processing", "event-creation", "geocoding-batch"]
     },
     "payload.enum_payload_jobs_log_state": {
       "name": "enum_payload_jobs_log_state",
@@ -3625,13 +3596,7 @@
     "payload.enum_payload_jobs_task_slug": {
       "name": "enum_payload_jobs_task_slug",
       "schema": "payload",
-      "values": [
-        "inline",
-        "file-parsing",
-        "batch-processing",
-        "event-creation",
-        "geocoding-batch"
-      ]
+      "values": ["inline", "file-parsing", "batch-processing", "event-creation", "geocoding-batch"]
     }
   },
   "schemas": {

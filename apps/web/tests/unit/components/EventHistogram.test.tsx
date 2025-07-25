@@ -1,7 +1,8 @@
 import { screen, cleanup, waitFor, act } from "@testing-library/react";
-import { renderWithProviders } from "../../setup/test-utils";
+
 import { EventHistogram } from "../../../components/event-histogram";
 import { useHistogramQuery } from "../../../lib/hooks/use-events-queries";
+import { renderWithProviders } from "../../setup/test-utils";
 
 // Mock next-themes is handled by ThemeProvider in test-utils
 
@@ -37,11 +38,7 @@ vi.mock("../../../lib/hooks/use-events-queries", () => ({
 // Mock ECharts component
 vi.mock("echarts-for-react", () => ({
   default: ({ option }: any) => {
-    return (
-      <div data-testid="echarts-mock">
-        {JSON.stringify(option?.series?.[0]?.data || [])}
-      </div>
-    );
+    return <div data-testid="echarts-mock">{JSON.stringify(option?.series?.[0]?.data || [])}</div>;
   },
 }));
 

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+
 import { ExplorePage } from "../pages/explore.page";
 
 test.describe("Explore Page - Filtering", () => {
@@ -32,9 +33,7 @@ test.describe("Explore Page - Filtering", () => {
     expect(params.has("datasets")).toBe(true);
 
     // Verify the catalog selection persisted
-    await expect(page.locator("#catalog-select")).toContainText(
-      "Environmental Data",
-    );
+    await expect(page.locator("#catalog-select")).toContainText("Environmental Data");
 
     // Verify the dataset checkbox is checked
     await expect(page.locator('input[type="checkbox"]:checked')).toBeVisible();
@@ -76,9 +75,7 @@ test.describe("Explore Page - Filtering", () => {
     await page.waitForFunction(
       () => {
         const url = new URL(window.location.href);
-        return (
-          url.searchParams.has("startDate") && url.searchParams.has("endDate")
-        );
+        return url.searchParams.has("startDate") && url.searchParams.has("endDate");
       },
       { timeout: 5000 },
     );
@@ -109,9 +106,7 @@ test.describe("Explore Page - Filtering", () => {
     await page.waitForFunction(
       () => {
         const url = new URL(window.location.href);
-        return (
-          !url.searchParams.has("startDate") && !url.searchParams.has("endDate")
-        );
+        return !url.searchParams.has("startDate") && !url.searchParams.has("endDate");
       },
       { timeout: 5000 },
     );
@@ -178,14 +173,8 @@ test.describe("Explore Page - Filtering", () => {
       try {
         const params = await explorePage.getUrlParams();
         expect(params.has("catalog")).toBe(true);
-        console.warn(
-          "Page became unstable during test, but URL state updated correctly",
-        );
       } catch {
         // If even URL check fails, just ensure the test doesn't crash completely
-        console.warn(
-          "Page completely unstable - marking test as conditional pass",
-        );
       }
     }
   });
@@ -225,9 +214,7 @@ test.describe("Explore Page - Filtering", () => {
 
     // Check that filters are restored
     await explorePage.waitForApiResponse();
-    await expect(page.locator("#catalog-select")).toContainText(
-      "Environmental Data",
-    );
+    await expect(page.locator("#catalog-select")).toContainText("Environmental Data");
     await expect(page.locator("#start-date")).toHaveValue("2024-01-01");
   });
 });

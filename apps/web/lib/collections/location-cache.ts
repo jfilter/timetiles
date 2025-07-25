@@ -4,13 +4,7 @@ const LocationCache: CollectionConfig = {
   slug: "location-cache",
   admin: {
     useAsTitle: "originalAddress",
-    defaultColumns: [
-      "originalAddress",
-      "provider",
-      "confidence",
-      "hitCount",
-      "lastUsed",
-    ],
+    defaultColumns: ["originalAddress", "provider", "confidence", "hitCount", "lastUsed"],
     pagination: {
       defaultLimit: 50,
     },

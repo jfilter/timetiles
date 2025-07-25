@@ -41,9 +41,7 @@ describe("GeoLocationDetector", () => {
 
     it("detects underscore variants (lat_deg, long_deg)", () => {
       const headers = ["lat_deg", "long_deg", "description"];
-      const sampleRows = [
-        { lat_deg: "40.7128", long_deg: "-74.0060", description: "test" },
-      ];
+      const sampleRows = [{ lat_deg: "40.7128", long_deg: "-74.0060", description: "test" }];
 
       const result = detector.detectGeoColumns(headers, sampleRows);
 
@@ -54,9 +52,7 @@ describe("GeoLocationDetector", () => {
 
     it("detects spelled out versions (latitude, longitude)", () => {
       const headers = ["latitude", "longitude", "city"];
-      const sampleRows = [
-        { latitude: "40.7128", longitude: "-74.0060", city: "NYC" },
-      ];
+      const sampleRows = [{ latitude: "40.7128", longitude: "-74.0060", city: "NYC" }];
 
       const result = detector.detectGeoColumns(headers, sampleRows);
 
@@ -67,9 +63,7 @@ describe("GeoLocationDetector", () => {
 
     it("detects coordinate columns (x_coord, y_coord)", () => {
       const headers = ["y_coordinate", "x_coordinate", "name"];
-      const sampleRows = [
-        { y_coordinate: "40.7128", x_coordinate: "-74.0060", name: "NYC" },
-      ];
+      const sampleRows = [{ y_coordinate: "40.7128", x_coordinate: "-74.0060", name: "NYC" }];
 
       const result = detector.detectGeoColumns(headers, sampleRows);
 

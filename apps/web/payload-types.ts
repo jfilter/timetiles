@@ -280,6 +280,30 @@ export interface Import {
    */
   errorLog?: string | null;
   /**
+   * Rate limiting information for this import
+   */
+  rateLimitInfo?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Additional import context and metadata
+   */
+  metadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
    * Processing progress tracking
    */
   progress?: {
@@ -359,18 +383,6 @@ export interface Import {
     skippedGeocoding?: number | null;
   };
   /**
-   * Rate limiting information for this import
-   */
-  rateLimitInfo?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
    * Current Payload job ID being processed
    */
   currentJobId?: string | null;
@@ -434,18 +446,6 @@ export interface Import {
       swappedCoordinates?: boolean | null;
     };
   };
-  /**
-   * Additional import context and metadata
-   */
-  metadata?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1117,6 +1117,8 @@ export interface ImportsSelect<T extends boolean = true> {
   rowCount?: T;
   errorCount?: T;
   errorLog?: T;
+  rateLimitInfo?: T;
+  metadata?: T;
   progress?:
     | T
     | {
@@ -1145,7 +1147,6 @@ export interface ImportsSelect<T extends boolean = true> {
         preExistingCoordinates?: T;
         skippedGeocoding?: T;
       };
-  rateLimitInfo?: T;
   currentJobId?: T;
   jobHistory?:
     | T
@@ -1181,7 +1182,6 @@ export interface ImportsSelect<T extends boolean = true> {
               swappedCoordinates?: T;
             };
       };
-  metadata?: T;
   updatedAt?: T;
   createdAt?: T;
 }

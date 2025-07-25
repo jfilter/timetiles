@@ -37,8 +37,7 @@ export function determineBinningStrategy(
 ): BinningStrategy | number {
   if (binning !== "auto") return binning;
 
-  const daysDiff =
-    (maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24);
+  const daysDiff = (maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24);
 
   if (daysDiff <= 7) return "day";
   if (daysDiff <= 30) return "day";
@@ -47,11 +46,7 @@ export function determineBinningStrategy(
   return "year";
 }
 
-function generateBins(
-  minDate: Date,
-  maxDate: Date,
-  strategy: BinningStrategy | number,
-): [Date, Date][] {
+function generateBins(minDate: Date, maxDate: Date, strategy: BinningStrategy | number): [Date, Date][] {
   const bins: [Date, Date][] = [];
   let current = new Date(minDate);
   current.setHours(0, 0, 0, 0);
@@ -93,10 +88,7 @@ function generateBins(
   return bins;
 }
 
-export function formatDateForBin(
-  date: Date,
-  strategy: BinningStrategy | number,
-): string {
+export function formatDateForBin(date: Date, strategy: BinningStrategy | number): string {
   if (typeof strategy === "number") {
     return date.toLocaleDateString();
   }
