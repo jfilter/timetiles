@@ -5,11 +5,13 @@ on:
     paths:
       - "apps/web/lib/collections/**"
       - "apps/web/payload.config.ts"
+      - ".github/workflows/validate-payload-types.yml"
   push:
     branches: [main, develop]
     paths:
       - "apps/web/lib/collections/**"
       - "apps/web/payload.config.ts"
+      - ".github/workflows/validate-payload-types.yml"
 
 jobs:
   validate-types:
