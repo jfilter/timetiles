@@ -147,7 +147,9 @@ describe("/api/events/map-clusters", () => {
       try {
         await testEnv.cleanup();
       } catch (error) {
-        console.debug('Cleanup error (non-critical):', error);
+        // Cleanup error (non-critical) - explicitly ignore
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        error;
       }
     }
   });
@@ -206,9 +208,10 @@ describe("/api/events/map-clusters", () => {
       west: -123,
     };
 
-    const request = new NextRequest(
-      `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=16`,
-    );
+    // Test request construction (for documentation)
+    // new NextRequest(
+    //   `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=16`,
+    // );
 
     // Instead of calling the API route (which uses main DB),
     // call the clustering function directly using the test DB
@@ -239,7 +242,9 @@ describe("/api/events/map-clusters", () => {
           id: row.cluster_id || row.event_id,
           type: isCluster ? "event-cluster" : "event-point",
           ...(isCluster ? { count: Number(row.event_count) } : {}),
-          ...(row.event_title ? { title: String(row.event_title) } : {}),
+          ...(row.event_title
+            ? { title: typeof row.event_title === "string" ? row.event_title : JSON.stringify(row.event_title) }
+            : {}),
           ...(row.event_ids && Number(row.event_count) <= 10 ? { eventIds: row.event_ids } : {}),
         },
       };
@@ -290,7 +295,7 @@ describe("/api/events/map-clusters", () => {
 
     // Should only return our test events
     const totalEvents = data.features.reduce((sum: number, feature: MapClusterFeature) => {
-      return sum + (feature.properties.count || 1);
+      return sum + (feature.properties.count ?? 1);
     }, 0);
 
     expect(totalEvents).toBe(testEventIds.length);
@@ -325,7 +330,7 @@ describe("/api/events/map-clusters", () => {
 
     // Should only return events from Jan 5-8
     const totalEvents = data.features.reduce((sum: number, feature: MapClusterFeature) => {
-      return sum + (feature.properties.count || 1);
+      return sum + (feature.properties.count ?? 1);
     }, 0);
 
     // Since there may be other events in the test database,

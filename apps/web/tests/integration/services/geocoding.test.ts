@@ -1,5 +1,5 @@
 // Create mock geocoder instances with proper typing - must be defined before mocking
-import { vi, describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Use vi.hoisted to ensure mocks are set up before imports
 const { mockGoogleGeocode, mockNominatimGeocode, mockNodeGeocoder } = vi.hoisted(() => {
@@ -34,7 +34,7 @@ const mockNominatimGeocoder = {
   },
 };
 
-import { GeocodingService, GeocodingError } from "../../../lib/services/geocoding/geocoding-service";
+import { GeocodingError, GeocodingService } from "../../../lib/services/geocoding/geocoding-service";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
 describe("GeocodingService", () => {
@@ -49,7 +49,7 @@ describe("GeocodingService", () => {
   });
 
   afterAll(async () => {
-    if (testEnv && testEnv.cleanup) {
+    if (testEnv?.cleanup) {
       await testEnv.cleanup();
     }
   });
@@ -75,12 +75,12 @@ describe("GeocodingService", () => {
             collection: "location-cache",
             id: entry.id,
           });
-        } catch (deleteError) {
+        } catch {
           // Ignore individual delete errors
         }
       }
-    } catch (error) {
-      console.debug('Cleanup error (non-critical):', error);
+    } catch {
+      // Cleanup error (non-critical) - explicitly ignore
     }
 
     // Reset the mock functions completely for each test
@@ -181,36 +181,36 @@ describe("GeocodingService", () => {
 
   describe.sequential("geocode", () => {
     const mockAddress = "123 Main St, San Francisco, CA";
-    const mockGoogleResult = {
-      latitude: 37.7749,
-      longitude: -122.4194,
-      formattedAddress: "123 Main St, San Francisco, CA 94102, USA",
-      streetNumber: "123",
-      streetName: "Main St",
-      city: "San Francisco",
-      state: "CA",
-      zipcode: "94102",
-      country: "USA",
-      extra: {
-        googlePlaceId: "ChIJd8BlQ2BZwokRAFUEcm_qrcA",
-        confidence: 0.9,
-      },
-    };
+    // const mockGoogleResult = { // Unused variable
+    //   latitude: 37.7749,
+    //   longitude: -122.4194,
+    //   formattedAddress: "123 Main St, San Francisco, CA 94102, USA",
+    //   streetNumber: "123",
+    //   streetName: "Main St",
+    //   city: "San Francisco",
+    //   state: "CA",
+    //   zipcode: "94102",
+    //   country: "USA",
+    //   extra: {
+    //     googlePlaceId: "ChIJd8BlQ2BZwokRAFUEcm_qrcA",
+    //     confidence: 0.9,
+    //   },
+    // };
 
-    const mockNominatimResult = {
-      latitude: 37.7749,
-      longitude: -122.4194,
-      formattedAddress: "123 Main Street, San Francisco, California, USA",
-      streetNumber: "123",
-      streetName: "Main Street",
-      city: "San Francisco",
-      state: "California",
-      country: "USA",
-      extra: {
-        osmId: "123456",
-        importance: 0.7,
-      },
-    };
+    // const mockNominatimResult = { // Unused variable
+    //   latitude: 37.7749,
+    //   longitude: -122.4194,
+    //   formattedAddress: "123 Main Street, San Francisco, California, USA",
+    //   streetNumber: "123",
+    //   streetName: "Main Street",
+    //   city: "San Francisco",
+    //   state: "California",
+    //   country: "USA",
+    //   extra: {
+    //     osmId: "123456",
+    //     importance: 0.7,
+    //   },
+    // };
 
     it("should successfully geocode with Google provider", async () => {
       const uniqueAddress = `1234 Unique Google St, San Francisco, CA ${testCounter}-${Date.now()}`;
@@ -286,7 +286,7 @@ describe("GeocodingService", () => {
       ]);
 
       // Set up environment and recreate service to include Google geocoder AFTER setting up mocks
-      const providerNames = await ensureServiceCreated(true);
+      await ensureServiceCreated(true);
 
       const result = await geocodingService.geocode(uniqueAddress);
 
@@ -318,7 +318,7 @@ describe("GeocodingService", () => {
       ]);
 
       // Ensure no Google API key and recreate service AFTER setting up mocks
-      const providerNames = await ensureServiceCreated(false);
+      await ensureServiceCreated(false);
 
       const uniqueAddress = `9012 Nominatim Blvd, San Francisco, CA ${testCounter}-${Date.now()}`;
 
@@ -880,9 +880,11 @@ describe("GeocodingService", () => {
       expect(result.fromCache).toBeFalsy();
 
       // Restore original methods immediately
-      payload.find = originalFind;
-      payload.update = originalUpdate;
-      payload.create = originalCreate;
+      Object.assign(payload, {
+        find: originalFind,
+        update: originalUpdate,
+        create: originalCreate,
+      });
     });
   });
 });

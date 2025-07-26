@@ -4,9 +4,9 @@
 export * from "./external/next-navigation";
 
 // Test data factories
-export * from "./data/events";
 export * from "./data/catalogs";
 export * from "./data/datasets";
+export * from "./data/events";
 
 // Utility functions
 export * from "./utils/factories";

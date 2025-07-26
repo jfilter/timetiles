@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { ExplorePage } from "../pages/explore.page";
 
@@ -86,10 +86,9 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.waitForEventsToLoad();
 
     // Set up request interception
-    let zoomRequestMade = false;
     page.on("request", (request) => {
       if (request.url().includes("/api/events") && request.url().includes("bounds=")) {
-        zoomRequestMade = true;
+        // Request intercepted for bounds checking
       }
     });
 
@@ -135,14 +134,10 @@ test.describe("Explore Page - Map Interactions", () => {
   test("should handle map bounds updates correctly", async ({ page }) => {
     // Set up request tracking before any API calls - track all events endpoints
     const apiRequests: string[] = [];
-    const boundsRequests: string[] = [];
     page.on("request", (request) => {
       const url = new URL(request.url());
       if (url.pathname.startsWith("/api/events")) {
         apiRequests.push(url.toString());
-        if (url.searchParams.has("bounds")) {
-          boundsRequests.push(url.searchParams.get("bounds")!);
-        }
       }
     });
 
@@ -194,9 +189,8 @@ test.describe("Explore Page - Map Interactions", () => {
     // Should be able to pan without issues
     try {
       await explorePage.panMap(50, 50);
-    } catch (error) {
-      // If panning fails due to page instability, log and continue
-      console.debug('Map panning failed (non-critical):', error);
+    } catch {
+      // Map panning failed (non-critical)
     }
     await page.waitForTimeout(500);
 

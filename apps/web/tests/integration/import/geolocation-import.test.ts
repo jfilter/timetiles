@@ -1,6 +1,5 @@
 import type { Payload } from "payload";
 
-import type { Import } from "../../../payload-types";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
 describe("Import with existing coordinates", () => {
@@ -95,6 +94,9 @@ describe("Import with existing coordinates", () => {
       });
       datasetId = dataset.id;
     } catch (error) {
+      // Log error for debugging but allow test to fail naturally
+      // eslint-disable-next-line no-console
+      console.error("Failed to set up test environment:", error);
       throw error;
     }
   }, 30000); // 30 second timeout

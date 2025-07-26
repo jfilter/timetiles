@@ -8,12 +8,12 @@
  * - Efficient database operations
  */
 
+// Import geospatial assertions (they extend expect automatically)
+import "../../utils/geospatial-assertions";
+
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 import { GeospatialTestHelper, TEST_COORDINATES } from "../../utils/geospatial-assertions";
 import { TestDataBuilder } from "../../utils/test-data-builder";
-
-// Import geospatial assertions (they extend expect automatically)
-import "../../utils/geospatial-assertions";
 
 describe("Enhanced Testing Infrastructure", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
@@ -29,7 +29,7 @@ describe("Enhanced Testing Infrastructure", () => {
   });
 
   describe("Test Environment", () => {
-    it("should provide isolated test environment with core components", async () => {
+    it("should provide isolated test environment with core components", () => {
       // Test that environment provides essential components
       expect(testEnv.payload).toBeDefined();
       expect(testEnv.seedManager).toBeDefined();
@@ -50,7 +50,7 @@ describe("Enhanced Testing Infrastructure", () => {
   });
 
   describe("TestDataBuilder with Builder Patterns", () => {
-    it("should create realistic events with fluent API", async () => {
+    it("should create realistic events with fluent API", () => {
       const event = TestDataBuilder.events()
         .withTitle("Tech Conference 2024")
         .withCoordinates(40.7128, -74.006) // NYC
@@ -67,7 +67,7 @@ describe("Enhanced Testing Infrastructure", () => {
       expect((event.data as Record<string, unknown>).address).toBe("123 Tech Street, New York, NY");
     });
 
-    it("should create multiple events with variations", async () => {
+    it("should create multiple events with variations", () => {
       const events = TestDataBuilder.events()
         .withDataset(1)
         .withRealisticData("meetup")
@@ -92,7 +92,7 @@ describe("Enhanced Testing Infrastructure", () => {
       });
     });
 
-    it("should create related catalogs and datasets", async () => {
+    it("should create related catalogs and datasets", () => {
       const catalog = TestDataBuilder.catalogs()
         .withName("Technology Events")
         .withDescription("Tech conferences and meetups")
@@ -115,7 +115,7 @@ describe("Enhanced Testing Infrastructure", () => {
       expect((dataset.schema as Record<string, unknown>)?.properties).toHaveProperty("date");
     });
 
-    it("should create realistic test scenarios", async () => {
+    it("should create realistic test scenarios", () => {
       const scenario = TestDataBuilder.createScenario("conference-events");
 
       expect(scenario.catalogs).toHaveLength(1);

@@ -4,12 +4,12 @@
  * Simple test to verify the core functionality works
  */
 
+// Import geospatial assertions
+import "../../utils/geospatial-assertions";
+
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 import { TEST_COORDINATES } from "../../utils/geospatial-assertions";
 import { TestDataBuilder } from "../../utils/test-data-builder";
-
-// Import geospatial assertions
-import "../../utils/geospatial-assertions";
 
 describe("Basic Enhanced Testing Infrastructure", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;

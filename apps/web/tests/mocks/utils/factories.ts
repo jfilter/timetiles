@@ -10,7 +10,7 @@ export const createDateRange = (startDate: string, days: number) => {
 };
 
 export const createCoordinateGrid = (centerLat: number, centerLng: number, count: number, spread: number = 0.01) => {
-  return Array.from({ length: count }, (_, i) => ({
+  return Array.from({ length: count }, () => ({
     latitude: centerLat + (Math.random() - 0.5) * spread,
     longitude: centerLng + (Math.random() - 0.5) * spread,
   }));

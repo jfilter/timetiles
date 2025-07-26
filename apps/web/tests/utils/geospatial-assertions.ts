@@ -6,9 +6,7 @@
  * distances, and geospatial relationships.
  */
 
-import { createLogger } from "@/lib/logger";
-
-const logger = createLogger("geo-assertions");
+// Utility functions for geospatial testing
 
 export interface Coordinates {
   latitude: number;

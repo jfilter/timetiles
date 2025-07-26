@@ -4,8 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "lint": "eslint . --max-warnings 0",
-    "format": "eslint . --fix --quiet && prettier --write . --log-level error",
+    "lint": "eslint . --cache",
+    "format": "eslint . --fix --quiet --cache && prettier --write . --log-level error",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

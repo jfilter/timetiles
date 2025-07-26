@@ -8,7 +8,7 @@ if (!process.env.NODE_ENV) {
 }
 
 // Create unique temp directory for each test worker
-const workerId = process.env.VITEST_WORKER_ID || "1";
+const workerId = process.env.VITEST_WORKER_ID ?? "1";
 const tempDir = `/tmp/timetiles-test-${workerId}-${randomUUID()}`;
 process.env.TEMP_DIR = tempDir;
 

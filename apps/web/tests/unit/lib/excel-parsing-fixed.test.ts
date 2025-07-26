@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { read as xlsxRead, utils as xlsxUtils, write as xlsxWrite } from "xlsx";
 
 import { parseExcelFile } from "../../../lib/jobs/utils/data-parsing";
@@ -10,7 +10,7 @@ describe("Excel File Parsing - Fixed", () => {
   let testFilePath: string;
   let logger: ReturnType<typeof createJobLogger>;
 
-  beforeAll(async () => {
+  beforeAll(() => {
     logger = createJobLogger("test-excel", "test-request-id");
     testFilePath = path.join("/tmp", `test-excel-fixed-${Date.now()}.xlsx`);
 

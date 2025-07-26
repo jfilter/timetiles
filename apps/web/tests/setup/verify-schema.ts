@@ -10,7 +10,7 @@ export const verifyDatabaseSchema = async (connectionString: string): Promise<vo
     await client.connect();
 
     // Check search_path
-    const searchPathResult = await client.query("SHOW search_path");
+    await client.query("SHOW search_path");
 
     // Check if payload schema exists
     const schemaResult = await client.query(`
@@ -51,7 +51,7 @@ export const verifyDatabaseSchema = async (connectionString: string): Promise<vo
 
       if (tableResult.rows.length === 0) {
         // Debug: check what tables exist in payload schema
-        const existingTablesResult = await client.query(`
+        await client.query(`
           SELECT table_name
           FROM information_schema.tables
           WHERE table_schema = 'payload'
@@ -60,8 +60,6 @@ export const verifyDatabaseSchema = async (connectionString: string): Promise<vo
         throw new Error(`Required table 'payload.${tableName}' does not exist`);
       }
     }
-  } catch (error) {
-    throw error;
   } finally {
     await client.end();
   }

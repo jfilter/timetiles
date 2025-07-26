@@ -35,12 +35,12 @@ describe.sequential("Configuration-Driven Seeding", () => {
       const devCatalogsConfig = getCollectionConfig("catalogs", "development");
       expect(devCatalogsConfig).toBeDefined();
       expect(typeof devCatalogsConfig?.count).toBe("function");
-      expect((devCatalogsConfig?.count as Function)("development")).toBe(6);
+      expect((devCatalogsConfig?.count as (...args: any[]) => any)("development")).toBe(6);
 
       // Test test environment
       const testCatalogsConfig = getCollectionConfig("catalogs", "test");
       expect(testCatalogsConfig).toBeDefined();
-      expect((testCatalogsConfig?.count as Function)("test")).toBe(3);
+      expect((testCatalogsConfig?.count as (...args: any[]) => any)("test")).toBe(3);
 
       // Test production environment (catalogs not enabled in production)
       const prodCatalogsConfig = getCollectionConfig("catalogs", "production");
@@ -124,7 +124,9 @@ describe.sequential("Configuration-Driven Seeding", () => {
       // Development should have more items than test environment
       const devUsersConfig = getCollectionConfig("users", "development");
       const expectedUsersCount =
-        typeof devUsersConfig?.count === "function" ? devUsersConfig.count("development") : devUsersConfig?.count || 0;
+        typeof devUsersConfig?.count === "function"
+          ? devUsersConfig.count("development")
+          : (devUsersConfig?.count ?? 0);
 
       expect(usersCount).toBeLessThanOrEqual(expectedUsersCount); // Less than or equal because we might have existing users
     });
@@ -144,7 +146,7 @@ describe.sequential("Configuration-Driven Seeding", () => {
       // Test environment should have fewer items than development
       const testUsersConfig = getCollectionConfig("users", "test");
       const expectedUsersCount =
-        typeof testUsersConfig?.count === "function" ? testUsersConfig.count("test") : testUsersConfig?.count || 0;
+        typeof testUsersConfig?.count === "function" ? testUsersConfig.count("test") : (testUsersConfig?.count ?? 0);
 
       // Account for potential additional system users (admin, test users, etc.)
       // The seeding system may create more users than the base configuration specifies
@@ -269,7 +271,7 @@ describe.sequential("Configuration-Driven Seeding", () => {
     });
 
     it("should have valid collection configurations", () => {
-      Object.entries(SEED_CONFIG.collections).forEach(([name, config]) => {
+      Object.entries(SEED_CONFIG.collections).forEach(([, config]) => {
         expect(config).toBeDefined();
         expect(config.count !== undefined || config.disabled).toBe(true);
 

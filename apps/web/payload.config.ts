@@ -14,9 +14,8 @@ import { MainMenu } from "./lib/collections/main-menu";
 import Media from "./lib/collections/media";
 import { Pages } from "./lib/collections/pages";
 import Users from "./lib/collections/users";
-
 // Import job definitions
-import { fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob } from "./lib/jobs/import-jobs";
+import { batchProcessingJob, eventCreationJob, fileParsingJob, geocodingBatchJob } from "./lib/jobs/import-jobs";
 
 export default buildConfig({
   admin: {

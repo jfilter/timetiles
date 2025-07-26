@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { ExplorePage } from "../pages/explore.page";
 
@@ -147,7 +147,7 @@ test.describe("Explore Page - Filtering", () => {
 
     // Check page stability before proceeding
     await explorePage.waitForPageStability();
-    const initialCount = await explorePage.getEventCount();
+    await explorePage.getEventCount();
 
     // Add significant delay before changing to prevent race conditions
     await page.waitForTimeout(2000);

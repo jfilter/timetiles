@@ -22,6 +22,8 @@ export const createTestDatabase = async (dbName: string): Promise<void> => {
 
     if (result.rows.length === 0) {
       // Create new database
+      // Safe: dbName is generated internally and properly escaped with quotes
+      // eslint-disable-next-line sonarjs/sql-queries
       await client.query(`CREATE DATABASE "${dbName}"`);
       logger.debug(`Created test database: ${dbName}`);
     } else {
@@ -66,7 +68,7 @@ export const createTestDatabase = async (dbName: string): Promise<void> => {
  * Truncates all tables in the test database
  */
 export const truncateAllTables = async (dbUrl?: string): Promise<void> => {
-  const connectionString = dbUrl || process.env.DATABASE_URL;
+  const connectionString = dbUrl ?? process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error("No database URL provided");
   }
@@ -88,9 +90,10 @@ export const truncateAllTables = async (dbUrl?: string): Promise<void> => {
 
     if (tableNames.length > 0) {
       // Truncate all tables
-      await client.query(
-        `TRUNCATE TABLE ${tableNames.map((name) => `payload."${name}"`).join(", ")} RESTART IDENTITY CASCADE`,
-      );
+      // Safe: table names are fetched from the database and properly escaped
+      const tableList = tableNames.map((name) => `payload."${name}"`).join(", ");
+      // eslint-disable-next-line sonarjs/sql-queries
+      await client.query(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
       logger.debug("Truncated all tables in the test database");
     }
   } catch (error) {
@@ -117,6 +120,8 @@ export const dropTestDatabase = async (dbName: string): Promise<void> => {
     await client.connect();
 
     // Force close all connections to the database
+    // Safe: dbName is generated internally
+    // eslint-disable-next-line sonarjs/sql-queries
     await client.query(`
       SELECT pg_terminate_backend(pg_stat_activity.pid)
       FROM pg_stat_activity
@@ -125,6 +130,8 @@ export const dropTestDatabase = async (dbName: string): Promise<void> => {
     `);
 
     // Drop database
+    // Safe: dbName is generated internally and properly escaped
+    // eslint-disable-next-line sonarjs/sql-queries
     await client.query(`DROP DATABASE IF EXISTS "${dbName}"`);
 
     logger.debug(`Dropped test database: ${dbName}`);
@@ -139,6 +146,6 @@ export const dropTestDatabase = async (dbName: string): Promise<void> => {
  * Extract database name from connection URL
  */
 export const getDatabaseName = (url: string): string => {
-  const match = url.match(/\/([^/?]+)(\?|$)/);
-  return match?.[1] || "timetiles_test";
+  const match = /\/([^/?]+)(\?|$)/.exec(url);
+  return match?.[1] ?? "timetiles_test";
 };

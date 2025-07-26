@@ -2,10 +2,10 @@
 import { randomUUID } from "crypto";
 import fs from "fs";
 
+import { logger } from "@/lib/logger";
+
 import { createTestDatabase } from "./database-setup";
 import { verifyDatabaseSchema } from "./verify-schema";
-
-import { logger } from "@/lib/logger";
 
 // Set test environment
 if (!process.env.NODE_ENV) {
@@ -16,7 +16,7 @@ process.env.PAYLOAD_SECRET = "test-secret-key";
 // Payload logging is now properly controlled via logger and loggingLevels configuration
 
 // Create isolated test database for each worker
-const workerId = process.env.VITEST_WORKER_ID || "1";
+const workerId = process.env.VITEST_WORKER_ID ?? "1";
 const testDbName = `timetiles_test_${workerId}`;
 const dbUrl = `postgresql://timetiles_user:timetiles_password@localhost:5432/${testDbName}`;
 process.env.DATABASE_URL = dbUrl;
@@ -62,7 +62,7 @@ beforeAll(async () => {
     );
 
     const testConfig = buildConfig({
-      secret: process.env.PAYLOAD_SECRET || "test-secret-key",
+      secret: process.env.PAYLOAD_SECRET ?? "test-secret-key",
       admin: {
         user: Users.slug,
       },
@@ -104,7 +104,7 @@ beforeAll(async () => {
 });
 
 // Global teardown to clean up
-afterAll(async () => {
+afterAll(() => {
   // Clean up temp directory
   if (fs.existsSync(tempDir)) {
     fs.rmSync(tempDir, { recursive: true, force: true });

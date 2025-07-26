@@ -1,10 +1,10 @@
 import fs from "fs";
 import { writeFile } from "fs/promises";
 import path from "path";
-import { vi, describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { utils, write } from "xlsx";
 
-import { fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob } from "../../../lib/jobs/import-jobs";
+import { batchProcessingJob, eventCreationJob, fileParsingJob, geocodingBatchJob } from "../../../lib/jobs/import-jobs";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
 // Mock GeocodingService to avoid real HTTP calls
@@ -143,9 +143,11 @@ describe.sequential("Import Jobs", () => {
     };
 
     // Mock payload.jobs.queue for testing
-    payload.jobs = {
-      queue: vi.fn().mockResolvedValue({}),
-    };
+    Object.assign(payload, {
+      jobs: {
+        queue: vi.fn().mockResolvedValue({}),
+      },
+    });
   });
 
   afterEach(() => {
@@ -172,13 +174,13 @@ describe.sequential("Import Jobs", () => {
       };
     });
 
-    afterEach(async () => {
+    afterEach(() => {
       // Clean up test file (though it should be deleted by the job)
       try {
         if (fs.existsSync(testFilePath)) {
           fs.unlinkSync(testFilePath);
         }
-      } catch (error) {
+      } catch {
         // Ignore cleanup errors
       }
     });
@@ -463,7 +465,7 @@ describe.sequential("Import Jobs", () => {
       // Test with file that has many columns and large cells
       const heavyCsvPath = path.join(testEnv.tempDir, `heavy-${Date.now()}.csv`);
       const columns = Array.from({ length: 50 }, (_, i) => `col${i}`).join(",");
-      const largeRow = Array.from({ length: 50 }, (_, i) => `"${"x".repeat(100)}"`).join(",");
+      const largeRow = Array.from({ length: 50 }, () => `"${"x".repeat(100)}"`).join(",");
       const heavyContent = `title,date,${columns}
 "Heavy Event 1","2024-03-15",${largeRow}
 "Heavy Event 2","2024-03-16",${largeRow}`;
@@ -744,7 +746,7 @@ describe.sequential("Import Jobs", () => {
       ).rejects.toThrow();
 
       // Restore original method
-      payload.update = originalUpdate;
+      Object.assign(payload, { update: originalUpdate });
     });
   });
 
@@ -884,7 +886,7 @@ describe.sequential("Import Jobs", () => {
       expect(events.docs).toHaveLength(1); // Only second event created
 
       // Restore original method
-      payload.create = originalCreate;
+      Object.assign(payload, { create: originalCreate });
     });
 
     it("should update processing stage when last batch", async () => {

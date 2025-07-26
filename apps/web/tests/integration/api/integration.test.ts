@@ -1,23 +1,23 @@
 import fs from "fs";
 import { NextRequest } from "next/server";
 import path from "path";
-import { vi, describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET as progressHandler } from "../../../app/api/import/[importId]/progress/route";
 import { POST as uploadHandler } from "../../../app/api/import/upload/route";
-import { fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob } from "../../../lib/jobs/import-jobs";
+import { batchProcessingJob, eventCreationJob, fileParsingJob, geocodingBatchJob } from "../../../lib/jobs/import-jobs";
 import type { Event } from "../../../payload-types";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
 // Mock GeocodingService to avoid real HTTP calls
 vi.mock("../../../lib/services/geocoding/geocoding-service", () => {
-  const mockGeocode = vi.fn().mockImplementation(async (address: string) => {
+  const mockGeocode = vi.fn().mockImplementation((address: string) => {
     // Simulate geocoding failure for test addresses
     if (address.toLowerCase().includes("fail") || address.toLowerCase().includes("test st")) {
       throw new Error("Geocoding failed");
     }
 
-    return {
+    return Promise.resolve({
       latitude: 37.7749,
       longitude: -122.4194,
       confidence: 0.9,
@@ -32,7 +32,7 @@ vi.mock("../../../lib/services/geocoding/geocoding-service", () => {
         country: "USA",
       },
       metadata: {},
-    };
+    });
   });
 
   return {
@@ -101,14 +101,14 @@ const createMultipartRequest = (formData: FormData, fileContent: string, headers
     if (key !== "file") {
       body += `--${boundary}\r\n`;
       body += `Content-Disposition: form-data; name="${key}"\r\n\r\n`;
-      body += `${value}\r\n`;
+      body += `${typeof value === "string" ? value : JSON.stringify(value)}\r\n`;
     }
   }
 
   body += `--${boundary}--\r\n`;
 
   // Mock the formData method to return the expected data structure
-  const mockFormData = async () => {
+  const mockFormData = () => {
     const formDataResult = new FormData();
 
     // Add file
@@ -118,10 +118,10 @@ const createMultipartRequest = (formData: FormData, fileContent: string, headers
       const testFile = new File([fileBlob], file.name, { type: file.type });
 
       // Ensure the file has the arrayBuffer method
-      (testFile as any).arrayBuffer = async () => {
+      (testFile as any).arrayBuffer = () => {
         // Convert string content to buffer
         const buffer = Buffer.from(fileContent);
-        return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+        return Promise.resolve(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength));
       };
 
       formDataResult.append("file", testFile);
@@ -273,7 +273,9 @@ describe.sequential("Import System Integration Tests", () => {
       }
     } catch (error) {
       // Ignore filesystem cleanup errors - non-critical for tests
-      console.debug('File cleanup error (non-critical):', error);
+      // File cleanup error (non-critical) - explicitly ignore
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      error;
     }
   });
 
@@ -317,7 +319,7 @@ describe.sequential("Import System Integration Tests", () => {
       formData.append("catalogId", String(testCatalogId));
       formData.append("datasetId", String(testDatasetId));
 
-      const uploadRequest = await createMultipartRequest(formData, csvContent);
+      const uploadRequest = createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
       if (!uploadResponse) {
@@ -522,7 +524,7 @@ describe.sequential("Import System Integration Tests", () => {
       formData.append("file", file);
       formData.append("catalogId", String(testCatalogId));
 
-      const uploadRequest = await createMultipartRequest(formData, csvContent);
+      const uploadRequest = createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
       if (!uploadResponse) {
@@ -575,7 +577,7 @@ describe.sequential("Import System Integration Tests", () => {
       formData.append("file", file);
       formData.append("catalogId", String(testCatalogId));
 
-      const uploadRequest = await createMultipartRequest(formData, invalidCsvContent);
+      const uploadRequest = createMultipartRequest(formData, invalidCsvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
       if (!uploadResponse) {
@@ -628,7 +630,7 @@ describe.sequential("Import System Integration Tests", () => {
       formData.append("file", file);
       formData.append("catalogId", String(testCatalogId));
 
-      const uploadRequest = await createMultipartRequest(formData, csvContent);
+      const uploadRequest = createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
       if (!uploadResponse) {
@@ -780,7 +782,7 @@ describe.sequential("Import System Integration Tests", () => {
       formData.append("file", file);
       formData.append("catalogId", String(testCatalogId));
 
-      const uploadRequest = await createMultipartRequest(formData, csvContent);
+      const uploadRequest = createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
       if (!uploadResponse) {
@@ -855,7 +857,7 @@ describe.sequential("Import System Integration Tests", () => {
       formData.append("file", file);
       formData.append("catalogId", String(testCatalogId));
 
-      const uploadRequest = await createMultipartRequest(formData, csvContent);
+      const uploadRequest = createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
       if (!uploadResponse) {
@@ -1011,7 +1013,7 @@ describe.sequential("Import System Integration Tests", () => {
       formData.append("file", file);
       formData.append("catalogId", String(testCatalogId));
 
-      const uploadRequest = await createMultipartRequest(formData, csvContent);
+      const uploadRequest = createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
       if (!uploadResponse) {
@@ -1064,7 +1066,7 @@ describe.sequential("Import System Integration Tests", () => {
       formData.append("file", file);
       formData.append("catalogId", String(testCatalogId));
 
-      const uploadRequest = await createMultipartRequest(formData, invalidCsvContent);
+      const uploadRequest = createMultipartRequest(formData, invalidCsvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
       if (!uploadResponse) {
@@ -1117,7 +1119,7 @@ describe.sequential("Import System Integration Tests", () => {
       formData.append("file", file);
       formData.append("catalogId", String(testCatalogId));
 
-      const uploadRequest = await createMultipartRequest(formData, csvContent);
+      const uploadRequest = createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
       if (!uploadResponse) {
@@ -1269,7 +1271,7 @@ describe.sequential("Import System Integration Tests", () => {
       formData.append("file", file);
       formData.append("catalogId", String(testCatalogId));
 
-      const uploadRequest = await createMultipartRequest(formData, csvContent);
+      const uploadRequest = createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
       if (!uploadResponse) {
@@ -1344,7 +1346,7 @@ describe.sequential("Import System Integration Tests", () => {
       formData.append("file", file);
       formData.append("catalogId", String(testCatalogId));
 
-      const uploadRequest = await createMultipartRequest(formData, csvContent);
+      const uploadRequest = createMultipartRequest(formData, csvContent);
 
       const uploadResponse = await uploadHandler(uploadRequest);
       if (!uploadResponse) {

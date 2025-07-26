@@ -12,6 +12,7 @@
  */
 
 import { execSync } from "child_process";
+
 import { createLogger } from "../lib/logger";
 
 const logger = createLogger("test-db-setup");
@@ -24,7 +25,7 @@ const DB_PORT = "5432";
 
 const TEST_DATABASE_URL = `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${TEST_DB_NAME}`;
 
-function runCommand(command: string, description: string): string {
+const runCommand = (command: string, description: string): string => {
   try {
     logger.info(`${description}...`);
     const result = execSync(command, { stdio: "pipe", encoding: "utf8" });
@@ -40,13 +41,14 @@ function runCommand(command: string, description: string): string {
     logger.error(`Command: ${command}`);
     throw error;
   }
-}
+};
 
-function runMakeCommand(target: string, description: string): void {
-  runCommand(`make ${target}`, description);
-}
+// Utility function for make commands (currently unused but may be needed)
+// const _runMakeCommand = (target: string, description: string): void => {
+//   runCommand(`make ${target}`, description);
+// };
 
-function runDatabaseQuery(dbName: string, sql: string, description: string): string {
+const runDatabaseQuery = (dbName: string, sql: string, description: string): string => {
   // Detect CI environment - use direct psql commands instead of Docker-based make commands
   const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true" || process.env.PGPASSWORD;
 
@@ -59,9 +61,9 @@ function runDatabaseQuery(dbName: string, sql: string, description: string): str
     const command = `cd ../.. && make db-query DB_NAME=${dbName} SQL="${sql}"`;
     return runCommand(command, `${description} (local mode)`);
   }
-}
+};
 
-async function setupTestDatabase(): Promise<void> {
+const setupTestDatabase = async (): Promise<void> => {
   logger.info("🗄️  Setting up test database for E2E tests");
 
   try {
@@ -74,6 +76,7 @@ async function setupTestDatabase(): Promise<void> {
     } catch (error) {
       // Database likely already exists, which is fine
       logger.info("Test database already exists, continuing with setup");
+      logger.debug("Database creation error (expected if exists):", error);
     }
 
     // Step 2: Set up PostGIS extension
@@ -98,11 +101,11 @@ async function setupTestDatabase(): Promise<void> {
     logger.error("❌ Test database setup failed:", error);
     process.exit(1);
   }
-}
+};
 
 // Allow running as standalone script
 if (import.meta.url === `file://${process.argv[1]}`) {
-  setupTestDatabase();
+  void setupTestDatabase();
 }
 
 export { setupTestDatabase, TEST_DATABASE_URL };

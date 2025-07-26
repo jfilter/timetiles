@@ -2,11 +2,7 @@ import { postgresAdapter } from "@payloadcms/db-postgres";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { randomUUID } from "crypto";
 import fs from "fs";
-import path from "path";
-import { getPayload, buildConfig } from "payload";
-
-import { truncateAllTables } from "./database-setup";
-import { verifyDatabaseSchema } from "./verify-schema";
+import { buildConfig, getPayload } from "payload";
 
 // Import collections
 import Catalogs from "@/lib/collections/catalogs";
@@ -19,9 +15,11 @@ import { MainMenu } from "@/lib/collections/main-menu";
 import Media from "@/lib/collections/media";
 import { Pages } from "@/lib/collections/pages";
 import Users from "@/lib/collections/users";
-import { fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob } from "@/lib/jobs/import-jobs";
+import { batchProcessingJob, eventCreationJob, fileParsingJob, geocodingBatchJob } from "@/lib/jobs/import-jobs";
 import { logger } from "@/lib/logger";
 import { migrations } from "@/migrations";
+
+import { truncateAllTables } from "./database-setup";
 
 /**
  * Creates an isolated test environment for each test
@@ -34,7 +32,7 @@ export const createIsolatedTestEnvironment = async (): Promise<{
   tempDir: string;
 }> => {
   const testId = randomUUID();
-  const workerId = process.env.VITEST_WORKER_ID || "1";
+  const workerId = process.env.VITEST_WORKER_ID ?? "1";
   const tempDir = `/tmp/timetiles-test-${workerId}-${testId}`;
 
   // Create unique temp directory for this test
@@ -44,14 +42,14 @@ export const createIsolatedTestEnvironment = async (): Promise<{
 
   // Use the database that was already set up by the global setup
   const dbName = `timetiles_test_${workerId}`;
-  const dbUrl = process.env.DATABASE_URL || `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
+  const dbUrl = process.env.DATABASE_URL ?? `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
 
   // Truncate all tables to ensure clean state for this test
   await truncateAllTables(dbUrl);
 
   // Create test config (similar to setup.ts but using the existing database)
   const testConfig = buildConfig({
-    secret: process.env.PAYLOAD_SECRET || "test-secret-key",
+    secret: process.env.PAYLOAD_SECRET ?? "test-secret-key",
     admin: {
       user: Users.slug,
     },

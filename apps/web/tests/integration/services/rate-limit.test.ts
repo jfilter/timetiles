@@ -1,10 +1,10 @@
-import { vi, describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
-  RateLimitService,
-  getRateLimitService,
   getClientIdentifier,
+  getRateLimitService,
   RATE_LIMITS,
+  RateLimitService,
 } from "../../../lib/services/rate-limit-service";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
@@ -38,8 +38,8 @@ describe.sequential("RateLimitService", () => {
     const limit = 5;
     const windowMs = 60 * 1000; // 1 minute
 
-    it("should allow requests within limit", async () => {
-      const result = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
+    it("should allow requests within limit", () => {
+      const result = rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
 
       expect(result.allowed).toBe(true);
       expect(result.remaining).toBe(4);
@@ -47,28 +47,28 @@ describe.sequential("RateLimitService", () => {
       expect(result.resetTime).toBeGreaterThan(Date.now());
     });
 
-    it("should track multiple requests correctly", async () => {
+    it("should track multiple requests correctly", () => {
       // Make 3 requests
       for (let i = 0; i < 3; i++) {
-        const result = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
+        const result = rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
         expect(result.allowed).toBe(true);
         expect(result.remaining).toBe(limit - (i + 1));
       }
 
       // Check final state
-      const finalResult = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
+      const finalResult = rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       expect(finalResult.allowed).toBe(true);
       expect(finalResult.remaining).toBe(1);
     });
 
-    it("should block requests when limit is exceeded", async () => {
+    it("should block requests when limit is exceeded", () => {
       // Exhaust the limit
       for (let i = 0; i < limit; i++) {
-        await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
+        rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       }
 
       // Next request should be blocked
-      const result = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
+      const result = rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
 
       expect(result.allowed).toBe(false);
       expect(result.remaining).toBe(0);
@@ -80,43 +80,43 @@ describe.sequential("RateLimitService", () => {
 
       // Exhaust the limit
       for (let i = 0; i < limit; i++) {
-        await rateLimitService.checkRateLimit(testIdentifier, limit, shortWindow);
+        rateLimitService.checkRateLimit(testIdentifier, limit, shortWindow);
       }
 
       // Should be blocked
-      let result = await rateLimitService.checkRateLimit(testIdentifier, limit, shortWindow);
+      let result = rateLimitService.checkRateLimit(testIdentifier, limit, shortWindow);
       expect(result.allowed).toBe(false);
 
       // Wait for window to expire
       await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Should be allowed again
-      result = await rateLimitService.checkRateLimit(testIdentifier, limit, shortWindow);
+      result = rateLimitService.checkRateLimit(testIdentifier, limit, shortWindow);
       expect(result.allowed).toBe(true);
       expect(result.remaining).toBe(limit - 1);
     });
 
-    it("should handle different identifiers independently", async () => {
+    it("should handle different identifiers independently", () => {
       const identifier1 = "client-1";
       const identifier2 = "client-2";
 
       // Exhaust limit for client 1
       for (let i = 0; i < limit; i++) {
-        await rateLimitService.checkRateLimit(identifier1, limit, windowMs);
+        rateLimitService.checkRateLimit(identifier1, limit, windowMs);
       }
 
       // Client 1 should be blocked
-      const result1 = await rateLimitService.checkRateLimit(identifier1, limit, windowMs);
+      const result1 = rateLimitService.checkRateLimit(identifier1, limit, windowMs);
       expect(result1.allowed).toBe(false);
 
       // Client 2 should still be allowed
-      const result2 = await rateLimitService.checkRateLimit(identifier2, limit, windowMs);
+      const result2 = rateLimitService.checkRateLimit(identifier2, limit, windowMs);
       expect(result2.allowed).toBe(true);
       expect(result2.remaining).toBe(limit - 1);
     });
 
-    it("should use default values when not specified", async () => {
-      const result = await rateLimitService.checkRateLimit(testIdentifier);
+    it("should use default values when not specified", () => {
+      const result = rateLimitService.checkRateLimit(testIdentifier);
 
       expect(result.allowed).toBe(true);
       expect(result.remaining).toBe(9); // Default limit is 10
@@ -134,10 +134,10 @@ describe.sequential("RateLimitService", () => {
       expect(status).toBeNull();
     });
 
-    it("should return current status without incrementing", async () => {
+    it("should return current status without incrementing", () => {
       // Make some requests
-      await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
-      await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
+      rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
+      rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
 
       const status = rateLimitService.getRateLimitStatus(testIdentifier);
 
@@ -147,14 +147,14 @@ describe.sequential("RateLimitService", () => {
       expect(status!.resetTime).toBeGreaterThan(Date.now());
 
       // Make another request to verify count didn't change from status check
-      const result = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
+      const result = rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       expect(result.remaining).toBe(0); // Should be 3rd request
     });
 
     it("should return null for expired entries", async () => {
       const shortWindow = 50;
 
-      await rateLimitService.checkRateLimit(testIdentifier, limit, shortWindow);
+      rateLimitService.checkRateLimit(testIdentifier, limit, shortWindow);
 
       // Wait for expiry
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -169,42 +169,42 @@ describe.sequential("RateLimitService", () => {
     const limit = 3;
     const windowMs = 60 * 1000;
 
-    it("should reset rate limit for identifier", async () => {
+    it("should reset rate limit for identifier", () => {
       // Exhaust the limit
       for (let i = 0; i < limit; i++) {
-        await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
+        rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       }
 
       // Should be blocked
-      let result = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
+      let result = rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       expect(result.allowed).toBe(false);
 
       // Reset the limit
       rateLimitService.resetRateLimit(testIdentifier);
 
       // Should be allowed again
-      result = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
+      result = rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       expect(result.allowed).toBe(true);
       expect(result.remaining).toBe(limit - 1);
     });
 
-    it("should not affect other identifiers", async () => {
+    it("should not affect other identifiers", () => {
       const identifier1 = "reset-client-1";
       const identifier2 = "reset-client-2";
 
       // Make requests for both clients
-      await rateLimitService.checkRateLimit(identifier1, limit, windowMs);
-      await rateLimitService.checkRateLimit(identifier2, limit, windowMs);
+      rateLimitService.checkRateLimit(identifier1, limit, windowMs);
+      rateLimitService.checkRateLimit(identifier2, limit, windowMs);
 
       // Reset only client 1
       rateLimitService.resetRateLimit(identifier1);
 
       // Client 1 should be reset
-      const result1 = await rateLimitService.checkRateLimit(identifier1, limit, windowMs);
+      const result1 = rateLimitService.checkRateLimit(identifier1, limit, windowMs);
       expect(result1.remaining).toBe(limit - 1);
 
       // Client 2 should be unaffected
-      const result2 = await rateLimitService.checkRateLimit(identifier2, limit, windowMs);
+      const result2 = rateLimitService.checkRateLimit(identifier2, limit, windowMs);
       expect(result2.remaining).toBe(limit - 2);
     });
   });
@@ -223,10 +223,10 @@ describe.sequential("RateLimitService", () => {
       expect(status!.count).toBeGreaterThan(limit);
     });
 
-    it("should block requests for blocked identifier", async () => {
+    it("should block requests for blocked identifier", () => {
       rateLimitService.blockIdentifier(testIdentifier, 60 * 1000);
 
-      const result = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
+      const result = rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       expect(result.allowed).toBe(false);
       expect(result.blocked).toBe(true);
       expect(result.remaining).toBe(0);
@@ -245,14 +245,14 @@ describe.sequential("RateLimitService", () => {
       rateLimitService.blockIdentifier(testIdentifier, shortDuration);
 
       // Should be blocked initially
-      let result = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
+      let result = rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       expect(result.allowed).toBe(false);
 
       // Wait for block to expire
       await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Should be allowed again
-      result = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
+      result = rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       expect(result.allowed).toBe(true);
     });
   });
@@ -270,10 +270,10 @@ describe.sequential("RateLimitService", () => {
       expect(headers["X-RateLimit-Blocked"]).toBeUndefined();
     });
 
-    it("should return current status headers", async () => {
+    it("should return current status headers", () => {
       // Make some requests
-      await rateLimitService.checkRateLimit(testIdentifier, limit, 60 * 1000);
-      await rateLimitService.checkRateLimit(testIdentifier, limit, 60 * 1000);
+      rateLimitService.checkRateLimit(testIdentifier, limit, 60 * 1000);
+      rateLimitService.checkRateLimit(testIdentifier, limit, 60 * 1000);
 
       const headers = rateLimitService.getRateLimitHeaders(testIdentifier, limit);
 
@@ -283,7 +283,7 @@ describe.sequential("RateLimitService", () => {
       expect(headers["X-RateLimit-Blocked"]).toBe("false");
     });
 
-    it("should indicate blocked status in headers", async () => {
+    it("should indicate blocked status in headers", () => {
       rateLimitService.blockIdentifier(testIdentifier, 60 * 1000);
 
       const headers = rateLimitService.getRateLimitHeaders(testIdentifier, limit);
@@ -301,8 +301,8 @@ describe.sequential("RateLimitService", () => {
       const identifier2 = "cleanup-client-2";
 
       // Create entries with short window
-      await rateLimitService.checkRateLimit(identifier1, 5, shortWindow);
-      await rateLimitService.checkRateLimit(identifier2, 5, 60 * 1000); // Long window
+      rateLimitService.checkRateLimit(identifier1, 5, shortWindow);
+      rateLimitService.checkRateLimit(identifier2, 5, 60 * 1000); // Long window
 
       // Wait for first entry to expire
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -317,14 +317,14 @@ describe.sequential("RateLimitService", () => {
   });
 
   describe.sequential("getStatistics", () => {
-    it("should return correct statistics", async () => {
+    it("should return correct statistics", () => {
       const client1 = "stats-client-1";
       const client2 = "stats-client-2";
       const client3 = "stats-client-3";
 
       // Create some entries
-      await rateLimitService.checkRateLimit(client1, 5, 60 * 1000);
-      await rateLimitService.checkRateLimit(client2, 5, 60 * 1000);
+      rateLimitService.checkRateLimit(client1, 5, 60 * 1000);
+      rateLimitService.checkRateLimit(client2, 5, 60 * 1000);
       rateLimitService.blockIdentifier(client3, 60 * 1000);
 
       const stats = rateLimitService.getStatistics();
@@ -336,7 +336,7 @@ describe.sequential("RateLimitService", () => {
 
     it("should not count expired entries as active", async () => {
       const shortWindow = 50;
-      await rateLimitService.checkRateLimit("expired-client", 5, shortWindow);
+      rateLimitService.checkRateLimit("expired-client", 5, shortWindow);
 
       // Wait for expiry
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -377,47 +377,47 @@ describe.sequential("getClientIdentifier", () => {
   it("should extract IP from x-forwarded-for header", () => {
     const request = new Request("http://localhost", {
       headers: {
-        "x-forwarded-for": "192.168.1.1, 10.0.0.1",
+        "x-forwarded-for": "203.0.113.1, 10.0.0.1", // Using TEST-NET-3 RFC 5737
       },
     });
 
     const identifier = getClientIdentifier(request);
-    expect(identifier).toBe("192.168.1.1");
+    expect(identifier).toBe("203.0.113.1");
   });
 
   it("should extract IP from x-real-ip header", () => {
     const request = new Request("http://localhost", {
       headers: {
-        "x-real-ip": "192.168.1.2",
+        "x-real-ip": "203.0.113.2",
       },
     });
 
     const identifier = getClientIdentifier(request);
-    expect(identifier).toBe("192.168.1.2");
+    expect(identifier).toBe("203.0.113.2");
   });
 
   it("should extract IP from cf-connecting-ip header", () => {
     const request = new Request("http://localhost", {
       headers: {
-        "cf-connecting-ip": "192.168.1.3",
+        "cf-connecting-ip": "203.0.113.3",
       },
     });
 
     const identifier = getClientIdentifier(request);
-    expect(identifier).toBe("192.168.1.3");
+    expect(identifier).toBe("203.0.113.3");
   });
 
   it("should prioritize x-forwarded-for over other headers", () => {
     const request = new Request("http://localhost", {
       headers: {
-        "x-forwarded-for": "192.168.1.1",
-        "x-real-ip": "192.168.1.2",
-        "cf-connecting-ip": "192.168.1.3",
+        "x-forwarded-for": "203.0.113.1",
+        "x-real-ip": "203.0.113.2",
+        "cf-connecting-ip": "203.0.113.3",
       },
     });
 
     const identifier = getClientIdentifier(request);
-    expect(identifier).toBe("192.168.1.1");
+    expect(identifier).toBe("203.0.113.1");
   });
 
   it("should return unknown when no IP headers are present", () => {
@@ -430,12 +430,12 @@ describe.sequential("getClientIdentifier", () => {
   it("should handle multiple IPs in x-forwarded-for", () => {
     const request = new Request("http://localhost", {
       headers: {
-        "x-forwarded-for": "  192.168.1.1  ,  10.0.0.1  ,  172.16.0.1  ",
+        "x-forwarded-for": "  203.0.113.1  ,  10.0.0.1  ,  172.16.0.1  ",
       },
     });
 
     const identifier = getClientIdentifier(request);
-    expect(identifier).toBe("192.168.1.1");
+    expect(identifier).toBe("203.0.113.1");
   });
 });
 

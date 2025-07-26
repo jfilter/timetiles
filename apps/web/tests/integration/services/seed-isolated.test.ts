@@ -13,7 +13,7 @@ describe.sequential("Isolated Seed System", () => {
   });
 
   afterAll(async () => {
-    if (testEnv && testEnv.cleanup) {
+    if (testEnv?.cleanup) {
       await testEnv.cleanup();
     }
   });
@@ -24,7 +24,7 @@ describe.sequential("Isolated Seed System", () => {
   });
 
   describe.sequential("SeedManager", () => {
-    it("should initialize properly", async () => {
+    it("should initialize properly", () => {
       expect(testEnv.seedManager).toBeDefined();
       expect(testEnv.payload).toBeDefined();
     });

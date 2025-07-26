@@ -265,7 +265,7 @@ export default [
             "\\.config\\.(js|ts|mjs)$",
             "\\.d\\.ts$",
             "\\.test\\.tsx?$",
-            "\\.spec\\.tsx?$",
+            // Note: .spec. files are not allowed - use .test. instead
             "^README\\.md$",
             "^CLAUDE\\.md$",
             "^\\d{8}_.*\\.ts$",

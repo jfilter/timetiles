@@ -49,7 +49,7 @@ export const createMockDatasets = (count: number = 3): Dataset[] => {
 
     return createMockDataset({
       id: i + 1,
-      name: datasetNames[i] || `Test Dataset ${i + 1}`,
+      name: datasetNames[i] ?? `Test Dataset ${i + 1}`,
       slug: `test-dataset-${i + 1}`,
       description: createRichTextDescription(`Description for dataset ${i + 1}`),
       catalog: { id: actualCatalogId } as any, // Mock as object with id property

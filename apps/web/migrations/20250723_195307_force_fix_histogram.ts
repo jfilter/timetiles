@@ -1,4 +1,4 @@
-import { type MigrateUpArgs, type MigrateDownArgs, sql } from "@payloadcms/db-postgres";
+import { type MigrateDownArgs, type MigrateUpArgs, sql } from "@payloadcms/db-postgres";
 
 export const up = async ({ db }: MigrateUpArgs): Promise<void> => {
   // FORCE drop any existing function with this name

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { ExplorePage } from "../pages/explore.page";
 
@@ -27,10 +27,10 @@ test.describe("Explore Page - Real Data Tests", () => {
     if (catalogOptions > 1) {
       // Should have at least "All Catalogs" + actual catalogs
       // Get the first real catalog (not "All Catalogs")
-      const firstCatalog = await page.locator('[role="option"]:not(:has-text("All Catalogs"))').first();
+      const firstCatalog = page.locator('[role="option"]:not(:has-text("All Catalogs"))').first();
       const catalogName = await firstCatalog.textContent();
 
-      if (catalogName) {
+      if (catalogName?.trim()) {
         // Select the first available catalog
         await firstCatalog.click();
 
@@ -54,9 +54,8 @@ test.describe("Explore Page - Real Data Tests", () => {
 
             // Check that the page shows some result (events count should be visible)
             await expect(explorePage.eventsCount).toBeVisible();
-          } catch (error) {
-            // Ignore errors - test should continue even if API calls fail
-            console.debug('API call failed during E2E test (expected behavior):', error);
+          } catch {
+            // API call failed during E2E test (expected behavior)
           }
         } else {
           // No datasets available - this is an acceptable state
@@ -67,7 +66,7 @@ test.describe("Explore Page - Real Data Tests", () => {
     }
   });
 
-  test("should handle date filtering with any data", async ({ page }) => {
+  test("should handle date filtering with any data", async () => {
     // Set some date filters
     await explorePage.setStartDate("2024-01-01");
     await explorePage.setEndDate("2024-12-31");
@@ -112,8 +111,8 @@ test.describe("Explore Page - Real Data Tests", () => {
 
   test("should show appropriate empty states", async ({ page }) => {
     // If no data is available, should show appropriate messages
-    const noDatasetsVisible = await explorePage.noDatasetsMessage.isVisible();
-    const noEventsVisible = await explorePage.noEventsMessage.isVisible();
+    await explorePage.noDatasetsMessage.isVisible();
+    await explorePage.noEventsMessage.isVisible();
 
     // Either should show datasets/events, or show appropriate empty state messages
     const hasDatasets = (await page.locator('input[type="checkbox"]').count()) > 0;
@@ -137,9 +136,9 @@ test.describe("Explore Page - Real Data Tests", () => {
 
     try {
       await page.waitForResponse((response) => response.url().includes("/api/events"), { timeout: 5000 });
-    } catch (error) {
+    } catch {
       // Timeout is OK - might happen if no data matches or API is slow
-      console.debug('API timeout during E2E test (expected behavior):', error);
+      // API timeout during E2E test (expected behavior)
     }
 
     // Page should still be functional

@@ -18,7 +18,9 @@ describe.sequential("Seed System", () => {
     try {
       await testEnv.cleanup();
     } catch (error) {
-      console.debug('Test environment cleanup error (non-critical):', error);
+      // Test environment cleanup error (non-critical) - using logger
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      error;
     }
   }, 60000); // 60 second timeout for cleanup
 
@@ -160,7 +162,7 @@ describe.sequential("Seed System", () => {
       // Truncate all (with timeout protection)
       await Promise.race([
         testEnv.seedManager.truncate(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Truncate timeout")), 10000)),
+        new Promise((_resolve, reject) => setTimeout(() => reject(new Error("Truncate timeout")), 10000)),
       ]);
 
       // Check that most collections are empty (allowing some that might not clear due to refs)

@@ -45,8 +45,6 @@ describe("Map-clusters API test", () => {
       expect(data).toBeDefined();
       expect(data.type).toBe("FeatureCollection");
       expect(Array.isArray(data.features)).toBe(true);
-    } catch (error) {
-      throw error;
     } finally {
       // Payload cleanup handled automatically
     }

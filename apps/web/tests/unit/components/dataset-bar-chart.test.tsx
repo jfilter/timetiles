@@ -26,7 +26,7 @@ vi.mock("echarts-for-react", () => ({
     return (
       <div data-testid="echarts-bar-mock">
         {data.map((value: number, index: number) => (
-          <div key={`data-${index}`} data-value={value}>
+          <div key={`data-point-${String(value)}-${String(index)}`} data-value={value}>
             {value}
           </div>
         ))}

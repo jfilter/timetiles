@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createIsolatedTestEnvironment, createTestId } from "../../setup/test-helpers";
 
@@ -21,7 +21,7 @@ describe("Isolated Seed System Test Example", () => {
   });
 
   describe("Isolated SeedManager", () => {
-    it("should initialize properly in isolation", async () => {
+    it("should initialize properly in isolation", () => {
       expect(testEnv.seedManager).toBeDefined();
       expect(testEnv.payload).toBeDefined();
     });
@@ -44,7 +44,7 @@ describe("Isolated Seed System Test Example", () => {
 
     it("should handle concurrent operations within same test file", async () => {
       // These operations can run concurrently because they're isolated
-      const [catalogResult, userResult] = await Promise.all([
+      const [,] = await Promise.all([
         testEnv.seedManager.seed({
           collections: ["catalogs"],
           environment: "test",

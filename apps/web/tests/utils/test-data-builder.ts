@@ -6,10 +6,7 @@
  * with realistic relationships and constraints.
  */
 
-import { createLogger } from "@/lib/logger";
-import type { Event, Catalog, Dataset, User, Import } from "@/payload-types";
-
-const logger = createLogger("test-data");
+import type { Catalog, Dataset, Event, Import, User } from "@/payload-types";
 
 /**
  * Base builder class with common functionality

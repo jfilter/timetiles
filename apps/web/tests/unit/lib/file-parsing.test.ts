@@ -3,9 +3,7 @@ import fs from "fs";
 import os from "os";
 import Papa from "papaparse";
 import path from "path";
-import { utils, write, read } from "xlsx";
-
-import type { Event, Dataset } from "../../../payload-types";
+import { read, utils, write } from "xlsx";
 
 describe("File Parsing", () => {
   let tempDir: string;
@@ -302,9 +300,7 @@ Event 2,2024-03-16
       ];
 
       const validRows = testData.filter((row) => {
-        return requiredFields.every(
-          (field) => row[field as keyof typeof row] && row[field as keyof typeof row]?.toString().trim(),
-        );
+        return requiredFields.every((field) => row[field as keyof typeof row]?.toString().trim());
       });
 
       expect(validRows).toHaveLength(2);
@@ -321,9 +317,7 @@ Event 2,2024-03-16
       ];
 
       const validRows = testData.filter((row) => {
-        return requiredFields.every(
-          (field) => row[field as keyof typeof row] && row[field as keyof typeof row]?.toString().trim(),
-        );
+        return requiredFields.every((field) => row[field as keyof typeof row]?.toString().trim());
       });
 
       expect(validRows).toHaveLength(1);
@@ -356,9 +350,7 @@ Event 2,2024-03-16
 
       // All should be valid since they can be converted to strings
       const validRows = testData.filter((row) => {
-        return ["title", "date"].every(
-          (field) => row[field as keyof typeof row] && row[field as keyof typeof row]?.toString().trim(),
-        );
+        return ["title", "date"].every((field) => row[field as keyof typeof row]?.toString().trim());
       });
 
       expect(validRows).toHaveLength(3);

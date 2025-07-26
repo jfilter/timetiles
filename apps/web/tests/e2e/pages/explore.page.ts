@@ -1,4 +1,4 @@
-import { type Page, type Locator, expect } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 export class ExplorePage {
   readonly page: Page;
@@ -58,7 +58,7 @@ export class ExplorePage {
     if (catalogName !== "All Catalogs") {
       // Wait for the URL to update with the catalog parameter
       await this.page.waitForFunction(
-        (name) => {
+        () => {
           const url = new URL(window.location.href);
           return url.searchParams.has("catalog");
         },
@@ -154,9 +154,9 @@ export class ExplorePage {
       }
 
       const text = await this.eventsCount.textContent({ timeout: 3000 });
-      const match = text?.match(/Events \((\d+)\)/);
-      return match?.[1] ? parseInt(match[1], 10) : 0;
-    } catch (error) {
+      const matches = /Events \((\d+)\)/.exec(text ?? "");
+      return matches?.[1] ? Number.parseInt(matches[1], 10) : 0;
+    } catch {
       return 0;
     }
   }
@@ -183,9 +183,9 @@ export class ExplorePage {
       }
 
       await expect(this.loadingIndicator).not.toBeVisible({ timeout: 5000 });
-    } catch (error) {
+    } catch {
       // If loading indicator check fails, just continue
-      console.debug('Loading indicator check failed (non-critical):', error);
+      // Loading indicator check failed (non-critical)
     }
   }
 
@@ -195,16 +195,16 @@ export class ExplorePage {
         (response) => response.url().includes("/api/events") && response.status() === 200,
         { timeout: 5000 },
       );
-    } catch (error) {
+    } catch {
       // If we can't catch the API response quickly, just continue
       // The test should focus on UI state, not API timing
-      console.debug('API response timeout (non-critical):', error);
+      // API response timeout (non-critical)
     }
   }
 
-  async getUrlParams(): Promise<URLSearchParams> {
+  getUrlParams(): Promise<URLSearchParams> {
     const url = new URL(this.page.url());
-    return url.searchParams;
+    return Promise.resolve(url.searchParams);
   }
 
   async assertUrlParam(param: string, value: string | null) {
@@ -240,9 +240,9 @@ export class ExplorePage {
       // Check if we can access a basic element
       await this.page.locator("h1").waitFor({ state: "visible", timeout: 1000 });
       return true;
-    } catch (error) {
+    } catch {
       return false;
-      console.debug('URL parameter assertion failed:', error);    }
+    }
   }
 
   async waitForPageStability() {
