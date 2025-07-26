@@ -1979,8 +1979,8 @@
           "notNull": false,
           "default": false
         },
-        "config_GEOCODING_OPENCAGE_API_KEY": {
-          "name": "config_GEOCODING_OPENCAGE_API_KEY",
+        "config_opencage_api_key": {
+          "name": "config_opencage_api_key",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false

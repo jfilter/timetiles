@@ -237,7 +237,7 @@ export const up = async ({ db }: MigrateUpArgs): Promise<void> => {
   	"config_nominatim_countrycodes" varchar,
   	"config_nominatim_addressdetails" boolean DEFAULT true,
   	"config_nominatim_extratags" boolean DEFAULT false,
-  	"config_GEOCODING_OPENCAGE_API_KEY" varchar,
+  	"config_opencage_api_key" varchar,
   	"config_opencage_language" varchar DEFAULT 'en',
   	"config_opencage_countrycode" varchar,
   	"config_opencage_bounds_enabled" boolean DEFAULT false,
