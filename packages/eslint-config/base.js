@@ -307,7 +307,7 @@ export default [
       "no-restricted-syntax": [
         "error",
         {
-          selector: "CallExpression[callee.type='MemberExpression'][callee.object.object.name='Object'][callee.object.property.name='prototype'][callee.property.name='hasOwnProperty']",
+          selector: "CallExpression[callee.type='MemberExpression'][callee.object.type='MemberExpression'][callee.object.object.object.name='Object'][callee.object.object.property.name='prototype'][callee.object.property.name='hasOwnProperty'][callee.property.name='call']",
           message: "Use Object.hasOwn() instead of Object.prototype.hasOwnProperty.call()"
         }
       ],
