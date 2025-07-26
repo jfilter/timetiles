@@ -77,6 +77,12 @@ export default [
       "@typescript-eslint/only-throw-error": "error",
       "@typescript-eslint/prefer-find": "error",
       "@typescript-eslint/prefer-promise-reject-errors": "error",
+
+      // Additional SonarCloud alignment
+      "@typescript-eslint/prefer-regexp-exec": "error",
+      "@typescript-eslint/prefer-readonly": "error",
+      "@typescript-eslint/no-duplicate-type-constituents": "error",
+      "@typescript-eslint/no-useless-empty-export": "error",
     },
   },
   // Config files and other JS files without type checking
@@ -125,6 +131,11 @@ export default [
       "no-console": "error",
       "prefer-const": "error",
       "require-atomic-updates": "error",
+      "max-params": ["error", 7],
+      complexity: ["error", 15],
+      "max-nested-callbacks": ["error", 4],
+      "no-empty": ["error", { allowEmptyCatch: false }],
+      "no-unused-expressions": "error",
 
       // TypeScript
       "@typescript-eslint/consistent-type-imports": "error",
@@ -181,11 +192,11 @@ export default [
       "unused-imports/no-unused-imports": "error",
       "unused-imports/no-unused-vars": [
         "warn",
-        { vars: "all", varsIgnorePattern: "^_", args: "after-used", argsIgnorePattern: "^_" }
+        { vars: "all", varsIgnorePattern: "^_", args: "after-used", argsIgnorePattern: "^_" },
       ],
       "import/no-cycle": "error",
       "import/no-default-export": "warn",
-      "import/no-namespace": "warn", 
+      "import/no-namespace": "warn",
       "import/no-self-import": "error",
       // Disable import/order in favor of simple-import-sort
       "import/order": "off",
@@ -199,40 +210,40 @@ export default [
             // Apps can use packages but not other apps
             {
               from: ["app-web", "app-docs"],
-              allow: ["package", "package-ui", "package-config"]
+              allow: ["package", "package-ui", "package-config"],
             },
             // Packages can only use other packages
             {
               from: "package",
-              allow: ["package"]
+              allow: ["package"],
             },
             // Web app internal boundaries
             {
               from: "web-components",
-              allow: ["web-lib", "package"]
+              allow: ["web-lib", "package"],
             },
             {
-              from: "web-pages", 
-              allow: ["web-components", "web-lib", "package"]
+              from: "web-pages",
+              allow: ["web-components", "web-lib", "package"],
             },
             {
               from: "web-api",
-              allow: ["web-lib", "package"]
+              allow: ["web-lib", "package"],
             },
             // Root can access everything
             {
               from: "root",
-              allow: "*"
-            }
-          ]
-        }
+              allow: "*",
+            },
+          ],
+        },
       ],
       "boundaries/external": [
         "error",
         {
           default: "allow",
-          rules: []
-        }
+          rules: [],
+        },
       ],
 
       // Unicorn
@@ -286,7 +297,10 @@ export default [
             { group: ["../**/apps/*"], message: "Don't import across app boundaries" },
             { group: ["*/index", "*/index.js", "*/index.ts", "*/index.tsx"], message: "Avoid barrel imports" },
             { group: ["./index", "./index.js", "./index.ts", "./index.tsx"], message: "Avoid local index imports" },
-            { group: ["../../*", "../../../*", "../../../../*", "../../../../../*"], message: "Use @/ path alias instead of deep relative imports (../../)" },
+            {
+              group: ["../../*", "../../../*", "../../../../*", "../../../../../*"],
+              message: "Use @/ path alias instead of deep relative imports (../../)",
+            },
           ],
         },
       ],

@@ -68,6 +68,18 @@ export default [
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
       
+      // React Rules to match SonarCloud
+      "react/no-array-index-key": "error",
+      "react/jsx-no-constructed-context-values": "error",
+      "react/jsx-no-useless-fragment": "error",
+      "react/no-unstable-nested-components": "error",
+      "react/self-closing-comp": "error",
+      "react/jsx-boolean-value": ["error", "never"],
+      "react/jsx-fragments": ["error", "syntax"],
+      "react/no-unused-state": "error",
+      "react/prefer-stateless-function": "error",
+      "react/jsx-props-no-spreading": "off", // Too restrictive for modern React patterns
+      
       // Phase 3: React/Next.js Safety Rules
       "react-hooks/exhaustive-deps": "error",
       "@next/next/no-img-element": "error",
@@ -83,6 +95,10 @@ export default [
       "jsx-a11y/heading-has-content": "error",
       "jsx-a11y/lang": "error",
       "jsx-a11y/no-redundant-roles": "error",
+      "jsx-a11y/label-has-associated-control": "error",
+      "jsx-a11y/no-static-element-interactions": "error",
+      "jsx-a11y/interactive-supports-focus": "error",
+      "jsx-a11y/no-noninteractive-element-interactions": "error",
       
       // React Query Rules (Performance & Best Practices)
       "@tanstack/query/exhaustive-deps": "error",
