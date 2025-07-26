@@ -90,8 +90,8 @@ export class CoordinateValidator {
     if (nullCheck) return nullCheck;
 
     // At this point we know lat and lon are valid numbers
-    const validLat = lat as number;
-    const validLon = lon as number;
+    const validLat = lat!;
+    const validLon = lon!;
 
     // Check for suspicious (0,0)
     const zeroCheck = this.checkSuspiciousZero(validLat, validLon);

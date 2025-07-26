@@ -12,7 +12,7 @@ export default defineConfig({
     setupFiles: ["tests/setup/setup.ts"],
     testTimeout: 15000,
     hookTimeout: 15000,
-    reporters: process.env.TEST_QUIET ? ["basic"] : ["basic"],
+    reporters: ["basic"],
     silent: true,
     // Reduce console output noise
     logHeapUsage: false,
@@ -37,7 +37,7 @@ export default defineConfig({
   resolve: {
     ...(baseConfig.resolve ?? {}),
     alias: {
-      ...((baseConfig.resolve && baseConfig.resolve.alias) ?? {}),
+      ...(baseConfig.resolve?.alias ?? {}),
       "@payload-config": path.resolve(__dirname, "payload.config.ts"),
     },
   },
