@@ -451,7 +451,11 @@ async function processUploadSteps(
   }
 
   // Step 4: Validate catalog and dataset
-  const validationResult = await validateCatalogAndDataset(payload, catalogId as number, datasetId, logger);
+  // catalogId is guaranteed to be a valid number after validation
+  if (catalogId === null) {
+    throw new Error("catalogId should not be null after validation");
+  }
+  const validationResult = await validateCatalogAndDataset(payload, catalogId, datasetId, logger);
   if ("error" in validationResult) {
     return validationResult;
   }
@@ -462,7 +466,7 @@ async function processUploadSteps(
   // Step 6: Create import record
   const importResult = await createImportRecord(
     payload,
-    { file, uniqueFileName, filePath, catalogId: catalogId as number, datasetId, sessionId, user, rowCount },
+    { file, uniqueFileName, filePath, catalogId, datasetId, sessionId, user, rowCount },
     logger,
   );
   if ("error" in importResult) {
@@ -560,7 +564,10 @@ function parseFileRowCount(buffer: Buffer, fileType: string, logger: ReturnType<
       const workbook = xlsxRead(buffer, { type: "buffer" });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName!];
-      const jsonData = xlsxUtils.sheet_to_json(worksheet!);
+      if (!worksheet) {
+        throw new Error("Worksheet not found");
+      }
+      const jsonData = xlsxUtils.sheet_to_json(worksheet);
       return jsonData.length;
     }
   } catch (error) {
