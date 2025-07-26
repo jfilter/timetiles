@@ -1,7 +1,7 @@
 // Mock MapLibre GL JS
 class MockMap {
-  private container: HTMLElement;
-  private listeners: { [key: string]: Function[] } = {};
+  private readonly container: HTMLElement;
+  private listeners: { [key: string]: ((...args: any[]) => void)[] } = {};
   private markers: any[] = [];
 
   constructor(options: any) {
@@ -9,7 +9,7 @@ class MockMap {
     this.container.innerHTML = '<div class="maplibregl-map"></div>';
   }
 
-  on(event: string, handler: Function) {
+  on(event: string, handler: (...args: any[]) => void) {
     if (!this.listeners[event]) {
       this.listeners[event] = [];
     }
@@ -23,7 +23,7 @@ class MockMap {
     return this;
   }
 
-  off(event: string, handler: Function) {
+  off(event: string, handler: (...args: any[]) => void) {
     if (this.listeners[event]) {
       this.listeners[event] = this.listeners[event].filter((h) => h !== handler);
     }
@@ -49,7 +49,7 @@ class MockMap {
     };
   }
 
-  fitBounds(bounds: any, options?: any) {
+  fitBounds() {
     // Simulate bounds change
     setTimeout(() => {
       this.emit("moveend", { target: this });
@@ -78,7 +78,7 @@ class MockMap {
 class MockMarker {
   private map: MockMap | null = null;
   private popup: MockPopup | null = null;
-  private element: HTMLElement;
+  private readonly element: HTMLElement;
 
   constructor(options?: any) {
     this.element = document.createElement("div");
@@ -88,9 +88,11 @@ class MockMarker {
     }
   }
 
-  setLngLat(coords: [number, number]) {
-    this.element.dataset.lng = String(coords[0]);
-    this.element.dataset.lat = String(coords[1]);
+  setLngLat(coords?: [number, number]) {
+    if (coords) {
+      this.element.dataset.lng = String(coords[0]);
+      this.element.dataset.lat = String(coords[1]);
+    }
     return this;
   }
 
@@ -125,11 +127,11 @@ class MockPopup {
     return this;
   }
 
-  setLngLat(coords: [number, number]) {
+  setLngLat() {
     return this;
   }
 
-  addTo(map: MockMap) {
+  addTo() {
     return this;
   }
 
@@ -140,9 +142,12 @@ class MockPopup {
 
 class MockNavigationControl {}
 
-export default {
+const mockMapLibre = {
   Map: MockMap,
   Marker: MockMarker,
   Popup: MockPopup,
   NavigationControl: MockNavigationControl,
 };
+
+// Default export required by mock system
+export default mockMapLibre;

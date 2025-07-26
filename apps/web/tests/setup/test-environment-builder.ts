@@ -10,9 +10,7 @@ import { postgresAdapter } from "@payloadcms/db-postgres";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { randomUUID } from "crypto";
 import fs from "fs";
-import { getPayload, buildConfig } from "payload";
-
-import { truncateAllTables } from "./database-setup";
+import { buildConfig, getPayload } from "payload";
 
 // Import collections
 import Catalogs from "@/lib/collections/catalogs";
@@ -25,11 +23,13 @@ import { MainMenu } from "@/lib/collections/main-menu";
 import Media from "@/lib/collections/media";
 import { Pages } from "@/lib/collections/pages";
 import Users from "@/lib/collections/users";
-import { fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob } from "@/lib/jobs/import-jobs";
+import { batchProcessingJob, eventCreationJob, fileParsingJob, geocodingBatchJob } from "@/lib/jobs/import-jobs";
 import { createLogger } from "@/lib/logger";
 import { SeedManager } from "@/lib/seed/index";
 import { RelationshipResolver } from "@/lib/seed/relationship-resolver";
 import { migrations } from "@/migrations";
+
+import { truncateAllTables } from "./database-setup";
 
 const logger = createLogger("test-env");
 
@@ -68,7 +68,7 @@ export interface TestEnvironment {
 }
 
 export class TestEnvironmentBuilder {
-  private static activeEnvironments = new Set<TestEnvironment>();
+  private static readonly activeEnvironments = new Set<TestEnvironment>();
 
   /**
    * Create a new test environment with the specified options
@@ -91,7 +91,7 @@ export class TestEnvironmentBuilder {
 
     // Generate unique identifiers
     const testId = randomUUID();
-    const workerId = process.env.VITEST_WORKER_ID || "1";
+    const workerId = process.env.VITEST_WORKER_ID ?? "1";
     const dbName = this.generateTestDbName(isolationLevel, workerId, testId);
 
     // Create temporary directory if requested
@@ -105,7 +105,7 @@ export class TestEnvironmentBuilder {
 
     // Use shared test database instead of creating unique ones to avoid connection issues
     const dbUrl =
-      process.env.DATABASE_URL || `postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test`;
+      process.env.DATABASE_URL ?? `postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test`;
 
     logger.debug("Initializing test database", {
       dbName: "shared",
@@ -174,7 +174,7 @@ export class TestEnvironmentBuilder {
       collections: ["users", "catalogs", "datasets", "events", "imports"],
       seedData: false, // Don't seed automatically to avoid relationship issues
       isolationLevel: "suite",
-      customSeedData: customData || {},
+      customSeedData: customData ?? {},
       environment: "test",
     });
   }
@@ -197,13 +197,15 @@ export class TestEnvironmentBuilder {
   static async cleanupAll(): Promise<void> {
     logger.info(`Cleaning up ${TestEnvironmentBuilder.activeEnvironments.size} active test environments`);
 
-    const cleanupPromises = Array.from(TestEnvironmentBuilder.activeEnvironments).map((env) =>
-      env.cleanup().catch((error) =>
+    const cleanupPromises = Array.from(TestEnvironmentBuilder.activeEnvironments).map(async (env) => {
+      try {
+        await env.cleanup();
+      } catch (error) {
         logger.warn("Failed to cleanup test environment", {
-          error: error.message,
-        }),
-      ),
-    );
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
 
     await Promise.all(cleanupPromises);
     TestEnvironmentBuilder.activeEnvironments.clear();
@@ -240,7 +242,7 @@ export class TestEnvironmentBuilder {
     const selectedCollections = collections.map((name) => collectionMap[name]).filter(Boolean);
 
     return buildConfig({
-      secret: process.env.PAYLOAD_SECRET || "test-secret-key",
+      secret: process.env.PAYLOAD_SECRET ?? "test-secret-key",
       admin: {
         user: collections.includes("users") ? Users.slug : undefined,
         disable: true, // Disable admin for better test performance
@@ -300,40 +302,45 @@ export class TestEnvironmentBuilder {
     environment: string,
     collections: string[],
   ): Promise<void> {
-    if (Object.keys(customData).length > 0) {
-      // Use custom seed data
-      logger.debug("Seeding custom test data", {
-        collections: Object.keys(customData),
-      });
-
-      for (const [collection, data] of Object.entries(customData)) {
-        if (data.length > 0) {
-          // Use the RelationshipResolver to handle relationships
-          const resolver = (seedManager as any).relationshipResolver as RelationshipResolver;
-          const resolvedData = await resolver.resolveCollectionRelationships(data, collection);
-
-          // Create items efficiently
-          for (const item of resolvedData) {
-            try {
-              await (seedManager as any).payload.create({
-                collection,
-                data: item,
-              });
-            } catch (error) {
-              logger.warn(`Failed to create ${collection} item`, {
-                error: (error as any).message,
-              });
-            }
-          }
-        }
-      }
-    } else {
+    if (Object.keys(customData).length === 0) {
       // Use standard seeding
       await seedManager.seed({
         collections,
         environment: environment as "production" | "development" | "test" | "staging",
         truncate: false, // Already truncated
       });
+      return;
+    }
+
+    // Use custom seed data
+    logger.debug("Seeding custom test data", {
+      collections: Object.keys(customData),
+    });
+
+    for (const [collection, data] of Object.entries(customData)) {
+      if (data.length === 0) continue;
+
+      await this.seedCollectionData(seedManager, collection, data);
+    }
+  }
+
+  private async seedCollectionData(seedManager: SeedManager, collection: string, data: any[]): Promise<void> {
+    // Use the RelationshipResolver to handle relationships
+    const resolver = (seedManager as any).relationshipResolver as RelationshipResolver;
+    const resolvedData = await resolver.resolveCollectionRelationships(data, collection);
+
+    // Create items efficiently
+    for (const item of resolvedData) {
+      try {
+        await (seedManager as any).payload.create({
+          collection,
+          data: item,
+        });
+      } catch (error) {
+        logger.warn(`Failed to create ${collection} item`, {
+          error: (error as any).message,
+        });
+      }
     }
   }
 
@@ -359,7 +366,7 @@ export class TestEnvironmentBuilder {
 
       // Truncate tables for next test
       await truncateAllTables(
-        process.env.DATABASE_URL || `postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test`,
+        process.env.DATABASE_URL ?? `postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test`,
       );
 
       logger.debug("Test environment cleanup completed", {
