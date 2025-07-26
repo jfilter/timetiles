@@ -73,13 +73,14 @@ const EventLocation = ({ event, eventData }: { event: Event; eventData: EventDat
 
   const displayAddress = hasNormalizedAddress
     ? event.geocodingInfo?.normalizedAddress
-    : [eventData.city, eventData.country].filter(Boolean).join(", ");
+    : [safeToString(eventData.city), safeToString(eventData.country)].filter(Boolean).join(", ");
 
   return <div className="text-muted-foreground mt-1 text-sm">{displayAddress}</div>;
 };
 
 const EventCoordinates = ({ location }: { location?: { latitude?: number | null; longitude?: number | null } }) => {
-  if (!location?.latitude || location.latitude === 0 || !location?.longitude || location.longitude === 0) return null;
+  if (location?.latitude == null || location.latitude === 0 || location?.longitude == null || location.longitude === 0)
+    return null;
 
   return (
     <div className="text-muted-foreground mt-1 text-xs">

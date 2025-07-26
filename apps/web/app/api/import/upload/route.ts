@@ -38,9 +38,9 @@ function validateFormData(formData: FormData): ValidatedFormData {
   const datasetIdRaw = formData.get("datasetId");
   const sessionIdRaw = formData.get("sessionId");
 
-  const catalogId = parseCatalogId(catalogIdRaw as string);
-  const datasetId = parseDatasetId(datasetIdRaw as string | null);
-  const sessionId = (sessionIdRaw as string | null)?.trim() ?? null;
+  const catalogId = parseCatalogId(typeof catalogIdRaw === "string" ? catalogIdRaw : "");
+  const datasetId = parseDatasetId(typeof datasetIdRaw === "string" ? datasetIdRaw : null);
+  const sessionId = typeof sessionIdRaw === "string" ? sessionIdRaw.trim() || null : null;
 
   return { file, catalogId, datasetId, sessionId };
 }
@@ -451,7 +451,7 @@ async function processUploadSteps(
   }
 
   // Step 4: Validate catalog and dataset
-  const validationResult = await validateCatalogAndDataset(payload, catalogId!, datasetId, logger);
+  const validationResult = await validateCatalogAndDataset(payload, catalogId as number, datasetId, logger);
   if ("error" in validationResult) {
     return validationResult;
   }
@@ -462,7 +462,7 @@ async function processUploadSteps(
   // Step 6: Create import record
   const importResult = await createImportRecord(
     payload,
-    { file, uniqueFileName, filePath, catalogId: catalogId!, datasetId, sessionId, user, rowCount },
+    { file, uniqueFileName, filePath, catalogId: catalogId as number, datasetId, sessionId, user, rowCount },
     logger,
   );
   if ("error" in importResult) {

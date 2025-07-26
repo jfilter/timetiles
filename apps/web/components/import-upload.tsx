@@ -24,7 +24,7 @@ const getBatchProgressStyle = (current: number, total: number) => ({
 
 // Helper components to reduce complexity
 const ErrorAlert = ({ error }: { error: string | null }) => {
-  if (!error || (typeof error === "string" && error.trim() === "")) return null;
+  if (error == null || (typeof error === "string" && error.trim() === "")) return null;
 
   return (
     <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-4">
@@ -37,7 +37,7 @@ const ErrorAlert = ({ error }: { error: string | null }) => {
 };
 
 const SuccessAlert = ({ success }: { success: string | null }) => {
-  if (!success || (typeof success === "string" && success.trim() === "")) return null;
+  if (success == null || (typeof success === "string" && success.trim() === "")) return null;
 
   return (
     <div className="mb-4 rounded-md border border-green-200 bg-green-50 p-4">
@@ -129,7 +129,11 @@ const UploadButtons = ({
   onReset: () => void;
 }) => {
   const isDisabled =
-    !file || !catalogId || (typeof catalogId === "string" && catalogId.trim() === "") || uploading || !!importId;
+    file == null ||
+    catalogId == null ||
+    (typeof catalogId === "string" && catalogId.trim() === "") ||
+    uploading ||
+    importId != null;
 
   return (
     <div className="flex gap-2">
@@ -149,7 +153,7 @@ const UploadButtons = ({
         )}
       </button>
 
-      {importId && typeof importId === "string" && importId.trim() !== "" && (
+      {importId != null && typeof importId === "string" && importId.trim() !== "" && (
         <button
           type="button"
           onClick={onReset}
@@ -207,7 +211,7 @@ const EstimatedTime = ({
   timeRemaining?: number;
   formatTime: (seconds: number) => string;
 }) => {
-  if (!timeRemaining || (typeof timeRemaining === "number" && timeRemaining === 0)) return null;
+  if (timeRemaining == null || (typeof timeRemaining === "number" && timeRemaining === 0)) return null;
 
   return <div className="text-sm text-gray-600">Estimated time remaining: {formatTime(timeRemaining)}</div>;
 };
@@ -374,7 +378,7 @@ export const ImportUpload = () => {
     return `${mins}m ${secs}s`;
   }, []);
 
-  const isFormDisabled = uploading || (!!importId && typeof importId === "string" && importId.trim() !== "");
+  const isFormDisabled = uploading || (importId != null && typeof importId === "string" && importId.trim() !== "");
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-6">
