@@ -12,31 +12,43 @@ test.describe("Explore Page - Map Interactions", () => {
   });
 
   test("should filter events by map bounds when panning", async ({ page }) => {
-    // First load some events
+    // Set up request tracking BEFORE any API calls
+    const eventsListRequests: string[] = [];
+    const mapClustersRequests: string[] = [];
+    
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.includes("/api/events/list")) {
+        eventsListRequests.push(url);
+      }
+      if (url.includes("/api/events/map-clusters")) {
+        mapClustersRequests.push(url);
+      }
+    });
+
+    // Load some events first
     await explorePage.selectCatalog("Environmental Data");
     await page.waitForTimeout(500);
     await explorePage.selectDatasets(["Air Quality Measurements"]);
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    const initialEventCount = await explorePage.getEventCount();
+    // Clear previous requests and set up new tracking for pan
+    eventsListRequests.length = 0;
+    mapClustersRequests.length = 0;
+    
+    // Pan the map significantly to ensure bounds change
+    await explorePage.panMap(400, 400);
 
-    // Set up response interception to check for bounds parameter
-    let boundsRequested = false;
-    page.on("request", (request) => {
-      if (request.url().includes("/api/events") && request.url().includes("bounds=")) {
-        boundsRequested = true;
-      }
-    });
-
-    // Pan the map to change bounds
-    await explorePage.panMap(200, 200);
-
-    // Wait a bit for the map to update and trigger API call
-    await explorePage.waitForApiResponse();
-
-    // Check that a request with bounds was made
-    expect(boundsRequested).toBe(true);
+    // Wait for debounced API calls (300ms debounce + request time)
+    await page.waitForTimeout(800);
+    
+    // Check that API calls were made with bounds after panning
+    const eventsListWithBounds = eventsListRequests.filter(url => url.includes("bounds="));
+    const mapClustersWithBounds = mapClustersRequests.filter(url => url.includes("bounds="));
+    
+    expect(eventsListWithBounds.length).toBeGreaterThan(0);
+    expect(mapClustersWithBounds.length).toBeGreaterThan(0);
   });
 
   test("should update markers when events change", async ({ page }) => {
@@ -144,8 +156,8 @@ test.describe("Explore Page - Map Interactions", () => {
     // Pan the map
     await explorePage.panMap(200, 0);
 
-    // Wait for potential API call with longer timeout
-    await page.waitForTimeout(2000);
+    // Wait for potential API call - account for 300ms debounce
+    await page.waitForTimeout(800);
 
     // At least some API requests should have been made
     expect(apiRequests.length).toBeGreaterThan(0);
