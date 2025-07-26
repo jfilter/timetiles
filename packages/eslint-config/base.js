@@ -1,7 +1,6 @@
 import js from "@eslint/js";
 import eslintConfigPrettier from "eslint-config-prettier";
 import importPlugin from "eslint-plugin-import";
-import onlyWarn from "eslint-plugin-only-warn";
 import preferArrowFunctions from "eslint-plugin-prefer-arrow-functions";
 import prettierPlugin from "eslint-plugin-prettier";
 import promisePlugin from "eslint-plugin-promise";
@@ -230,11 +229,6 @@ export default [
         },
       ],
       "turbo/no-undeclared-env-vars": "error",
-    },
-  },
-  {
-    plugins: {
-      // onlyWarn,
     },
   },
   {
