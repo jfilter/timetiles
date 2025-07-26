@@ -181,36 +181,6 @@ describe("GeocodingService", () => {
 
   describe.sequential("geocode", () => {
     const mockAddress = "123 Main St, San Francisco, CA";
-    // const mockGoogleResult = { // Unused variable
-    //   latitude: 37.7749,
-    //   longitude: -122.4194,
-    //   formattedAddress: "123 Main St, San Francisco, CA 94102, USA",
-    //   streetNumber: "123",
-    //   streetName: "Main St",
-    //   city: "San Francisco",
-    //   state: "CA",
-    //   zipcode: "94102",
-    //   country: "USA",
-    //   extra: {
-    //     googlePlaceId: "ChIJd8BlQ2BZwokRAFUEcm_qrcA",
-    //     confidence: 0.9,
-    //   },
-    // };
-
-    // const mockNominatimResult = { // Unused variable
-    //   latitude: 37.7749,
-    //   longitude: -122.4194,
-    //   formattedAddress: "123 Main Street, San Francisco, California, USA",
-    //   streetNumber: "123",
-    //   streetName: "Main Street",
-    //   city: "San Francisco",
-    //   state: "California",
-    //   country: "USA",
-    //   extra: {
-    //     osmId: "123456",
-    //     importance: 0.7,
-    //   },
-    // };
 
     it("should successfully geocode with Google provider", async () => {
       const uniqueAddress = `1234 Unique Google St, San Francisco, CA ${testCounter}-${Date.now()}`;
