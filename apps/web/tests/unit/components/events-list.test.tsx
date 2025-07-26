@@ -1,7 +1,7 @@
-import { renderWithProviders, screen } from "../../setup/test-utils";
-
 import { EventsList } from "@/components/events-list";
 import type { Event } from "@/payload-types";
+
+import { renderWithProviders, screen } from "../../setup/test-utils";
 
 // Create realistic event data that matches actual Payload structure
 const createMockEvent = (overrides: Partial<Event> = {}): Event => ({
@@ -26,7 +26,7 @@ const createMockEvent = (overrides: Partial<Event> = {}): Event => ({
 
 describe("EventsList", () => {
   test("displays loading state correctly", () => {
-    renderWithProviders(<EventsList events={[]} loading={true} />);
+    renderWithProviders(<EventsList events={[]} loading />);
 
     expect(screen.getByText("Loading events...")).toBeInTheDocument();
   });

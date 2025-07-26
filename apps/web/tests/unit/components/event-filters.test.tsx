@@ -1,8 +1,8 @@
-import { createMockCatalogs, createMockDatasets, createRichText } from "../../mocks";
-import { renderWithProviders, screen, userEvent } from "../../setup/test-utils";
-
 import { EventFilters } from "@/components/event-filters";
 import type { Catalog } from "@/payload-types";
+
+import { createMockCatalogs, createMockDatasets, createRichText } from "../../mocks";
+import { renderWithProviders, userEvent } from "../../setup/test-utils";
 
 const mockCatalogs = createMockCatalogs(2);
 const mockDatasets = createMockDatasets(3);

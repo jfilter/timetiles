@@ -1,4 +1,4 @@
-import { screen, cleanup, waitFor, act } from "@testing-library/react";
+import { cleanup, screen, waitFor } from "@testing-library/react";
 
 import { EventHistogram } from "../../../components/event-histogram";
 import { useHistogramQuery } from "../../../lib/hooks/use-events-queries";
@@ -64,7 +64,7 @@ describe.sequential("EventHistogram", () => {
       error: null,
     });
 
-    renderWithProviders(<EventHistogram loading={true} />);
+    renderWithProviders(<EventHistogram loading />);
     expect(screen.getByText("Loading histogram...")).toBeInTheDocument();
   });
 

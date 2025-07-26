@@ -1,7 +1,7 @@
-import { render, screen, cleanup } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 
 import { DatasetBarChart } from "../../../components/dataset-bar-chart";
-import type { Event, Dataset, Catalog } from "../../../payload-types";
+import type { Catalog, Dataset, Event } from "../../../payload-types";
 
 // Mock next-themes
 vi.mock("next-themes", () => ({
@@ -26,7 +26,7 @@ vi.mock("echarts-for-react", () => ({
     return (
       <div data-testid="echarts-bar-mock">
         {data.map((value: number, index: number) => (
-          <div key={index} data-value={value}>
+          <div key={`data-${index}`} data-value={value}>
             {value}
           </div>
         ))}
@@ -118,7 +118,7 @@ describe("DatasetBarChart", () => {
   });
 
   it("shows loading state", () => {
-    render(<DatasetBarChart events={[]} datasets={mockDatasets} catalogs={mockCatalogs} loading={true} />);
+    render(<DatasetBarChart events={[]} datasets={mockDatasets} catalogs={mockCatalogs} loading />);
 
     // Check for loading indicator
     const loadingElement = document.querySelector(".animate-spin");

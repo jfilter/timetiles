@@ -1,7 +1,7 @@
+import { MapComponent } from "@/components/map";
+
 import { createMapEvents } from "../../mocks";
 import { renderWithProviders } from "../../setup/test-utils";
-
-import { MapComponent } from "@/components/map";
 
 describe("Map", () => {
   test("renders map container with correct structure", () => {
