@@ -1,8 +1,7 @@
 import type { FullConfig } from "@playwright/test";
-import { chromium } from "@playwright/test";
 
 import { SeedManager } from "../../../lib/seed";
-import { setupTestDatabase, TEST_DATABASE_URL } from "../../../scripts/setup-test-db";
+import { setupTestDatabase } from "../../../scripts/setup-test-db";
 
 const globalSetup = async (config: FullConfig) => {
   console.log("🚀 Setting up E2E test environment...");

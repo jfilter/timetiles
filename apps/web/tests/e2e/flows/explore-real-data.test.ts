@@ -54,11 +54,15 @@ test.describe("Explore Page - Real Data Tests", () => {
 
             // Check that the page shows some result (events count should be visible)
             await expect(explorePage.eventsCount).toBeVisible();
-          } catch (error) {}
+          } catch (error) {
+            // Ignore errors - test should continue even if API calls fail
+          }
         } else {
+          // No datasets available - this is an acceptable state
         }
       }
     } else {
+      // No catalogs available - this is an acceptable state
     }
   });
 
@@ -133,7 +137,7 @@ test.describe("Explore Page - Real Data Tests", () => {
     try {
       await page.waitForResponse((response) => response.url().includes("/api/events"), { timeout: 5000 });
     } catch {
-      // Timeout is OK - might happen if no data matches
+      // Timeout is OK - might happen if no data matches or API is slow
     }
 
     // Page should still be functional
