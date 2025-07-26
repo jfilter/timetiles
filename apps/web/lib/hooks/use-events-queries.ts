@@ -78,10 +78,21 @@ export interface ImportProgressResponse {
   message?: string;
 }
 
+// Simple bounds interface for better React Query compatibility
+export interface SimpleBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+// Type alias for bounds to satisfy sonarjs rule
+type BoundsType = LngLatBounds | SimpleBounds | null;
+
 // Helper to build query parameters
 const buildEventParams = (
   filters: FilterState,
-  bounds: LngLatBounds | null,
+  bounds: BoundsType,
   additionalParams: Record<string, string> = {},
 ): URLSearchParams => {
   const params = new URLSearchParams();
@@ -103,17 +114,19 @@ const buildEventParams = (
     params.append("endDate", filters.endDate);
   }
 
-  // Add bounds
+  // Add bounds - handle both LngLatBounds and SimpleBounds
   if (bounds) {
-    params.append(
-      "bounds",
-      JSON.stringify({
-        west: bounds.getWest(),
-        south: bounds.getSouth(),
-        east: bounds.getEast(),
-        north: bounds.getNorth(),
-      }),
-    );
+    const boundsData =
+      "getWest" in bounds
+        ? {
+            west: bounds.getWest(),
+            south: bounds.getSouth(),
+            east: bounds.getEast(),
+            north: bounds.getNorth(),
+          }
+        : bounds;
+
+    params.append("bounds", JSON.stringify(boundsData));
   } else {
     // Use default NYC area bounds if no bounds are available yet
     params.append(
@@ -138,7 +151,7 @@ const buildEventParams = (
 // Fetch functions
 const fetchEvents = async (
   filters: FilterState,
-  bounds: LngLatBounds | null,
+  bounds: BoundsType,
   limit: number = 1000,
   signal?: AbortSignal,
 ): Promise<EventsListResponse> => {
@@ -159,7 +172,7 @@ const fetchEvents = async (
 
 const fetchMapClusters = async (
   filters: FilterState,
-  bounds: LngLatBounds | null,
+  bounds: BoundsType,
   zoom: number,
   signal?: AbortSignal,
 ): Promise<MapClustersResponse> => {
@@ -178,7 +191,7 @@ const fetchMapClusters = async (
 
 const fetchHistogram = async (
   filters: FilterState,
-  bounds: LngLatBounds | null,
+  bounds: BoundsType,
   signal?: AbortSignal,
 ): Promise<HistogramResponse> => {
   const params = buildEventParams(filters, bounds);
@@ -232,13 +245,13 @@ const uploadImport = async (formData: FormData, signal?: AbortSignal): Promise<{
 export const eventsQueryKeys = {
   all: ["events"] as const,
   lists: () => [...eventsQueryKeys.all, "list"] as const,
-  list: (filters: FilterState, bounds: LngLatBounds | null, limit: number) =>
+  list: (filters: FilterState, bounds: BoundsType, limit: number) =>
     [...eventsQueryKeys.lists(), { filters, bounds, limit }] as const,
   clusters: () => [...eventsQueryKeys.all, "clusters"] as const,
-  cluster: (filters: FilterState, bounds: LngLatBounds | null, zoom: number) =>
+  cluster: (filters: FilterState, bounds: BoundsType, zoom: number) =>
     [...eventsQueryKeys.clusters(), { filters, bounds, zoom }] as const,
   histograms: () => [...eventsQueryKeys.all, "histogram"] as const,
-  histogram: (filters: FilterState, bounds: LngLatBounds | null) =>
+  histogram: (filters: FilterState, bounds: BoundsType) =>
     [...eventsQueryKeys.histograms(), { filters, bounds }] as const,
   imports: () => ["imports"] as const,
   importProgress: (importId: string) => [...eventsQueryKeys.imports(), "progress", importId] as const,
@@ -247,7 +260,7 @@ export const eventsQueryKeys = {
 // Query hooks
 export const useEventsListQuery = (
   filters: FilterState,
-  bounds: LngLatBounds | null,
+  bounds: BoundsType,
   limit: number = 1000,
   enabled: boolean = true,
 ) =>
@@ -260,12 +273,7 @@ export const useEventsListQuery = (
     refetchOnWindowFocus: false,
   });
 
-export const useMapClustersQuery = (
-  filters: FilterState,
-  bounds: LngLatBounds | null,
-  zoom: number,
-  enabled: boolean = true,
-) =>
+export const useMapClustersQuery = (filters: FilterState, bounds: BoundsType, zoom: number, enabled: boolean = true) =>
   useQuery({
     queryKey: eventsQueryKeys.cluster(filters, bounds, zoom),
     queryFn: ({ signal }) => fetchMapClusters(filters, bounds, zoom, signal),
@@ -275,7 +283,7 @@ export const useMapClustersQuery = (
     refetchOnWindowFocus: false,
   });
 
-export const useHistogramQuery = (filters: FilterState, bounds: LngLatBounds | null, enabled: boolean = true) =>
+export const useHistogramQuery = (filters: FilterState, bounds: BoundsType, enabled: boolean = true) =>
   useQuery({
     queryKey: eventsQueryKeys.histogram(filters, bounds),
     queryFn: ({ signal }) => fetchHistogram(filters, bounds, signal),

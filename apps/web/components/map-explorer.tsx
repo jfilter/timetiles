@@ -34,25 +34,29 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
   const setMapBounds = useUIStore((state) => state.setMapBounds);
 
-  // Convert mapBounds to LngLatBounds format for compatibility with React Query
-  const bounds: LngLatBounds | null = useMemo(() => {
+  // Convert mapBounds to simple object format for React Query compatibility
+  // React Query needs serializable objects for proper cache key comparison
+  const simpleBounds = useMemo(() => {
     if (!mapBounds) return null;
-
     return {
-      getNorth: () => mapBounds.north,
-      getSouth: () => mapBounds.south,
-      getEast: () => mapBounds.east,
-      getWest: () => mapBounds.west,
-    } as LngLatBounds;
+      north: mapBounds.north,
+      south: mapBounds.south,
+      east: mapBounds.east,
+      west: mapBounds.west,
+    };
   }, [mapBounds]);
 
   // Debounce bounds changes to avoid excessive API calls during map panning
-  const debouncedBounds = useDebounce(bounds, 300);
+  const debouncedSimpleBounds = useDebounce(simpleBounds, 300);
 
-  // React Query hooks for data fetching
-  const { data: eventsData, isLoading: eventsLoading } = useEventsListQuery(filters, debouncedBounds, 1000);
+  // React Query hooks for data fetching - use simple bounds directly for better cache key comparison
+  const { data: eventsData, isLoading: eventsLoading } = useEventsListQuery(filters, debouncedSimpleBounds, 1000);
 
-  const { data: clustersData, isLoading: clustersLoading } = useMapClustersQuery(filters, debouncedBounds, mapZoom);
+  const { data: clustersData, isLoading: clustersLoading } = useMapClustersQuery(
+    filters,
+    debouncedSimpleBounds,
+    mapZoom,
+  );
 
   // Extract data from queries
   const events = eventsData?.events ?? [];
