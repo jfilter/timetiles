@@ -1,14 +1,17 @@
 import js from "@eslint/js";
 import eslintConfigPrettier from "eslint-config-prettier";
+import boundariesPlugin from "eslint-plugin-boundaries";
 import importPlugin from "eslint-plugin-import";
 import preferArrowFunctions from "eslint-plugin-prefer-arrow-functions";
 import prettierPlugin from "eslint-plugin-prettier";
 import promisePlugin from "eslint-plugin-promise";
 import regexpPlugin from "eslint-plugin-regexp";
 import securityPlugin from "eslint-plugin-security";
+import simpleImportSort from "eslint-plugin-simple-import-sort";
 import sonarPlugin from "eslint-plugin-sonarjs";
 import turboPlugin from "eslint-plugin-turbo";
 import unicornPlugin from "eslint-plugin-unicorn";
+import unusedImports from "eslint-plugin-unused-imports";
 import tseslint from "typescript-eslint";
 
 /**
@@ -90,11 +93,27 @@ export default [
       turbo: turboPlugin,
       prettier: prettierPlugin,
       import: importPlugin,
+      "simple-import-sort": simpleImportSort,
+      "unused-imports": unusedImports,
+      boundaries: boundariesPlugin,
       unicorn: unicornPlugin,
       security: securityPlugin,
       promise: promisePlugin,
       regexp: regexpPlugin,
       "prefer-arrow-functions": preferArrowFunctions,
+    },
+    settings: {
+      "boundaries/elements": [
+        { type: "app", pattern: "apps/*" },
+        { type: "app-web", pattern: "apps/web/**/*" },
+        { type: "app-docs", pattern: "apps/docs/**/*" },
+        { type: "package", pattern: "packages/*/**/*" },
+        { type: "web-api", pattern: "apps/web/app/api/**/*" },
+        { type: "web-components", pattern: "apps/web/components/**/*" },
+        { type: "web-lib", pattern: "apps/web/lib/**/*" },
+        { type: "web-pages", pattern: "apps/web/app/**/page.tsx" },
+        { type: "root", pattern: ["*.js", "*.ts", "*.json", "scripts/**/*"] },
+      ],
     },
     rules: {
       // Prettier (affects all code formatting)
@@ -156,21 +175,64 @@ export default [
       "sonarjs/prefer-object-literal": "error",
       "sonarjs/todo-tag": "off",
 
-      // Import
+      // Import & Sorting
+      "simple-import-sort/imports": "error",
+      "simple-import-sort/exports": "error",
+      "unused-imports/no-unused-imports": "error",
+      "unused-imports/no-unused-vars": [
+        "warn",
+        { vars: "all", varsIgnorePattern: "^_", args: "after-used", argsIgnorePattern: "^_" }
+      ],
       "import/no-cycle": "error",
       "import/no-default-export": "warn",
-      "import/no-namespace": "warn",
+      "import/no-namespace": "warn", 
       "import/no-self-import": "error",
-      "import/order": [
+      // Disable import/order in favor of simple-import-sort
+      "import/order": "off",
+
+      // Boundaries (Monorepo Architecture)
+      "boundaries/element-types": [
         "error",
         {
-          groups: [
-            ["builtin", "external"],
-            ["internal", "parent", "sibling", "index"],
-          ],
-          "newlines-between": "always",
-          alphabetize: { order: "asc" },
-        },
+          default: "disallow",
+          rules: [
+            // Apps can use packages but not other apps
+            {
+              from: ["app-web", "app-docs"],
+              allow: ["package", "package-ui", "package-config"]
+            },
+            // Packages can only use other packages
+            {
+              from: "package",
+              allow: ["package"]
+            },
+            // Web app internal boundaries
+            {
+              from: "web-components",
+              allow: ["web-lib", "package"]
+            },
+            {
+              from: "web-pages", 
+              allow: ["web-components", "web-lib", "package"]
+            },
+            {
+              from: "web-api",
+              allow: ["web-lib", "package"]
+            },
+            // Root can access everything
+            {
+              from: "root",
+              allow: "*"
+            }
+          ]
+        }
+      ],
+      "boundaries/external": [
+        "error",
+        {
+          default: "allow",
+          rules: []
+        }
       ],
 
       // Unicorn

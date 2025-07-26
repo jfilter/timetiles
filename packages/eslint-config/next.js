@@ -5,6 +5,13 @@ import eslintConfigPrettier from "eslint-config-prettier"
 import pluginJsxA11y from "eslint-plugin-jsx-a11y"
 import pluginReact from "eslint-plugin-react"
 import pluginReactHooks from "eslint-plugin-react-hooks"
+import pluginReactPerf from "eslint-plugin-react-perf"
+import pluginReactCompiler from "eslint-plugin-react-compiler"
+// NOTE: eslint-plugin-tailwindcss is not included due to Tailwind CSS v4 incompatibility
+// Both the stable and beta versions fail to detect Tailwind v4 configuration
+// The plugin expects traditional tailwind.config.js but v4 uses CSS-based config
+// Alternatives: prettier-plugin-tailwindcss (already installed) handles class ordering
+import reactCompilerPlugin from "@eslint-react/eslint-plugin";
 import globals from "globals"
 import tseslint from "typescript-eslint"
 
@@ -29,6 +36,13 @@ export default [
       },
     },
   },
+  // @eslint-react recommended config
+  {
+    ...reactCompilerPlugin.configs.recommended,
+    plugins: {
+      ...reactCompilerPlugin.configs.recommended.plugins,
+    },
+  },
   {
     plugins: {
       "@next/next": pluginNext,
@@ -43,6 +57,9 @@ export default [
       "react-hooks": pluginReactHooks,
       "jsx-a11y": pluginJsxA11y,
       "@tanstack/query": pluginQuery,
+      "react-perf": pluginReactPerf,
+      "react-compiler": pluginReactCompiler,
+      // Tailwind CSS linting disabled - see import comment above
     },
     settings: { react: { version: "detect" } },
     rules: {
@@ -73,6 +90,28 @@ export default [
       "@tanstack/query/stable-query-client": "error",
       "@tanstack/query/no-unstable-deps": "error",
       "@tanstack/query/infinite-query-property-order": "error",
+
+      // React Performance Rules (configured for practical development)
+      "react-perf/jsx-no-new-object-as-prop": "warn", // Warn instead of error for objects
+      "react-perf/jsx-no-new-array-as-prop": "warn", // Warn instead of error for arrays
+      "react-perf/jsx-no-new-function-as-prop": "warn", // Warn for functions (very common pattern)
+      "react-perf/jsx-no-jsx-as-prop": "error", // Keep error for JSX (more problematic)
+
+      // Tailwind CSS Rules: Currently disabled due to v4 incompatibility
+      // prettier-plugin-tailwindcss handles class ordering in the meantime
+      // TODO: Re-enable when eslint-plugin-tailwindcss supports Tailwind v4
+
+      // React Compiler Rules (React 19) - Applied via recommended config above
+      "react-compiler/react-compiler": "error",
+
+      // Enhanced Next.js Rules
+      "@next/next/no-before-interactive-script-outside-document": "error",
+      "@next/next/no-css-tags": "error",
+      "@next/next/no-head-element": "error",
+      "@next/next/no-html-link-for-pages": "error",
+      "@next/next/no-script-component-in-head": "error",
+      "@next/next/no-styled-jsx-in-document": "error",
+      "@next/next/no-sync-scripts": "error",
     },
   },
   // Override for Next.js files that require default exports
@@ -96,4 +135,4 @@ export default [
       "prefer-arrow-functions/prefer-arrow-functions": "off",
     },
   },
-]
+];
