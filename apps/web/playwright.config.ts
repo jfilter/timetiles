@@ -1,7 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // Set test database URL at config level so it's available to both tests and webServer
-process.env.DATABASE_URL = "postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test";
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL environment variable is required for tests");
+}
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -89,7 +91,7 @@ export default defineConfig({
           reuseExistingServer: true,
           timeout: 15 * 1000, // Give more time for database setup
           env: {
-            DATABASE_URL: "postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test",
+            DATABASE_URL: process.env.DATABASE_URL,
           },
         },
 });

@@ -37,7 +37,10 @@ export default buildConfig({
     push: false, // Disable automatic schema updates
     pool: {
       connectionString:
-        process.env.DATABASE_URL ?? "postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles",
+        process.env.DATABASE_URL ||
+        (() => {
+          throw new Error("DATABASE_URL environment variable is required");
+        })(),
     },
     schemaName: "payload",
     migrationDir: "./migrations",

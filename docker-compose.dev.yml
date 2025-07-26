@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: timetiles
       POSTGRES_USER: timetiles_user
-      POSTGRES_PASSWORD: timetiles_password
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_HOST_AUTH_METHOD: trust
     command: >
       postgres
