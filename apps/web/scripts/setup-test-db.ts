@@ -47,8 +47,18 @@ function runMakeCommand(target: string, description: string): void {
 }
 
 function runDatabaseQuery(dbName: string, sql: string, description: string): string {
-  const command = `cd ../.. && make db-query DB_NAME=${dbName} SQL="${sql}"`;
-  return runCommand(command, description);
+  // Detect CI environment - use direct psql commands instead of Docker-based make commands
+  const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true' || process.env.PGPASSWORD;
+  
+  if (isCI) {
+    // In CI, use direct psql commands since database runs as service container
+    const command = `PGPASSWORD=${DB_PASSWORD} psql -h ${DB_HOST} -U ${DB_USER} -d ${dbName} -c "${sql}"`;
+    return runCommand(command, `${description} (CI mode)`);
+  } else {
+    // Local development - use make commands with Docker
+    const command = `cd ../.. && make db-query DB_NAME=${dbName} SQL="${sql}"`;
+    return runCommand(command, `${description} (local mode)`);
+  }
 }
 
 async function setupTestDatabase(): Promise<void> {
