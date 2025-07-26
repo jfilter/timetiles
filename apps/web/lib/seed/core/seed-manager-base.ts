@@ -90,7 +90,7 @@ export abstract class SeedManagerBase {
         logger.debug("Closing PostgreSQL connection pool");
         const closePromise = (this.payload.db.pool as { end?: () => Promise<void> }).end?.();
 
-        if (closePromise) {
+        if (closePromise != null) {
           // Add timeout protection for connection pool closure
           await Promise.race([
             closePromise,

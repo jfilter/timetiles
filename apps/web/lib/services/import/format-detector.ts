@@ -15,7 +15,7 @@ export interface FormatDetectionResult {
 export const checkCommaFormat = (samples: unknown[]): FormatDetectionResult | null => {
   const commaFormat = samples.filter((s) => {
     const commaRegex = /^(-?\d{1,3}\.?\d{0,10}),\s{0,5}(-?\d{1,3}\.?\d{0,10})$/;
-    const match = commaRegex.exec(String(s));
+    const match = commaRegex.exec(typeof s === "string" || typeof s === "number" ? String(s) : "");
     if (match?.[1] != null && match?.[1] != undefined && match[2] != null && match[2] != undefined) {
       const lat = parseFloat(match[1]);
       const lon = parseFloat(match[2]);
@@ -39,7 +39,7 @@ export const checkCommaFormat = (samples: unknown[]): FormatDetectionResult | nu
 export const checkSpaceFormat = (samples: unknown[]): FormatDetectionResult | null => {
   const spaceFormat = samples.filter((s) => {
     const spaceRegex = /^(-?\d{1,3}\.?\d{0,10})\s{1,5}(-?\d{1,3}\.?\d{0,10})$/;
-    const match = spaceRegex.exec(String(s));
+    const match = spaceRegex.exec(typeof s === "string" || typeof s === "number" ? String(s) : "");
     if (match?.[1] != null && match?.[1] != undefined && match[2] != null && match[2] != undefined) {
       const lat = parseFloat(match[1]);
       const lon = parseFloat(match[2]);

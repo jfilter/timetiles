@@ -128,7 +128,7 @@ export class RelationshipResolver {
         if (validationResult.shouldContinue === true) {
           continue;
         }
-        throw validationResult.error!;
+        throw validationResult.error ?? new Error("Validation failed");
       }
 
       // Process relationship
