@@ -53,17 +53,14 @@ export abstract class SeedManagerBase {
     try {
       logger.debug("Starting seed manager cleanup");
 
-      // Close PostgreSQL connections if available
-      await this.closePostgresConnections();
-
-      // Close Drizzle connections if available
-      this.closeDrizzleConnections();
-
-      // Close Payload DB connections
-      await this.closePayloadConnections();
-
-      // Clean up Payload instance
-      this.cleanupPayloadInstance();
+      // Add overall timeout protection for entire cleanup process
+      const cleanupPromise = this.performCleanup();
+      await Promise.race([
+        cleanupPromise,
+        new Promise((resolve, reject) =>
+          setTimeout(() => reject(new Error("Cleanup process timeout after 30s")), 30000),
+        ),
+      ]);
 
       logger.debug("Seed manager cleanup completed");
     } catch (error: unknown) {
@@ -73,11 +70,35 @@ export abstract class SeedManagerBase {
     }
   }
 
+  private async performCleanup(): Promise<void> {
+    // Close PostgreSQL connections if available
+    await this.closePostgresConnections();
+
+    // Close Drizzle connections if available
+    this.closeDrizzleConnections();
+
+    // Close Payload DB connections
+    await this.closePayloadConnections();
+
+    // Clean up Payload instance
+    this.cleanupPayloadInstance();
+  }
+
   private async closePostgresConnections(): Promise<void> {
     if (this.payload?.db?.pool != null && (this.payload.db.pool as { ended?: boolean }).ended !== true) {
       try {
         logger.debug("Closing PostgreSQL connection pool");
-        await (this.payload.db.pool as { end?: () => Promise<void> }).end?.();
+        const closePromise = (this.payload.db.pool as { end?: () => Promise<void> }).end?.();
+
+        if (closePromise) {
+          // Add timeout protection for connection pool closure
+          await Promise.race([
+            closePromise,
+            new Promise((resolve, reject) =>
+              setTimeout(() => reject(new Error("PostgreSQL connection pool close timeout after 10s")), 10000),
+            ),
+          ]);
+        }
         logger.debug("PostgreSQL connection pool closed");
       } catch (error: unknown) {
         logger.warn("Error closing PostgreSQL connection pool", { error });
@@ -104,7 +125,14 @@ export abstract class SeedManagerBase {
     if (this.payload?.db != null && this.payload.db != undefined && typeof this.payload.db.destroy == "function") {
       try {
         logger.debug("Closing Payload database connection");
-        await this.payload.db.destroy();
+
+        // Add timeout protection for Payload database connection closure
+        await Promise.race([
+          this.payload.db.destroy(),
+          new Promise((resolve, reject) =>
+            setTimeout(() => reject(new Error("Payload database connection close timeout after 10s")), 10000),
+          ),
+        ]);
         logger.debug("Payload database connection closed");
       } catch (error: unknown) {
         logger.warn("Error closing Payload database connection", { error });
