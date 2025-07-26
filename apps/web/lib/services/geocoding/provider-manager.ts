@@ -11,8 +11,8 @@ const logger = createLogger("geocoding-provider-manager");
 
 export class ProviderManager {
   private providers: ProviderConfig[] = [];
-  private payload: Payload;
-  private settings: GeocodingSettings | null = null;
+  private readonly payload: Payload;
+  private readonly settings: GeocodingSettings | null = null;
 
   constructor(payload: Payload, settings: GeocodingSettings | null) {
     this.payload = payload;
@@ -144,56 +144,62 @@ export class ProviderManager {
     };
   }
 
+  // Helper method to check if provider doc is valid
+  private isProviderDocValid(doc: GeocodingProvider): boolean {
+    return doc.enabled === true && doc.type != null;
+  }
+
+  // Helper method to create provider entry
+  private createProviderEntry(doc: GeocodingProvider, geocoder: NodeGeocoder.Geocoder, defaultPriority: number) {
+    return {
+      name: doc.name ?? doc.type,
+      geocoder,
+      priority: doc.priority ?? defaultPriority,
+      enabled: doc.enabled ?? false,
+    };
+  }
+
+  // Helper method to initialize a single provider
+  private initializeSingleProvider(doc: GeocodingProvider): void {
+    if (!this.isProviderDocValid(doc)) {
+      logger.debug(`Skipping disabled or invalid provider: ${doc.name}`);
+      return;
+    }
+
+    try {
+      const result = this.createGeocoderForType(doc);
+      if (result) {
+        this.providers.push(result);
+      }
+    } catch (error) {
+      logger.error(`Failed to initialize provider ${doc.name}`, { error, provider: doc });
+    }
+  }
+
+  // Helper method to create geocoder based on type
+  private createGeocoderForType(doc: GeocodingProvider) {
+    switch (doc.type) {
+      case "google": {
+        const geocoder = this.createGoogleGeocoder(doc);
+        return geocoder ? this.createProviderEntry(doc, geocoder, 1) : null;
+      }
+      case "opencage": {
+        const geocoder = this.createOpenCageGeocoder(doc);
+        return geocoder ? this.createProviderEntry(doc, geocoder, 5) : null;
+      }
+      case "nominatim": {
+        const geocoder = this.createNominatimGeocoder(doc);
+        return this.createProviderEntry(doc, geocoder, 10);
+      }
+      default:
+        logger.warn(`Unknown provider type: ${String(doc.type)}`);
+        return null;
+    }
+  }
+
   private initializeProvidersFromDocs(docs: GeocodingProvider[]): void {
     this.providers = [];
-
-    for (const doc of docs) {
-      if (doc.enabled !== true || doc.type == null || doc.type == undefined) {
-        logger.debug(`Skipping disabled or invalid provider: ${doc.name}`);
-        continue;
-      }
-
-      try {
-        switch (doc.type) {
-          case "google": {
-            const googleGeocoder = this.createGoogleGeocoder(doc);
-            if (!googleGeocoder) continue;
-            this.providers.push({
-              name: doc.name ?? "google",
-              geocoder: googleGeocoder,
-              priority: doc.priority ?? 1,
-              enabled: doc.enabled,
-            });
-            break;
-          }
-          case "opencage": {
-            const opencageGeocoder = this.createOpenCageGeocoder(doc);
-            if (!opencageGeocoder) continue;
-            this.providers.push({
-              name: doc.name ?? "opencage",
-              geocoder: opencageGeocoder,
-              priority: doc.priority ?? 5,
-              enabled: doc.enabled,
-            });
-            break;
-          }
-          case "nominatim": {
-            const nominatimGeocoder = this.createNominatimGeocoder(doc);
-            this.providers.push({
-              name: doc.name ?? "nominatim",
-              geocoder: nominatimGeocoder,
-              priority: doc.priority ?? 10,
-              enabled: doc.enabled,
-            });
-            break;
-          }
-          default:
-            logger.warn(`Unknown provider type: ${String(doc.type)}`);
-        }
-      } catch (error) {
-        logger.error(`Failed to initialize provider ${doc.name}`, { error, provider: doc });
-      }
-    }
+    docs.forEach((doc) => this.initializeSingleProvider(doc));
   }
 
   private createGoogleGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder | null {

@@ -32,46 +32,73 @@ interface EventData {
   country?: unknown;
 }
 
+// Helper functions to reduce complexity
+const getEventData = (event: Event): EventData => {
+  return typeof event.data === "object" && event.data != null && !Array.isArray(event.data)
+    ? (event.data as EventData)
+    : {};
+};
+
+const getEventTitle = (eventData: EventData, eventId: string): string => {
+  return safeToString(eventData.title) || safeToString(eventData.name) || `Event ${eventId}`;
+};
+
+const EventDescription = ({ description }: { description?: unknown }) => {
+  if (description == null || description === "") return null;
+  return <p className="text-muted-foreground mt-1 text-sm">{safeToString(description)}</p>;
+};
+
+const EventDateRange = ({ startDate, endDate }: { startDate?: unknown; endDate?: unknown }) => {
+  const hasStartDate = startDate != null;
+  const hasEndDate = endDate != null;
+  const hasBothDates = hasStartDate && hasEndDate;
+
+  if (!hasStartDate && !hasEndDate) return null;
+
+  return (
+    <div className="text-muted-foreground mt-2 text-sm">
+      {hasStartDate && <span>{new Date(safeToString(startDate)).toLocaleDateString()}</span>}
+      {hasBothDates && <span> - </span>}
+      {hasEndDate && <span>{new Date(safeToString(endDate)).toLocaleDateString()}</span>}
+    </div>
+  );
+};
+
+const EventLocation = ({ event, eventData }: { event: Event; eventData: EventData }) => {
+  const hasNormalizedAddress =
+    event.geocodingInfo?.normalizedAddress != null && event.geocodingInfo.normalizedAddress !== "";
+  const hasLocationData = eventData.city != null || eventData.country != null;
+
+  if (!hasNormalizedAddress && !hasLocationData) return null;
+
+  const displayAddress = hasNormalizedAddress
+    ? event.geocodingInfo?.normalizedAddress
+    : [eventData.city, eventData.country].filter(Boolean).join(", ");
+
+  return <div className="text-muted-foreground mt-1 text-sm">{displayAddress}</div>;
+};
+
+const EventCoordinates = ({ location }: { location?: { latitude?: number | null; longitude?: number | null } }) => {
+  if (!location?.latitude || location.latitude === 0 || !location?.longitude || location.longitude === 0) return null;
+
+  return (
+    <div className="text-muted-foreground mt-1 text-xs">
+      {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+    </div>
+  );
+};
+
 const EventItem = ({ event }: { event: Event }) => {
-  const eventData: EventData =
-    typeof event.data === "object" && event.data != null && !Array.isArray(event.data) ? (event.data as EventData) : {};
+  const eventData = getEventData(event);
+  const title = getEventTitle(eventData, String(event.id));
 
   return (
     <div key={event.id} className="hover:bg-accent/50 rounded-lg border p-4 transition-colors">
-      <h3 className="text-lg font-semibold">
-        {safeToString(eventData.title) || safeToString(eventData.name) || `Event ${event.id}`}
-      </h3>
-      {eventData.description != null && eventData.description !== "" ? (
-        <p className="text-muted-foreground mt-1 text-sm">{safeToString(eventData.description)}</p>
-      ) : null}
-      <div className="text-muted-foreground mt-2 text-sm">
-        {eventData.startDate != null ? (
-          <span>{new Date(safeToString(eventData.startDate)).toLocaleDateString()}</span>
-        ) : null}
-        {eventData.startDate != undefined &&
-        eventData.startDate != null &&
-        eventData.endDate != undefined &&
-        eventData.endDate != null ? (
-          <span> - </span>
-        ) : null}
-        {eventData.endDate != null ? (
-          <span>{new Date(safeToString(eventData.endDate)).toLocaleDateString()}</span>
-        ) : null}
-      </div>
-      {eventData.city != null ||
-      eventData.country != null ||
-      (event.geocodingInfo?.normalizedAddress != undefined &&
-        event.geocodingInfo?.normalizedAddress != null &&
-        event.geocodingInfo?.normalizedAddress !== "") ? (
-        <div className="text-muted-foreground mt-1 text-sm">
-          {event.geocodingInfo?.normalizedAddress ?? [eventData.city, eventData.country].filter(Boolean).join(", ")}
-        </div>
-      ) : null}
-      {event.location ? (
-        <div className="text-muted-foreground mt-1 text-xs">
-          {event.location.latitude?.toFixed(4)}, {event.location.longitude?.toFixed(4)}
-        </div>
-      ) : null}
+      <h3 className="text-lg font-semibold">{title}</h3>
+      <EventDescription description={eventData.description} />
+      <EventDateRange startDate={eventData.startDate} endDate={eventData.endDate} />
+      <EventLocation event={event} eventData={eventData} />
+      <EventCoordinates location={event.location} />
     </div>
   );
 };

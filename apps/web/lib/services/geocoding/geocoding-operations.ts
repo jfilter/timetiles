@@ -11,9 +11,9 @@ const logger = createLogger("geocoding-operations");
 
 export class GeocodingOperations {
   constructor(
-    private providerManager: ProviderManager,
-    private cacheManager: CacheManager,
-    private settings: GeocodingSettings | null,
+    private readonly providerManager: ProviderManager,
+    private readonly cacheManager: CacheManager,
+    private readonly settings: GeocodingSettings | null,
   ) {}
 
   async geocode(address: string): Promise<GeocodingResult> {
@@ -243,37 +243,57 @@ export class GeocodingOperations {
     };
   }
 
+  // Helper methods to reduce complexity in calculateConfidence
+  private calculateGoogleConfidence(result: Entry): number {
+    const googleConfidence = (result.extra as { confidence?: string })?.confidence;
+
+    switch (googleConfidence) {
+      case "exact_match":
+        return 0.95;
+      case "high":
+        return 0.85;
+      case "medium":
+        return 0.7;
+      default:
+        return 0.6;
+    }
+  }
+
+  private calculateOpenCageConfidence(result: Entry): number {
+    return (result.extra as { confidence?: number })?.confidence ?? 0.7;
+  }
+
+  private calculateNominatimConfidence(result: Entry): number {
+    let confidence = 0.6;
+
+    const hasStreetInfo = (result.streetNumber?.length ?? 0) > 0 && (result.streetName?.length ?? 0) > 0;
+    if (hasStreetInfo) {
+      confidence += 0.2;
+    }
+
+    const hasCityStateInfo = (result.city?.length ?? 0) > 0 && (result.state?.length ?? 0) > 0;
+    if (hasCityStateInfo) {
+      confidence += 0.1;
+    }
+
+    return confidence;
+  }
+
   private calculateConfidence(result: Entry, providerName: string): number {
-    let confidence = 0.7; // Default confidence
+    let confidence: number;
 
     switch (providerName) {
       case "google":
-        if ((result.extra as { confidence?: string })?.confidence === "exact_match") {
-          confidence = 0.95;
-        } else if ((result.extra as { confidence?: string })?.confidence === "high") {
-          confidence = 0.85;
-        } else if ((result.extra as { confidence?: string })?.confidence === "medium") {
-          // Keep default confidence of 0.7
-        } else {
-          confidence = 0.6;
-        }
+        confidence = this.calculateGoogleConfidence(result);
         break;
       case "opencage":
-        confidence = (result.extra as { confidence?: number })?.confidence ?? 0.7;
+        confidence = this.calculateOpenCageConfidence(result);
         break;
       case "nominatim":
-        // Nominatim doesn't provide confidence, so we estimate based on result completeness
-        confidence = 0.6;
-        if (
-          result.streetNumber != null &&
-          result.streetNumber.length > 0 &&
-          result.streetName != null &&
-          result.streetName.length > 0
-        )
-          confidence += 0.2;
-        if (result.city != null && result.city.length > 0 && result.state != null && result.state.length > 0)
-          confidence += 0.1;
+        confidence = this.calculateNominatimConfidence(result);
         break;
+      default:
+        confidence = 0.7;
     }
 
     return Math.min(Math.max(confidence, 0.0), 1.0);

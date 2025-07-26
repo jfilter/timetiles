@@ -294,16 +294,17 @@ function createGeocodingStats() {
   };
 }
 
-function buildImportData(
-  file: File,
-  uniqueFileName: string,
-  filePath: string,
-  catalogId: number,
-  datasetId: number | null,
-  sessionId: string | null,
-  user: Pick<User, "id"> | null,
-  rowCount: number,
-): CreateImportData {
+function buildImportData(params: {
+  file: File;
+  uniqueFileName: string;
+  filePath: string;
+  catalogId: number;
+  datasetId: number | null;
+  sessionId: string | null;
+  user: Pick<User, "id"> | null;
+  rowCount: number;
+}): CreateImportData {
+  const { file, uniqueFileName, filePath, catalogId, datasetId, sessionId, user, rowCount } = params;
   return {
     fileName: uniqueFileName,
     originalName: file.name,
@@ -337,20 +338,32 @@ function buildImportData(
 
 async function createImportRecord(
   payload: Awaited<ReturnType<typeof getPayload>>,
-  file: File,
-  uniqueFileName: string,
-  filePath: string,
-  catalogId: number,
-  datasetId: number | null,
-  sessionId: string | null,
-  user: Pick<User, "id"> | null,
-  rowCount: number,
+  params: {
+    file: File;
+    uniqueFileName: string;
+    filePath: string;
+    catalogId: number;
+    datasetId: number | null;
+    sessionId: string | null;
+    user: Pick<User, "id"> | null;
+    rowCount: number;
+  },
   logger: ReturnType<typeof createRequestLogger>,
 ) {
+  const { file, uniqueFileName, filePath, catalogId, datasetId, sessionId, user, rowCount } = params;
   try {
     logger.info({ catalogId, catalogType: typeof catalogId }, "Creating import record");
 
-    const importData = buildImportData(file, uniqueFileName, filePath, catalogId, datasetId, sessionId, user, rowCount);
+    const importData = buildImportData({
+      file,
+      uniqueFileName,
+      filePath,
+      catalogId,
+      datasetId,
+      sessionId,
+      user,
+      rowCount,
+    });
 
     logger.debug({ importData }, "Import data to create");
 
@@ -449,14 +462,7 @@ async function processUploadSteps(
   // Step 6: Create import record
   const importResult = await createImportRecord(
     payload,
-    file,
-    uniqueFileName,
-    filePath,
-    catalogId!,
-    datasetId,
-    sessionId,
-    user,
-    rowCount,
+    { file, uniqueFileName, filePath, catalogId: catalogId!, datasetId, sessionId, user, rowCount },
     logger,
   );
   if ("error" in importResult) {
