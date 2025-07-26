@@ -35,7 +35,12 @@
       "persistent": true
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**", "test-results.json"]
+    },
+    "test:watch": {
+      "cache": false,
+      "persistent": true
     },
     "seed": {
       "dependsOn": ["^build"],

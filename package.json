@@ -9,7 +9,7 @@
     "lint": "turbo lint",
     "seed": "turbo seed",
     "test": "turbo test",
-    "test:clean": "turbo run test:clean",
+    "test:watch": "turbo test:watch",
     "docs:dev": "turbo docs:dev",
     "docs:build": "turbo docs:build",
     "docs:export": "turbo docs:export",
