@@ -57,6 +57,9 @@ jobs:
           # Create main database
           setup_db timetiles
 
+          # Create test database for E2E tests (matches Playwright config)
+          setup_db timetiles_test
+
           # Create test databases for parallel workers
           for i in {1..4}; do
             setup_db timetiles_test_$i
@@ -82,16 +85,18 @@ jobs:
           pnpm seed
           mkdir -p uploads
         working-directory: apps/web
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
 
       - name: Start server and run E2E tests
         timeout-minutes: 15
         run: |
-          # Start server
-          nohup pnpm start > server.log 2>&1 &
+          # Start server on port 3002 to match Playwright config
+          PORT=3002 nohup pnpm start > server.log 2>&1 &
           echo $! > .server.pid
 
-          # Wait for server (simplified)
-          npx wait-on http-get://localhost:3000/api/health --timeout 60000 || {
+          # Wait for server (updated to port 3002)
+          npx wait-on http-get://localhost:3002/api/health --timeout 60000 || {
             echo "Server failed to start. Logs:"
             cat server.log
             exit 1
@@ -102,7 +107,8 @@ jobs:
         working-directory: apps/web
         env:
           NODE_ENV: production
-          NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
+          NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3002
           PAYLOAD_CONFIG_PATH: ./payload.config.ts
 
       - name: Cleanup
