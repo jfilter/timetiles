@@ -8,7 +8,7 @@
  * - Efficient database operations
  */
 
-// Import geospatial assertions (they extend expect automatically)
+// Import geospatial assertions (they extend expect automatically) and helper utilities
 import "../../utils/geospatial-assertions";
 
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";

@@ -9,9 +9,9 @@ const getProviderAtIndex = (providers: Provider[], index: number): Provider | un
     Number.isInteger(index) &&
     index >= 0 &&
     index < providers.length &&
-    Object.prototype.hasOwnProperty.call(providers, index)
+    Object.hasOwn(providers, index)
   ) {
-    return Object.prototype.hasOwnProperty.call(providers, index) ? providers[index] : undefined;
+    return Object.hasOwn(providers, index) ? providers[index] : undefined;
   }
   return undefined;
 };
