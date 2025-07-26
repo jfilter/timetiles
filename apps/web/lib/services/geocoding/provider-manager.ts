@@ -223,7 +223,6 @@ export class ProviderManager {
   private createNominatimGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder {
     const nominatimConfig = doc.config?.nominatim;
     const baseUrl = nominatimConfig?.baseUrl ?? NOMINATIM_BASE_URL;
-    // const userAgent = nominatimConfig?.userAgent ?? TIMETILES_USER_AGENT; // Removed due to node-geocoder type constraints
 
     return NodeGeocoder({
       provider: "openstreetmap",

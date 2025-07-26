@@ -10,7 +10,6 @@ interface HistogramBucket {
 
 describe("/api/events/histogram", () => {
   let payload: Payload;
-  // let testCatalogId: string; // Unused variable
   let testDatasetId: string;
   const testEventIds: string[] = [];
   let testEnv: any;
@@ -51,7 +50,6 @@ describe("/api/events/histogram", () => {
         },
       },
     });
-    // testCatalogId = String(catalog.id); // Unused variable
 
     // Create test dataset
     const dataset = await payload.create({

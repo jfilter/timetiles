@@ -1,4 +1,3 @@
-// import { logError } from "../../logger";
 import { createLogger } from "@/lib/logger";
 
 import type { CollectionConfig } from "../seed.config";
