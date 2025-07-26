@@ -236,7 +236,14 @@ describe("/api/events/map-clusters", () => {
         type: "Feature",
         geometry: {
           type: "Point",
-          coordinates: [parseFloat(String(row.longitude)), parseFloat(String(row.latitude))],
+          coordinates: [
+            parseFloat(
+              typeof row.longitude === "string" || typeof row.longitude === "number" ? String(row.longitude) : "0",
+            ),
+            parseFloat(
+              typeof row.latitude === "string" || typeof row.latitude === "number" ? String(row.latitude) : "0",
+            ),
+          ],
         },
         properties: {
           id: row.cluster_id || row.event_id,

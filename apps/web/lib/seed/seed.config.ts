@@ -15,11 +15,11 @@ import { RELATIONSHIP_CONFIG } from "./relationship-config";
 // Constants for collection names
 const GEOCODING_PROVIDERS_COLLECTION = "geocoding-providers";
 
-function getLocationCacheCount(env: string): number {
+const getLocationCacheCount = (env: string): number => {
   if (env === "development") return 50;
   if (env === "test") return 10;
   return 0;
-}
+};
 
 export interface CollectionConfig {
   /** Number of items to create, or function returning count based on environment */
@@ -354,13 +354,13 @@ export const SEED_CONFIG: SeedConfiguration = {
 /**
  * Get configuration for a specific collection and environment
  */
-export function getCollectionConfig(collection: string, environment: string): CollectionConfig | null {
-  const baseConfig = Object.prototype.hasOwnProperty.call(SEED_CONFIG.collections, collection)
+export const getCollectionConfig = (collection: string, environment: string): CollectionConfig | null => {
+  const baseConfig = Object.hasOwn(SEED_CONFIG.collections, collection)
     ? SEED_CONFIG.collections[collection]
     : undefined;
   if (baseConfig == null || baseConfig == undefined) return null;
 
-  const envConfig = Object.prototype.hasOwnProperty.call(SEED_CONFIG.environments, environment)
+  const envConfig = Object.hasOwn(SEED_CONFIG.environments, environment)
     ? SEED_CONFIG.environments[environment]
     : undefined;
   if (envConfig?.enabled.includes(collection) !== true) {
@@ -383,13 +383,13 @@ export function getCollectionConfig(collection: string, environment: string): Co
       ...overrides.options,
     },
   };
-}
+};
 
 /**
  * Get all enabled collections for an environment in dependency order
  */
-export function getEnabledCollections(environment: string): string[] {
-  const envConfig = Object.prototype.hasOwnProperty.call(SEED_CONFIG.environments, environment)
+export const getEnabledCollections = (environment: string): string[] => {
+  const envConfig = Object.hasOwn(SEED_CONFIG.environments, environment)
     ? SEED_CONFIG.environments[environment]
     : undefined;
   if (!envConfig) {
@@ -401,7 +401,7 @@ export function getEnabledCollections(environment: string): string[] {
   const visited = new Set<string>();
   const visiting = new Set<string>();
 
-  function visit(collection: string) {
+  const visit = (collection: string) => {
     if (visited.has(collection)) return;
     if (visiting.has(collection)) {
       throw new Error(`Circular dependency detected involving: ${collection}`);
@@ -409,9 +409,7 @@ export function getEnabledCollections(environment: string): string[] {
 
     visiting.add(collection);
 
-    const config = Object.prototype.hasOwnProperty.call(SEED_CONFIG.collections, collection)
-      ? SEED_CONFIG.collections[collection]
-      : undefined;
+    const config = Object.hasOwn(SEED_CONFIG.collections, collection) ? SEED_CONFIG.collections[collection] : undefined;
     if (config?.dependencies) {
       for (const dep of config.dependencies) {
         if (enabled.includes(dep)) {
@@ -423,7 +421,7 @@ export function getEnabledCollections(environment: string): string[] {
     visiting.delete(collection);
     visited.add(collection);
     ordered.push(collection);
-  }
+  };
 
   // Visit all enabled collections
   for (const collection of enabled) {
@@ -431,18 +429,16 @@ export function getEnabledCollections(environment: string): string[] {
   }
 
   return ordered;
-}
+};
 
 /**
  * Get environment settings
  */
-export function getEnvironmentSettings(environment: string): EnvironmentConfig["settings"] {
-  return SEED_CONFIG.environments[environment]?.settings ?? {};
-}
+export const getEnvironmentSettings = (environment: string): EnvironmentConfig["settings"] =>
+  SEED_CONFIG.environments[environment]?.settings ?? {};
 
 /**
  * Get generator configuration
  */
-export function getGeneratorConfig(generatorName: string): GeneratorConfig | null {
-  return SEED_CONFIG.generators[generatorName] ?? null;
-}
+export const getGeneratorConfig = (generatorName: string): GeneratorConfig | null =>
+  SEED_CONFIG.generators[generatorName] ?? null;

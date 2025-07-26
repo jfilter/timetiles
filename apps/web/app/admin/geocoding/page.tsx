@@ -22,13 +22,13 @@ const handleToggle = () => {
   redirect("/admin/collections/geocoding-providers");
 };
 
-function getProviderColor(type: string): string {
+const getProviderColor = (type: string): string => {
   if (type === "google") return "blue";
   if (type === "nominatim") return "green";
   return "orange";
-}
+};
 
-async function getProviders() {
+const getProviders = async () => {
   const payload = await getPayload({ config });
 
   try {
@@ -43,9 +43,9 @@ async function getProviders() {
     // Return empty array if error
     return [];
   }
-}
+};
 
-async function testGeocodingConfiguration(address: string) {
+const testGeocodingConfiguration = async (address: string) => {
   "use server";
 
   const payload = await getPayload({ config });
@@ -55,7 +55,7 @@ async function testGeocodingConfiguration(address: string) {
 
   const service = new GeocodingService(payload);
   return service.testConfiguration(address);
-}
+};
 
 export default async function GeocodingAdminPage() {
   const providers = await getProviders();
