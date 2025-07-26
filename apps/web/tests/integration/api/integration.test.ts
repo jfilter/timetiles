@@ -271,8 +271,7 @@ describe.sequential("Import System Integration Tests", () => {
           }
         });
       }
-    } catch (error) {
-    }
+    } catch (error) {}
   });
 
   describe.sequential("Complete Import Workflow", () => {

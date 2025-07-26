@@ -28,10 +28,10 @@ export interface ResolutionStats {
 }
 
 export class RelationshipResolver {
-  private cache = new Map<string, Map<string, unknown>>();
-  private stats = new Map<string, ResolutionStats>();
+  private readonly cache = new Map<string, Map<string, unknown>>();
+  private readonly stats = new Map<string, ResolutionStats>();
 
-  constructor(private payload: Payload) {
+  constructor(private readonly payload: Payload) {
     // Validate configuration on initialization
     validateRelationshipConfig();
   }

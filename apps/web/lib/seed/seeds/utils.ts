@@ -372,20 +372,17 @@ export const generateMetadata = (schemaType: keyof typeof DATASET_SCHEMAS, index
 export const getSchemaTypeForCatalog = (catalogName: string): keyof typeof DATASET_SCHEMAS => {
   const name = catalogName.toLowerCase();
 
-  if (name.includes("environmental") || name.includes("climate") || name.includes("weather")) {
-    return "environmental";
-  } else if (name.includes("economic") || name.includes("financial") || name.includes("market")) {
-    return "economic";
-  } else if (name.includes("academic") || name.includes("research") || name.includes("university")) {
-    return "academic";
-  } else if (name.includes("cultural") || name.includes("arts") || name.includes("entertainment")) {
-    return "cultural";
-  } else if (name.includes("government") || name.includes("federal") || name.includes("municipal")) {
-    return "government";
-  }
+  const schemaMapping = [
+    { keywords: ["environmental", "climate", "weather"], type: "environmental" as const },
+    { keywords: ["economic", "financial", "market"], type: "economic" as const },
+    { keywords: ["academic", "research", "university"], type: "academic" as const },
+    { keywords: ["cultural", "arts", "entertainment"], type: "cultural" as const },
+    { keywords: ["government", "federal", "municipal"], type: "government" as const },
+  ];
 
-  // Default to government for any unmatched catalogs
-  return "government";
+  const matchedSchema = schemaMapping.find(({ keywords }) => keywords.some((keyword) => name.includes(keyword)));
+
+  return matchedSchema?.type ?? "government";
 };
 
 /**

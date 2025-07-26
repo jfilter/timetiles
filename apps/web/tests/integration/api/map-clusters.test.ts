@@ -146,8 +146,7 @@ describe("/api/events/map-clusters", () => {
     if (testEnv?.cleanup) {
       try {
         await testEnv.cleanup();
-      } catch (error) {
-      }
+      } catch (error) {}
     }
   });
 
@@ -172,7 +171,6 @@ describe("/api/events/map-clusters", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-
 
     expect(data).toHaveProperty("type", "FeatureCollection");
     expect(data).toHaveProperty("features");
@@ -322,7 +320,6 @@ describe("/api/events/map-clusters", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-
 
     // Should only return events from Jan 5-8
     const totalEvents = data.features.reduce((sum: number, feature: MapClusterFeature) => {

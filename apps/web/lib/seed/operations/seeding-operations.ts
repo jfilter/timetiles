@@ -20,10 +20,10 @@ const logger = createLogger("seed");
 const PAYLOAD_NOT_INITIALIZED_ERROR = "Payload not initialized";
 
 export class SeedingOperations {
-  private dataProcessing = new DataProcessing();
-  private queryBuilders = new QueryBuilders();
+  private readonly dataProcessing = new DataProcessing();
+  private readonly queryBuilders = new QueryBuilders();
 
-  constructor(private seedManager: SeedManager) {}
+  constructor(private readonly seedManager: SeedManager) {}
 
   async seedCollectionWithConfig(collectionName: string, config: CollectionConfig, environment: string) {
     logger.debug({ collection: collectionName, config }, `Starting configuration-driven seeding for ${collectionName}`);

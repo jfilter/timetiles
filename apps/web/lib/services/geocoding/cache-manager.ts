@@ -9,8 +9,8 @@ import { LOCATION_CACHE_COLLECTION } from "./types";
 const logger = createLogger("geocoding-cache-manager");
 
 export class CacheManager {
-  private payload: Payload;
-  private settings: GeocodingSettings | null = null;
+  private readonly payload: Payload;
+  private readonly settings: GeocodingSettings | null = null;
 
   constructor(payload: Payload, settings: GeocodingSettings | null) {
     this.payload = payload;

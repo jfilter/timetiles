@@ -10,9 +10,9 @@ import type { SeedOptions } from "./types";
 const logger = createLogger("seed");
 
 export class SeedManager extends SeedManagerBase {
-  private configDrivenSeeding: ConfigDrivenSeeding;
-  private seedingOperations: SeedingOperations;
-  private truncationOperations: TruncationOperations;
+  private readonly configDrivenSeeding: ConfigDrivenSeeding;
+  private readonly seedingOperations: SeedingOperations;
+  private readonly truncationOperations: TruncationOperations;
 
   constructor() {
     super();

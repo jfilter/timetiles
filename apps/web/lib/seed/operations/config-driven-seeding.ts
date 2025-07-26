@@ -13,7 +13,7 @@ import type { SeedOptions } from "../types";
 const logger = createLogger("seed");
 
 export class ConfigDrivenSeeding {
-  constructor(private seedManager: SeedManager) {}
+  constructor(private readonly seedManager: SeedManager) {}
 
   async seedWithConfig(options: SeedOptions = {}) {
     const {

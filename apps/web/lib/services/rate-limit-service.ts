@@ -11,8 +11,8 @@ interface RateLimitEntry {
 }
 
 export class RateLimitService {
-  private cache: Map<string, RateLimitEntry> = new Map();
-  private payload: Payload;
+  private readonly cache: Map<string, RateLimitEntry> = new Map();
+  private readonly payload: Payload;
   private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor(payload: Payload) {

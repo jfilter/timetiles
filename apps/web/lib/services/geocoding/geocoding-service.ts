@@ -10,7 +10,7 @@ import type { BatchGeocodingResult, GeocodingResult, GeocodingSettings } from ".
 const logger = createLogger("geocoding-service");
 
 export class GeocodingService {
-  private payload: Payload;
+  private readonly payload: Payload;
   private settings: GeocodingSettings | null = null;
   private initialized = false;
   private providerManager: ProviderManager;

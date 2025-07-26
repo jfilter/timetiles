@@ -54,9 +54,7 @@ test.describe("Explore Page - Real Data Tests", () => {
 
             // Check that the page shows some result (events count should be visible)
             await expect(explorePage.eventsCount).toBeVisible();
-
-          } catch (error) {
-          }
+          } catch (error) {}
         } else {
         }
       }
@@ -111,7 +109,6 @@ test.describe("Explore Page - Real Data Tests", () => {
     // If no data is available, should show appropriate messages
     const noDatasetsVisible = await explorePage.noDatasetsMessage.isVisible();
     const noEventsVisible = await explorePage.noEventsMessage.isVisible();
-
 
     // Either should show datasets/events, or show appropriate empty state messages
     const hasDatasets = (await page.locator('input[type="checkbox"]').count()) > 0;

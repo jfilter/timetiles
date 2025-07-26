@@ -5,7 +5,7 @@ import type { SeedManager } from "../seed-manager";
 const logger = createLogger("seed");
 
 export class TruncationOperations {
-  constructor(private seedManager: SeedManager) {}
+  constructor(private readonly seedManager: SeedManager) {}
 
   async truncate(collections: string[] = []) {
     await this.seedManager.initialize();

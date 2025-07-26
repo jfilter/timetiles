@@ -60,7 +60,6 @@ export const verifyDatabaseSchema = async (connectionString: string): Promise<vo
         throw new Error(`Required table 'payload.${tableName}' does not exist`);
       }
     }
-
   } catch (error) {
     throw error;
   } finally {

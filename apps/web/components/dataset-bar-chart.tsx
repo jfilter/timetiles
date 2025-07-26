@@ -91,7 +91,7 @@ export const DatasetBarChart = ({
       onBarClick={handleBarClick}
       xLabel=""
       yLabel="Number of Events"
-      showValues={true}
+      showValues
       valueFormatter={valueFormatter}
       maxLabelLength={30}
       sortBy="value"

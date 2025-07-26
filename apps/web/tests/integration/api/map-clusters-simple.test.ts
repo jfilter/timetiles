@@ -16,7 +16,6 @@ describe("Map-clusters API test", () => {
     try {
       testEnv = await createIsolatedTestEnvironment();
 
-
       // API routes now use getPayload({ config }) directly
 
       // Create a mock request with bounds parameter

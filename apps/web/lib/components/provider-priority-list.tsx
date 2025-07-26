@@ -94,8 +94,9 @@ const ToggleSwitch = ({
 
   return (
     <label className="relative inline-flex cursor-pointer items-center">
+      <span className="sr-only">Toggle {provider.type} provider</span>
       <input type="checkbox" checked={provider.enabled} onChange={handleToggle} className="peer sr-only" />
-      <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300"></div>
+      <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300" />
     </label>
   );
 };
@@ -145,6 +146,13 @@ const ProviderItem = ({
     [handleDrop, index],
   );
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      // Handle keyboard interaction if needed
+    }
+  }, []);
+
   return (
     <div
       key={provider.type}
@@ -154,6 +162,10 @@ const ProviderItem = ({
       onDragLeave={handleDragLeave}
       onDrop={handleDropWithIndex}
       onDragEnd={handleDragEnd}
+      role="button"
+      tabIndex={provider.enabled ? 0 : -1}
+      onKeyDown={handleKeyDown}
+      aria-label={`${provider.type} provider - ${provider.enabled ? "enabled" : "disabled"}`}
       className={`flex items-center rounded-lg border p-4 transition-all duration-200 ${
         provider.enabled
           ? "cursor-move border-gray-200 bg-white hover:shadow-md"

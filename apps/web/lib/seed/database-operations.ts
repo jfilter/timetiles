@@ -25,7 +25,7 @@ export interface BatchOperationResult {
 }
 
 export class DatabaseOperations {
-  constructor(private payload: Payload) {}
+  constructor(private readonly payload: Payload) {}
 
   /**
    * Efficiently truncate a collection using SQL TRUNCATE with CASCADE fallback

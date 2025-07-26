@@ -134,13 +134,11 @@ describe("/api/events/histogram", () => {
   });
 
   afterAll(async () => {
-
     // Clean up test environment
     if (testEnv?.cleanup) {
       try {
         await testEnv.cleanup();
-      } catch (error) {
-      }
+      } catch (error) {}
     }
   });
 

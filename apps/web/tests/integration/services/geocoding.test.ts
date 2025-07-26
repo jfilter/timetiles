@@ -79,8 +79,7 @@ describe("GeocodingService", () => {
           // Ignore individual delete errors
         }
       }
-    } catch (error) {
-    }
+    } catch (error) {}
 
     // Reset the mock functions completely for each test
     mockGoogleGeocode.mockReset();

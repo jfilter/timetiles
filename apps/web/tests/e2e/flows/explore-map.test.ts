@@ -15,7 +15,7 @@ test.describe("Explore Page - Map Interactions", () => {
     // Set up request tracking BEFORE any API calls
     const eventsListRequests: string[] = [];
     const mapClustersRequests: string[] = [];
-    
+
     page.on("request", (request) => {
       const url = request.url();
       if (url.includes("/api/events/list")) {
@@ -36,17 +36,17 @@ test.describe("Explore Page - Map Interactions", () => {
     // Clear previous requests and set up new tracking for pan
     eventsListRequests.length = 0;
     mapClustersRequests.length = 0;
-    
+
     // Pan the map significantly to ensure bounds change
     await explorePage.panMap(400, 400);
 
     // Wait for debounced API calls (300ms debounce + request time)
     await page.waitForTimeout(800);
-    
+
     // Check that API calls were made with bounds after panning
-    const eventsListWithBounds = eventsListRequests.filter(url => url.includes("bounds="));
-    const mapClustersWithBounds = mapClustersRequests.filter(url => url.includes("bounds="));
-    
+    const eventsListWithBounds = eventsListRequests.filter((url) => url.includes("bounds="));
+    const mapClustersWithBounds = mapClustersRequests.filter((url) => url.includes("bounds="));
+
     expect(eventsListWithBounds.length).toBeGreaterThan(0);
     expect(mapClustersWithBounds.length).toBeGreaterThan(0);
   });
