@@ -174,6 +174,6 @@ const determineEventTimestamp = (catalogType: string, metadata: Record<string, u
 };
 
 const hasValidProperty = (obj: Record<string, unknown>, key: string): boolean => {
-  const value = Object.prototype.hasOwnProperty.call(obj, key) ? obj[key] : undefined;
+  const value = Object.hasOwn(obj, key) ? obj[key] : undefined;
   return value != null;
 };

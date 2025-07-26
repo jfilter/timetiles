@@ -35,7 +35,7 @@ export class GeoLocationDetector {
    * Safely get value from row object
    */
   private getRowValue(row: Record<string, unknown>, key: string): unknown {
-    if (Object.prototype.hasOwnProperty.call(row, key)) {
+    if (Object.hasOwn(row, key)) {
       return row[key];
     }
     return undefined;
@@ -203,7 +203,7 @@ export class GeoLocationDetector {
   ): { format: string; confidence: number } | null {
     const samples = sampleRows
       .slice(0, 10)
-      .map((row) => (Object.prototype.hasOwnProperty.call(row, column) ? row[column] : undefined))
+      .map((row) => (Object.hasOwn(row, column) ? row[column] : undefined))
       .filter((val) => val != null && val != undefined && val != "");
 
     if (samples.length == 0) {
@@ -283,7 +283,7 @@ export class GeoLocationDetector {
     };
 
     for (const row of sampleRows.slice(0, Math.min(20, sampleRows.length))) {
-      const value = parseCoordinate(Object.prototype.hasOwnProperty.call(row, header) ? row[header] : undefined);
+      const value = parseCoordinate(Object.hasOwn(row, header) ? row[header] : undefined);
 
       if (value != null && !isNaN(value)) {
         stats.total++;

@@ -80,12 +80,12 @@ export class ConfigDrivenSeeding {
   ): CollectionConfig {
     return {
       ...config,
-      ...(typeof collectionName == "string" && Object.prototype.hasOwnProperty.call(configOverrides, collectionName)
+      ...(typeof collectionName == "string" && Object.hasOwn(configOverrides, collectionName)
         ? configOverrides[collectionName]
         : {}),
       options: {
         ...config.options,
-        ...(typeof collectionName == "string" && Object.prototype.hasOwnProperty.call(configOverrides, collectionName)
+        ...(typeof collectionName == "string" && Object.hasOwn(configOverrides, collectionName)
           ? configOverrides[collectionName]?.options
           : {}),
       },

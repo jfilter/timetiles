@@ -7,8 +7,8 @@ const getMaxWidthClass = (
   // Safe property access to avoid object injection with enhanced validation
   if (
     typeof maxWidth === "string" &&
-    !Object.prototype.hasOwnProperty.call(Object.prototype, maxWidth) &&
-    Object.prototype.hasOwnProperty.call(maxWidthClasses, maxWidth)
+    !Object.hasOwn(Object.prototype, maxWidth) &&
+    Object.hasOwn(maxWidthClasses, maxWidth)
   ) {
     return maxWidthClasses[maxWidth] ?? "";
   }

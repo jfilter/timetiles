@@ -6,14 +6,14 @@ import type { createJobLogger } from "@/lib/logger";
 
 export const setObjectProperty = (obj: Record<string, unknown>, key: string, value: unknown): void => {
   // Safe property assignment
-  if (typeof key == "string" && key.length > 0 && !Object.prototype.hasOwnProperty.call(Object.prototype, key)) {
+  if (typeof key == "string" && key.length > 0 && !Object.hasOwn(Object.prototype, key)) {
     obj[key] = value;
   }
 };
 
 export const getObjectProperty = (obj: Record<string, unknown>, key: string): unknown => {
   // Safe property access to avoid object injection
-  if (typeof key == "string" && Object.prototype.hasOwnProperty.call(obj, key)) {
+  if (typeof key == "string" && Object.hasOwn(obj, key)) {
     return obj[key];
   }
   return undefined;

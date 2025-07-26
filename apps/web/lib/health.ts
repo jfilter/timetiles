@@ -18,8 +18,8 @@ const getEnvValue = (key: string): string | undefined => {
   if (
     typeof key === "string" &&
     key.length > 0 &&
-    !Object.prototype.hasOwnProperty.call(Object.prototype, key) &&
-    Object.prototype.hasOwnProperty.call(process.env, key)
+    !Object.hasOwn(Object.prototype, key) &&
+    Object.hasOwn(process.env, key)
   ) {
     return process.env[key];
   }
