@@ -56,6 +56,7 @@ test.describe("Explore Page - Real Data Tests", () => {
             await expect(explorePage.eventsCount).toBeVisible();
           } catch (error) {
             // Ignore errors - test should continue even if API calls fail
+            console.debug('API call failed during E2E test (expected behavior):', error);
           }
         } else {
           // No datasets available - this is an acceptable state
@@ -136,8 +137,9 @@ test.describe("Explore Page - Real Data Tests", () => {
 
     try {
       await page.waitForResponse((response) => response.url().includes("/api/events"), { timeout: 5000 });
-    } catch {
+    } catch (error) {
       // Timeout is OK - might happen if no data matches or API is slow
+      console.debug('API timeout during E2E test (expected behavior):', error);
     }
 
     // Page should still be functional

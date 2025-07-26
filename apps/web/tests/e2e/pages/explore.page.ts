@@ -185,6 +185,7 @@ export class ExplorePage {
       await expect(this.loadingIndicator).not.toBeVisible({ timeout: 5000 });
     } catch (error) {
       // If loading indicator check fails, just continue
+      console.debug('Loading indicator check failed (non-critical):', error);
     }
   }
 
@@ -197,6 +198,7 @@ export class ExplorePage {
     } catch (error) {
       // If we can't catch the API response quickly, just continue
       // The test should focus on UI state, not API timing
+      console.debug('API response timeout (non-critical):', error);
     }
   }
 
@@ -238,9 +240,9 @@ export class ExplorePage {
       // Check if we can access a basic element
       await this.page.locator("h1").waitFor({ state: "visible", timeout: 1000 });
       return true;
-    } catch {
+    } catch (error) {
       return false;
-    }
+      console.debug('URL parameter assertion failed:', error);    }
   }
 
   async waitForPageStability() {

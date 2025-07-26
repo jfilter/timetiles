@@ -79,7 +79,9 @@ describe("GeocodingService", () => {
           // Ignore individual delete errors
         }
       }
-    } catch (error) {}
+    } catch (error) {
+      console.debug('Cleanup error (non-critical):', error);
+    }
 
     // Reset the mock functions completely for each test
     mockGoogleGeocode.mockReset();

@@ -146,7 +146,9 @@ describe("/api/events/map-clusters", () => {
     if (testEnv?.cleanup) {
       try {
         await testEnv.cleanup();
-      } catch (error) {}
+      } catch (error) {
+        console.debug('Cleanup error (non-critical):', error);
+      }
     }
   });
 

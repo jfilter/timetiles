@@ -140,6 +140,7 @@ describe("/api/events/histogram", () => {
         await testEnv.cleanup();
       } catch (error) {
         // Ignore cleanup errors - test has already completed
+        console.debug('Cleanup error (non-critical):', error);
       }
     }
   });

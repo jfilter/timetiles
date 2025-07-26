@@ -196,6 +196,7 @@ test.describe("Explore Page - Map Interactions", () => {
       await explorePage.panMap(50, 50);
     } catch (error) {
       // If panning fails due to page instability, log and continue
+      console.debug('Map panning failed (non-critical):', error);
     }
     await page.waitForTimeout(500);
 

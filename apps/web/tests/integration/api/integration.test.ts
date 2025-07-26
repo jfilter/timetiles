@@ -271,7 +271,10 @@ describe.sequential("Import System Integration Tests", () => {
           }
         });
       }
-    } catch (error) {}
+    } catch (error) {
+      // Ignore filesystem cleanup errors - non-critical for tests
+      console.debug('File cleanup error (non-critical):', error);
+    }
   });
 
   describe.sequential("Complete Import Workflow", () => {

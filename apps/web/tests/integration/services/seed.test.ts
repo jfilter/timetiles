@@ -17,7 +17,9 @@ describe.sequential("Seed System", () => {
   afterAll(async () => {
     try {
       await testEnv.cleanup();
-    } catch (error) {}
+    } catch (error) {
+      console.debug('Test environment cleanup error (non-critical):', error);
+    }
   }, 60000); // 60 second timeout for cleanup
 
   // Add beforeEach cleanup for proper test isolation like the working test
