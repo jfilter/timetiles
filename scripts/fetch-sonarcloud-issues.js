@@ -50,6 +50,7 @@ async function fetchAllSonarCloudIssues() {
         componentKeys: projectKey,
         ps: "500", // Max page size
         p: page.toString(),
+        statuses: "OPEN", // Only fetch open issues
       });
 
       console.log(`Fetching page ${page}...`);
