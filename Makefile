@@ -1,4 +1,4 @@
-.PHONY: up down logs db-reset db-shell db-query clean setup dev build lint format test seed help
+.PHONY: up down logs db-reset db-shell db-query clean setup seed dev build lint format test test-e2e help
 
 # Start the development environment
 up:
@@ -27,11 +27,12 @@ db-shell:
 # Execute SQL query non-interactively
 db-query:
 	@if [ -z "$(SQL)" ]; then \
-		echo "Usage: make db-query SQL='SELECT * FROM your_table'"; \
+		echo "Usage: make db-query SQL='SELECT * FROM your_table' [DB_NAME=database_name]"; \
 		echo "Example: make db-query SQL='SELECT COUNT(*) FROM events'"; \
+		echo "Example: make db-query SQL='SELECT COUNT(*) FROM events' DB_NAME=timetiles_test"; \
 		exit 1; \
 	fi
-	@docker exec timetiles-postgres psql -U timetiles_user -d timetiles -c "$(SQL)"
+	@docker exec timetiles-postgres psql -U timetiles_user -d $(if $(DB_NAME),$(DB_NAME),timetiles) -c "$(SQL)"
 
 # Clean up everything (containers, volumes, networks)
 clean:
@@ -84,6 +85,11 @@ dev-full: up
 	@echo "🚀 Starting development server..."
 	pnpm dev
 
+# Run E2E tests (handles database setup automatically)
+test-e2e:
+	@echo "🧪 Running E2E tests with automatic database setup..."
+	cd apps/web && pnpm test:e2e
+
 # Show help
 help:
 	@echo "📋 Available commands:"
@@ -97,7 +103,10 @@ help:
 	@echo "🔍 Code Quality:"
 	@echo "  lint        - Run ESLint"
 	@echo "  format      - Format code with Prettier"
+	@echo ""
+	@echo "🧪 Testing:"
 	@echo "  test        - Run tests"
+	@echo "  test-e2e    - Run E2E tests with automatic database setup"
 	@echo ""
 	@echo "🌱 Database:"
 	@echo "  seed        - Seed database with sample data"

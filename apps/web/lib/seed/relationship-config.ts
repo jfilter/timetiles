@@ -44,6 +44,7 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
           "economic-indicators": "Economic Indicators",
           "cultural-events": "Cultural Events",
           "academic-research": "Academic Research",
+          "academic-research-portal": "Academic Research Portal",
           "government-data": "Government Data",
         };
         return mappings[value] ?? value;
@@ -63,6 +64,14 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
         // Handle common dataset name variations
         const mappings: Record<string, string> = {
           "air-quality": "Air Quality Measurements",
+          "environmental-data-air-quality-measurements": "Air Quality Measurements",
+          "environmental-data-water-quality-assessments": "Water Quality Assessments",
+          "environmental-data-climate-station-data": "Climate Station Data",
+          "economic-indicators-gdp-growth-rates": "GDP Growth Rates",
+          "economic-indicators-employment-statistics": "Employment Statistics",
+          "economic-indicators-consumer-price-index": "Consumer Price Index",
+          "academic-research-portal-research-study-results": "Research Study Results",
+          "academic-research-portal-survey-response-data": "Survey Response Data",
           "water-quality": "Water Quality Data",
           "gdp-growth": "GDP Growth Rates",
           "employment-stats": "Employment Statistics",
@@ -82,6 +91,17 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
       searchField: "slug",
       fallbackSearch: "name",
       required: true, // Imports must be associated with a catalog
+      transform: (value: string) => {
+        // Handle common catalog name variations for imports
+        const mappings: Record<string, string> = {
+          "environmental-data": "Environmental Data",
+          "economic-indicators": "Economic Indicators",
+          "academic-research-portal": "Academic Research Portal",
+          "cultural-events": "Cultural Events",
+          "government-data": "Government Data",
+        };
+        return mappings[value] ?? value;
+      },
     },
     {
       field: "dataset",
