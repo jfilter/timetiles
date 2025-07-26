@@ -13,26 +13,23 @@ interface MapBounds {
   west: number;
 }
 
-function isValidBounds(value: unknown): value is MapBounds {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    typeof (value as Record<string, unknown>).north === "number" &&
-    typeof (value as Record<string, unknown>).south === "number" &&
-    typeof (value as Record<string, unknown>).east === "number" &&
-    typeof (value as Record<string, unknown>).west === "number"
-  );
-}
+const isValidBounds = (value: unknown): value is MapBounds =>
+  typeof value === "object" &&
+  value != null &&
+  typeof (value as Record<string, unknown>).north === "number" &&
+  typeof (value as Record<string, unknown>).south === "number" &&
+  typeof (value as Record<string, unknown>).east === "number" &&
+  typeof (value as Record<string, unknown>).west === "number";
 
-function parseBounds(boundsParam: string): MapBounds {
+const parseBounds = (boundsParam: string): MapBounds => {
   const parsedBounds = JSON.parse(boundsParam) as unknown;
   if (!isValidBounds(parsedBounds)) {
     throw new Error("Invalid bounds format");
   }
   return parsedBounds;
-}
+};
 
-async function checkHistogramFunction(payload: Payload): Promise<boolean> {
+const checkHistogramFunction = async (payload: Payload): Promise<boolean> => {
   try {
     const functionCheck = (await payload.db.drizzle.execute(sql`
       SELECT EXISTS (
@@ -47,32 +44,30 @@ async function checkHistogramFunction(payload: Payload): Promise<boolean> {
     });
     return false;
   }
-}
+};
 
-function buildFiltersWithBounds(params: {
+const buildFiltersWithBounds = (params: {
   catalog: string | null;
   datasets: string[];
   startDate: string | null;
   endDate: string | null;
   bounds: MapBounds | null;
-}) {
-  return {
-    catalogId: params.catalog != null && params.catalog !== "" ? parseInt(params.catalog) : undefined,
-    datasets: params.datasets.length > 0 ? params.datasets.map((d) => parseInt(d)) : undefined,
-    startDate: params.startDate,
-    endDate: params.endDate,
-    ...(params.bounds != null && {
-      bounds: {
-        minLng: params.bounds.west,
-        maxLng: params.bounds.east,
-        minLat: params.bounds.south,
-        maxLat: params.bounds.north,
-      },
-    }),
-  };
-}
+}) => ({
+  catalogId: params.catalog != null && params.catalog !== "" ? parseInt(params.catalog) : undefined,
+  datasets: params.datasets.length > 0 ? params.datasets.map((d) => parseInt(d)) : undefined,
+  startDate: params.startDate,
+  endDate: params.endDate,
+  ...(params.bounds != null && {
+    bounds: {
+      minLng: params.bounds.west,
+      maxLng: params.bounds.east,
+      minLat: params.bounds.south,
+      maxLat: params.bounds.north,
+    },
+  }),
+});
 
-export async function GET(request: NextRequest) {
+export const GET = async (request: NextRequest) => {
   try {
     const parameters = extractHistogramParameters(request.nextUrl.searchParams);
     const payload = await getPayload({ config });
@@ -95,20 +90,18 @@ export async function GET(request: NextRequest) {
     logError(_error, "Failed to calculate histogram", { parameters: _error });
     return NextResponse.json({ error: "Failed to calculate histogram" }, { status: 500 });
   }
-}
+};
 
-function extractHistogramParameters(searchParams: URLSearchParams) {
-  return {
-    boundsParam: searchParams.get("bounds"),
-    catalog: searchParams.get("catalog"),
-    datasets: searchParams.getAll("datasets"),
-    startDate: searchParams.get("startDate"),
-    endDate: searchParams.get("endDate"),
-    granularity: searchParams.get("granularity") ?? "auto",
-  };
-}
+const extractHistogramParameters = (searchParams: URLSearchParams) => ({
+  boundsParam: searchParams.get("bounds"),
+  catalog: searchParams.get("catalog"),
+  datasets: searchParams.getAll("datasets"),
+  startDate: searchParams.get("startDate"),
+  endDate: searchParams.get("endDate"),
+  granularity: searchParams.get("granularity") ?? "auto",
+});
 
-function parseBoundsParameter(boundsParam: string | null): { bounds: MapBounds | null } | { error: NextResponse } {
+const parseBoundsParameter = (boundsParam: string | null): { bounds: MapBounds | null } | { error: NextResponse } => {
   if (boundsParam == null || boundsParam === "") {
     return { bounds: null };
   }
@@ -123,9 +116,9 @@ function parseBoundsParameter(boundsParam: string | null): { bounds: MapBounds |
       ),
     };
   }
-}
+};
 
-function createFunctionNotFoundResponse(): NextResponse {
+const createFunctionNotFoundResponse = (): NextResponse => {
   logger.error("Required calculate_event_histogram function not found in database");
   return NextResponse.json(
     {
@@ -134,13 +127,13 @@ function createFunctionNotFoundResponse(): NextResponse {
     },
     { status: 500 },
   );
-}
+};
 
-async function executeHistogramQuery(
+const executeHistogramQuery = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   parameters: ReturnType<typeof extractHistogramParameters>,
   bounds: MapBounds | null,
-) {
+) => {
   const filtersWithBounds = buildFiltersWithBounds({
     catalog: parameters.catalog,
     datasets: parameters.datasets,
@@ -157,9 +150,9 @@ async function executeHistogramQuery(
       ${JSON.stringify(filtersWithBounds)}::jsonb
     )
   `)) as { rows: Array<{ bucket: string; event_count: number }> };
-}
+};
 
-function buildHistogramResponse(rows: Array<{ bucket: string; event_count: number }>) {
+const buildHistogramResponse = (rows: Array<{ bucket: string; event_count: number }>) => {
   const total = rows.reduce((sum: number, row) => sum + parseInt(String(row.event_count), 10), 0);
   const aggregations = {
     total,
@@ -184,4 +177,4 @@ function buildHistogramResponse(rows: Array<{ bucket: string; event_count: numbe
       topCatalogs: [],
     },
   };
-}
+};

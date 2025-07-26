@@ -14,18 +14,15 @@ interface MapBounds {
   west: number;
 }
 
-function isValidBounds(value: unknown): value is MapBounds {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    typeof (value as Record<string, unknown>).north === "number" &&
-    typeof (value as Record<string, unknown>).south === "number" &&
-    typeof (value as Record<string, unknown>).east === "number" &&
-    typeof (value as Record<string, unknown>).west === "number"
-  );
-}
+const isValidBounds = (value: unknown): value is MapBounds =>
+  typeof value === "object" &&
+  value != null &&
+  typeof (value as Record<string, unknown>).north === "number" &&
+  typeof (value as Record<string, unknown>).south === "number" &&
+  typeof (value as Record<string, unknown>).east === "number" &&
+  typeof (value as Record<string, unknown>).west === "number";
 
-function addCatalogFilter(where: Where, catalog: string) {
+const addCatalogFilter = (where: Where, catalog: string) => {
   where.and = [
     ...(Array.isArray(where.and) ? where.and : []),
     {
@@ -34,9 +31,9 @@ function addCatalogFilter(where: Where, catalog: string) {
       },
     },
   ];
-}
+};
 
-function addDatasetFilter(where: Where, datasets: string[]) {
+const addDatasetFilter = (where: Where, datasets: string[]) => {
   where.and = [
     ...(Array.isArray(where.and) ? where.and : []),
     {
@@ -45,9 +42,9 @@ function addDatasetFilter(where: Where, datasets: string[]) {
       },
     },
   ];
-}
+};
 
-function addBoundsFilter(where: Where, bounds: MapBounds) {
+const addBoundsFilter = (where: Where, bounds: MapBounds) => {
   where.and = [
     ...(Array.isArray(where.and) ? where.and : []),
     {
@@ -71,9 +68,9 @@ function addBoundsFilter(where: Where, bounds: MapBounds) {
       },
     },
   ];
-}
+};
 
-function addDateFilter(where: Where, startDate: string | null, endDate: string | null) {
+const addDateFilter = (where: Where, startDate: string | null, endDate: string | null) => {
   const dateFilter: Record<string, string> = {};
   if (startDate != null) dateFilter.greater_than_equal = startDate;
   if (endDate != null) dateFilter.less_than_equal = endDate;
@@ -84,35 +81,33 @@ function addDateFilter(where: Where, startDate: string | null, endDate: string |
       eventTimestamp: dateFilter,
     },
   ];
-}
+};
 
-function transformEvent(event: Event) {
-  return {
-    id: event.id,
-    dataset: {
-      id: typeof event.dataset === "object" && event.dataset != null ? event.dataset.id : event.dataset,
-      title: typeof event.dataset === "object" && event.dataset != null ? event.dataset.name : undefined,
-      catalog:
-        typeof event.dataset === "object" &&
-        event.dataset != null &&
-        typeof event.dataset.catalog === "object" &&
-        event.dataset.catalog != null
-          ? event.dataset.catalog.name
-          : undefined,
-    },
-    data: event.data,
-    location: event.location
-      ? {
-          longitude: event.location.longitude,
-          latitude: event.location.latitude,
-        }
-      : null,
-    eventTimestamp: event.eventTimestamp,
-    isValid: event.isValid,
-  };
-}
+const transformEvent = (event: Event) => ({
+  id: event.id,
+  dataset: {
+    id: typeof event.dataset === "object" && event.dataset != null ? event.dataset.id : event.dataset,
+    title: typeof event.dataset === "object" && event.dataset != null ? event.dataset.name : undefined,
+    catalog:
+      typeof event.dataset === "object" &&
+      event.dataset != null &&
+      typeof event.dataset.catalog === "object" &&
+      event.dataset.catalog != null
+        ? event.dataset.catalog.name
+        : undefined,
+  },
+  data: event.data,
+  location: event.location
+    ? {
+        longitude: event.location.longitude,
+        latitude: event.location.latitude,
+      }
+    : null,
+  eventTimestamp: event.eventTimestamp,
+  isValid: event.isValid,
+});
 
-export async function GET(request: NextRequest) {
+export const GET = async (request: NextRequest) => {
   try {
     const payload = await getPayload({ config });
     const parameters = extractListParameters(request.nextUrl.searchParams);
@@ -125,22 +120,20 @@ export async function GET(request: NextRequest) {
     logger.error("Error fetching events list:", error);
     return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
   }
-}
+};
 
-function extractListParameters(searchParams: URLSearchParams) {
-  return {
-    boundsParam: searchParams.get("bounds"),
-    catalog: searchParams.get("catalog"),
-    datasets: searchParams.getAll("datasets"),
-    startDate: searchParams.get("startDate"),
-    endDate: searchParams.get("endDate"),
-    page: parseInt(searchParams.get("page") ?? "1", 10),
-    limit: Math.min(parseInt(searchParams.get("limit") ?? "100", 10), 1000),
-    sort: searchParams.get("sort") ?? "-eventTimestamp",
-  };
-}
+const extractListParameters = (searchParams: URLSearchParams) => ({
+  boundsParam: searchParams.get("bounds"),
+  catalog: searchParams.get("catalog"),
+  datasets: searchParams.getAll("datasets"),
+  startDate: searchParams.get("startDate"),
+  endDate: searchParams.get("endDate"),
+  page: parseInt(searchParams.get("page") ?? "1", 10),
+  limit: Math.min(parseInt(searchParams.get("limit") ?? "100", 10), 1000),
+  sort: searchParams.get("sort") ?? "-eventTimestamp",
+});
 
-function buildWhereClause(parameters: ReturnType<typeof extractListParameters>): Where {
+const buildWhereClause = (parameters: ReturnType<typeof extractListParameters>): Where => {
   const where: Where = {};
 
   addFiltersToWhere(where, parameters);
@@ -148,9 +141,9 @@ function buildWhereClause(parameters: ReturnType<typeof extractListParameters>):
   addDateFiltersToWhere(where, parameters.startDate, parameters.endDate);
 
   return where;
-}
+};
 
-function addFiltersToWhere(where: Where, parameters: ReturnType<typeof extractListParameters>) {
+const addFiltersToWhere = (where: Where, parameters: ReturnType<typeof extractListParameters>) => {
   const { catalog, datasets } = parameters;
   if (catalog != null || (datasets.length > 0 && datasets[0] !== "")) {
     if (catalog != null && (datasets.length === 0 || datasets[0] === "")) {
@@ -160,9 +153,9 @@ function addFiltersToWhere(where: Where, parameters: ReturnType<typeof extractLi
       addDatasetFilter(where, datasets);
     }
   }
-}
+};
 
-function addBoundsToWhere(where: Where, boundsParam: string | null) {
+const addBoundsToWhere = (where: Where, boundsParam: string | null) => {
   if (boundsParam != null) {
     try {
       const parsedBounds = JSON.parse(boundsParam) as unknown;
@@ -173,20 +166,20 @@ function addBoundsToWhere(where: Where, boundsParam: string | null) {
       throw new Error("Invalid bounds format");
     }
   }
-}
+};
 
-function addDateFiltersToWhere(where: Where, startDate: string | null, endDate: string | null) {
+const addDateFiltersToWhere = (where: Where, startDate: string | null, endDate: string | null) => {
   if (startDate != null || endDate != null) {
     addDateFilter(where, startDate, endDate);
   }
-}
+};
 
-async function executeEventsQuery(
+const executeEventsQuery = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   where: Where,
   parameters: ReturnType<typeof extractListParameters>,
-) {
-  return payload.find({
+) =>
+  payload.find({
     collection: "events",
     where,
     page: parameters.page,
@@ -194,20 +187,17 @@ async function executeEventsQuery(
     sort: parameters.sort,
     depth: 2,
   });
-}
 
-function buildListResponse(result: Awaited<ReturnType<typeof executeEventsQuery>>) {
-  return {
-    events: result.docs.map(transformEvent),
-    pagination: {
-      page: result.page,
-      limit: result.limit,
-      totalDocs: result.totalDocs,
-      totalPages: result.totalPages,
-      hasNextPage: result.hasNextPage,
-      hasPrevPage: result.hasPrevPage,
-      nextPage: result.nextPage,
-      prevPage: result.prevPage,
-    },
-  };
-}
+const buildListResponse = (result: Awaited<ReturnType<typeof executeEventsQuery>>) => ({
+  events: result.docs.map(transformEvent),
+  pagination: {
+    page: result.page,
+    limit: result.limit,
+    totalDocs: result.totalDocs,
+    totalPages: result.totalPages,
+    hasNextPage: result.hasNextPage,
+    hasPrevPage: result.hasPrevPage,
+    nextPage: result.nextPage,
+    prevPage: result.prevPage,
+  },
+});

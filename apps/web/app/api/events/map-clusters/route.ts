@@ -13,18 +13,15 @@ interface MapBounds {
   west: number;
 }
 
-function isValidBounds(value: unknown): value is MapBounds {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    typeof (value as Record<string, unknown>).north === "number" &&
-    typeof (value as Record<string, unknown>).south === "number" &&
-    typeof (value as Record<string, unknown>).east === "number" &&
-    typeof (value as Record<string, unknown>).west === "number"
-  );
-}
+const isValidBounds = (value: unknown): value is MapBounds =>
+  typeof value === "object" &&
+  value != null &&
+  typeof (value as Record<string, unknown>).north === "number" &&
+  typeof (value as Record<string, unknown>).south === "number" &&
+  typeof (value as Record<string, unknown>).east === "number" &&
+  typeof (value as Record<string, unknown>).west === "number";
 
-export async function GET(request: NextRequest) {
+export const GET = async (request: NextRequest) => {
   try {
     const payload = await getPayload({ config });
     const parameters = extractRequestParameters(request.nextUrl.searchParams);
@@ -51,20 +48,18 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return handleError(error);
   }
-}
+};
 
-function extractRequestParameters(searchParams: URLSearchParams) {
-  return {
-    boundsParam: searchParams.get("bounds"),
-    zoom: parseInt(searchParams.get("zoom") ?? "10", 10),
-    catalog: searchParams.get("catalog"),
-    datasets: searchParams.getAll("datasets"),
-    startDate: searchParams.get("startDate"),
-    endDate: searchParams.get("endDate"),
-  };
-}
+const extractRequestParameters = (searchParams: URLSearchParams) => ({
+  boundsParam: searchParams.get("bounds"),
+  zoom: parseInt(searchParams.get("zoom") ?? "10", 10),
+  catalog: searchParams.get("catalog"),
+  datasets: searchParams.getAll("datasets"),
+  startDate: searchParams.get("startDate"),
+  endDate: searchParams.get("endDate"),
+});
 
-function parseBounds(boundsParam: string | null): { bounds: MapBounds } | { error: NextResponse } {
+const parseBounds = (boundsParam: string | null): { bounds: MapBounds } | { error: NextResponse } => {
   if (boundsParam == null) {
     return {
       error: NextResponse.json({ error: "Missing bounds parameter" }, { status: 400 }),
@@ -87,18 +82,18 @@ function parseBounds(boundsParam: string | null): { bounds: MapBounds } | { erro
       ),
     };
   }
-}
+};
 
-function buildFilters(parameters: ReturnType<typeof extractRequestParameters>): Record<string, unknown> {
+const buildFilters = (parameters: ReturnType<typeof extractRequestParameters>): Record<string, unknown> => {
   const filters: Record<string, unknown> = {};
   if (parameters.catalog != null) filters.catalog = parameters.catalog;
   if (parameters.datasets.length > 0 && parameters.datasets[0] !== "") filters.datasets = parameters.datasets;
   if (parameters.startDate != null) filters.startDate = parameters.startDate;
   if (parameters.endDate != null) filters.endDate = parameters.endDate;
   return filters;
-}
+};
 
-async function checkClusteringFunction(payload: Awaited<ReturnType<typeof getPayload>>): Promise<boolean> {
+const checkClusteringFunction = async (payload: Awaited<ReturnType<typeof getPayload>>): Promise<boolean> => {
   try {
     const functionCheck = (await payload.db.drizzle.execute(sql`
       SELECT EXISTS (
@@ -115,9 +110,9 @@ async function checkClusteringFunction(payload: Awaited<ReturnType<typeof getPay
     });
     return false;
   }
-}
+};
 
-function createFunctionNotFoundResponse(): NextResponse {
+const createFunctionNotFoundResponse = (): NextResponse => {
   logger.error("Required cluster_events function not found in database");
   return NextResponse.json(
     {
@@ -126,14 +121,14 @@ function createFunctionNotFoundResponse(): NextResponse {
     },
     { status: 500 },
   );
-}
+};
 
-async function executeClusteringQuery(
+const executeClusteringQuery = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   bounds: MapBounds,
   zoom: number,
   filters: Record<string, unknown>,
-) {
+) => {
   const { catalog, datasets, startDate, endDate } = filters;
 
   return (await payload.db.drizzle.execute(sql`
@@ -154,10 +149,10 @@ async function executeClusteringQuery(
       })}::jsonb
     )
   `)) as { rows: Array<Record<string, unknown>> };
-}
+};
 
-function transformResultToClusters(rows: Array<Record<string, unknown>>) {
-  return rows.map((row: Record<string, unknown>) => {
+const transformResultToClusters = (rows: Array<Record<string, unknown>>) =>
+  rows.map((row: Record<string, unknown>) => {
     const isCluster = Number(row.event_count) > 1;
 
     if (isCluster) {
@@ -168,7 +163,12 @@ function transformResultToClusters(rows: Array<Record<string, unknown>>) {
       type: "Feature",
       geometry: {
         type: "Point",
-        coordinates: [parseFloat(String(row.longitude)), parseFloat(String(row.latitude))],
+        coordinates: [
+          parseFloat(
+            typeof row.longitude === "string" || typeof row.longitude === "number" ? String(row.longitude) : "0",
+          ),
+          parseFloat(typeof row.latitude === "string" || typeof row.latitude === "number" ? String(row.latitude) : "0"),
+        ],
       },
       properties: {
         id: row.cluster_id ?? row.event_id,
@@ -179,9 +179,8 @@ function transformResultToClusters(rows: Array<Record<string, unknown>>) {
       },
     };
   });
-}
 
-function handleError(error: unknown): NextResponse {
+const handleError = (error: unknown): NextResponse => {
   logger.error("Error fetching map clusters:", {
     error: error as Error,
     message: (error as Error).message,
@@ -194,4 +193,4 @@ function handleError(error: unknown): NextResponse {
     },
     { status: 500 },
   );
-}
+};

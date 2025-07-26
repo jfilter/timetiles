@@ -5,7 +5,7 @@ import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("health-api");
 
-function determineHealthStatus(results: Record<string, { status: string }>) {
+const determineHealthStatus = (results: Record<string, { status: string }>) => {
   const hasError = Object.values(results).some((r) => r.status === "error");
   const hasPending = results.migrations?.status === "pending";
   const postgisNotFound = results.postgis?.status === "not found";
@@ -28,23 +28,21 @@ function determineHealthStatus(results: Record<string, { status: string }>) {
     logger.info("Health check passed successfully");
     return 200;
   }
-}
+};
 
-function createErrorResponse(error: unknown) {
-  return {
-    error: "Health check failed",
-    message: error instanceof Error ? error.message : "Unknown error",
-    stack: process.env.NODE_ENV !== "production" ? (error as Error).stack : undefined,
-    env: {
-      NODE_ENV: process.env.NODE_ENV,
-      DATABASE_URL: process.env.DATABASE_URL != undefined ? "Set" : "Not set",
-      PAYLOAD_SECRET: process.env.PAYLOAD_SECRET != undefined ? "Set" : "Not set",
-      LOG_LEVEL: process.env.LOG_LEVEL ?? "default",
-    },
-  };
-}
+const createErrorResponse = (error: unknown) => ({
+  error: "Health check failed",
+  message: error instanceof Error ? error.message : "Unknown error",
+  stack: process.env.NODE_ENV !== "production" ? (error as Error).stack : undefined,
+  env: {
+    NODE_ENV: process.env.NODE_ENV,
+    DATABASE_URL: process.env.DATABASE_URL != undefined ? "Set" : "Not set",
+    PAYLOAD_SECRET: process.env.PAYLOAD_SECRET != undefined ? "Set" : "Not set",
+    LOG_LEVEL: process.env.LOG_LEVEL ?? "default",
+  },
+});
 
-export async function GET() {
+export const GET = async () => {
   logger.info("Health check endpoint called");
 
   try {
@@ -62,4 +60,4 @@ export async function GET() {
     const errorResponse = createErrorResponse(error);
     return NextResponse.json(errorResponse, { status: 500 });
   }
-}
+};

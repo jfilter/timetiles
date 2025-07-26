@@ -32,7 +32,7 @@ interface ValidatedFormData {
   sessionId: string | null;
 }
 
-function validateFormData(formData: FormData): ValidatedFormData {
+const validateFormData = (formData: FormData): ValidatedFormData => {
   const file = formData.get("file") as File;
   const catalogIdRaw = formData.get("catalogId");
   const datasetIdRaw = formData.get("datasetId");
@@ -43,19 +43,19 @@ function validateFormData(formData: FormData): ValidatedFormData {
   const sessionId = typeof sessionIdRaw === "string" ? sessionIdRaw.trim() || null : null;
 
   return { file, catalogId, datasetId, sessionId };
-}
+};
 
-function parseCatalogId(catalogIdRaw: string): number | null {
+const parseCatalogId = (catalogIdRaw: string): number | null => {
   const catalogIdStr = catalogIdRaw?.trim();
   return catalogIdStr ? parseInt(catalogIdStr, 10) : null;
-}
+};
 
-function parseDatasetId(datasetIdRaw: string | null): number | null {
+const parseDatasetId = (datasetIdRaw: string | null): number | null => {
   const datasetIdStr = datasetIdRaw?.trim();
   return datasetIdStr != null && datasetIdStr !== "null" ? parseInt(datasetIdStr, 10) : null;
-}
+};
 
-function validateFileUpload(file: File, user: Pick<User, "id"> | null) {
+const validateFileUpload = (file: File, user: Pick<User, "id"> | null) => {
   if (file == null) {
     return { error: "No file provided", status: 400 };
   }
@@ -76,16 +76,16 @@ function validateFileUpload(file: File, user: Pick<User, "id"> | null) {
   }
 
   return null;
-}
+};
 
-function validateCatalogId(catalogId: number | null) {
+const validateCatalogId = (catalogId: number | null) => {
   if (catalogId == null || catalogId === 0 || isNaN(catalogId)) {
     return { error: "Valid catalog ID is required", status: 400 };
   }
   return null;
-}
+};
 
-async function validateUploadRequest(request: NextRequest, logger: ReturnType<typeof createRequestLogger>) {
+const validateUploadRequest = async (request: NextRequest, logger: ReturnType<typeof createRequestLogger>) => {
   const formData = await request.formData();
   const { file, catalogId, datasetId, sessionId } = validateFormData(formData);
 
@@ -110,9 +110,13 @@ async function validateUploadRequest(request: NextRequest, logger: ReturnType<ty
   }
 
   return { file, catalogId, datasetId, sessionId };
-}
+};
 
-function authenticateAndValidateUser(request: NextRequest, file: File, logger: ReturnType<typeof createRequestLogger>) {
+const authenticateAndValidateUser = (
+  request: NextRequest,
+  file: File,
+  logger: ReturnType<typeof createRequestLogger>,
+) => {
   const authHeader = request.headers.get("authorization");
   const user: Pick<User, "id"> | null = authHeader != null ? getUserFromToken() : null;
 
@@ -139,13 +143,13 @@ function authenticateAndValidateUser(request: NextRequest, file: File, logger: R
   }
 
   return { user };
-}
+};
 
-function checkRateLimit(
+const checkRateLimit = (
   user: Pick<User, "id"> | null,
   request: NextRequest,
   rateLimitService: ReturnType<typeof getRateLimitService>,
-) {
+) => {
   if (user) {
     return null; // Authenticated users bypass rate limiting
   }
@@ -173,13 +177,13 @@ function checkRateLimit(
   }
 
   return null;
-}
+};
 
-async function validateCatalog(
+const validateCatalog = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   catalogId: number,
   logger: ReturnType<typeof createRequestLogger>,
-) {
+) => {
   logger.debug({ catalogId }, "Looking for catalog");
   try {
     const catalog = await payload.findByID({
@@ -201,13 +205,13 @@ async function validateCatalog(
       error: NextResponse.json({ success: false, message: "Catalog not found" }, { status: 404 }),
     };
   }
-}
+};
 
-async function validateDataset(
+const validateDataset = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   datasetId: number,
   logger: ReturnType<typeof createRequestLogger>,
-) {
+) => {
   try {
     const dataset: Dataset = await payload.findByID({
       collection: "datasets",
@@ -220,14 +224,14 @@ async function validateDataset(
       error: NextResponse.json({ success: false, message: "Dataset not found" }, { status: 404 }),
     };
   }
-}
+};
 
-async function validateCatalogAndDataset(
+const validateCatalogAndDataset = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   catalogId: number,
   datasetId: number | null,
   logger: ReturnType<typeof createRequestLogger>,
-) {
+) => {
   // Verify catalog exists
   const catalogResult = await validateCatalog(payload, catalogId, logger);
   if ("error" in catalogResult) {
@@ -243,9 +247,9 @@ async function validateCatalogAndDataset(
   }
 
   return catalogResult;
-}
+};
 
-async function saveFileAndGetRowCount(file: File, logger: ReturnType<typeof createRequestLogger>) {
+const saveFileAndGetRowCount = async (file: File, logger: ReturnType<typeof createRequestLogger>) => {
   // Generate unique filename
   const fileExtension = file.name.split(".").pop();
   const uniqueFileName = `${uuidv4()}.${fileExtension}`;
@@ -263,38 +267,32 @@ async function saveFileAndGetRowCount(file: File, logger: ReturnType<typeof crea
   const rowCount = parseFileRowCount(buffer, file.type, logger);
 
   return { filePath, uniqueFileName, rowCount };
-}
+};
 
-function createProgressData(rowCount: number) {
-  return {
-    totalRows: rowCount,
-    processedRows: 0,
-    geocodedRows: 0,
-    createdEvents: 0,
-    percentage: 0,
-  };
-}
+const createProgressData = (rowCount: number) => ({
+  totalRows: rowCount,
+  processedRows: 0,
+  geocodedRows: 0,
+  createdEvents: 0,
+  percentage: 0,
+});
 
-function createBatchInfo(rowCount: number) {
-  return {
-    batchSize: 100,
-    currentBatch: 0,
-    totalBatches: Math.ceil(rowCount / 100),
-  };
-}
+const createBatchInfo = (rowCount: number) => ({
+  batchSize: 100,
+  currentBatch: 0,
+  totalBatches: Math.ceil(rowCount / 100),
+});
 
-function createGeocodingStats() {
-  return {
-    totalAddresses: 0,
-    successfulGeocodes: 0,
-    failedGeocodes: 0,
-    cachedResults: 0,
-    googleApiCalls: 0,
-    nominatimApiCalls: 0,
-  };
-}
+const createGeocodingStats = () => ({
+  totalAddresses: 0,
+  successfulGeocodes: 0,
+  failedGeocodes: 0,
+  cachedResults: 0,
+  googleApiCalls: 0,
+  nominatimApiCalls: 0,
+});
 
-function buildImportData(params: {
+const buildImportData = (params: {
   file: File;
   uniqueFileName: string;
   filePath: string;
@@ -303,7 +301,7 @@ function buildImportData(params: {
   sessionId: string | null;
   user: Pick<User, "id"> | null;
   rowCount: number;
-}): CreateImportData {
+}): CreateImportData => {
   const { file, uniqueFileName, filePath, catalogId, datasetId, sessionId, user, rowCount } = params;
   return {
     fileName: uniqueFileName,
@@ -334,9 +332,9 @@ function buildImportData(params: {
       datasetId,
     },
   };
-}
+};
 
-async function createImportRecord(
+const createImportRecord = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   params: {
     file: File;
@@ -349,7 +347,7 @@ async function createImportRecord(
     rowCount: number;
   },
   logger: ReturnType<typeof createRequestLogger>,
-) {
+) => {
   const { file, uniqueFileName, filePath, catalogId, datasetId, sessionId, user, rowCount } = params;
   try {
     logger.info({ catalogId, catalogType: typeof catalogId }, "Creating import record");
@@ -390,16 +388,16 @@ async function createImportRecord(
       ),
     };
   }
-}
+};
 
-async function queueFileParsingJob(
+const queueFileParsingJob = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   importRecord: Import,
   filePath: string,
   file: File,
   rowCount: number,
   logger: ReturnType<typeof createRequestLogger>,
-) {
+) => {
   logger.info(
     {
       importId: importRecord.id,
@@ -422,14 +420,14 @@ async function queueFileParsingJob(
   });
 
   logger.debug({ importId: importRecord.id }, "File parsing job queued successfully");
-}
+};
 
-async function processUploadSteps(
+const processUploadSteps = async (
   request: NextRequest,
   payload: Awaited<ReturnType<typeof getPayload>>,
   rateLimitService: ReturnType<typeof getRateLimitService>,
   logger: ReturnType<typeof createRequestLogger>,
-) {
+) => {
   // Step 1: Validate upload request
   const requestValidation = await validateUploadRequest(request, logger);
   if ("error" in requestValidation) {
@@ -478,9 +476,9 @@ async function processUploadSteps(
   await queueFileParsingJob(payload, importRecord, filePath, file, rowCount, logger);
 
   return { success: true, importRecord, user, file };
-}
+};
 
-export async function POST(request: NextRequest) {
+export const POST = async (request: NextRequest) => {
   const requestId = uuidv4();
   const logger = createRequestLogger(requestId);
   const startTime = Date.now();
@@ -531,9 +529,9 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
-}
+};
 
-export async function GET() {
+export const GET = async () => {
   try {
     await getPayload({ config });
 
@@ -552,9 +550,13 @@ export async function GET() {
       { status: 500 },
     );
   }
-}
+};
 
-function parseFileRowCount(buffer: Buffer, fileType: string, logger: ReturnType<typeof createRequestLogger>): number {
+const parseFileRowCount = (
+  buffer: Buffer,
+  fileType: string,
+  logger: ReturnType<typeof createRequestLogger>,
+): number => {
   try {
     if (fileType === "text/csv") {
       const content = buffer.toString("utf-8");
@@ -574,12 +576,8 @@ function parseFileRowCount(buffer: Buffer, fileType: string, logger: ReturnType<
     logger.warn({ error }, "Failed to parse file for row count");
     return 0;
   }
-}
+};
 
-function getUserFromToken(): Pick<User, "id"> | null {
-  // This would implement JWT token validation
-  // For now, return null (unauthenticated)
-  return null;
-}
+const getUserFromToken = (): Pick<User, "id"> | null => null;
 
 // Remove old rate limiting function - now using RateLimitService
