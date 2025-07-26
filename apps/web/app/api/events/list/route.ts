@@ -1,11 +1,11 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getPayload } from "payload";
 import type { Where } from "payload";
+import { getPayload } from "payload";
 
 import { logger } from "@/lib/logger";
-import type { Event } from "@/payload-types";
 import config from "@/payload.config";
+import type { Event } from "@/payload-types";
 
 interface MapBounds {
   north: number;

@@ -3,7 +3,7 @@ import type { Payload } from "payload";
 import type { createJobLogger } from "@/lib/logger";
 import { logError } from "@/lib/logger";
 import { GeoLocationDetector } from "@/lib/services/import/geo-location-detector";
-import type { Import, Dataset } from "@/payload-types";
+import type { Dataset, Import } from "@/payload-types";
 
 // Constants to reduce string duplication
 export const BATCH_PROCESSING_TASK = "batch-processing";

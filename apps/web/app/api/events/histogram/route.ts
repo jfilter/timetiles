@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload, type Payload } from "payload";
 
-import { logger, logError } from "@/lib/logger";
+import { logError, logger } from "@/lib/logger";
 import config from "@/payload.config";
 
 interface MapBounds {

@@ -1,6 +1,9 @@
 import type { Payload } from "payload";
 import type { Logger } from "pino";
 
+import { createJobLogger, logError, logPerformance } from "@/lib/logger";
+import type { Dataset, Event, EventsSelect, Import } from "@/payload-types";
+
 import { createSingleEvent } from "../utils/event-creation";
 import {
   findDatasetForImport,
@@ -10,12 +13,9 @@ import {
 } from "../utils/import-helpers";
 import {
   extractEventCreationContext,
-  type JobHandlerContext,
   type GeocodingBatchJobPayload,
+  type JobHandlerContext,
 } from "../utils/job-context";
-
-import { createJobLogger, logError, logPerformance } from "@/lib/logger";
-import type { Import, Event, EventsSelect, Dataset } from "@/payload-types";
 
 const processEventBatch = async (
   payload: Payload,

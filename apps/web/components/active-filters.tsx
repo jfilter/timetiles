@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useCallback, useMemo } from "react";
 
 import type { FilterState } from "../lib/store";
 
@@ -20,12 +21,27 @@ interface ActiveFiltersProps {
   };
 }
 
+const EMPTY_HANDLER = () => {};
+
 export const ActiveFilters = ({
   labels,
   hasActiveFilters,
   activeFilterCount,
   actions,
 }: Readonly<ActiveFiltersProps>) => {
+  const removeCatalogFilter = useCallback(() => actions.removeFilter("catalog"), [actions]);
+  const removeDateRangeFilter = useCallback(() => {
+    actions.removeFilter("startDate");
+    actions.removeFilter("endDate");
+  }, [actions]);
+
+  const datasetRemoveHandlers = useMemo(() => {
+    const handlers: Record<string, () => void> = {};
+    labels.datasets.forEach((dataset) => {
+      handlers[dataset.id] = () => actions.removeFilter("datasets", dataset.id);
+    });
+    return handlers;
+  }, [labels.datasets, actions]);
   if (!hasActiveFilters) {
     return null;
   }
@@ -35,6 +51,7 @@ export const ActiveFilters = ({
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-foreground text-sm font-medium">Active Filters ({activeFilterCount})</h3>
         <button
+          type="button"
           onClick={actions.clearAllFilters}
           className="text-muted-foreground hover:text-foreground text-xs transition-colors"
           aria-label="Clear all filters"
@@ -45,9 +62,7 @@ export const ActiveFilters = ({
 
       <div className="flex flex-wrap gap-2">
         {/* Catalog Filter */}
-        {labels.catalog != null && (
-          <FilterPill label="Catalog" value={labels.catalog} onRemove={() => actions.removeFilter("catalog")} />
-        )}
+        {labels.catalog != null && <FilterPill label="Catalog" value={labels.catalog} onRemove={removeCatalogFilter} />}
 
         {/* Dataset Filters */}
         {labels.datasets.map((dataset) => (
@@ -55,21 +70,13 @@ export const ActiveFilters = ({
             key={dataset.id}
             label="Dataset"
             value={dataset.name}
-            onRemove={() => actions.removeFilter("datasets", dataset.id)}
+            onRemove={datasetRemoveHandlers[dataset.id] ?? EMPTY_HANDLER}
           />
         ))}
 
         {/* Date Range Filter */}
         {labels.dateRange != null && (
-          <FilterPill
-            label="Date Range"
-            value={labels.dateRange}
-            onRemove={() => {
-              // Remove both start and end dates when removing date range
-              actions.removeFilter("startDate");
-              actions.removeFilter("endDate");
-            }}
-          />
+          <FilterPill label="Date Range" value={labels.dateRange} onRemove={removeDateRangeFilter} />
         )}
       </div>
     </div>
@@ -87,6 +94,7 @@ const FilterPill = ({ label, value, onRemove }: Readonly<FilterPillProps>) => (
     <span className="text-muted-foreground">{label}:</span>
     <span className="font-medium">{value}</span>
     <button
+      type="button"
       onClick={onRemove}
       className="hover:bg-muted ml-1 rounded p-0.5 transition-colors"
       aria-label={`Remove ${label}: ${value}`}

@@ -18,23 +18,29 @@ export const ClientConditionalTopMenuBar = ({ mainMenu }: Readonly<ClientConditi
   const isExplorePage = pathname === "/explore";
 
   useEffect(() => {
-    if (isExplorePage) {
-      // Start fade out
-      setIsVisible(false);
-      // Remove from DOM after animation
-      const timeout = setTimeout(() => {
-        setShouldRender(false);
-      }, 300); // Match the transition duration
-      return () => clearTimeout(timeout);
-    } else {
-      // Add to DOM first
-      setShouldRender(true);
-      // Then fade in
-      const timeout = setTimeout(() => {
-        setIsVisible(true);
-      }, 10); // Small delay to ensure DOM update
-      return () => clearTimeout(timeout);
-    }
+    const handlePageVisibility = () => {
+      if (isExplorePage) {
+        // Start fade out
+        const hideMenu = () => setIsVisible(false);
+        const removeFromDOM = () => setShouldRender(false);
+
+        hideMenu();
+        // Remove from DOM after animation
+        const timeout = setTimeout(removeFromDOM, 300); // Match the transition duration
+        return () => clearTimeout(timeout);
+      } else {
+        // Add to DOM first
+        const addToDOM = () => setShouldRender(true);
+        const showMenu = () => setIsVisible(true);
+
+        addToDOM();
+        // Then fade in
+        const timeout = setTimeout(showMenu, 10); // Small delay to ensure DOM update
+        return () => clearTimeout(timeout);
+      }
+    };
+
+    return handlePageVisibility();
   }, [isExplorePage]);
 
   if (!shouldRender) {

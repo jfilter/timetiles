@@ -1,11 +1,11 @@
 import type { Payload } from "payload";
 
+import { createJobLogger, logError, logPerformance } from "@/lib/logger";
+import { CoordinateValidator } from "@/lib/services/import/coordinate-validator";
+
 import { processRowData } from "../utils/event-processing";
 import { BATCH_PROCESSING_TASK, TASK_EVENT_CREATION } from "../utils/import-helpers";
 import type { BatchProcessingJobPayload, JobHandlerContext } from "../utils/job-context";
-
-import { createJobLogger, logError, logPerformance } from "@/lib/logger";
-import { CoordinateValidator } from "@/lib/services/import/coordinate-validator";
 
 const updateBatchProgress = async (payload: Payload, importId: string | number, batchNumber: number) => {
   const currentImport = await payload.findByID({

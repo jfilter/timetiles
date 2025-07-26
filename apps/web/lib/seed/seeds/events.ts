@@ -1,12 +1,12 @@
+import type { Event } from "@/payload-types";
+
 import {
-  getEventsPerDataset,
   generateCoordinate,
   generateMetadata,
-  getSchemaTypeForCatalog,
+  getEventsPerDataset,
   getRegionForDataset,
+  getSchemaTypeForCatalog,
 } from "./utils";
-
-import type { Event } from "@/payload-types";
 
 // Use Payload type with specific modifications for seed data
 export type EventSeed = Omit<Event, "id" | "createdAt" | "updatedAt" | "dataset" | "import" | "eventTimestamp"> & {

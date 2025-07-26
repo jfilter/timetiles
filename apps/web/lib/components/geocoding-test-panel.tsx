@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@workspace/ui/components/button";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 
 import { logger } from "../logger";
 
@@ -32,7 +32,11 @@ export const GeocodingTestPanel = ({ testAddress: initialTestAddress, onTest }: 
   const [testing, setTesting] = useState(false);
   const [results, setResults] = useState<TestResults | null>(null);
 
-  const handleTest = async () => {
+  const handleAddressChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setTestAddress(e.target.value);
+  }, []);
+
+  const handleTest = useCallback(async () => {
     if (!testAddress.trim()) return;
 
     setTesting(true);
@@ -44,7 +48,11 @@ export const GeocodingTestPanel = ({ testAddress: initialTestAddress, onTest }: 
     } finally {
       setTesting(false);
     }
-  };
+  }, [testAddress, onTest]);
+
+  const handleTestClick = useCallback(() => {
+    void handleTest();
+  }, [handleTest]);
 
   const renderResult = (providerName: string, result: TestResult | undefined) => {
     if (!result) {
@@ -94,11 +102,11 @@ export const GeocodingTestPanel = ({ testAddress: initialTestAddress, onTest }: 
               id="test-address"
               type="text"
               value={testAddress}
-              onChange={(e) => setTestAddress(e.target.value)}
+              onChange={handleAddressChange}
               placeholder="Enter an address to test..."
               className="flex-1 rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
             />
-            <Button onClick={() => void handleTest()} disabled={testing || !testAddress.trim()} className="px-4 py-2">
+            <Button onClick={handleTestClick} disabled={testing || !testAddress.trim()} className="px-4 py-2">
               {testing ? "Testing..." : "Test All"}
             </Button>
           </div>

@@ -1,11 +1,11 @@
 "use client";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
+import type { Catalog, Dataset, Event } from "../payload-types";
 import { DatasetBarChart } from "./dataset-bar-chart";
 import { EventHistogram } from "./event-histogram";
-import type { Event, Dataset, Catalog } from "../payload-types";
 
 interface ChartSectionProps {
   events: Event[];
@@ -19,11 +19,13 @@ type ChartType = "timeline" | "dataset-bar" | "catalog-bar";
 export const ChartSection = ({ events, datasets, catalogs, loading }: Readonly<ChartSectionProps>) => {
   const [chartType, setChartType] = useState<ChartType>("timeline");
 
+  const handleChartTypeChange = useCallback((value: string) => setChartType(value as ChartType), []);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Data Visualization</h2>
-        <Select value={chartType} onValueChange={(value) => setChartType(value as ChartType)}>
+        <Select value={chartType} onValueChange={handleChartTypeChange}>
           <SelectTrigger className="w-48">
             <SelectValue />
           </SelectTrigger>

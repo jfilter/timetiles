@@ -1,10 +1,11 @@
 "use client";
 
+import "maplibre-gl/dist/maplibre-gl.css";
+
 import type { LngLatBounds } from "maplibre-gl";
 import { useCallback, useMemo, useState } from "react";
-import Map, { Source, Layer, Popup, type MapRef, type MapLayerMouseEvent } from "react-map-gl/maplibre";
+import Map, { Layer, type MapLayerMouseEvent, type MapRef, Popup, Source } from "react-map-gl/maplibre";
 
-import "maplibre-gl/dist/maplibre-gl.css";
 import { createLogger } from "../lib/logger";
 
 export interface ClusterFeature {
@@ -29,12 +30,23 @@ interface ClusteredMapProps {
 
 const logger = createLogger("ClusteredMap");
 
-export const ClusteredMap = ({ onBoundsChange, clusters = [] }: Readonly<ClusteredMapProps>) => {
+const DEFAULT_CLUSTERS: ClusterFeature[] = [];
+const INITIAL_VIEW_STATE = {
+  longitude: -74.0,
+  latitude: 40.6,
+  zoom: 9,
+};
+const MAP_STYLE = { width: "100%", height: "100%", minHeight: "400px" };
+const INTERACTIVE_LAYER_IDS = ["event-clusters", "unclustered-point"];
+
+export const ClusteredMap = ({ onBoundsChange, clusters = DEFAULT_CLUSTERS }: Readonly<ClusteredMapProps>) => {
   const [popupInfo, setPopupInfo] = useState<{
     longitude: number;
     latitude: number;
     title: string;
   } | null>(null);
+
+  const closePopup = useCallback(() => setPopupInfo(null), []);
 
   const handleLoad = useCallback(
     (evt: { target: { getBounds: () => LngLatBounds; getZoom: () => number } }) => {
@@ -64,19 +76,16 @@ export const ClusteredMap = ({ onBoundsChange, clusters = [] }: Readonly<Cluster
     [onBoundsChange],
   );
 
-  const handleClick = useCallback((event: MapLayerMouseEvent) => {
-    const feature = event.features?.[0];
-    if (feature == undefined || feature == null) return;
-
-    const { type } = feature.properties ?? {};
-
-    if (type === "event-cluster") {
-      handleClusterClick(event, feature);
-    } else if (type === "event-point") {
-      handleEventPointClick(feature);
+  const getValidCoordinates = (feature: GeoJSON.Feature): [number, number] | null => {
+    const coordinates = feature.geometry?.type === "Point" ? feature.geometry.coordinates : null;
+    if (coordinates && coordinates.length >= 2) {
+      const [lng, lat] = coordinates as [number, number];
+      if (typeof lng === "number" && typeof lat === "number" && !isNaN(lng) && !isNaN(lat)) {
+        return [lng, lat];
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return null;
+  };
 
   const handleClusterClick = useCallback((event: MapLayerMouseEvent, feature: GeoJSON.Feature) => {
     const coordinates = getValidCoordinates(feature);
@@ -89,30 +98,34 @@ export const ClusteredMap = ({ onBoundsChange, clusters = [] }: Readonly<Cluster
     }
   }, []);
 
-  const handleEventPointClick = useCallback(
-    (feature: GeoJSON.Feature) => {
-      const coordinates = getValidCoordinates(feature);
-      if (coordinates) {
-        const [longitude, latitude] = coordinates;
-        const { title, id } = feature.properties ?? {};
-        setPopupInfo({
-          longitude,
-          latitude,
-          title: typeof title === "string" ? title : `Event ${String(id ?? "Unknown")}`,
-        });
+  const handleEventPointClick = useCallback((feature: GeoJSON.Feature) => {
+    const coordinates = getValidCoordinates(feature);
+    if (coordinates) {
+      const [longitude, latitude] = coordinates;
+      const { title, id } = feature.properties ?? {};
+      setPopupInfo({
+        longitude,
+        latitude,
+        title: typeof title === "string" ? title : `Event ${String(id ?? "Unknown")}`,
+      });
+    }
+  }, []);
+
+  const handleClick = useCallback(
+    (event: MapLayerMouseEvent) => {
+      const feature = event.features?.[0];
+      if (feature == undefined || feature == null) return;
+
+      const { type } = feature.properties ?? {};
+
+      if (type === "event-cluster") {
+        handleClusterClick(event, feature);
+      } else if (type === "event-point") {
+        handleEventPointClick(feature);
       }
     },
-    [setPopupInfo],
+    [handleClusterClick, handleEventPointClick],
   );
-
-  const getValidCoordinates = (feature: GeoJSON.Feature): [number, number] | null => {
-    const coordinates = feature.geometry?.type === "Point" ? feature.geometry.coordinates : null;
-
-    if (coordinates && Array.isArray(coordinates) && coordinates.length >= 2) {
-      return [coordinates[0] as number, coordinates[1] as number];
-    }
-    return null;
-  };
 
   const geojsonData = useMemo(() => {
     return {
@@ -173,17 +186,13 @@ export const ClusteredMap = ({ onBoundsChange, clusters = [] }: Readonly<Cluster
 
   return (
     <Map
-      initialViewState={{
-        longitude: -74.0,
-        latitude: 40.6,
-        zoom: 9,
-      }}
-      style={{ width: "100%", height: "100%", minHeight: "400px" }}
+      initialViewState={INITIAL_VIEW_STATE}
+      style={MAP_STYLE}
       mapStyle="https://tiles.versatiles.org/assets/styles/colorful/style.json"
       onMove={handleMove}
       onLoad={handleLoad}
       onClick={handleClick}
-      interactiveLayerIds={["event-clusters", "unclustered-point"]}
+      interactiveLayerIds={INTERACTIVE_LAYER_IDS}
       cursor="auto"
     >
       <Source type="geojson" data={geojsonData} id="clustered-map-source" key={"clustered-map-source"}>
@@ -192,12 +201,7 @@ export const ClusteredMap = ({ onBoundsChange, clusters = [] }: Readonly<Cluster
       </Source>
 
       {popupInfo && (
-        <Popup
-          longitude={popupInfo.longitude}
-          latitude={popupInfo.latitude}
-          anchor="bottom"
-          onClose={() => setPopupInfo(null)}
-        >
+        <Popup longitude={popupInfo.longitude} latitude={popupInfo.latitude} anchor="bottom" onClose={closePopup}>
           <div>{popupInfo.title}</div>
         </Popup>
       )}

@@ -1,14 +1,14 @@
-import type { SeedManager } from "../seed-manager";
+import { createLogger } from "@/lib/logger";
+import { logPerformance } from "@/lib/logger";
+
 import {
+  type CollectionConfig,
   getCollectionConfig,
   getEnabledCollections,
   getEnvironmentSettings,
-  type CollectionConfig,
 } from "../seed.config";
+import type { SeedManager } from "../seed-manager";
 import type { SeedOptions } from "../types";
-
-import { createLogger } from "@/lib/logger";
-import { logPerformance } from "@/lib/logger";
 
 const logger = createLogger("seed");
 

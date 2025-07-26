@@ -8,9 +8,9 @@
 
 import type { Payload } from "payload";
 
-import { createLogger, logError, logPerformance } from "../logger";
-
 import type { Config } from "@/payload-types";
+
+import { createLogger, logError, logPerformance } from "../logger";
 
 // Removed PayloadUpdateInput type as it was only used by commented out updateMany function
 

@@ -8,11 +8,11 @@
 
 import type { Payload } from "payload";
 
-import type { RelationshipConfig } from "./relationship-config";
-import { getRelationshipConfig, validateRelationshipConfig } from "./relationship-config";
-
 import { logger } from "@/lib/logger";
 import type { Config } from "@/payload-types";
+
+import type { RelationshipConfig } from "./relationship-config";
+import { getRelationshipConfig, validateRelationshipConfig } from "./relationship-config";
 
 export interface ResolvedItem {
   [key: string]: unknown;

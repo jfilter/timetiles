@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { createRequestLogger, logError } from "@/lib/logger";
-import { getRateLimitService, getClientIdentifier, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
 import type { Import } from "@/payload-types";
 
 // Use Payload types directly instead of custom interfaces

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 
-import { useImportUploadMutation, useImportProgressQuery } from "../lib/hooks/use-events-queries";
+import { useImportProgressQuery, useImportUploadMutation } from "../lib/hooks/use-events-queries";
 
 const getStatusIcon = (status: string): string => {
   switch (status) {
@@ -16,6 +16,11 @@ const getStatusIcon = (status: string): string => {
       return "📄";
   }
 };
+
+const getProgressBarStyle = (percentage: number) => ({ width: `${percentage}%` });
+const getBatchProgressStyle = (current: number, total: number) => ({
+  width: `${(current / total) * 100}%`,
+});
 
 export const ImportUpload = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -32,24 +37,18 @@ export const ImportUpload = () => {
   const uploading = uploadMutation.isPending;
   const error = uploadMutation.error?.message ?? null;
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      uploadMutation.reset(); // Clear any previous errors
-    }
-  };
+  const handleFileSelect = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedFile = event.target.files?.[0];
+      if (selectedFile) {
+        setFile(selectedFile);
+        uploadMutation.reset(); // Clear any previous errors
+      }
+    },
+    [uploadMutation],
+  );
 
-  const handleUpload = async () => {
-    if (!file || !catalogId) {
-      return;
-    }
-
-    setSuccess(null);
-    await performUpload();
-  };
-
-  const performUpload = async () => {
+  const performUpload = useCallback(async () => {
     if (!file || !catalogId) return;
 
     const formData = new FormData();
@@ -72,9 +71,18 @@ export const ImportUpload = () => {
         },
       );
     });
-  };
+  }, [file, catalogId, uploadMutation]);
 
-  const resetForm = () => {
+  const handleUpload = useCallback(async () => {
+    if (!file || !catalogId) {
+      return;
+    }
+
+    setSuccess(null);
+    await performUpload();
+  }, [file, catalogId, performUpload]);
+
+  const resetForm = useCallback(() => {
     setFile(null);
     setCatalogId("");
     setImportId(null);
@@ -83,7 +91,7 @@ export const ImportUpload = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  };
+  }, [uploadMutation]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -127,7 +135,7 @@ export const ImportUpload = () => {
               type="text"
               placeholder="Enter catalog ID"
               value={catalogId}
-              onChange={(e) => setCatalogId(e.target.value)}
+              onChange={useCallback((e: React.ChangeEvent<HTMLInputElement>) => setCatalogId(e.target.value), [])}
               disabled={uploading || (importId != null && importId !== "")}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
             />
@@ -155,7 +163,8 @@ export const ImportUpload = () => {
 
           <div className="flex gap-2">
             <button
-              onClick={() => void handleUpload()}
+              type="button"
+              onClick={useCallback(() => void handleUpload(), [handleUpload])}
               disabled={file == null || catalogId === "" || uploading || (importId != null && importId !== "")}
               className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
             >
@@ -170,7 +179,11 @@ export const ImportUpload = () => {
             </button>
 
             {importId != null && importId !== "" && (
-              <button onClick={resetForm} className="rounded-md bg-gray-600 px-4 py-2 text-white hover:bg-gray-700">
+              <button
+                type="button"
+                onClick={resetForm}
+                className="rounded-md bg-gray-600 px-4 py-2 text-white hover:bg-gray-700"
+              >
                 Start New Import
               </button>
             )}
@@ -195,7 +208,7 @@ export const ImportUpload = () => {
               <div className="h-2 w-full rounded-full bg-gray-200">
                 <div
                   className="h-2 rounded-full bg-blue-600 transition-all duration-300"
-                  style={{ width: `${progress.stageProgress.percentage}%` }}
+                  style={getProgressBarStyle(progress.stageProgress.percentage)}
                 ></div>
               </div>
             </div>
@@ -226,9 +239,7 @@ export const ImportUpload = () => {
                 <div className="h-1 w-full rounded-full bg-gray-200">
                   <div
                     className="h-1 rounded-full bg-green-600 transition-all duration-300"
-                    style={{
-                      width: `${(progress.batchInfo.currentBatch / progress.batchInfo.totalBatches) * 100}%`,
-                    }}
+                    style={getBatchProgressStyle(progress.batchInfo.currentBatch, progress.batchInfo.totalBatches)}
                   ></div>
                 </div>
               </div>

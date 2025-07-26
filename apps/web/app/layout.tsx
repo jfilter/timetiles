@@ -1,6 +1,7 @@
+import "@workspace/ui/globals.css";
+
 import { Geist, Geist_Mono } from "next/font/google";
 
-import "@workspace/ui/globals.css";
 import { ConditionalTopMenuBar } from "@/components/conditional-top-menu-bar";
 import { Providers } from "@/components/providers";
 

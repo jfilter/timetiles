@@ -1,11 +1,11 @@
 import type { Entry } from "node-geocoder";
 
+import { createLogger, logError, logPerformance } from "@/lib/logger";
+
 import type { CacheManager } from "./cache-manager";
 import type { ProviderManager } from "./provider-manager";
 import type { BatchGeocodingResult, GeocodingResult, GeocodingSettings } from "./types";
 import { GeocodingError } from "./types";
-
-import { createLogger, logError, logPerformance } from "@/lib/logger";
 
 const logger = createLogger("geocoding-operations");
 

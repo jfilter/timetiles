@@ -2,9 +2,9 @@ import type { Payload } from "payload";
 
 import type {
   Import,
-  TaskFileParsing,
   TaskBatchProcessing,
   TaskEventCreation,
+  TaskFileParsing,
   TaskGeocodingBatch,
 } from "@/payload-types";
 

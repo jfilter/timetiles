@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTheme } from "../lib/hooks/use-theme";
 
@@ -7,6 +7,23 @@ export const ThemeToggle = () => {
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const handleToggleOpen = useCallback(() => setOpen((v) => !v), []);
+
+  const handleLightSelect = useCallback(() => {
+    setTheme("light");
+    setOpen(false);
+  }, [setTheme]);
+
+  const handleDarkSelect = useCallback(() => {
+    setTheme("dark");
+    setOpen(false);
+  }, [setTheme]);
+
+  const handleSystemSelect = useCallback(() => {
+    setTheme("system");
+    setOpen(false);
+  }, [setTheme]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -23,9 +40,9 @@ export const ThemeToggle = () => {
   }, [open]);
 
   const options = [
-    { value: "light", label: "Light", icon: "🌞" },
-    { value: "dark", label: "Dark", icon: "🌚" },
-    { value: "system", label: "System", icon: "🖥️" },
+    { value: "light", label: "Light", icon: "🌞", handler: handleLightSelect },
+    { value: "dark", label: "Dark", icon: "🌚", handler: handleDarkSelect },
+    { value: "system", label: "System", icon: "🖥️", handler: handleSystemSelect },
   ];
 
   const current = options.find((o) => o.value === theme);
@@ -33,8 +50,9 @@ export const ThemeToggle = () => {
   return (
     <div className="relative w-28" ref={ref}>
       <button
+        type="button"
         className="hover:bg-accent/50 flex w-full items-center justify-between gap-1 rounded px-3 py-2"
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleToggleOpen}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
@@ -56,13 +74,11 @@ export const ThemeToggle = () => {
           {options.map((o) => (
             <li key={o.value}>
               <button
+                type="button"
                 className={`hover:bg-accent/30 flex w-full items-center gap-2 rounded px-3 py-2 text-left ${
                   theme === o.value ? "font-bold" : ""
                 }`}
-                onClick={() => {
-                  setTheme(o.value as "light" | "dark" | "system");
-                  setOpen(false);
-                }}
+                onClick={o.handler}
                 role="option"
                 aria-selected={theme === o.value}
               >

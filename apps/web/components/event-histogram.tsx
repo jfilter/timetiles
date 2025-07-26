@@ -4,7 +4,7 @@ import ReactECharts from "echarts-for-react";
 import type { LngLatBounds } from "maplibre-gl";
 import { useTheme } from "next-themes";
 import { useQueryState } from "nuqs";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useFilters } from "../lib/filters";
 import { useHistogramQuery } from "../lib/hooks/use-events-queries";
@@ -16,11 +16,15 @@ interface EventHistogramProps {
   className?: string;
 }
 
+const CHART_STYLE = { height: "100%", width: "100%" };
+const CHART_OPTS = { renderer: "svg" as const };
+
 export const EventHistogram = ({
   loading: externalLoading = false,
   height = 200,
   className,
 }: Readonly<EventHistogramProps>) => {
+  const containerStyle = useMemo(() => ({ height }), [height]);
   const { theme } = useTheme();
   const [, setStartDate] = useQueryState("startDate");
   const [, setEndDate] = useQueryState("endDate");
@@ -163,18 +167,23 @@ export const EventHistogram = ({
     return `${year}-${month}-${day}`;
   };
 
-  const handleChartClick = (params: { data: [string, number] }) => {
-    if (params.data != null) {
-      const date = new Date(params.data[0]);
-      const formattedDate = formatDate(date);
-      void setStartDate(formattedDate);
-      void setEndDate(formattedDate);
-    }
-  };
+  const handleChartClick = useCallback(
+    (params: { data: [string, number] }) => {
+      if (params.data != null) {
+        const date = new Date(params.data[0]);
+        const formattedDate = formatDate(date);
+        void setStartDate(formattedDate);
+        void setEndDate(formattedDate);
+      }
+    },
+    [setStartDate, setEndDate],
+  );
+
+  const chartEvents = useMemo(() => ({ click: handleChartClick }), [handleChartClick]);
 
   if (loading || externalLoading) {
     return (
-      <div className={`flex items-center justify-center ${className}`} style={{ height }}>
+      <div className={`flex items-center justify-center ${className}`} style={containerStyle}>
         <div className="text-muted-foreground text-sm">Loading histogram...</div>
       </div>
     );
@@ -182,22 +191,15 @@ export const EventHistogram = ({
 
   if (histogram.length === 0) {
     return (
-      <div className={`flex items-center justify-center ${className}`} style={{ height }}>
+      <div className={`flex items-center justify-center ${className}`} style={containerStyle}>
         <div className="text-muted-foreground text-sm">No data available</div>
       </div>
     );
   }
 
   return (
-    <div className={className} style={{ height }}>
-      <ReactECharts
-        option={getChartOption()}
-        style={{ height: "100%", width: "100%" }}
-        onEvents={{
-          click: handleChartClick,
-        }}
-        opts={{ renderer: "svg" }}
-      />
+    <div className={className} style={containerStyle}>
+      <ReactECharts option={getChartOption()} style={CHART_STYLE} onEvents={chartEvents} opts={CHART_OPTS} />
     </div>
   );
 };

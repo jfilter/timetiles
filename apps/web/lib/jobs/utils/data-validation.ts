@@ -1,6 +1,6 @@
-import { getObjectProperty } from "./data-parsing";
-
 import type { createJobLogger } from "@/lib/logger";
+
+import { getObjectProperty } from "./data-parsing";
 
 export const validateRequiredFields = (
   parsedData: Record<string, unknown>[],

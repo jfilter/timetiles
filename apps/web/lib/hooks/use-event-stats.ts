@@ -1,7 +1,7 @@
 import type { BarChartDataItem } from "@workspace/ui/components/charts";
 import { useMemo } from "react";
 
-import type { Event, Dataset, Catalog } from "@/payload-types";
+import type { Catalog, Dataset, Event } from "@/payload-types";
 
 export interface EventStats {
   totalEvents: number;

@@ -1,13 +1,13 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LngLatBounds } from "maplibre-gl";
-
-import type { FilterState } from "../filters";
-import { createLogger } from "../logger";
 
 import type { ClusterFeature } from "@/components/clustered-map";
 import type { Event } from "@/payload-types";
+
+import type { FilterState } from "../filters";
+import { createLogger } from "../logger";
 
 // Helper function to determine polling interval
 // Returns false to stop polling or number for interval - React Query expects this pattern

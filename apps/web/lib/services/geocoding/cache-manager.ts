@@ -1,10 +1,10 @@
 import type { Payload } from "payload";
 
-import type { GeocodingResult, GeocodingSettings } from "./types";
-import { LOCATION_CACHE_COLLECTION } from "./types";
-
 import { createLogger } from "@/lib/logger";
 import type { LocationCache } from "@/payload-types";
+
+import type { GeocodingResult, GeocodingSettings } from "./types";
+import { LOCATION_CACHE_COLLECTION } from "./types";
 
 const logger = createLogger("geocoding-cache-manager");
 

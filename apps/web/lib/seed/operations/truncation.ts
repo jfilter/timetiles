@@ -1,6 +1,6 @@
-import type { SeedManager } from "../seed-manager";
-
 import { createLogger, logError, logPerformance } from "@/lib/logger";
+
+import type { SeedManager } from "../seed-manager";
 
 const logger = createLogger("seed");
 

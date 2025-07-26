@@ -1,10 +1,10 @@
 import type { Payload } from "payload";
 
-import { safeStringValue } from "./data-validation";
-
 import type { createJobLogger } from "@/lib/logger";
 import { logError } from "@/lib/logger";
-import type { Dataset, Import, Event } from "@/payload-types";
+import type { Dataset, Event, Import } from "@/payload-types";
+
+import { safeStringValue } from "./data-validation";
 
 // Build location data from coordinates
 const buildLocationData = (coordinates?: { lat: number; lng: number }) => {

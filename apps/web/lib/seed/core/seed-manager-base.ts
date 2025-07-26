@@ -1,12 +1,12 @@
-import { getPayload } from "payload";
 import type { Payload } from "payload";
+import { getPayload } from "payload";
+
+import { createLogger } from "@/lib/logger";
+import config from "@/payload.config";
+import type { Config } from "@/payload-types";
 
 import { DatabaseOperations } from "../database-operations";
 import { RelationshipResolver } from "../relationship-resolver";
-
-import { createLogger } from "@/lib/logger";
-import type { Config } from "@/payload-types";
-import config from "@/payload.config";
 // import type { SeedOptions } from "../types";
 
 const logger = createLogger("seed");

@@ -1,3 +1,3 @@
 // Main export for the seed system
-export { SeedManager, createSeedManager } from "./seed-manager";
-export type { SeedOptions, SeedData } from "./types";
+export { createSeedManager, SeedManager } from "./seed-manager";
+export type { SeedData, SeedOptions } from "./types";

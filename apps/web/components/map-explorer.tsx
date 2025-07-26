@@ -1,8 +1,12 @@
 "use client";
 
 import type { LngLatBounds } from "maplibre-gl";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
+import { useFilters } from "../lib/filters";
+import { useDebounce } from "../lib/hooks/use-debounce";
+import { useEventsListQuery, useMapClustersQuery } from "../lib/hooks/use-events-queries";
+import { useUIStore } from "../lib/store";
 import type { Catalog, Dataset } from "../payload-types";
 import { ActiveFilters } from "./active-filters";
 import { ChartSection } from "./chart-section";
@@ -10,10 +14,6 @@ import { ClusteredMap } from "./clustered-map";
 import { EventsList } from "./events-list";
 import { ExploreHeader } from "./explore-header";
 import { FilterDrawer } from "./filter-drawer";
-import { useFilters } from "../lib/filters";
-import { useDebounce } from "../lib/hooks/use-debounce";
-import { useEventsListQuery, useMapClustersQuery } from "../lib/hooks/use-events-queries";
-import { useUIStore } from "../lib/store";
 
 interface MapExplorerProps {
   catalogs: Catalog[];
@@ -25,6 +25,8 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
 
   // Get filter state from URL (nuqs)
   const { filters, activeFilterCount, hasActiveFilters, removeFilter, clearAllFilters } = useFilters();
+
+  const filterActions = useMemo(() => ({ removeFilter, clearAllFilters }), [removeFilter, clearAllFilters]);
 
   // Get UI state from Zustand store
   const isFilterDrawerOpen = useUIStore((state) => state.ui.isFilterDrawerOpen);
@@ -103,21 +105,24 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
     };
   };
 
-  const handleBoundsChange = (newBounds: LngLatBounds | null, zoom?: number) => {
-    if (newBounds) {
-      setMapBounds({
-        north: newBounds.getNorth(),
-        south: newBounds.getSouth(),
-        east: newBounds.getEast(),
-        west: newBounds.getWest(),
-      });
-      if (zoom != undefined) {
-        setMapZoom(Math.round(zoom));
+  const handleBoundsChange = useCallback(
+    (newBounds: LngLatBounds | null, zoom?: number) => {
+      if (newBounds) {
+        setMapBounds({
+          north: newBounds.getNorth(),
+          south: newBounds.getSouth(),
+          east: newBounds.getEast(),
+          west: newBounds.getWest(),
+        });
+        if (zoom != undefined) {
+          setMapZoom(Math.round(zoom));
+        }
+      } else {
+        setMapBounds(null);
       }
-    } else {
-      setMapBounds(null);
-    }
-  };
+    },
+    [setMapBounds],
+  );
 
   return (
     <div className="flex h-screen">
@@ -145,10 +150,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
                 labels={getFilterLabels()}
                 hasActiveFilters={hasActiveFilters}
                 activeFilterCount={activeFilterCount}
-                actions={{
-                  removeFilter,
-                  clearAllFilters,
-                }}
+                actions={filterActions}
               />
 
               {/* Chart Section */}

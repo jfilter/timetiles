@@ -1,22 +1,22 @@
+import { logger } from "@/lib/logger";
+
 import { parseCoordinate } from "./coordinate-parser";
 import {
-  isValidCoordinate,
   categorizeCoordinateValue,
+  type CoordinateSample,
+  isValidCoordinate,
   isValidLatitudeCandidate,
   isValidLongitudeCandidate,
   valueToString,
-  type CoordinateSample,
 } from "./coordinate-validation-utils";
 import {
   checkCommaFormat,
-  checkSpaceFormat,
   checkGeoJsonFormat,
+  checkSpaceFormat,
+  combinedPatterns,
   latitudePatterns,
   longitudePatterns,
-  combinedPatterns,
 } from "./format-detector";
-
-import { logger } from "@/lib/logger";
 
 export interface GeoColumnResult {
   found: boolean;

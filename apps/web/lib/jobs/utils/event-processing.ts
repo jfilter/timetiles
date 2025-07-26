@@ -1,7 +1,7 @@
-import { getObjectProperty } from "./data-parsing";
-import { parseTagsFromRow, safeStringValue, hasValidProperty, parseDate } from "./data-validation";
-
 import type { CoordinateValidator } from "@/lib/services/import/coordinate-validator";
+
+import { getObjectProperty } from "./data-parsing";
+import { hasValidProperty, parseDate, parseTagsFromRow, safeStringValue } from "./data-validation";
 
 export const extractCoordinatesFromRow = (
   row: Record<string, unknown>,

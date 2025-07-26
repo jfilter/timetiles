@@ -7,6 +7,8 @@ import config from "@/payload.config";
 // Force dynamic rendering to prevent build-time database queries
 export const dynamic = "force-dynamic";
 
+const LOADING_ELEMENT = <div>Loading explorer...</div>;
+
 export default async function ExplorePage() {
   const payload = await getPayload({ config });
 
@@ -23,7 +25,7 @@ export default async function ExplorePage() {
   ]);
 
   return (
-    <Suspense fallback={<div>Loading explorer...</div>}>
+    <Suspense fallback={LOADING_ELEMENT}>
       <MapExplorer catalogs={catalogs.docs} datasets={datasets.docs} />
     </Suspense>
   );

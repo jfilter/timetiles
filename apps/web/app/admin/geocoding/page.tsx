@@ -10,6 +10,18 @@ import config from "@/payload.config";
 // Force dynamic rendering to prevent build-time database queries
 export const dynamic = "force-dynamic";
 
+const handleReorder = () => {
+  // This would be implemented with a server action
+  // For now, redirect to the admin panel
+  redirect("/admin/collections/geocoding-providers");
+};
+
+const handleToggle = () => {
+  // This would be implemented with a server action
+  // For now, redirect to the admin panel
+  redirect("/admin/collections/geocoding-providers");
+};
+
 function getProviderColor(type: string): string {
   if (type === "google") return "blue";
   if (type === "nominatim") return "green";
@@ -86,19 +98,7 @@ export default async function GeocodingAdminPage() {
               to manage API keys and detailed configuration.
             </p>
 
-            <ProviderPriorityList
-              providers={providerData}
-              onReorder={() => {
-                // This would be implemented with a server action
-                // For now, redirect to the admin panel
-                redirect("/admin/collections/geocoding-providers");
-              }}
-              onToggle={() => {
-                // This would be implemented with a server action
-                // For now, redirect to the admin panel
-                redirect("/admin/collections/geocoding-providers");
-              }}
-            />
+            <ProviderPriorityList providers={providerData} onReorder={handleReorder} onToggle={handleToggle} />
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">

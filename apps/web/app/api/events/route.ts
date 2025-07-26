@@ -1,11 +1,11 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getPayload } from "payload";
 import type { Where } from "payload";
+import { getPayload } from "payload";
 
 import { logger } from "@/lib/logger";
-import type { Event } from "@/payload-types";
 import config from "@/payload.config";
+import type { Event } from "@/payload-types";
 
 function getEventDataValue(data: Record<string, unknown>, field: string): unknown {
   // Safe property access to avoid object injection - additional validation

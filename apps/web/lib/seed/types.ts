@@ -1,11 +1,11 @@
+import type { Config } from "@/payload-types";
+
 import type { CollectionConfig } from "./seed.config";
 import type { CatalogSeed } from "./seeds/catalogs";
 import type { DatasetSeed } from "./seeds/datasets";
 import type { EventSeed } from "./seeds/events";
 import type { ImportSeed } from "./seeds/imports";
 import type { UserSeed } from "./seeds/users";
-
-import type { Config } from "@/payload-types";
 
 export type SeedData =
   | UserSeed[]

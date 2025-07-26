@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, Filter, Download, Settings } from "lucide-react";
+import { Download, Filter, Menu, Settings } from "lucide-react";
 
 interface ExploreHeaderProps {
   onMenuClick?: () => void;
@@ -29,19 +29,20 @@ export const ExploreHeader = ({
     {/* Right side - Actions */}
     <div className="flex items-center gap-2">
       <button
+        type="button"
         onClick={onFilterToggle}
         className={`rounded p-2 hover:bg-gray-100 ${isFilterOpen ? "bg-gray-100" : ""}`}
         title={isFilterOpen ? "Hide filters" : "Show filters"}
       >
         <Filter className="h-5 w-5" />
       </button>
-      <button className="rounded p-2 hover:bg-gray-100" title="Export data">
+      <button type="button" className="rounded p-2 hover:bg-gray-100" title="Export data">
         <Download className="h-5 w-5" />
       </button>
-      <button className="rounded p-2 hover:bg-gray-100" title="Settings">
+      <button type="button" className="rounded p-2 hover:bg-gray-100" title="Settings">
         <Settings className="h-5 w-5" />
       </button>
-      <button onClick={onMenuClick} className="rounded p-2 hover:bg-gray-100 lg:hidden" title="Menu">
+      <button type="button" onClick={onMenuClick} className="rounded p-2 hover:bg-gray-100 lg:hidden" title="Menu">
         <Menu className="h-5 w-5" />
       </button>
     </div>

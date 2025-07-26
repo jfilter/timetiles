@@ -1,13 +1,14 @@
 "use client";
 
 import { BarChart, type BarChartDataItem } from "@workspace/ui/components/charts";
-import { defaultLightTheme, defaultDarkTheme } from "@workspace/ui/components/charts";
+import { defaultDarkTheme, defaultLightTheme } from "@workspace/ui/components/charts";
 import { useTheme } from "next-themes";
 import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
+import { useCallback } from "react";
 
-import type { Event, Dataset, Catalog } from "../payload-types";
+import { useEventsByCatalog, useEventsByDataset } from "@/lib/hooks/use-event-stats";
 
-import { useEventsByDataset, useEventsByCatalog } from "@/lib/hooks/use-event-stats";
+import type { Catalog, Dataset, Event } from "../payload-types";
 
 interface DatasetBarChartProps {
   events: Event[];
@@ -37,29 +38,34 @@ export const DatasetBarChart = ({
 
   const chartData = groupBy === "dataset" ? datasetData : catalogData;
 
-  const handleBarClick = (item: BarChartDataItem) => {
-    if (groupBy === "dataset") {
-      // Toggle dataset selection
-      void setSelectedDatasets((current) => {
-        const metadata = item.metadata as { datasetId: string } | undefined;
-        const datasetId = metadata?.datasetId;
-        if (datasetId == undefined || datasetId == null) return current;
+  const handleBarClick = useCallback(
+    (item: BarChartDataItem) => {
+      if (groupBy === "dataset") {
+        // Toggle dataset selection
+        void setSelectedDatasets((current) => {
+          const metadata = item.metadata as { datasetId: string } | undefined;
+          const datasetId = metadata?.datasetId;
+          if (datasetId == undefined || datasetId == null) return current;
 
-        if (current.includes(datasetId)) {
-          return current.filter((id) => id !== datasetId);
-        } else {
-          return [...current, datasetId];
+          if (current.includes(datasetId)) {
+            return current.filter((id) => id !== datasetId);
+          } else {
+            return [...current, datasetId];
+          }
+        });
+      } else {
+        // Set catalog filter
+        const metadata = item.metadata as { catalogId: string } | undefined;
+        const catalogId = metadata?.catalogId;
+        if (catalogId != null) {
+          void setSelectedCatalog(catalogId);
         }
-      });
-    } else {
-      // Set catalog filter
-      const metadata = item.metadata as { catalogId: string } | undefined;
-      const catalogId = metadata?.catalogId;
-      if (catalogId != null) {
-        void setSelectedCatalog(catalogId);
       }
-    }
-  };
+    },
+    [groupBy, setSelectedDatasets, setSelectedCatalog],
+  );
+
+  const valueFormatter = useCallback((value: number) => value.toLocaleString(), []);
 
   // Generate colors based on theme
   const getBarColor = (index: number) => {
@@ -86,7 +92,7 @@ export const DatasetBarChart = ({
       xLabel=""
       yLabel="Number of Events"
       showValues={true}
-      valueFormatter={(value) => value.toLocaleString()}
+      valueFormatter={valueFormatter}
       maxLabelLength={30}
       sortBy="value"
       sortOrder="desc"

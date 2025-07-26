@@ -1,12 +1,12 @@
 import type { Payload } from "payload";
 import type { Logger } from "pino";
 
-import { TASK_GEOCODING_BATCH } from "../utils/import-helpers";
-import { type JobHandlerContext, type GeocodingBatchJobPayload } from "../utils/job-context";
-
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { GeocodingService } from "@/lib/services/geocoding/geocoding-service";
 import type { Event } from "@/payload-types";
+
+import { TASK_GEOCODING_BATCH } from "../utils/import-helpers";
+import { type GeocodingBatchJobPayload, type JobHandlerContext } from "../utils/job-context";
 
 interface GeocodingResult {
   latitude: number;

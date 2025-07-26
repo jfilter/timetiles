@@ -1,11 +1,11 @@
 import type { Payload } from "payload";
 
+import { createLogger } from "@/lib/logger";
+
 import { CacheManager } from "./cache-manager";
 import { GeocodingOperations } from "./geocoding-operations";
 import { ProviderManager } from "./provider-manager";
 import type { BatchGeocodingResult, GeocodingResult, GeocodingSettings } from "./types";
-
-import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("geocoding-service");
 
@@ -123,5 +123,5 @@ export class GeocodingService {
 }
 
 // Re-export types for convenience
-export type { GeocodingResult, BatchGeocodingResult } from "./types";
+export type { BatchGeocodingResult, GeocodingResult } from "./types";
 export { GeocodingError } from "./types";

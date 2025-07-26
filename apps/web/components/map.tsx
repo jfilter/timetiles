@@ -1,9 +1,10 @@
 "use client";
 
+import "maplibre-gl/dist/maplibre-gl.css";
+
 import maplibregl from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 
-import "maplibre-gl/dist/maplibre-gl.css";
 import { logger } from "@/lib/logger";
 
 interface MapProps {
@@ -16,7 +17,10 @@ interface MapProps {
   }>;
 }
 
-export const MapComponent = ({ onBoundsChange, events = [] }: Readonly<MapProps>) => {
+const DEFAULT_EVENTS: MapProps["events"] = [];
+const MAP_STYLE = { minHeight: "400px" };
+
+export const MapComponent = ({ onBoundsChange, events = DEFAULT_EVENTS }: Readonly<MapProps>) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -78,7 +82,5 @@ export const MapComponent = ({ onBoundsChange, events = [] }: Readonly<MapProps>
     };
   }, [events, isLoaded]);
 
-  return (
-    <div ref={mapContainer} className="h-full w-full" role="region" aria-label="Map" style={{ minHeight: "400px" }} />
-  );
+  return <div ref={mapContainer} className="h-full w-full" role="region" aria-label="Map" style={MAP_STYLE} />;
 };

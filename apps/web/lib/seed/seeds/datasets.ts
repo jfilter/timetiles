@@ -1,6 +1,6 @@
-import { getDatasetsPerCatalog, DATASET_SCHEMAS, getSchemaTypeForCatalog } from "./utils";
-
 import type { Dataset } from "@/payload-types";
+
+import { DATASET_SCHEMAS, getDatasetsPerCatalog, getSchemaTypeForCatalog } from "./utils";
 
 // Use Payload type with specific modifications for seed data
 export type DatasetSeed = Omit<Dataset, "id" | "createdAt" | "updatedAt" | "catalog"> & {

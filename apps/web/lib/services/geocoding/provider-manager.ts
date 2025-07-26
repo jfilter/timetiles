@@ -1,11 +1,11 @@
 import NodeGeocoder, { type Options } from "node-geocoder";
 import type { Payload } from "payload";
 
-import type { GeocodingSettings, ProviderConfig } from "./types";
-import { NOMINATIM_BASE_URL } from "./types";
-
 import { createLogger } from "@/lib/logger";
 import type { GeocodingProvider } from "@/payload-types";
+
+import type { GeocodingSettings, ProviderConfig } from "./types";
+import { NOMINATIM_BASE_URL } from "./types";
 
 const logger = createLogger("geocoding-provider-manager");
 
