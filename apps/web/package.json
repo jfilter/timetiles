@@ -24,6 +24,7 @@
     "test:watch": "NODE_OPTIONS=\"--no-warnings\" vitest",
     "test:coverage": "NODE_OPTIONS=\"--no-warnings\" vitest run --coverage",
     "test:e2e": "playwright test",
+    "test:e2e:debug": "playwright test --debug --headed",
     "test:unit": "NODE_OPTIONS=\"--no-warnings\" vitest run --reporter=basic --silent",
     "test:all": "pnpm test:unit && pnpm test:e2e"
   },

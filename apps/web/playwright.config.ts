@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// Set test database URL at config level so it's available to both tests and webServer
+process.env.DATABASE_URL = "postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test";
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -26,7 +29,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:3002",
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: "on-first-retry",
     /* Take screenshot on failure */
@@ -81,9 +84,12 @@ export default defineConfig({
     process.env.CI != null && process.env.CI !== ""
       ? undefined // In CI, the server is already running
       : {
-          command: "next dev",
-          url: "http://localhost:3000",
+          command: "next dev --port 3002",
+          url: "http://localhost:3002/explore", // Test against the explore page
           reuseExistingServer: true,
-          timeout: 120 * 1000,
+          timeout: 15 * 1000, // Give more time for database setup
+          env: {
+            DATABASE_URL: "postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test",
+          },
         },
 });
