@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { execSync } = require("child_process");
 
 // Load environment variables from .env.local
 function loadEnvFile() {
@@ -18,6 +19,83 @@ function loadEnvFile() {
 }
 
 loadEnvFile();
+
+async function checkLatestCommitAnalyzed() {
+  const token = process.env.SONARCLOUD_TOKEN;
+  const projectKey = process.env.SONARCLOUD_PROJECT_KEY;
+
+  if (!token) {
+    throw new Error("SONARCLOUD_TOKEN environment variable is required");
+  }
+
+  if (!projectKey) {
+    throw new Error("SONARCLOUD_PROJECT_KEY environment variable is required");
+  }
+
+  try {
+    // Get latest commit SHA from GitHub
+    const latestCommitSha = execSync("git rev-parse HEAD", { encoding: "utf8" }).trim();
+    console.log(`Latest commit SHA: ${latestCommitSha}`);
+
+    // Get latest analysis from SonarCloud
+    const analysisUrl = `https://sonarcloud.io/api/project_analyses/search?project=${projectKey}&ps=1`;
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      "User-Agent": "Node.js SonarCloud Client",
+    };
+
+    console.log("Checking SonarCloud for latest analysis...");
+    const response = await fetch(analysisUrl, {
+      method: "GET",
+      headers: headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status} - ${await response.text()}`);
+    }
+
+    const data = await response.json();
+    const analyses = data.analyses || [];
+
+    if (analyses.length === 0) {
+      console.log("⚠️  No analyses found in SonarCloud");
+      return {
+        isAnalyzed: false,
+        latestCommitSha,
+        message: "No analyses found in SonarCloud"
+      };
+    }
+
+    const latestAnalysis = analyses[0];
+    const analyzedCommitSha = latestAnalysis.revision;
+    const analysisDate = latestAnalysis.date;
+
+    console.log(`Latest analyzed commit: ${analyzedCommitSha}`);
+    console.log(`Analysis date: ${analysisDate}`);
+
+    const isAnalyzed = latestCommitSha === analyzedCommitSha;
+
+    if (isAnalyzed) {
+      console.log("✅ Latest commit has been analyzed by SonarCloud");
+    } else {
+      console.log("❌ Latest commit has NOT been analyzed by SonarCloud yet");
+    }
+
+    return {
+      isAnalyzed,
+      latestCommitSha,
+      analyzedCommitSha,
+      analysisDate,
+      message: isAnalyzed 
+        ? "Latest commit has been analyzed" 
+        : "Latest commit is pending analysis"
+    };
+
+  } catch (error) {
+    console.error("❌ Error checking commit analysis status:", error.message);
+    throw error;
+  }
+}
 
 async function fetchAllSonarCloudIssues() {
   // Get configuration from environment variables
@@ -187,14 +265,36 @@ async function saveForClaudeCode() {
 
 // Run the script
 if (require.main === module) {
-  saveForClaudeCode()
-    .then(() => {
-      console.log("\n🎉 All done! You can now share the JSON file with Claude Code.");
-    })
-    .catch((error) => {
-      console.error("Failed:", error);
-      process.exit(1);
-    });
+  const args = process.argv.slice(2);
+  
+  if (args.includes("--check-analysis") || args.includes("-c")) {
+    // Just check if latest commit is analyzed
+    checkLatestCommitAnalyzed()
+      .then((result) => {
+        console.log("\n📋 Analysis Status Summary:");
+        console.log(`Status: ${result.isAnalyzed ? "✅ ANALYZED" : "❌ PENDING"}`);
+        console.log(`Message: ${result.message}`);
+        if (result.analyzedCommitSha) {
+          console.log(`Analyzed commit: ${result.analyzedCommitSha}`);
+          console.log(`Analysis date: ${result.analysisDate}`);
+        }
+        process.exit(result.isAnalyzed ? 0 : 1);
+      })
+      .catch((error) => {
+        console.error("Failed:", error);
+        process.exit(1);
+      });
+  } else {
+    // Default behavior: fetch issues
+    saveForClaudeCode()
+      .then(() => {
+        console.log("\n🎉 All done! You can now share the JSON file with Claude Code.");
+      })
+      .catch((error) => {
+        console.error("Failed:", error);
+        process.exit(1);
+      });
+  }
 }
 
-module.exports = { fetchAllSonarCloudIssues, saveForClaudeCode };
+module.exports = { fetchAllSonarCloudIssues, saveForClaudeCode, checkLatestCommitAnalyzed };
