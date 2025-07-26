@@ -226,6 +226,13 @@ export const getDatasetsPerCatalog = (catalogIndex: number, catalogType: string)
 export const getEventsPerDataset = (datasetIndex: number, datasetName: string): number => {
   const name = datasetName.toLowerCase();
 
+  // Detect CI environment - dramatically reduce data volume
+  const isCI = process.env.CI === "true";
+
+  if (isCI) {
+    return Math.min(3, 1 + (datasetIndex % 3)); // 1-3 events max for CI
+  }
+
   // Large datasets (national/state level)
   if (name.includes("national") || name.includes("federal") || name.includes("state")) {
     return 50 + ((datasetIndex * 10) % 51); // 50-100 events

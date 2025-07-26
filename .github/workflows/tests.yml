@@ -63,6 +63,7 @@ jobs:
           done
 
       - name: Build and check code quality
+        timeout-minutes: 10
         run: |
           cd apps/web && pnpm payload:migrate
           cd ../.. && pnpm build
@@ -74,6 +75,7 @@ jobs:
         working-directory: apps/web
 
       - name: Setup E2E environment
+        timeout-minutes: 10
         run: |
           pnpm playwright install chromium --with-deps
           pnpm payload:migrate
@@ -82,6 +84,7 @@ jobs:
         working-directory: apps/web
 
       - name: Start server and run E2E tests
+        timeout-minutes: 15
         run: |
           # Start server
           nohup pnpm start > server.log 2>&1 &

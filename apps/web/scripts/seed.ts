@@ -29,6 +29,8 @@ Examples:
   }
 
   const seedManager = createSeedManager();
+  const isCI = process.env.CI === "true";
+  const TOTAL_TIMEOUT = isCI ? 5 * 60 * 1000 : 15 * 60 * 1000; // 5 minutes for CI, 15 for local
 
   try {
     if (command === "help") {
@@ -50,7 +52,14 @@ Examples:
     } else if (command === "truncate") {
       const collections = args.slice(1);
       logger.info({ collections }, "Starting truncate operation");
-      await seedManager.truncate(collections);
+
+      // Add timeout protection for truncate operations
+      await Promise.race([
+        seedManager.truncate(collections),
+        new Promise((resolve, reject) =>
+          setTimeout(() => reject(new Error(`Truncate operation timeout after ${TOTAL_TIMEOUT}ms`)), TOTAL_TIMEOUT),
+        ),
+      ]);
     } else {
       // Default to seed command
       let environment = "development";
@@ -66,12 +75,19 @@ Examples:
         }
       }
 
-      logger.info({ environment, collections }, "Starting seed operation");
-      await seedManager.seed({
-        environment: environment as "development" | "test" | "production",
-        collections: collections.length > 0 ? collections : undefined,
-        truncate: false,
-      });
+      logger.info({ environment, collections, isCI, timeout: `${TOTAL_TIMEOUT}ms` }, "Starting seed operation");
+
+      // Add timeout protection for seed operations
+      await Promise.race([
+        seedManager.seed({
+          environment: environment as "development" | "test" | "production",
+          collections: collections.length > 0 ? collections : undefined,
+          truncate: false,
+        }),
+        new Promise((resolve, reject) =>
+          setTimeout(() => reject(new Error(`Seed operation timeout after ${TOTAL_TIMEOUT}ms`)), TOTAL_TIMEOUT),
+        ),
+      ]);
     }
   } catch (error) {
     logError(error, "Seed operation failed", { command, args });

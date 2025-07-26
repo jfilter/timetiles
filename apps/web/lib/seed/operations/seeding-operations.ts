@@ -1,8 +1,10 @@
-import { DataProcessing } from "./data-processing";
-import { QueryBuilders } from "./query-builders";
+import { createLogger } from "@/lib/logger";
+import { logError } from "@/lib/logger";
+import type { Config } from "@/payload-types";
+
 import { getDependencyOrder } from "../relationship-config";
-import type { SeedManager } from "../seed-manager";
 import type { CollectionConfig } from "../seed.config";
+import type { SeedManager } from "../seed-manager";
 import { catalogSeeds } from "../seeds/catalogs";
 import { datasetSeeds } from "../seeds/datasets";
 import { eventSeeds } from "../seeds/events";
@@ -11,10 +13,8 @@ import { mainMenuSeed } from "../seeds/main-menu";
 import { pagesSeed } from "../seeds/pages";
 import { userSeeds } from "../seeds/users";
 import type { SeedData } from "../types";
-
-import { createLogger } from "@/lib/logger";
-import { logError } from "@/lib/logger";
-import type { Config } from "@/payload-types";
+import { DataProcessing } from "./data-processing";
+import { QueryBuilders } from "./query-builders";
 
 const logger = createLogger("seed");
 const PAYLOAD_NOT_INITIALIZED_ERROR = "Payload not initialized";
@@ -140,43 +140,137 @@ export class SeedingOperations {
     environment: string,
     config: CollectionConfig,
   ): Promise<void> {
-    for (const resolvedItem of resolvedSeedData) {
-      try {
-        // For test environment, add timestamp to slug to ensure uniqueness
-        if (environment == "test" && resolvedItem.slug != null && resolvedItem.slug != undefined) {
-          resolvedItem.slug = this.dataProcessing.generateTestSlug(resolvedItem.slug);
-        }
+    const BATCH_SIZE = 10; // Process in smaller batches
+    const isCI = process.env.CI === "true";
 
-        // Check if item already exists to avoid duplicate key errors
-        const existingItem = await this.findExistingItem(collectionName, resolvedItem);
-        if (existingItem != null && existingItem != undefined) {
-          const displayName = this.queryBuilders.getDisplayName(resolvedItem);
-          logger.debug(
-            { collection: collectionName, displayName },
-            `Skipping existing ${collectionName} item: ${displayName}`,
-          );
-          continue;
-        }
+    // Process in batches to prevent overwhelming the database
+    for (let i = 0; i < resolvedSeedData.length; i += BATCH_SIZE) {
+      const batch = resolvedSeedData.slice(i, i + BATCH_SIZE);
+      this.logBatchProgress(collectionName, i, batch.length, resolvedSeedData.length, BATCH_SIZE);
 
-        const payload = this.seedManager.payloadInstance;
-        if (!payload) {
-          throw new Error(PAYLOAD_NOT_INITIALIZED_ERROR);
-        }
-        await payload.create({
-          collection: collectionName as keyof Config["collections"],
-          data: resolvedItem,
-        });
-
-        const displayName = this.queryBuilders.getDisplayName(resolvedItem);
-        logger.debug({ collection: collectionName, displayName }, `Created ${collectionName} item: ${displayName}`);
-      } catch (error) {
-        logError(error, `Failed to create ${collectionName} item`, {
-          collection: collectionName,
-          item: resolvedItem,
-          config,
-        });
-      }
+      await this.processBatch(batch, collectionName, environment, config, isCI);
+      await this.delayBetweenBatches(i, BATCH_SIZE, resolvedSeedData.length, isCI);
     }
+  }
+
+  private logBatchProgress(
+    collectionName: string,
+    batchStart: number,
+    batchSize: number,
+    totalItems: number,
+    BATCH_SIZE: number,
+  ): void {
+    logger.debug(
+      { collection: collectionName, batchStart, batchSize },
+      `Processing batch ${Math.floor(batchStart / BATCH_SIZE) + 1}/${Math.ceil(totalItems / BATCH_SIZE)}`,
+    );
+  }
+
+  private async processBatch(
+    batch: Record<string, unknown>[],
+    collectionName: string,
+    environment: string,
+    config: CollectionConfig,
+    isCI: boolean,
+  ): Promise<void> {
+    for (const resolvedItem of batch) {
+      await this.createItemWithErrorHandling(resolvedItem, collectionName, environment, config, isCI);
+    }
+  }
+
+  private async createItemWithErrorHandling(
+    resolvedItem: Record<string, unknown>,
+    collectionName: string,
+    environment: string,
+    config: CollectionConfig,
+    isCI: boolean,
+  ): Promise<void> {
+    const OPERATION_TIMEOUT = 30000; // 30 second timeout per item
+
+    try {
+      const createItemPromise = this.createSingleItem(resolvedItem, collectionName, environment);
+
+      if (isCI) {
+        await Promise.race([
+          createItemPromise,
+          new Promise((resolve, reject) =>
+            setTimeout(
+              () => reject(new Error(`Timeout creating ${collectionName} item after ${OPERATION_TIMEOUT}ms`)),
+              OPERATION_TIMEOUT,
+            ),
+          ),
+        ]);
+      } else {
+        await createItemPromise;
+      }
+    } catch (error) {
+      this.handleCreateItemError(error, collectionName, resolvedItem, config, isCI);
+    }
+  }
+
+  private handleCreateItemError(
+    error: unknown,
+    collectionName: string,
+    resolvedItem: Record<string, unknown>,
+    config: CollectionConfig,
+    isCI: boolean,
+  ): void {
+    logError(error, `Failed to create ${collectionName} item`, {
+      collection: collectionName,
+      item: resolvedItem,
+      config,
+    });
+
+    // In CI, fail fast on persistent errors
+    if (isCI && error instanceof Error && error.message.includes("Timeout")) {
+      logger.error(`CI timeout detected, aborting ${collectionName} seeding`);
+      throw error;
+    }
+  }
+
+  private async delayBetweenBatches(
+    currentIndex: number,
+    BATCH_SIZE: number,
+    totalItems: number,
+    isCI: boolean,
+  ): Promise<void> {
+    if (currentIndex + BATCH_SIZE < totalItems) {
+      await new Promise((resolve) => setTimeout(resolve, isCI ? 50 : 100));
+    }
+  }
+
+  private async createSingleItem(
+    resolvedItem: Record<string, unknown>,
+    collectionName: string,
+    environment: string,
+  ): Promise<void> {
+    // For test environment, add timestamp to slug to ensure uniqueness
+    if (environment == "test" && resolvedItem.slug != null && resolvedItem.slug != undefined) {
+      resolvedItem.slug = this.dataProcessing.generateTestSlug(resolvedItem.slug);
+    }
+
+    // Check if item already exists to avoid duplicate key errors
+    const existingItem = await this.findExistingItem(collectionName, resolvedItem);
+    if (existingItem != null && existingItem != undefined) {
+      const displayName = this.queryBuilders.getDisplayName(resolvedItem);
+      logger.debug(
+        { collection: collectionName, displayName },
+        `Skipping existing ${collectionName} item: ${displayName}`,
+      );
+      return;
+    }
+
+    const payload = this.seedManager.payloadInstance;
+    if (!payload) {
+      throw new Error(PAYLOAD_NOT_INITIALIZED_ERROR);
+    }
+    await payload.create({
+      collection: collectionName as keyof Config["collections"],
+      data: resolvedItem,
+    });
+
+    const displayName = this.queryBuilders.getDisplayName(resolvedItem);
+    logger.debug({ collection: collectionName, displayName }, `Created ${collectionName} item: ${displayName}`);
   }
 
   private async findExistingItem(collection: string, item: Record<string, unknown>) {
