@@ -9,5 +9,9 @@
   "scripts": {
     "lint": "eslint . --ext .ts,.tsx --cache",
     "format": "eslint . --ext .ts,.tsx,.js,.jsx --cache --fix --quiet && prettier --write . --log-level error"
+  },
+  "devDependencies": {
+    "eslint": "^9.31.0",
+    "prettier": "^3.6.2"
   }
 }
