@@ -1,3 +1,11 @@
+/**
+ * @module This file contains the seed data for the Datasets collection.
+ *
+ * It defines a set of predefined dataset entries that are organized under the catalogs
+ * created in `catalogs.ts`. The data is generated programmatically based on templates
+ * to ensure a realistic and consistent set of datasets for different environments.
+ * This approach allows for easy scaling and variation of the seed data.
+ */
 import type { Dataset } from "@/payload-types";
 
 import { DATASET_SCHEMAS, getDatasetsPerCatalog, getSchemaTypeForCatalog } from "./utils";
@@ -134,9 +142,8 @@ const createDatasetFromTemplate = (
     slug: `${catalog.slug}-${template.slug}`,
     catalog: catalog.slug,
     language: "eng",
-    status: isArchived ? "archived" : "active",
+    _status: isArchived ? "draft" : "published",
     isPublic: catalog.type !== "community", // Community datasets are private
-    schema: schema,
     metadata: {
       update_frequency: isArchived ? "none" : getUpdateFrequency(catalog.type),
       data_source: getDataSource(catalog.type),

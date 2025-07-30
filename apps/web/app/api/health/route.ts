@@ -1,3 +1,14 @@
+/**
+ * API route for running application health checks.
+ *
+ * It provides an endpoint that executes a series of checks on critical system components,
+ * such as environment variables, database connectivity, and service availability. The route
+ * returns a JSON response with the status of each check, which can be used for monitoring,
+ * automated testing, and production readiness assessments.
+ * 
+ * @category API Routes
+ * @module
+ */
 import { NextResponse } from "next/server";
 
 import { runHealthChecks } from "@/lib/health";
@@ -42,6 +53,15 @@ const createErrorResponse = (error: unknown) => ({
   },
 });
 
+/**
+ * Health Check API Endpoint
+ *
+ * Executes comprehensive health checks on critical system components including
+ * environment variables, database connectivity, migrations status, and service
+ * availability. Returns JSON response with detailed status of each check.
+ *
+ * @returns Promise resolving to NextResponse with health check results or error details
+ */
 export const GET = async () => {
   logger.info("Health check endpoint called");
 

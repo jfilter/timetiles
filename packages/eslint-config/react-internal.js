@@ -1,41 +1,31 @@
-import js from "@eslint/js"
-import eslintConfigPrettier from "eslint-config-prettier"
-import pluginReact from "eslint-plugin-react"
-import pluginReactHooks from "eslint-plugin-react-hooks"
-import globals from "globals"
-import tseslint from "typescript-eslint"
+/**
+ * @module This file contains the ESLint configuration for internal React packages.
+ *
+ * It extends the base configuration and adds React-specific rules, including those
+ * from the React Compiler and performance-related plugins. This configuration is
+ * intended for internal UI packages and components within the monorepo.
+ */
+import reactCompiler from "eslint-plugin-react-compiler";
+import reactPerf from "eslint-plugin-react-perf";
 
-import baseConfig from "./base.js"
+import baseConfig from "./base.js";
 
 /**
- * A custom ESLint configuration for libraries that use React.
- *
- * @type {import("eslint").Linter.Config} */
+ * @type {import("eslint").Linter.Config}
+ */
 export default [
   ...baseConfig,
-  js.configs.recommended,
-  eslintConfigPrettier,
-  ...tseslint.configs.recommended,
-  pluginReact.configs.flat.recommended,
   {
-    languageOptions: {
-      ...pluginReact.configs.flat.recommended.languageOptions,
-      globals: {
-        ...globals.serviceworker,
-        ...globals.browser,
-      },
-    },
-  },
-  {
+    files: ["**/*.ts", "**/*.tsx"],
     plugins: {
-      "react-hooks": pluginReactHooks,
+      "react-compiler": reactCompiler,
+      "react-perf": reactPerf,
     },
-    settings: { react: { version: "detect" } },
     rules: {
-      ...pluginReactHooks.configs.recommended.rules,
-      // React scope no longer necessary with new JSX transform.
-      "react/react-in-jsx-scope": "off",
-      "react/prop-types": "off",
+      "react-compiler/react-compiler": "error",
+      "react-perf/jsx-no-new-object-as-prop": "error",
+      "react-perf/jsx-no-new-array-as-prop": "error",
+      "react-perf/jsx-no-new-function-as-prop": "error",
     },
   },
-]
+];

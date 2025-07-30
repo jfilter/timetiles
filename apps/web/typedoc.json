@@ -1,0 +1,36 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "./lib/**/*.ts",
+    "./app/api/**/*.ts"
+  ],
+  "out": "../docs/pages/developers/api",
+  "plugin": ["typedoc-plugin-markdown"],
+  "readme": "none",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "includeVersion": false,
+  "disableSources": false,
+  "gitRevision": "main",
+  "sort": ["source-order"],
+  "categorizeByGroup": true,
+  "defaultCategory": "Other",
+  "categoryOrder": ["Collections", "Services", "Job Handlers", "API Routes", "React Hooks", "Utilities", "Constants", "Types", "*"],
+  "searchInComments": true,
+  "searchCategoryBoosts": {
+    "Collections": 2.0,
+    "Services": 1.8,
+    "Job Handlers": 1.6,
+    "API Routes": 1.4,
+    "React Hooks": 1.2
+  },
+  "cleanOutputDir": true,
+  "skipErrorChecking": true,
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "allowJs": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
+  }
+}

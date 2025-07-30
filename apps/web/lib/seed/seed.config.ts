@@ -1,4 +1,18 @@
 /**
+ * @module This file defines the centralized configuration for the database seeding system.
+ *
+ * It provides a structured way to manage all aspects of seeding, including:
+ * - How many documents to create for each collection, with environment-specific counts.
+ * - Which collections are enabled or disabled for different environments (e.g., development, test).
+ * - The dependency order between collections to ensure data integrity.
+ * - Overrides for specific collections in different environments.
+ * - Configuration for custom data generators to create more realistic seed data.
+ *
+ * This configuration-driven approach makes the seeding process flexible, maintainable,
+ * and easy to adapt for various scenarios.
+ */
+
+/**
  * Configuration-Driven Seeding System
  *
  * This configuration file centralizes all seeding behavior, making it easy to:
@@ -113,7 +127,7 @@ export const SEED_CONFIG: SeedConfiguration = {
       count: (env) => {
         switch (env) {
           case "development":
-            return 18; // 3 per catalog type
+            return 18; // 3 per catalog
           case "test":
             return 9; // 3 per base catalog
           case "production":
@@ -153,8 +167,8 @@ export const SEED_CONFIG: SeedConfiguration = {
       },
     },
 
-    // Imports - depend on catalogs, operational data
-    imports: {
+    // Import Files - depend on catalogs, operational data
+    "import-files": {
       count: (env) => {
         switch (env) {
           case "development":
@@ -162,7 +176,7 @@ export const SEED_CONFIG: SeedConfiguration = {
           case "test":
             return 6; // 2 per base catalog
           case "production":
-            return 0; // No seed imports
+            return 0; // No seed import files
           default:
             return 2;
         }
@@ -171,6 +185,26 @@ export const SEED_CONFIG: SeedConfiguration = {
       options: {
         generateSampleFiles: true,
         includeFailedImports: true,
+      },
+    },
+
+    // Import Jobs - depend on import files and datasets
+    "import-jobs": {
+      count: (env) => {
+        switch (env) {
+          case "development":
+            return 12; // 1 per import file
+          case "test":
+            return 6; // 1 per import file
+          case "production":
+            return 0; // No seed import jobs
+          default:
+            return 2;
+        }
+      },
+      dependencies: ["import-files", "datasets"],
+      options: {
+        generateProgressData: true,
       },
     },
 
@@ -205,7 +239,16 @@ export const SEED_CONFIG: SeedConfiguration = {
 
   environments: {
     development: {
-      enabled: ["users", "catalogs", "datasets", "events", "imports", "location-cache", GEOCODING_PROVIDERS_COLLECTION],
+      enabled: [
+        "users",
+        "catalogs",
+        "datasets",
+        "events",
+        "import-files",
+        "import-jobs",
+        "location-cache",
+        GEOCODING_PROVIDERS_COLLECTION,
+      ],
       overrides: {
         events: {
           customGenerator: "realistic-temporal-spatial-patterns",
@@ -231,7 +274,16 @@ export const SEED_CONFIG: SeedConfiguration = {
     },
 
     test: {
-      enabled: ["users", "catalogs", "datasets", "events", "imports", "location-cache", GEOCODING_PROVIDERS_COLLECTION],
+      enabled: [
+        "users",
+        "catalogs",
+        "datasets",
+        "events",
+        "import-files",
+        "import-jobs",
+        "location-cache",
+        GEOCODING_PROVIDERS_COLLECTION,
+      ],
       overrides: {
         events: {
           customGenerator: "simple-patterns",

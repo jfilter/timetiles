@@ -1,65 +1,43 @@
-import { lexicalEditor } from "@payloadcms/richtext-lexical";
+/**
+ * Defines the Payload CMS collection configuration for Catalogs.
+ *
+ * A Catalog is a high-level container for organizing related datasets.
+ * It provides a way to group data from different sources under a common theme or project.
+ * This collection stores basic metadata for each catalog, such as its name, description, and public visibility.
+ * 
+ * @category Collections
+ * @module
+ */
 import type { CollectionConfig } from "payload";
 
-import { createSlugHook } from "../utils/slug";
+import { basicMetadataFields, createCommonConfig, createSlugField } from "./shared-fields";
 
 const Catalogs: CollectionConfig = {
   slug: "catalogs",
+  ...createCommonConfig(),
   admin: {
     useAsTitle: "name",
-    defaultColumns: ["name", "status", "createdAt"],
+    defaultColumns: ["name", "isPublic"],
   },
   access: {
     read: () => true,
     create: () => true,
     update: () => true,
     delete: () => true,
+    readVersions: () => true,
   },
   fields: [
+    ...basicMetadataFields,
+    createSlugField("catalogs"),
     {
-      name: "name",
-      type: "text",
-      required: true,
-      maxLength: 255,
-    },
-    {
-      name: "description",
-      type: "richText",
-      editor: lexicalEditor({}),
-    },
-    {
-      name: "slug",
-      type: "text",
-      maxLength: 255,
-      unique: true,
-      admin: {
-        position: "sidebar",
-        description: "URL-friendly identifier (auto-generated from name if not provided)",
-      },
-      hooks: {
-        beforeValidate: [createSlugHook("catalogs")],
-      },
-    },
-    {
-      name: "status",
-      type: "select",
-      options: [
-        {
-          label: "Active",
-          value: "active",
-        },
-        {
-          label: "Archived",
-          value: "archived",
-        },
-      ],
-      defaultValue: "active",
+      name: "isPublic",
+      type: "checkbox",
+      defaultValue: false,
       admin: {
         position: "sidebar",
       },
     },
   ],
-  timestamps: true,
 };
 
 export default Catalogs;

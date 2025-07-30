@@ -12,8 +12,8 @@ export default defineConfig({
     setupFiles: ["tests/setup/setup.ts"],
     testTimeout: 15000,
     hookTimeout: 15000,
-    reporters: ["basic"],
-    silent: true,
+    reporters: ["verbose"],
+    silent: false,
     // Reduce console output noise
     logHeapUsage: false,
     coverage: {

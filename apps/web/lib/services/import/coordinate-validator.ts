@@ -1,3 +1,13 @@
+/**
+ * @module Provides a service for validating and normalizing geographic coordinates.
+ *
+ * This class encapsulates the logic for robustly handling coordinate data. It can:
+ * - Validate if latitude and longitude values are within their correct ranges.
+ * - Detect and optionally correct common errors, such as swapped latitude and longitude.
+ * - Identify suspicious values, like (0,0).
+ * - Extract coordinate pairs from a single combined field (e.g., "lat, lon" or GeoJSON).
+ * - Parse coordinates from various string formats (e.g., DMS, decimal degrees).
+ */
 import { logger } from "@/lib/logger";
 
 export interface ValidatedCoordinates {

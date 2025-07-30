@@ -1,10 +1,10 @@
 #!/usr/bin/env tsx
 
 /**
- * Type Validation Script
+ * Payload Generated Files Validation Script
  *
- * This script validates that Payload types are in sync with the collection definitions.
- * Run this in CI/CD to ensure types are always up-to-date.
+ * This script validates that Payload-generated types and database schema are in sync
+ * with the collection definitions. Run this in CI/CD to ensure generated files are always up-to-date.
  */
 
 import { execSync } from "child_process";
@@ -12,54 +12,86 @@ import fs from "fs";
 
 import { createLogger, logError } from "../lib/logger.js";
 
-const logger = createLogger("type-validation");
+const logger = createLogger("payload-validation");
 
 const validateTypes = () => {
-  logger.info("🔍 Validating Payload types are in sync...");
-  logger.info("Starting type validation process");
+  logger.info("🔍 Validating Payload generated files are in sync...");
+  logger.info("Starting validation process for types and schema");
 
   const typesFile = "./payload-types.ts";
-  const backupFile = "./payload-types.backup.ts";
+  const typesBackupFile = "./payload-types.backup.ts";
+  const schemaFile = "./payload-generated-schema.ts";
+  const schemaBackupFile = "./payload-generated-schema.backup.ts";
 
   try {
-    // Backup current types
+    // Backup current files
     if (fs.existsSync(typesFile)) {
-      fs.copyFileSync(typesFile, backupFile);
+      fs.copyFileSync(typesFile, typesBackupFile);
+    }
+    if (fs.existsSync(schemaFile)) {
+      fs.copyFileSync(schemaFile, schemaBackupFile);
     }
 
-    // Generate fresh types
-    logger.debug("Generating fresh types");
+    // Generate fresh files
+    logger.debug("Generating fresh types and schema");
     execSync("payload generate:types", { stdio: "pipe" }); // Suppress command output
+    execSync("payload generate:db-schema", { stdio: "pipe" }); // Suppress command output
 
-    // Compare with backup
-    if (fs.existsSync(backupFile)) {
-      const originalContent = fs.readFileSync(backupFile, "utf8");
-      const newContent = fs.readFileSync(typesFile, "utf8");
+    // Compare files with backups
+    let hasChanges = false;
 
-      if (originalContent !== newContent) {
+    // Check types
+    if (fs.existsSync(typesBackupFile)) {
+      const originalTypesContent = fs.readFileSync(typesBackupFile, "utf8");
+      const newTypesContent = fs.readFileSync(typesFile, "utf8");
+
+      if (originalTypesContent !== newTypesContent) {
         logger.error("Types are out of sync with collection definitions");
-        logger.error("❌ Types are out of sync!");
-        logger.error('Run "pnpm payload:generate" to update types.');
-        process.exit(1);
+        hasChanges = true;
       }
     }
 
-    logger.info("✅ Types are in sync!");
-    logger.info("Type validation completed successfully");
+    // Check schema
+    if (fs.existsSync(schemaBackupFile)) {
+      const originalSchemaContent = fs.readFileSync(schemaBackupFile, "utf8");
+      const newSchemaContent = fs.readFileSync(schemaFile, "utf8");
+
+      if (originalSchemaContent !== newSchemaContent) {
+        logger.error("Database schema is out of sync with collection definitions");
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      logger.error("❌ Generated files are out of sync!");
+      logger.error('Run "pnpm payload:generate" and "pnpm payload:generate-schema" to update files.');
+      process.exit(1);
+    }
+
+    logger.info("✅ Generated files are in sync!");
+    logger.info("Validation completed successfully");
 
     // Cleanup
-    if (fs.existsSync(backupFile)) {
-      fs.unlinkSync(backupFile);
+    if (fs.existsSync(typesBackupFile)) {
+      fs.unlinkSync(typesBackupFile);
+    }
+    if (fs.existsSync(schemaBackupFile)) {
+      fs.unlinkSync(schemaBackupFile);
     }
   } catch (error) {
-    logError(error, "Type validation failed");
-    logger.error("❌ Type validation failed");
+    logError(error, "Validation failed");
+    logger.error("❌ Validation failed");
 
-    // Restore backup if it exists
-    if (fs.existsSync(backupFile)) {
+    // Restore backups if they exist
+    if (fs.existsSync(typesBackupFile)) {
       logger.info("Restoring backup types file");
-      fs.copyFileSync(backupFile, typesFile);
-      fs.unlinkSync(backupFile);
+      fs.copyFileSync(typesBackupFile, typesFile);
+      fs.unlinkSync(typesBackupFile);
+    }
+    if (fs.existsSync(schemaBackupFile)) {
+      logger.info("Restoring backup schema file");
+      fs.copyFileSync(schemaBackupFile, schemaFile);
+      fs.unlinkSync(schemaBackupFile);
     }
 
     process.exit(1);

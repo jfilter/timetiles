@@ -3,6 +3,7 @@ import type { Event } from "@/payload-types";
 export const createMockEvent = (overrides: Partial<Event> = {}): Event => ({
   id: 1,
   dataset: 1,
+  uniqueId: "test-event-1",
   data: {
     title: "Test Event",
     description: "A test event description",
@@ -27,6 +28,7 @@ export const createMockEvents = (count: number = 3): Event[] => {
     createMockEvent({
       id: i + 1,
       dataset: 1,
+      uniqueId: `test-event-${i + 1}`,
       data: {
         title: `Test Event ${i + 1}`,
         description: `Description for event ${i + 1}`,

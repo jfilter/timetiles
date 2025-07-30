@@ -28,7 +28,7 @@ export const createMockCatalog = (overrides: Partial<Catalog> = {}): Catalog => 
   name: "Test Catalog",
   description: createRichTextDescription("A test catalog description"),
   slug: "test-catalog",
-  status: "active" as const,
+  _status: "published" as const,
   createdAt: "2024-01-01T00:00:00Z",
   updatedAt: "2024-01-01T00:00:00Z",
   ...overrides,

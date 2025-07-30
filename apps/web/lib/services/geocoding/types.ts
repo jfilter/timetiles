@@ -1,3 +1,17 @@
+/**
+ * @module Defines the core TypeScript types, interfaces, and constants for the geocoding service.
+ *
+ * This file serves as a central repository for the data structures and contracts used throughout
+ * the geocoding system. It ensures type safety and consistency across different modules,
+ * including the main service, provider manager, cache manager, and operations.
+ *
+ * It defines:
+ * - The structure of a geocoding result.
+ * - The shape of batch geocoding results.
+ * - A custom `GeocodingError` class for standardized error handling.
+ * - Configuration interfaces for providers and the overall service settings.
+ * - Shared constants like collection slugs and default URLs.
+ */
 import type NodeGeocoder from "node-geocoder";
 
 import type { LocationCache } from "@/payload-types";

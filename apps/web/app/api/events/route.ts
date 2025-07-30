@@ -1,3 +1,13 @@
+/**
+ * This file defines the main API route for fetching event data.
+ *
+ * It provides a flexible endpoint that allows clients to retrieve events based on a variety
+ * of filters, including catalog, datasets, geographic bounds, and date ranges. The handler
+ * constructs a dynamic `Where` clause for the Payload query based on the provided
+ * search parameters. The results are then serialized into a clean, consistent format
+ * for the client.
+ * @module
+ */
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import type { Where } from "payload";

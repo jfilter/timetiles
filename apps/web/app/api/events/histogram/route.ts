@@ -1,3 +1,13 @@
+/**
+ * This file defines the API route for generating a temporal histogram of events.
+ *
+ * It accepts a set of filters (such as catalog, datasets, date range, and geographic bounds)
+ * and uses a custom PostgreSQL function (`calculate_event_histogram`) to efficiently aggregate
+ * event counts over a specified time interval (e.g., daily, weekly). This is used to power
+ * the date histogram chart in the application, providing a performance-optimized way to
+ * visualize the distribution of events over time.
+ * @module
+ */
 import { sql } from "@payloadcms/db-postgres";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";

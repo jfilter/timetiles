@@ -1,7 +1,21 @@
+/**
+ * @module Defines the Payload CMS collection configuration for the Location Cache.
+ *
+ * This collection serves as a cache for geocoding results to reduce redundant API calls
+ * to external services and improve performance. When an address is successfully geocoded,
+ * the result is stored here.
+ *
+ * Before attempting to geocode a new address, the system first checks this collection
+ * for a matching entry. This collection stores the original address, the resulting coordinates,
+ * the provider that supplied the data, and other useful metadata like usage statistics.
+ */
 import type { CollectionConfig } from "payload";
+
+import { createCommonConfig, isEditorOrAdmin } from "./shared-fields";
 
 const LocationCache: CollectionConfig = {
   slug: "location-cache",
+  ...createCommonConfig(),
   admin: {
     useAsTitle: "originalAddress",
     defaultColumns: ["originalAddress", "provider", "confidence", "hitCount", "lastUsed"],
@@ -11,9 +25,9 @@ const LocationCache: CollectionConfig = {
   },
   access: {
     read: () => true,
-    create: () => true,
-    update: () => true,
-    delete: () => true,
+    create: () => false,
+    update: () => false,
+    delete: isEditorOrAdmin,
   },
   fields: [
     {
@@ -149,7 +163,6 @@ const LocationCache: CollectionConfig = {
       },
     },
   ],
-  timestamps: true,
 };
 
 export default LocationCache;

@@ -1,5 +1,6 @@
 {
   "index": "Overview & Tech Stack",
-  "schema-detection": "Schema Detection",
+  "data-processing-pipeline": "Data Processing Pipeline",
+  "processing-stages": "Processing Stages & Jobs",
   "dynamic-filters": "Dynamic Filters"
 }

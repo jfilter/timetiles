@@ -151,6 +151,7 @@ export default [
       "**/*.bundle.js",
       "**/payload-generated-schema.ts", // Already handled above but also ignore for performance
       "**/payload-types.ts", // Already handled above but also ignore for performance
+      "**/migrations/**", // Ignore migrations folder
     ],
   },
 ];

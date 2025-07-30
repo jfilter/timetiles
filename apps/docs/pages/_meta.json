@@ -1,25 +1,13 @@
 {
   "index": "Introduction",
-  "getting-started": {
-    "title": "Getting Started",
-    "type": "menu"
-  },
+  "getting-started": "Getting Started",
   "---": {
     "type": "separator"
   },
-  "users": {
-    "title": "User Guide",
-    "type": "menu"
-  },
-  "developers": {
-    "title": "Developer Docs",
-    "type": "menu"
-  },
+  "users": "User Guide",
+  "developers": "Developer Docs",
   "---2": {
     "type": "separator"
   },
-  "reference": {
-    "title": "Reference",
-    "type": "menu"
-  }
+  "reference": "Reference"
 }

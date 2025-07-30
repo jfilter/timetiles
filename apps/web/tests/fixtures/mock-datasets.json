@@ -1,0 +1,41 @@
+[
+  {
+    "id": "dataset-1",
+    "name": "City Events 2024",
+    "description": "Collection of city-sponsored events for 2024",
+    "source": "City Parks Department",
+    "eventCount": 150,
+    "dateRange": {
+      "start": "2024-01-01",
+      "end": "2024-12-31"
+    },
+    "categories": ["sports", "arts", "community"],
+    "status": "active"
+  },
+  {
+    "id": "dataset-2",
+    "name": "Cultural Festivals",
+    "description": "Annual cultural festivals and celebrations",
+    "source": "Cultural Affairs Office",
+    "eventCount": 75,
+    "dateRange": {
+      "start": "2024-03-01",
+      "end": "2024-11-30"
+    },
+    "categories": ["culture", "festivals", "community"],
+    "status": "active"
+  },
+  {
+    "id": "dataset-3",
+    "name": "Tech Meetups Archive",
+    "description": "Historical data of technology meetups and conferences",
+    "source": "Tech Community Board",
+    "eventCount": 300,
+    "dateRange": {
+      "start": "2020-01-01",
+      "end": "2023-12-31"
+    },
+    "categories": ["technology", "networking", "education"],
+    "status": "archived"
+  }
+]

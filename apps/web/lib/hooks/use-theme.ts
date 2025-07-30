@@ -1,3 +1,12 @@
+/**
+ * @module This file contains a custom React hook for managing the application's theme.
+ *
+ * The `useTheme` hook is responsible for:
+ * - Reading the current theme (light, dark, or system) from the Zustand store.
+ * - Applying the correct theme class to the `<html>` element.
+ * - Listening for changes in the user's operating system theme preference when the
+ *   "system" theme is selected, and automatically updating the UI to match.
+ */
 "use client";
 import { useEffect } from "react";
 

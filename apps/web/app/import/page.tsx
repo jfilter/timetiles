@@ -1,3 +1,10 @@
+/**
+ * @module This file defines the data import page of the application.
+ *
+ * It serves as the main user interface for the data import system. The page includes
+ * the `ImportUpload` component, which allows users to upload their data files, and
+ * provides information about file format requirements and the stages of the import process.
+ */
 import { ImportUpload } from "@/components/import-upload";
 import { PageLayout } from "@/components/page-layout";
 

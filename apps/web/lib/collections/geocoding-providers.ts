@@ -1,7 +1,20 @@
+/**
+ * @module Defines the Payload CMS collection configuration for Geocoding Providers.
+ *
+ * This collection allows administrators to configure and manage multiple external geocoding services
+ * (like Google Maps, Nominatim, etc.). It provides a centralized place to store API keys, rate limits,
+ * priority, and other provider-specific settings. The system can then use these configurations
+ * to dynamically select and use geocoding providers based on priority and availability.
+ * It also tracks basic usage statistics for each provider.
+ */
 import type { CollectionConfig } from "payload";
+
+import { createCommonConfig } from "./shared-fields";
 
 export const GeocodingProviders: CollectionConfig = {
   slug: "geocoding-providers",
+  ...createCommonConfig(),
+
   labels: {
     singular: "Geocoding Provider",
     plural: "Geocoding Providers",
@@ -402,7 +415,6 @@ export const GeocodingProviders: CollectionConfig = {
       },
     },
   ],
-  timestamps: true,
 };
 
 export default GeocodingProviders;

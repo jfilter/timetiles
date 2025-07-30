@@ -1,3 +1,12 @@
+/**
+ * This file defines the main data exploration page of the application.
+ *
+ * It is responsible for fetching the initial data required for the `MapExplorer`
+ * component, specifically the list of all available catalogs and datasets. This data
+ * is then passed as props to the `MapExplorer`, which handles the interactive
+ * visualization and filtering of the event data.
+ * @module
+ */
 import { getPayload } from "payload";
 import { Suspense } from "react";
 

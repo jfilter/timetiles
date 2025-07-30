@@ -1,3 +1,18 @@
+/**
+ * @module Provides a comprehensive health check service for the application.
+ *
+ * This module defines a set of functions to check the status of various critical
+ * components of the application infrastructure, including:
+ * - Required environment variables.
+ * - Writable access to the uploads directory.
+ * - Connectivity and configuration of the geocoding service.
+ * - General accessibility of the Payload CMS API.
+ * - Database migration status.
+ * - Availability of the PostGIS extension in the database.
+ *
+ * The main export, `runHealthChecks`, orchestrates these checks and returns a
+ * summary of the system's overall health.
+ */
 import { sql } from "@payloadcms/db-postgres";
 import fs from "fs/promises";
 import path from "path";

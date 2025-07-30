@@ -1,4 +1,17 @@
 /**
+ * @module This file contains the `RelationshipResolver` class, which is responsible for
+ * dynamically resolving relationships between different collections during the seeding process.
+ *
+ * It uses a configuration-driven approach to understand how collections are related.
+ * When seeding a document, this class looks up the string identifiers in the seed data
+ * (e.g., a catalog name), finds the corresponding document in the database, and replaces
+ * the string with the actual document ID. This ensures that relational links are correctly
+ * established in the database.
+ *
+ * It also includes caching to improve performance by avoiding redundant database queries.
+ */
+
+/**
  * RelationshipResolver
  *
  * This class handles dynamic resolution of relationships between collections
@@ -131,11 +144,22 @@ export class RelationshipResolver {
         throw validationResult.error ?? new Error("Validation failed");
       }
 
-      // Process relationship
-      const result = await this.processRelationshipField(originalValue as string, config, collection, resolved);
-
-      if (result == null) {
-        return null; // Item should be skipped
+      // Process relationship (handle both single values and arrays)
+      if (Array.isArray(originalValue)) {
+        const result = await this.processArrayRelationshipField(
+          originalValue as string[],
+          config,
+          collection,
+          resolved,
+        );
+        if (result == null) {
+          return null; // Item should be skipped
+        }
+      } else {
+        const result = await this.processRelationshipField(originalValue as string, config, collection, resolved);
+        if (result == null) {
+          return null; // Item should be skipped
+        }
       }
     }
 
@@ -160,6 +184,30 @@ export class RelationshipResolver {
       return { isValid: false, shouldContinue: true };
     }
 
+    // Handle array relationships (hasMany: true)
+    if (Array.isArray(value)) {
+      // Empty arrays are valid for optional relationships
+      if (value.length === 0) {
+        return { isValid: false, shouldContinue: true };
+      }
+      // All items in the array should be strings or numbers
+      for (const item of value) {
+        if (typeof item !== "string" && typeof item !== "number") {
+          return {
+            isValid: false,
+            error: new Error(
+              `Array relationship field '${config.field}' contains non-string/non-number value: ${typeof item}`,
+            ),
+          };
+        }
+        // If any item is already a number, the whole array is already resolved
+        if (typeof item === "number") {
+          return { isValid: false, shouldContinue: true }; // Already resolved
+        }
+      }
+      return { isValid: true };
+    }
+
     if (typeof value !== "string") {
       // Value might already be resolved to an ID
       if (typeof value === "number") {
@@ -167,7 +215,7 @@ export class RelationshipResolver {
       }
       return {
         isValid: false,
-        error: new Error(`Relationship field '${config.field}' must be a string, got ${typeof value}`),
+        error: new Error(`Relationship field '${config.field}' must be a string or array, got ${typeof value}`),
       };
     }
 
@@ -200,6 +248,45 @@ export class RelationshipResolver {
       );
       throw error;
     }
+  }
+
+  /**
+   * Process an array relationship field (hasMany: true)
+   */
+  private async processArrayRelationshipField(
+    originalValues: string[],
+    config: RelationshipConfig,
+    collection: string,
+    resolved: Record<string, unknown>,
+  ): Promise<boolean | null> {
+    const resolvedItems: { id: string | number }[] = [];
+
+    for (const originalValue of originalValues) {
+      try {
+        const relatedItem = await this.findRelatedItem(originalValue, config);
+
+        if (relatedItem != null) {
+          const typedItem = relatedItem as { id: string | number };
+          resolvedItems.push({ id: typedItem.id });
+        } else {
+          const result = this.handleMissingRelationship(originalValue, config, collection);
+          if (result == null) {
+            return null; // Skip entire item if required relationship missing
+          }
+          // For optional relationships, continue processing other items in the array
+        }
+      } catch (error) {
+        logger.error(
+          `Error resolving array relationship ${config.field}[${originalValue}] in ${config.targetCollection}:`,
+          error,
+        );
+        throw error;
+      }
+    }
+
+    // Set the resolved array (could be empty if all items were optional and missing)
+    resolved[config.field] = resolvedItems;
+    return true;
   }
 
   /**

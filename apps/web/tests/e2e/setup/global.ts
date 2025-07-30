@@ -1,10 +1,12 @@
 // Setup for E2E tests
 
+import { test as setup } from "@playwright/test";
+
 import { logger } from "../../../lib/logger";
 import { SeedManager } from "../../../lib/seed";
 import { setupTestDatabase } from "../../../scripts/setup-test-db";
 
-const globalSetup = async () => {
+setup("create test database and seed data", async ({}) => {
   logger.info("🚀 Setting up E2E test environment...");
 
   // Check if we're running a subset of tests (single test or specific file)
@@ -49,7 +51,4 @@ const globalSetup = async () => {
     logger.error("❌ Failed to set up E2E test environment:", { error });
     throw error; // Fail fast if setup fails
   }
-};
-
-// Default export required by Playwright config
-export default globalSetup;
+});

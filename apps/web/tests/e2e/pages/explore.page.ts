@@ -153,10 +153,18 @@ export class ExplorePage {
         return 0;
       }
 
+      // Wait for the events count element to be visible with the expected pattern
+      await this.eventsCount.waitFor({ state: "visible", timeout: 5000 });
       const text = await this.eventsCount.textContent({ timeout: 3000 });
       const matches = /Events \((\d+)\)/.exec(text ?? "");
-      return matches?.[1] ? Number.parseInt(matches[1], 10) : 0;
-    } catch {
+      const count = matches?.[1] ? Number.parseInt(matches[1], 10) : 0;
+
+      // Debug logging to help understand what's happening
+      console.log(`getEventCount: text="${text}", count=${count}`);
+
+      return count;
+    } catch (error) {
+      console.log(`getEventCount error: ${error}`);
       return 0;
     }
   }

@@ -1,3 +1,17 @@
+/**
+ * @module This file centralizes all TanStack Query (React Query) hooks for fetching events-related data.
+ *
+ * It defines the data fetching functions, query keys, and custom hooks for various API endpoints,
+ * including:
+ * - Fetching lists of events.
+ * - Retrieving map clusters for efficient visualization of large datasets.
+ * - Getting data for temporal histograms.
+ * - Polling for the progress of data import jobs.
+ * - Handling file uploads for new imports.
+ *
+ * By co-locating these hooks, it provides a consistent and organized way to manage server state
+ * related to events and imports throughout the application.
+ */
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -221,12 +235,39 @@ const fetchImportProgress = async (importId: string, signal?: AbortSignal): Prom
   return response.json() as Promise<ImportProgressResponse>;
 };
 
-const uploadImport = async (formData: FormData, signal?: AbortSignal): Promise<{ importId: string }> => {
-  logger.debug("Uploading import file");
+const uploadImport = async (
+  formData: FormData,
+  signal?: AbortSignal,
+): Promise<{ importId: string; success: boolean }> => {
+  logger.debug("Uploading import file via Payload endpoint");
 
-  const response = await fetch("/api/import/upload", {
+  // Convert to Payload's expected format
+  const payloadFormData = new FormData();
+
+  // Get the file from the original FormData
+  const file = formData.get("file");
+  if (file) {
+    payloadFormData.append("file", file);
+  }
+
+  // Get other fields and put them in _payload as JSON
+  const catalogId = formData.get("catalogId");
+  const datasetId = formData.get("datasetId");
+  const sessionId = formData.get("sessionId");
+
+  const payloadData = {
+    catalog: catalogId ? parseInt(catalogId as string, 10) : undefined,
+    sessionId: sessionId || undefined,
+    status: "pending",
+    datasetsCount: 0,
+    datasetsProcessed: 0,
+  };
+
+  payloadFormData.append("_payload", JSON.stringify(payloadData));
+
+  const response = await fetch("/api/import-files", {
     method: "POST",
-    body: formData,
+    body: payloadFormData,
     signal,
   });
 
@@ -234,11 +275,11 @@ const uploadImport = async (formData: FormData, signal?: AbortSignal): Promise<{
     throw new Error(`Failed to upload import: ${response.statusText}`);
   }
 
-  return response.json() as Promise<{
-    importId: string;
-    success: boolean;
-    message?: string;
-  }>;
+  const result = await response.json();
+  return {
+    importId: result.doc?.id || result.id,
+    success: true,
+  };
 };
 
 // Query key factories

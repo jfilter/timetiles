@@ -4,6 +4,7 @@ import os from "os";
 import Papa from "papaparse";
 import path from "path";
 import { read, utils, write } from "xlsx";
+import { getFixturePath } from "../../setup/test-helpers";
 
 describe("File Parsing", () => {
   let tempDir: string;
@@ -21,6 +22,27 @@ describe("File Parsing", () => {
   });
 
   describe("CSV Parsing", () => {
+    it("should parse fixture CSV file successfully", () => {
+      // Use fixture file instead of creating inline content
+      const fixturePath = getFixturePath("valid-events.csv");
+      const fileContent = fs.readFileSync(fixturePath, "utf8");
+      const parseResult = Papa.parse(fileContent, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header: string) => header.trim().toLowerCase(),
+      });
+
+      expect(parseResult.data).toHaveLength(6);
+      expect(parseResult.errors).toHaveLength(0);
+      expect(parseResult.data[0]).toMatchObject({
+        title: "Tech Conference 2024",
+        description: "Annual technology conference focusing on AI and machine learning",
+        date: "2024-03-15",
+        location: "Convention Center",
+        category: "technology",
+      });
+    });
+
     it("should parse CSV content successfully", () => {
       const csvContent = `title,description,date
 "Tech Conference 2024","Annual technology conference","2024-03-15"
@@ -101,6 +123,23 @@ describe("File Parsing", () => {
       expect(validRow).toBeDefined();
     });
 
+    it("should handle malformed fixture CSV gracefully", () => {
+      // Use malformed data fixture
+      const fixturePath = getFixturePath("malformed-data.csv");
+      const fileContent = fs.readFileSync(fixturePath, "utf8");
+      const parseResult = Papa.parse(fileContent, {
+        header: true,
+        skipEmptyLines: true,
+      });
+
+      // Should still get some data despite malformed entries
+      expect(parseResult.data.length).toBeGreaterThan(0);
+
+      // Should find the valid event
+      const validRow = parseResult.data.find((row: any) => row.title?.includes("Valid Event"));
+      expect(validRow).toBeDefined();
+    });
+
     it("should transform headers correctly", () => {
       const csvContent = `  TITLE  , Description ,  DATE  
 "Event 1","Desc 1","2024-03-15"`;
@@ -148,6 +187,29 @@ Event 2,2024-03-16
   });
 
   describe("Excel Parsing", () => {
+    it("should parse Excel fixture file successfully", () => {
+      // Use Excel fixture instead of creating in-memory
+      const fixturePath = getFixturePath("events.xlsx");
+      const fileBuffer = fs.readFileSync(fixturePath);
+      const workbook = read(fileBuffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName!];
+      const jsonData = utils.sheet_to_json(worksheet!, {
+        header: 1,
+        defval: "",
+      });
+
+      expect(jsonData).toHaveLength(5); // header + 4 data rows
+      expect(jsonData[0]).toEqual(["title", "description", "date", "location", "category"]);
+      expect(jsonData[1]).toEqual([
+        "Conference 2024",
+        "Technology conference",
+        "2024-03-15",
+        "Convention Center",
+        "technology",
+      ]);
+    });
+
     it("should parse Excel content successfully", () => {
       // Create a real Excel workbook in memory
       const workbook = utils.book_new();
@@ -215,6 +277,24 @@ Event 2,2024-03-16
       const firstSheetData = firstSheet ? utils.sheet_to_json(firstSheet, { header: 1 }) : [];
       expect(firstSheetData[0]).toEqual(["title", "date"]);
       expect(firstSheetData[1]).toEqual(["Event 1", "2024-03-15"]);
+    });
+
+    it("should handle multi-sheet Excel fixture", () => {
+      // Use multi-sheet fixture
+      const fixturePath = getFixturePath("multi-sheet.xlsx");
+      const fileBuffer = fs.readFileSync(fixturePath);
+      const workbook = read(fileBuffer, { type: "buffer" });
+
+      expect(workbook.SheetNames).toHaveLength(3);
+      expect(workbook.SheetNames).toContain("Events");
+      expect(workbook.SheetNames).toContain("Locations");
+      expect(workbook.SheetNames).toContain("Categories");
+
+      // Parse Events sheet
+      const eventsSheet = workbook.Sheets["Events"];
+      const eventsData = eventsSheet ? utils.sheet_to_json(eventsSheet, { header: 1 }) : [];
+      expect(eventsData[0]).toEqual(["title", "date", "category"]);
+      expect(eventsData[1]).toEqual(["Event 1", "2024-03-15", "technology"]);
     });
 
     it("should convert Excel data to object format", () => {

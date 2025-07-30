@@ -1,3 +1,13 @@
+/**
+ * This file defines the API route for clustering events on the map.
+ *
+ * It uses a custom PostgreSQL function (`cluster_events`) to perform server-side clustering
+ * of events based on the current map viewport (bounds and zoom level). This is a highly
+ * performant way to visualize large numbers of points on a map, as it offloads the
+ * clustering work to the database and only sends the aggregated cluster information to the client.
+ * The endpoint returns a GeoJSON FeatureCollection that can be directly consumed by map libraries.
+ * @module
+ */
 import { sql } from "@payloadcms/db-postgres";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";

@@ -6,6 +6,7 @@ import { renderWithProviders, screen } from "../../setup/test-utils";
 // Create realistic event data that matches actual Payload structure
 const createMockEvent = (overrides: Partial<Event> = {}): Event => ({
   id: 1,
+  uniqueId: "test-event-1",
   data: {
     title: "Sample Event",
     description: "Event description",

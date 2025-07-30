@@ -1,3 +1,15 @@
+/**
+ * @module This file contains the `SeedingOperations` class, which orchestrates the core logic
+ * for seeding data into the various collections.
+ *
+ * It is responsible for:
+ * - Retrieving the appropriate seed data for a given collection and environment.
+ * - Handling the seeding of both regular and global collections.
+ * - Resolving relationships between documents before creation.
+ * - Creating the documents in the database, with batching and error handling.
+ * - Determining the correct dependency order for seeding collections to ensure that
+ *   relational data is created before the documents that depend on it.
+ */
 import { createLogger } from "@/lib/logger";
 import { logError } from "@/lib/logger";
 import type { Config } from "@/payload-types";
@@ -8,7 +20,8 @@ import type { SeedManager } from "../seed-manager";
 import { catalogSeeds } from "../seeds/catalogs";
 import { datasetSeeds } from "../seeds/datasets";
 import { eventSeeds } from "../seeds/events";
-import { importSeeds } from "../seeds/imports";
+import { importFileSeeds } from "../seeds/import-files";
+import { importJobSeeds } from "../seeds/import-jobs";
 import { mainMenuSeed } from "../seeds/main-menu";
 import { pagesSeed } from "../seeds/pages";
 import { userSeeds } from "../seeds/users";
@@ -107,7 +120,9 @@ export class SeedingOperations {
     await this.createCollectionItems(resolvedSeedData, collectionOrGlobal, environment, {});
   }
 
-  getDependencyOrder(collections: string[] = ["users", "catalogs", "datasets", "events", "imports"]) {
+  getDependencyOrder(
+    collections: string[] = ["users", "catalogs", "datasets", "events", "import-files", "import-jobs"],
+  ) {
     return getDependencyOrder(collections);
   }
 
@@ -264,10 +279,33 @@ export class SeedingOperations {
     if (!payload) {
       throw new Error(PAYLOAD_NOT_INITIALIZED_ERROR);
     }
-    await payload.create({
-      collection: collectionName as keyof Config["collections"],
-      data: resolvedItem,
-    });
+
+    // Check if this is an upload collection and create dummy file data if needed
+    const collectionConfig = payload.config.collections?.find((c: any) => c.slug === collectionName);
+    const isUploadCollection = collectionConfig?.upload;
+
+    if (isUploadCollection) {
+      // Create dummy file data for upload collections
+      const filename = (resolvedItem as any).filename || `seed-${Date.now()}.txt`;
+      const fileContent = `Dummy seed file for ${collectionName}`;
+      const fileBuffer = Buffer.from(fileContent, "utf8");
+
+      await payload.create({
+        collection: collectionName as keyof Config["collections"],
+        data: resolvedItem,
+        file: {
+          data: fileBuffer,
+          name: filename,
+          size: fileBuffer.length,
+          mimetype: (resolvedItem as any).mimeType || "text/plain",
+        },
+      });
+    } else {
+      await payload.create({
+        collection: collectionName as keyof Config["collections"],
+        data: resolvedItem,
+      });
+    }
 
     const displayName = this.queryBuilders.getDisplayName(resolvedItem);
     logger.debug({ collection: collectionName, displayName }, `Created ${collectionName} item: ${displayName}`);
@@ -310,8 +348,10 @@ export class SeedingOperations {
         return datasetSeeds(environment);
       case "events":
         return eventSeeds(environment);
-      case "imports":
-        return importSeeds(environment);
+      case "import-jobs":
+        return importJobSeeds(environment);
+      case "import-files":
+        return importFileSeeds(environment);
       case "main-menu":
         return [mainMenuSeed];
       case "pages":

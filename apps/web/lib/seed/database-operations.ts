@@ -1,4 +1,13 @@
 /**
+ * @module This file contains the `DatabaseOperations` class, which provides efficient
+ * methods for performing bulk database operations during the seeding process.
+ *
+ * It is designed to maximize performance by using direct SQL commands like `TRUNCATE`
+ * when possible, with fallbacks to Payload's API for broader compatibility. This
+ * approach is particularly important for clearing collections before seeding new data.
+ */
+
+/**
  * DatabaseOperations
  *
  * Efficient bulk operations for the seeding system. Implements SQL TRUNCATE

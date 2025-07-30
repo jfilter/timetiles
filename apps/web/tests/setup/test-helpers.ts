@@ -2,24 +2,64 @@ import { postgresAdapter } from "@payloadcms/db-postgres";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { randomUUID } from "crypto";
 import fs from "fs";
+import path from "path";
 import { buildConfig, getPayload } from "payload";
 
 // Import collections
 import Catalogs from "@/lib/collections/catalogs";
+import DatasetSchemas from "@/lib/collections/dataset-schemas";
 import Datasets from "@/lib/collections/datasets";
 import Events from "@/lib/collections/events";
 import GeocodingProviders from "@/lib/collections/geocoding-providers";
-import Imports from "@/lib/collections/imports";
+import ImportFiles from "@/lib/collections/import-files";
+import ImportJobs from "@/lib/collections/import-jobs";
+// ImportDatasets and ImportSchemaBuilders collections were removed
 import LocationCache from "@/lib/collections/location-cache";
-import { MainMenu } from "@/lib/collections/main-menu";
 import Media from "@/lib/collections/media";
 import { Pages } from "@/lib/collections/pages";
 import Users from "@/lib/collections/users";
-import { batchProcessingJob, eventCreationJob, fileParsingJob, geocodingBatchJob } from "@/lib/jobs/import-jobs";
+import { MainMenu } from "@/lib/globals/main-menu";
+import {
+  analyzeDuplicatesJob,
+  cleanupApprovalLocksJob,
+  createEventsBatchJob,
+  createSchemaVersionJob,
+  datasetDetectionJob,
+  geocodeBatchJob,
+  schemaDetectionJob,
+  validateSchemaJob,
+} from "@/lib/jobs/import-jobs";
 import { logger } from "@/lib/logger";
 import { migrations } from "@/migrations";
 
 import { truncateAllTables } from "./database-setup";
+
+// Helper function to create import file with proper upload
+export const createImportFileWithUpload = async (
+  payload: any,
+  data: any,
+  fileContent: string | Buffer,
+  fileName: string,
+  mimeType: string,
+) => {
+  const fileBuffer = typeof fileContent === "string" ? Buffer.from(fileContent, "utf8") : fileContent;
+
+  return await payload.create({
+    collection: "import-files",
+    data,
+    file: {
+      data: fileBuffer,
+      name: fileName,
+      size: fileBuffer.length,
+      mimetype: mimeType,
+    },
+  });
+};
+
+/**
+ * Path to test fixtures directory
+ */
+export const FIXTURES_PATH = path.join(__dirname, "../fixtures");
 
 /**
  * Creates an isolated test environment for each test
@@ -62,10 +102,32 @@ export const createIsolatedTestEnvironment = async (): Promise<{
             },
           },
     debug: false,
-    collections: [Catalogs, Datasets, Imports, Events, Users, Media, LocationCache, GeocodingProviders, Pages],
+    collections: [
+      Catalogs,
+      Datasets,
+      DatasetSchemas,
+      ImportFiles,
+      ImportJobs,
+      // ImportDatasets and ImportSchemaBuilders collections were removed
+      Events,
+      Users,
+      Media,
+      LocationCache,
+      GeocodingProviders,
+      Pages,
+    ],
     globals: [MainMenu],
     jobs: {
-      tasks: [fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob],
+      tasks: [
+        analyzeDuplicatesJob,
+        cleanupApprovalLocksJob,
+        createEventsBatchJob,
+        createSchemaVersionJob,
+        datasetDetectionJob,
+        geocodeBatchJob,
+        schemaDetectionJob,
+        validateSchemaJob,
+      ],
     },
     db: postgresAdapter({
       pool: {
@@ -133,4 +195,11 @@ export const createTestId = (): string => `test-${Date.now()}-${randomUUID().spl
 export const createTempFilePath = (tempDir: string, filename: string): string => {
   const testId = createTestId();
   return `${tempDir}/${testId}-${filename}`;
+};
+
+/**
+ * Helper to get fixture file path
+ */
+export const getFixturePath = (filename: string): string => {
+  return path.join(FIXTURES_PATH, filename);
 };

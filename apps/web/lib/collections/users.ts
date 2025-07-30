@@ -1,7 +1,18 @@
+/**
+ * @module Defines the Payload CMS collection configuration for Users.
+ *
+ * This is a standard user collection for authentication and authorization within the application.
+ * It uses Payload's built-in authentication features and includes basic user profile fields
+ * like first name, last name, and role. The role field is used to implement role-based
+ * access control throughout the system.
+ */
 import type { CollectionConfig } from "payload";
+
+import { createCommonConfig } from "./shared-fields";
 
 const Users: CollectionConfig = {
   slug: "users",
+  ...createCommonConfig(),
   auth: true,
   admin: {
     useAsTitle: "email",
@@ -37,8 +48,8 @@ const Users: CollectionConfig = {
           value: "admin",
         },
         {
-          label: "Analyst",
-          value: "analyst",
+          label: "Editor",
+          value: "editor",
         },
       ],
       defaultValue: "user",
@@ -66,7 +77,6 @@ const Users: CollectionConfig = {
       },
     },
   ],
-  timestamps: true,
 };
 
 export default Users;

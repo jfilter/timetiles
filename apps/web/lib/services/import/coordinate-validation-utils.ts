@@ -1,4 +1,14 @@
 /**
+ * @module Provides shared utility functions for validating geographic coordinates.
+ *
+ * This module contains a collection of helper functions that are used across different parts
+ * of the coordinate detection and validation process. These utilities help in determining
+ * if a coordinate is within a valid range, categorizing coordinate values to aid in
+ * heuristic analysis, and identifying potential latitude or longitude columns based on
+ * statistical properties of their data.
+ */
+
+/**
  * Shared coordinate validation utilities
  */
 

@@ -1,4 +1,17 @@
 /**
+ * @module This file defines the configuration for resolving relationships between collections
+ * during the seeding process.
+ *
+ * It provides a centralized, declarative way to specify how relationships should be handled,
+ * replacing the need for hardcoded logic. This system defines which fields in a source
+ * collection relate to a target collection, how to find the related document, and whether
+ * the relationship is required.
+ *
+ * It also includes a function to determine the correct seeding order of collections based
+ * on these defined dependencies, ensuring data integrity.
+ */
+
+/**
  * Relationship Configuration System
  *
  * This file defines the configuration for resolving relationships between collections
@@ -83,13 +96,13 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
     },
   ],
 
-  // Imports can reference catalogs and optionally datasets
-  imports: [
+  // Import catalogs reference catalogs
+  "import-files": [
     {
       field: "catalog",
       targetCollection: "catalogs",
-      searchField: "slug",
-      fallbackSearch: "name",
+      searchField: "name",
+      fallbackSearch: "slug",
       required: true, // Imports must be associated with a catalog
       transform: (value: string) => {
         // Handle common catalog name variations for imports
@@ -104,11 +117,29 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
       },
     },
     {
-      field: "dataset",
+      field: "datasets",
       targetCollection: "datasets",
       searchField: "name",
       fallbackSearch: "slug",
       required: false, // Imports can exist without being associated to a dataset
+    },
+  ],
+
+  // Import jobs reference import files and datasets
+  "import-jobs": [
+    {
+      field: "importFile",
+      targetCollection: "import-files",
+      searchField: "filename",
+      fallbackSearch: "originalName",
+      required: true, // Jobs must be associated with an import file
+    },
+    {
+      field: "dataset",
+      targetCollection: "datasets",
+      searchField: "name",
+      fallbackSearch: "slug",
+      required: false, // Jobs can exist without being associated to a dataset initially
     },
   ],
 };
@@ -157,6 +188,7 @@ export const getCollectionsWithRelationships = (): string[] => Object.keys(RELAT
 export const getDependencyOrder = (collections: string[]): string[] => {
   const dependencies = new Map<string, string[]>();
   const visited = new Set<string>();
+  const visiting = new Set<string>();
   const result: string[] = [];
 
   // Build dependency map
@@ -175,7 +207,11 @@ export const getDependencyOrder = (collections: string[]): string[] => {
   // Topological sort
   const visit = (collection: string) => {
     if (visited.has(collection)) return;
-    visited.add(collection);
+    if (visiting.has(collection)) {
+      throw new Error(`Circular dependency detected involving: ${collection}`);
+    }
+
+    visiting.add(collection);
 
     const deps = dependencies.get(collection) ?? [];
     deps.forEach((dep) => {
@@ -184,6 +220,8 @@ export const getDependencyOrder = (collections: string[]): string[] => {
       }
     });
 
+    visiting.delete(collection);
+    visited.add(collection);
     if (collections.includes(collection)) {
       result.push(collection);
     }

@@ -1,4 +1,4 @@
-.PHONY: up down logs db-reset db-shell db-query clean setup seed dev build lint format test test-e2e help
+.PHONY: up down logs db-reset db-shell db-query clean setup seed dev build lint typecheck format test test-e2e help
 
 # Start the development environment
 up:
@@ -12,7 +12,7 @@ down:
 
 # View logs
 logs:
-	docker compose -f docker-compose.dev.yml logs -f
+	docker compose -f docker-compose.dev.yml logs
 
 # Reset database (remove volumes and restart)
 db-reset:
@@ -66,6 +66,10 @@ build:
 lint:
 	pnpm lint
 
+# Run typecheck
+typecheck:
+	pnpm typecheck
+
 # Format code
 format:
 	pnpm format
@@ -102,6 +106,7 @@ help:
 	@echo ""
 	@echo "🔍 Code Quality:"
 	@echo "  lint        - Run ESLint"
+	@echo "  typecheck   - Run typecheck"
 	@echo "  format      - Format code with Prettier"
 	@echo ""
 	@echo "🧪 Testing:"

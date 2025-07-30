@@ -69,7 +69,9 @@ export interface Config {
   collections: {
     catalogs: Catalog;
     datasets: Dataset;
-    imports: Import;
+    'dataset-schemas': DatasetSchema;
+    'import-files': ImportFile;
+    'import-jobs': ImportJob;
     events: Event;
     users: User;
     media: Media;
@@ -85,7 +87,9 @@ export interface Config {
   collectionsSelect: {
     catalogs: CatalogsSelect<false> | CatalogsSelect<true>;
     datasets: DatasetsSelect<false> | DatasetsSelect<true>;
-    imports: ImportsSelect<false> | ImportsSelect<true>;
+    'dataset-schemas': DatasetSchemasSelect<false> | DatasetSchemasSelect<true>;
+    'import-files': ImportFilesSelect<false> | ImportFilesSelect<true>;
+    'import-jobs': ImportJobsSelect<false> | ImportJobsSelect<true>;
     events: EventsSelect<false> | EventsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -112,10 +116,14 @@ export interface Config {
   };
   jobs: {
     tasks: {
-      'file-parsing': TaskFileParsing;
-      'batch-processing': TaskBatchProcessing;
-      'event-creation': TaskEventCreation;
-      'geocoding-batch': TaskGeocodingBatch;
+      'dataset-detection': TaskDatasetDetection;
+      'detect-schema': TaskDetectSchema;
+      'analyze-duplicates': TaskAnalyzeDuplicates;
+      'validate-schema': TaskValidateSchema;
+      'create-schema-version': TaskCreateSchemaVersion;
+      'geocode-batch': TaskGeocodeBatch;
+      'create-events': TaskCreateEvents;
+      'cleanup-approval-locks': TaskCleanupApprovalLocks;
       inline: {
         input: unknown;
         output: unknown;
@@ -168,9 +176,10 @@ export interface Catalog {
    * URL-friendly identifier (auto-generated from name if not provided)
    */
   slug?: string | null;
-  status?: ('active' | 'archived') | null;
+  isPublic?: boolean | null;
   updatedAt: string;
   createdAt: string;
+  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -194,16 +203,178 @@ export interface Dataset {
     };
     [k: string]: unknown;
   } | null;
+  /**
+   * URL-friendly identifier (auto-generated from name if not provided)
+   */
   slug?: string | null;
   catalog: number | Catalog;
   /**
    * ISO-639 3 letter code (e.g., eng, deu, fra)
    */
   language: string;
-  status?: ('draft' | 'active' | 'archived') | null;
   isPublic?: boolean | null;
   /**
-   * JSON schema definition for this dataset
+   * Additional metadata for the entity
+   */
+  metadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  idStrategy?: {
+    /**
+     * How to generate unique IDs for events
+     */
+    type: 'external' | 'computed' | 'auto' | 'hybrid';
+    /**
+     * JSON path to ID field (e.g., 'id' or 'metadata.uuid')
+     */
+    externalIdPath?: string | null;
+    /**
+     * Fields to combine for unique hash
+     */
+    computedIdFields?:
+      | {
+          /**
+           * Path to field to include in hash
+           */
+          fieldPath: string;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * What to do when duplicate is found
+     */
+    duplicateStrategy?: ('skip' | 'update' | 'version') | null;
+  };
+  schemaConfig?: {
+    /**
+     * Enable schema detection and validation
+     */
+    enabled?: boolean | null;
+    /**
+     * Require manual approval for ALL schema changes
+     */
+    locked?: boolean | null;
+    /**
+     * Allow automatic schema growth (new optional fields, new enum values)
+     */
+    autoGrow?: boolean | null;
+    /**
+     * Automatically approve non-breaking schema changes
+     */
+    autoApproveNonBreaking?: boolean | null;
+    /**
+     * Block entire import if any events fail validation
+     */
+    strictValidation?: boolean | null;
+    /**
+     * Allow automatic type transformations during import
+     */
+    allowTransformations?: boolean | null;
+    /**
+     * Maximum nesting depth for schema detection
+     */
+    maxSchemaDepth?: number | null;
+    /**
+     * Threshold for enum detection
+     */
+    enumThreshold?: number | null;
+    /**
+     * How to detect enum fields
+     */
+    enumMode?: ('count' | 'percentage') | null;
+  };
+  deduplicationConfig?: {
+    /**
+     * Enable duplicate detection during imports
+     */
+    enabled?: boolean | null;
+    /**
+     * What to do when duplicate is found
+     */
+    strategy?: ('skip' | 'update' | 'version') | null;
+  };
+  /**
+   * Statistics and metadata about each field
+   */
+  fieldMetadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Rules for handling type mismatches
+   */
+  typeTransformations?:
+    | {
+        /**
+         * JSON path to field (e.g., 'temperature' or 'location.altitude')
+         */
+        fieldPath: string;
+        fromType: 'string' | 'number' | 'boolean' | 'null' | 'array' | 'object';
+        toType: 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object';
+        transformStrategy: 'parse' | 'cast' | 'custom' | 'reject';
+        /**
+         * Function(value, context) => transformedValue
+         */
+        customTransform?: string | null;
+        enabled?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  enumDetection?: {
+    mode?: ('count' | 'percentage' | 'disabled') | null;
+    /**
+     * Max unique values (count mode) or min percentage (percentage mode)
+     */
+    threshold?: number | null;
+  };
+  geoFieldDetection?: {
+    /**
+     * Automatically detect latitude/longitude fields
+     */
+    autoDetect?: boolean | null;
+    /**
+     * Override: JSON path to latitude (detected: location.lat, lat, latitude)
+     */
+    latitudePath?: string | null;
+    /**
+     * Override: JSON path to longitude (detected: location.lng, lng, lon, longitude)
+     */
+    longitudePath?: string | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * Schema versions for datasets with full change tracking
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "dataset-schemas".
+ */
+export interface DatasetSchema {
+  id: number;
+  /**
+   * Dataset this schema belongs to
+   */
+  dataset: number | Dataset;
+  /**
+   * Schema version number (auto-incremented)
+   */
+  versionNumber: number;
+  displayName?: string | null;
+  /**
+   * JSON Schema Draft 7
    */
   schema:
     | {
@@ -215,9 +386,89 @@ export interface Dataset {
     | boolean
     | null;
   /**
-   * Additional metadata for the dataset
+   * Field statistics and metadata
    */
-  metadata?:
+  fieldMetadata:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  schemaSummary?: {
+    totalFields?: number | null;
+    newFields?:
+      | {
+          path?: string | null;
+          id?: string | null;
+        }[]
+      | null;
+    removedFields?:
+      | {
+          path?: string | null;
+          id?: string | null;
+        }[]
+      | null;
+    typeChanges?:
+      | {
+          path?: string | null;
+          oldType?: string | null;
+          newType?: string | null;
+          id?: string | null;
+        }[]
+      | null;
+    enumChanges?:
+      | {
+          path?: string | null;
+          addedValues?:
+            | {
+                [k: string]: unknown;
+              }
+            | unknown[]
+            | string
+            | number
+            | boolean
+            | null;
+          removedValues?:
+            | {
+                [k: string]: unknown;
+              }
+            | unknown[]
+            | string
+            | number
+            | boolean
+            | null;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  /**
+   * Import jobs that contributed to this schema
+   */
+  importSources?:
+    | {
+        import: number | ImportJob;
+        recordCount?: number | null;
+        batchCount?: number | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Whether this schema requires manual approval
+   */
+  approvalRequired?: boolean | null;
+  approvedBy?: (number | null) | User;
+  approvalNotes?: string | null;
+  /**
+   * Was automatically approved due to safe changes
+   */
+  autoApproved?: boolean | null;
+  /**
+   * Conflicts that require manual resolution
+   */
+  conflicts?:
     | {
         [k: string]: unknown;
       }
@@ -228,30 +479,290 @@ export interface Dataset {
     | null;
   updatedAt: string;
   createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * Unified import processing pipeline
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "import-jobs".
+ */
+export interface ImportJob {
+  id: number;
+  /**
+   * Source file for this import job
+   */
+  importFile: number | ImportFile;
+  /**
+   * Target dataset for imported data
+   */
+  dataset: number | Dataset;
+  /**
+   * Sheet index for Excel files (0-based)
+   */
+  sheetIndex?: number | null;
+  /**
+   * Current processing stage
+   */
+  stage:
+    | 'analyze-duplicates'
+    | 'detect-schema'
+    | 'validate-schema'
+    | 'await-approval'
+    | 'create-schema-version'
+    | 'geocode-batch'
+    | 'create-events'
+    | 'completed'
+    | 'failed';
+  progress?: {
+    /**
+     * Total rows/records processed so far
+     */
+    current?: number | null;
+    /**
+     * Total rows/records to process
+     */
+    total?: number | null;
+    /**
+     * Current batch being processed
+     */
+    batchNumber?: number | null;
+  };
+  /**
+   * Detected JSON Schema from data
+   */
+  schema?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Progressive schema builder state for continuity across batches
+   */
+  schemaBuilderState?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  schemaValidation?: {
+    /**
+     * Whether schema is compatible with dataset schema
+     */
+    isCompatible?: boolean | null;
+    /**
+     * List of breaking schema changes
+     */
+    breakingChanges?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    /**
+     * New fields detected (auto-grow candidates)
+     */
+    newFields?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    /**
+     * Whether manual approval is required
+     */
+    requiresApproval?: boolean | null;
+    /**
+     * Reason why approval is required
+     */
+    approvalReason?: string | null;
+    /**
+     * Whether schema changes were approved
+     */
+    approved?: boolean | null;
+    /**
+     * User who approved the schema
+     */
+    approvedBy?: (number | null) | User;
+    /**
+     * When schema was approved
+     */
+    approvedAt?: string | null;
+  };
+  /**
+   * The schema version this import was validated against
+   */
+  datasetSchemaVersion?: (number | null) | DatasetSchema;
+  duplicates?: {
+    /**
+     * Deduplication strategy used (external-id, computed-hash, etc.)
+     */
+    strategy?: string | null;
+    /**
+     * Duplicates found within this import
+     */
+    internal?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    /**
+     * Duplicates found with existing events
+     */
+    external?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    summary?: {
+      /**
+       * Total rows analyzed
+       */
+      totalRows?: number | null;
+      /**
+       * Unique rows after deduplication
+       */
+      uniqueRows?: number | null;
+      /**
+       * Duplicates within import
+       */
+      internalDuplicates?: number | null;
+      /**
+       * Duplicates with existing data
+       */
+      externalDuplicates?: number | null;
+    };
+  };
+  /**
+   * Fields identified for geocoding
+   */
+  geocodingCandidates?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Geocoding results by row number
+   */
+  geocodingResults?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  geocodingProgress?: {
+    current?: number | null;
+    total?: number | null;
+  };
+  /**
+   * Processing results and statistics
+   */
+  results?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Processing errors by row
+   */
+  errors?:
+    | {
+        row: number;
+        error: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Detailed error information and recovery attempts
+   */
+  errorLog?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Number of retry attempts made
+   */
+  retryAttempts?: number | null;
+  /**
+   * Timestamp of last retry attempt
+   */
+  lastRetryAt?: string | null;
+  /**
+   * Scheduled time for next retry attempt
+   */
+  nextRetryAt?: string | null;
+  /**
+   * Last stage completed successfully before failure
+   */
+  lastSuccessfulStage?:
+    | (
+        | 'analyze-duplicates'
+        | 'detect-schema'
+        | 'validate-schema'
+        | 'await-approval'
+        | 'geocode-batch'
+        | 'create-events'
+      )
+    | null;
+  displayTitle?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "imports".
+ * via the `definition` "import-files".
  */
-export interface Import {
+export interface ImportFile {
   id: number;
-  /**
-   * System file name
-   */
-  fileName: string;
   /**
    * Original user-friendly file name
    */
   originalName?: string | null;
-  catalog: number | Catalog;
   /**
-   * File size in bytes
+   * The catalog this import belongs to (optional)
    */
-  fileSize?: number | null;
+  catalog?: (number | null) | Catalog;
   /**
-   * MIME type of the uploaded file
+   * Datasets detected in this import (optional)
    */
-  mimeType?: string | null;
+  datasets?: (number | Dataset)[] | null;
   /**
    * User who initiated the import (null for unauthenticated)
    */
@@ -260,21 +771,33 @@ export interface Import {
    * Session ID for unauthenticated users
    */
   sessionId?: string | null;
-  status?: ('pending' | 'processing' | 'completed' | 'failed') | null;
+  status?: ('pending' | 'parsing' | 'processing' | 'completed' | 'failed') | null;
   /**
-   * Current processing stage
+   * Number of datasets detected in this catalog import
    */
-  processingStage?: ('file-parsing' | 'row-processing' | 'geocoding' | 'event-creation' | 'completed') | null;
+  datasetsCount?: number | null;
+  /**
+   * Number of datasets successfully processed
+   */
+  datasetsProcessed?: number | null;
+  /**
+   * Information about detected sheets/datasets in the file
+   */
+  sheetMetadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Payload job ID for tracking the catalog parsing job
+   */
+  jobId?: string | null;
   importedAt?: string | null;
   completedAt?: string | null;
-  /**
-   * Total number of rows processed
-   */
-  rowCount: number;
-  /**
-   * Number of rows that failed processing
-   */
-  errorCount?: number | null;
   /**
    * Detailed error information
    */
@@ -303,151 +826,17 @@ export interface Import {
     | number
     | boolean
     | null;
-  /**
-   * Processing progress tracking
-   */
-  progress?: {
-    /**
-     * Total number of rows to process
-     */
-    totalRows?: number | null;
-    /**
-     * Number of rows processed
-     */
-    processedRows?: number | null;
-    /**
-     * Number of rows geocoded
-     */
-    geocodedRows?: number | null;
-    /**
-     * Number of events created
-     */
-    createdEvents?: number | null;
-    /**
-     * Overall completion percentage
-     */
-    percentage?: number | null;
-  };
-  /**
-   * Batch processing information
-   */
-  batchInfo?: {
-    /**
-     * Number of rows per batch
-     */
-    batchSize?: number | null;
-    /**
-     * Current batch being processed
-     */
-    currentBatch?: number | null;
-    /**
-     * Total number of batches
-     */
-    totalBatches?: number | null;
-  };
-  /**
-   * Geocoding statistics
-   */
-  geocodingStats?: {
-    /**
-     * Total addresses to geocode
-     */
-    totalAddresses?: number | null;
-    /**
-     * Successfully geocoded addresses
-     */
-    successfulGeocodes?: number | null;
-    /**
-     * Failed geocoding attempts
-     */
-    failedGeocodes?: number | null;
-    /**
-     * Results from cache
-     */
-    cachedResults?: number | null;
-    /**
-     * Google Maps API calls made
-     */
-    googleApiCalls?: number | null;
-    /**
-     * Nominatim API calls made
-     */
-    nominatimApiCalls?: number | null;
-    /**
-     * Rows with coordinates from import
-     */
-    preExistingCoordinates?: number | null;
-    /**
-     * Rows where geocoding was skipped
-     */
-    skippedGeocoding?: number | null;
-  };
-  /**
-   * Current Payload job ID being processed
-   */
-  currentJobId?: string | null;
-  /**
-   * History of all jobs for this import
-   */
-  jobHistory?:
-    | {
-        /**
-         * Payload job ID
-         */
-        jobId: string;
-        jobType: 'file-parsing' | 'batch-processing' | 'geocoding-batch' | 'event-creation';
-        status: 'queued' | 'running' | 'completed' | 'failed';
-        startedAt?: string | null;
-        completedAt?: string | null;
-        /**
-         * Error message if job failed
-         */
-        error?: string | null;
-        /**
-         * Job result data
-         */
-        result?:
-          | {
-              [k: string]: unknown;
-            }
-          | unknown[]
-          | string
-          | number
-          | boolean
-          | null;
-        id?: string | null;
-      }[]
-    | null;
-  /**
-   * Coordinate column detection information
-   */
-  coordinateDetection?: {
-    /**
-     * Were coordinate columns detected in the import?
-     */
-    detected?: boolean | null;
-    detectionMethod?: ('pattern' | 'heuristic' | 'manual' | 'none') | null;
-    columnMapping?: {
-      latitudeColumn?: string | null;
-      longitudeColumn?: string | null;
-      combinedColumn?: string | null;
-      coordinateFormat?: ('decimal' | 'dms' | 'combined_comma' | 'combined_space' | 'geojson') | null;
-    };
-    /**
-     * Confidence in coordinate detection (0-1)
-     */
-    detectionConfidence?: number | null;
-    sampleValidation?: {
-      validSamples?: number | null;
-      invalidSamples?: number | null;
-      /**
-       * Were lat/lon likely swapped?
-       */
-      swappedCoordinates?: boolean | null;
-    };
-  };
   updatedAt: string;
   createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -457,11 +846,12 @@ export interface User {
   id: number;
   firstName?: string | null;
   lastName?: string | null;
-  role?: ('user' | 'admin' | 'analyst') | null;
+  role?: ('user' | 'admin' | 'editor') | null;
   isActive?: boolean | null;
   lastLoginAt?: string | null;
   updatedAt: string;
   createdAt: string;
+  _status?: ('draft' | 'published') | null;
   email: string;
   resetPasswordToken?: string | null;
   resetPasswordExpiration?: string | null;
@@ -486,11 +876,11 @@ export interface Event {
   id: number;
   dataset: number | Dataset;
   /**
-   * The import that created this event
+   * The import job that created this event
    */
-  import?: (number | null) | Import;
+  importJob?: (number | null) | ImportJob;
   /**
-   * Event data in JSON format
+   * Generic data in JSON format
    */
   data:
     | {
@@ -542,10 +932,6 @@ export interface Event {
    */
   eventTimestamp?: string | null;
   /**
-   * Whether this event passed validation
-   */
-  isValid?: boolean | null;
-  /**
    * Validation errors if any
    */
   validationErrors?:
@@ -566,6 +952,10 @@ export interface Event {
      */
     originalAddress?: string | null;
     /**
+     * Geocoding processing status
+     */
+    geocodingStatus?: ('pending' | 'success' | 'failed') | null;
+    /**
      * Geocoding provider used
      */
     provider?: ('google' | 'nominatim' | 'manual') | null;
@@ -579,11 +969,41 @@ export interface Event {
     normalizedAddress?: string | null;
   };
   /**
-   * URL-friendly identifier (auto-generated from event title if not provided)
+   * Unique identifier for deduplication (format: datasetId:strategy:value)
    */
-  slug?: string | null;
+  uniqueId: string;
+  /**
+   * Original ID from source system (when using external ID strategy)
+   */
+  sourceId?: string | null;
+  /**
+   * SHA256 hash of data content for duplicate detection
+   */
+  contentHash?: string | null;
+  /**
+   * Batch number within import for tracking
+   */
+  importBatch?: number | null;
+  /**
+   * Schema version number this event was validated against
+   */
+  schemaVersionNumber?: number | null;
+  validationStatus?: ('pending' | 'valid' | 'invalid' | 'transformed') | null;
+  /**
+   * Record of any type transformations applied
+   */
+  transformations?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
+  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -597,6 +1017,7 @@ export interface Media {
   alt?: string | null;
   updatedAt: string;
   createdAt: string;
+  _status?: ('draft' | 'published') | null;
   url?: string | null;
   thumbnailURL?: string | null;
   filename?: string | null;
@@ -714,6 +1135,7 @@ export interface LocationCache {
     | null;
   updatedAt: string;
   createdAt: string;
+  _status?: ('draft' | 'published') | null;
 }
 /**
  * Manage geocoding provider configurations
@@ -861,6 +1283,7 @@ export interface GeocodingProvider {
   notes?: string | null;
   updatedAt: string;
   createdAt: string;
+  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -869,7 +1292,10 @@ export interface GeocodingProvider {
 export interface Page {
   id: number;
   title: string;
-  slug: string;
+  /**
+   * URL-friendly identifier (auto-generated from name if not provided)
+   */
+  slug?: string | null;
   content?: {
     root: {
       type: string;
@@ -887,6 +1313,7 @@ export interface Page {
   } | null;
   updatedAt: string;
   createdAt: string;
+  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -940,7 +1367,16 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'file-parsing' | 'batch-processing' | 'event-creation' | 'geocoding-batch';
+        taskSlug:
+          | 'inline'
+          | 'dataset-detection'
+          | 'detect-schema'
+          | 'analyze-duplicates'
+          | 'validate-schema'
+          | 'create-schema-version'
+          | 'geocode-batch'
+          | 'create-events'
+          | 'cleanup-approval-locks';
         taskID: string;
         input?:
           | {
@@ -973,7 +1409,19 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'file-parsing' | 'batch-processing' | 'event-creation' | 'geocoding-batch') | null;
+  taskSlug?:
+    | (
+        | 'inline'
+        | 'dataset-detection'
+        | 'detect-schema'
+        | 'analyze-duplicates'
+        | 'validate-schema'
+        | 'create-schema-version'
+        | 'geocode-batch'
+        | 'create-events'
+        | 'cleanup-approval-locks'
+      )
+    | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -996,8 +1444,16 @@ export interface PayloadLockedDocument {
         value: number | Dataset;
       } | null)
     | ({
-        relationTo: 'imports';
-        value: number | Import;
+        relationTo: 'dataset-schemas';
+        value: number | DatasetSchema;
+      } | null)
+    | ({
+        relationTo: 'import-files';
+        value: number | ImportFile;
+      } | null)
+    | ({
+        relationTo: 'import-jobs';
+        value: number | ImportJob;
       } | null)
     | ({
         relationTo: 'events';
@@ -1077,9 +1533,10 @@ export interface CatalogsSelect<T extends boolean = true> {
   name?: T;
   description?: T;
   slug?: T;
-  status?: T;
+  isPublic?: T;
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1091,97 +1548,229 @@ export interface DatasetsSelect<T extends boolean = true> {
   slug?: T;
   catalog?: T;
   language?: T;
-  status?: T;
   isPublic?: T;
-  schema?: T;
   metadata?: T;
+  idStrategy?:
+    | T
+    | {
+        type?: T;
+        externalIdPath?: T;
+        computedIdFields?:
+          | T
+          | {
+              fieldPath?: T;
+              id?: T;
+            };
+        duplicateStrategy?: T;
+      };
+  schemaConfig?:
+    | T
+    | {
+        enabled?: T;
+        locked?: T;
+        autoGrow?: T;
+        autoApproveNonBreaking?: T;
+        strictValidation?: T;
+        allowTransformations?: T;
+        maxSchemaDepth?: T;
+        enumThreshold?: T;
+        enumMode?: T;
+      };
+  deduplicationConfig?:
+    | T
+    | {
+        enabled?: T;
+        strategy?: T;
+      };
+  fieldMetadata?: T;
+  typeTransformations?:
+    | T
+    | {
+        fieldPath?: T;
+        fromType?: T;
+        toType?: T;
+        transformStrategy?: T;
+        customTransform?: T;
+        enabled?: T;
+        id?: T;
+      };
+  enumDetection?:
+    | T
+    | {
+        mode?: T;
+        threshold?: T;
+      };
+  geoFieldDetection?:
+    | T
+    | {
+        autoDetect?: T;
+        latitudePath?: T;
+        longitudePath?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "imports_select".
+ * via the `definition` "dataset-schemas_select".
  */
-export interface ImportsSelect<T extends boolean = true> {
-  fileName?: T;
+export interface DatasetSchemasSelect<T extends boolean = true> {
+  dataset?: T;
+  versionNumber?: T;
+  displayName?: T;
+  schema?: T;
+  fieldMetadata?: T;
+  schemaSummary?:
+    | T
+    | {
+        totalFields?: T;
+        newFields?:
+          | T
+          | {
+              path?: T;
+              id?: T;
+            };
+        removedFields?:
+          | T
+          | {
+              path?: T;
+              id?: T;
+            };
+        typeChanges?:
+          | T
+          | {
+              path?: T;
+              oldType?: T;
+              newType?: T;
+              id?: T;
+            };
+        enumChanges?:
+          | T
+          | {
+              path?: T;
+              addedValues?: T;
+              removedValues?: T;
+              id?: T;
+            };
+      };
+  importSources?:
+    | T
+    | {
+        import?: T;
+        recordCount?: T;
+        batchCount?: T;
+        id?: T;
+      };
+  approvalRequired?: T;
+  approvedBy?: T;
+  approvalNotes?: T;
+  autoApproved?: T;
+  conflicts?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "import-files_select".
+ */
+export interface ImportFilesSelect<T extends boolean = true> {
   originalName?: T;
   catalog?: T;
-  fileSize?: T;
-  mimeType?: T;
+  datasets?: T;
   user?: T;
   sessionId?: T;
   status?: T;
-  processingStage?: T;
+  datasetsCount?: T;
+  datasetsProcessed?: T;
+  sheetMetadata?: T;
+  jobId?: T;
   importedAt?: T;
   completedAt?: T;
-  rowCount?: T;
-  errorCount?: T;
   errorLog?: T;
   rateLimitInfo?: T;
   metadata?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "import-jobs_select".
+ */
+export interface ImportJobsSelect<T extends boolean = true> {
+  importFile?: T;
+  dataset?: T;
+  sheetIndex?: T;
+  stage?: T;
   progress?:
     | T
     | {
-        totalRows?: T;
-        processedRows?: T;
-        geocodedRows?: T;
-        createdEvents?: T;
-        percentage?: T;
+        current?: T;
+        total?: T;
+        batchNumber?: T;
       };
-  batchInfo?:
+  schema?: T;
+  schemaBuilderState?: T;
+  schemaValidation?:
     | T
     | {
-        batchSize?: T;
-        currentBatch?: T;
-        totalBatches?: T;
+        isCompatible?: T;
+        breakingChanges?: T;
+        newFields?: T;
+        requiresApproval?: T;
+        approvalReason?: T;
+        approved?: T;
+        approvedBy?: T;
+        approvedAt?: T;
       };
-  geocodingStats?:
+  datasetSchemaVersion?: T;
+  duplicates?:
     | T
     | {
-        totalAddresses?: T;
-        successfulGeocodes?: T;
-        failedGeocodes?: T;
-        cachedResults?: T;
-        googleApiCalls?: T;
-        nominatimApiCalls?: T;
-        preExistingCoordinates?: T;
-        skippedGeocoding?: T;
+        strategy?: T;
+        internal?: T;
+        external?: T;
+        summary?:
+          | T
+          | {
+              totalRows?: T;
+              uniqueRows?: T;
+              internalDuplicates?: T;
+              externalDuplicates?: T;
+            };
       };
-  currentJobId?: T;
-  jobHistory?:
+  geocodingCandidates?: T;
+  geocodingResults?: T;
+  geocodingProgress?:
     | T
     | {
-        jobId?: T;
-        jobType?: T;
-        status?: T;
-        startedAt?: T;
-        completedAt?: T;
+        current?: T;
+        total?: T;
+      };
+  results?: T;
+  errors?:
+    | T
+    | {
+        row?: T;
         error?: T;
-        result?: T;
         id?: T;
       };
-  coordinateDetection?:
-    | T
-    | {
-        detected?: T;
-        detectionMethod?: T;
-        columnMapping?:
-          | T
-          | {
-              latitudeColumn?: T;
-              longitudeColumn?: T;
-              combinedColumn?: T;
-              coordinateFormat?: T;
-            };
-        detectionConfidence?: T;
-        sampleValidation?:
-          | T
-          | {
-              validSamples?: T;
-              invalidSamples?: T;
-              swappedCoordinates?: T;
-            };
-      };
+  errorLog?: T;
+  retryAttempts?: T;
+  lastRetryAt?: T;
+  nextRetryAt?: T;
+  lastSuccessfulStage?: T;
+  displayTitle?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1191,7 +1780,7 @@ export interface ImportsSelect<T extends boolean = true> {
  */
 export interface EventsSelect<T extends boolean = true> {
   dataset?: T;
-  import?: T;
+  importJob?: T;
   data?: T;
   location?:
     | T
@@ -1215,19 +1804,26 @@ export interface EventsSelect<T extends boolean = true> {
         validationStatus?: T;
       };
   eventTimestamp?: T;
-  isValid?: T;
   validationErrors?: T;
   geocodingInfo?:
     | T
     | {
         originalAddress?: T;
+        geocodingStatus?: T;
         provider?: T;
         confidence?: T;
         normalizedAddress?: T;
       };
-  slug?: T;
+  uniqueId?: T;
+  sourceId?: T;
+  contentHash?: T;
+  importBatch?: T;
+  schemaVersionNumber?: T;
+  validationStatus?: T;
+  transformations?: T;
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1241,6 +1837,7 @@ export interface UsersSelect<T extends boolean = true> {
   lastLoginAt?: T;
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
   email?: T;
   resetPasswordToken?: T;
   resetPasswordExpiration?: T;
@@ -1264,6 +1861,7 @@ export interface MediaSelect<T extends boolean = true> {
   alt?: T;
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
   url?: T;
   thumbnailURL?: T;
   filename?: T;
@@ -1334,6 +1932,7 @@ export interface LocationCacheSelect<T extends boolean = true> {
   metadata?: T;
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1405,6 +2004,7 @@ export interface GeocodingProvidersSelect<T extends boolean = true> {
   notes?: T;
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1416,6 +2016,7 @@ export interface PagesSelect<T extends boolean = true> {
   content?: T;
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1493,6 +2094,7 @@ export interface MainMenu {
         id?: string | null;
       }[]
     | null;
+  _status?: ('draft' | 'published') | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1508,39 +2110,72 @@ export interface MainMenuSelect<T extends boolean = true> {
         url?: T;
         id?: T;
       };
+  _status?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "TaskFile-parsing".
+ * via the `definition` "TaskDataset-detection".
  */
-export interface TaskFileParsing {
+export interface TaskDatasetDetection {
   input?: unknown;
   output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "TaskBatch-processing".
+ * via the `definition` "TaskDetect-schema".
  */
-export interface TaskBatchProcessing {
+export interface TaskDetectSchema {
   input?: unknown;
   output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "TaskEvent-creation".
+ * via the `definition` "TaskAnalyze-duplicates".
  */
-export interface TaskEventCreation {
+export interface TaskAnalyzeDuplicates {
   input?: unknown;
   output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "TaskGeocoding-batch".
+ * via the `definition` "TaskValidate-schema".
  */
-export interface TaskGeocodingBatch {
+export interface TaskValidateSchema {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskCreate-schema-version".
+ */
+export interface TaskCreateSchemaVersion {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskGeocode-batch".
+ */
+export interface TaskGeocodeBatch {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskCreate-events".
+ */
+export interface TaskCreateEvents {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskCleanup-approval-locks".
+ */
+export interface TaskCleanupApprovalLocks {
   input?: unknown;
   output?: unknown;
 }

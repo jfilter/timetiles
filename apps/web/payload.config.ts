@@ -3,43 +3,87 @@ import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { buildConfig } from "payload";
 import sharp from "sharp";
 
-// Import collections
 import Catalogs from "./lib/collections/catalogs";
+import DatasetSchemas from "./lib/collections/dataset-schemas";
 import Datasets from "./lib/collections/datasets";
 import Events from "./lib/collections/events";
 import GeocodingProviders from "./lib/collections/geocoding-providers";
-import Imports from "./lib/collections/imports";
+import ImportFiles from "./lib/collections/import-files";
+import ImportJobs from "./lib/collections/import-jobs";
 import LocationCache from "./lib/collections/location-cache";
-import { MainMenu } from "./lib/collections/main-menu";
 import Media from "./lib/collections/media";
 import { Pages } from "./lib/collections/pages";
 import Users from "./lib/collections/users";
-// Import job definitions
-import { batchProcessingJob, eventCreationJob, fileParsingJob, geocodingBatchJob } from "./lib/jobs/import-jobs";
+import { MainMenu } from "./lib/globals/main-menu";
+import {
+  analyzeDuplicatesJob,
+  cleanupApprovalLocksJob,
+  createEventsBatchJob,
+  createSchemaVersionJob,
+  datasetDetectionJob,
+  geocodeBatchJob,
+  schemaDetectionJob,
+  validateSchemaJob,
+} from "./lib/jobs/import-jobs";
+
+const secret = process.env.PAYLOAD_SECRET;
+const serverURL = process.env.NEXT_PUBLIC_PAYLOAD_URL;
+const connectionString = process.env.DATABASE_URL;
+
+if (!secret) {
+  throw new Error("PAYLOAD_SECRET environment variable is required");
+}
+
+if (!serverURL) {
+  throw new Error("NEXT_PUBLIC_PAYLOAD_URL environment variable is required");
+}
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL environment variable is required");
+}
 
 export default buildConfig({
   admin: {
     user: Users.slug,
   },
-  collections: [Catalogs, Datasets, Imports, Events, Users, Media, LocationCache, GeocodingProviders, Pages],
+  collections: [
+    Catalogs,
+    Datasets,
+    DatasetSchemas,
+    ImportFiles,
+    ImportJobs,
+    Events,
+    Users,
+    Media,
+    LocationCache,
+    GeocodingProviders,
+    Pages,
+  ],
   globals: [MainMenu],
   jobs: {
-    tasks: [fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob],
+    tasks: [
+      // New simplified import pipeline jobs
+      datasetDetectionJob,
+      schemaDetectionJob,
+      analyzeDuplicatesJob,
+      validateSchemaJob,
+      createSchemaVersionJob,
+      geocodeBatchJob,
+      createEventsBatchJob,
+      // Maintenance jobs
+      cleanupApprovalLocksJob,
+    ],
   },
   editor: lexicalEditor({}),
-  secret: process.env.PAYLOAD_SECRET ?? "your-secret-key",
-  serverURL: process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000",
+  secret,
+  serverURL,
   typescript: {
     outputFile: "./payload-types.ts",
   },
   db: postgresAdapter({
     push: false, // Disable automatic schema updates
     pool: {
-      connectionString:
-        process.env.DATABASE_URL ||
-        (() => {
-          throw new Error("DATABASE_URL environment variable is required");
-        })(),
+      connectionString: connectionString,
     },
     schemaName: "payload",
     migrationDir: "./migrations",
@@ -47,7 +91,21 @@ export default buildConfig({
       isolationLevel: "read committed",
     },
   }),
-  cors: ["http://localhost:3000"],
-  csrf: ["http://localhost:3000"],
-  sharp,
+  cors: [serverURL],
+  csrf: [serverURL],
+  sharp: sharp as any,
+  upload: {
+    limits: {
+      fileSize: 100000000, // 100MB global limit for large import files
+    },
+    abortOnLimit: true, // Return HTTP 413 for files exceeding limits
+    uploadTimeout: 600000, // 10 minutes timeout for large file uploads
+    useTempFiles: true, // Use temp files instead of memory for large files
+    tempFileDir: process.env.UPLOAD_TEMP_DIR!,
+    safeFileNames: true, // Strip dangerous characters from filenames
+    preserveExtension: 4, // Max 4 characters for file extensions (.xlsx, .json, .csv, etc.)
+  },
+  graphQL: {
+    disable: true,
+  },
 });

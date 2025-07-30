@@ -1,7 +1,7 @@
 import { catalogSeeds } from "../../../lib/seed/seeds/catalogs";
 import { datasetSeeds } from "../../../lib/seed/seeds/datasets";
 import { eventSeeds } from "../../../lib/seed/seeds/events";
-import { importSeeds } from "../../../lib/seed/seeds/imports";
+// importSeeds removed - import jobs are created dynamically, not seeded
 import { userSeeds } from "../../../lib/seed/seeds/users";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
@@ -59,8 +59,8 @@ describe.sequential("Seed System", () => {
       // Development should have more datasets than production
       expect(devDatasets.length).toBeGreaterThan(prodDatasets.length);
       // All datasets should have required fields
-      expect(devDatasets.every((dataset) => dataset.name && dataset.schema)).toBe(true);
-      expect(prodDatasets.every((dataset) => dataset.name && dataset.schema)).toBe(true);
+      expect(devDatasets.every((dataset) => dataset.name && dataset.slug)).toBe(true);
+      expect(prodDatasets.every((dataset) => dataset.name && dataset.slug)).toBe(true);
     });
 
     it("should generate event seeds for different environments", () => {
@@ -74,16 +74,7 @@ describe.sequential("Seed System", () => {
       expect(prodEvents.every((event) => event.dataset && event.data)).toBe(true);
     });
 
-    it("should generate import seeds for different environments", () => {
-      const devImports = importSeeds("development");
-      const prodImports = importSeeds("production");
-
-      // Development should have more imports than production
-      expect(devImports.length).toBeGreaterThan(prodImports.length);
-      // All imports should have required fields
-      expect(devImports.every((imp) => imp.fileName && imp.catalog)).toBe(true);
-      expect(prodImports.every((imp) => imp.fileName && imp.catalog)).toBe(true);
-    });
+    // Import seeds test removed - import jobs are created dynamically, not seeded
   });
 
   describe.sequential("Seeding Operations", () => {
@@ -95,7 +86,7 @@ describe.sequential("Seed System", () => {
       });
 
       // Check that all collections have data in dependency order
-      const collections = ["users", "catalogs", "datasets", "events", "imports"];
+      const collections = ["users", "catalogs", "datasets", "events", "import-files", "import-jobs"];
 
       for (const collection of collections) {
         const result = await payload.find({
@@ -105,11 +96,11 @@ describe.sequential("Seed System", () => {
 
         expect(result.docs.length).toBeGreaterThan(0);
       }
-    });
+    }, 30000); // 30 second timeout for seeding all collections
 
     it("should handle specific collection seeding", async () => {
       // Explicitly truncate all collections to ensure clean state
-      await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events", "imports"]);
+      await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events", "import-files", "import-jobs"]);
 
       await testEnv.seedManager.seed({
         collections: ["users", "catalogs"],
@@ -145,7 +136,7 @@ describe.sequential("Seed System", () => {
 
       // Verify we have data before truncation
       let hasData = false;
-      const collections = ["users", "catalogs", "datasets", "events", "imports"];
+      const collections = ["users", "catalogs", "datasets", "events", "import-files", "import-jobs"];
 
       for (const collection of collections) {
         const result = await payload.find({

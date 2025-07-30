@@ -1,3 +1,14 @@
+/**
+ * Custom React hooks for debouncing values.
+ *
+ * Debouncing is a technique to limit the rate at which a function gets called. These hooks
+ * are useful for performance optimization, especially with user inputs that can change rapidly,
+ * such as search fields, map interactions, or filter adjustments. By delaying the update of a
+ * value, they prevent excessive re-renders or API calls.
+ * 
+ * @category React Hooks
+ * @module
+ */
 import { useEffect, useState } from "react";
 
 /**

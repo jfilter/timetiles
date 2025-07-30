@@ -38,13 +38,15 @@ dev.log
 .DS_Store
 *.pem
 
-# Uploads directory (temporary files)
-uploads/
+
 
 # JF
 mise.toml
 .github/chatmodes
 CLAUDE.md
-.claude/
-archive
+.claude
 .eslintcache
+uploads/
+
+# Generated API Documentation
+apps/docs/pages/developers/api/

@@ -1,14 +1,34 @@
-// Re-export all job handlers
-export { batchProcessingJob } from "./handlers/batch-processing-job";
-export { eventCreationJob } from "./handlers/event-creation-job";
-export { fileParsingJob } from "./handlers/file-parsing-job";
-export { geocodingBatchJob } from "./handlers/geocoding-batch-job";
+/**
+ * @module Centralized export point for all import-related job handlers and types.
+ *
+ * This file serves as a barrel, aggregating and re-exporting the various components
+ * of the import job system. This simplifies imports in other parts of the application,
+ * such as the Payload configuration where jobs are registered.
+ */
+// New simplified job handlers
+export { analyzeDuplicatesJob } from "./handlers/analyze-duplicates-job";
+export { cleanupApprovalLocksJob } from "./handlers/cleanup-approval-locks-job";
+export { createEventsBatchJob } from "./handlers/create-events-batch-job";
+export { createSchemaVersionJob } from "./handlers/create-schema-version-job";
+export { datasetDetectionJob } from "./handlers/dataset-detection-job";
+export { geocodeBatchJob } from "./handlers/geocode-batch-job";
+export { schemaDetectionJob } from "./handlers/schema-detection-job";
+export { validateSchemaJob } from "./handlers/validate-schema-job";
 
-// Re-export utility types for backward compatibility
+// Re-export utility types
 export type {
-  BatchProcessingJobPayload,
-  EventCreationJobPayload,
-  FileParsingJobPayload,
-  GeocodingBatchJobPayload,
-  JobHandlerContext,
-} from "./utils/job-context";
+  AnalyzeDuplicatesJobInput,
+  BatchJobInput,
+  CreateEventsBatchJobInput,
+  CreateSchemaVersionJobInput,
+  DatasetDetectionJobInput,
+  GeocodingBatchJobInput,
+  ImportJobInput,
+  SchemaDetectionJobInput,
+  ValidateSchemaJobInput,
+} from "./types/job-inputs";
+export type { JobHandlerContext } from "./utils/job-context";
+
+// Note: Job queue functions have been removed to avoid circular dependencies
+// To queue jobs, use payload.jobs.queue() directly from your API routes or other contexts
+// where you have access to the payload instance

@@ -1,3 +1,13 @@
+/**
+ * This file defines the root layout for the entire application.
+ *
+ * It sets up the basic HTML structure, including the `<html>` and `<body>` tags.
+ * It also configures the application's fonts using `next/font` and wraps the children
+ * in a `Providers` component, which likely contains context providers for state management,
+ * theming, and other global concerns. The `ConditionalTopMenuBar` is also included here,
+ * suggesting that the main navigation is part of this root layout.
+ * @module
+ */
 import "@workspace/ui/globals.css";
 
 import { Geist, Geist_Mono } from "next/font/google";

@@ -44,9 +44,13 @@ test.describe("Explore Page - Basic Functionality", () => {
   });
 
   test("should display empty states correctly", async ({ page }) => {
+    // Wait for the page to fully load and events to be fetched
+    await explorePage.waitForEventsToLoad();
+
     // Check if we have "No events found" when there are no events
     // Note: Depending on seeded data, this might not always be true
     const eventCount = await explorePage.getEventCount();
+    console.log(`Test: Got event count: ${eventCount}`);
 
     if (eventCount === 0) {
       await expect(explorePage.noEventsMessage).toBeVisible();

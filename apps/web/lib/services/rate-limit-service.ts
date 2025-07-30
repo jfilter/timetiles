@@ -1,3 +1,20 @@
+/**
+ * Provides a service for rate-limiting requests.
+ *
+ * This service implements a flexible, in-memory rate-limiting mechanism to protect
+ * endpoints from abuse. It tracks requests from different identifiers (like IP addresses
+ * or session IDs) and enforces limits based on a specified number of requests within a
+ * given time window.
+ *
+ * Key features include:
+ * - Checking if a request is allowed.
+ * - Blocking identifiers that exceed the limit.
+ * - Providing standard rate-limit headers for HTTP responses.
+ * - Automatic cleanup of expired entries.
+ * 
+ * @category Services
+ * @module
+ */
 import type { Payload } from "payload";
 
 import { createLogger } from "../logger";
@@ -44,10 +61,11 @@ export class RateLimitService {
 
   /**
    * Check if a request should be rate limited
+   * 
    * @param identifier - IP address or session ID
    * @param limit - Maximum requests allowed
    * @param windowMs - Time window in milliseconds
-   * @returns { allowed: boolean, remaining: number, resetTime: number }
+   * @returns Object containing rate limit status
    */
   checkRateLimit(
     identifier: string,

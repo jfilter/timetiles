@@ -27,6 +27,8 @@
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "eslint-plugin-boundaries": "^5.0.1",
+    "eslint-plugin-jsdoc": "^52.0.0",
+    "eslint-plugin-only-warn": "^1.1.0",
     "eslint-plugin-react-compiler": "19.1.0-rc.2",
     "eslint-plugin-react-perf": "^3.3.3",
     "eslint-plugin-simple-import-sort": "^12.1.1",

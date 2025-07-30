@@ -1,3 +1,14 @@
+/**
+ * @module This file contains the `ConfigDrivenSeeding` class, which implements the logic
+ * for the configuration-driven seeding process.
+ *
+ * It is responsible for:
+ * - Reading the seed configuration for a given environment.
+ * - Determining which collections to seed based on the configuration and user-provided options.
+ * - Orchestrating the seeding process by calling the appropriate methods on the `SeedManager`
+ *   for each collection, applying any configuration overrides.
+ * - Logging the start and completion of the seeding process.
+ */
 import { createLogger } from "@/lib/logger";
 import { logPerformance } from "@/lib/logger";
 

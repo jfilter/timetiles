@@ -1,41 +1,44 @@
+/**
+ * @module Defines types and helper functions for managing the context object passed to job handlers.
+ *
+ * This module provides a standardized structure (`JobHandlerContext`) for the context
+ * object that job handlers receive. It includes TypeScript interfaces for various job
+ * payloads and helper functions to safely extract necessary information like the
+ * Payload instance and job-specific inputs from the context. This ensures
+ * consistency and robustness in how jobs are executed.
+ */
 import type { Payload } from "payload";
 
-import type {
-  Import,
-  TaskBatchProcessing,
-  TaskEventCreation,
-  TaskFileParsing,
-  TaskGeocodingBatch,
-} from "@/payload-types";
+import type { ImportJob } from "@/payload-types";
 
-// Enhanced job payload types using Payload task types
-export interface FileParsingJobPayload extends TaskFileParsing {
+// Enhanced job payload types using current import system
+export interface FileParsingJobPayload {
   input: {
-    importId: Import["id"];
+    importJobId: ImportJob["id"];
     filePath: string;
     fileType: "csv" | "xlsx";
   };
 }
 
-export interface BatchProcessingJobPayload extends TaskBatchProcessing {
+export interface BatchProcessingJobPayload {
   input: {
-    importId: Import["id"];
+    importJobId: ImportJob["id"];
     batchNumber: number;
     batchData: Record<string, unknown>[];
   };
 }
 
-export interface GeocodingBatchJobPayload extends TaskGeocodingBatch {
+export interface GeocodingBatchJobPayload {
   input: {
-    importId: Import["id"];
-    eventIds: number[];
-    batchNumber: number;
+    importJobId: ImportJob["id"];
+    eventIds?: number[];
+    batchNumber?: number;
   };
 }
 
-export interface EventCreationJobPayload extends TaskEventCreation {
+export interface EventCreationJobPayload {
   input: {
-    importId: Import["id"];
+    importJobId: ImportJob["id"];
     processedData: Record<string, unknown>[];
     batchNumber: number;
   };
@@ -67,8 +70,8 @@ export const extractFileParsingContext = (context: JobHandlerContext) => {
   }
 
   const input = context.input as FileParsingJobPayload["input"];
-  if (input?.importId == null) {
-    throw new Error("Import ID is required for file parsing job");
+  if (input?.importJobId == null) {
+    throw new Error("Import Job ID is required for file parsing job");
   }
 
   return { payload, input };
@@ -81,8 +84,8 @@ export const extractEventCreationContext = (context: JobHandlerContext) => {
   }
 
   const input = context.input as EventCreationJobPayload["input"];
-  if (input?.importId == null) {
-    throw new Error("Import ID is required for event creation job");
+  if (input?.importJobId == null) {
+    throw new Error("Import Job ID is required for event creation job");
   }
 
   return { payload, input };

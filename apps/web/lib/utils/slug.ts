@@ -1,3 +1,17 @@
+/**
+ * Provides utility functions for generating and validating URL-friendly slugs.
+ *
+ * This module contains helpers for creating unique, SEO-friendly slugs from a given
+ * string (like a title or name). It includes functionality to:
+ * - Sanitize a string into a basic slug format.
+ * - Check for the uniqueness of a slug within a specific collection to prevent duplicates.
+ * - Generate a unique slug by appending a random suffix if a conflict is found.
+ * - A factory function (`createSlugHook`) to easily integrate this logic into Payload CMS
+ *   collection field hooks.
+ * 
+ * @category Utilities
+ * @module
+ */
 import { randomBytes } from "crypto";
 import type { PayloadRequest } from "payload";
 
@@ -89,6 +103,7 @@ const generateRandomSuffix = (): string => {
 
 /**
  * Hook function to be used in Payload collection field hooks
+ * 
  * @param collection - The collection name
  * @param options - Optional object with sourceField (dot notation)
  */

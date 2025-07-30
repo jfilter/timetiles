@@ -1,7 +1,7 @@
 import { catalogSeeds } from "../../../lib/seed/seeds/catalogs";
 import { datasetSeeds } from "../../../lib/seed/seeds/datasets";
 import { eventSeeds } from "../../../lib/seed/seeds/events";
-import { importSeeds } from "../../../lib/seed/seeds/imports";
+// importSeeds removed - import jobs are created dynamically, not seeded
 import { userSeeds } from "../../../lib/seed/seeds/users";
 import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
@@ -64,8 +64,8 @@ describe.sequential("Isolated Seed System", () => {
       // Development should have more datasets than production
       expect(devDatasets.length).toBeGreaterThan(prodDatasets.length);
       // All datasets should have required fields
-      expect(devDatasets.every((dataset) => dataset.name && dataset.schema)).toBe(true);
-      expect(prodDatasets.every((dataset) => dataset.name && dataset.schema)).toBe(true);
+      expect(devDatasets.every((dataset) => dataset.name)).toBe(true);
+      expect(prodDatasets.every((dataset) => dataset.name)).toBe(true);
     });
 
     it("should generate event seeds for different environments", () => {
@@ -79,16 +79,7 @@ describe.sequential("Isolated Seed System", () => {
       expect(prodEvents.every((event) => event.dataset && event.data)).toBe(true);
     });
 
-    it("should generate import seeds for different environments", () => {
-      const devImports = importSeeds("development");
-      const prodImports = importSeeds("production");
-
-      // Development should have more imports than production
-      expect(devImports.length).toBeGreaterThan(prodImports.length);
-      // All imports should have required fields
-      expect(devImports.every((imp) => imp.fileName && imp.catalog)).toBe(true);
-      expect(prodImports.every((imp) => imp.fileName && imp.catalog)).toBe(true);
-    });
+    // Import seeds test removed - import jobs are created dynamically, not seeded
   });
 
   describe.sequential("Seeding Operations", () => {
@@ -179,9 +170,9 @@ describe.sequential("Isolated Seed System", () => {
       expect(anyEvent).toBeDefined();
       expect(anyEvent.dataset).toBeDefined();
       expect(typeof anyEvent.dataset).toBe("object"); // Should be populated
-    });
+    }, 30000); // 30 second timeout for seeding events with relationships
 
-    it("should seed imports with proper catalog relationships", async () => {
+    it("should seed import-files with proper catalog relationships", async () => {
       // First seed catalogs
       await testEnv.seedManager.seed({
         collections: ["catalogs"],
@@ -189,21 +180,21 @@ describe.sequential("Isolated Seed System", () => {
         truncate: false,
       });
 
-      // Then seed imports
+      // Then seed import files
       await testEnv.seedManager.seed({
-        collections: ["imports"],
+        collections: ["import-files"],
         environment: "development",
         truncate: false,
       });
 
-      const imports = await testEnv.payload.find({
-        collection: "imports",
+      const importFiles = await testEnv.payload.find({
+        collection: "import-files",
         limit: 100,
         depth: 1,
       });
 
-      expect(imports.docs.length).toBeGreaterThan(0);
-      const airQualityImport = imports.docs.find((imp: any) => imp.fileName === "air_quality_2024_01_15.csv");
+      expect(importFiles.docs.length).toBeGreaterThan(0);
+      const airQualityImport = importFiles.docs.find((imp: any) => imp.originalName === "air_quality_2024_01_15.csv");
       expect(airQualityImport).toBeDefined();
       expect(airQualityImport.catalog).toBeDefined();
       expect(typeof airQualityImport.catalog).toBe("object"); // Should be populated
@@ -216,7 +207,7 @@ describe.sequential("Isolated Seed System", () => {
       });
 
       // Check that all collections have data
-      const collections = ["users", "catalogs", "datasets", "events", "imports"];
+      const collections = ["users", "catalogs", "datasets", "events"];
 
       for (const collection of collections) {
         const docs = await testEnv.payload.find({

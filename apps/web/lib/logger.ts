@@ -1,3 +1,13 @@
+/**
+ * @module Configures the application's logging system using the `pino` library.
+ *
+ * This module sets up a structured, high-performance logger. It is configured to:
+ * - Use pretty-printing for readability in development environments.
+ * - Output structured JSON logs in production for easier parsing and analysis.
+ * - Control log levels based on the environment (e.g., `debug` in dev, `info` in prod).
+ * - Provide helper functions to create specialized child loggers for requests, jobs,
+ *   performance monitoring, and error reporting.
+ */
 import pino from "pino";
 
 const isDevelopment = process.env.NODE_ENV === "development";

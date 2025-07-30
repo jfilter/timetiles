@@ -6,7 +6,7 @@
  * with realistic relationships and constraints.
  */
 
-import type { Catalog, Dataset, Event, Import, User } from "@/payload-types";
+import type { Catalog, Dataset, Event, ImportFile, User } from "@/payload-types";
 
 /**
  * Base builder class with common functionality
@@ -179,7 +179,7 @@ export class CatalogBuilder extends BaseTestBuilder<Catalog> {
       name: "Test Catalog",
       slug: "test-catalog",
       description: this.createRichText("Test catalog description"),
-      status: "active",
+      _status: "published",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -204,8 +204,8 @@ export class CatalogBuilder extends BaseTestBuilder<Catalog> {
     return this;
   }
 
-  withStatus(status: "active" | "archived"): this {
-    this.data.status = status;
+  withStatus(status: "draft" | "published"): this {
+    this.data._status = status;
     return this;
   }
 
@@ -247,9 +247,8 @@ export class DatasetBuilder extends BaseTestBuilder<Dataset> {
       description: this.createRichText("Test dataset description"),
       catalog: 1,
       language: "eng",
-      status: "active",
+      _status: "published",
       isPublic: true,
-      schema: { type: "object", properties: {} },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -284,8 +283,8 @@ export class DatasetBuilder extends BaseTestBuilder<Dataset> {
     return this;
   }
 
-  withStatus(status: "active" | "archived"): this {
-    this.data.status = status;
+  withStatus(status: "draft" | "published"): this {
+    this.data._status = status;
     return this;
   }
 
@@ -294,8 +293,13 @@ export class DatasetBuilder extends BaseTestBuilder<Dataset> {
     return this;
   }
 
-  withSchema(schema: any): this {
-    this.data.schema = schema;
+  withSchemaConfig(enabled: boolean = true): this {
+    this.data.schemaConfig = {
+      enabled,
+      locked: false,
+      autoGrow: true,
+      autoApproveNonBreaking: false,
+    };
     return this;
   }
 
@@ -353,8 +357,10 @@ export class DatasetBuilder extends BaseTestBuilder<Dataset> {
       },
     };
 
-    this.data.schema = schemas[type];
-    return this;
+    // Store the schema type in metadata for test reference
+    this.data.metadata = { schemaType: type, expectedSchema: schemas[type] };
+    // Enable schema config
+    return this.withSchemaConfig(true);
   }
 
   private createRichText(text: string) {
@@ -417,7 +423,7 @@ export class UserBuilder extends BaseTestBuilder<User> {
     return this;
   }
 
-  withRole(role: "admin" | "analyst" | "user"): this {
+  withRole(role: "admin" | "editor" | "user"): this {
     this.data.role = role;
     return this;
   }
@@ -431,37 +437,36 @@ export class UserBuilder extends BaseTestBuilder<User> {
     return this.withRole("admin").withEmail("admin@example.com").withName("Admin", "User");
   }
 
-  asAnalyst(): this {
-    return this.withRole("analyst").withEmail("analyst@example.com").withName("Data", "Analyst");
+  asEditor(): this {
+    return this.withRole("editor").withEmail("editor@example.com").withName("Data", "Editor");
   }
 }
 
 /**
- * Import Builder - Fluent API for creating test imports
+ * ImportFile Builder - Fluent API for creating test import files
  */
-export class ImportBuilder extends BaseTestBuilder<Import> {
+export class ImportFileBuilder extends BaseTestBuilder<ImportFile> {
   constructor() {
     super();
     this.data = {
-      fileName: "test-import.csv",
+      filename: "test-import.csv",
       originalName: "test-import.csv",
-      fileSize: 1024,
+      filesize: 1024,
       mimeType: "text/csv",
       status: "completed",
-      processingStage: "file-parsing",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
   }
 
-  withFileName(fileName: string): this {
-    this.data.fileName = fileName;
-    this.data.originalName = fileName;
+  withFileName(filename: string): this {
+    this.data.filename = filename;
+    this.data.originalName = filename;
     return this;
   }
 
   withFileSize(size: number): this {
-    this.data.fileSize = size;
+    this.data.filesize = size; // Use Payload's field name
     return this;
   }
 
@@ -475,8 +480,8 @@ export class ImportBuilder extends BaseTestBuilder<Import> {
     return this;
   }
 
-  withStage(stage: "file-parsing" | "row-processing" | "geocoding" | "event-creation" | "completed"): this {
-    this.data.processingStage = stage;
+  withDatasetsCount(count: number): this {
+    this.data.datasetsCount = count;
     return this;
   }
 
@@ -485,12 +490,13 @@ export class ImportBuilder extends BaseTestBuilder<Import> {
     return this;
   }
 
-  // Import does not have a dataset field - removing this method
-  // withDataset(dataset: number | { id: number }): this {
-  //   this.data.dataset = dataset;
-  //   return this;
-  // }
+  withDatasetsProcessed(processed: number): this {
+    this.data.datasetsProcessed = processed;
+    return this;
+  }
 }
+
+// ImportDataset collection was removed
 
 /**
  * Main TestDataBuilder class that provides access to all builders
@@ -512,9 +518,11 @@ export class TestDataBuilder {
     return new UserBuilder();
   }
 
-  static imports(): ImportBuilder {
-    return new ImportBuilder();
+  static ImportFiles(): ImportFileBuilder {
+    return new ImportFileBuilder();
   }
+
+  // importDatasets method removed - collection no longer exists
 
   /**
    * Create a realistic test scenario with related data

@@ -1,4 +1,19 @@
 /**
+ * Provides utility functions for parsing geographic coordinates from various string formats.
+ *
+ * This module contains a set of helper functions designed to interpret different representations
+ * of coordinate data that might be found in imported files. It supports common formats such as:
+ * - Decimal Degrees (e.g., "40.7128")
+ * - Degrees Minutes Seconds (DMS) (e.g., "40°26'46\"N")
+ * - Coordinates with a directional suffix (e.g., "40.7128 N")
+ *
+ * The main export, `parseCoordinate`, attempts to parse a value using these different strategies,
+ * returning a standardized decimal degree number if successful.
+ * 
+ * @module
+ */
+
+/**
  * Coordinate parsing utilities
  */
 
@@ -12,7 +27,12 @@ export const tryParseDecimal = (str: string): number | null => {
 
 /**
  * Parse DMS (Degrees Minutes Seconds) format
- * @example "40°26'46\"N" or "40 26 46 N"
+ * 
+ * @example
+ * ```typescript
+ * parseDMSFormat("40°26'46\"N"); // Returns 40.446111
+ * parseDMSFormat("40 26 46 N"); // Returns 40.446111
+ * ```
  */
 export const parseDMSFormat = (str: string): number | null => {
   const dmsRegex = /^(-?\d{1,3})[°\s](\d{1,2})['\s](\d{1,2}\.?\d{0,6})["\s]?([NSEW])?$/i;

@@ -153,7 +153,7 @@ describe("EventFilters", () => {
       name: "Empty Catalog",
       slug: "empty-catalog",
       description: createRichText("Empty catalog"),
-      status: "active" as const,
+      _status: "published" as const,
       createdAt: "2024-01-01T00:00:00Z",
       updatedAt: "2024-01-01T00:00:00Z",
     };

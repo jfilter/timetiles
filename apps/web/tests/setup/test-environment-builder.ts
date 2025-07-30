@@ -14,16 +14,27 @@ import { buildConfig, getPayload } from "payload";
 
 // Import collections
 import Catalogs from "@/lib/collections/catalogs";
+import DatasetSchemas from "@/lib/collections/dataset-schemas";
 import Datasets from "@/lib/collections/datasets";
 import Events from "@/lib/collections/events";
 import GeocodingProviders from "@/lib/collections/geocoding-providers";
-import Imports from "@/lib/collections/imports";
+import ImportFiles from "@/lib/collections/import-files";
+// ImportDatasets and ImportSchemaBuilders collections were removed
 import LocationCache from "@/lib/collections/location-cache";
-import { MainMenu } from "@/lib/collections/main-menu";
 import Media from "@/lib/collections/media";
 import { Pages } from "@/lib/collections/pages";
 import Users from "@/lib/collections/users";
-import { batchProcessingJob, eventCreationJob, fileParsingJob, geocodingBatchJob } from "@/lib/jobs/import-jobs";
+import { MainMenu } from "@/lib/globals/main-menu";
+import {
+  analyzeDuplicatesJob,
+  cleanupApprovalLocksJob,
+  createEventsBatchJob,
+  createSchemaVersionJob,
+  datasetDetectionJob,
+  geocodeBatchJob,
+  schemaDetectionJob,
+  validateSchemaJob,
+} from "@/lib/jobs/import-jobs";
 import { createLogger } from "@/lib/logger";
 import { SeedManager } from "@/lib/seed/index";
 import { RelationshipResolver } from "@/lib/seed/relationship-resolver";
@@ -230,7 +241,9 @@ export class TestEnvironmentBuilder {
     const collectionMap: Record<string, any> = {
       catalogs: Catalogs,
       datasets: Datasets,
-      imports: Imports,
+      "dataset-schemas": DatasetSchemas,
+      "import-files": ImportFiles,
+      // "import-datasets" and "import-schema-builders" collections were removed
       events: Events,
       users: Users,
       media: Media,
@@ -259,7 +272,16 @@ export class TestEnvironmentBuilder {
       collections: selectedCollections,
       globals: [MainMenu],
       jobs: {
-        tasks: [fileParsingJob, batchProcessingJob, eventCreationJob, geocodingBatchJob],
+        tasks: [
+          analyzeDuplicatesJob,
+          cleanupApprovalLocksJob,
+          createEventsBatchJob,
+          createSchemaVersionJob,
+          datasetDetectionJob,
+          geocodeBatchJob,
+          schemaDetectionJob,
+          validateSchemaJob,
+        ],
       },
       db: postgresAdapter({
         pool: {

@@ -1,7 +1,7 @@
 import { catalogSeeds } from "../../../lib/seed/seeds/catalogs";
 import { datasetSeeds } from "../../../lib/seed/seeds/datasets";
 import { eventSeeds } from "../../../lib/seed/seeds/events";
-import { importSeeds } from "../../../lib/seed/seeds/imports";
+// importSeeds removed - import jobs are created dynamically, not seeded
 import { userSeeds } from "../../../lib/seed/seeds/users";
 
 describe("Seed Data Validation", () => {
@@ -28,7 +28,9 @@ describe("Seed Data Validation", () => {
 
     it("should have proper status values", () => {
       const catalogs = catalogSeeds("development");
-      expect(catalogs.every((catalog) => catalog.status && ["active", "archived"].includes(catalog.status))).toBe(true);
+      expect(catalogs.every((catalog) => catalog._status && ["published", "draft"].includes(catalog._status))).toBe(
+        true,
+      );
     });
   });
 
@@ -36,7 +38,7 @@ describe("Seed Data Validation", () => {
     it("should generate valid datasets for development environment", () => {
       const datasets = datasetSeeds("development");
       expect(datasets.length).toBeGreaterThan(0);
-      expect(datasets.every((dataset) => dataset.name && dataset.schema)).toBe(true);
+      expect(datasets.every((dataset) => dataset.name && dataset.slug)).toBe(true);
     });
 
     it("should have proper catalog references", () => {
@@ -68,25 +70,7 @@ describe("Seed Data Validation", () => {
     });
   });
 
-  describe("Import Seeds", () => {
-    it("should generate valid imports for development environment", () => {
-      const imports = importSeeds("development");
-      expect(imports.length).toBeGreaterThan(0);
-      expect(imports.every((imp) => imp.fileName && imp.catalog)).toBe(true);
-    });
-
-    it("should have proper status values", () => {
-      const imports = importSeeds("development");
-      expect(
-        imports.every((imp) => imp.status && ["pending", "processing", "completed", "failed"].includes(imp.status)),
-      ).toBe(true);
-    });
-
-    it("should have proper catalog references", () => {
-      const imports = importSeeds("development");
-      expect(imports.every((imp) => imp.catalog && typeof imp.catalog === "string")).toBe(true);
-    });
-  });
+  // Import Seeds tests removed - import jobs are created dynamically, not seeded
 
   describe("Data Consistency", () => {
     it("should generate different amounts of data per environment", () => {
@@ -112,19 +96,7 @@ describe("Seed Data Validation", () => {
   });
 
   describe("Relationship Validation", () => {
-    it("should have valid catalog references in imports", () => {
-      const environments = ["development", "production"];
-
-      environments.forEach((env) => {
-        const catalogs = catalogSeeds(env);
-        const imports = importSeeds(env);
-        const catalogSlugs = catalogs.map((c) => c.slug);
-
-        imports.forEach((imp) => {
-          expect(catalogSlugs).toContain(imp.catalog);
-        });
-      });
-    });
+    // Import catalog reference test removed - import jobs are created dynamically, not seeded
 
     it("should have valid catalog references in datasets", () => {
       const environments = ["development", "production"];

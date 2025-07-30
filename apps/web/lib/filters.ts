@@ -1,3 +1,14 @@
+/**
+ * @module Provides a centralized custom hook for managing filter state across the application.
+ *
+ * This module uses the `nuqs` library to synchronize filter state (such as selected catalogs,
+ * datasets, and date ranges) with the URL query parameters. This ensures that the filter
+ * state is bookmarkable and shareable.
+ *
+ * The `useFilters` hook encapsulates the logic for reading, updating, and clearing filters,
+ * providing a clean and reusable interface for any component that needs to interact with
+ * the global filter state.
+ */
 import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
 import { useMemo } from "react";
 

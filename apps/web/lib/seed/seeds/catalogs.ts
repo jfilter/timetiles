@@ -1,3 +1,10 @@
+/**
+ * @module This file contains the seed data for the Catalogs collection.
+ *
+ * It defines a set of predefined catalog entries that can be used to populate the database
+ * for different environments (e.g., development, testing). This ensures a consistent and
+ * realistic set of high-level data categories is available for organizing datasets.
+ */
 import type { Catalog } from "@/payload-types";
 
 // Use Payload type with specific omissions for seed data
@@ -32,12 +39,12 @@ const createCatalog = (
   name: string,
   description: string,
   slug: string,
-  status: "active" | "archived" = "active",
+  status: "draft" | "published" = "published",
 ): CatalogSeed => ({
   name,
   description: createDescription(description),
   slug,
-  status,
+  _status: status,
 });
 
 export const catalogSeeds = (environment: string): CatalogSeed[] => {
@@ -76,7 +83,7 @@ export const catalogSeeds = (environment: string): CatalogSeed[] => {
         "Historical Records",
         "Archived historical data that is no longer actively maintained.",
         "historical-records",
-        "archived",
+        "draft",
       ),
     ];
   }

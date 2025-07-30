@@ -5,6 +5,7 @@
     "NODE_ENV",
     "DATABASE_URL",
     "PAYLOAD_SECRET",
+    "PAYLOAD_PREVIEW_SECRET",
     "CI",
     "VITEST",
     "VITEST_WORKER_ID",

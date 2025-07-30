@@ -48,7 +48,6 @@ const config: DocsThemeConfig = {
   search: {
     placeholder: "Search documentation...",
   },
-  gitTimestamp: false,
 };
 
 export default config;

@@ -1,10 +1,21 @@
+/**
+ * This file defines the Geocoding Administration page.
+ *
+ * This page provides a user interface for managing and testing the geocoding service.
+ * It allows administrators to:
+ * - View and reorder the priority of configured geocoding providers.
+ * - See which providers are currently active.
+ * - Test the geocoding configuration by inputting an address and seeing the results
+ *   from the configured providers.
+ * @module
+ */
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 import React from "react";
 
-import { GeocodingTestPanel } from "@/lib/components/geocoding-test-panel";
-import { ProviderPriorityList } from "@/lib/components/provider-priority-list";
+import { GeocodingTestPanel } from "@/components/geocoding-test-panel";
+import { ProviderPriorityList } from "@/components/provider-priority-list";
 import config from "@/payload.config";
 
 // Force dynamic rendering to prevent build-time database queries

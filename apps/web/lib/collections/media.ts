@@ -1,9 +1,20 @@
+/**
+ * @module Defines the Payload CMS collection configuration for Media.
+ *
+ * This collection handles all media uploads, primarily images. It uses Payload's built-in
+ * `upload` functionality to manage file storage and automatically generate different
+ * image sizes (e.g., thumbnail, card, tablet) for responsive design.
+ * It also includes a field for `alt` text to ensure accessibility.
+ */
 import type { CollectionConfig } from "payload";
+
+import { createCommonConfig } from "./shared-fields";
 
 const Media: CollectionConfig = {
   slug: "media",
+  ...createCommonConfig(),
   upload: {
-    staticDir: "media",
+    staticDir: process.env.UPLOAD_DIR_MEDIA!,
     imageSizes: [
       {
         name: "thumbnail",
@@ -25,17 +36,11 @@ const Media: CollectionConfig = {
       },
     ],
     adminThumbnail: "thumbnail",
-    mimeTypes: [
-      "image/*",
-      "application/pdf",
-      "text/csv",
-      "application/vnd.ms-excel",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    ],
+    mimeTypes: ["image/*"],
   },
   admin: {
     useAsTitle: "filename",
-    defaultColumns: ["filename", "alt", "mimeType", "fileSize", "createdAt"],
+    defaultColumns: ["filename", "alt", "mimeType", "filesize", "createdAt"],
   },
   access: {
     read: () => true,
@@ -52,7 +57,6 @@ const Media: CollectionConfig = {
       },
     },
   ],
-  timestamps: true,
 };
 
 export default Media;

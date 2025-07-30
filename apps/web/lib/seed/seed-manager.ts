@@ -1,3 +1,17 @@
+/**
+ * @module This file contains the main `SeedManager` class, which serves as the primary
+ * entry point and orchestrator for all database seeding operations.
+ *
+ * It extends `SeedManagerBase` to inherit core functionalities like Payload initialization
+ * and cleanup. This class composes various specialized operation classes to handle
+ * different aspects of the seeding process:
+ * - `ConfigDrivenSeeding`: For seeding based on the `seed.config.ts` file.
+ * - `SeedingOperations`: For the core logic of creating documents and handling relationships.
+ * - `TruncationOperations`: For clearing database collections before seeding.
+ *
+ * It exposes high-level methods like `seedWithConfig` and `truncate` that can be called
+ * from seed scripts or other parts of the application.
+ */
 import { logPerformance } from "../logger";
 import { createLogger } from "../logger";
 import { SeedManagerBase } from "./core/seed-manager-base";
@@ -39,7 +53,7 @@ export class SeedManager extends SeedManagerBase {
     }
 
     const {
-      collections = ["users", "catalogs", "datasets", "events", "imports", "main-menu", "pages"],
+      collections = ["users", "catalogs", "datasets", "events", "import-files", "import-jobs", "main-menu", "pages"],
       truncate = false,
       environment = "development",
     } = options;

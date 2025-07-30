@@ -1,3 +1,13 @@
+/**
+ * Seed data for the Users collection.
+ *
+ * It defines a set of predefined user accounts with different roles (admin, editor, user)
+ * that can be used to populate the database. This is essential for development and testing,
+ * as it provides a consistent set of users for logging in and testing role-based access
+ * control and other user-specific features.
+ * 
+ * @module
+ */
 import type { User } from "@/payload-types";
 
 // Use Payload type with specific omissions for seed data
@@ -31,12 +41,12 @@ export const userSeeds = (environment: string): UserSeed[] => {
       isActive: true,
     },
     {
-      email: "analyst@example.com",
+      email: "editor@example.com",
       // eslint-disable-next-line sonarjs/no-hardcoded-passwords
-      password: "analyst123", // Development seed password only
+      password: "editor123", // Development seed password only
       firstName: "Data",
-      lastName: "Analyst",
-      role: "analyst",
+      lastName: "Editor",
+      role: "editor",
       isActive: true,
     },
   ];

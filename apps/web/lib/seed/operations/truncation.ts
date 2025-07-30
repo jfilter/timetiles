@@ -1,3 +1,14 @@
+/**
+ * @module This file contains the `TruncationOperations` class, which is responsible for
+ * clearing data from collections before seeding.
+ *
+ * It provides a robust and safe way to truncate collections by:
+ * - Determining the correct order of operations to respect foreign key constraints.
+ * - Automatically including dependent collections in the truncation process (e.g., truncating
+ *   `datasets` will also truncate `events`).
+ * - Using efficient database operations (like `TRUNCATE CASCADE`) with fallbacks to ensure
+ *   data is cleared effectively.
+ */
 import { createLogger, logError, logPerformance } from "@/lib/logger";
 
 import type { SeedManager } from "../seed-manager";
@@ -39,7 +50,7 @@ export class TruncationOperations {
   }
 
   private getAllCollectionNames(): string[] {
-    return ["users", "catalogs", "datasets", "events", "imports", "main-menu", "pages"];
+    return ["users", "catalogs", "datasets", "events", "import-files", "import-jobs", "main-menu", "pages"];
   }
 
   private addTruncationDependencies(collections: string[]): Set<string> {
@@ -52,7 +63,8 @@ export class TruncationOperations {
         // When truncating catalogs, also truncate dependent collections
         collectionsToTruncate.add("datasets");
         collectionsToTruncate.add("events");
-        collectionsToTruncate.add("imports");
+        collectionsToTruncate.add("import-files");
+        collectionsToTruncate.add("import-jobs");
       }
       if (collection == "datasets") {
         // When truncating datasets, also truncate events
@@ -68,11 +80,11 @@ export class TruncationOperations {
     // Truncate children before parents
     return [
       "events", // Has foreign keys to datasets and imports
-      "imports", // Has foreign key to catalogs
+      "import-jobs", // Has foreign key to import-files and datasets
+      "import-files", // Has foreign key to catalogs
       "datasets", // Has foreign key to catalogs
       "catalogs", // Parent table
       "pages", // Independent
-      "main-menu", // Global, independent
       "users", // May have foreign keys from other tables
     ];
   }

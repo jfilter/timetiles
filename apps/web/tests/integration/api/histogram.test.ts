@@ -81,13 +81,6 @@ describe("/api/events/histogram", () => {
           },
         },
         language: "en",
-        schema: {
-          type: "object",
-          properties: {
-            title: { type: "string" },
-            description: { type: "string" },
-          },
-        },
       },
     });
     testDatasetId = String(dataset.id);
@@ -115,6 +108,7 @@ describe("/api/events/histogram", () => {
       const event = await payload.create({
         collection: "events",
         data: {
+          uniqueId: `histogram-test-event-${i + 1}`,
           dataset: parseInt(testDatasetId),
           data: {
             title: `Test Event ${i + 1}`,

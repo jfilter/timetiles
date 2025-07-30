@@ -1,0 +1,50 @@
+[
+  {
+    "id": "1",
+    "title": "Tech Conference 2024",
+    "description": "Annual technology conference focusing on AI and machine learning",
+    "date": "2024-03-15",
+    "location": "Convention Center",
+    "category": "technology",
+    "coordinates": {
+      "lat": 37.7749,
+      "lng": -122.4194
+    }
+  },
+  {
+    "id": "2",
+    "title": "Art Gallery Opening",
+    "description": "Contemporary art exhibition featuring local artists",
+    "date": "2024-03-20",
+    "location": "Modern Art Gallery",
+    "category": "arts",
+    "coordinates": {
+      "lat": 37.7849,
+      "lng": -122.4094
+    }
+  },
+  {
+    "id": "3",
+    "title": "Music Festival",
+    "description": "Three-day outdoor music festival with multiple stages",
+    "date": "2024-04-01",
+    "location": "Central Park",
+    "category": "music",
+    "coordinates": {
+      "lat": 37.7649,
+      "lng": -122.4294
+    }
+  },
+  {
+    "id": "4",
+    "title": "Food Truck Rally",
+    "description": "Gathering of the city's best food trucks",
+    "date": "2024-04-15",
+    "location": "City Square",
+    "category": "food",
+    "coordinates": {
+      "lat": 37.7549,
+      "lng": -122.4394
+    }
+  }
+]

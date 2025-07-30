@@ -1,45 +1,21 @@
-import js from "@eslint/js"
-import eslintConfigPrettier from "eslint-config-prettier"
-import onlyWarn from "eslint-plugin-only-warn"
-import * as mdx from "eslint-plugin-mdx"
+/**
+ * @module This file contains the ESLint configuration for MDX files.
+ *
+ * It extends the base configuration and adds rules specifically for MDX, ensuring that
+ * code blocks and other syntax within Markdown documents are linted correctly.
+ */
+import * as mdx from "eslint-plugin-mdx";
+
+import baseConfig from "./base.js";
 
 /**
- * ESLint configuration for MDX files.
- * Uses eslint-plugin-mdx to properly parse and lint MDX files.
- *
  * @type {import("eslint").Linter.Config}
  */
 export default [
-  {
-    ignores: [
-      "**/.next/**",
-      "**/out/**", 
-      "**/dist/**",
-      "**/build/**",
-      "**/node_modules/**",
-    ],
-  },
-  js.configs.recommended,
+  ...baseConfig,
   {
     ...mdx.flat,
-    processor: mdx.createRemarkProcessor({
-      lintCodeBlocks: true,
-    }),
-  },
-  {
+    // optional, if you want to see configuration comments
     ...mdx.flatCodeBlocks,
-    rules: {
-      ...mdx.flatCodeBlocks.rules,
-      // Override code block specific rules
-      "no-var": "error",
-      "prefer-const": "error",
-      "no-console": "warn",
-    },
   },
-  eslintConfigPrettier,
-  {
-    plugins: {
-      onlyWarn,
-    },
-  },
-]
+];

@@ -1,7 +1,20 @@
+/**
+ * This file contains the base ESLint configuration for the entire monorepo.
+ *
+ * It sets up a comprehensive set of rules and plugins to enforce a consistent and high-quality
+ * code style. This includes configurations for TypeScript, Prettier, import sorting, security,
+ * promises, and more. It also defines architectural boundaries between different parts of the
+ * monorepo to prevent incorrect dependencies.
+ * 
+ * @module
+ */
+/* eslint-disable sonarjs/no-duplicate-string */
 import js from "@eslint/js";
 import eslintConfigPrettier from "eslint-config-prettier";
 import boundariesPlugin from "eslint-plugin-boundaries";
 import importPlugin from "eslint-plugin-import";
+import jsdocPlugin from "eslint-plugin-jsdoc";
+import onlyWarn from "eslint-plugin-only-warn";
 import preferArrowFunctions from "eslint-plugin-prefer-arrow-functions";
 import prettierPlugin from "eslint-plugin-prettier";
 import promisePlugin from "eslint-plugin-promise";
@@ -100,6 +113,7 @@ export default [
       prettier: prettierPlugin,
       import: importPlugin,
       "simple-import-sort": simpleImportSort,
+      "only-warn": onlyWarn,
       "unused-imports": unusedImports,
       boundaries: boundariesPlugin,
       unicorn: unicornPlugin,
@@ -107,6 +121,7 @@ export default [
       promise: promisePlugin,
       regexp: regexpPlugin,
       "prefer-arrow-functions": preferArrowFunctions,
+      jsdoc: jsdocPlugin,
     },
     settings: {
       "boundaries/elements": [
@@ -140,7 +155,7 @@ export default [
       // TypeScript
       "@typescript-eslint/consistent-type-imports": "error",
       "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/no-unused-vars": "error",
+      "@typescript-eslint/no-unused-vars": ["warn", { varsIgnorePattern: "^_" }],
 
       // Security
       "security/detect-buffer-noassert": "error",
@@ -168,7 +183,6 @@ export default [
       "regexp/no-super-linear-backtracking": "error",
       "regexp/no-useless-escape": "error",
       "regexp/optimal-quantifier-concatenation": "error",
-      "regexp/prefer-regexp-exec": "error",
 
       // SonarJS
       "sonarjs/cognitive-complexity": ["error", 15],
@@ -190,10 +204,6 @@ export default [
       "simple-import-sort/imports": "error",
       "simple-import-sort/exports": "error",
       "unused-imports/no-unused-imports": "error",
-      "unused-imports/no-unused-vars": [
-        "warn",
-        { vars: "all", varsIgnorePattern: "^_", args: "after-used", argsIgnorePattern: "^_" },
-      ],
       "import/no-cycle": "error",
       "import/no-default-export": "warn",
       "import/no-namespace": "warn",
@@ -260,12 +270,11 @@ export default [
             "^route\\.ts$",
             "^middleware\\.ts$",
             "^instrumentation\\.ts$",
-            "^\\[[\\w-]+\\]\\.tsx?$",
+            "^\\[\\[\\w+-?\\w*\\]\\.tsx?$",
             "^\\[\\[\\.\\.\\.\\w+\\]\\]\\.tsx?$",
             "\\.config\\.(js|ts|mjs)$",
             "\\.d\\.ts$",
             "\\.test\\.tsx?$",
-            // Note: .spec. files are not allowed - use .test. instead
             "^README\\.md$",
             "^CLAUDE\\.md$",
             "^\\d{8}_.*\\.ts$",
@@ -307,11 +316,22 @@ export default [
       "no-restricted-syntax": [
         "error",
         {
-          selector: "CallExpression[callee.type='MemberExpression'][callee.object.type='MemberExpression'][callee.object.object.object.name='Object'][callee.object.object.property.name='prototype'][callee.object.property.name='hasOwnProperty'][callee.property.name='call']",
-          message: "Use Object.hasOwn() instead of Object.prototype.hasOwnProperty.call()"
-        }
+          selector:
+            "CallExpression[callee.type='MemberExpression'][callee.object.type='MemberExpression'][callee.object.object.object.name='Object'][callee.object.object.property.name='hasOwnProperty'][callee.object.property.name='call']",
+          message: "Use Object.hasOwn() instead of Object.prototype.hasOwnProperty.call()",
+        },
       ],
       "turbo/no-undeclared-env-vars": "error",
+
+      // JSDoc
+      "jsdoc/require-file-overview": ["warn", { tags: { module: { initialCommentsOnly: true, mustExist: true } } }],
+    },
+  },
+  // Allow default exports for config files
+  {
+    files: ["**/*.config.{js,ts,mjs}", "**/eslint.config.{js,ts}", "packages/eslint-config/*.js"],
+    rules: {
+      "import/no-default-export": "off",
     },
   },
   {

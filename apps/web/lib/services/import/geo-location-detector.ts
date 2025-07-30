@@ -1,3 +1,16 @@
+/**
+ * @module Provides a service for automatically detecting geographic location columns in a dataset.
+ *
+ * This class uses a combination of pattern matching and heuristic analysis to identify which
+ * columns in an imported dataset are likely to contain latitude, longitude, or combined
+ * coordinate data. It is a key part of the automated import process, reducing the need for
+ * manual configuration.
+ *
+ * The detection process works in several steps:
+ * 1.  It first looks for columns with names that match common patterns (e.g., "lat", "longitude").
+ * 2.  If that fails, it checks for columns with names that suggest combined coordinates (e.g., "location").
+ * 3.  Finally, it uses heuristics to analyze the data in all columns to find pairs that look like valid coordinates.
+ */
 import { logger } from "@/lib/logger";
 
 import { parseCoordinate } from "./coordinate-parser";

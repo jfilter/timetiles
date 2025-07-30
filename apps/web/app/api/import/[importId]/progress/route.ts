@@ -1,211 +1,128 @@
+/**
+ * This file defines the API route for fetching the progress of a data import job.
+ *
+ * It provides an endpoint that clients can poll to get real-time updates on the status
+ * of an import. The handler can return the overall progress of a catalog import (which may
+ * involve multiple datasets and jobs) or the detailed progress of a single dataset import job.
+ * This is crucial for providing feedback to the user during the import process.
+ * @module
+ */
 import config from "@payload-config";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
-import { v4 as uuidv4 } from "uuid";
 
-import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { createRequestLogger, logError } from "@/lib/logger";
-import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
-import type { Import } from "@/payload-types";
+import { logError } from "@/lib/logger";
 
-// Use Payload types directly instead of custom interfaces
-type ProgressResponse = {
-  importId: string;
-  status: Import["status"];
-  stage: Import["processingStage"];
-  progress: {
-    current: number;
-    total: number;
-    percentage: number;
-    createdEvents: number;
-  };
-  stageProgress: {
-    stage: string;
-    percentage: number;
-  };
-  batchInfo: {
-    currentBatch: number;
-    totalBatches: number;
-    batchSize: number;
-  };
-  geocodingStats: Import["geocodingStats"];
-  currentJob?: {
-    id: string;
-    status: string;
-    progress: number;
-  };
-  estimatedTimeRemaining?: number;
-};
-
-// Use Payload's progress type structure but simplified for calculations
-type ProgressCounts = {
-  totalRows: number;
-  processedRows: number;
-  geocodedRows: number;
-  createdEvents: number;
-};
-
-// Use the generated Import type instead of custom interface
-
-export const GET = async (request: NextRequest, { params }: { params: Promise<{ importId: string }> }) => {
-  const requestId = uuidv4();
-  const logger = createRequestLogger(requestId);
-
+export const GET = async (
+  request: NextRequest,
+  { params }: { params: { importId: string } },
+): Promise<NextResponse> => {
   try {
-    logger.debug("Handling progress check request");
     const payload = await getPayload({ config });
-    const resolvedParams = await params;
-    const importId = resolvedParams.importId;
+    const { importId } = params;
 
-    const { clientId, rateLimitService } = setupRateLimit(request, payload);
-    const importResult = await fetchImportRecord(payload, importId);
-    if ("error" in importResult) {
-      return importResult.error;
+    // First try to find as importFile
+    const importFile = await payload
+      .findByID({
+        collection: "import-files",
+        id: importId,
+        depth: 0,
+      })
+      .catch(() => null);
+
+    if (importFile) {
+      // Get all related import jobs
+      const importJobs = await payload.find({
+        collection: "import-jobs",
+        where: {
+          importFile: {
+            equals: importId,
+          },
+        },
+        limit: 100,
+      });
+
+      // Calculate overall progress
+      const jobs = importJobs.docs;
+      const totalProgress =
+        jobs.length > 0
+          ? jobs.reduce((sum, job) => {
+              const progress = job.progress?.current || 0;
+              const total = job.progress?.total || 1;
+              return sum + (progress / total) * 100;
+            }, 0) / jobs.length
+          : 0;
+
+      const response = {
+        type: "catalog",
+        id: importFile.id,
+        status: importFile.status,
+        datasetsCount: importFile.datasetsCount,
+        datasetsProcessed: importFile.datasetsProcessed,
+        progress: Math.round(totalProgress),
+        jobs: jobs.map((job) => ({
+          id: job.id,
+          datasetId: typeof job.dataset === "object" ? job.dataset.id : job.dataset,
+          datasetName: typeof job.dataset === "object" ? job.dataset.name : undefined,
+          stage: job.stage,
+          progress:
+            job.progress?.total && job.progress?.current
+              ? Math.round((job.progress.current / job.progress.total) * 100)
+              : 0,
+          rowsTotal: job.progress?.total || 0,
+          rowsProcessed: job.progress?.current || 0,
+          errors: job.errors?.length || 0,
+        })),
+        errorLog: importFile.errorLog,
+        completedAt: importFile.completedAt,
+      };
+
+      return NextResponse.json(response);
     }
-    const importRecord = importResult;
-    const progressCounts = extractProgressCounts(importRecord);
-    const stageProgress = calculateStageProgress(
-      importRecord.processingStage ?? PROCESSING_STAGE.FILE_PARSING,
-      progressCounts,
-    );
-    const currentJobStatus = getCurrentJobStatus(importRecord, stageProgress, logger);
-    const response = buildProgressResponse(importRecord, importId, progressCounts, stageProgress, currentJobStatus);
-    const headers = rateLimitService.getRateLimitHeaders(clientId, RATE_LIMITS.PROGRESS_CHECK.limit);
 
-    logger.debug({ importId, status: response.status, stage: response.stage }, "Progress check completed");
-    return NextResponse.json(response, { headers });
-  } catch (error) {
-    logError(error, "Progress tracking error", { requestId });
-    return NextResponse.json({ error: "Failed to fetch progress" }, { status: 500 });
-  }
-};
+    // Try to find as ImportJob (for individual dataset progress)
+    const importJob = await payload
+      .findByID({
+        collection: "import-jobs",
+        id: importId,
+        depth: 1,
+      })
+      .catch(() => null);
 
-const setupRateLimit = (request: NextRequest, payload: Awaited<ReturnType<typeof getPayload>>) => {
-  const clientId = getClientIdentifier(request);
-  const rateLimitService = getRateLimitService(payload);
-  return { clientId, rateLimitService };
-};
+    if (importJob) {
+      const progress =
+        importJob.progress?.total && importJob.progress?.current
+          ? Math.round((importJob.progress.current / importJob.progress.total) * 100)
+          : 0;
 
-const fetchImportRecord = async (
-  payload: Awaited<ReturnType<typeof getPayload>>,
-  importId: string,
-): Promise<Import | { error: NextResponse }> => {
-  try {
-    return await payload.findByID({
-      collection: "imports",
-      id: importId,
-    });
-  } catch (error) {
-    if (error instanceof Error && (error.message.includes("Not Found") || error.name === "NotFound")) {
-      return { error: NextResponse.json({ error: "Import not found" }, { status: 404 }) };
+      const response = {
+        type: "dataset",
+        id: importJob.id,
+        datasetId: typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset,
+        datasetName: typeof importJob.dataset === "object" ? importJob.dataset.name : undefined,
+        stage: importJob.stage,
+        progress,
+        rowsTotal: importJob.progress?.total || 0,
+        rowsProcessed: importJob.progress?.current || 0,
+        batchNumber: importJob.progress?.batchNumber || 0,
+        duplicates: {
+          internal: importJob.duplicates?.summary?.internalDuplicates || 0,
+          external: importJob.duplicates?.summary?.externalDuplicates || 0,
+        },
+        schemaValidation: importJob.schemaValidation,
+        geocodingProgress: importJob.geocodingProgress,
+        errors: importJob.errors?.length || 0,
+        results: importJob.results,
+      };
+
+      return NextResponse.json(response);
     }
-    throw error;
-  }
-};
 
-const extractProgressCounts = (importRecord: Import): ProgressCounts => ({
-  totalRows: importRecord.progress?.totalRows ?? 0,
-  processedRows: importRecord.progress?.processedRows ?? 0,
-  geocodedRows: importRecord.progress?.geocodedRows ?? 0,
-  createdEvents: importRecord.progress?.createdEvents ?? 0,
-});
-
-const getCurrentJobStatus = (
-  importRecord: Import,
-  stageProgress: { stage: string; percentage: number },
-  logger: ReturnType<typeof createRequestLogger>,
-): { id: string; status: string; progress: number } | null => {
-  if (importRecord.currentJobId == null) {
-    return null;
-  }
-
-  try {
-    return {
-      id: importRecord.currentJobId,
-      status: "running",
-      progress: stageProgress.percentage,
-    };
+    return NextResponse.json({ error: "Import not found" }, { status: 404 });
   } catch (error) {
-    logger.warn({ error, importId: importRecord.id, jobId: importRecord.currentJobId }, "Failed to get job status");
-    return null;
+    logError(error, "Failed to get import progress", { importId: params.importId });
+
+    return NextResponse.json({ error: "Failed to get import progress" }, { status: 500 });
   }
-};
-
-const buildProgressResponse = (
-  importRecord: Import,
-  importId: string,
-  progressCounts: ProgressCounts,
-  stageProgress: { stage: string; percentage: number },
-  currentJobStatus: { id: string; status: string; progress: number } | null,
-): ProgressResponse => ({
-  importId,
-  status: importRecord.status ?? "pending",
-  stage: importRecord.processingStage ?? PROCESSING_STAGE.FILE_PARSING,
-  progress: {
-    current: progressCounts.processedRows,
-    total: progressCounts.totalRows,
-    percentage:
-      progressCounts.totalRows > 0 ? Math.round((progressCounts.processedRows / progressCounts.totalRows) * 100) : 0,
-    createdEvents: progressCounts.createdEvents,
-  },
-  stageProgress,
-  batchInfo: {
-    currentBatch: Number(importRecord.batchInfo?.currentBatch ?? 0),
-    totalBatches: Number(importRecord.batchInfo?.totalBatches ?? 0),
-    batchSize: Number(importRecord.batchInfo?.batchSize ?? 100),
-  },
-  geocodingStats: importRecord.geocodingStats ?? {},
-  currentJob: currentJobStatus ?? undefined,
-  estimatedTimeRemaining: calculateEstimatedTime(importRecord),
-});
-
-const calculateStageProgress = (stage: Import["processingStage"], counts: ProgressCounts) => {
-  switch (stage) {
-    case PROCESSING_STAGE.FILE_PARSING:
-      return { stage: "Parsing file...", percentage: 10 };
-    case "row-processing":
-      return {
-        stage: "Processing rows...",
-        percentage: 10 + (counts.processedRows / counts.totalRows) * 40,
-      };
-    case "geocoding":
-      return {
-        stage: "Geocoding addresses...",
-        percentage: 50 + (counts.geocodedRows / counts.totalRows) * 30,
-      };
-    case "event-creation":
-      return {
-        stage: "Creating events...",
-        percentage: 80 + (counts.createdEvents / counts.totalRows) * 20,
-      };
-    case "completed":
-      return { stage: "Completed", percentage: 100 };
-    default:
-      return { stage: "Processing...", percentage: 0 };
-  }
-};
-
-const calculateEstimatedTime = (importRecord: Import): number | undefined => {
-  // Simple estimation based on processing speed
-  const totalRows = importRecord.progress?.totalRows ?? 0;
-  const processedRows = importRecord.progress?.processedRows ?? 0;
-  const remainingRows = totalRows - processedRows;
-
-  if (remainingRows <= 0 || importRecord.importedAt == null) {
-    return undefined;
-  }
-
-  const startTime = new Date(importRecord.importedAt).getTime();
-  const currentTime = Date.now();
-  const elapsedTime = currentTime - startTime;
-
-  if (processedRows === 0 || elapsedTime === 0) {
-    return undefined;
-  }
-
-  const processingRate = processedRows / (elapsedTime / 1000); // rows per second
-  const estimatedSeconds = remainingRows / processingRate;
-
-  return Math.round(estimatedSeconds);
 };

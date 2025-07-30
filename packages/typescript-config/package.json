@@ -5,5 +5,9 @@
   "license": "PROPRIETARY",
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "lint": "eslint . --ext .ts,.tsx --cache",
+    "format": "eslint . --ext .ts,.tsx,.js,.jsx --cache --fix --quiet && prettier --write . --log-level error"
   }
 }

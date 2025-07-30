@@ -1,4 +1,15 @@
 /**
+ * @module This file contains utility functions for generating realistic and varied seed data.
+ *
+ * It provides a set of helpers that are used by the individual seed files (e.g., `events.ts`,
+ * `datasets.ts`) to create mock data that mimics real-world scenarios. This includes:
+ * - Generating plausible geographic coordinates within specific regions.
+ * - Creating structured metadata based on different schema types.
+ * - Determining the number of items to generate for different collections based on their type.
+ * - Providing predefined schemas and geographic regions to ensure consistency.
+ */
+
+/**
  * Utility functions for generating realistic seed data
  */
 

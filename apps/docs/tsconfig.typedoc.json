@@ -1,0 +1,17 @@
+{
+  "extends": "../web/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../web",
+    "paths": {
+      "@/*": ["../web/*"],
+      "@/components/*": ["../web/components/*"],
+      "@workspace/ui/*": ["../../packages/ui/src/*"],
+      "@payload-config": ["../web/payload.config.ts"]
+    },
+    "skipLibCheck": true,
+    "declaration": true,
+    "emitDeclarationOnly": false
+  },
+  "include": ["../web/lib/**/*.ts", "../web/payload-types.ts"],
+  "exclude": ["../web/node_modules", "../web/**/*.test.ts", "../web/**/*.spec.ts"]
+}

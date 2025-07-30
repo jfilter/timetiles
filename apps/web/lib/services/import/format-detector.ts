@@ -1,4 +1,16 @@
 /**
+ * @module Provides utilities for detecting the format of geographic data within a dataset.
+ *
+ * This module contains functions and regular expressions designed to identify how location
+ * data is represented. It can detect:
+ * - Combined coordinate formats (e.g., "lat, lon", "lat lon", GeoJSON).
+ * - Individual latitude and longitude columns based on common naming conventions.
+ *
+ * The results of this detection are used to guide the parsing and validation process
+ * during data import, ensuring that geographic information is correctly interpreted.
+ */
+
+/**
  * Format detection utilities for geolocation data
  */
 

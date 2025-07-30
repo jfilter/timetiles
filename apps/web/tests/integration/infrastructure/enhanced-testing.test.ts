@@ -96,7 +96,7 @@ describe("Enhanced Testing Infrastructure", () => {
       const catalog = TestDataBuilder.catalogs()
         .withName("Technology Events")
         .withDescription("Tech conferences and meetups")
-        .withStatus("active")
+        .withStatus("published")
         .build();
 
       const dataset = TestDataBuilder.datasets()
@@ -107,12 +107,10 @@ describe("Enhanced Testing Infrastructure", () => {
 
       expect(catalog.name).toBe("Technology Events");
       expect(catalog.slug).toBe("technology-events");
-      expect(catalog.status).toBe("active");
+      expect(catalog._status).toBe("published");
 
       expect(dataset.name).toBe("Tech Conference Schedule");
       expect(dataset.catalog).toBe(1);
-      expect((dataset.schema as Record<string, unknown>)?.properties).toHaveProperty("title");
-      expect((dataset.schema as Record<string, unknown>)?.properties).toHaveProperty("date");
     });
 
     it("should create realistic test scenarios", () => {

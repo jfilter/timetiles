@@ -1,3 +1,14 @@
+/**
+ * @module Defines the main GeocodingService class, the public interface for all geocoding operations.
+ *
+ * This class acts as a facade, orchestrating the various components of the geocoding system,
+ * including the provider manager, cache manager, and the core operations logic. It is responsible
+ * for initializing the service, loading configurations, and exposing the primary methods for
+ * single-address geocoding, batch geocoding, and configuration testing.
+ *
+ * The service is designed to be initialized once and then used throughout the application.
+ * It handles loading settings and provider configurations from the database and environment variables.
+ */
 import type { Payload } from "payload";
 
 import { createLogger } from "@/lib/logger";

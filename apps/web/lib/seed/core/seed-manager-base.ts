@@ -1,3 +1,13 @@
+/**
+ * @module This file contains the base class for the seed manager.
+ *
+ * The `SeedManagerBase` class is responsible for initializing the Payload CMS instance
+ * and providing access to core database and relationship resolution services. It also
+ * handles the graceful cleanup of database connections and other resources.
+ *
+ * This abstract class is extended by the main `SeedManager` to provide the core
+ * foundation for all seeding operations.
+ */
 import type { Payload } from "payload";
 import { getPayload } from "payload";
 

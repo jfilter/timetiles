@@ -1,3 +1,16 @@
+/**
+ * @module Implements the core operational logic for the geocoding service.
+ *
+ * This class orchestrates the entire geocoding process. It integrates the provider manager
+ * and cache manager to perform geocoding lookups efficiently and resiliently.
+ *
+ * Its responsibilities include:
+ * - Checking the cache for an address before querying external providers.
+ * - Sequentially trying configured geocoding providers based on their priority.
+ * - Handling provider fallbacks in case of failures.
+ * - Managing batch geocoding requests.
+ * - Providing a method to test the configuration of all active providers.
+ */
 import type { Entry } from "node-geocoder";
 
 import { createLogger, logError, logPerformance } from "@/lib/logger";

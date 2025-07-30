@@ -1,3 +1,13 @@
+/**
+ * This file defines the API route for fetching a list of events.
+ *
+ * It provides a flexible endpoint that allows clients to retrieve events based on a variety
+ * of filters, including catalog, datasets, geographic bounds, and date ranges. The handler
+ * constructs a dynamic `Where` clause for the Payload query based on the provided
+ * search parameters. The results are then serialized into a clean, consistent format
+ * for the client.
+ * @module
+ */
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import type { Where } from "payload";
@@ -104,7 +114,7 @@ const transformEvent = (event: Event) => ({
       }
     : null,
   eventTimestamp: event.eventTimestamp,
-  isValid: event.isValid,
+  isValid: event.validationStatus === "valid",
 });
 
 export const GET = async (request: NextRequest) => {

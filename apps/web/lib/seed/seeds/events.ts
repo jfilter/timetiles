@@ -1,3 +1,12 @@
+/**
+ * @module This file contains the seed data for the Events collection.
+ *
+ * It programmatically generates a large number of event records with realistic and varied
+ * data. The generation logic is designed to create events that are associated with the
+ * datasets defined in `datasets.ts`, and it uses utility functions to produce plausible
+ * metadata, geographic coordinates, and timestamps. This ensures a rich and diverse
+ * dataset for development and testing purposes.
+ */
 import type { Event } from "@/payload-types";
 
 import {
@@ -113,22 +122,23 @@ const generateEventsForDataset = (
     const needsLocation = config.catalogType !== "economic" || Math.random() > 0.5;
 
     events.push({
+      uniqueId: `${config.slug}-event-${i}`,
       dataset: config.slug,
       data: metadata,
       location: needsLocation ? location : undefined,
       eventTimestamp: eventTimestamp,
-      isValid: true,
+      validationStatus: "valid" as const,
       coordinateSource: needsLocation
         ? {
-            type: "import",
+            type: "import" as const,
             importColumns: {
               latitudeColumn: "latitude",
               longitudeColumn: "longitude",
             },
-            validationStatus: "valid",
+            validationStatus: "valid" as const,
           }
         : {
-            type: "none",
+            type: "none" as const,
           },
     });
   }

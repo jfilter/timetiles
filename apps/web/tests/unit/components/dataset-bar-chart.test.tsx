@@ -46,7 +46,7 @@ describe("DatasetBarChart", () => {
       name: "Dataset A",
       catalog: 1,
       language: "en",
-      schema: {},
+      slug: "dataset-a",
       updatedAt: "2024-01-01T00:00:00Z",
       createdAt: "2024-01-01T00:00:00Z",
     },
@@ -55,7 +55,7 @@ describe("DatasetBarChart", () => {
       name: "Dataset B",
       catalog: 1,
       language: "en",
-      schema: {},
+      slug: "dataset-b",
       updatedAt: "2024-01-01T00:00:00Z",
       createdAt: "2024-01-01T00:00:00Z",
     },
@@ -74,6 +74,7 @@ describe("DatasetBarChart", () => {
     {
       id: 1,
       dataset: 1,
+      uniqueId: "event-1",
       data: { title: "Event 1" },
       eventTimestamp: "2024-01-01T00:00:00Z",
       updatedAt: "2024-01-01T00:00:00Z",
@@ -82,6 +83,7 @@ describe("DatasetBarChart", () => {
     {
       id: 2,
       dataset: 1,
+      uniqueId: "event-2",
       data: { title: "Event 2" },
       eventTimestamp: "2024-01-02T00:00:00Z",
       updatedAt: "2024-01-02T00:00:00Z",
@@ -90,6 +92,7 @@ describe("DatasetBarChart", () => {
     {
       id: 3,
       dataset: 2,
+      uniqueId: "event-3",
       data: { title: "Event 3" },
       eventTimestamp: "2024-01-03T00:00:00Z",
       updatedAt: "2024-01-03T00:00:00Z",

@@ -25,7 +25,8 @@ export const verifyDatabaseSchema = async (connectionString: string): Promise<vo
 
     // Check if critical tables exist
     const requiredTables = [
-      "imports",
+      "import_jobs",
+      "import_files",
       "events",
       "catalogs",
       "datasets",
