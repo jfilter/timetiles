@@ -16,11 +16,11 @@ import { logError } from "@/lib/logger";
 
 export const GET = async (
   request: NextRequest,
-  { params }: { params: { importId: string } },
+  context: { params: Promise<{ importId: string }> },
 ): Promise<NextResponse> => {
   try {
     const payload = await getPayload({ config });
-    const { importId } = params;
+    const { importId } = await context.params;
 
     // Get the import file
     const importFile = await payload
@@ -96,7 +96,8 @@ export const GET = async (
 
     return NextResponse.json(response);
   } catch (error) {
-    logError(error, "Failed to get import progress", { importId: params.importId });
+    const { importId } = await context.params;
+    logError(error, "Failed to get import progress", { importId });
 
     return NextResponse.json({ error: "Failed to get import progress" }, { status: 500 });
   }

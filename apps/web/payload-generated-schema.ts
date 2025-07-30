@@ -134,6 +134,7 @@ export const enum_import_jobs_stage = db_schema.enum("enum_import_jobs_stage", [
   "detect-schema",
   "validate-schema",
   "await-approval",
+  "create-schema-version",
   "geocode-batch",
   "create-events",
   "completed",
@@ -152,6 +153,7 @@ export const enum__import_jobs_v_version_stage = db_schema.enum("enum__import_jo
   "detect-schema",
   "validate-schema",
   "await-approval",
+  "create-schema-version",
   "geocode-batch",
   "create-events",
   "completed",
@@ -878,6 +880,7 @@ export const import_files = db_schema.table(
   "import_files",
   {
     id: serial("id").primaryKey(),
+    originalName: varchar("original_name"),
     catalog: integer("catalog_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
@@ -950,6 +953,7 @@ export const _import_files_v = db_schema.table(
     parent: integer("parent_id").references(() => import_files.id, {
       onDelete: "set null",
     }),
+    version_originalName: varchar("version_original_name"),
     version_catalog: integer("version_catalog_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
