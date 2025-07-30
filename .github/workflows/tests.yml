@@ -35,6 +35,7 @@ jobs:
       DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
       PAYLOAD_SECRET: test-secret-key
       PGPASSWORD: timetiles_password
+      NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
 
     steps:
       - uses: actions/checkout@v4
