@@ -1,38 +1,8 @@
-import { postgresAdapter } from "@payloadcms/db-postgres";
-import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { randomUUID } from "crypto";
 import fs from "fs";
 import path from "path";
-import { buildConfig, getPayload } from "payload";
 
-// Import collections
-import Catalogs from "@/lib/collections/catalogs";
-import DatasetSchemas from "@/lib/collections/dataset-schemas";
-import Datasets from "@/lib/collections/datasets";
-import Events from "@/lib/collections/events";
-import GeocodingProviders from "@/lib/collections/geocoding-providers";
-import ImportFiles from "@/lib/collections/import-files";
-import ImportJobs from "@/lib/collections/import-jobs";
-// ImportDatasets and ImportSchemaBuilders collections were removed
-import LocationCache from "@/lib/collections/location-cache";
-import Media from "@/lib/collections/media";
-import { Pages } from "@/lib/collections/pages";
-import Users from "@/lib/collections/users";
-import { MainMenu } from "@/lib/globals/main-menu";
-import {
-  analyzeDuplicatesJob,
-  cleanupApprovalLocksJob,
-  createEventsBatchJob,
-  createSchemaVersionJob,
-  datasetDetectionJob,
-  geocodeBatchJob,
-  schemaDetectionJob,
-  validateSchemaJob,
-} from "@/lib/jobs/import-jobs";
-import { logger } from "@/lib/logger";
-import { migrations } from "@/migrations";
-
-import { truncateAllTables } from "./database-setup";
+import { TestEnvironmentBuilder } from "./test-environment-builder";
 
 // Helper function to create import file with proper upload
 export const createImportFileWithUpload = async (
@@ -63,7 +33,7 @@ export const FIXTURES_PATH = path.join(__dirname, "../fixtures");
 
 /**
  * Creates an isolated test environment for each test
- * Uses the database already set up by the global setup, just truncates tables
+ * Uses the test-environment-builder for consistency
  */
 export const createIsolatedTestEnvironment = async (): Promise<{
   seedManager: any;
@@ -71,117 +41,15 @@ export const createIsolatedTestEnvironment = async (): Promise<{
   cleanup: () => Promise<void>;
   tempDir: string;
 }> => {
-  const testId = randomUUID();
-  const workerId = process.env.VITEST_WORKER_ID ?? "1";
-  const tempDir = `/tmp/timetiles-test-${workerId}-${testId}`;
-
-  // Create unique temp directory for this test
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir, { recursive: true });
-  }
-
-  // Use the database that was already set up by the global setup
-  const dbName = `timetiles_test_${workerId}`;
-  const dbUrl = process.env.DATABASE_URL ?? `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
-
-  // Truncate all tables to ensure clean state for this test
-  await truncateAllTables(dbUrl);
-
-  // Create test config (similar to setup.ts but using the existing database)
-  const testConfig = buildConfig({
-    secret: process.env.PAYLOAD_SECRET ?? "test-secret-key",
-    admin: {
-      user: Users.slug,
-    },
-    logger:
-      process.env.LOG_LEVEL && process.env.LOG_LEVEL !== "silent"
-        ? undefined // Use Payload's default logger when debugging
-        : {
-            options: {
-              level: "fatal",
-            },
-          },
-    debug: false,
-    collections: [
-      Catalogs,
-      Datasets,
-      DatasetSchemas,
-      ImportFiles,
-      ImportJobs,
-      // ImportDatasets and ImportSchemaBuilders collections were removed
-      Events,
-      Users,
-      Media,
-      LocationCache,
-      GeocodingProviders,
-      Pages,
-    ],
-    globals: [MainMenu],
-    jobs: {
-      tasks: [
-        analyzeDuplicatesJob,
-        cleanupApprovalLocksJob,
-        createEventsBatchJob,
-        createSchemaVersionJob,
-        datasetDetectionJob,
-        geocodeBatchJob,
-        schemaDetectionJob,
-        validateSchemaJob,
-      ],
-    },
-    db: postgresAdapter({
-      pool: {
-        connectionString: dbUrl,
-      },
-      schemaName: "payload",
-      push: false,
-      prodMigrations: migrations,
-    }),
-    editor: lexicalEditor({}),
-  });
-
-  const payload = await getPayload({ config: testConfig });
-
-  // Payload instances are now created as needed via getPayload({ config })
-
-  // Import the real SeedManager class
-  const { SeedManager } = await import("../../lib/seed/index");
-  const seedManager = new SeedManager();
-
-  // Override the initialize method to use the isolated payload instance
-  seedManager.initialize = async () => {
-    // Set the payload instance directly instead of creating a new one
-    (seedManager as any).payload = payload;
-
-    // Initialize relationship resolver with the test payload instance
-    const { RelationshipResolver } = await import("../../lib/seed/relationship-resolver");
-    (seedManager as any).relationshipResolver = new RelationshipResolver(payload);
-
-    // Initialize database operations with the test payload instance
-    const { DatabaseOperations } = await import("../../lib/seed/database-operations");
-    (seedManager as any).databaseOperations = new DatabaseOperations(payload);
-
-    return payload;
+  const builder = new TestEnvironmentBuilder();
+  const env = await builder.createIsolatedTestEnvironment();
+  
+  return {
+    seedManager: env.seedManager,
+    payload: env.payload,
+    cleanup: env.cleanup,
+    tempDir: env.tempDir || "",
   };
-
-  const cleanup = async () => {
-    try {
-      if (fs.existsSync(tempDir)) {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      }
-    } catch (error) {
-      logger.warn("Failed to clean up temp directory:", error);
-    }
-
-    // Truncate tables for the next test
-    try {
-      await truncateAllTables(dbUrl);
-    } catch (error) {
-      logger.warn("Failed to truncate tables during cleanup:", error);
-    }
-  };
-
-  return { seedManager, payload, cleanup, tempDir };
 };
 
 /**

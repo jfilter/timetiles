@@ -6,39 +6,15 @@
  * test-helpers with a more robust and configurable system.
  */
 
-import { postgresAdapter } from "@payloadcms/db-postgres";
-import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { randomUUID } from "crypto";
 import fs from "fs";
-import { buildConfig, getPayload } from "payload";
+import { getPayload } from "payload";
 
-// Import collections
-import Catalogs from "@/lib/collections/catalogs";
-import DatasetSchemas from "@/lib/collections/dataset-schemas";
-import Datasets from "@/lib/collections/datasets";
-import Events from "@/lib/collections/events";
-import GeocodingProviders from "@/lib/collections/geocoding-providers";
-import ImportFiles from "@/lib/collections/import-files";
-// ImportDatasets and ImportSchemaBuilders collections were removed
-import LocationCache from "@/lib/collections/location-cache";
-import Media from "@/lib/collections/media";
-import { Pages } from "@/lib/collections/pages";
-import Users from "@/lib/collections/users";
-import { MainMenu } from "@/lib/globals/main-menu";
-import {
-  analyzeDuplicatesJob,
-  cleanupApprovalLocksJob,
-  createEventsBatchJob,
-  createSchemaVersionJob,
-  datasetDetectionJob,
-  geocodeBatchJob,
-  schemaDetectionJob,
-  validateSchemaJob,
-} from "@/lib/jobs/import-jobs";
+import type { CollectionName } from "@/lib/config/payload-config-factory";
+import { createTestConfig } from "@/lib/config/payload-config-factory";
 import { createLogger } from "@/lib/logger";
 import { SeedManager } from "@/lib/seed/index";
 import { RelationshipResolver } from "@/lib/seed/relationship-resolver";
-import { migrations } from "@/migrations";
 
 import { truncateAllTables } from "./database-setup";
 
@@ -46,7 +22,7 @@ const logger = createLogger("test-env");
 
 export interface TestEnvironmentOptions {
   /** Collections to include in the test environment */
-  collections?: string[];
+  collections?: CollectionName[];
   /** Whether to seed data automatically */
   seedData?: boolean;
   /** Isolation level for the test environment */
@@ -86,7 +62,7 @@ export class TestEnvironmentBuilder {
    */
   async createTestEnvironment(options: TestEnvironmentOptions = {}): Promise<TestEnvironment> {
     const {
-      collections = ["events", "catalogs", "datasets", "users"],
+      collections = ["events", "catalogs", "datasets", "users"] as CollectionName[],
       seedData = false,
       isolationLevel = "worker",
       customSeedData = {},
@@ -127,7 +103,11 @@ export class TestEnvironmentBuilder {
     await truncateAllTables(dbUrl);
 
     // Create optimized Payload config for testing
-    const testConfig = this.buildTestConfig(dbUrl, collections);
+    const testConfig = await createTestConfig({
+      databaseUrl: dbUrl,
+      collections,
+      logLevel: process.env.LOG_LEVEL as any || "silent",
+    });
     const payload = await getPayload({ config: testConfig });
 
     // Payload instances are now created as needed via getPayload({ config })
@@ -170,7 +150,7 @@ export class TestEnvironmentBuilder {
    */
   async createUnitTestEnvironment(): Promise<TestEnvironment> {
     return this.createTestEnvironment({
-      collections: ["users"], // Minimal collections
+      collections: ["users"] as CollectionName[], // Minimal collections
       seedData: false,
       isolationLevel: "test",
       createTempDir: false,
@@ -182,7 +162,7 @@ export class TestEnvironmentBuilder {
    */
   async createIntegrationTestEnvironment(customData?: Record<string, any[]>): Promise<TestEnvironment> {
     return this.createTestEnvironment({
-      collections: ["users", "catalogs", "datasets", "events", "imports"],
+      collections: ["users", "catalogs", "datasets", "events", "import-files", "import-jobs"] as CollectionName[],
       seedData: false, // Don't seed automatically to avoid relationship issues
       isolationLevel: "suite",
       customSeedData: customData ?? {},
@@ -195,7 +175,7 @@ export class TestEnvironmentBuilder {
    */
   async createIsolatedTestEnvironment(): Promise<TestEnvironment> {
     return this.createTestEnvironment({
-      collections: ["users", "catalogs", "datasets", "events"],
+      collections: ["users", "catalogs", "datasets", "events"] as CollectionName[],
       seedData: false,
       isolationLevel: "worker",
       createTempDir: true,
@@ -231,69 +211,6 @@ export class TestEnvironmentBuilder {
     // Use UUID prefix for true uniqueness instead of timestamp to prevent collisions
     const uniqueId = testId.substring(0, 8);
     return `timetiles_test_${isolationLevel}_${workerId}_${uniqueId}`;
-  }
-
-  /**
-   * Build optimized Payload config for testing
-   */
-  private buildTestConfig(dbUrl: string, collections: string[]) {
-    // Map collection names to collection objects
-    const collectionMap: Record<string, any> = {
-      catalogs: Catalogs,
-      datasets: Datasets,
-      "dataset-schemas": DatasetSchemas,
-      "import-files": ImportFiles,
-      // "import-datasets" and "import-schema-builders" collections were removed
-      events: Events,
-      users: Users,
-      media: Media,
-      "location-cache": LocationCache,
-      "geocoding-providers": GeocodingProviders,
-      pages: Pages,
-    };
-
-    const selectedCollections = collections.map((name) => collectionMap[name]).filter(Boolean);
-
-    return buildConfig({
-      secret: process.env.PAYLOAD_SECRET ?? "test-secret-key",
-      admin: {
-        user: collections.includes("users") ? Users.slug : undefined,
-        disable: true, // Disable admin for better test performance
-      },
-      logger:
-        process.env.LOG_LEVEL && process.env.LOG_LEVEL !== "silent"
-          ? undefined // Use Payload's default logger when debugging
-          : {
-              options: {
-                level: "fatal",
-              },
-            },
-      debug: false,
-      collections: selectedCollections,
-      globals: [MainMenu],
-      jobs: {
-        tasks: [
-          analyzeDuplicatesJob,
-          cleanupApprovalLocksJob,
-          createEventsBatchJob,
-          createSchemaVersionJob,
-          datasetDetectionJob,
-          geocodeBatchJob,
-          schemaDetectionJob,
-          validateSchemaJob,
-        ],
-      },
-      db: postgresAdapter({
-        pool: {
-          connectionString: dbUrl,
-          max: 5, // Smaller pool for tests
-        },
-        schemaName: "payload",
-        push: false,
-        prodMigrations: migrations,
-      }),
-      editor: lexicalEditor({}),
-    });
   }
 
   /**

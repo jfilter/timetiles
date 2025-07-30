@@ -61,89 +61,18 @@ beforeAll(async () => {
 
   // Run migrations to ensure database schema is up to date
   try {
-    const { getPayload, buildConfig } = await import("payload");
-    const { postgresAdapter } = await import("@payloadcms/db-postgres");
-    const { lexicalEditor } = await import("@payloadcms/richtext-lexical");
-    const { migrations } = await import("../../migrations");
+    const { getPayload } = await import("payload");
+    const { createTestConfig } = await import("../../lib/config/payload-config-factory");
 
-    // Import all collections to ensure proper migration
-    const Catalogs = (await import("../../lib/collections/catalogs")).default;
-    const Datasets = (await import("../../lib/collections/datasets")).default;
-    const ImportFiles = (await import("../../lib/collections/import-files")).default;
-    const ImportJobs = (await import("../../lib/collections/import-jobs")).default;
-    // ImportDatasets collection was removed
-    // ImportSchemaBuilders collection was removed
-    const DatasetSchemas = (await import("../../lib/collections/dataset-schemas")).default;
-    const Events = (await import("../../lib/collections/events")).default;
-    const Users = (await import("../../lib/collections/users")).default;
-    const Media = (await import("../../lib/collections/media")).default;
-    const LocationCache = (await import("../../lib/collections/location-cache")).default;
-    const GeocodingProviders = (await import("../../lib/collections/geocoding-providers")).default;
-    const { Pages } = await import("../../lib/collections/pages");
-    const { MainMenu } = await import("../../lib/globals/main-menu");
-    const {
-      analyzeDuplicatesJob,
-      cleanupApprovalLocksJob,
-      createEventsBatchJob,
-      createSchemaVersionJob,
-      datasetDetectionJob,
-      geocodeBatchJob,
-      schemaDetectionJob,
-      validateSchemaJob,
-    } = await import("../../lib/jobs/import-jobs");
-
-    const testConfig = buildConfig({
-      secret: process.env.PAYLOAD_SECRET ?? "test-secret-key",
-      admin: {
-        user: Users.slug,
-      },
-      logger:
-        process.env.LOG_LEVEL && process.env.LOG_LEVEL !== "silent"
-          ? undefined // Use Payload's default logger when debugging
-          : {
-              options: {
-                level: "fatal",
-              },
-            },
-      debug: false,
-      collections: [
-        Catalogs,
-        Datasets,
-        DatasetSchemas,
-        ImportFiles,
-        ImportJobs,
-        // ImportDatasets and ImportSchemaBuilders collections were removed
-        Events,
-        Users,
-        Media,
-        LocationCache,
-        GeocodingProviders,
-        Pages,
-      ],
-      globals: [MainMenu],
-      jobs: {
-        tasks: [
-          analyzeDuplicatesJob,
-          cleanupApprovalLocksJob,
-          createEventsBatchJob,
-          createSchemaVersionJob,
-          datasetDetectionJob,
-          geocodeBatchJob,
-          schemaDetectionJob,
-          validateSchemaJob,
-        ],
-      },
-      db: postgresAdapter({
-        pool: {
-          connectionString: dbUrl,
-        },
-        schemaName: "payload",
-        push: false,
-        prodMigrations: migrations,
-      }),
-      editor: lexicalEditor({}),
+    logger.info(`Creating test config with database URL: ${dbUrl}`);
+    
+    const testConfig = await createTestConfig({
+      databaseUrl: dbUrl,
+      logLevel: process.env.LOG_LEVEL as any || "silent",
     });
 
+    logger.info("Test config created, initializing Payload...");
+    
     const payload = await getPayload({ config: testConfig });
     await payload.db.migrate();
 

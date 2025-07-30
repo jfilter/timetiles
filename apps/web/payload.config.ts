@@ -3,28 +3,15 @@ import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { buildConfig } from "payload";
 import sharp from "sharp";
 
-import Catalogs from "./lib/collections/catalogs";
-import DatasetSchemas from "./lib/collections/dataset-schemas";
-import Datasets from "./lib/collections/datasets";
-import Events from "./lib/collections/events";
-import GeocodingProviders from "./lib/collections/geocoding-providers";
-import ImportFiles from "./lib/collections/import-files";
-import ImportJobs from "./lib/collections/import-jobs";
-import LocationCache from "./lib/collections/location-cache";
-import Media from "./lib/collections/media";
-import { Pages } from "./lib/collections/pages";
-import Users from "./lib/collections/users";
-import { MainMenu } from "./lib/globals/main-menu";
 import {
-  analyzeDuplicatesJob,
-  cleanupApprovalLocksJob,
-  createEventsBatchJob,
-  createSchemaVersionJob,
-  datasetDetectionJob,
-  geocodeBatchJob,
-  schemaDetectionJob,
-  validateSchemaJob,
-} from "./lib/jobs/import-jobs";
+  ALL_COLLECTIONS,
+  ALL_GLOBALS,
+  ALL_JOBS,
+  DEFAULT_DB_CONFIG,
+  DEFAULT_TYPESCRIPT_CONFIG,
+  DEFAULT_UPLOAD_CONFIG,
+} from "./lib/config/payload-shared-config";
+import Users from "./lib/collections/users";
 
 const secret = process.env.PAYLOAD_SECRET;
 const serverURL = process.env.NEXT_PUBLIC_PAYLOAD_URL;
@@ -46,65 +33,25 @@ export default buildConfig({
   admin: {
     user: Users.slug,
   },
-  collections: [
-    Catalogs,
-    Datasets,
-    DatasetSchemas,
-    ImportFiles,
-    ImportJobs,
-    Events,
-    Users,
-    Media,
-    LocationCache,
-    GeocodingProviders,
-    Pages,
-  ],
-  globals: [MainMenu],
+  collections: ALL_COLLECTIONS,
+  globals: ALL_GLOBALS,
   jobs: {
-    tasks: [
-      // New simplified import pipeline jobs
-      datasetDetectionJob,
-      schemaDetectionJob,
-      analyzeDuplicatesJob,
-      validateSchemaJob,
-      createSchemaVersionJob,
-      geocodeBatchJob,
-      createEventsBatchJob,
-      // Maintenance jobs
-      cleanupApprovalLocksJob,
-    ],
+    tasks: ALL_JOBS,
   },
   editor: lexicalEditor({}),
   secret,
   serverURL,
-  typescript: {
-    outputFile: "./payload-types.ts",
-  },
+  typescript: DEFAULT_TYPESCRIPT_CONFIG,
   db: postgresAdapter({
-    push: false, // Disable automatic schema updates
+    ...DEFAULT_DB_CONFIG,
     pool: {
       connectionString: connectionString,
-    },
-    schemaName: "payload",
-    migrationDir: "./migrations",
-    transactionOptions: {
-      isolationLevel: "read committed",
     },
   }),
   cors: [serverURL],
   csrf: [serverURL],
   sharp: sharp as any,
-  upload: {
-    limits: {
-      fileSize: 100000000, // 100MB global limit for large import files
-    },
-    abortOnLimit: true, // Return HTTP 413 for files exceeding limits
-    uploadTimeout: 600000, // 10 minutes timeout for large file uploads
-    useTempFiles: true, // Use temp files instead of memory for large files
-    tempFileDir: process.env.UPLOAD_TEMP_DIR!,
-    safeFileNames: true, // Strip dangerous characters from filenames
-    preserveExtension: 4, // Max 4 characters for file extensions (.xlsx, .json, .csv, etc.)
-  },
+  upload: DEFAULT_UPLOAD_CONFIG,
   graphQL: {
     disable: true,
   },

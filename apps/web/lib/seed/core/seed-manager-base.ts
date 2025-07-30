@@ -11,8 +11,8 @@
 import type { Payload } from "payload";
 import { getPayload } from "payload";
 
+import { createProductionConfig } from "@/lib/config/payload-config-factory";
 import { createLogger } from "@/lib/logger";
-import config from "@/payload.config";
 import type { Config } from "@/payload-types";
 
 import { DatabaseOperations } from "../database-operations";
@@ -38,7 +38,7 @@ export abstract class SeedManagerBase {
     if (!this.payload) {
       logger.debug("Initializing Payload instance for seed manager");
       this.payload = await getPayload({
-        config,
+        config: await createProductionConfig(),
       });
       logger.debug("Payload instance initialized successfully");
 
