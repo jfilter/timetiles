@@ -372,7 +372,14 @@ importers:
         specifier: ^8.24.1
         version: 8.24.1(eslint@9.31.0(jiti@2.4.2))(typescript@5.7.3)
 
-  packages/typescript-config: {}
+  packages/typescript-config:
+    devDependencies:
+      eslint:
+        specifier: ^9.31.0
+        version: 9.31.0(jiti@2.4.2)
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
 
   packages/ui:
     dependencies:
