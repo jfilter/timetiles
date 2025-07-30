@@ -2,7 +2,11 @@
 
 import { useCallback, useRef, useState } from "react";
 
-import { useImportProgressQuery, useImportUploadMutation } from "../lib/hooks/use-events-queries";
+import {
+  type ImportProgressResponse,
+  useImportProgressQuery,
+  useImportUploadMutation,
+} from "../lib/hooks/use-events-queries";
 
 const getStatusIcon = (status: string): string => {
   switch (status) {
@@ -18,9 +22,6 @@ const getStatusIcon = (status: string): string => {
 };
 
 const getProgressBarStyle = (percentage: number) => ({ width: `${percentage}%` });
-const getBatchProgressStyle = (current: number, total: number) => ({
-  width: `${(current / total) * 100}%`,
-});
 
 // Helper components to reduce complexity
 const ErrorAlert = ({ error }: { error: string | null }) => {
@@ -166,104 +167,67 @@ const UploadButtons = ({
   );
 };
 
-const ProgressStats = ({ progress }: { progress: ProgressResponse }) => (
-  <div className="grid grid-cols-2 gap-4 text-sm">
-    <div>
-      <span className="font-medium">Status:</span> {progress.status}
-    </div>
-    <div>
-      <span className="font-medium">Stage:</span> {progress.stage}
-    </div>
-    <div>
-      <span className="font-medium">Processed:</span> {progress.progress.current} / {progress.progress.total}
-    </div>
-    <div>
-      <span className="font-medium">Overall:</span> {progress.progress.percentage}%
-    </div>
-  </div>
-);
-
-const BatchProgress = ({ batchInfo }: { batchInfo: ProgressResponse["batchInfo"] }) => {
-  if (batchInfo.totalBatches <= 0) return null;
+const ProgressStats = ({ progress }: { progress: ImportProgressResponse }) => {
+  // Calculate totals from jobs
+  const totalRows = progress.jobs.reduce((sum, job) => sum + job.rowsTotal, 0);
+  const processedRows = progress.jobs.reduce((sum, job) => sum + job.rowsProcessed, 0);
+  const totalErrors = progress.jobs.reduce((sum, job) => sum + job.errors, 0);
 
   return (
-    <div>
-      <div className="mb-1 flex justify-between text-sm">
-        <span>Batch Progress</span>
-        <span>
-          {batchInfo.currentBatch} / {batchInfo.totalBatches}
-        </span>
+    <div className="grid grid-cols-2 gap-4 text-sm">
+      <div>
+        <span className="font-medium">Status:</span> {progress.status}
       </div>
-      <div className="h-1 w-full rounded-full bg-gray-200">
-        <div
-          className="h-1 rounded-full bg-green-600 transition-all duration-300"
-          style={getBatchProgressStyle(batchInfo.currentBatch, batchInfo.totalBatches)}
-        />
+      <div>
+        <span className="font-medium">Datasets:</span> {progress.datasetsProcessed} / {progress.datasetsCount}
       </div>
+      <div>
+        <span className="font-medium">Rows Processed:</span> {processedRows} / {totalRows}
+      </div>
+      <div>
+        <span className="font-medium">Overall Progress:</span> {progress.overallProgress}%
+      </div>
+      {totalErrors > 0 && (
+        <div className="col-span-2">
+          <span className="font-medium text-red-600">Errors:</span> {totalErrors}
+        </div>
+      )}
     </div>
   );
 };
 
-const EstimatedTime = ({
-  timeRemaining,
-  formatTime,
-}: {
-  timeRemaining?: number;
-  formatTime: (seconds: number) => string;
-}) => {
-  if (timeRemaining == null || (typeof timeRemaining === "number" && timeRemaining === 0)) return null;
-
-  return <div className="text-sm text-gray-600">Estimated time remaining: {formatTime(timeRemaining)}</div>;
-};
-
-const GeocodingStats = ({ stats }: { stats?: Record<string, unknown> }) => {
-  if (!stats || Object.keys(stats).length === 0) return null;
+const JobsProgress = ({ jobs }: { jobs: ImportProgressResponse["jobs"] }) => {
+  if (jobs.length === 0) return null;
 
   return (
-    <div className="border-t pt-3">
-      <h4 className="mb-2 text-sm font-medium">Geocoding Statistics</h4>
-      <div className="grid grid-cols-2 gap-2 text-xs">
-        {Object.entries(stats).map(([key, value]) => (
-          <div key={key}>
-            <span className="capitalize">{key.replace(/([A-Z])/g, " $1")}:</span> {String(value)}
+    <div className="space-y-2">
+      <h4 className="text-sm font-medium">Dataset Progress</h4>
+      {jobs.map((job) => (
+        <div key={job.id} className="rounded border p-2">
+          <div className="mb-1 flex justify-between text-xs">
+            <span className="font-medium">{job.datasetName ?? job.datasetId}</span>
+            <span>{job.stage}</span>
           </div>
-        ))}
-      </div>
+          <div className="mb-1 flex justify-between text-xs">
+            <span>Progress: {job.progress}%</span>
+            <span>
+              {job.rowsProcessed} / {job.rowsTotal} rows
+            </span>
+          </div>
+          <div className="h-1 w-full rounded-full bg-gray-200">
+            <div
+              className="h-1 rounded-full bg-green-600 transition-all duration-300"
+              style={getProgressBarStyle(job.progress)}
+            />
+          </div>
+          {job.errors > 0 && <div className="mt-1 text-xs text-red-600">Errors: {job.errors}</div>}
+        </div>
+      ))}
     </div>
   );
 };
 
-// Define the progress response type
-type ProgressResponse = {
-  importId: string;
-  status: string;
-  stage: string;
-  progress: {
-    current: number;
-    total: number;
-    percentage: number;
-    createdEvents: number;
-  };
-  stageProgress: {
-    stage: string;
-    percentage: number;
-  };
-  batchInfo: {
-    currentBatch: number;
-    totalBatches: number;
-    batchSize: number;
-  };
-  estimatedTimeRemaining?: number;
-  geocodingStats?: Record<string, unknown>;
-};
-
-const ProgressSection = ({
-  progress,
-  formatTime,
-}: {
-  progress: ProgressResponse | null | undefined;
-  formatTime: (seconds: number) => string;
-}) => {
+const ProgressSection = ({ progress }: { progress: ImportProgressResponse | null | undefined }) => {
   if (!progress) return null;
 
   return (
@@ -272,26 +236,30 @@ const ProgressSection = ({
         {getStatusIcon(progress.status)}
         Import Progress
       </h3>
-      <p className="mb-4 text-gray-600">Import ID: {progress.importId}</p>
+      <p className="mb-4 text-gray-600">File: {progress.originalName}</p>
 
       <div className="space-y-4">
         <div>
           <div className="mb-2 flex justify-between text-sm">
-            <span>{progress.stageProgress.stage}</span>
-            <span>{Math.round(progress.stageProgress.percentage)}%</span>
+            <span>Overall Progress</span>
+            <span>{progress.overallProgress}%</span>
           </div>
           <div className="h-2 w-full rounded-full bg-gray-200">
             <div
               className="h-2 rounded-full bg-blue-600 transition-all duration-300"
-              style={getProgressBarStyle(progress.stageProgress.percentage)}
+              style={getProgressBarStyle(progress.overallProgress)}
             />
           </div>
         </div>
 
         <ProgressStats progress={progress} />
-        <BatchProgress batchInfo={progress.batchInfo} />
-        <EstimatedTime timeRemaining={progress.estimatedTimeRemaining} formatTime={formatTime} />
-        <GeocodingStats stats={progress.geocodingStats} />
+        <JobsProgress jobs={progress.jobs} />
+        {progress.errorLog && (
+          <div className="rounded border border-red-200 bg-red-50 p-3">
+            <h4 className="mb-1 text-sm font-medium text-red-800">Error Details</h4>
+            <p className="text-xs text-red-700">{progress.errorLog}</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -412,7 +380,7 @@ export const ImportUpload = () => {
         </div>
       </div>
 
-      <ProgressSection progress={progress} formatTime={formatTime} />
+      <ProgressSection progress={progress} />
     </div>
   );
 };

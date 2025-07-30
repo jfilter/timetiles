@@ -59,37 +59,37 @@ export interface HistogramResponse {
   histogram: HistogramData[];
 }
 
-export interface ImportProgressResponse {
-  importId: string;
-  status: "pending" | "processing" | "completed" | "failed";
+export interface ImportJobProgress {
+  id: string;
+  datasetId: string;
+  datasetName?: string;
   stage: string;
-  progress: {
-    current: number;
-    total: number;
-    percentage: number;
-    createdEvents: number;
+  progress: number;
+  rowsTotal: number;
+  rowsProcessed: number;
+  batchNumber: number;
+  errors: number;
+  duplicates: {
+    internal: number;
+    external: number;
   };
-  stageProgress: {
-    stage: string;
-    percentage: number;
-  };
-  batchInfo: {
-    currentBatch: number;
-    totalBatches: number;
-    batchSize: number;
-  };
-  geocodingStats?: {
-    successful: number;
-    failed: number;
-    skipped: number;
-  };
-  currentJob?: {
-    id: string;
-    status: string;
-    progress: number;
-  };
-  estimatedTimeRemaining?: number;
-  message?: string;
+  schemaValidation?: any;
+  geocodingProgress?: any;
+  results?: any;
+}
+
+export interface ImportProgressResponse {
+  type: "import-file";
+  id: string;
+  status: string;
+  originalName: string;
+  datasetsCount: number;
+  datasetsProcessed: number;
+  overallProgress: number;
+  jobs: ImportJobProgress[];
+  errorLog?: string;
+  completedAt?: string;
+  createdAt?: string;
 }
 
 // Simple bounds interface for better React Query compatibility

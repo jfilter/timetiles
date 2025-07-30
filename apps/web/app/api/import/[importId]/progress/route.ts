@@ -22,7 +22,7 @@ export const GET = async (
     const payload = await getPayload({ config });
     const { importId } = params;
 
-    // First try to find as importFile
+    // Get the import file
     const importFile = await payload
       .findByID({
         collection: "import-files",
@@ -31,95 +31,70 @@ export const GET = async (
       })
       .catch(() => null);
 
-    if (importFile) {
-      // Get all related import jobs
-      const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: {
-          importFile: {
-            equals: importId,
-          },
-        },
-        limit: 100,
-      });
-
-      // Calculate overall progress
-      const jobs = importJobs.docs;
-      const totalProgress =
-        jobs.length > 0
-          ? jobs.reduce((sum, job) => {
-              const progress = job.progress?.current || 0;
-              const total = job.progress?.total || 1;
-              return sum + (progress / total) * 100;
-            }, 0) / jobs.length
-          : 0;
-
-      const response = {
-        type: "catalog",
-        id: importFile.id,
-        status: importFile.status,
-        datasetsCount: importFile.datasetsCount,
-        datasetsProcessed: importFile.datasetsProcessed,
-        progress: Math.round(totalProgress),
-        jobs: jobs.map((job) => ({
-          id: job.id,
-          datasetId: typeof job.dataset === "object" ? job.dataset.id : job.dataset,
-          datasetName: typeof job.dataset === "object" ? job.dataset.name : undefined,
-          stage: job.stage,
-          progress:
-            job.progress?.total && job.progress?.current
-              ? Math.round((job.progress.current / job.progress.total) * 100)
-              : 0,
-          rowsTotal: job.progress?.total || 0,
-          rowsProcessed: job.progress?.current || 0,
-          errors: job.errors?.length || 0,
-        })),
-        errorLog: importFile.errorLog,
-        completedAt: importFile.completedAt,
-      };
-
-      return NextResponse.json(response);
+    if (!importFile) {
+      return NextResponse.json({ error: "Import file not found" }, { status: 404 });
     }
 
-    // Try to find as ImportJob (for individual dataset progress)
-    const importJob = await payload
-      .findByID({
-        collection: "import-jobs",
-        id: importId,
-        depth: 1,
-      })
-      .catch(() => null);
+    // Get all related import jobs with dataset details
+    const importJobs = await payload.find({
+      collection: "import-jobs",
+      where: {
+        importFile: {
+          equals: importId,
+        },
+      },
+      limit: 100,
+      depth: 1, // Include dataset details
+    });
 
-    if (importJob) {
-      const progress =
-        importJob.progress?.total && importJob.progress?.current
-          ? Math.round((importJob.progress.current / importJob.progress.total) * 100)
-          : 0;
+    const jobs = importJobs.docs;
 
-      const response = {
-        type: "dataset",
-        id: importJob.id,
-        datasetId: typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset,
-        datasetName: typeof importJob.dataset === "object" ? importJob.dataset.name : undefined,
-        stage: importJob.stage,
-        progress,
-        rowsTotal: importJob.progress?.total || 0,
-        rowsProcessed: importJob.progress?.current || 0,
-        batchNumber: importJob.progress?.batchNumber || 0,
+    // Calculate overall progress
+    const overallProgress =
+      jobs.length > 0
+        ? jobs.reduce((sum, job) => {
+            const progress = job.progress?.current || 0;
+            const total = job.progress?.total || 1;
+            return sum + (progress / total) * 100;
+          }, 0) / jobs.length
+        : 0;
+
+    // Build comprehensive response
+    const response = {
+      type: "import-file",
+      id: importFile.id,
+      status: importFile.status,
+      originalName: importFile.originalName,
+      datasetsCount: importFile.datasetsCount,
+      datasetsProcessed: importFile.datasetsProcessed,
+      overallProgress: Math.round(overallProgress),
+      jobs: jobs.map((job) => ({
+        id: job.id,
+        datasetId: typeof job.dataset === "object" ? job.dataset.id : job.dataset,
+        datasetName: typeof job.dataset === "object" ? job.dataset.name : undefined,
+        stage: job.stage,
+        progress:
+          job.progress?.total && job.progress?.current
+            ? Math.round((job.progress.current / job.progress.total) * 100)
+            : 0,
+        rowsTotal: job.progress?.total || 0,
+        rowsProcessed: job.progress?.current || 0,
+        batchNumber: job.progress?.batchNumber || 0,
+        errors: job.errors?.length || 0,
         duplicates: {
-          internal: importJob.duplicates?.summary?.internalDuplicates || 0,
-          external: importJob.duplicates?.summary?.externalDuplicates || 0,
+          internal: job.duplicates?.summary?.internalDuplicates || 0,
+          external: job.duplicates?.summary?.externalDuplicates || 0,
         },
-        schemaValidation: importJob.schemaValidation,
-        geocodingProgress: importJob.geocodingProgress,
-        errors: importJob.errors?.length || 0,
-        results: importJob.results,
-      };
+        schemaValidation: job.schemaValidation,
+        geocodingProgress: job.geocodingProgress,
+        results: job.results,
+      })),
+      errorLog: importFile.errorLog,
+      completedAt: importFile.completedAt,
+      createdAt: importFile.createdAt,
+    };
 
-      return NextResponse.json(response);
-    }
-
-    return NextResponse.json({ error: "Import not found" }, { status: 404 });
+    return NextResponse.json(response);
   } catch (error) {
     logError(error, "Failed to get import progress", { importId: params.importId });
 
