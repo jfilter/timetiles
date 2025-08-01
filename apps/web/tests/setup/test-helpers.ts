@@ -1,5 +1,4 @@
 import { randomUUID } from "crypto";
-import fs from "fs";
 import path from "path";
 
 import { TestEnvironmentBuilder } from "./test-environment-builder";
@@ -43,7 +42,7 @@ export const createIsolatedTestEnvironment = async (): Promise<{
 }> => {
   const builder = new TestEnvironmentBuilder();
   const env = await builder.createIsolatedTestEnvironment();
-  
+
   return {
     seedManager: env.seedManager,
     payload: env.payload,

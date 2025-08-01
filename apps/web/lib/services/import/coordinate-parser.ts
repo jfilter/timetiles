@@ -9,7 +9,7 @@
  *
  * The main export, `parseCoordinate`, attempts to parse a value using these different strategies,
  * returning a standardized decimal degree number if successful.
- * 
+ *
  * @module
  */
 
@@ -27,7 +27,7 @@ export const tryParseDecimal = (str: string): number | null => {
 
 /**
  * Parse DMS (Degrees Minutes Seconds) format
- * 
+ *
  * @example
  * ```typescript
  * parseDMSFormat("40°26'46\"N"); // Returns 40.446111

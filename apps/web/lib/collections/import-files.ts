@@ -13,7 +13,6 @@
  * An `afterChange` hook is used to automatically trigger the `dataset-detection` job
  * as soon as a new file is uploaded and created in this collection.
  */
-import path from "path";
 import type { CollectionConfig } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
@@ -61,8 +60,8 @@ const ImportFiles: CollectionConfig = {
   access: {
     read: () => true,
     create: () => true, // Enable creation for uploads
-    update: () => false,
-    delete: () => false,
+    update: ({ req: { user } }) => Boolean(user),
+    delete: ({ req: { user } }) => Boolean(user?.role === "admin"),
   },
   fields: [
     // Payload automatically adds filename, mimeType, filesize fields when upload is enabled
@@ -217,32 +216,35 @@ const ImportFiles: CollectionConfig = {
   hooks: {
     beforeOperation: [
       async ({ operation, req }) => {
-        // Only run on create operations with file uploads
-        if (operation !== "create" || !req.file) return;
+        // Only run on create operations
+        if (operation !== "create") return;
 
         const logger = createRequestLogger("import-files-beforeoperation");
 
-        // Store original filename for later use
-        const originalName = req.file.name;
+        // Handle file uploads (original logic)
+        if (req.file) {
+          // Store original filename for later use
+          const originalName = req.file.name;
 
-        // Generate unique filename with timestamp and UUID to prevent conflicts
-        const timestamp = Date.now();
-        const uniqueId = uuidv4().substring(0, 8); // Short UUID for readability
-        const fileExtension = originalName.split(".").pop() || "csv";
-        const uniqueFilename = `${timestamp}-${uniqueId}.${fileExtension}`;
+          // Generate unique filename with timestamp and UUID to prevent conflicts
+          const timestamp = Date.now();
+          const uniqueId = uuidv4().substring(0, 8); // Short UUID for readability
+          const fileExtension = originalName.split(".").pop() || "csv";
+          const uniqueFilename = `${timestamp}-${uniqueId}.${fileExtension}`;
 
-        // Update the file name
-        req.file.name = uniqueFilename;
+          // Update the file name
+          req.file.name = uniqueFilename;
 
-        // Store original name in request context for use in beforeChange hook
-        (req as any).originalFileName = originalName;
+          // Store original name in request context for use in beforeChange hook
+          (req as any).originalFileName = originalName;
 
-        logger.debug("Generated unique filename", {
-          originalName,
-          uniqueFilename,
-          timestamp,
-          uniqueId,
-        });
+          logger.debug("Generated unique filename", {
+            originalName,
+            uniqueFilename,
+            timestamp,
+            uniqueId,
+          });
+        }
       },
     ],
     beforeValidate: [
@@ -253,7 +255,7 @@ const ImportFiles: CollectionConfig = {
         const logger = createRequestLogger("import-files-validate");
         const user = req.user;
 
-        // Validate user-specific file size limits
+        // Validate user-specific file size limits (only for file uploads)
         if (req.file) {
           const maxSize = user ? MAX_FILE_SIZE.authenticated : MAX_FILE_SIZE.unauthenticated;
           if (req.file.size > maxSize) {
@@ -355,11 +357,6 @@ const ImportFiles: CollectionConfig = {
 
         // Queue the dataset detection job to detect sheets/datasets
         try {
-          // Construct file path from Payload's upload configuration
-          // For Payload uploads, the file is stored in the upload directory specified in the collection config
-          const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
-          const filePath = path.join(uploadDir, doc.filename);
-
           const job = await payload.jobs.queue({
             task: "dataset-detection",
             input: {

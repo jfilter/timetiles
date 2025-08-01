@@ -1,27 +1,33 @@
-import * as migration_20250729_195546 from "./20250729_195546";
-import * as migration_20250729_195600_add_spatial_functions from "./20250729_195600_add_spatial_functions";
-import * as migration_20250730_123117 from "./20250730_123117";
-import * as migration_20250730_131917 from "./20250730_131917";
+import * as migration_20250729_195546 from './20250729_195546';
+import * as migration_20250729_195600_add_spatial_functions from './20250729_195600_add_spatial_functions';
+import * as migration_20250730_123117 from './20250730_123117';
+import * as migration_20250730_131917 from './20250730_131917';
+import * as migration_20250731_170928_add_scheduled_imports from './20250731_170928_add_scheduled_imports';
 
 export const migrations = [
   {
     up: migration_20250729_195546.up,
     down: migration_20250729_195546.down,
-    name: "20250729_195546",
+    name: '20250729_195546',
   },
   {
     up: migration_20250729_195600_add_spatial_functions.up,
     down: migration_20250729_195600_add_spatial_functions.down,
-    name: "20250729_195600_add_spatial_functions",
+    name: '20250729_195600_add_spatial_functions',
   },
   {
     up: migration_20250730_123117.up,
     down: migration_20250730_123117.down,
-    name: "20250730_123117",
+    name: '20250730_123117',
   },
   {
     up: migration_20250730_131917.up,
     down: migration_20250730_131917.down,
-    name: "20250730_131917",
+    name: '20250730_131917',
+  },
+  {
+    up: migration_20250731_170928_add_scheduled_imports.up,
+    down: migration_20250731_170928_add_scheduled_imports.down,
+    name: '20250731_170928_add_scheduled_imports'
   },
 ];

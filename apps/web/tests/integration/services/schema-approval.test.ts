@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createIsolatedTestEnvironment, createImportFileWithUpload } from "../../setup/test-helpers";
+import { createImportFileWithUpload, createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
 describe.sequential("Schema Approval Workflow", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;

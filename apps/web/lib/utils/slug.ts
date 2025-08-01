@@ -8,7 +8,7 @@
  * - Generate a unique slug by appending a random suffix if a conflict is found.
  * - A factory function (`createSlugHook`) to easily integrate this logic into Payload CMS
  *   collection field hooks.
- * 
+ *
  * @category Utilities
  * @module
  */
@@ -103,7 +103,7 @@ const generateRandomSuffix = (): string => {
 
 /**
  * Hook function to be used in Payload collection field hooks
- * 
+ *
  * @param collection - The collection name
  * @param options - Optional object with sourceField (dot notation)
  */

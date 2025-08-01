@@ -14,7 +14,7 @@
 import { execSync } from "child_process";
 
 import { createLogger } from "../lib/logger";
-import { validateTestDatabaseSchema, resetTestDatabase } from "./validate-test-db-schema";
+import { resetTestDatabase, validateTestDatabaseSchema } from "./validate-test-db-schema";
 
 const logger = createLogger("test-db-setup");
 

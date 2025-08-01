@@ -163,6 +163,71 @@ export const enum__import_jobs_v_version_last_successful_stage = db_schema.enum(
   "enum__import_jobs_v_version_last_successful_stage",
   ["analyze-duplicates", "detect-schema", "validate-schema", "await-approval", "geocode-batch", "create-events"],
 );
+export const enum_scheduled_imports_execution_history_status = db_schema.enum(
+  "enum_scheduled_imports_execution_history_status",
+  ["success", "failed"],
+);
+export const enum_scheduled_imports_auth_config_type = db_schema.enum("enum_scheduled_imports_auth_config_type", [
+  "none",
+  "api-key",
+  "bearer",
+  "basic",
+]);
+export const enum_scheduled_imports_dataset_mapping_mapping_type = db_schema.enum(
+  "enum_scheduled_imports_dataset_mapping_mapping_type",
+  ["auto", "single", "multiple"],
+);
+export const enum_scheduled_imports_schedule_type = db_schema.enum("enum_scheduled_imports_schedule_type", [
+  "frequency",
+  "cron",
+]);
+export const enum_scheduled_imports_frequency = db_schema.enum("enum_scheduled_imports_frequency", [
+  "hourly",
+  "daily",
+  "weekly",
+  "monthly",
+]);
+export const enum_scheduled_imports_last_status = db_schema.enum("enum_scheduled_imports_last_status", [
+  "success",
+  "failed",
+  "running",
+]);
+export const exp_content_type = db_schema.enum("exp_content_type", [
+  "auto",
+  "text/csv",
+  "application/json",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+]);
+export const enum_scheduled_imports_status = db_schema.enum("enum_scheduled_imports_status", ["draft", "published"]);
+export const enum__scheduled_imports_v_version_execution_history_status = db_schema.enum(
+  "enum__scheduled_imports_v_version_execution_history_status",
+  ["success", "failed"],
+);
+export const enum__scheduled_imports_v_version_auth_config_type = db_schema.enum(
+  "enum__scheduled_imports_v_version_auth_config_type",
+  ["none", "api-key", "bearer", "basic"],
+);
+export const enum__scheduled_imports_v_version_dataset_mapping_mapping_type = db_schema.enum(
+  "enum__scheduled_imports_v_version_dataset_mapping_mapping_type",
+  ["auto", "single", "multiple"],
+);
+export const enum__scheduled_imports_v_version_schedule_type = db_schema.enum(
+  "enum__scheduled_imports_v_version_schedule_type",
+  ["frequency", "cron"],
+);
+export const enum__scheduled_imports_v_version_frequency = db_schema.enum(
+  "enum__scheduled_imports_v_version_frequency",
+  ["hourly", "daily", "weekly", "monthly"],
+);
+export const enum__scheduled_imports_v_version_last_status = db_schema.enum(
+  "enum__scheduled_imports_v_version_last_status",
+  ["success", "failed", "running"],
+);
+export const enum__scheduled_imports_v_version_status = db_schema.enum("enum__scheduled_imports_v_version_status", [
+  "draft",
+  "published",
+]);
 export const enum_events_coordinate_source_type = db_schema.enum("enum_events_coordinate_source_type", [
   "import",
   "geocoded",
@@ -285,6 +350,8 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum("enum_payload_jobs
   "geocode-batch",
   "create-events",
   "cleanup-approval-locks",
+  "url-fetch",
+  "schedule-manager",
 ]);
 export const enum_payload_jobs_log_state = db_schema.enum("enum_payload_jobs_log_state", ["failed", "succeeded"]);
 export const enum_payload_jobs_task_slug = db_schema.enum("enum_payload_jobs_task_slug", [
@@ -297,6 +364,8 @@ export const enum_payload_jobs_task_slug = db_schema.enum("enum_payload_jobs_tas
   "geocode-batch",
   "create-events",
   "cleanup-approval-locks",
+  "url-fetch",
+  "schedule-manager",
 ]);
 export const enum_main_menu_status = db_schema.enum("enum_main_menu_status", ["draft", "published"]);
 export const enum__main_menu_v_version_status = db_schema.enum("enum__main_menu_v_version_status", [
@@ -1238,6 +1307,251 @@ export const _import_jobs_v = db_schema.table(
   }),
 );
 
+export const scheduled_imports_dataset_mapping_sheet_mappings = db_schema.table(
+  "scheduled_imports_dataset_mapping_sheet_mappings",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    sheetIdentifier: varchar("sheet_identifier"),
+    dataset: integer("dataset_id").references(() => datasets.id, {
+      onDelete: "set null",
+    }),
+    skipIfMissing: boolean("skip_if_missing").default(false),
+  },
+  (columns) => ({
+    _orderIdx: index("scheduled_imports_dataset_mapping_sheet_mappings_order_idx").on(columns._order),
+    _parentIDIdx: index("scheduled_imports_dataset_mapping_sheet_mappings_parent_id_idx").on(columns._parentID),
+    scheduled_imports_dataset_mapping_sheet_mappings_dataset_idx: index(
+      "scheduled_imports_dataset_mapping_sheet_mappings_dataset_idx",
+    ).on(columns.dataset),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [scheduled_imports.id],
+      name: "scheduled_imports_dataset_mapping_sheet_mappings_parent_id_fk",
+    }).onDelete("cascade"),
+  }),
+);
+
+export const scheduled_imports_execution_history = db_schema.table(
+  "scheduled_imports_execution_history",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    executedAt: timestamp("executed_at", { mode: "string", withTimezone: true, precision: 3 }),
+    status: enum_scheduled_imports_execution_history_status("status"),
+    importFileId: varchar("import_file_id"),
+    error: varchar("error"),
+    duration: numeric("duration"),
+  },
+  (columns) => ({
+    _orderIdx: index("scheduled_imports_execution_history_order_idx").on(columns._order),
+    _parentIDIdx: index("scheduled_imports_execution_history_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [scheduled_imports.id],
+      name: "scheduled_imports_execution_history_parent_id_fk",
+    }).onDelete("cascade"),
+  }),
+);
+
+export const scheduled_imports = db_schema.table(
+  "scheduled_imports",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name"),
+    description: varchar("description"),
+    enabled: boolean("enabled").default(true),
+    sourceUrl: varchar("source_url"),
+    authConfig_type: enum_scheduled_imports_auth_config_type("auth_config_type").default("none"),
+    authConfig_apiKey: varchar("auth_config_api_key"),
+    authConfig_apiKeyHeader: varchar("auth_config_api_key_header").default("X-API-Key"),
+    authConfig_bearerToken: varchar("auth_config_bearer_token"),
+    authConfig_basicUsername: varchar("auth_config_basic_username"),
+    authConfig_basicPassword: varchar("auth_config_basic_password"),
+    authConfig_customHeaders: jsonb("auth_config_custom_headers"),
+    catalog: integer("catalog_id").references(() => catalogs.id, {
+      onDelete: "set null",
+    }),
+    datasetMapping_mappingType:
+      enum_scheduled_imports_dataset_mapping_mapping_type("dataset_mapping_mapping_type").default("auto"),
+    datasetMapping_singleDataset: integer("dataset_mapping_single_dataset_id").references(() => datasets.id, {
+      onDelete: "set null",
+    }),
+    importNameTemplate: varchar("import_name_template").default("{{name}} - {{date}}"),
+    scheduleType: enum_scheduled_imports_schedule_type("schedule_type").default("frequency"),
+    frequency: enum_scheduled_imports_frequency("frequency"),
+    cronExpression: varchar("cron_expression"),
+    maxRetries: numeric("max_retries").default("3"),
+    retryDelayMinutes: numeric("retry_delay_minutes").default("5"),
+    timeoutSeconds: numeric("timeout_seconds").default("300"),
+    lastRun: timestamp("last_run", { mode: "string", withTimezone: true, precision: 3 }),
+    nextRun: timestamp("next_run", { mode: "string", withTimezone: true, precision: 3 }),
+    lastStatus: enum_scheduled_imports_last_status("last_status"),
+    lastError: varchar("last_error"),
+    currentRetries: numeric("current_retries").default("0"),
+    statistics_totalRuns: numeric("statistics_total_runs").default("0"),
+    statistics_successfulRuns: numeric("statistics_successful_runs").default("0"),
+    statistics_failedRuns: numeric("statistics_failed_runs").default("0"),
+    statistics_averageDuration: numeric("statistics_average_duration"),
+    advancedConfig_skipDuplicateCheck: boolean("advanced_config_skip_duplicate_check").default(false),
+    advancedConfig_expectedContentType: exp_content_type("advanced_config_expected_content_type").default("auto"),
+    advancedConfig_maxFileSize: numeric("advanced_config_max_file_size").default("100"),
+    metadata: jsonb("metadata"),
+    updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    _status: enum_scheduled_imports_status("_status").default("draft"),
+  },
+  (columns) => ({
+    scheduled_imports_catalog_idx: index("scheduled_imports_catalog_idx").on(columns.catalog),
+    scheduled_imports_dataset_mapping_dataset_mapping_single_dataset_idx: index(
+      "scheduled_imports_dataset_mapping_dataset_mapping_single_dataset_idx",
+    ).on(columns.datasetMapping_singleDataset),
+    scheduled_imports_updated_at_idx: index("scheduled_imports_updated_at_idx").on(columns.updatedAt),
+    scheduled_imports_created_at_idx: index("scheduled_imports_created_at_idx").on(columns.createdAt),
+    scheduled_imports__status_idx: index("scheduled_imports__status_idx").on(columns._status),
+  }),
+);
+
+export const _scheduled_imports_v_version_dataset_mapping_sheet_mappings = db_schema.table(
+  "_scheduled_imports_v_version_dataset_mapping_sheet_mappings",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    sheetIdentifier: varchar("sheet_identifier"),
+    dataset: integer("dataset_id").references(() => datasets.id, {
+      onDelete: "set null",
+    }),
+    skipIfMissing: boolean("skip_if_missing").default(false),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => ({
+    _orderIdx: index("_scheduled_imports_v_version_dataset_mapping_sheet_mappings_order_idx").on(columns._order),
+    _parentIDIdx: index("_scheduled_imports_v_version_dataset_mapping_sheet_mappings_parent_id_idx").on(
+      columns._parentID,
+    ),
+    _scheduled_imports_v_version_dataset_mapping_sheet_mappings_dataset_idx: index(
+      "_scheduled_imports_v_version_dataset_mapping_sheet_mappings_dataset_idx",
+    ).on(columns.dataset),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_scheduled_imports_v.id],
+      name: "_scheduled_imports_v_version_dataset_mapping_sheet_mappings_parent_id_fk",
+    }).onDelete("cascade"),
+  }),
+);
+
+export const _scheduled_imports_v_version_execution_history = db_schema.table(
+  "_scheduled_imports_v_version_execution_history",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    executedAt: timestamp("executed_at", { mode: "string", withTimezone: true, precision: 3 }),
+    status: enum__scheduled_imports_v_version_execution_history_status("status"),
+    importFileId: varchar("import_file_id"),
+    error: varchar("error"),
+    duration: numeric("duration"),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => ({
+    _orderIdx: index("_scheduled_imports_v_version_execution_history_order_idx").on(columns._order),
+    _parentIDIdx: index("_scheduled_imports_v_version_execution_history_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_scheduled_imports_v.id],
+      name: "_scheduled_imports_v_version_execution_history_parent_id_fk",
+    }).onDelete("cascade"),
+  }),
+);
+
+export const _scheduled_imports_v = db_schema.table(
+  "_scheduled_imports_v",
+  {
+    id: serial("id").primaryKey(),
+    parent: integer("parent_id").references(() => scheduled_imports.id, {
+      onDelete: "set null",
+    }),
+    version_name: varchar("version_name"),
+    version_description: varchar("version_description"),
+    version_enabled: boolean("version_enabled").default(true),
+    version_sourceUrl: varchar("version_source_url"),
+    version_authConfig_type:
+      enum__scheduled_imports_v_version_auth_config_type("version_auth_config_type").default("none"),
+    version_authConfig_apiKey: varchar("version_auth_config_api_key"),
+    version_authConfig_apiKeyHeader: varchar("version_auth_config_api_key_header").default("X-API-Key"),
+    version_authConfig_bearerToken: varchar("version_auth_config_bearer_token"),
+    version_authConfig_basicUsername: varchar("version_auth_config_basic_username"),
+    version_authConfig_basicPassword: varchar("version_auth_config_basic_password"),
+    version_authConfig_customHeaders: jsonb("version_auth_config_custom_headers"),
+    version_catalog: integer("version_catalog_id").references(() => catalogs.id, {
+      onDelete: "set null",
+    }),
+    version_datasetMapping_mappingType: enum__scheduled_imports_v_version_dataset_mapping_mapping_type(
+      "version_dataset_mapping_mapping_type",
+    ).default("auto"),
+    version_datasetMapping_singleDataset: integer("version_dataset_mapping_single_dataset_id").references(
+      () => datasets.id,
+      {
+        onDelete: "set null",
+      },
+    ),
+    version_importNameTemplate: varchar("version_import_name_template").default("{{name}} - {{date}}"),
+    version_scheduleType: enum__scheduled_imports_v_version_schedule_type("version_schedule_type").default("frequency"),
+    version_frequency: enum__scheduled_imports_v_version_frequency("version_frequency"),
+    version_cronExpression: varchar("version_cron_expression"),
+    version_maxRetries: numeric("version_max_retries").default("3"),
+    version_retryDelayMinutes: numeric("version_retry_delay_minutes").default("5"),
+    version_timeoutSeconds: numeric("version_timeout_seconds").default("300"),
+    version_lastRun: timestamp("version_last_run", { mode: "string", withTimezone: true, precision: 3 }),
+    version_nextRun: timestamp("version_next_run", { mode: "string", withTimezone: true, precision: 3 }),
+    version_lastStatus: enum__scheduled_imports_v_version_last_status("version_last_status"),
+    version_lastError: varchar("version_last_error"),
+    version_currentRetries: numeric("version_current_retries").default("0"),
+    version_statistics_totalRuns: numeric("version_statistics_total_runs").default("0"),
+    version_statistics_successfulRuns: numeric("version_statistics_successful_runs").default("0"),
+    version_statistics_failedRuns: numeric("version_statistics_failed_runs").default("0"),
+    version_statistics_averageDuration: numeric("version_statistics_average_duration"),
+    version_advancedConfig_skipDuplicateCheck: boolean("version_advanced_config_skip_duplicate_check").default(false),
+    version_advancedConfig_expectedContentType: exp_content_type(
+      "version_advanced_config_expected_content_type",
+    ).default("auto"),
+    version_advancedConfig_maxFileSize: numeric("version_advanced_config_max_file_size").default("100"),
+    version_metadata: jsonb("version_metadata"),
+    version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version__status: enum__scheduled_imports_v_version_status("version__status").default("draft"),
+    createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    latest: boolean("latest"),
+    autosave: boolean("autosave"),
+  },
+  (columns) => ({
+    _scheduled_imports_v_parent_idx: index("_scheduled_imports_v_parent_idx").on(columns.parent),
+    _scheduled_imports_v_version_version_catalog_idx: index("_scheduled_imports_v_version_version_catalog_idx").on(
+      columns.version_catalog,
+    ),
+    _scheduled_imports_v_version_dataset_mapping_version_dataset_mapping_single_dataset_idx: index(
+      "_scheduled_imports_v_version_dataset_mapping_version_dataset_mapping_single_dataset_idx",
+    ).on(columns.version_datasetMapping_singleDataset),
+    _scheduled_imports_v_version_version_updated_at_idx: index(
+      "_scheduled_imports_v_version_version_updated_at_idx",
+    ).on(columns.version_updatedAt),
+    _scheduled_imports_v_version_version_created_at_idx: index(
+      "_scheduled_imports_v_version_version_created_at_idx",
+    ).on(columns.version_createdAt),
+    _scheduled_imports_v_version_version__status_idx: index("_scheduled_imports_v_version_version__status_idx").on(
+      columns.version__status,
+    ),
+    _scheduled_imports_v_created_at_idx: index("_scheduled_imports_v_created_at_idx").on(columns.createdAt),
+    _scheduled_imports_v_updated_at_idx: index("_scheduled_imports_v_updated_at_idx").on(columns.updatedAt),
+    _scheduled_imports_v_latest_idx: index("_scheduled_imports_v_latest_idx").on(columns.latest),
+    _scheduled_imports_v_autosave_idx: index("_scheduled_imports_v_autosave_idx").on(columns.autosave),
+  }),
+);
+
 export const events = db_schema.table(
   "events",
   {
@@ -2026,6 +2340,7 @@ export const payload_locked_documents_rels = db_schema.table(
     "dataset-schemasID": integer("dataset_schemas_id"),
     "import-filesID": integer("import_files_id"),
     "import-jobsID": integer("import_jobs_id"),
+    "scheduled-importsID": integer("scheduled_imports_id"),
     eventsID: integer("events_id"),
     usersID: integer("users_id"),
     mediaID: integer("media_id"),
@@ -2053,6 +2368,9 @@ export const payload_locked_documents_rels = db_schema.table(
     payload_locked_documents_rels_import_jobs_id_idx: index("payload_locked_documents_rels_import_jobs_id_idx").on(
       columns["import-jobsID"],
     ),
+    payload_locked_documents_rels_scheduled_imports_id_idx: index(
+      "payload_locked_documents_rels_scheduled_imports_id_idx",
+    ).on(columns["scheduled-importsID"]),
     payload_locked_documents_rels_events_id_idx: index("payload_locked_documents_rels_events_id_idx").on(
       columns.eventsID,
     ),
@@ -2097,6 +2415,11 @@ export const payload_locked_documents_rels = db_schema.table(
       columns: [columns["import-jobsID"]],
       foreignColumns: [import_jobs.id],
       name: "payload_locked_documents_rels_import_jobs_fk",
+    }).onDelete("cascade"),
+    "scheduled-importsIdFk": foreignKey({
+      columns: [columns["scheduled-importsID"]],
+      foreignColumns: [scheduled_imports.id],
+      name: "payload_locked_documents_rels_scheduled_imports_fk",
     }).onDelete("cascade"),
     eventsIdFk: foreignKey({
       columns: [columns["eventsID"]],
@@ -2638,6 +2961,97 @@ export const relations__import_jobs_v = relations(_import_jobs_v, ({ one, many }
     relationName: "version_errors",
   }),
 }));
+export const relations_scheduled_imports_dataset_mapping_sheet_mappings = relations(
+  scheduled_imports_dataset_mapping_sheet_mappings,
+  ({ one }) => ({
+    _parentID: one(scheduled_imports, {
+      fields: [scheduled_imports_dataset_mapping_sheet_mappings._parentID],
+      references: [scheduled_imports.id],
+      relationName: "datasetMapping_sheetMappings",
+    }),
+    dataset: one(datasets, {
+      fields: [scheduled_imports_dataset_mapping_sheet_mappings.dataset],
+      references: [datasets.id],
+      relationName: "dataset",
+    }),
+  }),
+);
+export const relations_scheduled_imports_execution_history = relations(
+  scheduled_imports_execution_history,
+  ({ one }) => ({
+    _parentID: one(scheduled_imports, {
+      fields: [scheduled_imports_execution_history._parentID],
+      references: [scheduled_imports.id],
+      relationName: "executionHistory",
+    }),
+  }),
+);
+export const relations_scheduled_imports = relations(scheduled_imports, ({ one, many }) => ({
+  catalog: one(catalogs, {
+    fields: [scheduled_imports.catalog],
+    references: [catalogs.id],
+    relationName: "catalog",
+  }),
+  datasetMapping_singleDataset: one(datasets, {
+    fields: [scheduled_imports.datasetMapping_singleDataset],
+    references: [datasets.id],
+    relationName: "datasetMapping_singleDataset",
+  }),
+  datasetMapping_sheetMappings: many(scheduled_imports_dataset_mapping_sheet_mappings, {
+    relationName: "datasetMapping_sheetMappings",
+  }),
+  executionHistory: many(scheduled_imports_execution_history, {
+    relationName: "executionHistory",
+  }),
+}));
+export const relations__scheduled_imports_v_version_dataset_mapping_sheet_mappings = relations(
+  _scheduled_imports_v_version_dataset_mapping_sheet_mappings,
+  ({ one }) => ({
+    _parentID: one(_scheduled_imports_v, {
+      fields: [_scheduled_imports_v_version_dataset_mapping_sheet_mappings._parentID],
+      references: [_scheduled_imports_v.id],
+      relationName: "version_datasetMapping_sheetMappings",
+    }),
+    dataset: one(datasets, {
+      fields: [_scheduled_imports_v_version_dataset_mapping_sheet_mappings.dataset],
+      references: [datasets.id],
+      relationName: "dataset",
+    }),
+  }),
+);
+export const relations__scheduled_imports_v_version_execution_history = relations(
+  _scheduled_imports_v_version_execution_history,
+  ({ one }) => ({
+    _parentID: one(_scheduled_imports_v, {
+      fields: [_scheduled_imports_v_version_execution_history._parentID],
+      references: [_scheduled_imports_v.id],
+      relationName: "version_executionHistory",
+    }),
+  }),
+);
+export const relations__scheduled_imports_v = relations(_scheduled_imports_v, ({ one, many }) => ({
+  parent: one(scheduled_imports, {
+    fields: [_scheduled_imports_v.parent],
+    references: [scheduled_imports.id],
+    relationName: "parent",
+  }),
+  version_catalog: one(catalogs, {
+    fields: [_scheduled_imports_v.version_catalog],
+    references: [catalogs.id],
+    relationName: "version_catalog",
+  }),
+  version_datasetMapping_singleDataset: one(datasets, {
+    fields: [_scheduled_imports_v.version_datasetMapping_singleDataset],
+    references: [datasets.id],
+    relationName: "version_datasetMapping_singleDataset",
+  }),
+  version_datasetMapping_sheetMappings: many(_scheduled_imports_v_version_dataset_mapping_sheet_mappings, {
+    relationName: "version_datasetMapping_sheetMappings",
+  }),
+  version_executionHistory: many(_scheduled_imports_v_version_execution_history, {
+    relationName: "version_executionHistory",
+  }),
+}));
 export const relations_events = relations(events, ({ one }) => ({
   dataset: one(datasets, {
     fields: [events.dataset],
@@ -2795,6 +3209,11 @@ export const relations_payload_locked_documents_rels = relations(payload_locked_
     references: [import_jobs.id],
     relationName: "import-jobs",
   }),
+  "scheduled-importsID": one(scheduled_imports, {
+    fields: [payload_locked_documents_rels["scheduled-importsID"]],
+    references: [scheduled_imports.id],
+    relationName: "scheduled-imports",
+  }),
   eventsID: one(events, {
     fields: [payload_locked_documents_rels.eventsID],
     references: [events.id],
@@ -2908,6 +3327,21 @@ type DatabaseSchema = {
   enum_import_jobs_last_successful_stage: typeof enum_import_jobs_last_successful_stage;
   enum__import_jobs_v_version_stage: typeof enum__import_jobs_v_version_stage;
   enum__import_jobs_v_version_last_successful_stage: typeof enum__import_jobs_v_version_last_successful_stage;
+  enum_scheduled_imports_execution_history_status: typeof enum_scheduled_imports_execution_history_status;
+  enum_scheduled_imports_auth_config_type: typeof enum_scheduled_imports_auth_config_type;
+  enum_scheduled_imports_dataset_mapping_mapping_type: typeof enum_scheduled_imports_dataset_mapping_mapping_type;
+  enum_scheduled_imports_schedule_type: typeof enum_scheduled_imports_schedule_type;
+  enum_scheduled_imports_frequency: typeof enum_scheduled_imports_frequency;
+  enum_scheduled_imports_last_status: typeof enum_scheduled_imports_last_status;
+  exp_content_type: typeof exp_content_type;
+  enum_scheduled_imports_status: typeof enum_scheduled_imports_status;
+  enum__scheduled_imports_v_version_execution_history_status: typeof enum__scheduled_imports_v_version_execution_history_status;
+  enum__scheduled_imports_v_version_auth_config_type: typeof enum__scheduled_imports_v_version_auth_config_type;
+  enum__scheduled_imports_v_version_dataset_mapping_mapping_type: typeof enum__scheduled_imports_v_version_dataset_mapping_mapping_type;
+  enum__scheduled_imports_v_version_schedule_type: typeof enum__scheduled_imports_v_version_schedule_type;
+  enum__scheduled_imports_v_version_frequency: typeof enum__scheduled_imports_v_version_frequency;
+  enum__scheduled_imports_v_version_last_status: typeof enum__scheduled_imports_v_version_last_status;
+  enum__scheduled_imports_v_version_status: typeof enum__scheduled_imports_v_version_status;
   enum_events_coordinate_source_type: typeof enum_events_coordinate_source_type;
   enum_events_coordinate_source_validation_status: typeof enum_events_coordinate_source_validation_status;
   enum_events_geocoding_info_geocoding_status: typeof enum_events_geocoding_info_geocoding_status;
@@ -2969,6 +3403,12 @@ type DatabaseSchema = {
   import_jobs: typeof import_jobs;
   _import_jobs_v_version_errors: typeof _import_jobs_v_version_errors;
   _import_jobs_v: typeof _import_jobs_v;
+  scheduled_imports_dataset_mapping_sheet_mappings: typeof scheduled_imports_dataset_mapping_sheet_mappings;
+  scheduled_imports_execution_history: typeof scheduled_imports_execution_history;
+  scheduled_imports: typeof scheduled_imports;
+  _scheduled_imports_v_version_dataset_mapping_sheet_mappings: typeof _scheduled_imports_v_version_dataset_mapping_sheet_mappings;
+  _scheduled_imports_v_version_execution_history: typeof _scheduled_imports_v_version_execution_history;
+  _scheduled_imports_v: typeof _scheduled_imports_v;
   events: typeof events;
   _events_v: typeof _events_v;
   users_sessions: typeof users_sessions;
@@ -3024,6 +3464,12 @@ type DatabaseSchema = {
   relations_import_jobs: typeof relations_import_jobs;
   relations__import_jobs_v_version_errors: typeof relations__import_jobs_v_version_errors;
   relations__import_jobs_v: typeof relations__import_jobs_v;
+  relations_scheduled_imports_dataset_mapping_sheet_mappings: typeof relations_scheduled_imports_dataset_mapping_sheet_mappings;
+  relations_scheduled_imports_execution_history: typeof relations_scheduled_imports_execution_history;
+  relations_scheduled_imports: typeof relations_scheduled_imports;
+  relations__scheduled_imports_v_version_dataset_mapping_sheet_mappings: typeof relations__scheduled_imports_v_version_dataset_mapping_sheet_mappings;
+  relations__scheduled_imports_v_version_execution_history: typeof relations__scheduled_imports_v_version_execution_history;
+  relations__scheduled_imports_v: typeof relations__scheduled_imports_v;
   relations_events: typeof relations_events;
   relations__events_v: typeof relations__events_v;
   relations_users_sessions: typeof relations_users_sessions;

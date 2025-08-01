@@ -4,7 +4,7 @@
  * A Catalog is a high-level container for organizing related datasets.
  * It provides a way to group data from different sources under a common theme or project.
  * This collection stores basic metadata for each catalog, such as its name, description, and public visibility.
- * 
+ *
  * @category Collections
  * @module
  */

@@ -12,7 +12,7 @@ import fs from "fs";
 import Papa from "papaparse";
 import path from "path";
 import type { Payload } from "payload";
-import { read, readFile, utils } from "xlsx";
+import { read, utils } from "xlsx";
 
 import { COLLECTION_NAMES, IMPORT_STATUS, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
@@ -161,17 +161,34 @@ export const datasetDetectionJob = {
         },
       });
 
+      // Check for dataset mapping configuration from scheduled import
+      const datasetMapping = (importFile.metadata as any)?.datasetMapping;
+
       // Create import jobs for each sheet
       const createdJobs = [];
 
       if (sheets.length === 1) {
-        // Single sheet - find dataset from catalog
-        const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId);
-        const dataset = await findOrCreateDataset(
-          payload,
-          resolvedCatalogId,
-          importFile.originalName || "Imported Data",
-        );
+        // Single sheet - check mapping configuration
+        let dataset;
+
+        if (datasetMapping?.mappingType === "single" && datasetMapping.singleDataset) {
+          // Use specified dataset
+          dataset = await payload.findByID({
+            collection: "datasets",
+            id:
+              typeof datasetMapping.singleDataset === "object"
+                ? datasetMapping.singleDataset.id
+                : datasetMapping.singleDataset,
+          });
+
+          if (!dataset) {
+            throw new Error(`Configured dataset not found: ${datasetMapping.singleDataset}`);
+          }
+        } else {
+          // Auto-detect or create dataset
+          const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId);
+          dataset = await findOrCreateDataset(payload, resolvedCatalogId, importFile.originalName || "Imported Data");
+        }
 
         const importJob = await payload.create({
           collection: "import-jobs",
@@ -186,24 +203,54 @@ export const datasetDetectionJob = {
 
         createdJobs.push(importJob);
       } else {
-        // Multiple sheets - match by name or create new datasets
+        // Multiple sheets - check mapping configuration
         for (const sheet of sheets) {
           const sheetName = sheet.name?.toString() ?? `Sheet_${sheet.index?.toString() ?? "Unknown"}`;
-          const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId);
-          const dataset = await findOrCreateDataset(payload, resolvedCatalogId, sheetName);
+          let dataset;
+          let skipSheet = false;
 
-          const importJob = await payload.create({
-            collection: "import-jobs",
-            data: {
-              importFile: importFile.id,
-              dataset: dataset.id,
-              sheetIndex: sheet.index,
-              stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
-              progress: ProgressTrackingService.createInitialProgress(sheet.rowCount),
-            },
-          });
+          if (datasetMapping?.mappingType === "multiple" && datasetMapping.sheetMappings) {
+            // Look for configured mapping for this sheet
+            const mapping = datasetMapping.sheetMappings.find(
+              (m: any) => m.sheetIdentifier === sheetName || m.sheetIdentifier === sheet.index?.toString(),
+            );
 
-          createdJobs.push(importJob);
+            if (mapping) {
+              dataset = await payload.findByID({
+                collection: "datasets",
+                id: typeof mapping.dataset === "object" ? mapping.dataset.id : mapping.dataset,
+              });
+
+              if (!dataset && !mapping.skipIfMissing) {
+                throw new Error(`Configured dataset not found for sheet ${sheetName}`);
+              } else if (!dataset && mapping.skipIfMissing) {
+                skipSheet = true;
+              }
+            } else {
+              // No mapping for this sheet - skip if using explicit mappings
+              logger.info("No mapping found for sheet, skipping", { sheetName });
+              continue;
+            }
+          } else {
+            // Auto-detect or create dataset
+            const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId);
+            dataset = await findOrCreateDataset(payload, resolvedCatalogId, sheetName);
+          }
+
+          if (!skipSheet && dataset) {
+            const importJob = await payload.create({
+              collection: "import-jobs",
+              data: {
+                importFile: importFile.id,
+                dataset: dataset.id,
+                sheetIndex: sheet.index,
+                stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
+                progress: ProgressTrackingService.createInitialProgress(sheet.rowCount),
+              },
+            });
+
+            createdJobs.push(importJob);
+          }
         }
       }
 

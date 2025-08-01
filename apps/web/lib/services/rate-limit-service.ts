@@ -11,7 +11,7 @@
  * - Blocking identifiers that exceed the limit.
  * - Providing standard rate-limit headers for HTTP responses.
  * - Automatic cleanup of expired entries.
- * 
+ *
  * @category Services
  * @module
  */
@@ -61,7 +61,7 @@ export class RateLimitService {
 
   /**
    * Check if a request should be rate limited
-   * 
+   *
    * @param identifier - IP address or session ID
    * @param limit - Maximum requests allowed
    * @param windowMs - Time window in milliseconds

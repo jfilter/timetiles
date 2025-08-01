@@ -5,7 +5,7 @@
  * that can be used to populate the database. This is essential for development and testing,
  * as it provides a consistent set of users for logging in and testing role-based access
  * control and other user-specific features.
- * 
+ *
  * @module
  */
 import type { User } from "@/payload-types";

@@ -72,6 +72,7 @@ export interface Config {
     'dataset-schemas': DatasetSchema;
     'import-files': ImportFile;
     'import-jobs': ImportJob;
+    'scheduled-imports': ScheduledImport;
     events: Event;
     users: User;
     media: Media;
@@ -90,6 +91,7 @@ export interface Config {
     'dataset-schemas': DatasetSchemasSelect<false> | DatasetSchemasSelect<true>;
     'import-files': ImportFilesSelect<false> | ImportFilesSelect<true>;
     'import-jobs': ImportJobsSelect<false> | ImportJobsSelect<true>;
+    'scheduled-imports': ScheduledImportsSelect<false> | ScheduledImportsSelect<true>;
     events: EventsSelect<false> | EventsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -124,6 +126,8 @@ export interface Config {
       'geocode-batch': TaskGeocodeBatch;
       'create-events': TaskCreateEvents;
       'cleanup-approval-locks': TaskCleanupApprovalLocks;
+      'url-fetch': TaskUrlFetch;
+      'schedule-manager': TaskScheduleManager;
       inline: {
         input: unknown;
         output: unknown;
@@ -869,6 +873,229 @@ export interface User {
   password?: string | null;
 }
 /**
+ * Manage scheduled URL imports that run automatically
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "scheduled-imports".
+ */
+export interface ScheduledImport {
+  id: number;
+  /**
+   * Descriptive name for this scheduled import
+   */
+  name: string;
+  /**
+   * Optional description of what this import does
+   */
+  description?: string | null;
+  /**
+   * Enable/disable this scheduled import
+   */
+  enabled?: boolean | null;
+  /**
+   * URL to fetch data from
+   */
+  sourceUrl: string;
+  /**
+   * Authentication configuration for accessing the URL
+   */
+  authConfig?: {
+    type?: ('none' | 'api-key' | 'bearer' | 'basic') | null;
+    /**
+     * API key value
+     */
+    apiKey?: string | null;
+    /**
+     * Header name for API key
+     */
+    apiKeyHeader?: string | null;
+    /**
+     * Bearer token value
+     */
+    bearerToken?: string | null;
+    /**
+     * Basic auth username
+     */
+    basicUsername?: string | null;
+    /**
+     * Basic auth password
+     */
+    basicPassword?: string | null;
+    /**
+     * Additional custom headers as JSON object
+     */
+    customHeaders?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+  /**
+   * Target catalog for imported data
+   */
+  catalog?: (number | null) | Catalog;
+  /**
+   * Configuration for mapping source data to datasets
+   */
+  datasetMapping?: {
+    /**
+     * How to map the source data to datasets
+     */
+    mappingType?: ('auto' | 'single' | 'multiple') | null;
+    /**
+     * Target dataset for single-dataset imports
+     */
+    singleDataset?: (number | null) | Dataset;
+    /**
+     * Map specific sheets to datasets
+     */
+    sheetMappings?:
+      | {
+          /**
+           * Sheet name or index (0-based)
+           */
+          sheetIdentifier: string;
+          /**
+           * Target dataset for this sheet
+           */
+          dataset: number | Dataset;
+          /**
+           * Skip this sheet if not found (instead of failing)
+           */
+          skipIfMissing?: boolean | null;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  /**
+   * Template for import file names. Supports: {{name}}, {{date}}, {{time}}, {{url}}
+   */
+  importNameTemplate?: string | null;
+  /**
+   * Choose between simple frequency or advanced cron scheduling
+   */
+  scheduleType: 'frequency' | 'cron';
+  /**
+   * How often to run this import
+   */
+  frequency?: ('hourly' | 'daily' | 'weekly' | 'monthly') | null;
+  /**
+   * Cron expression in UTC (e.g., '0 0 * * *' for daily at midnight UTC)
+   */
+  cronExpression?: string | null;
+  /**
+   * Maximum retry attempts on failure
+   */
+  maxRetries?: number | null;
+  /**
+   * Delay between retries in minutes
+   */
+  retryDelayMinutes?: number | null;
+  /**
+   * Timeout for URL fetch in seconds
+   */
+  timeoutSeconds?: number | null;
+  /**
+   * Last time this import was executed
+   */
+  lastRun?: string | null;
+  /**
+   * Next scheduled execution time
+   */
+  nextRun?: string | null;
+  /**
+   * Status of last execution
+   */
+  lastStatus?: ('success' | 'failed' | 'running') | null;
+  /**
+   * Error message from last failed execution
+   */
+  lastError?: string | null;
+  /**
+   * Current retry attempt count
+   */
+  currentRetries?: number | null;
+  /**
+   * Recent execution history (last 10 runs)
+   */
+  executionHistory?:
+    | {
+        executedAt: string;
+        status: 'success' | 'failed';
+        /**
+         * ID of the created import-files record
+         */
+        importFileId?: string | null;
+        /**
+         * Error message if failed
+         */
+        error?: string | null;
+        /**
+         * Execution duration in seconds
+         */
+        duration?: number | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Execution statistics
+   */
+  statistics?: {
+    /**
+     * Total number of executions
+     */
+    totalRuns?: number | null;
+    /**
+     * Number of successful executions
+     */
+    successfulRuns?: number | null;
+    /**
+     * Number of failed executions
+     */
+    failedRuns?: number | null;
+    /**
+     * Average execution duration in seconds
+     */
+    averageDuration?: number | null;
+  };
+  /**
+   * Advanced configuration options
+   */
+  advancedConfig?: {
+    /**
+     * Skip checking if URL content has changed since last run
+     */
+    skipDuplicateCheck?: boolean | null;
+    /**
+     * Expected content type (helps with format detection)
+     */
+    expectedContentType?: ('auto' | 'csv' | 'json' | 'xls' | 'xlsx') | null;
+    /**
+     * Maximum file size in MB
+     */
+    maxFileSize?: number | null;
+  };
+  /**
+   * Additional metadata and notes
+   */
+  metadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "events".
  */
@@ -1376,7 +1603,9 @@ export interface PayloadJob {
           | 'create-schema-version'
           | 'geocode-batch'
           | 'create-events'
-          | 'cleanup-approval-locks';
+          | 'cleanup-approval-locks'
+          | 'url-fetch'
+          | 'schedule-manager';
         taskID: string;
         input?:
           | {
@@ -1420,6 +1649,8 @@ export interface PayloadJob {
         | 'geocode-batch'
         | 'create-events'
         | 'cleanup-approval-locks'
+        | 'url-fetch'
+        | 'schedule-manager'
       )
     | null;
   queue?: string | null;
@@ -1454,6 +1685,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'import-jobs';
         value: number | ImportJob;
+      } | null)
+    | ({
+        relationTo: 'scheduled-imports';
+        value: number | ScheduledImport;
       } | null)
     | ({
         relationTo: 'events';
@@ -1773,6 +2008,83 @@ export interface ImportJobsSelect<T extends boolean = true> {
   displayTitle?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "scheduled-imports_select".
+ */
+export interface ScheduledImportsSelect<T extends boolean = true> {
+  name?: T;
+  description?: T;
+  enabled?: T;
+  sourceUrl?: T;
+  authConfig?:
+    | T
+    | {
+        type?: T;
+        apiKey?: T;
+        apiKeyHeader?: T;
+        bearerToken?: T;
+        basicUsername?: T;
+        basicPassword?: T;
+        customHeaders?: T;
+      };
+  catalog?: T;
+  datasetMapping?:
+    | T
+    | {
+        mappingType?: T;
+        singleDataset?: T;
+        sheetMappings?:
+          | T
+          | {
+              sheetIdentifier?: T;
+              dataset?: T;
+              skipIfMissing?: T;
+              id?: T;
+            };
+      };
+  importNameTemplate?: T;
+  scheduleType?: T;
+  frequency?: T;
+  cronExpression?: T;
+  maxRetries?: T;
+  retryDelayMinutes?: T;
+  timeoutSeconds?: T;
+  lastRun?: T;
+  nextRun?: T;
+  lastStatus?: T;
+  lastError?: T;
+  currentRetries?: T;
+  executionHistory?:
+    | T
+    | {
+        executedAt?: T;
+        status?: T;
+        importFileId?: T;
+        error?: T;
+        duration?: T;
+        id?: T;
+      };
+  statistics?:
+    | T
+    | {
+        totalRuns?: T;
+        successfulRuns?: T;
+        failedRuns?: T;
+        averageDuration?: T;
+      };
+  advancedConfig?:
+    | T
+    | {
+        skipDuplicateCheck?: T;
+        expectedContentType?: T;
+        maxFileSize?: T;
+      };
+  metadata?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2176,6 +2488,22 @@ export interface TaskCreateEvents {
  * via the `definition` "TaskCleanup-approval-locks".
  */
 export interface TaskCleanupApprovalLocks {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskUrl-fetch".
+ */
+export interface TaskUrlFetch {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskSchedule-manager".
+ */
+export interface TaskScheduleManager {
   input?: unknown;
   output?: unknown;
 }

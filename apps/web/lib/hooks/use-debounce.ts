@@ -5,7 +5,7 @@
  * are useful for performance optimization, especially with user inputs that can change rapidly,
  * such as search fields, map interactions, or filter adjustments. By delaying the update of a
  * value, they prevent excessive re-renders or API calls.
- * 
+ *
  * @category React Hooks
  * @module
  */

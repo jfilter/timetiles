@@ -106,7 +106,7 @@ export class TestEnvironmentBuilder {
     const testConfig = await createTestConfig({
       databaseUrl: dbUrl,
       collections,
-      logLevel: process.env.LOG_LEVEL as any || "silent",
+      logLevel: (process.env.LOG_LEVEL as any) || "silent",
     });
     const payload = await getPayload({ config: testConfig });
 
@@ -162,7 +162,15 @@ export class TestEnvironmentBuilder {
    */
   async createIntegrationTestEnvironment(customData?: Record<string, any[]>): Promise<TestEnvironment> {
     return this.createTestEnvironment({
-      collections: ["users", "catalogs", "datasets", "events", "import-files", "import-jobs"] as CollectionName[],
+      collections: [
+        "users",
+        "catalogs",
+        "datasets",
+        "events",
+        "import-files",
+        "import-jobs",
+        "scheduled-imports",
+      ] as CollectionName[],
       seedData: false, // Don't seed automatically to avoid relationship issues
       isolationLevel: "suite",
       customSeedData: customData ?? {},

@@ -65,14 +65,14 @@ beforeAll(async () => {
     const { createTestConfig } = await import("../../lib/config/payload-config-factory");
 
     logger.info(`Creating test config with database URL: ${dbUrl}`);
-    
+
     const testConfig = await createTestConfig({
       databaseUrl: dbUrl,
-      logLevel: process.env.LOG_LEVEL as any || "silent",
+      logLevel: (process.env.LOG_LEVEL as any) || "silent",
     });
 
     logger.info("Test config created, initializing Payload...");
-    
+
     const payload = await getPayload({ config: testConfig });
     await payload.db.migrate();
 

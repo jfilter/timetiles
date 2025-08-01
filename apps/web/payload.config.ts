@@ -3,6 +3,7 @@ import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { buildConfig } from "payload";
 import sharp from "sharp";
 
+import Users from "./lib/collections/users";
 import {
   ALL_COLLECTIONS,
   ALL_GLOBALS,
@@ -11,7 +12,6 @@ import {
   DEFAULT_TYPESCRIPT_CONFIG,
   DEFAULT_UPLOAD_CONFIG,
 } from "./lib/config/payload-shared-config";
-import Users from "./lib/collections/users";
 
 const secret = process.env.PAYLOAD_SECRET;
 const serverURL = process.env.NEXT_PUBLIC_PAYLOAD_URL;

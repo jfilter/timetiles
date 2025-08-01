@@ -8,7 +8,7 @@
  */
 import fs from "fs";
 import Papa from "papaparse";
-import { read, readFile, utils } from "xlsx";
+import { read, utils } from "xlsx";
 
 import { logger } from "@/lib/logger";
 

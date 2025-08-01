@@ -15,6 +15,10 @@ export { geocodeBatchJob } from "./handlers/geocode-batch-job";
 export { schemaDetectionJob } from "./handlers/schema-detection-job";
 export { validateSchemaJob } from "./handlers/validate-schema-job";
 
+// URL and scheduling job handlers
+export { scheduleManagerJob } from "./handlers/schedule-manager-job";
+export { urlFetchJob } from "./handlers/url-fetch-job";
+
 // Re-export utility types
 export type {
   AnalyzeDuplicatesJobInput,

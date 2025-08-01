@@ -13,7 +13,7 @@ import { geocodeBatchJob } from "@/lib/jobs/handlers/geocode-batch-job";
 import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
 import { validateSchemaJob } from "@/lib/jobs/handlers/validate-schema-job";
 
-import { createIsolatedTestEnvironment, createImportFileWithUpload } from "../../setup/test-helpers";
+import { createImportFileWithUpload, createIsolatedTestEnvironment } from "../../setup/test-helpers";
 
 describe.sequential("Job Processing Flow Integration", () => {
   let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;

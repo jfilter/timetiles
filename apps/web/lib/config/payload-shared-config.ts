@@ -1,6 +1,6 @@
 /**
  * Shared Payload Configuration Constants
- * 
+ *
  * This file contains shared configuration elements used by both the main
  * payload.config.ts and the payload-config-factory.ts to reduce duplication.
  */
@@ -16,11 +16,10 @@ import ImportJobs from "@/lib/collections/import-jobs";
 import LocationCache from "@/lib/collections/location-cache";
 import Media from "@/lib/collections/media";
 import { Pages } from "@/lib/collections/pages";
+import ScheduledImports from "@/lib/collections/scheduled-imports";
 import Users from "@/lib/collections/users";
-
 // Import globals
 import { MainMenu } from "@/lib/globals/main-menu";
-
 // Import jobs
 import {
   analyzeDuplicatesJob,
@@ -29,10 +28,11 @@ import {
   createSchemaVersionJob,
   datasetDetectionJob,
   geocodeBatchJob,
+  scheduleManagerJob,
   schemaDetectionJob,
+  urlFetchJob,
   validateSchemaJob,
 } from "@/lib/jobs/import-jobs";
-
 // Import migrations
 import { migrations } from "@/migrations";
 
@@ -43,6 +43,7 @@ export const COLLECTIONS = {
   "dataset-schemas": DatasetSchemas,
   "import-files": ImportFiles,
   "import-jobs": ImportJobs,
+  "scheduled-imports": ScheduledImports,
   events: Events,
   users: Users,
   media: Media,
@@ -60,6 +61,7 @@ export const ALL_COLLECTIONS = [
   DatasetSchemas,
   ImportFiles,
   ImportJobs,
+  ScheduledImports,
   Events,
   Users,
   Media,
@@ -81,6 +83,8 @@ export const ALL_JOBS = [
   geocodeBatchJob,
   createEventsBatchJob,
   cleanupApprovalLocksJob,
+  urlFetchJob,
+  scheduleManagerJob,
 ];
 
 // Default collections for different environments
@@ -93,6 +97,7 @@ export const DEFAULT_COLLECTIONS: Record<string, CollectionName[]> = {
     "events",
     "import-files",
     "import-jobs",
+    "scheduled-imports",
     "dataset-schemas",
     "geocoding-providers",
     "location-cache",

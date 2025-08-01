@@ -5,7 +5,7 @@
  * such as environment variables, database connectivity, and service availability. The route
  * returns a JSON response with the status of each check, which can be used for monitoring,
  * automated testing, and production readiness assessments.
- * 
+ *
  * @category API Routes
  * @module
  */

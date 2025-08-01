@@ -11,21 +11,22 @@ import type { Config } from "payload";
 import { buildConfig } from "payload";
 import sharp from "sharp";
 
+import Users from "@/lib/collections/users";
+
+import type { CollectionName } from "./payload-shared-config";
 import {
   ALL_GLOBALS,
   ALL_JOBS,
   COLLECTIONS,
-  DEFAULT_DB_CONFIG,
   DEFAULT_COLLECTIONS,
+  DEFAULT_DB_CONFIG,
   DEFAULT_TYPESCRIPT_CONFIG,
   DEFAULT_UPLOAD_CONFIG,
 } from "./payload-shared-config";
-import type { CollectionName } from "./payload-shared-config";
-import Users from "@/lib/collections/users";
 
 // Re-export for convenience
-export { COLLECTIONS, DEFAULT_COLLECTIONS } from "./payload-shared-config";
 export type { CollectionName } from "./payload-shared-config";
+export { COLLECTIONS, DEFAULT_COLLECTIONS } from "./payload-shared-config";
 
 export interface PayloadConfigOptions {
   // Environment type
