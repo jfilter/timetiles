@@ -18,7 +18,9 @@
     "format": "prettier --write . --log-level error"
   },
   "dependencies": {},
-  "devDependencies": {},
+  "devDependencies": {
+    "eslint": "^9.19.0"
+  },
   "peerDependencies": {
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.6.13"

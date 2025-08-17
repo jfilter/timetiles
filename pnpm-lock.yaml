@@ -374,6 +374,10 @@ importers:
       prettier-plugin-tailwindcss:
         specifier: ^0.6.13
         version: 0.6.13(prettier@3.6.2)
+    devDependencies:
+      eslint:
+        specifier: ^9.19.0
+        version: 9.31.0(jiti@2.4.2)
 
   packages/typescript-config:
     devDependencies:
