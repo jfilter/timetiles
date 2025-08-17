@@ -23,9 +23,6 @@ importers:
       '@workspace/eslint-config':
         specifier: workspace:*
         version: link:packages/eslint-config
-      '@workspace/prettier-config':
-        specifier: workspace:*
-        version: link:packages/prettier-config
       '@workspace/typescript-config':
         specifier: workspace:*
         version: link:packages/typescript-config
