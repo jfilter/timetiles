@@ -1,0 +1,31 @@
+# Build outputs
+.next
+out
+dist/
+build/
+
+# Dependencies
+node_modules/
+
+# Generated files
+*.generated.*
+payload-generated-schema.ts
+
+# Logs
+*.log
+
+# Environment files
+.env*
+
+# Cache directories
+.turbo/
+.cache/
+
+# Lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# OS generated files
+.DS_Store
+Thumbs.db
