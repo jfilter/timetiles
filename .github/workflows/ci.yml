@@ -1,17 +1,11 @@
-name: CI Tests
+name: Test, Lint & Build
 
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "apps/docs/**"
-      - "**.md"
 
   pull_request:
     branches: [main]
-    paths-ignore:
-      - "apps/docs/**"
-      - "**.md"
 
 jobs:
   test:

@@ -7,6 +7,9 @@ on:
       - "apps/web/payload.config.ts"
       - "apps/web/payload-generated-schema.ts"
       - ".github/workflows/validate-payload-types.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
   push:
     branches: [main, develop]
     paths:
@@ -14,6 +17,9 @@ on:
       - "apps/web/payload.config.ts"
       - "apps/web/payload-generated-schema.ts"
       - ".github/workflows/validate-payload-types.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
 
 jobs:
   validate-types:
