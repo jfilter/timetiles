@@ -52,7 +52,7 @@ export const enum_datasets_id_strategy_type = db_schema.enum("enum_datasets_id_s
 ]);
 export const enum_datasets_id_strategy_duplicate_strategy = db_schema.enum(
   "enum_datasets_id_strategy_duplicate_strategy",
-  ["skip", "update", "version"],
+  ["skip", "update", "version"]
 );
 export const enum_datasets_schema_config_enum_mode = db_schema.enum("enum_datasets_schema_config_enum_mode", [
   "count",
@@ -60,7 +60,7 @@ export const enum_datasets_schema_config_enum_mode = db_schema.enum("enum_datase
 ]);
 export const enum_datasets_deduplication_config_strategy = db_schema.enum(
   "enum_datasets_deduplication_config_strategy",
-  ["skip", "update", "version"],
+  ["skip", "update", "version"]
 );
 export const enum_datasets_enum_detection_mode = db_schema.enum("enum_datasets_enum_detection_mode", [
   "count",
@@ -92,19 +92,19 @@ export const enum__datasets_v_version_id_strategy_type = db_schema.enum("enum__d
 ]);
 export const enum__datasets_v_version_id_strategy_duplicate_strategy = db_schema.enum(
   "enum__datasets_v_version_id_strategy_duplicate_strategy",
-  ["skip", "update", "version"],
+  ["skip", "update", "version"]
 );
 export const enum__datasets_v_version_schema_config_enum_mode = db_schema.enum(
   "enum__datasets_v_version_schema_config_enum_mode",
-  ["count", "percentage"],
+  ["count", "percentage"]
 );
 export const enum__datasets_v_version_deduplication_config_strategy = db_schema.enum(
   "enum__datasets_v_version_deduplication_config_strategy",
-  ["skip", "update", "version"],
+  ["skip", "update", "version"]
 );
 export const enum__datasets_v_version_enum_detection_mode = db_schema.enum(
   "enum__datasets_v_version_enum_detection_mode",
-  ["count", "percentage", "disabled"],
+  ["count", "percentage", "disabled"]
 );
 export const enum__datasets_v_version_status = db_schema.enum("enum__datasets_v_version_status", [
   "draft",
@@ -161,11 +161,11 @@ export const enum__import_jobs_v_version_stage = db_schema.enum("enum__import_jo
 ]);
 export const enum__import_jobs_v_version_last_successful_stage = db_schema.enum(
   "enum__import_jobs_v_version_last_successful_stage",
-  ["analyze-duplicates", "detect-schema", "validate-schema", "await-approval", "geocode-batch", "create-events"],
+  ["analyze-duplicates", "detect-schema", "validate-schema", "await-approval", "geocode-batch", "create-events"]
 );
 export const enum_scheduled_imports_execution_history_status = db_schema.enum(
   "enum_scheduled_imports_execution_history_status",
-  ["success", "failed"],
+  ["success", "failed"]
 );
 export const enum_scheduled_imports_auth_config_type = db_schema.enum("enum_scheduled_imports_auth_config_type", [
   "none",
@@ -175,7 +175,7 @@ export const enum_scheduled_imports_auth_config_type = db_schema.enum("enum_sche
 ]);
 export const enum_scheduled_imports_dataset_mapping_mapping_type = db_schema.enum(
   "enum_scheduled_imports_dataset_mapping_mapping_type",
-  ["auto", "single", "multiple"],
+  ["auto", "single", "multiple"]
 );
 export const enum_scheduled_imports_schedule_type = db_schema.enum("enum_scheduled_imports_schedule_type", [
   "frequency",
@@ -192,37 +192,31 @@ export const enum_scheduled_imports_last_status = db_schema.enum("enum_scheduled
   "failed",
   "running",
 ]);
-export const exp_content_type = db_schema.enum("exp_content_type", [
-  "auto",
-  "text/csv",
-  "application/json",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-]);
+export const exp_content_type = db_schema.enum("exp_content_type", ["auto", "csv", "json", "xls", "xlsx"]);
 export const enum_scheduled_imports_status = db_schema.enum("enum_scheduled_imports_status", ["draft", "published"]);
 export const enum__scheduled_imports_v_version_execution_history_status = db_schema.enum(
   "enum__scheduled_imports_v_version_execution_history_status",
-  ["success", "failed"],
+  ["success", "failed"]
 );
 export const enum__scheduled_imports_v_version_auth_config_type = db_schema.enum(
   "enum__scheduled_imports_v_version_auth_config_type",
-  ["none", "api-key", "bearer", "basic"],
+  ["none", "api-key", "bearer", "basic"]
 );
 export const enum__scheduled_imports_v_version_dataset_mapping_mapping_type = db_schema.enum(
   "enum__scheduled_imports_v_version_dataset_mapping_mapping_type",
-  ["auto", "single", "multiple"],
+  ["auto", "single", "multiple"]
 );
 export const enum__scheduled_imports_v_version_schedule_type = db_schema.enum(
   "enum__scheduled_imports_v_version_schedule_type",
-  ["frequency", "cron"],
+  ["frequency", "cron"]
 );
 export const enum__scheduled_imports_v_version_frequency = db_schema.enum(
   "enum__scheduled_imports_v_version_frequency",
-  ["hourly", "daily", "weekly", "monthly"],
+  ["hourly", "daily", "weekly", "monthly"]
 );
 export const enum__scheduled_imports_v_version_last_status = db_schema.enum(
   "enum__scheduled_imports_v_version_last_status",
-  ["success", "failed", "running"],
+  ["success", "failed", "running"]
 );
 export const enum__scheduled_imports_v_version_status = db_schema.enum("enum__scheduled_imports_v_version_status", [
   "draft",
@@ -236,11 +230,11 @@ export const enum_events_coordinate_source_type = db_schema.enum("enum_events_co
 ]);
 export const enum_events_coordinate_source_validation_status = db_schema.enum(
   "enum_events_coordinate_source_validation_status",
-  ["valid", "out_of_range", "suspicious_zero", "swapped", "invalid"],
+  ["valid", "out_of_range", "suspicious_zero", "swapped", "invalid"]
 );
 export const enum_events_geocoding_info_geocoding_status = db_schema.enum(
   "enum_events_geocoding_info_geocoding_status",
-  ["pending", "success", "failed"],
+  ["pending", "success", "failed"]
 );
 export const enum_events_geocoding_info_provider = db_schema.enum("enum_events_geocoding_info_provider", [
   "google",
@@ -256,19 +250,19 @@ export const enum_events_validation_status = db_schema.enum("enum_events_validat
 export const enum_events_status = db_schema.enum("enum_events_status", ["draft", "published"]);
 export const enum__events_v_version_coordinate_source_type = db_schema.enum(
   "enum__events_v_version_coordinate_source_type",
-  ["import", "geocoded", "manual", "none"],
+  ["import", "geocoded", "manual", "none"]
 );
 export const enum__events_v_version_coordinate_source_validation_status = db_schema.enum(
   "enum__events_v_version_coordinate_source_validation_status",
-  ["valid", "out_of_range", "suspicious_zero", "swapped", "invalid"],
+  ["valid", "out_of_range", "suspicious_zero", "swapped", "invalid"]
 );
 export const enum__events_v_version_geocoding_info_geocoding_status = db_schema.enum(
   "enum__events_v_version_geocoding_info_geocoding_status",
-  ["pending", "success", "failed"],
+  ["pending", "success", "failed"]
 );
 export const enum__events_v_version_geocoding_info_provider = db_schema.enum(
   "enum__events_v_version_geocoding_info_provider",
-  ["google", "nominatim", "manual"],
+  ["google", "nominatim", "manual"]
 );
 export const enum__events_v_version_validation_status = db_schema.enum("enum__events_v_version_validation_status", [
   "pending",
@@ -390,7 +384,7 @@ export const catalogs = db_schema.table(
     catalogs_updated_at_idx: index("catalogs_updated_at_idx").on(columns.updatedAt),
     catalogs_created_at_idx: index("catalogs_created_at_idx").on(columns.createdAt),
     catalogs__status_idx: index("catalogs__status_idx").on(columns._status),
-  }),
+  })
 );
 
 export const _catalogs_v = db_schema.table(
@@ -416,19 +410,19 @@ export const _catalogs_v = db_schema.table(
     _catalogs_v_parent_idx: index("_catalogs_v_parent_idx").on(columns.parent),
     _catalogs_v_version_version_slug_idx: index("_catalogs_v_version_version_slug_idx").on(columns.version_slug),
     _catalogs_v_version_version_updated_at_idx: index("_catalogs_v_version_version_updated_at_idx").on(
-      columns.version_updatedAt,
+      columns.version_updatedAt
     ),
     _catalogs_v_version_version_created_at_idx: index("_catalogs_v_version_version_created_at_idx").on(
-      columns.version_createdAt,
+      columns.version_createdAt
     ),
     _catalogs_v_version_version__status_idx: index("_catalogs_v_version_version__status_idx").on(
-      columns.version__status,
+      columns.version__status
     ),
     _catalogs_v_created_at_idx: index("_catalogs_v_created_at_idx").on(columns.createdAt),
     _catalogs_v_updated_at_idx: index("_catalogs_v_updated_at_idx").on(columns.updatedAt),
     _catalogs_v_latest_idx: index("_catalogs_v_latest_idx").on(columns.latest),
     _catalogs_v_autosave_idx: index("_catalogs_v_autosave_idx").on(columns.autosave),
-  }),
+  })
 );
 
 export const datasets_id_strategy_computed_id_fields = db_schema.table(
@@ -447,7 +441,7 @@ export const datasets_id_strategy_computed_id_fields = db_schema.table(
       foreignColumns: [datasets.id],
       name: "datasets_id_strategy_computed_id_fields_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const transforms = db_schema.table(
@@ -471,7 +465,7 @@ export const transforms = db_schema.table(
       foreignColumns: [datasets.id],
       name: "transforms_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const datasets = db_schema.table(
@@ -490,7 +484,7 @@ export const datasets = db_schema.table(
     idStrategy_type: enum_datasets_id_strategy_type("id_strategy_type").default("external"),
     idStrategy_externalIdPath: varchar("id_strategy_external_id_path"),
     idStrategy_duplicateStrategy: enum_datasets_id_strategy_duplicate_strategy(
-      "id_strategy_duplicate_strategy",
+      "id_strategy_duplicate_strategy"
     ).default("skip"),
     schemaConfig_enabled: boolean("schema_config_enabled").default(false),
     schemaConfig_locked: boolean("schema_config_locked").default(false),
@@ -503,7 +497,7 @@ export const datasets = db_schema.table(
     schemaConfig_enumMode: enum_datasets_schema_config_enum_mode("schema_config_enum_mode").default("count"),
     deduplicationConfig_enabled: boolean("deduplication_config_enabled").default(true),
     deduplicationConfig_strategy: enum_datasets_deduplication_config_strategy("deduplication_config_strategy").default(
-      "skip",
+      "skip"
     ),
     fieldMetadata: jsonb("field_metadata"),
     enumDetection_mode: enum_datasets_enum_detection_mode("enum_detection_mode").default("count"),
@@ -521,7 +515,7 @@ export const datasets = db_schema.table(
     datasets_updated_at_idx: index("datasets_updated_at_idx").on(columns.updatedAt),
     datasets_created_at_idx: index("datasets_created_at_idx").on(columns.createdAt),
     datasets__status_idx: index("datasets__status_idx").on(columns._status),
-  }),
+  })
 );
 
 export const _datasets_v_version_id_strategy_computed_id_fields = db_schema.table(
@@ -541,7 +535,7 @@ export const _datasets_v_version_id_strategy_computed_id_fields = db_schema.tabl
       foreignColumns: [_datasets_v.id],
       name: "_datasets_v_version_id_strategy_computed_id_fields_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const _transforms_v = db_schema.table(
@@ -566,7 +560,7 @@ export const _transforms_v = db_schema.table(
       foreignColumns: [_datasets_v.id],
       name: "_transforms_v_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const _datasets_v = db_schema.table(
@@ -588,24 +582,24 @@ export const _datasets_v = db_schema.table(
     version_idStrategy_type: enum__datasets_v_version_id_strategy_type("version_id_strategy_type").default("external"),
     version_idStrategy_externalIdPath: varchar("version_id_strategy_external_id_path"),
     version_idStrategy_duplicateStrategy: enum__datasets_v_version_id_strategy_duplicate_strategy(
-      "version_id_strategy_duplicate_strategy",
+      "version_id_strategy_duplicate_strategy"
     ).default("skip"),
     version_schemaConfig_enabled: boolean("version_schema_config_enabled").default(false),
     version_schemaConfig_locked: boolean("version_schema_config_locked").default(false),
     version_schemaConfig_autoGrow: boolean("version_schema_config_auto_grow").default(true),
     version_schemaConfig_autoApproveNonBreaking: boolean("version_schema_config_auto_approve_non_breaking").default(
-      false,
+      false
     ),
     version_schemaConfig_strictValidation: boolean("version_schema_config_strict_validation").default(false),
     version_schemaConfig_allowTransformations: boolean("version_schema_config_allow_transformations").default(true),
     version_schemaConfig_maxSchemaDepth: numeric("version_schema_config_max_schema_depth").default("3"),
     version_schemaConfig_enumThreshold: numeric("version_schema_config_enum_threshold").default("50"),
     version_schemaConfig_enumMode: enum__datasets_v_version_schema_config_enum_mode(
-      "version_schema_config_enum_mode",
+      "version_schema_config_enum_mode"
     ).default("count"),
     version_deduplicationConfig_enabled: boolean("version_deduplication_config_enabled").default(true),
     version_deduplicationConfig_strategy: enum__datasets_v_version_deduplication_config_strategy(
-      "version_deduplication_config_strategy",
+      "version_deduplication_config_strategy"
     ).default("skip"),
     version_fieldMetadata: jsonb("version_field_metadata"),
     version_enumDetection_mode:
@@ -626,22 +620,22 @@ export const _datasets_v = db_schema.table(
     _datasets_v_parent_idx: index("_datasets_v_parent_idx").on(columns.parent),
     _datasets_v_version_version_slug_idx: index("_datasets_v_version_version_slug_idx").on(columns.version_slug),
     _datasets_v_version_version_catalog_idx: index("_datasets_v_version_version_catalog_idx").on(
-      columns.version_catalog,
+      columns.version_catalog
     ),
     _datasets_v_version_version_updated_at_idx: index("_datasets_v_version_version_updated_at_idx").on(
-      columns.version_updatedAt,
+      columns.version_updatedAt
     ),
     _datasets_v_version_version_created_at_idx: index("_datasets_v_version_version_created_at_idx").on(
-      columns.version_createdAt,
+      columns.version_createdAt
     ),
     _datasets_v_version_version__status_idx: index("_datasets_v_version_version__status_idx").on(
-      columns.version__status,
+      columns.version__status
     ),
     _datasets_v_created_at_idx: index("_datasets_v_created_at_idx").on(columns.createdAt),
     _datasets_v_updated_at_idx: index("_datasets_v_updated_at_idx").on(columns.updatedAt),
     _datasets_v_latest_idx: index("_datasets_v_latest_idx").on(columns.latest),
     _datasets_v_autosave_idx: index("_datasets_v_autosave_idx").on(columns.autosave),
-  }),
+  })
 );
 
 export const dataset_schemas_schema_summary_new_fields = db_schema.table(
@@ -660,7 +654,7 @@ export const dataset_schemas_schema_summary_new_fields = db_schema.table(
       foreignColumns: [dataset_schemas.id],
       name: "dataset_schemas_schema_summary_new_fields_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const dataset_schemas_schema_summary_removed_fields = db_schema.table(
@@ -679,7 +673,7 @@ export const dataset_schemas_schema_summary_removed_fields = db_schema.table(
       foreignColumns: [dataset_schemas.id],
       name: "dataset_schemas_schema_summary_removed_fields_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const dataset_schemas_schema_summary_type_changes = db_schema.table(
@@ -700,7 +694,7 @@ export const dataset_schemas_schema_summary_type_changes = db_schema.table(
       foreignColumns: [dataset_schemas.id],
       name: "dataset_schemas_schema_summary_type_changes_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const dataset_schemas_schema_summary_enum_changes = db_schema.table(
@@ -721,7 +715,7 @@ export const dataset_schemas_schema_summary_enum_changes = db_schema.table(
       foreignColumns: [dataset_schemas.id],
       name: "dataset_schemas_schema_summary_enum_changes_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const dataset_schemas_import_sources = db_schema.table(
@@ -745,7 +739,7 @@ export const dataset_schemas_import_sources = db_schema.table(
       foreignColumns: [dataset_schemas.id],
       name: "dataset_schemas_import_sources_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const dataset_schemas = db_schema.table(
@@ -777,7 +771,7 @@ export const dataset_schemas = db_schema.table(
     dataset_schemas_updated_at_idx: index("dataset_schemas_updated_at_idx").on(columns.updatedAt),
     dataset_schemas_created_at_idx: index("dataset_schemas_created_at_idx").on(columns.createdAt),
     dataset_schemas__status_idx: index("dataset_schemas__status_idx").on(columns._status),
-  }),
+  })
 );
 
 export const _dataset_schemas_v_version_schema_summary_new_fields = db_schema.table(
@@ -797,7 +791,7 @@ export const _dataset_schemas_v_version_schema_summary_new_fields = db_schema.ta
       foreignColumns: [_dataset_schemas_v.id],
       name: "_dataset_schemas_v_version_schema_summary_new_fields_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const _dataset_schemas_v_version_schema_summary_removed_fields = db_schema.table(
@@ -817,7 +811,7 @@ export const _dataset_schemas_v_version_schema_summary_removed_fields = db_schem
       foreignColumns: [_dataset_schemas_v.id],
       name: "_dataset_schemas_v_version_schema_summary_removed_fields_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const _dataset_schemas_v_version_schema_summary_type_changes = db_schema.table(
@@ -839,7 +833,7 @@ export const _dataset_schemas_v_version_schema_summary_type_changes = db_schema.
       foreignColumns: [_dataset_schemas_v.id],
       name: "_dataset_schemas_v_version_schema_summary_type_changes_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const _dataset_schemas_v_version_schema_summary_enum_changes = db_schema.table(
@@ -861,7 +855,7 @@ export const _dataset_schemas_v_version_schema_summary_enum_changes = db_schema.
       foreignColumns: [_dataset_schemas_v.id],
       name: "_dataset_schemas_v_version_schema_summary_enum_changes_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const _dataset_schemas_v_version_import_sources = db_schema.table(
@@ -881,14 +875,14 @@ export const _dataset_schemas_v_version_import_sources = db_schema.table(
     _orderIdx: index("_dataset_schemas_v_version_import_sources_order_idx").on(columns._order),
     _parentIDIdx: index("_dataset_schemas_v_version_import_sources_parent_id_idx").on(columns._parentID),
     _dataset_schemas_v_version_import_sources_import_idx: index(
-      "_dataset_schemas_v_version_import_sources_import_idx",
+      "_dataset_schemas_v_version_import_sources_import_idx"
     ).on(columns.import),
     _parentIDFk: foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_dataset_schemas_v.id],
       name: "_dataset_schemas_v_version_import_sources_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const _dataset_schemas_v = db_schema.table(
@@ -924,25 +918,25 @@ export const _dataset_schemas_v = db_schema.table(
   (columns) => ({
     _dataset_schemas_v_parent_idx: index("_dataset_schemas_v_parent_idx").on(columns.parent),
     _dataset_schemas_v_version_version_dataset_idx: index("_dataset_schemas_v_version_version_dataset_idx").on(
-      columns.version_dataset,
+      columns.version_dataset
     ),
     _dataset_schemas_v_version_version_approved_by_idx: index("_dataset_schemas_v_version_version_approved_by_idx").on(
-      columns.version_approvedBy,
+      columns.version_approvedBy
     ),
     _dataset_schemas_v_version_version_updated_at_idx: index("_dataset_schemas_v_version_version_updated_at_idx").on(
-      columns.version_updatedAt,
+      columns.version_updatedAt
     ),
     _dataset_schemas_v_version_version_created_at_idx: index("_dataset_schemas_v_version_version_created_at_idx").on(
-      columns.version_createdAt,
+      columns.version_createdAt
     ),
     _dataset_schemas_v_version_version__status_idx: index("_dataset_schemas_v_version_version__status_idx").on(
-      columns.version__status,
+      columns.version__status
     ),
     _dataset_schemas_v_created_at_idx: index("_dataset_schemas_v_created_at_idx").on(columns.createdAt),
     _dataset_schemas_v_updated_at_idx: index("_dataset_schemas_v_updated_at_idx").on(columns.updatedAt),
     _dataset_schemas_v_latest_idx: index("_dataset_schemas_v_latest_idx").on(columns.latest),
     _dataset_schemas_v_autosave_idx: index("_dataset_schemas_v_autosave_idx").on(columns.autosave),
-  }),
+  })
 );
 
 export const import_files = db_schema.table(
@@ -985,7 +979,7 @@ export const import_files = db_schema.table(
     import_files_updated_at_idx: index("import_files_updated_at_idx").on(columns.updatedAt),
     import_files_created_at_idx: index("import_files_created_at_idx").on(columns.createdAt),
     import_files_filename_idx: uniqueIndex("import_files_filename_idx").on(columns.filename),
-  }),
+  })
 );
 
 export const import_files_rels = db_schema.table(
@@ -1012,7 +1006,7 @@ export const import_files_rels = db_schema.table(
       foreignColumns: [datasets.id],
       name: "import_files_rels_datasets_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const _import_files_v = db_schema.table(
@@ -1057,23 +1051,23 @@ export const _import_files_v = db_schema.table(
   (columns) => ({
     _import_files_v_parent_idx: index("_import_files_v_parent_idx").on(columns.parent),
     _import_files_v_version_version_catalog_idx: index("_import_files_v_version_version_catalog_idx").on(
-      columns.version_catalog,
+      columns.version_catalog
     ),
     _import_files_v_version_version_user_idx: index("_import_files_v_version_version_user_idx").on(
-      columns.version_user,
+      columns.version_user
     ),
     _import_files_v_version_version_updated_at_idx: index("_import_files_v_version_version_updated_at_idx").on(
-      columns.version_updatedAt,
+      columns.version_updatedAt
     ),
     _import_files_v_version_version_created_at_idx: index("_import_files_v_version_version_created_at_idx").on(
-      columns.version_createdAt,
+      columns.version_createdAt
     ),
     _import_files_v_version_version_filename_idx: index("_import_files_v_version_version_filename_idx").on(
-      columns.version_filename,
+      columns.version_filename
     ),
     _import_files_v_created_at_idx: index("_import_files_v_created_at_idx").on(columns.createdAt),
     _import_files_v_updated_at_idx: index("_import_files_v_updated_at_idx").on(columns.updatedAt),
-  }),
+  })
 );
 
 export const _import_files_v_rels = db_schema.table(
@@ -1100,7 +1094,7 @@ export const _import_files_v_rels = db_schema.table(
       foreignColumns: [datasets.id],
       name: "_import_files_v_rels_datasets_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const import_jobs_errors = db_schema.table(
@@ -1120,7 +1114,7 @@ export const import_jobs_errors = db_schema.table(
       foreignColumns: [import_jobs.id],
       name: "import_jobs_errors_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const import_jobs = db_schema.table(
@@ -1185,14 +1179,14 @@ export const import_jobs = db_schema.table(
     import_jobs_import_file_idx: index("import_jobs_import_file_idx").on(columns.importFile),
     import_jobs_dataset_idx: index("import_jobs_dataset_idx").on(columns.dataset),
     import_jobs_schema_validation_schema_validation_approved_by_idx: index(
-      "import_jobs_schema_validation_schema_validation_approved_by_idx",
+      "import_jobs_schema_validation_schema_validation_approved_by_idx"
     ).on(columns.schemaValidation_approvedBy),
     import_jobs_dataset_schema_version_idx: index("import_jobs_dataset_schema_version_idx").on(
-      columns.datasetSchemaVersion,
+      columns.datasetSchemaVersion
     ),
     import_jobs_updated_at_idx: index("import_jobs_updated_at_idx").on(columns.updatedAt),
     import_jobs_created_at_idx: index("import_jobs_created_at_idx").on(columns.createdAt),
-  }),
+  })
 );
 
 export const _import_jobs_v_version_errors = db_schema.table(
@@ -1213,7 +1207,7 @@ export const _import_jobs_v_version_errors = db_schema.table(
       foreignColumns: [_import_jobs_v.id],
       name: "_import_jobs_v_version_errors_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const _import_jobs_v = db_schema.table(
@@ -1250,7 +1244,7 @@ export const _import_jobs_v = db_schema.table(
       () => users.id,
       {
         onDelete: "set null",
-      },
+      }
     ),
     version_schemaValidation_approvedAt: timestamp("version_schema_validation_approved_at", {
       mode: "string",
@@ -1285,26 +1279,26 @@ export const _import_jobs_v = db_schema.table(
   (columns) => ({
     _import_jobs_v_parent_idx: index("_import_jobs_v_parent_idx").on(columns.parent),
     _import_jobs_v_version_version_import_file_idx: index("_import_jobs_v_version_version_import_file_idx").on(
-      columns.version_importFile,
+      columns.version_importFile
     ),
     _import_jobs_v_version_version_dataset_idx: index("_import_jobs_v_version_version_dataset_idx").on(
-      columns.version_dataset,
+      columns.version_dataset
     ),
     _import_jobs_v_version_schema_validation_version_schema_validation_approved_by_idx: index(
-      "_import_jobs_v_version_schema_validation_version_schema_validation_approved_by_idx",
+      "_import_jobs_v_version_schema_validation_version_schema_validation_approved_by_idx"
     ).on(columns.version_schemaValidation_approvedBy),
     _import_jobs_v_version_version_dataset_schema_version_idx: index(
-      "_import_jobs_v_version_version_dataset_schema_version_idx",
+      "_import_jobs_v_version_version_dataset_schema_version_idx"
     ).on(columns.version_datasetSchemaVersion),
     _import_jobs_v_version_version_updated_at_idx: index("_import_jobs_v_version_version_updated_at_idx").on(
-      columns.version_updatedAt,
+      columns.version_updatedAt
     ),
     _import_jobs_v_version_version_created_at_idx: index("_import_jobs_v_version_version_created_at_idx").on(
-      columns.version_createdAt,
+      columns.version_createdAt
     ),
     _import_jobs_v_created_at_idx: index("_import_jobs_v_created_at_idx").on(columns.createdAt),
     _import_jobs_v_updated_at_idx: index("_import_jobs_v_updated_at_idx").on(columns.updatedAt),
-  }),
+  })
 );
 
 export const scheduled_imports_dataset_mapping_sheet_mappings = db_schema.table(
@@ -1323,14 +1317,14 @@ export const scheduled_imports_dataset_mapping_sheet_mappings = db_schema.table(
     _orderIdx: index("scheduled_imports_dataset_mapping_sheet_mappings_order_idx").on(columns._order),
     _parentIDIdx: index("scheduled_imports_dataset_mapping_sheet_mappings_parent_id_idx").on(columns._parentID),
     scheduled_imports_dataset_mapping_sheet_mappings_dataset_idx: index(
-      "scheduled_imports_dataset_mapping_sheet_mappings_dataset_idx",
+      "scheduled_imports_dataset_mapping_sheet_mappings_dataset_idx"
     ).on(columns.dataset),
     _parentIDFk: foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [scheduled_imports.id],
       name: "scheduled_imports_dataset_mapping_sheet_mappings_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const scheduled_imports_execution_history = db_schema.table(
@@ -1353,7 +1347,7 @@ export const scheduled_imports_execution_history = db_schema.table(
       foreignColumns: [scheduled_imports.id],
       name: "scheduled_imports_execution_history_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const scheduled_imports = db_schema.table(
@@ -1406,12 +1400,12 @@ export const scheduled_imports = db_schema.table(
   (columns) => ({
     scheduled_imports_catalog_idx: index("scheduled_imports_catalog_idx").on(columns.catalog),
     scheduled_imports_dataset_mapping_dataset_mapping_single_dataset_idx: index(
-      "scheduled_imports_dataset_mapping_dataset_mapping_single_dataset_idx",
+      "scheduled_imports_dataset_mapping_dataset_mapping_single_dataset_idx"
     ).on(columns.datasetMapping_singleDataset),
     scheduled_imports_updated_at_idx: index("scheduled_imports_updated_at_idx").on(columns.updatedAt),
     scheduled_imports_created_at_idx: index("scheduled_imports_created_at_idx").on(columns.createdAt),
     scheduled_imports__status_idx: index("scheduled_imports__status_idx").on(columns._status),
-  }),
+  })
 );
 
 export const _scheduled_imports_v_version_dataset_mapping_sheet_mappings = db_schema.table(
@@ -1430,17 +1424,17 @@ export const _scheduled_imports_v_version_dataset_mapping_sheet_mappings = db_sc
   (columns) => ({
     _orderIdx: index("_scheduled_imports_v_version_dataset_mapping_sheet_mappings_order_idx").on(columns._order),
     _parentIDIdx: index("_scheduled_imports_v_version_dataset_mapping_sheet_mappings_parent_id_idx").on(
-      columns._parentID,
+      columns._parentID
     ),
     _scheduled_imports_v_version_dataset_mapping_sheet_mappings_dataset_idx: index(
-      "_scheduled_imports_v_version_dataset_mapping_sheet_mappings_dataset_idx",
+      "_scheduled_imports_v_version_dataset_mapping_sheet_mappings_dataset_idx"
     ).on(columns.dataset),
     _parentIDFk: foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_scheduled_imports_v.id],
       name: "_scheduled_imports_v_version_dataset_mapping_sheet_mappings_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const _scheduled_imports_v_version_execution_history = db_schema.table(
@@ -1464,7 +1458,7 @@ export const _scheduled_imports_v_version_execution_history = db_schema.table(
       foreignColumns: [_scheduled_imports_v.id],
       name: "_scheduled_imports_v_version_execution_history_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const _scheduled_imports_v = db_schema.table(
@@ -1490,13 +1484,13 @@ export const _scheduled_imports_v = db_schema.table(
       onDelete: "set null",
     }),
     version_datasetMapping_mappingType: enum__scheduled_imports_v_version_dataset_mapping_mapping_type(
-      "version_dataset_mapping_mapping_type",
+      "version_dataset_mapping_mapping_type"
     ).default("auto"),
     version_datasetMapping_singleDataset: integer("version_dataset_mapping_single_dataset_id").references(
       () => datasets.id,
       {
         onDelete: "set null",
-      },
+      }
     ),
     version_importNameTemplate: varchar("version_import_name_template").default("{{name}} - {{date}}"),
     version_scheduleType: enum__scheduled_imports_v_version_schedule_type("version_schedule_type").default("frequency"),
@@ -1516,7 +1510,7 @@ export const _scheduled_imports_v = db_schema.table(
     version_statistics_averageDuration: numeric("version_statistics_average_duration"),
     version_advancedConfig_skipDuplicateCheck: boolean("version_advanced_config_skip_duplicate_check").default(false),
     version_advancedConfig_expectedContentType: exp_content_type(
-      "version_advanced_config_expected_content_type",
+      "version_advanced_config_expected_content_type"
     ).default("auto"),
     version_advancedConfig_maxFileSize: numeric("version_advanced_config_max_file_size").default("100"),
     version_metadata: jsonb("version_metadata"),
@@ -1531,25 +1525,25 @@ export const _scheduled_imports_v = db_schema.table(
   (columns) => ({
     _scheduled_imports_v_parent_idx: index("_scheduled_imports_v_parent_idx").on(columns.parent),
     _scheduled_imports_v_version_version_catalog_idx: index("_scheduled_imports_v_version_version_catalog_idx").on(
-      columns.version_catalog,
+      columns.version_catalog
     ),
     _scheduled_imports_v_version_dataset_mapping_version_dataset_mapping_single_dataset_idx: index(
-      "_scheduled_imports_v_version_dataset_mapping_version_dataset_mapping_single_dataset_idx",
+      "_scheduled_imports_v_version_dataset_mapping_version_dataset_mapping_single_dataset_idx"
     ).on(columns.version_datasetMapping_singleDataset),
     _scheduled_imports_v_version_version_updated_at_idx: index(
-      "_scheduled_imports_v_version_version_updated_at_idx",
+      "_scheduled_imports_v_version_version_updated_at_idx"
     ).on(columns.version_updatedAt),
     _scheduled_imports_v_version_version_created_at_idx: index(
-      "_scheduled_imports_v_version_version_created_at_idx",
+      "_scheduled_imports_v_version_version_created_at_idx"
     ).on(columns.version_createdAt),
     _scheduled_imports_v_version_version__status_idx: index("_scheduled_imports_v_version_version__status_idx").on(
-      columns.version__status,
+      columns.version__status
     ),
     _scheduled_imports_v_created_at_idx: index("_scheduled_imports_v_created_at_idx").on(columns.createdAt),
     _scheduled_imports_v_updated_at_idx: index("_scheduled_imports_v_updated_at_idx").on(columns.updatedAt),
     _scheduled_imports_v_latest_idx: index("_scheduled_imports_v_latest_idx").on(columns.latest),
     _scheduled_imports_v_autosave_idx: index("_scheduled_imports_v_autosave_idx").on(columns.autosave),
-  }),
+  })
 );
 
 export const events = db_schema.table(
@@ -1572,7 +1566,7 @@ export const events = db_schema.table(
     coordinateSource_importColumns_format: varchar("coordinate_source_import_columns_format"),
     coordinateSource_confidence: numeric("coordinate_source_confidence"),
     coordinateSource_validationStatus: enum_events_coordinate_source_validation_status(
-      "coordinate_source_validation_status",
+      "coordinate_source_validation_status"
     ),
     eventTimestamp: timestamp("event_timestamp", { mode: "string", withTimezone: true, precision: 3 }),
     validationErrors: jsonb("validation_errors"),
@@ -1609,7 +1603,7 @@ export const events = db_schema.table(
     dataset_contentHash_idx: index("dataset_contentHash_idx").on(columns.dataset, columns.contentHash),
     importJob_importBatch_idx: index("importJob_importBatch_idx").on(columns.importJob, columns.importBatch),
     validationStatus_idx: index("validationStatus_idx").on(columns.validationStatus),
-  }),
+  })
 );
 
 export const _events_v = db_schema.table(
@@ -1629,27 +1623,27 @@ export const _events_v = db_schema.table(
     version_location_latitude: numeric("version_location_latitude"),
     version_location_longitude: numeric("version_location_longitude"),
     version_coordinateSource_type: enum__events_v_version_coordinate_source_type(
-      "version_coordinate_source_type",
+      "version_coordinate_source_type"
     ).default("none"),
     version_coordinateSource_importColumns_latitudeColumn: varchar(
-      "version_coordinate_source_import_columns_latitude_column",
+      "version_coordinate_source_import_columns_latitude_column"
     ),
     version_coordinateSource_importColumns_longitudeColumn: varchar(
-      "version_coordinate_source_import_columns_longitude_column",
+      "version_coordinate_source_import_columns_longitude_column"
     ),
     version_coordinateSource_importColumns_combinedColumn: varchar(
-      "version_coordinate_source_import_columns_combined_column",
+      "version_coordinate_source_import_columns_combined_column"
     ),
     version_coordinateSource_importColumns_format: varchar("version_coordinate_source_import_columns_format"),
     version_coordinateSource_confidence: numeric("version_coordinate_source_confidence"),
     version_coordinateSource_validationStatus: enum__events_v_version_coordinate_source_validation_status(
-      "version_coordinate_source_validation_status",
+      "version_coordinate_source_validation_status"
     ),
     version_eventTimestamp: timestamp("version_event_timestamp", { mode: "string", withTimezone: true, precision: 3 }),
     version_validationErrors: jsonb("version_validation_errors"),
     version_geocodingInfo_originalAddress: varchar("version_geocoding_info_original_address"),
     version_geocodingInfo_geocodingStatus: enum__events_v_version_geocoding_info_geocoding_status(
-      "version_geocoding_info_geocoding_status",
+      "version_geocoding_info_geocoding_status"
     ),
     version_geocodingInfo_provider: enum__events_v_version_geocoding_info_provider("version_geocoding_info_provider"),
     version_geocodingInfo_confidence: numeric("version_geocoding_info_confidence"),
@@ -1673,28 +1667,28 @@ export const _events_v = db_schema.table(
     _events_v_parent_idx: index("_events_v_parent_idx").on(columns.parent),
     _events_v_version_version_dataset_idx: index("_events_v_version_version_dataset_idx").on(columns.version_dataset),
     _events_v_version_version_import_job_idx: index("_events_v_version_version_import_job_idx").on(
-      columns.version_importJob,
+      columns.version_importJob
     ),
     _events_v_version_version_unique_id_idx: index("_events_v_version_version_unique_id_idx").on(
-      columns.version_uniqueId,
+      columns.version_uniqueId
     ),
     _events_v_version_version_source_id_idx: index("_events_v_version_version_source_id_idx").on(
-      columns.version_sourceId,
+      columns.version_sourceId
     ),
     _events_v_version_version_content_hash_idx: index("_events_v_version_version_content_hash_idx").on(
-      columns.version_contentHash,
+      columns.version_contentHash
     ),
     _events_v_version_version_import_batch_idx: index("_events_v_version_version_import_batch_idx").on(
-      columns.version_importBatch,
+      columns.version_importBatch
     ),
     _events_v_version_version_validation_status_idx: index("_events_v_version_version_validation_status_idx").on(
-      columns.version_validationStatus,
+      columns.version_validationStatus
     ),
     _events_v_version_version_updated_at_idx: index("_events_v_version_version_updated_at_idx").on(
-      columns.version_updatedAt,
+      columns.version_updatedAt
     ),
     _events_v_version_version_created_at_idx: index("_events_v_version_version_created_at_idx").on(
-      columns.version_createdAt,
+      columns.version_createdAt
     ),
     _events_v_version_version__status_idx: index("_events_v_version_version__status_idx").on(columns.version__status),
     _events_v_created_at_idx: index("_events_v_created_at_idx").on(columns.createdAt),
@@ -1703,20 +1697,20 @@ export const _events_v = db_schema.table(
     _events_v_autosave_idx: index("_events_v_autosave_idx").on(columns.autosave),
     version_dataset_version_eventTimestamp_idx: index("version_dataset_version_eventTimestamp_idx").on(
       columns.version_dataset,
-      columns.version_eventTimestamp,
+      columns.version_eventTimestamp
     ),
     version_eventTimestamp_idx: index("version_eventTimestamp_idx").on(columns.version_eventTimestamp),
     version_uniqueId_idx: index("version_uniqueId_idx").on(columns.version_uniqueId),
     version_dataset_version_contentHash_idx: index("version_dataset_version_contentHash_idx").on(
       columns.version_dataset,
-      columns.version_contentHash,
+      columns.version_contentHash
     ),
     version_importJob_version_importBatch_idx: index("version_importJob_version_importBatch_idx").on(
       columns.version_importJob,
-      columns.version_importBatch,
+      columns.version_importBatch
     ),
     version_validationStatus_idx: index("version_validationStatus_idx").on(columns.version_validationStatus),
-  }),
+  })
 );
 
 export const users_sessions = db_schema.table(
@@ -1736,7 +1730,7 @@ export const users_sessions = db_schema.table(
       foreignColumns: [users.id],
       name: "users_sessions_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const users = db_schema.table(
@@ -1768,7 +1762,7 @@ export const users = db_schema.table(
     users_created_at_idx: index("users_created_at_idx").on(columns.createdAt),
     users__status_idx: index("users__status_idx").on(columns._status),
     users_email_idx: uniqueIndex("users_email_idx").on(columns.email),
-  }),
+  })
 );
 
 export const _users_v_version_sessions = db_schema.table(
@@ -1789,7 +1783,7 @@ export const _users_v_version_sessions = db_schema.table(
       foreignColumns: [_users_v.id],
       name: "_users_v_version_sessions_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const _users_v = db_schema.table(
@@ -1826,10 +1820,10 @@ export const _users_v = db_schema.table(
   (columns) => ({
     _users_v_parent_idx: index("_users_v_parent_idx").on(columns.parent),
     _users_v_version_version_updated_at_idx: index("_users_v_version_version_updated_at_idx").on(
-      columns.version_updatedAt,
+      columns.version_updatedAt
     ),
     _users_v_version_version_created_at_idx: index("_users_v_version_version_created_at_idx").on(
-      columns.version_createdAt,
+      columns.version_createdAt
     ),
     _users_v_version_version__status_idx: index("_users_v_version_version__status_idx").on(columns.version__status),
     _users_v_version_version_email_idx: index("_users_v_version_version_email_idx").on(columns.version_email),
@@ -1837,7 +1831,7 @@ export const _users_v = db_schema.table(
     _users_v_updated_at_idx: index("_users_v_updated_at_idx").on(columns.updatedAt),
     _users_v_latest_idx: index("_users_v_latest_idx").on(columns.latest),
     _users_v_autosave_idx: index("_users_v_autosave_idx").on(columns.autosave),
-  }),
+  })
 );
 
 export const media = db_schema.table(
@@ -1882,15 +1876,15 @@ export const media = db_schema.table(
     media__status_idx: index("media__status_idx").on(columns._status),
     media_filename_idx: uniqueIndex("media_filename_idx").on(columns.filename),
     media_sizes_thumbnail_sizes_thumbnail_filename_idx: index("media_sizes_thumbnail_sizes_thumbnail_filename_idx").on(
-      columns.sizes_thumbnail_filename,
+      columns.sizes_thumbnail_filename
     ),
     media_sizes_card_sizes_card_filename_idx: index("media_sizes_card_sizes_card_filename_idx").on(
-      columns.sizes_card_filename,
+      columns.sizes_card_filename
     ),
     media_sizes_tablet_sizes_tablet_filename_idx: index("media_sizes_tablet_sizes_tablet_filename_idx").on(
-      columns.sizes_tablet_filename,
+      columns.sizes_tablet_filename
     ),
-  }),
+  })
 );
 
 export const _media_v = db_schema.table(
@@ -1939,27 +1933,27 @@ export const _media_v = db_schema.table(
   (columns) => ({
     _media_v_parent_idx: index("_media_v_parent_idx").on(columns.parent),
     _media_v_version_version_updated_at_idx: index("_media_v_version_version_updated_at_idx").on(
-      columns.version_updatedAt,
+      columns.version_updatedAt
     ),
     _media_v_version_version_created_at_idx: index("_media_v_version_version_created_at_idx").on(
-      columns.version_createdAt,
+      columns.version_createdAt
     ),
     _media_v_version_version__status_idx: index("_media_v_version_version__status_idx").on(columns.version__status),
     _media_v_version_version_filename_idx: index("_media_v_version_version_filename_idx").on(columns.version_filename),
     _media_v_version_sizes_thumbnail_version_sizes_thumbnail_filename_idx: index(
-      "_media_v_version_sizes_thumbnail_version_sizes_thumbnail_filename_idx",
+      "_media_v_version_sizes_thumbnail_version_sizes_thumbnail_filename_idx"
     ).on(columns.version_sizes_thumbnail_filename),
     _media_v_version_sizes_card_version_sizes_card_filename_idx: index(
-      "_media_v_version_sizes_card_version_sizes_card_filename_idx",
+      "_media_v_version_sizes_card_version_sizes_card_filename_idx"
     ).on(columns.version_sizes_card_filename),
     _media_v_version_sizes_tablet_version_sizes_tablet_filename_idx: index(
-      "_media_v_version_sizes_tablet_version_sizes_tablet_filename_idx",
+      "_media_v_version_sizes_tablet_version_sizes_tablet_filename_idx"
     ).on(columns.version_sizes_tablet_filename),
     _media_v_created_at_idx: index("_media_v_created_at_idx").on(columns.createdAt),
     _media_v_updated_at_idx: index("_media_v_updated_at_idx").on(columns.updatedAt),
     _media_v_latest_idx: index("_media_v_latest_idx").on(columns.latest),
     _media_v_autosave_idx: index("_media_v_autosave_idx").on(columns.autosave),
-  }),
+  })
 );
 
 export const location_cache = db_schema.table(
@@ -1991,7 +1985,7 @@ export const location_cache = db_schema.table(
     location_cache_updated_at_idx: index("location_cache_updated_at_idx").on(columns.updatedAt),
     location_cache_created_at_idx: index("location_cache_created_at_idx").on(columns.createdAt),
     location_cache__status_idx: index("location_cache__status_idx").on(columns._status),
-  }),
+  })
 );
 
 export const _location_cache_v = db_schema.table(
@@ -2027,25 +2021,25 @@ export const _location_cache_v = db_schema.table(
   (columns) => ({
     _location_cache_v_parent_idx: index("_location_cache_v_parent_idx").on(columns.parent),
     _location_cache_v_version_version_original_address_idx: index(
-      "_location_cache_v_version_version_original_address_idx",
+      "_location_cache_v_version_version_original_address_idx"
     ).on(columns.version_originalAddress),
     _location_cache_v_version_version_normalized_address_idx: index(
-      "_location_cache_v_version_version_normalized_address_idx",
+      "_location_cache_v_version_version_normalized_address_idx"
     ).on(columns.version_normalizedAddress),
     _location_cache_v_version_version_updated_at_idx: index("_location_cache_v_version_version_updated_at_idx").on(
-      columns.version_updatedAt,
+      columns.version_updatedAt
     ),
     _location_cache_v_version_version_created_at_idx: index("_location_cache_v_version_version_created_at_idx").on(
-      columns.version_createdAt,
+      columns.version_createdAt
     ),
     _location_cache_v_version_version__status_idx: index("_location_cache_v_version_version__status_idx").on(
-      columns.version__status,
+      columns.version__status
     ),
     _location_cache_v_created_at_idx: index("_location_cache_v_created_at_idx").on(columns.createdAt),
     _location_cache_v_updated_at_idx: index("_location_cache_v_updated_at_idx").on(columns.updatedAt),
     _location_cache_v_latest_idx: index("_location_cache_v_latest_idx").on(columns.latest),
     _location_cache_v_autosave_idx: index("_location_cache_v_autosave_idx").on(columns.autosave),
-  }),
+  })
 );
 
 export const geocoding_providers_tags = db_schema.table(
@@ -2064,7 +2058,7 @@ export const geocoding_providers_tags = db_schema.table(
       foreignColumns: [geocoding_providers.id],
       name: "geocoding_providers_tags_parent_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const geocoding_providers = db_schema.table(
@@ -2110,7 +2104,7 @@ export const geocoding_providers = db_schema.table(
     geocoding_providers_updated_at_idx: index("geocoding_providers_updated_at_idx").on(columns.updatedAt),
     geocoding_providers_created_at_idx: index("geocoding_providers_created_at_idx").on(columns.createdAt),
     geocoding_providers__status_idx: index("geocoding_providers__status_idx").on(columns._status),
-  }),
+  })
 );
 
 export const _geocoding_providers_v_version_tags = db_schema.table(
@@ -2129,7 +2123,7 @@ export const _geocoding_providers_v_version_tags = db_schema.table(
       foreignColumns: [_geocoding_providers_v.id],
       name: "_geocoding_providers_v_version_tags_parent_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const _geocoding_providers_v = db_schema.table(
@@ -2148,7 +2142,7 @@ export const _geocoding_providers_v = db_schema.table(
     version_config_google_region: varchar("version_config_google_region"),
     version_config_google_language: varchar("version_config_google_language").default("en"),
     version_config_nominatim_baseUrl: varchar("version_config_nominatim_base_url").default(
-      "https://nominatim.openstreetmap.org",
+      "https://nominatim.openstreetmap.org"
     ),
     version_config_nominatim_userAgent: varchar("version_config_nominatim_user_agent").default("TimeTiles-App/1.0"),
     version_config_nominatim_email: varchar("version_config_nominatim_email"),
@@ -2186,22 +2180,22 @@ export const _geocoding_providers_v = db_schema.table(
   (columns) => ({
     _geocoding_providers_v_parent_idx: index("_geocoding_providers_v_parent_idx").on(columns.parent),
     _geocoding_providers_v_version_version_name_idx: index("_geocoding_providers_v_version_version_name_idx").on(
-      columns.version_name,
+      columns.version_name
     ),
     _geocoding_providers_v_version_version_updated_at_idx: index(
-      "_geocoding_providers_v_version_version_updated_at_idx",
+      "_geocoding_providers_v_version_version_updated_at_idx"
     ).on(columns.version_updatedAt),
     _geocoding_providers_v_version_version_created_at_idx: index(
-      "_geocoding_providers_v_version_version_created_at_idx",
+      "_geocoding_providers_v_version_version_created_at_idx"
     ).on(columns.version_createdAt),
     _geocoding_providers_v_version_version__status_idx: index("_geocoding_providers_v_version_version__status_idx").on(
-      columns.version__status,
+      columns.version__status
     ),
     _geocoding_providers_v_created_at_idx: index("_geocoding_providers_v_created_at_idx").on(columns.createdAt),
     _geocoding_providers_v_updated_at_idx: index("_geocoding_providers_v_updated_at_idx").on(columns.updatedAt),
     _geocoding_providers_v_latest_idx: index("_geocoding_providers_v_latest_idx").on(columns.latest),
     _geocoding_providers_v_autosave_idx: index("_geocoding_providers_v_autosave_idx").on(columns.autosave),
-  }),
+  })
 );
 
 export const pages = db_schema.table(
@@ -2220,7 +2214,7 @@ export const pages = db_schema.table(
     pages_updated_at_idx: index("pages_updated_at_idx").on(columns.updatedAt),
     pages_created_at_idx: index("pages_created_at_idx").on(columns.createdAt),
     pages__status_idx: index("pages__status_idx").on(columns._status),
-  }),
+  })
 );
 
 export const _pages_v = db_schema.table(
@@ -2245,17 +2239,17 @@ export const _pages_v = db_schema.table(
     _pages_v_parent_idx: index("_pages_v_parent_idx").on(columns.parent),
     _pages_v_version_version_slug_idx: index("_pages_v_version_version_slug_idx").on(columns.version_slug),
     _pages_v_version_version_updated_at_idx: index("_pages_v_version_version_updated_at_idx").on(
-      columns.version_updatedAt,
+      columns.version_updatedAt
     ),
     _pages_v_version_version_created_at_idx: index("_pages_v_version_version_created_at_idx").on(
-      columns.version_createdAt,
+      columns.version_createdAt
     ),
     _pages_v_version_version__status_idx: index("_pages_v_version_version__status_idx").on(columns.version__status),
     _pages_v_created_at_idx: index("_pages_v_created_at_idx").on(columns.createdAt),
     _pages_v_updated_at_idx: index("_pages_v_updated_at_idx").on(columns.updatedAt),
     _pages_v_latest_idx: index("_pages_v_latest_idx").on(columns.latest),
     _pages_v_autosave_idx: index("_pages_v_autosave_idx").on(columns.autosave),
-  }),
+  })
 );
 
 export const payload_jobs_log = db_schema.table(
@@ -2281,7 +2275,7 @@ export const payload_jobs_log = db_schema.table(
       foreignColumns: [payload_jobs.id],
       name: "payload_jobs_log_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const payload_jobs = db_schema.table(
@@ -2310,7 +2304,7 @@ export const payload_jobs = db_schema.table(
     payload_jobs_processing_idx: index("payload_jobs_processing_idx").on(columns.processing),
     payload_jobs_updated_at_idx: index("payload_jobs_updated_at_idx").on(columns.updatedAt),
     payload_jobs_created_at_idx: index("payload_jobs_created_at_idx").on(columns.createdAt),
-  }),
+  })
 );
 
 export const payload_locked_documents = db_schema.table(
@@ -2325,7 +2319,7 @@ export const payload_locked_documents = db_schema.table(
     payload_locked_documents_global_slug_idx: index("payload_locked_documents_global_slug_idx").on(columns.globalSlug),
     payload_locked_documents_updated_at_idx: index("payload_locked_documents_updated_at_idx").on(columns.updatedAt),
     payload_locked_documents_created_at_idx: index("payload_locked_documents_created_at_idx").on(columns.createdAt),
-  }),
+  })
 );
 
 export const payload_locked_documents_rels = db_schema.table(
@@ -2354,37 +2348,37 @@ export const payload_locked_documents_rels = db_schema.table(
     parentIdx: index("payload_locked_documents_rels_parent_idx").on(columns.parent),
     pathIdx: index("payload_locked_documents_rels_path_idx").on(columns.path),
     payload_locked_documents_rels_catalogs_id_idx: index("payload_locked_documents_rels_catalogs_id_idx").on(
-      columns.catalogsID,
+      columns.catalogsID
     ),
     payload_locked_documents_rels_datasets_id_idx: index("payload_locked_documents_rels_datasets_id_idx").on(
-      columns.datasetsID,
+      columns.datasetsID
     ),
     payload_locked_documents_rels_dataset_schemas_id_idx: index(
-      "payload_locked_documents_rels_dataset_schemas_id_idx",
+      "payload_locked_documents_rels_dataset_schemas_id_idx"
     ).on(columns["dataset-schemasID"]),
     payload_locked_documents_rels_import_files_id_idx: index("payload_locked_documents_rels_import_files_id_idx").on(
-      columns["import-filesID"],
+      columns["import-filesID"]
     ),
     payload_locked_documents_rels_import_jobs_id_idx: index("payload_locked_documents_rels_import_jobs_id_idx").on(
-      columns["import-jobsID"],
+      columns["import-jobsID"]
     ),
     payload_locked_documents_rels_scheduled_imports_id_idx: index(
-      "payload_locked_documents_rels_scheduled_imports_id_idx",
+      "payload_locked_documents_rels_scheduled_imports_id_idx"
     ).on(columns["scheduled-importsID"]),
     payload_locked_documents_rels_events_id_idx: index("payload_locked_documents_rels_events_id_idx").on(
-      columns.eventsID,
+      columns.eventsID
     ),
     payload_locked_documents_rels_users_id_idx: index("payload_locked_documents_rels_users_id_idx").on(columns.usersID),
     payload_locked_documents_rels_media_id_idx: index("payload_locked_documents_rels_media_id_idx").on(columns.mediaID),
     payload_locked_documents_rels_location_cache_id_idx: index(
-      "payload_locked_documents_rels_location_cache_id_idx",
+      "payload_locked_documents_rels_location_cache_id_idx"
     ).on(columns["location-cacheID"]),
     payload_locked_documents_rels_geocoding_providers_id_idx: index(
-      "payload_locked_documents_rels_geocoding_providers_id_idx",
+      "payload_locked_documents_rels_geocoding_providers_id_idx"
     ).on(columns["geocoding-providersID"]),
     payload_locked_documents_rels_pages_id_idx: index("payload_locked_documents_rels_pages_id_idx").on(columns.pagesID),
     payload_locked_documents_rels_payload_jobs_id_idx: index("payload_locked_documents_rels_payload_jobs_id_idx").on(
-      columns["payload-jobsID"],
+      columns["payload-jobsID"]
     ),
     parentFk: foreignKey({
       columns: [columns["parent"]],
@@ -2456,7 +2450,7 @@ export const payload_locked_documents_rels = db_schema.table(
       foreignColumns: [payload_jobs.id],
       name: "payload_locked_documents_rels_payload_jobs_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const payload_preferences = db_schema.table(
@@ -2472,7 +2466,7 @@ export const payload_preferences = db_schema.table(
     payload_preferences_key_idx: index("payload_preferences_key_idx").on(columns.key),
     payload_preferences_updated_at_idx: index("payload_preferences_updated_at_idx").on(columns.updatedAt),
     payload_preferences_created_at_idx: index("payload_preferences_created_at_idx").on(columns.createdAt),
-  }),
+  })
 );
 
 export const payload_preferences_rels = db_schema.table(
@@ -2499,7 +2493,7 @@ export const payload_preferences_rels = db_schema.table(
       foreignColumns: [users.id],
       name: "payload_preferences_rels_users_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const payload_migrations = db_schema.table(
@@ -2514,7 +2508,7 @@ export const payload_migrations = db_schema.table(
   (columns) => ({
     payload_migrations_updated_at_idx: index("payload_migrations_updated_at_idx").on(columns.updatedAt),
     payload_migrations_created_at_idx: index("payload_migrations_created_at_idx").on(columns.createdAt),
-  }),
+  })
 );
 
 export const main_menu_nav_items = db_schema.table(
@@ -2534,7 +2528,7 @@ export const main_menu_nav_items = db_schema.table(
       foreignColumns: [main_menu.id],
       name: "main_menu_nav_items_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const main_menu = db_schema.table(
@@ -2547,7 +2541,7 @@ export const main_menu = db_schema.table(
   },
   (columns) => ({
     main_menu__status_idx: index("main_menu__status_idx").on(columns._status),
-  }),
+  })
 );
 
 export const _main_menu_v_version_nav_items = db_schema.table(
@@ -2568,7 +2562,7 @@ export const _main_menu_v_version_nav_items = db_schema.table(
       foreignColumns: [_main_menu_v.id],
       name: "_main_menu_v_version_nav_items_parent_id_fk",
     }).onDelete("cascade"),
-  }),
+  })
 );
 
 export const _main_menu_v = db_schema.table(
@@ -2585,13 +2579,13 @@ export const _main_menu_v = db_schema.table(
   },
   (columns) => ({
     _main_menu_v_version_version__status_idx: index("_main_menu_v_version_version__status_idx").on(
-      columns.version__status,
+      columns.version__status
     ),
     _main_menu_v_created_at_idx: index("_main_menu_v_created_at_idx").on(columns.createdAt),
     _main_menu_v_updated_at_idx: index("_main_menu_v_updated_at_idx").on(columns.updatedAt),
     _main_menu_v_latest_idx: index("_main_menu_v_latest_idx").on(columns.latest),
     _main_menu_v_autosave_idx: index("_main_menu_v_autosave_idx").on(columns.autosave),
-  }),
+  })
 );
 
 export const relations_catalogs = relations(catalogs, () => ({}));
@@ -2610,7 +2604,7 @@ export const relations_datasets_id_strategy_computed_id_fields = relations(
       references: [datasets.id],
       relationName: "idStrategy_computedIdFields",
     }),
-  }),
+  })
 );
 export const relations_transforms = relations(transforms, ({ one }) => ({
   _parentID: one(datasets, {
@@ -2640,7 +2634,7 @@ export const relations__datasets_v_version_id_strategy_computed_id_fields = rela
       references: [_datasets_v.id],
       relationName: "version_idStrategy_computedIdFields",
     }),
-  }),
+  })
 );
 export const relations__transforms_v = relations(_transforms_v, ({ one }) => ({
   _parentID: one(_datasets_v, {
@@ -2675,7 +2669,7 @@ export const relations_dataset_schemas_schema_summary_new_fields = relations(
       references: [dataset_schemas.id],
       relationName: "schemaSummary_newFields",
     }),
-  }),
+  })
 );
 export const relations_dataset_schemas_schema_summary_removed_fields = relations(
   dataset_schemas_schema_summary_removed_fields,
@@ -2685,7 +2679,7 @@ export const relations_dataset_schemas_schema_summary_removed_fields = relations
       references: [dataset_schemas.id],
       relationName: "schemaSummary_removedFields",
     }),
-  }),
+  })
 );
 export const relations_dataset_schemas_schema_summary_type_changes = relations(
   dataset_schemas_schema_summary_type_changes,
@@ -2695,7 +2689,7 @@ export const relations_dataset_schemas_schema_summary_type_changes = relations(
       references: [dataset_schemas.id],
       relationName: "schemaSummary_typeChanges",
     }),
-  }),
+  })
 );
 export const relations_dataset_schemas_schema_summary_enum_changes = relations(
   dataset_schemas_schema_summary_enum_changes,
@@ -2705,7 +2699,7 @@ export const relations_dataset_schemas_schema_summary_enum_changes = relations(
       references: [dataset_schemas.id],
       relationName: "schemaSummary_enumChanges",
     }),
-  }),
+  })
 );
 export const relations_dataset_schemas_import_sources = relations(dataset_schemas_import_sources, ({ one }) => ({
   _parentID: one(dataset_schemas, {
@@ -2754,7 +2748,7 @@ export const relations__dataset_schemas_v_version_schema_summary_new_fields = re
       references: [_dataset_schemas_v.id],
       relationName: "version_schemaSummary_newFields",
     }),
-  }),
+  })
 );
 export const relations__dataset_schemas_v_version_schema_summary_removed_fields = relations(
   _dataset_schemas_v_version_schema_summary_removed_fields,
@@ -2764,7 +2758,7 @@ export const relations__dataset_schemas_v_version_schema_summary_removed_fields 
       references: [_dataset_schemas_v.id],
       relationName: "version_schemaSummary_removedFields",
     }),
-  }),
+  })
 );
 export const relations__dataset_schemas_v_version_schema_summary_type_changes = relations(
   _dataset_schemas_v_version_schema_summary_type_changes,
@@ -2774,7 +2768,7 @@ export const relations__dataset_schemas_v_version_schema_summary_type_changes = 
       references: [_dataset_schemas_v.id],
       relationName: "version_schemaSummary_typeChanges",
     }),
-  }),
+  })
 );
 export const relations__dataset_schemas_v_version_schema_summary_enum_changes = relations(
   _dataset_schemas_v_version_schema_summary_enum_changes,
@@ -2784,7 +2778,7 @@ export const relations__dataset_schemas_v_version_schema_summary_enum_changes = 
       references: [_dataset_schemas_v.id],
       relationName: "version_schemaSummary_enumChanges",
     }),
-  }),
+  })
 );
 export const relations__dataset_schemas_v_version_import_sources = relations(
   _dataset_schemas_v_version_import_sources,
@@ -2799,7 +2793,7 @@ export const relations__dataset_schemas_v_version_import_sources = relations(
       references: [import_jobs.id],
       relationName: "import",
     }),
-  }),
+  })
 );
 export const relations__dataset_schemas_v = relations(_dataset_schemas_v, ({ one, many }) => ({
   parent: one(dataset_schemas, {
@@ -2974,7 +2968,7 @@ export const relations_scheduled_imports_dataset_mapping_sheet_mappings = relati
       references: [datasets.id],
       relationName: "dataset",
     }),
-  }),
+  })
 );
 export const relations_scheduled_imports_execution_history = relations(
   scheduled_imports_execution_history,
@@ -2984,7 +2978,7 @@ export const relations_scheduled_imports_execution_history = relations(
       references: [scheduled_imports.id],
       relationName: "executionHistory",
     }),
-  }),
+  })
 );
 export const relations_scheduled_imports = relations(scheduled_imports, ({ one, many }) => ({
   catalog: one(catalogs, {
@@ -3017,7 +3011,7 @@ export const relations__scheduled_imports_v_version_dataset_mapping_sheet_mappin
       references: [datasets.id],
       relationName: "dataset",
     }),
-  }),
+  })
 );
 export const relations__scheduled_imports_v_version_execution_history = relations(
   _scheduled_imports_v_version_execution_history,
@@ -3027,7 +3021,7 @@ export const relations__scheduled_imports_v_version_execution_history = relation
       references: [_scheduled_imports_v.id],
       relationName: "version_executionHistory",
     }),
-  }),
+  })
 );
 export const relations__scheduled_imports_v = relations(_scheduled_imports_v, ({ one, many }) => ({
   parent: one(scheduled_imports, {
@@ -3146,7 +3140,7 @@ export const relations__geocoding_providers_v_version_tags = relations(
       references: [_geocoding_providers_v.id],
       relationName: "version_tags",
     }),
-  }),
+  })
 );
 export const relations__geocoding_providers_v = relations(_geocoding_providers_v, ({ one, many }) => ({
   parent: one(geocoding_providers, {

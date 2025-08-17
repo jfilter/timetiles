@@ -32,10 +32,9 @@ const validateTypes = () => {
       fs.copyFileSync(schemaFile, schemaBackupFile);
     }
 
-    // Generate fresh files
+    // Generate fresh files using the unified generation script
     logger.debug("Generating fresh types and schema");
-    execSync("payload generate:types", { stdio: "pipe" }); // Suppress command output
-    execSync("payload generate:db-schema", { stdio: "pipe" }); // Suppress command output
+    execSync("tsx scripts/generate-payload.ts", { stdio: "pipe" }); // Suppress command output
 
     // Compare files with backups
     let hasChanges = false;
