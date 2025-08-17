@@ -282,15 +282,18 @@ const ImportFiles: CollectionConfig = {
         // Rate limiting check
         const rateLimitService = getRateLimitService(req.payload);
         const clientId = getClientIdentifier(req as unknown as Request);
-        const { allowed } = rateLimitService.checkRateLimit(
+        const result = rateLimitService.checkConfiguredRateLimit(
           clientId,
-          RATE_LIMITS.FILE_UPLOAD.limit,
-          RATE_LIMITS.FILE_UPLOAD.windowMs
+          RATE_LIMITS.FILE_UPLOAD
         );
 
-        if (!allowed) {
-          logger.warn("Rate limit exceeded", { clientId, isAuthenticated: !!req.user });
-          throw new Error("Too many import requests. Please try again later.");
+        if (!result.allowed) {
+          logger.warn("Rate limit exceeded", { 
+            clientId, 
+            isAuthenticated: !!req.user,
+            failedWindow: result.failedWindow 
+          });
+          throw new Error(`Too many import requests. Please try again later. (Limited by ${result.failedWindow} window)`);
         }
 
         // Extract custom metadata from the request

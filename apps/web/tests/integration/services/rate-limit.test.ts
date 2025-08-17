@@ -439,15 +439,141 @@ describe.sequential("getClientIdentifier", () => {
   });
 });
 
+describe.sequential("Multi-window rate limiting", () => {
+  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let payload: any;
+  let rateLimitService: RateLimitService;
+
+  beforeAll(async () => {
+    testEnv = await createIsolatedTestEnvironment();
+    payload = testEnv.payload;
+  });
+
+  afterAll(async () => {
+    if (testEnv?.cleanup) {
+      await testEnv.cleanup();
+    }
+  });
+
+  beforeEach(() => {
+    rateLimitService = new RateLimitService(payload);
+  });
+
+  afterEach(() => {
+    rateLimitService["cache"].clear();
+  });
+
+  describe("checkMultiWindowRateLimit", () => {
+    it("should allow requests when all windows pass", () => {
+      const result = rateLimitService.checkMultiWindowRateLimit("test-id", [
+        { limit: 5, windowMs: 1000, name: "burst" },
+        { limit: 10, windowMs: 60000, name: "minute" },
+      ]);
+
+      expect(result.allowed).toBe(true);
+      expect(result.remaining).toBe(4); // Minimum remaining across windows
+      expect(result.failedWindow).toBeUndefined();
+    });
+
+    it("should block on first window that fails", () => {
+      const identifier = "test-id";
+      const windows = [
+        { limit: 2, windowMs: 1000, name: "burst" },
+        { limit: 10, windowMs: 60000, name: "minute" },
+      ];
+
+      // First two requests should pass
+      expect(rateLimitService.checkMultiWindowRateLimit(identifier, windows).allowed).toBe(true);
+      expect(rateLimitService.checkMultiWindowRateLimit(identifier, windows).allowed).toBe(true);
+
+      // Third request should fail on burst window
+      const result = rateLimitService.checkMultiWindowRateLimit(identifier, windows);
+      expect(result.allowed).toBe(false);
+      expect(result.failedWindow).toBe("burst");
+      expect(result.details?.limit).toBe(2);
+    });
+
+    it("should check windows in order", () => {
+      const identifier = "test-id";
+      const windows = [
+        { limit: 10, windowMs: 60000, name: "minute" },
+        { limit: 1, windowMs: 1000, name: "burst" },
+      ];
+
+      // First request passes
+      expect(rateLimitService.checkMultiWindowRateLimit(identifier, windows).allowed).toBe(true);
+
+      // Second request fails on burst (second window)
+      const result = rateLimitService.checkMultiWindowRateLimit(identifier, windows);
+      expect(result.allowed).toBe(false);
+      expect(result.failedWindow).toBe("burst");
+    });
+
+    it("should use unique identifiers for each window", async () => {
+      const identifier = "test-id";
+      const windows = [
+        { limit: 1, windowMs: 100, name: "short" },
+        { limit: 5, windowMs: 1000, name: "long" },
+      ];
+
+      // First request passes
+      expect(rateLimitService.checkMultiWindowRateLimit(identifier, windows).allowed).toBe(true);
+
+      // Second request blocked by short window
+      expect(rateLimitService.checkMultiWindowRateLimit(identifier, windows).allowed).toBe(false);
+
+      // Wait for short window to expire
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Should pass again (short window reset, long window still has capacity)
+      const result = rateLimitService.checkMultiWindowRateLimit(identifier, windows);
+      expect(result.allowed).toBe(true);
+      expect(result.remaining).toBe(0); // Short window resets to 0 (just used), long window has 3
+    });
+  });
+
+  describe("checkConfiguredRateLimit", () => {
+    it("should work with RateLimitConfig", () => {
+      const config = {
+        windows: [
+          { limit: 2, windowMs: 1000, name: "burst" },
+          { limit: 5, windowMs: 60000, name: "minute" },
+        ],
+      };
+
+      const result = rateLimitService.checkConfiguredRateLimit("test-id", config);
+      expect(result.allowed).toBe(true);
+      expect(result.remaining).toBe(1);
+    });
+  });
+});
+
 describe.sequential("RATE_LIMITS constants", () => {
-  it("should have correct rate limit configurations", () => {
-    expect(RATE_LIMITS.FILE_UPLOAD.limit).toBe(5);
-    expect(RATE_LIMITS.FILE_UPLOAD.windowMs).toBe(60 * 60 * 1000);
+  it("should have correct multi-window configurations", () => {
+    // FILE_UPLOAD
+    expect(RATE_LIMITS.FILE_UPLOAD.windows).toHaveLength(3);
+    expect(RATE_LIMITS.FILE_UPLOAD.windows[0]).toEqual({
+      limit: 1,
+      windowMs: 5000,
+      name: "burst",
+    });
+    expect(RATE_LIMITS.FILE_UPLOAD.windows[1]).toEqual({
+      limit: 5,
+      windowMs: 3600000,
+      name: "hourly",
+    });
 
-    expect(RATE_LIMITS.PROGRESS_CHECK.limit).toBe(100);
-    expect(RATE_LIMITS.PROGRESS_CHECK.windowMs).toBe(60 * 60 * 1000);
+    // WEBHOOK_TRIGGER
+    expect(RATE_LIMITS.WEBHOOK_TRIGGER.windows).toHaveLength(2);
+    expect(RATE_LIMITS.WEBHOOK_TRIGGER.windows[0]).toEqual({
+      limit: 1,
+      windowMs: 10000,
+      name: "burst",
+    });
 
-    expect(RATE_LIMITS.API_GENERAL.limit).toBe(50);
-    expect(RATE_LIMITS.API_GENERAL.windowMs).toBe(60 * 60 * 1000);
+    // PROGRESS_CHECK
+    expect(RATE_LIMITS.PROGRESS_CHECK.windows).toHaveLength(2);
+    expect(RATE_LIMITS.PROGRESS_CHECK.windows[0].name).toBe("burst");
+    expect(RATE_LIMITS.PROGRESS_CHECK.windows[1].name).toBe("hourly");
   });
 });
