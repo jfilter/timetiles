@@ -130,22 +130,20 @@ describe.sequential("urlFetchJob", () => {
         })
       );
 
-      // Verify file operations
-      expect(fs.mkdir).toHaveBeenCalledWith(path.resolve(process.cwd(), "/tmp/uploads"), { recursive: true });
-
-      expect(fs.writeFile).toHaveBeenCalledWith(expect.stringContaining("url-"), expect.any(Buffer));
-
-      // Verify import file was created
+      // Verify import file was created with file upload
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "import-files",
         data: expect.objectContaining({
-          filename: expect.stringContaining("url-"),
-          mimeType: "text/csv",
-          filesize: mockCsvData.length,
           originalName: "data.csv",
           status: "pending",
           catalog: "catalog-123",
           user: "user-123",
+        }),
+        file: expect.objectContaining({
+          data: expect.any(Buffer),
+          mimetype: "text/csv",
+          name: expect.stringContaining("url-"),
+          size: mockCsvData.length,
         }),
       });
 
@@ -340,13 +338,14 @@ describe.sequential("urlFetchJob", () => {
         req: mockReq,
       });
 
-      expect(fs.writeFile).toHaveBeenCalledWith(expect.stringContaining(".xlsx"), expect.any(Buffer));
-
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "import-files",
         data: expect.objectContaining({
-          mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           originalName: "Spreadsheet Data.xlsx",
+        }),
+        file: expect.objectContaining({
+          mimetype: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          name: expect.stringContaining(".xlsx"),
         }),
       });
 
@@ -360,17 +359,18 @@ describe.sequential("urlFetchJob", () => {
         statusText: "Not Found",
       });
 
-      await expect(
-        urlFetchJob.handler({
-          input: {
-            sourceUrl: "https://example.com/nonexistent",
-            catalogId: "catalog-123",
-            originalName: "Test Import",
-          },
-          job: mockJob,
-          req: mockReq,
-        })
-      ).rejects.toThrow("HTTP 404: Not Found");
+      const result = await urlFetchJob.handler({
+        input: {
+          sourceUrl: "https://example.com/nonexistent",
+          catalogId: "catalog-123",
+          originalName: "Test Import",
+        },
+        job: mockJob,
+        req: mockReq,
+      });
+
+      expect(result.output.success).toBe(false);
+      expect(result.output.error).toBe("HTTP 404: Not Found");
     });
 
     it("should handle file size limits", async () => {
@@ -396,17 +396,18 @@ describe.sequential("urlFetchJob", () => {
 
       (global.fetch as any).mockResolvedValue(mockResponse);
 
-      await expect(
-        urlFetchJob.handler({
-          input: {
-            sourceUrl: "https://example.com/large-file.csv",
-            catalogId: "catalog-123",
-            originalName: "Large File",
-          },
-          job: mockJob,
-          req: mockReq,
-        })
-      ).rejects.toThrow(/file.*too large/i);
+      const result = await urlFetchJob.handler({
+        input: {
+          sourceUrl: "https://example.com/large-file.csv",
+          catalogId: "catalog-123",
+          originalName: "Large File",
+        },
+        job: mockJob,
+        req: mockReq,
+      });
+
+      expect(result.output.success).toBe(false);
+      expect(result.output.error).toMatch(/file.*too large/i);
     });
 
     it("should handle timeouts", async () => {
@@ -420,31 +421,33 @@ describe.sequential("urlFetchJob", () => {
         });
       });
 
-      await expect(
-        urlFetchJob.handler({
-          input: {
-            sourceUrl: "https://slow-server.com/data",
-            catalogId: "catalog-123",
-            originalName: "Slow Import",
-          },
-          job: mockJob,
-          req: mockReq,
-        })
-      ).rejects.toThrow(/timeout/i);
+      const result = await urlFetchJob.handler({
+        input: {
+          sourceUrl: "https://slow-server.com/data",
+          catalogId: "catalog-123",
+          originalName: "Slow Import",
+        },
+        job: mockJob,
+        req: mockReq,
+      });
+
+      expect(result.output.success).toBe(false);
+      expect(result.output.error).toMatch(/timeout/i);
     });
 
     it("should handle missing source URL", async () => {
-      await expect(
-        urlFetchJob.handler({
-          input: {
-            sourceUrl: "",
-            catalogId: "catalog-123",
-            originalName: "Empty URL",
-          },
-          job: mockJob,
-          req: mockReq,
-        })
-      ).rejects.toThrow(/source.*URL/i);
+      const result = await urlFetchJob.handler({
+        input: {
+          sourceUrl: "",
+          catalogId: "catalog-123",
+          originalName: "Empty URL",
+        },
+        job: mockJob,
+        req: mockReq,
+      });
+
+      expect(result.output.success).toBe(false);
+      expect(result.output.error).toMatch(/source.*URL/i);
     });
 
     it("should handle scheduled import metadata", async () => {
@@ -494,6 +497,7 @@ describe.sequential("urlFetchJob", () => {
             }),
           }),
         }),
+        file: expect.any(Object),
       });
     });
 
@@ -515,18 +519,19 @@ describe.sequential("urlFetchJob", () => {
         statusText: "Internal Server Error",
       });
 
-      await expect(
-        urlFetchJob.handler({
-          input: {
-            scheduledImportId: "scheduled-123",
-            sourceUrl: "https://example.com/error",
-            catalogId: "catalog-123",
-            originalName: "Failed Import",
-          },
-          job: mockJob,
-          req: mockReq,
-        })
-      ).rejects.toThrow();
+      const result = await urlFetchJob.handler({
+        input: {
+          scheduledImportId: "scheduled-123",
+          sourceUrl: "https://example.com/error",
+          catalogId: "catalog-123",
+          originalName: "Failed Import",
+        },
+        job: mockJob,
+        req: mockReq,
+      });
+
+      expect(result.output.success).toBe(false);
+      expect(result.output.error).toBeTruthy();
 
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "scheduled-imports",
@@ -619,6 +624,7 @@ describe.sequential("urlFetchJob", () => {
             }),
           }),
         }),
+        file: expect.any(Object),
       });
 
       expect(result.output.isDuplicate).toBe(true);
@@ -675,6 +681,7 @@ describe.sequential("urlFetchJob", () => {
             }),
           }),
         }),
+        file: expect.any(Object),
       });
     });
 
@@ -722,9 +729,11 @@ describe.sequential("urlFetchJob", () => {
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "import-files",
         data: expect.objectContaining({
-          mimeType: "text/csv",
           originalName: "Content Type Override.csv",
-          filename: expect.stringContaining(".csv"),
+        }),
+        file: expect.objectContaining({
+          mimetype: "text/csv",
+          name: expect.stringContaining(".csv"),
         }),
       });
     });
@@ -756,18 +765,19 @@ describe.sequential("urlFetchJob", () => {
 
       (global.fetch as any).mockResolvedValue(mockResponse);
 
-      await expect(
-        urlFetchJob.handler({
-          input: {
-            scheduledImportId: "scheduled-123",
-            sourceUrl: "https://example.com/large.csv",
-            catalogId: "catalog-123",
-            originalName: "Large File",
-          },
-          job: mockJob,
-          req: mockReq,
-        })
-      ).rejects.toThrow(/file.*too large/i);
+      const result = await urlFetchJob.handler({
+        input: {
+          scheduledImportId: "scheduled-123",
+          sourceUrl: "https://example.com/large.csv",
+          catalogId: "catalog-123",
+          originalName: "Large File",
+        },
+        job: mockJob,
+        req: mockReq,
+      });
+
+      expect(result.output.success).toBe(false);
+      expect(result.output.error).toMatch(/file.*too large/i);
     });
 
     it("should handle retry logic", async () => {
@@ -837,18 +847,19 @@ describe.sequential("urlFetchJob", () => {
         });
       });
 
-      await expect(
-        urlFetchJob.handler({
-          input: {
-            scheduledImportId: "scheduled-123",
-            sourceUrl: "https://slow-server.com/data",
-            catalogId: "catalog-123",
-            originalName: "Timeout Test",
-          },
-          job: mockJob,
-          req: mockReq,
-        })
-      ).rejects.toThrow(/timeout/i);
+      const result = await urlFetchJob.handler({
+        input: {
+          scheduledImportId: "scheduled-123",
+          sourceUrl: "https://slow-server.com/data",
+          catalogId: "catalog-123",
+          originalName: "Timeout Test",
+        },
+        job: mockJob,
+        req: mockReq,
+      });
+
+      expect(result.output.success).toBe(false);
+      expect(result.output.error).toMatch(/timeout/i);
     });
 
     it("should apply custom headers", async () => {
@@ -1062,6 +1073,7 @@ describe.sequential("urlFetchJob", () => {
             }),
           }),
         }),
+        file: expect.any(Object),
       });
     });
   });

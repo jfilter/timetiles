@@ -67,7 +67,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
     await cleanup();
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
   });
 
@@ -96,12 +96,12 @@ describe.sequential("Performance and Concurrency Tests", () => {
       const largeBuffer = Buffer.from(csvData);
 
       // Mock the response
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers({ "content-type": "text/csv", "content-length": String(largeBuffer.length) }),
-        arrayBuffer: async () => largeBuffer,
-      });
+      (global.fetch as any).mockResolvedValueOnce(
+        new Response(largeBuffer, {
+          status: 200,
+          headers: { "content-type": "text/csv", "content-length": String(largeBuffer.length) },
+        })
+      );
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
@@ -158,15 +158,15 @@ describe.sequential("Performance and Concurrency Tests", () => {
       // Mock a large Excel file (simplified - just binary data)
       const largeExcelData = Buffer.alloc(5 * 1024 * 1024); // 5MB of zeros
 
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers({
-          "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "content-length": String(largeExcelData.length),
-        }),
-        arrayBuffer: async () => largeExcelData,
-      });
+      (global.fetch as any).mockResolvedValueOnce(
+        new Response(largeExcelData, {
+          status: 200,
+          headers: {
+            "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "content-length": String(largeExcelData.length),
+          },
+        })
+      );
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
@@ -214,12 +214,10 @@ describe.sequential("Performance and Concurrency Tests", () => {
         (global.fetch as any).mockImplementationOnce(async () => {
           // Simulate network delay
           await new Promise((resolve) => setTimeout(resolve, 100));
-          return {
-            ok: true,
+          return new Response(`id,value\n${i},${i * 100}`, {
             status: 200,
-            headers: new Headers({ "content-type": "text/csv" }),
-            arrayBuffer: async () => Buffer.from(`id,value\n${i},${i * 100}`),
-          };
+            headers: { "content-type": "text/csv" },
+          });
         });
       });
 
@@ -262,7 +260,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
       const baseTime = new Date("2024-01-01T12:00:00.000Z");
       vi.setSystemTime(baseTime);
 
-      // Create a scheduled import
+      // Create a scheduled import with lastRun set to an hour ago
       const scheduledImport = await payload.create({
         collection: "scheduled-imports",
         data: {
@@ -272,17 +270,16 @@ describe.sequential("Performance and Concurrency Tests", () => {
           catalog: testCatalogId as any,
           scheduleType: "frequency",
           frequency: "hourly",
+          lastRun: new Date("2024-01-01T11:30:00.000Z"), // 1.5 hours ago from current time
         },
       });
 
       // Mock the endpoint
       (global.fetch as any).mockImplementation(async () => {
-        return {
-          ok: true,
+        return new Response("test,data\n1,2", {
           status: 200,
-          headers: new Headers({ "content-type": "text/csv" }),
-          arrayBuffer: async () => Buffer.from("test,data\n1,2"),
-        };
+          headers: { "content-type": "text/csv" },
+        });
       });
 
       // Clear mock calls
@@ -396,12 +393,10 @@ describe.sequential("Performance and Concurrency Tests", () => {
         // Mock endpoints
         schedules.forEach((_, i) => {
           (global.fetch as any).mockImplementationOnce(async () => {
-            return {
-              ok: true,
+            return new Response("test,data\n1,2", {
               status: 200,
-              headers: new Headers({ "content-type": "text/csv" }),
-              arrayBuffer: async () => Buffer.from("test,data\n1,2"),
-            };
+              headers: { "content-type": "text/csv" },
+            });
           });
         });
 
@@ -455,21 +450,27 @@ describe.sequential("Performance and Concurrency Tests", () => {
       });
 
       // Mock rate limit response
-      const requestCount = 0;
-      // nock('https://api.example.com')
-      //   .get('/rate-limited.csv')
-      //   .times(4)
-      //   .reply(() => {
-      //     requestCount++;
-      //     if (requestCount <= 2) {
-      //       return [429, 'Too Many Requests', {
-      //         'Retry-After': '60',
-      //         'X-RateLimit-Limit': '100',
-      //         'X-RateLimit-Remaining': '0',
-      //       }];
-      //     }
-      //     return [200, 'test,data\n1,2', { 'Content-Type': 'text/csv' }];
-      //   });
+      let requestCount = 0;
+      (global.fetch as any).mockImplementation(async () => {
+        requestCount++;
+        if (requestCount <= 2) {
+          // First two attempts fail with rate limit
+          return new Response(null, {
+            status: 429,
+            statusText: "Too Many Requests",
+            headers: {
+              "Retry-After": "1",
+              "X-RateLimit-Limit": "100",
+              "X-RateLimit-Remaining": "0",
+            },
+          });
+        }
+        // Third attempt succeeds
+        return new Response("test,data\n1,2", {
+          status: 200,
+          headers: { "content-type": "text/csv" },
+        });
+      });
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
@@ -490,7 +491,8 @@ describe.sequential("Performance and Concurrency Tests", () => {
 
       // Should eventually succeed after retries
       expect(result.output.success).toBe(true);
-      expect(requestCount).toBeGreaterThan(1); // Should have retried
+      expect(result.output.attempts).toBeGreaterThan(1); // Should have retried
+      expect(requestCount).toBeGreaterThan(2); // Should have made at least 3 requests
     });
   });
 
@@ -505,22 +507,26 @@ describe.sequential("Performance and Concurrency Tests", () => {
           catalog: testCatalogId as any,
           scheduleType: "frequency",
           frequency: "daily",
-          timeoutSeconds: 5, // 5 second timeout
+          timeoutSeconds: 30, // 30 second timeout (minimum allowed)
         },
       });
 
-      // Mock a slow response
-      // nock('https://example.com')
-      // .get('/slow.csv')
-      // .delayConnection(3000) // 3 second delay (within timeout)
-      // .reply(200, 'test,data\n1,2', { 'Content-Type': 'text/csv' });
+      // Mock a slow response that takes 3.5 seconds
+      (global.fetch as any).mockImplementation(async () => {
+        // Simulate a 3.5 second delay
+        await new Promise((resolve) => setTimeout(resolve, 3500));
+        return new Response("test,data\n1,2", {
+          status: 200,
+          headers: { "content-type": "text/csv" },
+        });
+      });
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
       const startTime = Date.now();
 
-      // Execute the job
+      // Execute the job - should handle slow response without timing out
       const result = await urlFetchJob.handler({
         job: { id: "test-job-slow" },
         req: { payload },
@@ -537,8 +543,8 @@ describe.sequential("Performance and Concurrency Tests", () => {
       const duration = Date.now() - startTime;
 
       expect(result.output.success).toBe(true);
-      expect(duration).toBeGreaterThan(3000); // Should wait for response
-      expect(duration).toBeLessThan(6000); // Should not exceed timeout significantly
+      expect(duration).toBeGreaterThan(3000); // Should wait at least 3 seconds
+      expect(duration).toBeLessThan(10000); // Should not take too long
     });
   });
 });
