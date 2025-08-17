@@ -5,7 +5,7 @@
  * code style. This includes configurations for TypeScript, Prettier, import sorting, security,
  * promises, and more. It also defines architectural boundaries between different parts of the
  * monorepo to prevent incorrect dependencies.
- * 
+ *
  * @module
  */
 /* eslint-disable sonarjs/no-duplicate-string */
