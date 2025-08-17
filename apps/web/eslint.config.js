@@ -89,8 +89,6 @@ export default [
       "sonarjs/no-duplicate-string": "off", // Test files often repeat strings for clarity
       // React performance rules are less critical in tests
       "react-perf/jsx-no-new-array-as-prop": "off", // Allow inline arrays in test JSX
-      "@eslint-react/no-unstable-default-props": "off", // Allow test props flexibility
-      "@eslint-react/hooks-extra/no-unnecessary-use-prefix": "off", // Allow test helper naming
       // Allow default exports for specific test infrastructure files
       "import/no-default-export": "off", // Test setup files often need default exports
       // Enforce kebab-case for test files (override base config exemption)
