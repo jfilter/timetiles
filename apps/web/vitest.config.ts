@@ -5,6 +5,8 @@ import baseConfig from "./vitest.config.base";
 
 export default defineConfig({
   ...baseConfig,
+  // Cache directory for Vite/Vitest - speeds up subsequent runs
+  cacheDir: "node_modules/.vite",
   test: {
     globals: true,
     environment: "jsdom",
@@ -33,6 +35,32 @@ export default defineConfig({
     sequence: {
       concurrent: true,
     },
+    // Server-side dependency optimization for better caching
+    server: {
+      deps: {
+        // Inline test utilities and helpers for faster processing
+        inline: [/tests\/utils/, /tests\/helpers/, /@payload-config/],
+        // Fallback to CJS for better compatibility
+        fallbackCJS: true,
+      },
+    },
+    // Dependency optimization for faster imports and caching
+    deps: {
+      optimizer: {
+        web: {
+          enabled: true,
+          include: [
+            "@tanstack/react-query",
+            "papaparse",
+            // Add packages that are actually installed
+          ],
+        },
+      },
+    },
+    // Isolate globals to prevent test pollution but allow caching
+    isolate: true,
+    // Watch configuration for better caching during watch mode
+    watch: false,
   },
   resolve: {
     ...(baseConfig.resolve ?? {}),

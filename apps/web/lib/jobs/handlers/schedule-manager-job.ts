@@ -19,37 +19,37 @@ interface ScheduleManagerJobInput {
 const getNextFrequencyExecution = (frequency: string, fromDate?: Date): Date => {
   const now = fromDate || new Date();
   const next = new Date(now);
-  next.setSeconds(0);
-  next.setMilliseconds(0);
+  next.setUTCSeconds(0);
+  next.setUTCMilliseconds(0);
 
   switch (frequency) {
     case "hourly":
       // Next hour at :00
-      next.setMinutes(0);
-      next.setHours(next.getHours() + 1);
+      next.setUTCMinutes(0);
+      next.setUTCHours(next.getUTCHours() + 1);
       break;
 
     case "daily":
       // Next day at midnight UTC
-      next.setMinutes(0);
-      next.setHours(0);
-      next.setDate(next.getDate() + 1);
+      next.setUTCMinutes(0);
+      next.setUTCHours(0);
+      next.setUTCDate(next.getUTCDate() + 1);
       break;
 
     case "weekly":
       // Next Sunday at midnight UTC
-      next.setMinutes(0);
-      next.setHours(0);
-      const daysUntilSunday = 7 - next.getDay() || 7;
-      next.setDate(next.getDate() + daysUntilSunday);
+      next.setUTCMinutes(0);
+      next.setUTCHours(0);
+      const daysUntilSunday = 7 - next.getUTCDay() || 7;
+      next.setUTCDate(next.getUTCDate() + daysUntilSunday);
       break;
 
     case "monthly":
       // First of next month at midnight UTC
-      next.setMinutes(0);
-      next.setHours(0);
-      next.setDate(1);
-      next.setMonth(next.getMonth() + 1);
+      next.setUTCMinutes(0);
+      next.setUTCHours(0);
+      next.setUTCDate(1);
+      next.setUTCMonth(next.getUTCMonth() + 1);
       break;
 
     default:
@@ -80,8 +80,8 @@ const getNextCronExecution = (cronExpression: string, fromDate?: Date): Date => 
   // This handles basic cases like "0 0 * * *" (daily at midnight), "0 * * * *" (hourly), etc.
 
   const next = new Date(now);
-  next.setSeconds(0);
-  next.setMilliseconds(0);
+  next.setUTCSeconds(0);
+  next.setUTCMilliseconds(0);
 
   // Handle minute
   if (minute !== "*") {
@@ -89,7 +89,7 @@ const getNextCronExecution = (cronExpression: string, fromDate?: Date): Date => 
     if (isNaN(targetMinute) || targetMinute < 0 || targetMinute > 59) {
       throw new Error(`Invalid minute in cron expression: ${minute}`);
     }
-    next.setMinutes(targetMinute);
+    next.setUTCMinutes(targetMinute);
   }
 
   // Handle hour
@@ -98,7 +98,7 @@ const getNextCronExecution = (cronExpression: string, fromDate?: Date): Date => 
     if (isNaN(targetHour) || targetHour < 0 || targetHour > 23) {
       throw new Error(`Invalid hour in cron expression: ${hour}`);
     }
-    next.setHours(targetHour);
+    next.setUTCHours(targetHour);
   }
 
   // If the calculated time is in the past, move to the next occurrence
@@ -230,10 +230,11 @@ export const scheduleManagerJob = {
 
           // Generate import name from template
           let importName = scheduledImport.importNameTemplate || "{{name}} - {{date}}";
+          const timeString = `${currentTime.getUTCHours().toString().padStart(2, '0')}:${currentTime.getUTCMinutes().toString().padStart(2, '0')}:${currentTime.getUTCSeconds().toString().padStart(2, '0')}`;
           importName = importName
             .replace("{{name}}", scheduledImport.name)
             .replace("{{date}}", currentTime.toISOString().split("T")[0])
-            .replace("{{time}}", currentTime.toTimeString().split(" ")[0])
+            .replace("{{time}}", timeString)
             .replace("{{url}}", new URL(scheduledImport.sourceUrl).hostname);
 
           // Queue the URL fetch job directly with all necessary parameters
