@@ -89,7 +89,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
             scheduleType: "cron",
             cronExpression: "invalid cron",
           },
-        }),
+        })
       ).rejects.toThrow("Invalid cron expression format");
     });
 
@@ -105,7 +105,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
             scheduleType: "cron",
             cronExpression: "0 0 * * * *", // 6 fields instead of 5
           },
-        }),
+        })
       ).rejects.toThrow("Invalid cron expression format");
     });
 
@@ -121,7 +121,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
             scheduleType: "cron",
             cronExpression: "60 25 32 13 8", // All values out of range
           },
-        }),
+        })
       ).rejects.toThrow("Invalid cron expression format");
     });
 
@@ -312,7 +312,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
           input: expect.objectContaining({
             scheduledImportId: enabledSchedule.id,
           }),
-        }),
+        })
       );
     });
 
@@ -480,7 +480,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
         scheduleManagerJob.handler({
           job: { id: "test-schedule-manager-error" },
           req: { payload },
-        }),
+        })
       ).rejects.toThrow("Database connection lost");
 
       findSpy.mockRestore();
@@ -650,7 +650,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
           input: expect.objectContaining({
             originalName: "Template Test Import - 2024-01-01 13:00:00 from example.com",
           }),
-        }),
+        })
       );
     });
   });

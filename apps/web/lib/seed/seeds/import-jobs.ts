@@ -22,7 +22,7 @@ const createImportJob = (
     | "failed",
   sheetIndex: number = 0,
   importFileName?: string,
-  datasetName?: string,
+  datasetName?: string
 ): ImportJobSeed => ({
   stage,
   sheetIndex,

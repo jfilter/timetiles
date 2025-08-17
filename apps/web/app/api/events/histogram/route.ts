@@ -122,7 +122,7 @@ const parseBoundsParameter = (boundsParam: string | null): { bounds: MapBounds |
     return {
       error: NextResponse.json(
         { error: "Invalid bounds format. Expected: {north, south, east, west}" },
-        { status: 400 },
+        { status: 400 }
       ),
     };
   }
@@ -135,14 +135,14 @@ const createFunctionNotFoundResponse = (): NextResponse => {
       error: "Database function calculate_event_histogram not found. Please ensure migrations are run.",
       code: "MISSING_DB_FUNCTION",
     },
-    { status: 500 },
+    { status: 500 }
   );
 };
 
 const executeHistogramQuery = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   parameters: ReturnType<typeof extractHistogramParameters>,
-  bounds: MapBounds | null,
+  bounds: MapBounds | null
 ) => {
   const filtersWithBounds = buildFiltersWithBounds({
     catalog: parameters.catalog,

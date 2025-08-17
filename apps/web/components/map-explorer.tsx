@@ -55,7 +55,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
   const { data: clustersData, isLoading: clustersLoading } = useMapClustersQuery(
     filters,
     debouncedSimpleBounds,
-    mapZoom,
+    mapZoom
   );
 
   // Extract data from queries
@@ -125,7 +125,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
         setMapBounds(null);
       }
     },
-    [setMapBounds],
+    [setMapBounds]
   );
 
   return (

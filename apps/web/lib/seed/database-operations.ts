@@ -126,7 +126,7 @@ export class DatabaseOperations {
       // Execute SQL TRUNCATE with CASCADE
       const tableName = `payload."${collection}"`;
       await (this.payload.db as { execute: (query: string) => Promise<unknown> }).execute(
-        `TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`,
+        `TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`
       );
 
       logger.info(`SQL TRUNCATE succeeded for ${collection}`, {
@@ -156,7 +156,7 @@ export class DatabaseOperations {
    */
   private async executeSqlBatchDelete(
     collection: string,
-    ids: string[],
+    ids: string[]
   ): Promise<{ success: boolean; deletedCount: number }> {
     try {
       await (
@@ -176,7 +176,7 @@ export class DatabaseOperations {
    */
   private async processIndividualDeletes(
     items: Array<{ id: string }>,
-    collection: string,
+    collection: string
   ): Promise<{ successful: number; errors: unknown[] }> {
     const deletePromises = items.map(async (item) => {
       try {
@@ -218,7 +218,7 @@ export class DatabaseOperations {
    */
   private async processDeletionBatch(
     items: Array<{ id: string }>,
-    collection: string,
+    collection: string
   ): Promise<{ deletedCount: number; errors: unknown[] }> {
     const errors: unknown[] = [];
 
@@ -234,7 +234,7 @@ export class DatabaseOperations {
       // SQL failed, fallback to individual deletes
       const fallbackResult = await this.fallbackIndividualDeletes(
         items as unknown as Array<{ id: string }>,
-        collection,
+        collection
       );
       return {
         deletedCount: fallbackResult.successful,
@@ -327,7 +327,7 @@ export class DatabaseOperations {
    */
   private async fallbackIndividualDeletes(
     items: { id: string | number }[],
-    collection: string,
+    collection: string
   ): Promise<{
     successful: number;
     errors: unknown[];

@@ -123,7 +123,7 @@ export class RelationshipResolver {
   async resolveItemRelationships(
     item: Record<string, unknown>,
     collection: string,
-    configs?: RelationshipConfig[],
+    configs?: RelationshipConfig[]
   ): Promise<ResolvedItem | null> {
     const relationshipConfigs = configs ?? getRelationshipConfig(collection);
     if (relationshipConfigs.length === 0) {
@@ -150,7 +150,7 @@ export class RelationshipResolver {
           originalValue as string[],
           config,
           collection,
-          resolved,
+          resolved
         );
         if (result == null) {
           return null; // Item should be skipped
@@ -172,7 +172,7 @@ export class RelationshipResolver {
   private validateFieldValue(
     value: unknown,
     config: RelationshipConfig,
-    collection: string,
+    collection: string
   ): { isValid: boolean; shouldContinue?: boolean; error?: Error } {
     if (value == null || value == undefined) {
       if (config.required === true) {
@@ -196,7 +196,7 @@ export class RelationshipResolver {
           return {
             isValid: false,
             error: new Error(
-              `Array relationship field '${config.field}' contains non-string/non-number value: ${typeof item}`,
+              `Array relationship field '${config.field}' contains non-string/non-number value: ${typeof item}`
             ),
           };
         }
@@ -229,7 +229,7 @@ export class RelationshipResolver {
     originalValue: string,
     config: RelationshipConfig,
     collection: string,
-    resolved: Record<string, unknown>,
+    resolved: Record<string, unknown>
   ): Promise<boolean | null> {
     try {
       const relatedItem = await this.findRelatedItem(originalValue, config);
@@ -244,7 +244,7 @@ export class RelationshipResolver {
     } catch (error) {
       logger.error(
         `Error resolving relationship ${config.field}='${originalValue}' in ${config.targetCollection}:`,
-        error,
+        error
       );
       throw error;
     }
@@ -257,7 +257,7 @@ export class RelationshipResolver {
     originalValues: string[],
     config: RelationshipConfig,
     collection: string,
-    resolved: Record<string, unknown>,
+    resolved: Record<string, unknown>
   ): Promise<boolean | null> {
     const resolvedItems: { id: string | number }[] = [];
 
@@ -278,7 +278,7 @@ export class RelationshipResolver {
       } catch (error) {
         logger.error(
           `Error resolving array relationship ${config.field}[${originalValue}] in ${config.targetCollection}:`,
-          error,
+          error
         );
         throw error;
       }
@@ -295,7 +295,7 @@ export class RelationshipResolver {
   private handleMissingRelationship(
     originalValue: string,
     config: RelationshipConfig,
-    collection: string,
+    collection: string
   ): boolean | null {
     if (config.required === true) {
       return this.handleMissingRequiredRelationship(originalValue, config, collection);
@@ -310,14 +310,14 @@ export class RelationshipResolver {
   private handleMissingRequiredRelationship(
     originalValue: string,
     config: RelationshipConfig,
-    collection: string,
+    collection: string
   ): boolean | null {
     const isTestEnvironment = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
 
     if (isTestEnvironment) {
       logger.warn(
         `Required relationship not found in test environment: ${config.field}='${originalValue}' ` +
-          `in ${config.targetCollection}. Skipping item to avoid test failures.`,
+          `in ${config.targetCollection}. Skipping item to avoid test failures.`
       );
 
       const stats = this.stats.get(collection);
@@ -328,7 +328,7 @@ export class RelationshipResolver {
     } else {
       throw new Error(
         `Could not resolve required relationship: ${config.field}='${originalValue}' ` +
-          `in ${config.targetCollection} (searched by ${config.searchField})`,
+          `in ${config.targetCollection} (searched by ${config.searchField})`
       );
     }
   }
@@ -339,14 +339,14 @@ export class RelationshipResolver {
   private handleMissingOptionalRelationship(
     originalValue: string,
     config: RelationshipConfig,
-    collection: string,
+    collection: string
   ): boolean {
     // Optional relationship not found
     const stats = this.stats.get(collection);
     if (stats) stats.skippedOptional++;
 
     logger.debug(
-      `Optional relationship not found: ${config.field}='${originalValue}' ` + `in ${config.targetCollection}`,
+      `Optional relationship not found: ${config.field}='${originalValue}' ` + `in ${config.targetCollection}`
     );
 
     return true;
@@ -373,7 +373,7 @@ export class RelationshipResolver {
     if (result.docs.length === 0 && config.fallbackSearch != null) {
       logger.debug(
         `Primary search failed for '${transformedValue}' in ${config.targetCollection}.${config.searchField}, ` +
-          `trying fallback search in ${config.fallbackSearch}`,
+          `trying fallback search in ${config.fallbackSearch}`
       );
 
       result = await this.searchCollection(config.targetCollection, config.fallbackSearch, transformedValue);

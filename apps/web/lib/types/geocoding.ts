@@ -102,7 +102,7 @@ export const getGeocodingCandidate = (job: { geocodingCandidates?: unknown }): G
  */
 export const getGeocodingResultForRow = (
   geocodingResults: GeocodingResultsMap,
-  rowNumber: number,
+  rowNumber: number
 ): GeocodingResult | null => {
   const result = geocodingResults[String(rowNumber)];
   return result || null;

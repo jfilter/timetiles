@@ -36,7 +36,7 @@ export const generateUniqueSlug = async <T extends keyof Config["collections"]>(
   baseText: string,
   collection: T,
   req: PayloadRequest,
-  currentId?: string | number,
+  currentId?: string | number
 ): Promise<string> => {
   const baseSlug = generateSlug(baseText);
 
@@ -76,7 +76,7 @@ const checkSlugUniqueness = async <T extends keyof Config["collections"]>(
   slug: string,
   collection: T,
   req: PayloadRequest,
-  currentId?: string | number,
+  currentId?: string | number
 ): Promise<boolean> => {
   const where = {
     slug: { equals: slug },
@@ -150,7 +150,7 @@ const getSourceValue = (data: Record<string, unknown> | undefined, sourceField: 
 const shouldGenerateFromSource = (
   value: string | undefined,
   sourceValue: unknown,
-  operation: string | undefined,
+  operation: string | undefined
 ): boolean =>
   (value == null || value == undefined || value === "") &&
   sourceValue != null &&
@@ -161,7 +161,7 @@ const shouldGenerateFromSource = (
 const shouldValidateExistingSlug = (
   value: string | undefined,
   operation: string | undefined,
-  req: PayloadRequest | undefined,
+  req: PayloadRequest | undefined
 ): boolean =>
   value != null && value != undefined && value !== "" && operation === "update" && req != null && req != undefined;
 
@@ -170,7 +170,7 @@ const generateSlugFromSource = async (
   collection: string,
   req: PayloadRequest | undefined,
   operation: string | undefined,
-  originalDoc: Record<string, unknown> | undefined,
+  originalDoc: Record<string, unknown> | undefined
 ): Promise<string> => {
   // For tests, generate simple slug without async uniqueness check
   if (!req) {
@@ -191,7 +191,7 @@ const validateAndUpdateSlug = async (
   value: string,
   collection: string,
   req: PayloadRequest,
-  originalDoc: Record<string, unknown> | undefined,
+  originalDoc: Record<string, unknown> | undefined
 ): Promise<string> => {
   try {
     const currentId = originalDoc?.id as string | number | undefined;
@@ -214,6 +214,6 @@ const createNestedValueGetter =
       .reduce(
         (o: unknown, k) =>
           o != null && typeof o === "object" && k in o ? (o as Record<string, unknown>)[k] : undefined,
-        obj,
+        obj
       );
   };

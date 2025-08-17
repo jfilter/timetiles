@@ -22,7 +22,7 @@ export class TypeTransformationService {
       transformStrategy: string;
       customTransform?: string;
       enabled: boolean;
-    }>,
+    }>
   ) {}
 
   async transformRecord(record: any): Promise<{

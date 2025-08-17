@@ -62,7 +62,7 @@ export const DatasetBarChart = ({
         }
       }
     },
-    [groupBy, setSelectedDatasets, setSelectedCatalog],
+    [groupBy, setSelectedDatasets, setSelectedCatalog]
   );
 
   const valueFormatter = useCallback((value: number) => value.toLocaleString(), []);

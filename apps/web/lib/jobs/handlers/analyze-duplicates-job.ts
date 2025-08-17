@@ -72,7 +72,7 @@ export const analyzeDuplicatesJob = {
                 job.progress?.total || 0,
                 job.progress?.total || 0,
                 0,
-                0,
+                0
               ),
             },
           },

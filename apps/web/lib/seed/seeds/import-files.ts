@@ -19,7 +19,7 @@ const createImportFile = (
   status: "pending" | "parsing" | "processing" | "completed" | "failed" = "completed",
   datasetsCount: number = 1,
   datasetsProcessed: number = 1,
-  datasetName?: string,
+  datasetName?: string
 ): ImportFileSeed => ({
   filename: fileName,
   originalName,
@@ -51,7 +51,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
       "completed",
       1,
       1,
-      "Air Quality Measurements",
+      "Air Quality Measurements"
     ),
     createImportFile(
       "economic_indicators_q1_2024.xlsx",
@@ -62,7 +62,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
       "completed",
       2,
       2,
-      "GDP Growth Rates",
+      "GDP Growth Rates"
     ),
     createImportFile(
       "research_data_batch_01.csv",
@@ -73,7 +73,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
       "completed",
       1,
       1,
-      "Research Study Results",
+      "Research Study Results"
     ),
   ];
 
@@ -88,7 +88,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
         "cultural-events",
         "completed",
         1,
-        1,
+        1
       ),
       createImportFile(
         "cultural_events_archive.xlsx",
@@ -98,7 +98,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
         "cultural-events",
         "processing",
         3,
-        1,
+        1
       ),
       createImportFile(
         "failed_import_example.csv",
@@ -108,7 +108,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
         "government-data",
         "failed",
         0,
-        0,
+        0
       ),
       createImportFile(
         "large_dataset_import.csv",
@@ -119,7 +119,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
         "completed",
         2,
         2,
-        "Water Quality Assessments",
+        "Water Quality Assessments"
       ),
       createImportFile(
         "pending_validation.xlsx",
@@ -129,7 +129,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
         "economic-indicators",
         "parsing",
         1,
-        0,
+        0
       ),
       createImportFile(
         "multi_sheet_research.xlsx",
@@ -140,7 +140,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
         "completed",
         4,
         4,
-        "Survey Response Data",
+        "Survey Response Data"
       ),
     ];
   }
@@ -156,7 +156,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
         "environmental-data",
         "completed",
         1,
-        1,
+        1
       ),
       createImportFile(
         "test_data_processing.xlsx",
@@ -166,7 +166,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
         "economic-indicators",
         "processing",
         1,
-        0,
+        0
       ),
       createImportFile(
         "test_failed_import.csv",
@@ -176,7 +176,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
         "academic-research-portal",
         "failed",
         0,
-        0,
+        0
       ),
     ];
   }

@@ -63,7 +63,7 @@ export class ExplorePage {
           return url.searchParams.has("catalog");
         },
         catalogName,
-        { timeout: 5000 },
+        { timeout: 5000 }
       );
     }
 
@@ -201,7 +201,7 @@ export class ExplorePage {
     try {
       await this.page.waitForResponse(
         (response) => response.url().includes("/api/events") && response.status() === 200,
-        { timeout: 5000 },
+        { timeout: 5000 }
       );
     } catch {
       // If we can't catch the API response quickly, just continue

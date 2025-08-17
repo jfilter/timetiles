@@ -37,18 +37,18 @@ export function Histogram<T = unknown>({
                   ...data.map((d) => {
                     const val = xAccessor(d);
                     return val instanceof Date ? val.getTime() : new Date(val).getTime();
-                  }),
-                ),
+                  })
+                )
               ),
               new Date(
                 Math.max(
                   ...data.map((d) => {
                     const val = xAccessor(d);
                     return val instanceof Date ? val.getTime() : new Date(val).getTime();
-                  }),
-                ),
+                  })
+                )
               ),
-              binning,
+              binning
             );
 
       return formatter.xAxis

@@ -227,7 +227,7 @@ describe.sequential("Isolated Seed System", () => {
           collections: ["datasets"],
           environment: "development",
           truncate: false,
-        }),
+        })
       ).resolves.toBeUndefined();
 
       // Verify no datasets were actually created due to missing catalogs
@@ -248,7 +248,7 @@ describe.sequential("Isolated Seed System", () => {
           collections: ["events"],
           environment: "development",
           truncate: false,
-        }),
+        })
       ).resolves.toBeUndefined();
 
       // Verify no events were actually created due to missing datasets
@@ -263,7 +263,7 @@ describe.sequential("Isolated Seed System", () => {
           collections: ["invalid-collection"],
           environment: "development",
           truncate: false,
-        }),
+        })
       ).resolves.toBeUndefined(); // The method completes but logs the error
     }, 15000); // Add timeout to prevent hanging
   });

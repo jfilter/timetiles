@@ -93,7 +93,7 @@ const CatalogInput = ({
 }) => {
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => onCatalogChange(e.target.value),
-    [onCatalogChange],
+    [onCatalogChange]
   );
 
   return (
@@ -288,7 +288,7 @@ export const ImportUpload = () => {
         uploadMutation.reset(); // Clear any previous errors
       }
     },
-    [uploadMutation],
+    [uploadMutation]
   );
 
   const performUpload = useCallback(async () => {
@@ -311,7 +311,7 @@ export const ImportUpload = () => {
           onError: (error) => {
             reject(error);
           },
-        },
+        }
       );
     });
   }, [file, catalogId, uploadMutation]);

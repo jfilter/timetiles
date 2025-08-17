@@ -1,9 +1,6 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": [
-    "./lib/**/*.ts",
-    "./app/api/**/*.ts"
-  ],
+  "entryPoints": ["./lib/**/*.ts", "./app/api/**/*.ts"],
   "out": "../docs/pages/developers/api",
   "plugin": ["typedoc-plugin-markdown"],
   "readme": "none",
@@ -15,7 +12,17 @@
   "sort": ["source-order"],
   "categorizeByGroup": true,
   "defaultCategory": "Other",
-  "categoryOrder": ["Collections", "Services", "Job Handlers", "API Routes", "React Hooks", "Utilities", "Constants", "Types", "*"],
+  "categoryOrder": [
+    "Collections",
+    "Services",
+    "Job Handlers",
+    "API Routes",
+    "React Hooks",
+    "Utilities",
+    "Constants",
+    "Types",
+    "*"
+  ],
   "searchInComments": true,
   "searchCategoryBoosts": {
     "Collections": 2.0,

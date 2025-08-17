@@ -47,7 +47,7 @@ export const verifyDatabaseSchema = async (connectionString: string): Promise<vo
         WHERE table_schema = 'payload'
         AND table_name = $1
       `,
-        [tableName],
+        [tableName]
       );
 
       if (tableResult.rows.length === 0) {

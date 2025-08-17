@@ -119,7 +119,7 @@ export const schemaDetectionJob = {
           schema: updatedSchema,
           schemaBuilderState: schemaBuilder.getState(),
           geocodingCandidates,
-        },
+        }
       );
 
       // Queue next batch if needed

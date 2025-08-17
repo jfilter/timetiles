@@ -209,7 +209,7 @@ const checkMigrations = async (): Promise<HealthCheckResult> => {
 
     const executedMigrationNames = executedMigrations.docs.map((m) => m.name);
     const pendingMigrations = migrationFiles.filter(
-      (f) => f.endsWith(".ts") && !executedMigrationNames.includes(f.replace(".ts", "")),
+      (f) => f.endsWith(".ts") && !executedMigrationNames.includes(f.replace(".ts", ""))
     );
 
     logger.debug("Migration status", {
@@ -262,7 +262,7 @@ const checkPostGIS = async (): Promise<HealthCheckResult> => {
 
 const wrapHealthCheck = async (
   checkFn: () => Promise<HealthCheckResult>,
-  checkName: string,
+  checkName: string
 ): Promise<HealthCheckResult> => {
   try {
     return await checkFn();

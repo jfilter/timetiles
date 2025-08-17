@@ -285,7 +285,7 @@ const ImportFiles: CollectionConfig = {
         const { allowed } = rateLimitService.checkRateLimit(
           clientId,
           RATE_LIMITS.FILE_UPLOAD.limit,
-          RATE_LIMITS.FILE_UPLOAD.windowMs,
+          RATE_LIMITS.FILE_UPLOAD.windowMs
         );
 
         if (!allowed) {

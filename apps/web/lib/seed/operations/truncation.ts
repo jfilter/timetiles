@@ -37,7 +37,7 @@ export class TruncationOperations {
     }
 
     logger.info(
-      `Truncation completed: ${successCount}/${collectionsToTruncate.size} collections truncated successfully`,
+      `Truncation completed: ${successCount}/${collectionsToTruncate.size} collections truncated successfully`
     );
 
     logPerformance("Truncate process", Date.now() - startTime, {
@@ -91,7 +91,7 @@ export class TruncationOperations {
 
   private logTruncationResult(
     collection: string,
-    result: { success: boolean; deletedCount?: number; errors?: unknown[] },
+    result: { success: boolean; deletedCount?: number; errors?: unknown[] }
   ): void {
     const logData = {
       collection,

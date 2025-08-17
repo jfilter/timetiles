@@ -221,7 +221,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       expect(mocks.generateUniqueId).toHaveBeenCalledTimes(3);
       expect(mocks.generateUniqueId).toHaveBeenCalledWith(
         { id: "1", title: "Event 1" },
-        { type: "external", externalIdPath: "id" },
+        { type: "external", externalIdPath: "id" }
       );
 
       // Verify external duplicate check

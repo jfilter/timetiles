@@ -6,16 +6,16 @@ This document provides detailed information about each processing stage in the T
 
 The import pipeline consists of 8 distinct stages, each handled by specialized background jobs:
 
-| Stage              | Job Handler                  | Purpose                      | Batch Size |
-| ------------------ | ---------------------------- | ---------------------------- | ---------- |
-| File Upload        | `dataset-detection-job`      | Parse file structure         | N/A        |
-| Analyze Duplicates | `analyze-duplicates-job`     | Find duplicate rows          | 5,000      |
-| Detect Schema      | `schema-detection-job`       | Build progressive schema     | 10,000     |
-| Validate Schema    | `validate-schema-job`        | Compare with existing schema | 10,000     |
-| Await Approval     | Manual process               | Human review of changes      | N/A        |
-| Create Schema Version | `create-schema-version-job` | Create approved schema version | N/A      |
-| Geocode Batch      | `geocode-batch-job`          | Add location data            | 100        |
-| Create Events      | `create-events-batch-job`    | Generate final records       | 1,000      |
+| Stage                 | Job Handler                 | Purpose                        | Batch Size |
+| --------------------- | --------------------------- | ------------------------------ | ---------- |
+| File Upload           | `dataset-detection-job`     | Parse file structure           | N/A        |
+| Analyze Duplicates    | `analyze-duplicates-job`    | Find duplicate rows            | 5,000      |
+| Detect Schema         | `schema-detection-job`      | Build progressive schema       | 10,000     |
+| Validate Schema       | `validate-schema-job`       | Compare with existing schema   | 10,000     |
+| Await Approval        | Manual process              | Human review of changes        | N/A        |
+| Create Schema Version | `create-schema-version-job` | Create approved schema version | N/A        |
+| Geocode Batch         | `geocode-batch-job`         | Add location data              | 100        |
+| Create Events         | `create-events-batch-job`   | Generate final records         | 1,000      |
 
 ## Detailed Stage Documentation
 
@@ -394,11 +394,11 @@ Create a new schema version in the database after schema approval, handling the 
 // Schema version creation process
 const schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
   dataset: dataset.id,
-  schema: job.schema,                    // Detected/approved schema
-  fieldMetadata: fieldStats || {},       // Field statistics from detection
-  autoApproved: false,                   // Manual approval workflow
-  approvedBy: approvedById,              // User who approved
-  importSources: [],                     // Will be populated later
+  schema: job.schema, // Detected/approved schema
+  fieldMetadata: fieldStats || {}, // Field statistics from detection
+  autoApproved: false, // Manual approval workflow
+  approvedBy: approvedById, // User who approved
+  importSources: [], // Will be populated later
 });
 ```
 
@@ -414,7 +414,7 @@ const schemaVersion = await SchemaVersioningService.createSchemaVersion(payload,
 This job runs in a separate transaction from the approval process to prevent:
 
 - Circular dependency issues with schema validation
-- Database deadlocks during concurrent operations  
+- Database deadlocks during concurrent operations
 - Partial state corruption if approval fails after version creation
 
 #### Output Data Structure
@@ -422,14 +422,14 @@ This job runs in a separate transaction from the approval process to prevent:
 ```typescript
 {
   output: {
-    schemaVersionId: "64f1a2b3c4d5e6f7a8b9c0d1" // Created version ID
+    schemaVersionId: "64f1a2b3c4d5e6f7a8b9c0d1"; // Created version ID
   }
 }
 
 // Or if skipped
 {
   output: {
-    skipped: true
+    skipped: true;
   }
 }
 ```

@@ -9,7 +9,7 @@ export const createImportFileWithUpload = async (
   data: any,
   fileContent: string | Buffer,
   fileName: string,
-  mimeType: string,
+  mimeType: string
 ) => {
   const fileBuffer = typeof fileContent === "string" ? Buffer.from(fileContent, "utf8") : fileContent;
 

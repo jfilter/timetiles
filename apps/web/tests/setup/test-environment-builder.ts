@@ -247,7 +247,7 @@ export class TestEnvironmentBuilder {
     seedManager: SeedManager,
     customData: Record<string, any[]>,
     environment: string,
-    collections: string[],
+    collections: string[]
   ): Promise<void> {
     if (Object.keys(customData).length === 0) {
       // Use standard seeding
@@ -313,7 +313,7 @@ export class TestEnvironmentBuilder {
 
       // Truncate tables for next test
       await truncateAllTables(
-        process.env.DATABASE_URL ?? `postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test`,
+        process.env.DATABASE_URL ?? `postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test`
       );
 
       logger.debug("Test environment cleanup completed", {
@@ -348,7 +348,7 @@ export const createUnitTestEnvironment = async (): Promise<TestEnvironment> => {
  * Convenience function for creating integration test environments
  */
 export const createIntegrationTestEnvironment = async (
-  customData?: Record<string, any[]>,
+  customData?: Record<string, any[]>
 ): Promise<TestEnvironment> => {
   const builder = new TestEnvironmentBuilder();
   return builder.createIntegrationTestEnvironment(customData);

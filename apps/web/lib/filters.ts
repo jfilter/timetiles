@@ -38,7 +38,7 @@ export const useFilters = () => {
       startDate: startDate || null,
       endDate: endDate || null,
     }),
-    [catalog, datasets, startDate, endDate],
+    [catalog, datasets, startDate, endDate]
   );
 
   // Enhanced setCatalog that also clears datasets when catalog changes

@@ -42,7 +42,7 @@ export class RateLimitService {
         () => {
           this.cleanup();
         },
-        5 * 60 * 1000,
+        5 * 60 * 1000
       );
     }
   }
@@ -70,7 +70,7 @@ export class RateLimitService {
   checkRateLimit(
     identifier: string,
     limit: number = 10,
-    windowMs: number = 60 * 60 * 1000, // 1 hour default
+    windowMs: number = 60 * 60 * 1000 // 1 hour default
   ): {
     allowed: boolean;
     remaining: number;
@@ -98,7 +98,7 @@ export class RateLimitService {
     identifier: string,
     limit: number,
     now: number,
-    windowMs: number,
+    windowMs: number
   ): { allowed: boolean; remaining: number; resetTime: number; blocked: boolean } {
     const newEntry: RateLimitEntry = {
       count: 1,
@@ -117,7 +117,7 @@ export class RateLimitService {
 
   private handleBlockedRequest(
     identifier: string,
-    entry: RateLimitEntry,
+    entry: RateLimitEntry
   ): { allowed: boolean; remaining: number; resetTime: number; blocked: boolean } {
     logger.debug({ identifier, resetTime: new Date(entry.resetTime) }, "Request denied - identifier blocked");
     return {
@@ -131,7 +131,7 @@ export class RateLimitService {
   private processRateLimitCheck(
     identifier: string,
     entry: RateLimitEntry,
-    limit: number,
+    limit: number
   ): { allowed: boolean; remaining: number; resetTime: number; blocked: boolean } {
     // Increment count
     entry.count++;
@@ -245,7 +245,7 @@ export class RateLimitService {
           attemptedCount,
           limit,
         },
-        "Rate limit exceeded",
+        "Rate limit exceeded"
       );
 
       // You could also store this in a database for monitoring

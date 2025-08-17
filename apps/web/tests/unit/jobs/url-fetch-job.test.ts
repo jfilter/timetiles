@@ -127,7 +127,7 @@ describe.sequential("urlFetchJob", () => {
           headers: expect.objectContaining({
             "User-Agent": "TimeTiles/1.0 (Data Import Service)",
           }),
-        }),
+        })
       );
 
       // Verify file operations
@@ -208,7 +208,7 @@ describe.sequential("urlFetchJob", () => {
           headers: expect.objectContaining({
             "X-API-Key": "secret-key-123",
           }),
-        }),
+        })
       );
     });
 
@@ -254,7 +254,7 @@ describe.sequential("urlFetchJob", () => {
           headers: expect.objectContaining({
             Authorization: "Bearer token-abc-123",
           }),
-        }),
+        })
       );
     });
 
@@ -302,7 +302,7 @@ describe.sequential("urlFetchJob", () => {
           headers: expect.objectContaining({
             Authorization: expectedAuth,
           }),
-        }),
+        })
       );
     });
 
@@ -369,7 +369,7 @@ describe.sequential("urlFetchJob", () => {
           },
           job: mockJob,
           req: mockReq,
-        }),
+        })
       ).rejects.toThrow("HTTP 404: Not Found");
     });
 
@@ -405,7 +405,7 @@ describe.sequential("urlFetchJob", () => {
           },
           job: mockJob,
           req: mockReq,
-        }),
+        })
       ).rejects.toThrow(/file.*too large/i);
     });
 
@@ -429,7 +429,7 @@ describe.sequential("urlFetchJob", () => {
           },
           job: mockJob,
           req: mockReq,
-        }),
+        })
       ).rejects.toThrow(/timeout/i);
     });
 
@@ -443,7 +443,7 @@ describe.sequential("urlFetchJob", () => {
           },
           job: mockJob,
           req: mockReq,
-        }),
+        })
       ).rejects.toThrow(/source.*URL/i);
     });
 
@@ -525,7 +525,7 @@ describe.sequential("urlFetchJob", () => {
           },
           job: mockJob,
           req: mockReq,
-        }),
+        })
       ).rejects.toThrow();
 
       expect(mockPayload.update).toHaveBeenCalledWith({
@@ -766,7 +766,7 @@ describe.sequential("urlFetchJob", () => {
           },
           job: mockJob,
           req: mockReq,
-        }),
+        })
       ).rejects.toThrow(/file.*too large/i);
     });
 
@@ -847,7 +847,7 @@ describe.sequential("urlFetchJob", () => {
           },
           job: mockJob,
           req: mockReq,
-        }),
+        })
       ).rejects.toThrow(/timeout/i);
     });
 
@@ -917,7 +917,7 @@ describe.sequential("urlFetchJob", () => {
             "Accept-Language": "en-US",
             "X-Request-ID": "12345",
           }),
-        }),
+        })
       );
     });
 

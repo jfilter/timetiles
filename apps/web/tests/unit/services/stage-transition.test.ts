@@ -61,51 +61,45 @@ describe.sequential("StageTransitionService", () => {
       expect(
         StageTransitionService.validateStageTransition(
           PROCESSING_STAGE.ANALYZE_DUPLICATES,
-          PROCESSING_STAGE.DETECT_SCHEMA,
-        ),
+          PROCESSING_STAGE.DETECT_SCHEMA
+        )
       ).toBe(true);
 
       expect(
-        StageTransitionService.validateStageTransition(
-          PROCESSING_STAGE.DETECT_SCHEMA,
-          PROCESSING_STAGE.VALIDATE_SCHEMA,
-        ),
-      ).toBe(true);
-
-      expect(
-        StageTransitionService.validateStageTransition(
-          PROCESSING_STAGE.VALIDATE_SCHEMA,
-          PROCESSING_STAGE.AWAIT_APPROVAL,
-        ),
+        StageTransitionService.validateStageTransition(PROCESSING_STAGE.DETECT_SCHEMA, PROCESSING_STAGE.VALIDATE_SCHEMA)
       ).toBe(true);
 
       expect(
         StageTransitionService.validateStageTransition(
           PROCESSING_STAGE.VALIDATE_SCHEMA,
-          PROCESSING_STAGE.GEOCODE_BATCH,
-        ),
+          PROCESSING_STAGE.AWAIT_APPROVAL
+        )
+      ).toBe(true);
+
+      expect(
+        StageTransitionService.validateStageTransition(PROCESSING_STAGE.VALIDATE_SCHEMA, PROCESSING_STAGE.GEOCODE_BATCH)
       ).toBe(true);
 
       expect(
         StageTransitionService.validateStageTransition(
           PROCESSING_STAGE.AWAIT_APPROVAL,
-          PROCESSING_STAGE.CREATE_SCHEMA_VERSION,
-        ),
+          PROCESSING_STAGE.CREATE_SCHEMA_VERSION
+        )
       ).toBe(true);
 
       expect(
         StageTransitionService.validateStageTransition(
           PROCESSING_STAGE.CREATE_SCHEMA_VERSION,
-          PROCESSING_STAGE.GEOCODE_BATCH,
-        ),
+          PROCESSING_STAGE.GEOCODE_BATCH
+        )
       ).toBe(true);
 
       expect(
-        StageTransitionService.validateStageTransition(PROCESSING_STAGE.GEOCODE_BATCH, PROCESSING_STAGE.CREATE_EVENTS),
+        StageTransitionService.validateStageTransition(PROCESSING_STAGE.GEOCODE_BATCH, PROCESSING_STAGE.CREATE_EVENTS)
       ).toBe(true);
 
       expect(
-        StageTransitionService.validateStageTransition(PROCESSING_STAGE.CREATE_EVENTS, PROCESSING_STAGE.COMPLETED),
+        StageTransitionService.validateStageTransition(PROCESSING_STAGE.CREATE_EVENTS, PROCESSING_STAGE.COMPLETED)
       ).toBe(true);
     });
 
@@ -147,30 +141,30 @@ describe.sequential("StageTransitionService", () => {
       expect(
         StageTransitionService.validateStageTransition(
           PROCESSING_STAGE.ANALYZE_DUPLICATES,
-          PROCESSING_STAGE.GEOCODE_BATCH,
-        ),
+          PROCESSING_STAGE.GEOCODE_BATCH
+        )
       ).toBe(false);
 
       expect(
-        StageTransitionService.validateStageTransition(PROCESSING_STAGE.DETECT_SCHEMA, PROCESSING_STAGE.CREATE_EVENTS),
+        StageTransitionService.validateStageTransition(PROCESSING_STAGE.DETECT_SCHEMA, PROCESSING_STAGE.CREATE_EVENTS)
       ).toBe(false);
 
       expect(
-        StageTransitionService.validateStageTransition(PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.GEOCODE_BATCH),
+        StageTransitionService.validateStageTransition(PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.GEOCODE_BATCH)
       ).toBe(false);
 
       expect(
-        StageTransitionService.validateStageTransition(PROCESSING_STAGE.FAILED, PROCESSING_STAGE.DETECT_SCHEMA),
+        StageTransitionService.validateStageTransition(PROCESSING_STAGE.FAILED, PROCESSING_STAGE.DETECT_SCHEMA)
       ).toBe(false);
     });
 
     it("should handle unknown stages gracefully", () => {
       expect(StageTransitionService.validateStageTransition("unknown-stage", PROCESSING_STAGE.DETECT_SCHEMA)).toBe(
-        false,
+        false
       );
 
       expect(StageTransitionService.validateStageTransition(PROCESSING_STAGE.DETECT_SCHEMA, "unknown-stage")).toBe(
-        false,
+        false
       );
     });
   });
@@ -396,7 +390,7 @@ describe.sequential("StageTransitionService", () => {
       expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
       expect(mocks.logger.error).toHaveBeenCalledWith(
         "Invalid stage transition from 'analyze-duplicates' to 'create-events'",
-        { importJobId: "123" },
+        { importJobId: "123" }
       );
     });
 
@@ -432,7 +426,7 @@ describe.sequential("StageTransitionService", () => {
       expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
       expect(mocks.logger.error).toHaveBeenCalledWith(
         "Invalid stage transition from 'analyze-duplicates' to 'unknown-stage'",
-        { importJobId: "123" },
+        { importJobId: "123" }
       );
     });
 
@@ -473,11 +467,11 @@ describe.sequential("StageTransitionService", () => {
         StageTransitionService.isTransitioning(
           "123",
           PROCESSING_STAGE.ANALYZE_DUPLICATES,
-          PROCESSING_STAGE.DETECT_SCHEMA,
-        ),
+          PROCESSING_STAGE.DETECT_SCHEMA
+        )
       ).toBe(true);
       expect(
-        StageTransitionService.isTransitioning("123", PROCESSING_STAGE.DETECT_SCHEMA, PROCESSING_STAGE.VALIDATE_SCHEMA),
+        StageTransitionService.isTransitioning("123", PROCESSING_STAGE.DETECT_SCHEMA, PROCESSING_STAGE.VALIDATE_SCHEMA)
       ).toBe(false);
 
       // Wait for completion

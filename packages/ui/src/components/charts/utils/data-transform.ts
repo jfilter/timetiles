@@ -3,7 +3,7 @@ import type { HistogramBin, BinningStrategy } from "../types";
 export function createHistogramBins<T>(
   data: T[],
   xAccessor: (item: T) => Date | string | number,
-  binning: BinningStrategy | "auto" | number = "auto",
+  binning: BinningStrategy | "auto" | number = "auto"
 ): HistogramBin<T>[] {
   if (data.length === 0) return [];
 
@@ -33,7 +33,7 @@ export function createHistogramBins<T>(
 export function determineBinningStrategy(
   minDate: Date,
   maxDate: Date,
-  binning: BinningStrategy | "auto" | number,
+  binning: BinningStrategy | "auto" | number
 ): BinningStrategy | number {
   if (binning !== "auto") return binning;
 

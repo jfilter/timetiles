@@ -157,7 +157,7 @@ describe("/api/events/map-clusters", () => {
     };
 
     const request = new NextRequest(
-      `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=2`,
+      `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=2`
     );
 
     const response = await GET(request);
@@ -219,7 +219,7 @@ describe("/api/events/map-clusters", () => {
           16::integer,
           '{}'::jsonb
         )
-      `,
+      `
     )) as { rows: Array<Record<string, unknown>> };
 
     // Transform the result for the frontend (same logic as API route)
@@ -232,10 +232,10 @@ describe("/api/events/map-clusters", () => {
           type: "Point",
           coordinates: [
             parseFloat(
-              typeof row.longitude === "string" || typeof row.longitude === "number" ? String(row.longitude) : "0",
+              typeof row.longitude === "string" || typeof row.longitude === "number" ? String(row.longitude) : "0"
             ),
             parseFloat(
-              typeof row.latitude === "string" || typeof row.latitude === "number" ? String(row.latitude) : "0",
+              typeof row.latitude === "string" || typeof row.latitude === "number" ? String(row.latitude) : "0"
             ),
           ],
         },
@@ -280,8 +280,8 @@ describe("/api/events/map-clusters", () => {
 
     const request = new NextRequest(
       `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(
-        JSON.stringify(bounds),
-      )}&zoom=2&datasets=${testDatasetId}`,
+        JSON.stringify(bounds)
+      )}&zoom=2&datasets=${testDatasetId}`
     );
 
     const response = await GET(request);
@@ -315,8 +315,8 @@ describe("/api/events/map-clusters", () => {
 
     const request = new NextRequest(
       `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(
-        JSON.stringify(bounds),
-      )}&zoom=2&startDate=${startDate}&endDate=${endDate}`,
+        JSON.stringify(bounds)
+      )}&zoom=2&startDate=${startDate}&endDate=${endDate}`
     );
 
     const response = await GET(request);

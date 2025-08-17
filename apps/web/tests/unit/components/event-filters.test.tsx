@@ -85,10 +85,10 @@ describe("EventFilters", () => {
 
     // For now, let's just verify the checkboxes exist and can be identified
     const airQualityCheckbox = Array.from(checkboxes).find(
-      (cb) => cb.nextElementSibling?.textContent === "Air Quality Measurements",
+      (cb) => cb.nextElementSibling?.textContent === "Air Quality Measurements"
     );
     const waterQualityCheckbox = Array.from(checkboxes).find(
-      (cb) => cb.nextElementSibling?.textContent === "Water Quality Data",
+      (cb) => cb.nextElementSibling?.textContent === "Water Quality Data"
     );
     const gdpCheckbox = Array.from(checkboxes).find((cb) => cb.nextElementSibling?.textContent === "GDP Growth Rates");
 
@@ -162,7 +162,7 @@ describe("EventFilters", () => {
 
     const { container } = renderWithProviders(
       <EventFilters catalogs={[...mockCatalogs, catalogWithNoDatasets]} datasets={mockDatasets} />,
-      { searchParams },
+      { searchParams }
     );
 
     // Should show "No datasets available" when catalog has no datasets

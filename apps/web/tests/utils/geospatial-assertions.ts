@@ -89,7 +89,7 @@ export const calculateCentroid = (points: Coordinates[]): Coordinates => {
       latitude: acc.latitude + point.latitude,
       longitude: acc.longitude + point.longitude,
     }),
-    { latitude: 0, longitude: 0 },
+    { latitude: 0, longitude: 0 }
   );
 
   return {
@@ -303,7 +303,7 @@ export class GeospatialTestHelper {
   static createMultipleClusters(
     centers: Coordinates[],
     pointsPerCluster: number,
-    clusterRadiusKm: number,
+    clusterRadiusKm: number
   ): Coordinates[][] {
     return centers.map((center) => this.createCluster(center, pointsPerCluster, clusterRadiusKm));
   }
@@ -379,7 +379,7 @@ export class GeospatialTestHelper {
     const maxDistance = findMaxDistance(points);
 
     const distances = points.flatMap((point, i) =>
-      points.slice(i + 1).map((otherPoint) => calculateDistance(point, otherPoint)),
+      points.slice(i + 1).map((otherPoint) => calculateDistance(point, otherPoint))
     );
     const averageDistance = distances.reduce((sum, d) => sum + d, 0) / distances.length;
 

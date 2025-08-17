@@ -223,7 +223,7 @@ export class DataProcessing {
   private applyCollectionSpecificVariations(
     newItem: Record<string, unknown>,
     index: number,
-    collectionName: string,
+    collectionName: string
   ): void {
     switch (collectionName) {
       case "events":

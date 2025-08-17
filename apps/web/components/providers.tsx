@@ -30,7 +30,7 @@ export const Providers = ({ children }: Readonly<{ children: ReactNode }>) => {
             retry: false,
           },
         },
-      }),
+      })
   );
 
   return (

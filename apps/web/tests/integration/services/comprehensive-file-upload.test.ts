@@ -25,7 +25,7 @@ const createImportFileWithUpload = async (
   data: any,
   fileContent: string | Buffer,
   fileName: string,
-  mimeType: string,
+  mimeType: string
 ) => {
   const fileBuffer = typeof fileContent === "string" ? Buffer.from(fileContent, "utf8") : fileContent;
 
@@ -159,7 +159,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         });
         console.log(
           `Iteration ${iteration}: File status=${importFile.status}, Jobs:`,
-          jobs.docs.map((j: any) => ({ id: j.id, stage: j.stage })),
+          jobs.docs.map((j: any) => ({ id: j.id, stage: j.stage }))
         );
       }
 
@@ -329,8 +329,8 @@ describe.sequential("Comprehensive File Upload Tests", () => {
               },
               fileTest.content,
               fileTest.name,
-              fileTest.mimeType,
-            ),
+              fileTest.mimeType
+            )
           ).rejects.toThrow();
 
           console.log(`  ✓ ${fileTest.name} correctly rejected during upload (MIME type validation)`);
@@ -363,7 +363,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           },
           corruptedContent,
           fileName,
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         );
 
         // Wait for processing
@@ -410,7 +410,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           },
           csvContent,
           "approval-test.csv",
-          "text/csv",
+          "text/csv"
         );
 
         // Wait for dataset-detection job to create import-job, then link it to our specific dataset
@@ -492,7 +492,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           },
           csvContent,
           "approval-continue.csv",
-          "text/csv",
+          "text/csv"
         );
 
         // Wait for dataset-detection job to create import-job, then link it to our specific dataset
@@ -586,7 +586,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
             completed: j.completedAt,
             error: j.error,
             input: j.input,
-          })),
+          }))
         );
 
         // Check specifically for CREATE_SCHEMA_VERSION job
@@ -661,7 +661,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           },
           csvContent,
           "auto-approve.csv",
-          "text/csv",
+          "text/csv"
         );
 
         // Wait for dataset-detection job to create import-job, then link it to our specific dataset
@@ -733,7 +733,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           },
           csvContent,
           "rejection-test.csv",
-          "text/csv",
+          "text/csv"
         );
 
         // Wait for dataset-detection job to create import-job, then link it to our specific dataset
@@ -812,7 +812,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       const rows = [];
       for (let i = 1; i <= 500; i++) {
         rows.push(
-          `"Event ${i}","2024-01-${String((i % 28) + 1).padStart(2, "0")}","Location ${i}","Description for event ${i}"`,
+          `"Event ${i}","2024-01-${String((i % 28) + 1).padStart(2, "0")}","Location ${i}","Description for event ${i}"`
         );
       }
       const csvContent = [headers, ...rows].join("\n");
@@ -826,7 +826,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           },
           csvContent,
           "large-dataset.csv",
-          "text/csv",
+          "text/csv"
         );
 
         console.log(`✓ Created large file import (${csvContent.length} bytes)`);

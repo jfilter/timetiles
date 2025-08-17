@@ -57,7 +57,7 @@ Examples:
       await Promise.race([
         seedManager.truncate(collections),
         new Promise((resolve, reject) =>
-          setTimeout(() => reject(new Error(`Truncate operation timeout after ${TOTAL_TIMEOUT}ms`)), TOTAL_TIMEOUT),
+          setTimeout(() => reject(new Error(`Truncate operation timeout after ${TOTAL_TIMEOUT}ms`)), TOTAL_TIMEOUT)
         ),
       ]);
     } else {
@@ -85,7 +85,7 @@ Examples:
           truncate: false,
         }),
         new Promise((resolve, reject) =>
-          setTimeout(() => reject(new Error(`Seed operation timeout after ${TOTAL_TIMEOUT}ms`)), TOTAL_TIMEOUT),
+          setTimeout(() => reject(new Error(`Seed operation timeout after ${TOTAL_TIMEOUT}ms`)), TOTAL_TIMEOUT)
         ),
       ]);
     }

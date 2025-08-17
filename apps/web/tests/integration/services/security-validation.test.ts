@@ -90,7 +90,7 @@ describe.sequential("Security Validation Tests", () => {
             scheduleType: "frequency",
             frequency: "daily",
           },
-        }),
+        })
       ).resolves.toBeTruthy(); // Currently allows localhost - this might need to be restricted
 
       // Test that the job handler rejects localhost in production
@@ -143,7 +143,7 @@ describe.sequential("Security Validation Tests", () => {
             scheduleType: "frequency",
             frequency: "daily",
           },
-        }),
+        })
       ).rejects.toThrow("URL must start with http:// or https://");
     });
 
@@ -440,7 +440,7 @@ describe.sequential("Security Validation Tests", () => {
           collection: "scheduled-imports",
           id: adminImport.id,
           user: { id: regularUserId, role: "user" } as any,
-        }),
+        })
       ).rejects.toThrow();
     });
 

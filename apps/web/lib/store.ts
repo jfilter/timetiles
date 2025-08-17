@@ -86,9 +86,9 @@ export const useUIStore = create<UIStore>()(
             theme: state.ui.theme,
           },
         }),
-      },
-    ),
-  ),
+      }
+    )
+  )
 );
 
 // Export FilterState type for nuqs usage

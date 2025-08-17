@@ -73,7 +73,7 @@ export const ClusteredMap = ({ onBoundsChange, clusters = DEFAULT_CLUSTERS }: Re
         onBoundsChange(bounds, zoom);
       }
     },
-    [onBoundsChange],
+    [onBoundsChange]
   );
 
   const getValidCoordinates = (feature: GeoJSON.Feature): [number, number] | null => {
@@ -124,7 +124,7 @@ export const ClusteredMap = ({ onBoundsChange, clusters = DEFAULT_CLUSTERS }: Re
         handleEventPointClick(feature);
       }
     },
-    [handleClusterClick, handleEventPointClick],
+    [handleClusterClick, handleEventPointClick]
   );
 
   const geojsonData = useMemo(() => {
@@ -181,7 +181,7 @@ export const ClusteredMap = ({ onBoundsChange, clusters = DEFAULT_CLUSTERS }: Re
         onBoundsChange(bounds, zoom);
       }
     },
-    [onBoundsChange],
+    [onBoundsChange]
   );
 
   return (

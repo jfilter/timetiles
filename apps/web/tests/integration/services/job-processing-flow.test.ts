@@ -95,7 +95,7 @@ Data Workshop,2024-05-10,Austin TX`;
         },
         csvContent,
         csvFileName,
-        "text/csv",
+        "text/csv"
       );
 
       // Move file to expected location
@@ -290,7 +290,7 @@ Data Workshop,2024-05-10,Austin TX`;
         },
         csvContent,
         csvFileName,
-        "text/csv",
+        "text/csv"
       );
 
       // Move file to expected location
@@ -345,7 +345,7 @@ Event 2,2024-01-02,Location 2`;
         },
         csvContent,
         csvFileName,
-        "text/csv",
+        "text/csv"
       );
 
       try {

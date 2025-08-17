@@ -152,7 +152,7 @@ const matchesDataFieldDate = (
   event: Event,
   dateField: string,
   startDateTime: Date | null,
-  endDateTime: Date | null,
+  endDateTime: Date | null
 ): boolean => {
   const eventData = event.data;
   if (eventData == null || typeof eventData !== "object" || Array.isArray(eventData)) {

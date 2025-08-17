@@ -30,7 +30,7 @@ import type { JobHandlerContext } from "../utils/job-context";
  */
 const updateImportFileStatusIfAllJobsComplete = async (
   payload: Payload,
-  importFileId: string | number,
+  importFileId: string | number
 ): Promise<void> => {
   const importFileIdNum = typeof importFileId === "number" ? importFileId : parseInt(importFileId, 10);
 

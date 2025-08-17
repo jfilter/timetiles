@@ -99,7 +99,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
     const postgisResult = runDatabaseQuery(
       TEST_DB_NAME,
       "SELECT COUNT(*) FROM pg_extension WHERE extname = 'postgis'",
-      "Check PostGIS extension",
+      "Check PostGIS extension"
     );
     // Parse the count from psql table output (skip header lines)
     const postgisLines = postgisResult
@@ -112,7 +112,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
     const schemaResult = runDatabaseQuery(
       TEST_DB_NAME,
       "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name = 'payload'",
-      "Check payload schema",
+      "Check payload schema"
     );
     const schemaLines = schemaResult
       .split("\n")
@@ -126,7 +126,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
       const tableResult = runDatabaseQuery(
         TEST_DB_NAME,
         "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'payload'",
-        "Count payload tables",
+        "Count payload tables"
       );
       const tableLines = tableResult
         .split("\n")
@@ -178,7 +178,7 @@ const getCompletedMigrations = (): string[] => {
     const result = runDatabaseQuery(
       TEST_DB_NAME,
       "SELECT name FROM payload.payload_migrations ORDER BY name",
-      "Get completed migrations",
+      "Get completed migrations"
     );
 
     return result
@@ -229,7 +229,7 @@ export const validateTestDatabaseSchema = async (): Promise<SchemaValidationResu
   const expectedMigrations = getExpectedMigrations();
   const completedMigrations = getCompletedMigrations();
   const missingMigrations = expectedMigrations.filter(
-    (expected) => !completedMigrations.some((completed) => completed.includes(expected)),
+    (expected) => !completedMigrations.some((completed) => completed.includes(expected))
   );
 
   const hasMigrationsTable = completedMigrations.length > 0 || dbInfo.hasPayloadSchema;
@@ -251,7 +251,7 @@ export const validateTestDatabaseSchema = async (): Promise<SchemaValidationResu
   // Check migration consistency
   if (expectedMigrations.length > 0 && missingMigrations.length > 0) {
     issues.push(
-      `Missing ${missingMigrations.length} migrations: ${missingMigrations.slice(0, 3).join(", ")}${missingMigrations.length > 3 ? "..." : ""}`,
+      `Missing ${missingMigrations.length} migrations: ${missingMigrations.slice(0, 3).join(", ")}${missingMigrations.length > 3 ? "..." : ""}`
     );
     suggestions.push("Run migrations or reset database to resolve missing migrations");
   }
@@ -307,7 +307,7 @@ export const resetTestDatabase = async (force: boolean = false): Promise<void> =
 
     if (isCI) {
       execSync(
-        `PGPASSWORD=${DB_PASSWORD} psql -h ${DB_HOST} -U ${DB_USER} -d postgres -c "DROP DATABASE IF EXISTS ${TEST_DB_NAME}"`,
+        `PGPASSWORD=${DB_PASSWORD} psql -h ${DB_HOST} -U ${DB_USER} -d postgres -c "DROP DATABASE IF EXISTS ${TEST_DB_NAME}"`
       );
       logger.info("✓ Dropped existing test database");
     } else {

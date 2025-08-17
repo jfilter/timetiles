@@ -14,7 +14,7 @@ setup("create test database and seed data", async ({}) => {
     (arg) =>
       arg.includes(".test.ts:") || // Single test line
       arg.includes("--grep") || // Test filtering
-      (arg.includes(".test.ts") && !arg.includes("flows/")), // Single file but not full flows
+      (arg.includes(".test.ts") && !arg.includes("flows/")) // Single file but not full flows
   );
 
   if (!isFullSuite) {

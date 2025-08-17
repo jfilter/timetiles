@@ -26,7 +26,7 @@ export class GeocodingOperations {
   constructor(
     private readonly providerManager: ProviderManager,
     private readonly cacheManager: CacheManager,
-    private readonly settings: GeocodingSettings | null,
+    private readonly settings: GeocodingSettings | null
   ) {}
 
   async geocode(address: string): Promise<GeocodingResult> {
@@ -98,7 +98,7 @@ export class GeocodingOperations {
 
   private async tryProvider(
     provider: { geocoder: { geocode: (address: string) => Promise<Entry[]> }; name: string },
-    address: string,
+    address: string
   ): Promise<GeocodingResult | null> {
     const results = await this.geocodeWithProvider(provider.geocoder, address);
     if (this.hasValidResults(results)) {
@@ -166,7 +166,7 @@ export class GeocodingOperations {
       try {
         const geocodePromise = this.geocodeWithProvider(provider.geocoder, address);
         const timeoutPromise = new Promise((_resolve, reject) =>
-          setTimeout(() => reject(new Error("Geocoding timeout")), 5000),
+          setTimeout(() => reject(new Error("Geocoding timeout")), 5000)
         );
 
         const providerResults = (await Promise.race([geocodePromise, timeoutPromise])) as Entry[];
@@ -205,11 +205,11 @@ export class GeocodingOperations {
 
   private async geocodeWithProvider(
     geocoder: { geocode: (address: string) => Promise<Entry[]> },
-    address: string,
+    address: string
   ): Promise<Entry[]> {
     const geocodePromise = geocoder.geocode(address);
     const timeoutPromise = new Promise((_resolve, reject) =>
-      setTimeout(() => reject(new Error("Provider timeout")), 10000),
+      setTimeout(() => reject(new Error("Provider timeout")), 10000)
     );
 
     return (await Promise.race([geocodePromise, timeoutPromise])) as Entry[];

@@ -27,7 +27,7 @@ describe("Map-clusters API test", () => {
           south: 40.7489,
           east: -73.9741,
           west: -73.9841,
-        }),
+        })
       );
       url.searchParams.set("zoom", "10");
 

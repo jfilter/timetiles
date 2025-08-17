@@ -16,7 +16,7 @@ import { logError } from "@/lib/logger";
 
 export const GET = async (
   request: NextRequest,
-  context: { params: Promise<{ importId: string }> },
+  context: { params: Promise<{ importId: string }> }
 ): Promise<NextResponse> => {
   try {
     const payload = await getPayload({ config });

@@ -41,7 +41,7 @@ const handleJobCompletion = async (payload: Payload, doc: ImportJob): Promise<vo
   });
 
   const allCompleted = allJobs.docs.every(
-    (job: ImportJob) => job.stage === PROCESSING_STAGE.COMPLETED || job.stage === PROCESSING_STAGE.FAILED,
+    (job: ImportJob) => job.stage === PROCESSING_STAGE.COMPLETED || job.stage === PROCESSING_STAGE.FAILED
   );
 
   if (allCompleted) {

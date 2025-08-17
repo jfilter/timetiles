@@ -20,7 +20,7 @@ export const extractCoordinatesFromRow = (
     combinedColumn?: string;
     coordinateFormat?: string;
   },
-  coordinateValidator: CoordinateValidator,
+  coordinateValidator: CoordinateValidator
 ): { coordinates?: { lat: number; lng: number }; validation?: Record<string, unknown> } => {
   const { latitudeColumn, longitudeColumn, combinedColumn, coordinateFormat } = columnMapping;
 
@@ -47,7 +47,7 @@ const extractSeparateCoordinates = (
   row: Record<string, unknown>,
   latitudeColumn?: string,
   longitudeColumn?: string,
-  coordinateValidator?: CoordinateValidator,
+  coordinateValidator?: CoordinateValidator
 ): { coordinates?: { lat: number; lng: number }; validation?: Record<string, unknown> } => {
   if (latitudeColumn == null || longitudeColumn == null || coordinateValidator == null) {
     return {};
@@ -76,7 +76,7 @@ const extractCombinedCoordinates = (
   row: Record<string, unknown>,
   combinedColumn?: string,
   coordinateFormat?: string,
-  coordinateValidator?: CoordinateValidator,
+  coordinateValidator?: CoordinateValidator
 ): { coordinates?: { lat: number; lng: number }; validation?: Record<string, unknown> } => {
   if (combinedColumn == null || combinedColumn.length === 0 || coordinateValidator == null) {
     return {};
@@ -105,7 +105,7 @@ const extractCombinedCoordinates = (
 
 const parseCombinedCoordinates = (
   coordString: string,
-  coordinateFormat?: string,
+  coordinateFormat?: string
 ): { lat: number; lng: number } | null => {
   let parts: string[] = [];
 
@@ -132,7 +132,7 @@ const parseCombinedCoordinates = (
 const parseAndValidateCoordinates = (
   latStr: string,
   lngStr: string,
-  coordinateValidator: CoordinateValidator,
+  coordinateValidator: CoordinateValidator
 ): { coordinates: { lat: number; lng: number }; validation: Record<string, unknown> } | null => {
   const lat = Number(latStr);
   const lng = Number(lngStr);
@@ -164,7 +164,7 @@ export const processRowData = (
   row: Record<string, unknown>,
   hasCoordinates: boolean,
   columnMapping: Record<string, unknown> | undefined,
-  coordinateValidator: CoordinateValidator,
+  coordinateValidator: CoordinateValidator
 ): Record<string, unknown> => {
   // Normalize and validate data
   const processedRow: Record<string, unknown> = {
@@ -190,7 +190,7 @@ export const processRowData = (
         combinedColumn?: string;
         coordinateFormat?: string;
       },
-      coordinateValidator,
+      coordinateValidator
     );
 
     if (extractedCoords.coordinates) {

@@ -99,7 +99,7 @@ const getDatasetConfigs = (environment: string) => {
 const generateEventsForDataset = (
   config: { slug: string; catalogType: string; name: string },
   datasetIndex: number,
-  currentEventCount: number,
+  currentEventCount: number
 ): EventSeed[] => {
   const events: EventSeed[] = [];
   const numEvents = getEventsPerDataset(datasetIndex, config.name);

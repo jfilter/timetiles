@@ -179,7 +179,7 @@ describe("Enhanced Testing Infrastructure", () => {
       const multipleClusters = GeospatialTestHelper.createMultipleClusters(
         [TEST_COORDINATES.NYC, TEST_COORDINATES.SAN_FRANCISCO],
         5,
-        2,
+        2
       );
 
       expect(multipleClusters).toHaveLength(2);
@@ -244,7 +244,7 @@ describe("Enhanced Testing Infrastructure", () => {
           collections: ["users"],
           environment: "test",
           truncate: true,
-        }),
+        })
       ).resolves.not.toThrow();
 
       // Test that we can get the count (infrastructure test)

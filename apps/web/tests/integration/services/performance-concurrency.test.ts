@@ -206,7 +206,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
               frequency: "hourly",
             },
           });
-        }),
+        })
       );
 
       // Mock all endpoints
@@ -241,8 +241,8 @@ describe.sequential("Performance and Concurrency Tests", () => {
               originalName: `Concurrent Test ${i}`,
               userId: testUserId,
             },
-          }),
-        ),
+          })
+        )
       );
       const endTime = Date.now();
 
@@ -301,7 +301,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
             job: { id: `test-schedule-manager-concurrent-${i}` },
             req: { payload },
           });
-        }),
+        })
       );
 
       // Check that only one job was queued despite multiple concurrent runs
@@ -315,7 +315,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
           input: expect.objectContaining({
             scheduledImportId: scheduledImport.id,
           }),
-        }),
+        })
       );
 
       vi.useRealTimers();
@@ -340,7 +340,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
               frequency: "daily",
             },
           });
-        }),
+        })
       );
 
       const createTime = Date.now() - startTime;
@@ -360,8 +360,8 @@ describe.sequential("Performance and Concurrency Tests", () => {
               originalName: "Queue Test",
               userId: testUserId,
             },
-          }),
-        ),
+          })
+        )
       );
       const queueTime = Date.now() - queueStartTime;
 
@@ -390,7 +390,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
                 frequency: "hourly",
               },
             });
-          }),
+          })
         );
 
         // Mock endpoints
@@ -420,8 +420,8 @@ describe.sequential("Performance and Concurrency Tests", () => {
                 originalName: "Memory Test",
                 userId: testUserId,
               },
-            }),
-          ),
+            })
+          )
         );
 
         // Force garbage collection if available

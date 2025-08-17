@@ -38,14 +38,14 @@ export const EventFilters = ({ catalogs, datasets }: Readonly<EventFiltersProps>
     (e: ChangeEvent<HTMLInputElement>) => {
       setStartDate(e.target.value || null);
     },
-    [setStartDate],
+    [setStartDate]
   );
 
   const handleEndDateChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
       setEndDate(e.target.value || null);
     },
-    [setEndDate],
+    [setEndDate]
   );
 
   const handleClearDateFilters = useCallback(() => {
@@ -56,7 +56,7 @@ export const EventFilters = ({ catalogs, datasets }: Readonly<EventFiltersProps>
   const filteredDatasets =
     filters.catalog != null
       ? datasets.filter(
-          (d) => typeof d.catalog === "object" && d.catalog != null && String(d.catalog.id) === filters.catalog,
+          (d) => typeof d.catalog === "object" && d.catalog != null && String(d.catalog.id) === filters.catalog
         )
       : datasets;
 
@@ -68,7 +68,7 @@ export const EventFilters = ({ catalogs, datasets }: Readonly<EventFiltersProps>
         : [...current, datasetId];
       void setDatasets(newDatasets);
     },
-    [filters.datasets, setDatasets],
+    [filters.datasets, setDatasets]
   );
 
   return (

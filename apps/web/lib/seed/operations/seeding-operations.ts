@@ -76,7 +76,7 @@ export class SeedingOperations {
       Array.isArray(transformedData)
         ? (transformedData as Record<string, unknown>[])
         : [transformedData as Record<string, unknown>],
-      collectionName,
+      collectionName
     );
 
     // Create collection items
@@ -103,7 +103,7 @@ export class SeedingOperations {
     const itemCount = Array.isArray(seedData) ? seedData.length : 1;
     logger.debug(
       { collection: collectionOrGlobal, count: itemCount },
-      `Found ${itemCount} items to seed for ${collectionOrGlobal}`,
+      `Found ${itemCount} items to seed for ${collectionOrGlobal}`
     );
 
     // Resolve relationships
@@ -113,7 +113,7 @@ export class SeedingOperations {
     }
     const resolvedSeedData = await relationshipResolver.resolveCollectionRelationships(
       Array.isArray(seedData) ? (seedData as Record<string, unknown>[]) : [seedData as Record<string, unknown>],
-      collectionOrGlobal,
+      collectionOrGlobal
     );
 
     // Create collection items (reuse helper with empty config)
@@ -121,7 +121,7 @@ export class SeedingOperations {
   }
 
   getDependencyOrder(
-    collections: string[] = ["users", "catalogs", "datasets", "events", "import-files", "import-jobs"],
+    collections: string[] = ["users", "catalogs", "datasets", "events", "import-files", "import-jobs"]
   ) {
     return getDependencyOrder(collections);
   }
@@ -153,7 +153,7 @@ export class SeedingOperations {
     resolvedSeedData: Record<string, unknown>[],
     collectionName: string,
     environment: string,
-    config: CollectionConfig,
+    config: CollectionConfig
   ): Promise<void> {
     const BATCH_SIZE = 10; // Process in smaller batches
     const isCI = process.env.CI === "true";
@@ -173,11 +173,11 @@ export class SeedingOperations {
     batchStart: number,
     batchSize: number,
     totalItems: number,
-    BATCH_SIZE: number,
+    BATCH_SIZE: number
   ): void {
     logger.debug(
       { collection: collectionName, batchStart, batchSize },
-      `Processing batch ${Math.floor(batchStart / BATCH_SIZE) + 1}/${Math.ceil(totalItems / BATCH_SIZE)}`,
+      `Processing batch ${Math.floor(batchStart / BATCH_SIZE) + 1}/${Math.ceil(totalItems / BATCH_SIZE)}`
     );
   }
 
@@ -186,7 +186,7 @@ export class SeedingOperations {
     collectionName: string,
     environment: string,
     config: CollectionConfig,
-    isCI: boolean,
+    isCI: boolean
   ): Promise<void> {
     for (const resolvedItem of batch) {
       await this.createItemWithErrorHandling(resolvedItem, collectionName, environment, config, isCI);
@@ -198,7 +198,7 @@ export class SeedingOperations {
     collectionName: string,
     environment: string,
     config: CollectionConfig,
-    isCI: boolean,
+    isCI: boolean
   ): Promise<void> {
     const OPERATION_TIMEOUT = 30000; // 30 second timeout per item
 
@@ -211,8 +211,8 @@ export class SeedingOperations {
           new Promise((resolve, reject) =>
             setTimeout(
               () => reject(new Error(`Timeout creating ${collectionName} item after ${OPERATION_TIMEOUT}ms`)),
-              OPERATION_TIMEOUT,
-            ),
+              OPERATION_TIMEOUT
+            )
           ),
         ]);
       } else {
@@ -228,7 +228,7 @@ export class SeedingOperations {
     collectionName: string,
     resolvedItem: Record<string, unknown>,
     config: CollectionConfig,
-    isCI: boolean,
+    isCI: boolean
   ): void {
     logError(error, `Failed to create ${collectionName} item`, {
       collection: collectionName,
@@ -247,7 +247,7 @@ export class SeedingOperations {
     currentIndex: number,
     BATCH_SIZE: number,
     totalItems: number,
-    isCI: boolean,
+    isCI: boolean
   ): Promise<void> {
     if (currentIndex + BATCH_SIZE < totalItems) {
       await new Promise((resolve) => setTimeout(resolve, isCI ? 50 : 100));
@@ -257,7 +257,7 @@ export class SeedingOperations {
   private async createSingleItem(
     resolvedItem: Record<string, unknown>,
     collectionName: string,
-    environment: string,
+    environment: string
   ): Promise<void> {
     // For test environment, add timestamp to slug to ensure uniqueness
     if (environment == "test" && resolvedItem.slug != null && resolvedItem.slug != undefined) {
@@ -270,7 +270,7 @@ export class SeedingOperations {
       const displayName = this.queryBuilders.getDisplayName(resolvedItem);
       logger.debug(
         { collection: collectionName, displayName },
-        `Skipping existing ${collectionName} item: ${displayName}`,
+        `Skipping existing ${collectionName} item: ${displayName}`
       );
       return;
     }

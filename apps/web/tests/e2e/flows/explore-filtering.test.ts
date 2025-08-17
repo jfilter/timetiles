@@ -77,7 +77,7 @@ test.describe("Explore Page - Filtering", () => {
         const url = new URL(window.location.href);
         return url.searchParams.has("startDate") && url.searchParams.has("endDate");
       },
-      { timeout: 5000 },
+      { timeout: 5000 }
     );
 
     // Wait for API response and events to load
@@ -108,7 +108,7 @@ test.describe("Explore Page - Filtering", () => {
         const url = new URL(window.location.href);
         return !url.searchParams.has("startDate") && !url.searchParams.has("endDate");
       },
-      { timeout: 5000 },
+      { timeout: 5000 }
     );
 
     // Check that date params are removed from URL

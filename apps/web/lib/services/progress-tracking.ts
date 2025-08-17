@@ -61,7 +61,7 @@ export class ProgressTrackingService {
     totalRows: number,
     uniqueRows: number,
     internalDuplicates: number,
-    externalDuplicates: number,
+    externalDuplicates: number
   ): DuplicationSummary {
     return {
       totalRows,
@@ -80,7 +80,7 @@ export class ProgressTrackingService {
     stage: string,
     processedCount: number,
     job: ImportJob,
-    additionalData: Record<string, unknown> = {},
+    additionalData: Record<string, unknown> = {}
   ): Promise<void> {
     const total = this.getTotalForStage(job, stage);
     const currentProgress = (job.progress?.current || 0) + processedCount;
@@ -107,7 +107,7 @@ export class ProgressTrackingService {
     jobId: string | number,
     processedCount: number,
     job: ImportJob,
-    geocodingResults: Record<string, unknown>,
+    geocodingResults: Record<string, unknown>
   ): Promise<void> {
     const total = this.getTotalForStage(job, PROCESSING_STAGE.GEOCODE_BATCH);
     const currentProgress = (job.geocodingProgress?.current || 0) + processedCount;

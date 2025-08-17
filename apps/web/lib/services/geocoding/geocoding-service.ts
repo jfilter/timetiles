@@ -61,7 +61,7 @@ export class GeocodingService {
           activeProviders: providers.filter((p) => p.enabled).map((p) => p.name),
           totalProviders: providers.length,
         },
-        "Geocoding service initialized",
+        "Geocoding service initialized"
       );
     } catch (error) {
       logger.error({ error }, "Failed to initialize geocoding service");

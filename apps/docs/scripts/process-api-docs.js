@@ -22,45 +22,45 @@ const SKIP_FILES = ["README.md", "README.mdx"];
 const PATH_MAPPINGS = {
   // Collections: lib/collections/* -> collections/*
   "lib/collections": "collections",
-  
+
   // Services: lib/services/* -> services/*
   "lib/services": "services",
-  
+
   // Job Handlers: lib/jobs/* -> jobs/*
   "lib/jobs": "jobs",
-  
+
   // API Routes: app/api/* -> api/*
   "app/api": "api",
-  
+
   // React Hooks: lib/hooks/* -> hooks/*
   "lib/hooks": "hooks",
-  
+
   // Utilities: lib/utils/* -> utilities/*
   "lib/utils": "utilities",
-  
+
   // Constants: lib/constants/* -> constants/*
   "lib/constants": "constants",
-  
+
   // Types: lib/types/* -> types/*
   "lib/types": "types",
-  
+
   // Logger: lib/logger -> utilities/logger
   "lib/logger": "utilities/logger",
-  
+
   // Store: lib/store -> utilities/store
   "lib/store": "utilities/store",
-  
+
   // Seed: lib/seed -> tools/seeding
   "lib/seed": "tools/seeding",
-  
+
   // Health: lib/health -> utilities/health
   "lib/health": "utilities/health",
-  
+
   // Filters: lib/filters -> utilities/filters
   "lib/filters": "utilities/filters",
-  
+
   // Globals: lib/globals -> configuration/globals
-  "lib/globals": "configuration/globals"
+  "lib/globals": "configuration/globals",
 };
 
 /**
@@ -150,8 +150,13 @@ async function processMarkdownFile(filePath, stats) {
       const title = extractTitle(content) || basename(filePath, ".md");
       // Quote title if it contains special YAML characters
       const quotedTitle =
-        title.includes(":") || title.includes('"') || title.includes("'") || title.includes("<") || title.includes(">") || title.includes("\\")
-          ? `"${title.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` 
+        title.includes(":") ||
+        title.includes('"') ||
+        title.includes("'") ||
+        title.includes("<") ||
+        title.includes(">") ||
+        title.includes("\\")
+          ? `"${title.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
           : title;
       const frontmatter = `---\ntitle: ${quotedTitle}\n---\n\n`;
       content = frontmatter + content;
@@ -237,24 +242,24 @@ async function generateMetaFile(dirPath, stats) {
  */
 async function restructurePaths(stats) {
   console.log("🔄 Restructuring paths for logical organization...");
-  
+
   const fs = await import("fs/promises");
-  
+
   for (const [oldPath, newPath] of Object.entries(PATH_MAPPINGS)) {
     const oldDir = join(API_DIR, oldPath);
     const newDir = join(API_DIR, newPath);
-    
+
     if (existsSync(oldDir) && oldDir !== newDir) {
       try {
         // Create new directory structure
         await fs.mkdir(dirname(newDir), { recursive: true });
-        
+
         // Move the directory
         await fs.rename(oldDir, newDir);
-        
+
         // Update internal links in all moved files
         await updateLinksInDirectory(newDir, oldPath, newPath);
-        
+
         console.log(`📁 Moved ${oldPath} → ${newPath}`);
         stats.processed += 5; // Rough estimate for moved files
       } catch (error) {
@@ -262,7 +267,7 @@ async function restructurePaths(stats) {
       }
     }
   }
-  
+
   // Clean up empty directories
   await cleanupEmptyDirectories(API_DIR);
 }
@@ -272,27 +277,27 @@ async function restructurePaths(stats) {
  */
 async function updateLinksInDirectory(dirPath, oldPath, newPath) {
   const fs = await import("fs/promises");
-  
+
   try {
     const items = await fs.readdir(dirPath, { withFileTypes: true });
-    
+
     for (const item of items) {
       const itemPath = join(dirPath, item.name);
-      
+
       if (item.isDirectory()) {
         await updateLinksInDirectory(itemPath, oldPath, newPath);
-      } else if (item.name.endsWith('.mdx')) {
+      } else if (item.name.endsWith(".mdx")) {
         try {
-          let content = await fs.readFile(itemPath, 'utf8');
-          
+          let content = await fs.readFile(itemPath, "utf8");
+
           // Update relative links that reference the old path
-          const oldPathRegex = new RegExp(`(\\]\\(\\.\\.\\/)+(${oldPath.replace(/\//g, '\\/')})`, 'g');
+          const oldPathRegex = new RegExp(`(\\]\\(\\.\\.\\/)+(${oldPath.replace(/\//g, "\\/")})`, "g");
           content = content.replace(oldPathRegex, `$1${newPath}`);
-          
+
           // Update breadcrumb references
-          const breadcrumbRegex = new RegExp(`\\[web\\]\\(.*?\\) / (${oldPath.replace(/\//g, '\\/')})`, 'g');
+          const breadcrumbRegex = new RegExp(`\\[web\\]\\(.*?\\) / (${oldPath.replace(/\//g, "\\/")})`, "g");
           content = content.replace(breadcrumbRegex, `[web](../../README) / ${newPath}`);
-          
+
           await fs.writeFile(itemPath, content);
         } catch (error) {
           console.warn(`⚠️  Failed to update links in ${itemPath}:`, error.message);
@@ -309,15 +314,15 @@ async function updateLinksInDirectory(dirPath, oldPath, newPath) {
  */
 async function cleanupEmptyDirectories(dirPath) {
   const fs = await import("fs/promises");
-  
+
   try {
     const items = await fs.readdir(dirPath, { withFileTypes: true });
-    
+
     for (const item of items) {
       if (item.isDirectory()) {
         const itemPath = join(dirPath, item.name);
         await cleanupEmptyDirectories(itemPath);
-        
+
         // Check if directory is empty after recursive cleanup
         try {
           const contents = await fs.readdir(itemPath);
@@ -340,9 +345,9 @@ async function cleanupEmptyDirectories(dirPath) {
  */
 async function improveDocumentationContent(stats) {
   console.log("✨ Improving documentation content...");
-  
+
   const fs = await import("fs/promises");
-  
+
   // Define title mappings for better user-friendly names
   const TITLE_MAPPINGS = {
     // Collections
@@ -354,31 +359,31 @@ async function improveDocumentationContent(stats) {
     "collections/import-jobs": { title: "Import Jobs Collection", section: "Collections" },
     "collections/dataset-schemas": { title: "Dataset Schemas Collection", section: "Collections" },
     "collections/shared-fields": { title: "Shared Fields", section: "Collections" },
-    
+
     // Services
     "services/geocoding": { title: "Geocoding Service", section: "Services" },
     "services/rate-limit-service": { title: "Rate Limiting Service", section: "Services" },
     "services/import": { title: "Import Services", section: "Services" },
     "services/progress-tracking": { title: "Progress Tracking Service", section: "Services" },
     "services/schema-builder": { title: "Schema Builder Service", section: "Services" },
-    
+
     // Hooks
     "hooks/use-debounce": { title: "Debounce Hooks", section: "React Hooks" },
     "hooks/use-events-queries": { title: "Events Query Hooks", section: "React Hooks" },
     "hooks/use-event-stats": { title: "Event Statistics Hooks", section: "React Hooks" },
-    
+
     // API Routes
     "api/events": { title: "Events API", section: "API Routes" },
     "api/health": { title: "Health Check API", section: "API Routes" },
     "api/import": { title: "Import API", section: "API Routes" },
-    
+
     // Utilities
     "utilities/slug": { title: "Slug Utilities", section: "Utilities" },
     "utilities/date": { title: "Date Utilities", section: "Utilities" },
     "utilities/logger": { title: "Logging System", section: "Utilities" },
     "utilities/store": { title: "State Management", section: "Utilities" },
   };
-  
+
   // Process README files in restructured directories
   await improveDirectoryContent(API_DIR, "", TITLE_MAPPINGS, stats);
 }
@@ -388,17 +393,17 @@ async function improveDocumentationContent(stats) {
  */
 async function improveDirectoryContent(dirPath, relativePath, titleMappings, stats) {
   const fs = await import("fs/promises");
-  
+
   try {
     const items = await fs.readdir(dirPath, { withFileTypes: true });
-    
+
     for (const item of items) {
       const itemPath = join(dirPath, item.name);
       const currentPath = relativePath ? `${relativePath}/${item.name}` : item.name;
-      
-      if (item.isDirectory() && !item.name.startsWith('.') && item.name !== 'node_modules') {
+
+      if (item.isDirectory() && !item.name.startsWith(".") && item.name !== "node_modules") {
         await improveDirectoryContent(itemPath, currentPath, titleMappings, stats);
-      } else if (item.name === 'README.mdx') {
+      } else if (item.name === "README.mdx") {
         await improveReadmeContent(itemPath, relativePath, titleMappings, stats);
       }
     }
@@ -412,53 +417,49 @@ async function improveDirectoryContent(dirPath, relativePath, titleMappings, sta
  */
 async function improveReadmeContent(filePath, sectionPath, titleMappings, stats) {
   const fs = await import("fs/promises");
-  
+
   try {
-    let content = await fs.readFile(filePath, 'utf8');
+    let content = await fs.readFile(filePath, "utf8");
     let modified = false;
-    
+
     // Get mapping for this section
     const mapping = titleMappings[sectionPath];
     if (mapping) {
       // Update title in frontmatter
-      content = content.replace(
-        /^title: .*$/m,
-        `title: "${mapping.title}"`
-      );
-      
+      content = content.replace(/^title: .*$/m, `title: "${mapping.title}"`);
+
       // Update main heading to be more user-friendly
       content = content.replace(
         /^# lib\/.*$/m,
-        `# ${mapping.section} > ${mapping.title.replace(' Collection', '').replace(' Service', '').replace(' Hooks', '').replace(' API', '')}`
+        `# ${mapping.section} > ${mapping.title.replace(" Collection", "").replace(" Service", "").replace(" Hooks", "").replace(" API", "")}`
       );
-      
+
       // Update generic "lib/..." headings too
-      content = content.replace(
-        /^# (lib\/[^\n]+)$/m,
-        `# ${mapping.title}`
-      );
-      
+      content = content.replace(/^# (lib\/[^\n]+)$/m, `# ${mapping.title}`);
+
       modified = true;
     } else {
       // Generic improvements for files without specific mappings
       // Remove "lib/" prefixes from titles and headings
       content = content.replace(/^title: lib\/(.*)$/m, (match, path) => {
-        const cleanTitle = path.split('/').map(part => 
-          part.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-        ).join(' > ');
+        const cleanTitle = path
+          .split("/")
+          .map((part) => part.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()))
+          .join(" > ");
         return `title: "${cleanTitle}"`;
       });
-      
+
       content = content.replace(/^# lib\/(.*)$/m, (match, path) => {
-        const cleanTitle = path.split('/').map(part => 
-          part.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-        ).join(' > ');
+        const cleanTitle = path
+          .split("/")
+          .map((part) => part.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()))
+          .join(" > ");
         return `# ${cleanTitle}`;
       });
-      
+
       modified = true;
     }
-    
+
     if (modified) {
       await fs.writeFile(filePath, content);
       stats.processed++;
@@ -486,7 +487,7 @@ async function generateNavigationFiles() {
       constants: "Constants",
       types: "Types",
       tools: "Development Tools",
-      configuration: "Configuration"
+      configuration: "Configuration",
     };
 
     writeFileSync(mainMetaPath, JSON.stringify(mainMeta, null, 2));

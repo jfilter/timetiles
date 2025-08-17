@@ -120,7 +120,7 @@ const getCatalogConfigs = (environment: string) => {
     baseCatalogs.push(
       { slug: "community-events-portal", type: "community" },
       { slug: "cultural-heritage-archives", type: "cultural" },
-      { slug: "historical-records", type: "academic" }, // Treat as academic for schema
+      { slug: "historical-records", type: "academic" } // Treat as academic for schema
     );
   }
 
@@ -132,7 +132,7 @@ const createDatasetFromTemplate = (
   template: { name: string; description: string; slug: string },
   catalog: { slug: string; type: string },
   schema: { [k: string]: unknown } | null,
-  datasetIndex: number,
+  datasetIndex: number
 ): DatasetSeed => {
   const isArchived = catalog.slug === "historical-records";
 

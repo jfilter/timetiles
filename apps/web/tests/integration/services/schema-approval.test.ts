@@ -108,7 +108,7 @@ describe.sequential("Schema Approval Workflow", () => {
       },
       csvContent,
       "test-import.csv",
-      "text/csv",
+      "text/csv"
     );
     testImportFileId = importFile.id;
 

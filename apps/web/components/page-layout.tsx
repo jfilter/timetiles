@@ -2,7 +2,7 @@ import React from "react";
 
 const getMaxWidthClass = (
   maxWidth: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "full",
-  maxWidthClasses: Record<string, string>,
+  maxWidthClasses: Record<string, string>
 ): string => {
   // Safe property access to avoid object injection with enhanced validation
   if (

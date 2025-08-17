@@ -13,7 +13,7 @@ import { getObjectProperty } from "./data-parsing";
 
 export const validateRequiredFields = (
   parsedData: Record<string, unknown>[],
-  logger: ReturnType<typeof createJobLogger>,
+  logger: ReturnType<typeof createJobLogger>
 ): { isValid: boolean; errors: string[] } => {
   const errors: string[] = [];
 

@@ -38,7 +38,7 @@ export const createMockEvents = (count: number = 3): Event[] => {
         latitude: 40.7128 + i * 0.01,
         longitude: -74.006 + i * 0.01,
       },
-    }),
+    })
   );
 };
 
@@ -58,6 +58,6 @@ export const createMapEvents = (count: number = 3) => {
       title: `Map Event ${i + 1}`,
       latitude: 40.7128 + i * 0.01,
       longitude: -74.006 + i * 0.01,
-    }),
+    })
   );
 };

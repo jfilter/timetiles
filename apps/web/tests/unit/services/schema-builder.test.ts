@@ -17,7 +17,7 @@ describe("ProgressiveSchemaBuilder", () => {
           path: "id",
           severity: "info",
           autoApprovable: true,
-        }),
+        })
       );
 
       // Second batch with additional field
@@ -68,7 +68,7 @@ describe("ProgressiveSchemaBuilder", () => {
           path: "value",
           severity: "warning",
           autoApprovable: false,
-        }),
+        })
       );
 
       const state = builder.getState();
@@ -343,7 +343,7 @@ describe("ProgressiveSchemaBuilder", () => {
         [
           { id: "1", name: "Test" }, // Missing 'deprecated' field
         ],
-        1,
+        1
       );
 
       const comparison = await builder.compareWithPrevious(previousSchema);
@@ -354,7 +354,7 @@ describe("ProgressiveSchemaBuilder", () => {
           path: "deprecated",
           severity: "warning",
           autoApprovable: false,
-        }),
+        })
       );
       expect(comparison.requiresApproval).toBe(true);
     });
@@ -372,7 +372,7 @@ describe("ProgressiveSchemaBuilder", () => {
         [
           { id: "abc", name: "Test" }, // id is now string
         ],
-        1,
+        1
       );
 
       const comparison = await builder.compareWithPrevious(previousSchema);
@@ -384,7 +384,7 @@ describe("ProgressiveSchemaBuilder", () => {
           details: { oldType: "number", newType: "string" },
           severity: "error",
           autoApprovable: false,
-        }),
+        })
       );
       expect(comparison.isBreaking).toBe(true);
     });
@@ -403,7 +403,7 @@ describe("ProgressiveSchemaBuilder", () => {
           { status: "pending" },
           { status: "completed" }, // New enum value
         ],
-        1,
+        1
       );
 
       const currentSchema = await builder.generateSchema();
@@ -417,7 +417,7 @@ describe("ProgressiveSchemaBuilder", () => {
           details: { added: ["completed"], removed: [] },
           severity: "info",
           autoApprovable: true,
-        }),
+        })
       );
     });
 
@@ -435,7 +435,7 @@ describe("ProgressiveSchemaBuilder", () => {
           { status: "pending" },
           // 'archived' is no longer present
         ],
-        1,
+        1
       );
 
       const comparison = await builder.compareWithPrevious(previousSchema);
@@ -445,7 +445,7 @@ describe("ProgressiveSchemaBuilder", () => {
           type: "enum_change",
           severity: "warning",
           autoApprovable: false,
-        }),
+        })
       );
     });
   });

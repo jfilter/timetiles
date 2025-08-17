@@ -187,7 +187,7 @@ const addDateFiltersToWhere = (where: Where, startDate: string | null, endDate: 
 const executeEventsQuery = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   where: Where,
-  parameters: ReturnType<typeof extractListParameters>,
+  parameters: ReturnType<typeof extractListParameters>
 ) =>
   payload.find({
     collection: "events",

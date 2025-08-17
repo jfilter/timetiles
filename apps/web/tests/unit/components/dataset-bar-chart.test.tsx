@@ -113,7 +113,7 @@ describe("DatasetBarChart", () => {
 
   it("renders bar chart with catalog grouping", () => {
     const { container } = render(
-      <DatasetBarChart events={mockEvents} datasets={mockDatasets} catalogs={mockCatalogs} groupBy="catalog" />,
+      <DatasetBarChart events={mockEvents} datasets={mockDatasets} catalogs={mockCatalogs} groupBy="catalog" />
     );
 
     const chart = container.querySelector('[data-testid="echarts-bar-mock"]');

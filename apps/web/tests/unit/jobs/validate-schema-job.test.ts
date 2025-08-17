@@ -744,7 +744,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       // Verify schema builder was called with filtered non-duplicate rows
       expect(mockSchemaBuilderInstance.processBatch).toHaveBeenCalledWith(
         [{ id: "1", title: "Event 1" }], // Only non-duplicate row
-        0,
+        0
       );
     });
   });

@@ -24,7 +24,7 @@ export class IdGenerationService {
   static generateEventId(
     data: unknown,
     dataset: Dataset,
-    importId: string,
+    importId: string
   ): {
     uniqueId: string;
     sourceId?: string;
@@ -70,7 +70,7 @@ export class IdGenerationService {
   private static generateExternalId(
     data: unknown,
     strategy: { externalIdPath?: string | null },
-    datasetId: string,
+    datasetId: string
   ): {
     uniqueId: string;
     sourceId: string;
@@ -95,7 +95,7 @@ export class IdGenerationService {
   private static generateComputedId(
     data: unknown,
     strategy: { computedIdFields?: Array<{ fieldPath: string; id?: string | null }> | null },
-    datasetId: string,
+    datasetId: string
   ): {
     uniqueId: string;
     strategy: string;
@@ -133,7 +133,7 @@ export class IdGenerationService {
 
   private static generateAutoId(
     data: unknown,
-    datasetId: string,
+    datasetId: string
   ): {
     uniqueId: string;
     contentHash: string;
@@ -160,7 +160,7 @@ export class IdGenerationService {
       externalIdPath?: string | null;
       computedIdFields?: Array<{ fieldPath: string; id?: string | null }> | null;
     },
-    datasetId: string,
+    datasetId: string
   ): {
     uniqueId: string;
     sourceId?: string;
@@ -175,7 +175,7 @@ export class IdGenerationService {
         return this.generateComputedId(data, strategy, datasetId);
       } catch (computedError) {
         throw new Error(
-          `Hybrid ID generation failed. External: ${externalError instanceof Error ? externalError.message : "unknown"}. Computed: ${computedError instanceof Error ? computedError.message : "unknown"}`,
+          `Hybrid ID generation failed. External: ${externalError instanceof Error ? externalError.message : "unknown"}. Computed: ${computedError instanceof Error ? computedError.message : "unknown"}`
         );
       }
     }

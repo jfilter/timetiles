@@ -104,7 +104,7 @@ export const EventHistogram = ({
         data: [string, number];
         marker: string;
         seriesName: string;
-      }>,
+      }>
     ) => {
       const point = params[0];
       if (!point) return "";
@@ -176,7 +176,7 @@ export const EventHistogram = ({
         void setEndDate(formattedDate);
       }
     },
-    [setStartDate, setEndDate],
+    [setStartDate, setEndDate]
   );
 
   const chartEvents = useMemo(() => ({ click: handleChartClick }), [handleChartClick]);

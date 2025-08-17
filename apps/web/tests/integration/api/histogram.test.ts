@@ -206,7 +206,7 @@ describe("/api/events/histogram", () => {
     const endDate = new Date(2024, 2, 31).toISOString().split("T")[0]; // Mar 31
 
     const request = new NextRequest(
-      `http://localhost:3000/api/events/histogram?startDate=${startDate}&endDate=${endDate}`,
+      `http://localhost:3000/api/events/histogram?startDate=${startDate}&endDate=${endDate}`
     );
     const response = await GET(request);
 
@@ -231,7 +231,7 @@ describe("/api/events/histogram", () => {
     };
 
     const request = new NextRequest(
-      `http://localhost:3000/api/events/histogram?bounds=${encodeURIComponent(JSON.stringify(bounds))}`,
+      `http://localhost:3000/api/events/histogram?bounds=${encodeURIComponent(JSON.stringify(bounds))}`
     );
     const response = await GET(request);
 
@@ -248,7 +248,7 @@ describe("/api/events/histogram", () => {
     const endDate = new Date(2024, 0, 31).toISOString().split("T")[0];
 
     const request = new NextRequest(
-      `http://localhost:3000/api/events/histogram?startDate=${startDate}&endDate=${endDate}&granularity=day`,
+      `http://localhost:3000/api/events/histogram?startDate=${startDate}&endDate=${endDate}&granularity=day`
     );
     const response = await GET(request);
 

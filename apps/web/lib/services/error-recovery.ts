@@ -75,7 +75,7 @@ export class ErrorRecoveryService {
   static async recoverFailedJob(
     payload: Payload,
     jobId: string | number,
-    retryConfig: Partial<RetryConfig> = {},
+    retryConfig: Partial<RetryConfig> = {}
   ): Promise<RecoveryResult> {
     const config = { ...this.DEFAULT_RETRY_CONFIG, ...retryConfig };
 
@@ -357,7 +357,7 @@ export class ErrorRecoveryService {
     payload: Payload,
     jobId: string | number,
     targetStage: ProcessingStage,
-    clearRetries = true,
+    clearRetries = true
   ): Promise<RecoveryResult> {
     try {
       const job = await payload.findByID({

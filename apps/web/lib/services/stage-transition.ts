@@ -64,7 +64,7 @@ export class StageTransitionService {
   static async processStageTransition(
     payload: Payload,
     job: ImportJob,
-    previousJob: ImportJob | undefined,
+    previousJob: ImportJob | undefined
   ): Promise<StageTransitionResult> {
     const jobId = String(job.id);
     const transitionKey = `${jobId}-${previousJob?.stage}-${job.stage}`;

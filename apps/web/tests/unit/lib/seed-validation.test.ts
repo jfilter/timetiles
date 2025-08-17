@@ -29,7 +29,7 @@ describe("Seed Data Validation", () => {
     it("should have proper status values", () => {
       const catalogs = catalogSeeds("development");
       expect(catalogs.every((catalog) => catalog._status && ["published", "draft"].includes(catalog._status))).toBe(
-        true,
+        true
       );
     });
   });
@@ -90,7 +90,7 @@ describe("Seed Data Validation", () => {
       expect(devCatalogs.some((c) => c.slug === "community-events-portal")).toBe(true);
       expect(devDatasets.some((d) => d.slug?.includes("local-events-calendar"))).toBe(true);
       expect(
-        devEvents.some((e) => e.data && typeof e.data === "object" && ("venue" in e.data || "performer" in e.data)),
+        devEvents.some((e) => e.data && typeof e.data === "object" && ("venue" in e.data || "performer" in e.data))
       ).toBe(true);
     });
   });

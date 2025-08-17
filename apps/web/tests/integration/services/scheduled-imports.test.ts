@@ -169,7 +169,7 @@ describe.sequential("Scheduled Imports Integration", () => {
             scheduleType: "cron",
             cronExpression: "invalid-cron",
           },
-        }),
+        })
       ).rejects.toThrow(/The following field is invalid: Cron Expression/);
     });
 
@@ -183,7 +183,7 @@ describe.sequential("Scheduled Imports Integration", () => {
             scheduleType: "cron",
             cronExpression: "0 0 * * *",
           },
-        }),
+        })
       ).rejects.toThrow(/The following field is invalid: Source URL/);
     });
   });
@@ -441,7 +441,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           headers: expect.objectContaining({
             Authorization: "Bearer token-123",
           }),
-        }),
+        })
       );
 
       // Note: File is now handled by Payload's upload system, not saved directly to disk by url-fetch-job
@@ -512,7 +512,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           "https://api.example.com/data",
           expect.objectContaining({
             headers: expect.objectContaining(authTest.expectedHeader),
-          }),
+          })
         );
       }
     });
@@ -536,7 +536,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           },
           job: { id: "test-job" },
           req: { payload },
-        }),
+        })
       ).rejects.toThrow("HTTP 404: Not Found");
     });
   });
@@ -806,7 +806,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           },
           job: { id: "job-1" },
           req: { payload },
-        }),
+        })
       ).rejects.toThrow(/file.*too large/i);
     });
 
@@ -870,7 +870,7 @@ describe.sequential("Scheduled Imports Integration", () => {
             "X-Custom-Header": "custom-value",
             "Accept-Language": "en-US",
           }),
-        }),
+        })
       );
     });
 
@@ -1139,7 +1139,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           },
           job: { id: "job-timeout" },
           req: { payload },
-        }),
+        })
       ).rejects.toThrow(/timeout/i);
 
       // Verify scheduled import was updated with failure

@@ -181,7 +181,7 @@ export const generateCoordinate = (
   options: {
     cluster?: boolean;
     clusterRadius?: number; // in degrees
-  } = {},
+  } = {}
 ): { latitude: number; longitude: number } => {
   const regionData = GEOGRAPHIC_REGIONS[region];
   const { cluster = true, clusterRadius = 0.1 } = options;

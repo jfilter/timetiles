@@ -68,7 +68,7 @@ export abstract class SeedManagerBase {
       await Promise.race([
         cleanupPromise,
         new Promise((resolve, reject) =>
-          setTimeout(() => reject(new Error("Cleanup process timeout after 30s")), 30000),
+          setTimeout(() => reject(new Error("Cleanup process timeout after 30s")), 30000)
         ),
       ]);
 
@@ -105,7 +105,7 @@ export abstract class SeedManagerBase {
           await Promise.race([
             closePromise,
             new Promise((resolve, reject) =>
-              setTimeout(() => reject(new Error("PostgreSQL connection pool close timeout after 10s")), 10000),
+              setTimeout(() => reject(new Error("PostgreSQL connection pool close timeout after 10s")), 10000)
             ),
           ]);
         }
@@ -140,7 +140,7 @@ export abstract class SeedManagerBase {
         await Promise.race([
           this.payload.db.destroy(),
           new Promise((resolve, reject) =>
-            setTimeout(() => reject(new Error("Payload database connection close timeout after 10s")), 10000),
+            setTimeout(() => reject(new Error("Payload database connection close timeout after 10s")), 10000)
           ),
         ]);
         logger.debug("Payload database connection closed");

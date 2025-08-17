@@ -26,7 +26,7 @@ const AllTheProviders = ({
             gcTime: 0, // Disable caching in tests
           },
         },
-      }),
+      })
   );
 
   return (
@@ -40,7 +40,7 @@ const AllTheProviders = ({
 
 export const renderWithProviders = (
   ui: React.ReactElement,
-  options?: CustomRenderOptions,
+  options?: CustomRenderOptions
 ): ReturnType<typeof render> => {
   const { searchParams, ...renderOptions } = options ?? {};
 

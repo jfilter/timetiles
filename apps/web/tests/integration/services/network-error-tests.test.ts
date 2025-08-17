@@ -83,7 +83,7 @@ describe.sequential("Network Error Handling Tests", () => {
             scheduleType: "frequency",
             frequency: "daily",
           },
-        }),
+        })
       ).rejects.toThrow("URL must start with http:// or https://");
     });
 
@@ -99,7 +99,7 @@ describe.sequential("Network Error Handling Tests", () => {
             scheduleType: "frequency",
             frequency: "daily",
           },
-        }),
+        })
       ).rejects.toThrow("URL must start with http:// or https://");
     });
 

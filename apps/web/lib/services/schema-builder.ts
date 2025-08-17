@@ -53,7 +53,7 @@ export class ProgressiveSchemaBuilder {
 
   async processBatch(
     records: any[],
-    batchNumber: number,
+    batchNumber: number
   ): Promise<{
     schemaChanged: boolean;
     changes: SchemaChange[];

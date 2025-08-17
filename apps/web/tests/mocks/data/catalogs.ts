@@ -41,6 +41,6 @@ export const createMockCatalogs = (count: number = 3): Catalog[] => {
       name: `Test Catalog ${i + 1}`,
       slug: `test-catalog-${i + 1}`,
       description: createRichTextDescription(`Description for catalog ${i + 1}`),
-    }),
+    })
   );
 };

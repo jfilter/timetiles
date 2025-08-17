@@ -128,7 +128,7 @@ export class GeoLocationDetector {
   private validateCoordinatePairs(
     sampleRows: Record<string, unknown>[],
     latColumn: string,
-    lonColumn: string,
+    lonColumn: string
   ): { isValid: boolean; confidence: number; swapped: boolean } {
     const samples = this.extractCoordinateSamples(sampleRows, latColumn, lonColumn);
 
@@ -147,7 +147,7 @@ export class GeoLocationDetector {
 
     // Check if coordinates might be swapped
     const swappedSamples = nonNullSamples.filter(
-      (s) => s.lat != null && s.lon != null && Math.abs(s.lat) > 90 && Math.abs(s.lat) <= 180 && Math.abs(s.lon) <= 90,
+      (s) => s.lat != null && s.lon != null && Math.abs(s.lat) > 90 && Math.abs(s.lat) <= 180 && Math.abs(s.lon) <= 90
     );
     const swappedRatio = swappedSamples.length / nonNullSamples.length;
 
@@ -178,7 +178,7 @@ export class GeoLocationDetector {
     rows: Record<string, unknown>[],
     latColumn: string,
     lonColumn: string,
-    limit: number = 10,
+    limit: number = 10
   ): CoordinateSample[] {
     const samples: CoordinateSample[] = [];
 
@@ -212,7 +212,7 @@ export class GeoLocationDetector {
    */
   private detectCombinedFormat(
     sampleRows: Record<string, unknown>[],
-    column: string,
+    column: string
   ): { format: string; confidence: number } | null {
     const samples = sampleRows
       .slice(0, 10)
@@ -246,7 +246,7 @@ export class GeoLocationDetector {
    */
   private analyzeColumnsForCoordinates(
     headers: string[],
-    sampleRows: Record<string, unknown>[],
+    sampleRows: Record<string, unknown>[]
   ): Map<
     string,
     {
@@ -279,7 +279,7 @@ export class GeoLocationDetector {
    */
   private analyzeColumnValues(
     header: string,
-    sampleRows: Record<string, unknown>[],
+    sampleRows: Record<string, unknown>[]
   ): {
     validCoords: number;
     latOnly: number;
@@ -319,7 +319,7 @@ export class GeoLocationDetector {
         total: number;
         samples: number[];
       }
-    >,
+    >
   ): {
     bestLat: string | null;
     bestLon: string | null;
@@ -363,7 +363,7 @@ export class GeoLocationDetector {
     bestLon: string | null,
     bestLatScore: number,
     bestLonScore: number,
-    sampleRows: Record<string, unknown>[],
+    sampleRows: Record<string, unknown>[]
   ): GeoColumnResult {
     if (
       bestLat != null &&

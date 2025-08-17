@@ -89,7 +89,7 @@ const ToggleSwitch = ({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       onToggle(provider.type, e.target.checked);
     },
-    [provider.type, onToggle],
+    [provider.type, onToggle]
   );
 
   return (
@@ -129,21 +129,21 @@ const ProviderItem = ({
     (e: React.DragEvent) => {
       handleDragStart(e, index);
     },
-    [handleDragStart, index],
+    [handleDragStart, index]
   );
 
   const handleDragOverWithIndex = useCallback(
     (e: React.DragEvent) => {
       handleDragOver(e, index);
     },
-    [handleDragOver, index],
+    [handleDragOver, index]
   );
 
   const handleDropWithIndex = useCallback(
     (e: React.DragEvent) => {
       handleDrop(e, index);
     },
-    [handleDrop, index],
+    [handleDrop, index]
   );
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -239,7 +239,7 @@ export const ProviderPriorityList = ({ providers, onReorder, onToggle }: Provide
       setDraggedItem(null);
       setDragOverItem(null);
     },
-    [draggedItem, sortedProviders, onReorder],
+    [draggedItem, sortedProviders, onReorder]
   );
 
   const handleDragEnd = useCallback(() => {

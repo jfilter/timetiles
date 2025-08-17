@@ -1,10 +1,7 @@
 {
   "$schema": "https://typedoc.org/schema.json",
   "entryPointStrategy": "resolve",
-  "entryPoints": [
-    "./lib/**/*.ts",
-    "./app/api/**/*.ts"
-  ],
+  "entryPoints": ["./lib/**/*.ts", "./app/api/**/*.ts"],
   "out": "../docs/pages/developers/api",
   "plugin": ["typedoc-plugin-markdown"],
   "readme": "none",

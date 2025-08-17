@@ -52,7 +52,7 @@ export class ConfigDrivenSeeding {
   private logSeedStart(environment: string, envSettings: unknown): number {
     logger.info(
       { environment, settings: envSettings },
-      `Starting configuration-driven seed process for ${environment} environment`,
+      `Starting configuration-driven seed process for ${environment} environment`
     );
     return Date.now();
   }
@@ -70,7 +70,7 @@ export class ConfigDrivenSeeding {
   private async processCollections(
     collectionsToSeed: string[],
     configOverrides: Record<string, Partial<CollectionConfig>>,
-    environment: string,
+    environment: string
   ): Promise<void> {
     for (const collectionName of collectionsToSeed) {
       const config = getCollectionConfig(collectionName, environment);
@@ -87,7 +87,7 @@ export class ConfigDrivenSeeding {
   private applyConfigOverrides(
     config: CollectionConfig,
     configOverrides: Record<string, Partial<CollectionConfig>>,
-    collectionName: string,
+    collectionName: string
   ): CollectionConfig {
     return {
       ...config,
@@ -107,7 +107,7 @@ export class ConfigDrivenSeeding {
     startTime: number,
     collectionsToSeed: string[],
     environment: string,
-    envSettings: unknown,
+    envSettings: unknown
   ): void {
     const duration = Date.now() - startTime;
     logPerformance("Configuration-driven seed process", duration, {
@@ -118,7 +118,7 @@ export class ConfigDrivenSeeding {
 
     logger.info(
       { duration, collections: collectionsToSeed.length },
-      `Configuration-driven seed process completed successfully`,
+      `Configuration-driven seed process completed successfully`
     );
   }
 }

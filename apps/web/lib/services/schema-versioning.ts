@@ -61,7 +61,7 @@ export class SchemaVersioningService {
         recordCount?: number;
         batchCount?: number;
       }>;
-    },
+    }
   ): Promise<DatasetSchema> {
     const datasetId = typeof dataset === "object" ? dataset.id : dataset;
 
@@ -126,7 +126,7 @@ export class SchemaVersioningService {
   static async linkImportToSchemaVersion(
     payload: Payload,
     importJobId: string | number,
-    schemaVersionId: string | number,
+    schemaVersionId: string | number
   ): Promise<void> {
     await payload.update({
       collection: "import-jobs",

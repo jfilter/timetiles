@@ -92,7 +92,7 @@ const buildAuthHeaders = (authConfig: ScheduledImport["authConfig"] | undefined)
 const detectFileTypeFromResponse = (
   response: Response,
   url: string,
-  expectedContentType?: string,
+  expectedContentType?: string
 ): { extension: string; mimeType: string } => {
   let contentType = response.headers.get("content-type")?.toLowerCase() || "";
 
@@ -147,7 +147,7 @@ const detectFileTypeFromResponse = (
  */
 const fetchUrlData = async (
   url: string,
-  options: FetchOptions = {},
+  options: FetchOptions = {}
 ): Promise<{
   data: Buffer;
   contentType: string;
@@ -235,7 +235,7 @@ const fetchWithRetry = async (
   url: string,
   options: FetchOptions,
   maxRetries: number = 3,
-  retryDelayMinutes: number = 5,
+  retryDelayMinutes: number = 5
 ): Promise<{
   data: Buffer;
   contentType: string;
@@ -323,7 +323,7 @@ export const urlFetchJob = {
         sourceUrl,
         fetchOptions,
         scheduledImport?.maxRetries || 1,
-        scheduledImport?.retryDelayMinutes || 5,
+        scheduledImport?.retryDelayMinutes || 5
       );
 
       // Check for duplicate content if not skipped
@@ -367,7 +367,7 @@ export const urlFetchJob = {
       const { extension, mimeType } = detectFileTypeFromResponse(
         new Response(null, { headers: { "content-type": contentType } }),
         sourceUrl,
-        advancedConfig.expectedContentType,
+        advancedConfig.expectedContentType
       );
 
       const timestamp = Date.now();

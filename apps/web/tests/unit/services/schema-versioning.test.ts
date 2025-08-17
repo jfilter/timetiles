@@ -381,7 +381,7 @@ describe("SchemaVersioningService", () => {
       mockPayload.update.mockRejectedValueOnce(mockError);
 
       await expect(SchemaVersioningService.linkImportToSchemaVersion(mockPayload, 123, 456)).rejects.toThrow(
-        "Database update failed",
+        "Database update failed"
       );
 
       expect(mockPayload.update).toHaveBeenCalledWith({

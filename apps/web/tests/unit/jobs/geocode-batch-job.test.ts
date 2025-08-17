@@ -153,7 +153,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         "import-123",
         2, // processedCount (both rows have addresses and were processed)
         mockImportJob,
-        expect.any(Object), // geocoding results
+        expect.any(Object) // geocoding results
       );
     });
 
@@ -202,7 +202,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         "import-123",
         1, // processedCount (all rows were processed)
         mockImportJob,
-        expect.any(Object),
+        expect.any(Object)
       );
     });
 
@@ -259,7 +259,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         "import-123",
         2, // processedCount (both rows processed)
         mockImportJob,
-        expect.any(Object),
+        expect.any(Object)
       );
     });
 
@@ -417,7 +417,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
               lng: expect.any(Number),
             }),
           }),
-        }),
+        })
       );
     });
   });
@@ -628,7 +628,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         "import-123",
         4, // processedCount (all rows processed)
         mockImportJob,
-        expect.any(Object),
+        expect.any(Object)
       );
     });
 

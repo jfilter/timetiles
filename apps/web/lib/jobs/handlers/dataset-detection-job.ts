@@ -212,7 +212,7 @@ export const datasetDetectionJob = {
           if (datasetMapping?.mappingType === "multiple" && datasetMapping.sheetMappings) {
             // Look for configured mapping for this sheet
             const mapping = datasetMapping.sheetMappings.find(
-              (m: any) => m.sheetIdentifier === sheetName || m.sheetIdentifier === sheet.index?.toString(),
+              (m: any) => m.sheetIdentifier === sheetName || m.sheetIdentifier === sheet.index?.toString()
             );
 
             if (mapping) {

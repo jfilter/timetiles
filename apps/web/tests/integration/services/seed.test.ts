@@ -181,7 +181,7 @@ describe.sequential("Seed System", () => {
         testEnv.seedManager.seed({
           collections: ["datasets"],
           environment: "test",
-        }),
+        })
       ).resolves.toBeUndefined();
 
       // Verify no datasets were actually created due to missing catalogs
@@ -201,7 +201,7 @@ describe.sequential("Seed System", () => {
         testEnv.seedManager.seed({
           collections: ["events"],
           environment: "test",
-        }),
+        })
       ).resolves.toBeUndefined();
 
       // Verify no events were actually created due to missing datasets

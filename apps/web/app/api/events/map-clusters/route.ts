@@ -88,7 +88,7 @@ const parseBounds = (boundsParam: string | null): { bounds: MapBounds } | { erro
         {
           error: "Invalid bounds format. Expected: {north, south, east, west}",
         },
-        { status: 400 },
+        { status: 400 }
       ),
     };
   }
@@ -129,7 +129,7 @@ const createFunctionNotFoundResponse = (): NextResponse => {
       error: "Database function cluster_events not found. Please ensure migrations are run.",
       code: "MISSING_DB_FUNCTION",
     },
-    { status: 500 },
+    { status: 500 }
   );
 };
 
@@ -137,7 +137,7 @@ const executeClusteringQuery = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   bounds: MapBounds,
   zoom: number,
-  filters: Record<string, unknown>,
+  filters: Record<string, unknown>
 ) => {
   const { catalog, datasets, startDate, endDate } = filters;
 
@@ -175,7 +175,7 @@ const transformResultToClusters = (rows: Array<Record<string, unknown>>) =>
         type: "Point",
         coordinates: [
           parseFloat(
-            typeof row.longitude === "string" || typeof row.longitude === "number" ? String(row.longitude) : "0",
+            typeof row.longitude === "string" || typeof row.longitude === "number" ? String(row.longitude) : "0"
           ),
           parseFloat(typeof row.latitude === "string" || typeof row.latitude === "number" ? String(row.latitude) : "0"),
         ],
@@ -201,6 +201,6 @@ const handleError = (error: unknown): NextResponse => {
       error: "Failed to fetch map clusters",
       details: (error as Error).message,
     },
-    { status: 500 },
+    { status: 500 }
   );
 };

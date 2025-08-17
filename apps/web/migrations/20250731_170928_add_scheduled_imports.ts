@@ -1,5 +1,5 @@
-import { sql } from '@payloadcms/db-postgres'
-import type { MigrateUpArgs, MigrateDownArgs } from '@payloadcms/db-postgres'
+import { sql } from "@payloadcms/db-postgres";
+import type { MigrateUpArgs, MigrateDownArgs } from "@payloadcms/db-postgres";
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
@@ -189,7 +189,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "_scheduled_imports_v_latest_idx" ON "payload"."_scheduled_imports_v" USING btree ("latest");
   CREATE INDEX "_scheduled_imports_v_autosave_idx" ON "payload"."_scheduled_imports_v" USING btree ("autosave");
   ALTER TABLE "payload"."payload_locked_documents_rels" ADD CONSTRAINT "payload_locked_documents_rels_scheduled_imports_fk" FOREIGN KEY ("scheduled_imports_id") REFERENCES "payload"."scheduled_imports"("id") ON DELETE cascade ON UPDATE no action;
-  CREATE INDEX "payload_locked_documents_rels_scheduled_imports_id_idx" ON "payload"."payload_locked_documents_rels" USING btree ("scheduled_imports_id");`)
+  CREATE INDEX "payload_locked_documents_rels_scheduled_imports_id_idx" ON "payload"."payload_locked_documents_rels" USING btree ("scheduled_imports_id");`);
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
@@ -232,5 +232,5 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   DROP TYPE "payload"."enum__scheduled_imports_v_version_schedule_type";
   DROP TYPE "payload"."enum__scheduled_imports_v_version_frequency";
   DROP TYPE "payload"."enum__scheduled_imports_v_version_last_status";
-  DROP TYPE "payload"."enum__scheduled_imports_v_version_status";`)
+  DROP TYPE "payload"."enum__scheduled_imports_v_version_status";`);
 }

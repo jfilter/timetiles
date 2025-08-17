@@ -28,7 +28,7 @@ export const getObjectProperty = (obj: Record<string, unknown>, key: string): un
 
 export const parseCSVFile = (
   filePath: string,
-  logger: ReturnType<typeof createJobLogger>,
+  logger: ReturnType<typeof createJobLogger>
 ): Record<string, unknown>[] => {
   logger.info("Starting CSV parsing", { filePath });
 
@@ -53,7 +53,7 @@ export const parseCSVFile = (
 
 export const parseExcelFile = (
   filePath: string,
-  logger: ReturnType<typeof createJobLogger>,
+  logger: ReturnType<typeof createJobLogger>
 ): Record<string, unknown>[] => {
   logger.info("Starting Excel parsing", { filePath });
 
@@ -102,7 +102,7 @@ export const parseExcelFile = (
 export const parseFileByType = (
   filePath: string,
   fileType: "csv" | "xlsx",
-  logger: ReturnType<typeof createJobLogger>,
+  logger: ReturnType<typeof createJobLogger>
 ): Record<string, unknown>[] => {
   switch (fileType) {
     case "csv":

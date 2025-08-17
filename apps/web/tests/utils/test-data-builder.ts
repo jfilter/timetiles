@@ -154,7 +154,7 @@ export class EventBuilder extends BaseTestBuilder<Event> {
 
   private generateNearbyCoordinate(
     center: { latitude: number; longitude: number },
-    radiusKm: number,
+    radiusKm: number
   ): { lat: number; lng: number } {
     // Convert radius to degrees (rough approximation)
     const radiusDeg = radiusKm / 111; // 1 degree ≈ 111 km

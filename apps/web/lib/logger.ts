@@ -87,7 +87,7 @@ export const logPerformance = (operation: string, duration: number, metadata?: R
       duration,
       ...metadata,
     },
-    `${operation} completed in ${duration}ms`,
+    `${operation} completed in ${duration}ms`
   );
 };
 
@@ -100,7 +100,7 @@ export const logError = (error: unknown, context: string, metadata?: Record<stri
       context,
       ...metadata,
     },
-    `Error in ${context}: ${err.message}`,
+    `Error in ${context}: ${err.message}`
   );
 };
 

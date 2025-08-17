@@ -107,7 +107,7 @@ type BoundsType = LngLatBounds | SimpleBounds | null;
 const buildEventParams = (
   filters: FilterState,
   bounds: BoundsType,
-  additionalParams: Record<string, string> = {},
+  additionalParams: Record<string, string> = {}
 ): URLSearchParams => {
   const params = new URLSearchParams();
 
@@ -150,7 +150,7 @@ const buildEventParams = (
         south: 40.5,
         east: -73.6,
         north: 40.9,
-      }),
+      })
     );
   }
 
@@ -167,7 +167,7 @@ const fetchEvents = async (
   filters: FilterState,
   bounds: BoundsType,
   limit: number = 1000,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<EventsListResponse> => {
   const params = buildEventParams(filters, bounds, { limit: limit.toString() });
 
@@ -188,7 +188,7 @@ const fetchMapClusters = async (
   filters: FilterState,
   bounds: BoundsType,
   zoom: number,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<MapClustersResponse> => {
   const params = buildEventParams(filters, bounds, { zoom: zoom.toString() });
 
@@ -206,7 +206,7 @@ const fetchMapClusters = async (
 const fetchHistogram = async (
   filters: FilterState,
   bounds: BoundsType,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<HistogramResponse> => {
   const params = buildEventParams(filters, bounds);
 
@@ -237,7 +237,7 @@ const fetchImportProgress = async (importId: string, signal?: AbortSignal): Prom
 
 const uploadImport = async (
   formData: FormData,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<{ importId: string; success: boolean }> => {
   logger.debug("Uploading import file via Payload endpoint");
 
@@ -303,7 +303,7 @@ export const useEventsListQuery = (
   filters: FilterState,
   bounds: BoundsType,
   limit: number = 1000,
-  enabled: boolean = true,
+  enabled: boolean = true
 ) =>
   useQuery({
     queryKey: eventsQueryKeys.list(filters, bounds, limit),

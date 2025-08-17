@@ -317,7 +317,7 @@ export class CoordinateValidator {
     if (samples.length == 0) return false;
 
     const possiblySwapped = samples.filter(
-      (s) => Math.abs(s.lat) > 90 && Math.abs(s.lat) <= 180 && Math.abs(s.lon) <= 90,
+      (s) => Math.abs(s.lat) > 90 && Math.abs(s.lat) <= 180 && Math.abs(s.lon) <= 90
     );
 
     return possiblySwapped.length > samples.length * 0.7;
@@ -516,5 +516,5 @@ export class CoordinateValidator {
 
 const isValidMatchGroup = (
   match: RegExpExecArray,
-  index: number,
+  index: number
 ): match is RegExpExecArray & { [K in typeof index]: string } => match[index] != undefined && match[index] != null;

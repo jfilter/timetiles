@@ -39,7 +39,7 @@ export const isValidCoordinate = (lat: number | null, lon: number | null): boole
  */
 export const categorizeCoordinateValue = (
   value: number,
-  stats: { validCoords: number; latOnly: number; lonOnly: number },
+  stats: { validCoords: number; latOnly: number; lonOnly: number }
 ): void => {
   const absValue = Math.abs(value);
 
@@ -58,7 +58,7 @@ export const categorizeCoordinateValue = (
 export const isValidLatitudeCandidate = (
   stats: { latOnly: number; total: number; samples: number[] },
   coordRatio: number,
-  bestLatScore: number,
+  bestLatScore: number
 ): boolean => {
   // Check if this column is mostly valid latitudes (all values within -90 to 90)
   if (stats.latOnly == stats.total && coordRatio > bestLatScore) {
@@ -75,7 +75,7 @@ export const isValidLatitudeCandidate = (
 export const isValidLongitudeCandidate = (
   stats: { samples: number[] },
   coordRatio: number,
-  bestLonScore: number,
+  bestLonScore: number
 ): boolean => {
   if (coordRatio > bestLonScore) {
     const uniqueValues = new Set(stats.samples).size;

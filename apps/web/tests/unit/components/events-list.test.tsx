@@ -272,7 +272,7 @@ describe("EventsList", () => {
           title: `Event ${i + 1}`,
           description: `Description for event ${i + 1}`,
         },
-      }),
+      })
     );
 
     const { container } = renderWithProviders(<EventsList events={manyEvents} />);
