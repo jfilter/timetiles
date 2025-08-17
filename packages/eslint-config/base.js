@@ -324,7 +324,33 @@ export default [
       "turbo/no-undeclared-env-vars": "error",
 
       // JSDoc
-      "jsdoc/require-file-overview": ["warn", { tags: { module: { initialCommentsOnly: true, mustExist: true } } }],
+      "jsdoc/require-file-overview": [
+        "warn",
+        {
+          tags: {
+            module: {
+              initialCommentsOnly: true,
+              mustExist: true,
+              preventDuplicates: true,
+            },
+          },
+        },
+      ],
+      // Ensure @module tag doesn't have inline descriptions (TypeDoc requirement)
+      "jsdoc/check-tag-names": [
+        "warn",
+        {
+          definedTags: ["module", "category"],
+        },
+      ],
+      "jsdoc/empty-tags": [
+        "error",
+        {
+          tags: ["module"], // @module should have no inline content for TypeDoc
+        },
+      ],
+      "jsdoc/no-types": "off", // We use TypeScript for types
+      "jsdoc/require-jsdoc": "off", // Don't require JSDoc on everything
     },
   },
   // Allow default exports for config files

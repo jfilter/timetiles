@@ -1,5 +1,5 @@
 /**
- * @module Implements a service for progressively building a JSON schema from data samples.
+ * Implements a service for progressively building a JSON schema from data samples.
  *
  * This class is designed to analyze records incrementally, typically in batches, to infer a
  * schema without needing to load the entire dataset into memory. It tracks statistics for
@@ -11,6 +11,9 @@
  * - Detects potential ID fields, geographic coordinate fields, and enumerations (enums).
  * - Tracks field statistics and type conflicts.
  * - Can compare the generated schema against a previous version to detect changes.
+ * 
+ * @module
+ * @category Services
  */
 import { InputData, jsonInputForTargetLanguage, quicktype } from "quicktype-core";
 
