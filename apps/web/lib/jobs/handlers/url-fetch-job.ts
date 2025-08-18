@@ -20,9 +20,9 @@ export interface UrlFetchJobInput {
   // Direct URL fetch parameters
   sourceUrl: string;
   authConfig?: ScheduledImport["authConfig"];
-  catalogId?: string;
+  catalogId?: number | string;
   originalName: string;
-  userId?: string;
+  userId?: number | string;
 }
 
 interface FetchOptions {
