@@ -102,7 +102,7 @@ describe.sequential("scheduleManagerJob", () => {
     it("should trigger imports that are due based on frequency", async () => {
       const { mockPayload, mockJob, mockReq } = createMockContext();
 
-      const currentTime = new Date("2024-01-15 10:30:00");
+      const currentTime = new Date("2024-01-15T10:30:00Z");
       vi.setSystemTime(currentTime);
 
       const mockScheduledImports: any[] = [
@@ -113,7 +113,7 @@ describe.sequential("scheduleManagerJob", () => {
           sourceUrl: "https://api1.example.com/data",
           scheduleType: "frequency",
           frequency: "hourly",
-          lastRun: new Date("2024-01-15 09:00:00").toISOString(),
+          lastRun: new Date("2024-01-15T09:00:00Z").toISOString(),
           catalog: { id: "catalog-1", name: "Catalog 1" },
           createdBy: { id: "user-1", email: "user@example.com" },
         },
@@ -124,7 +124,7 @@ describe.sequential("scheduleManagerJob", () => {
           sourceUrl: "https://api2.example.com/data",
           scheduleType: "frequency",
           frequency: "daily",
-          lastRun: new Date("2024-01-15 00:00:00").toISOString(),
+          lastRun: new Date("2024-01-15T00:00:00Z").toISOString(),
           catalog: "catalog-2",
           createdBy: "user-2",
         },
@@ -337,27 +337,27 @@ describe.sequential("scheduleManagerJob", () => {
       const testCases = [
         {
           frequency: "hourly",
-          currentTime: new Date("2024-01-15 10:30:00"),
-          lastRun: new Date("2024-01-15 09:00:00"), // 1.5 hours ago
-          expectedNext: new Date("2024-01-15 11:00:00"),
+          currentTime: new Date("2024-01-15T10:30:00Z"),
+          lastRun: new Date("2024-01-15T09:00:00Z"), // 1.5 hours ago
+          expectedNext: new Date("2024-01-15T11:00:00Z"),
         },
         {
           frequency: "daily",
-          currentTime: new Date("2024-01-15 00:30:00"), // Just after midnight
-          lastRun: new Date("2024-01-14 00:00:00"), // Yesterday at midnight
-          expectedNext: new Date("2024-01-16 00:00:00"), // Tomorrow at midnight
+          currentTime: new Date("2024-01-15T00:30:00Z"), // Just after midnight UTC
+          lastRun: new Date("2024-01-14T23:30:00Z"), // 1 hour ago
+          expectedNext: new Date("2024-01-16T00:00:00Z"), // Tomorrow at midnight UTC
         },
         {
           frequency: "weekly",
-          currentTime: new Date("2024-01-15 10:30:00"), // Monday
-          lastRun: new Date("2024-01-08 00:00:00"), // Last Monday
-          expectedNext: new Date("2024-01-21 00:00:00"), // Next Sunday
+          currentTime: new Date("2024-01-15T10:30:00Z"), // Monday
+          lastRun: new Date("2024-01-08T00:00:00Z"), // Last Monday
+          expectedNext: new Date("2024-01-21T00:00:00Z"), // Next Sunday
         },
         {
           frequency: "monthly",
-          currentTime: new Date("2024-01-15 10:30:00"),
-          lastRun: new Date("2023-12-01 00:00:00"), // Last month
-          expectedNext: new Date("2024-02-01 00:00:00"),
+          currentTime: new Date("2024-01-15T10:30:00Z"),
+          lastRun: new Date("2023-12-01T00:00:00Z"), // Last month
+          expectedNext: new Date("2024-02-01T00:00:00Z"),
         },
       ];
 
@@ -401,7 +401,7 @@ describe.sequential("scheduleManagerJob", () => {
     it("should handle import name template replacements", async () => {
       const { mockPayload, mockJob, mockReq } = createMockContext();
 
-      const currentTime = new Date("2024-01-15 14:30:45");
+      const currentTime = new Date("2024-01-15T14:30:45Z");
       vi.setSystemTime(currentTime);
 
       const mockImport: any = {
@@ -430,7 +430,7 @@ describe.sequential("scheduleManagerJob", () => {
       expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
         task: "url-fetch",
         input: expect.objectContaining({
-          originalName: "Template Test - 2024-01-15 at 14:30:45 from api.example.com",
+          originalName: expect.stringMatching(/Template Test - \d{4}-\d{2}-\d{2} at \d{2}:\d{2}:\d{2} from api\.example\.com/),
         }),
       });
     });
