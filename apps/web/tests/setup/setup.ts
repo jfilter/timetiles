@@ -5,6 +5,7 @@ import path from "path";
 
 import { logger } from "@/lib/logger";
 
+import { isDatabaseAvailable } from "./check-database";
 import { createTestDatabase } from "./database-setup";
 import { verifyDatabaseSchema } from "./verify-schema";
 
@@ -31,8 +32,29 @@ process.env.UPLOAD_DIR_MEDIA = `/tmp/media`;
 process.env.UPLOAD_DIR_IMPORT_FILES = `/tmp/import-files`;
 process.env.UPLOAD_TEMP_DIR = `/tmp/temp`;
 
+// Check if we're running integration tests
+const isIntegrationTest = process.env.VITEST_POOL_ID && 
+  (process.argv.some(arg => arg.includes('integration')) || 
+   process.cwd().includes('integration'));
+
 // Global setup to ensure clean test environment
 beforeAll(async () => {
+  // Skip database setup for unit tests
+  if (!isIntegrationTest) {
+    return;
+  }
+
+  // Check if database is available for integration tests
+  const dbAvailable = await isDatabaseAvailable();
+  
+  if (!dbAvailable) {
+    console.error('\n❌ PostgreSQL is not running!');
+    console.error('   Integration tests require a running database.');
+    console.error('   Run "make dev" or "docker compose up -d postgres" to start the database.\n');
+    
+    throw new Error('Database is not available. Cannot run integration tests without PostgreSQL.');
+  }
+
   if (process.env.LOG_LEVEL && process.env.LOG_LEVEL !== "silent") {
     logger.info(`Setting up test environment for worker ${workerId}`);
   }
