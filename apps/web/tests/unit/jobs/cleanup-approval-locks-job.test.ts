@@ -26,10 +26,10 @@ describe.sequential("CleanupApprovalLocksJob Handler", () => {
         },
       };
 
-      (StageTransitionService.cleanupTask as any).mockResolvedValue(mockCleanupResult);
+      (StageTransitionService.cleanupTask as any).mockReturnValue(mockCleanupResult);
 
       // Execute job
-      const result = await cleanupApprovalLocksJob.handler();
+      const result = cleanupApprovalLocksJob.handler();
 
       // Verify result
       expect(result).toEqual({
@@ -53,10 +53,10 @@ describe.sequential("CleanupApprovalLocksJob Handler", () => {
         },
       };
 
-      (StageTransitionService.cleanupTask as any).mockResolvedValue(mockCleanupResult);
+      (StageTransitionService.cleanupTask as any).mockReturnValue(mockCleanupResult);
 
       // Execute job
-      const result = await cleanupApprovalLocksJob.handler();
+      const result = cleanupApprovalLocksJob.handler();
 
       // Verify result
       expect(result).toEqual({
@@ -76,10 +76,12 @@ describe.sequential("CleanupApprovalLocksJob Handler", () => {
       const { StageTransitionService } = await import("@/lib/services/stage-transition");
 
       const mockError = new Error("Service cleanup failed");
-      (StageTransitionService.cleanupTask as any).mockRejectedValue(mockError);
+      (StageTransitionService.cleanupTask as any).mockImplementation(() => {
+        throw mockError;
+      });
 
       // Execute job and expect error
-      await expect(cleanupApprovalLocksJob.handler()).rejects.toThrow("Service cleanup failed");
+      expect(() => cleanupApprovalLocksJob.handler()).toThrow("Service cleanup failed");
 
       // Verify service call was made
       expect(StageTransitionService.cleanupTask).toHaveBeenCalledTimes(1);

@@ -171,7 +171,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       });
 
       // Verify schema builder was called with non-duplicate rows
-      expect(mockSchemaBuilderInstance.processBatch).toHaveBeenCalledWith(mockFileData, 0);
+      expect(mockSchemaBuilderInstance.processBatch).toHaveBeenCalledWith(mockFileData);
 
       // Verify progress tracking was called
       expect(mocks.updateJobProgress).toHaveBeenCalledWith(
@@ -467,8 +467,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
       // Verify schema builder was called with filtered non-duplicate rows
       expect(mockSchemaBuilderInstance.processBatch).toHaveBeenCalledWith(
-        [{ id: "1", title: "Event 1" }], // Only non-duplicate row
-        0
+        [{ id: "1", title: "Event 1" }] // Only non-duplicate row
       );
 
       // Verify progress tracking was called with correct count
