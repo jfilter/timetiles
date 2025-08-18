@@ -1,9 +1,11 @@
 /**
- * @module Cleanup job for service processing locks.
+ * Cleanup job for service processing locks.
  *
  * This job runs periodically to clean up any stale processing locks in the
  * StageTransitionService. It prevents memory leaks from locks that might not
  * have been properly cleaned up due to application crashes or errors.
+ *
+ * @module
  */
 
 import { StageTransitionService } from "@/lib/services/stage-transition";
@@ -17,12 +19,12 @@ export const cleanupApprovalLocksJob = {
     },
   ],
   handler: () => {
-    const transitionResult = StageTransitionService.cleanupTask();
+    const result = StageTransitionService.cleanupTask();
 
     return {
       output: {
-        transitionLocksCleaned: transitionResult.output.cleaned,
-        totalCleaned: transitionResult.output.cleaned,
+        transitionLocksCleaned: result.output.cleaned,
+        totalCleaned: result.output.cleaned,
       },
     };
   },
