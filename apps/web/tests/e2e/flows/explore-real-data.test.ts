@@ -11,7 +11,7 @@ test.describe("Explore Page - Real Data Tests", () => {
     await explorePage.waitForMapLoad();
   });
 
-  test("should work with any available catalog data", async ({ page }) => {
+  test("should work with available catalog data", async ({ page }) => {
     // Check if catalog select is available
     await expect(explorePage.catalogSelect).toBeVisible();
 
@@ -19,51 +19,51 @@ test.describe("Explore Page - Real Data Tests", () => {
     await explorePage.catalogSelect.click();
 
     // Wait for dropdown options to appear
-    await page.waitForTimeout(1000);
+    await page.locator('[role="option"]').first().waitFor({ state: "visible" });
 
-    // Check if there are any catalog options available
+    // Check that there are catalog options available
     const catalogOptions = await page.locator('[role="option"]').count();
+    expect(catalogOptions).toBeGreaterThan(1); // Should have at least "All Catalogs" + actual catalogs
 
-    if (catalogOptions > 1) {
-      // Should have at least "All Catalogs" + actual catalogs
-      // Get the first real catalog (not "All Catalogs")
-      const firstCatalog = page.locator('[role="option"]:not(:has-text("All Catalogs"))').first();
-      const catalogName = await firstCatalog.textContent();
+    // Get the first real catalog (not "All Catalogs")
+    const firstCatalog = page.locator('[role="option"]:not(:has-text("All Catalogs"))').first();
+    const catalogName = await firstCatalog.textContent();
+    expect(catalogName?.trim()).toBeTruthy();
 
-      if (catalogName?.trim()) {
-        // Select the first available catalog
-        await firstCatalog.click();
+    // Select the first available catalog
+    await firstCatalog.click();
 
-        // Wait for datasets to load
-        await page.waitForTimeout(1000);
+    // Wait for datasets section to update
+    await page.waitForSelector('input[type="checkbox"]', { timeout: 5000 });
 
-        // Check if any datasets are available
-        const datasetCheckboxes = await page.locator('input[type="checkbox"]').count();
+    // Check that datasets are available
+    const datasetCheckboxes = await page.locator('input[type="checkbox"]').count();
+    expect(datasetCheckboxes).toBeGreaterThan(0);
 
-        if (datasetCheckboxes > 0) {
-          // Select the first dataset
-          const firstDatasetCheckbox = page.locator('input[type="checkbox"]').first();
-          await firstDatasetCheckbox.check();
+    // Select the first dataset
+    const firstDatasetCheckbox = page.locator('input[type="checkbox"]').first();
+    
+    // Set up promise to wait for API response before checking the box
+    const responsePromise = page.waitForResponse(
+      (response) => response.url().includes("/api/events"),
+      { timeout: 5000 }
+    ).catch(() => {
+      // Response might not come if data is cached or already loaded
+      return null;
+    });
+    
+    await firstDatasetCheckbox.check();
+    
+    // Wait for response if it comes
+    await responsePromise;
+    
+    // Wait for events to load
+    await explorePage.waitForEventsToLoad();
 
-          // Wait for API response
-          try {
-            await page.waitForResponse((response) => response.url().includes("/api/events"), { timeout: 10000 });
-
-            // Wait for events to load
-            await explorePage.waitForEventsToLoad();
-
-            // Check that the page shows some result (events count should be visible)
-            await expect(explorePage.eventsCount).toBeVisible();
-          } catch {
-            // API call failed during E2E test (expected behavior)
-          }
-        } else {
-          // No datasets available - this is an acceptable state
-        }
-      }
-    } else {
-      // No catalogs available - this is an acceptable state
-    }
+    // Check that the page shows results
+    await expect(explorePage.eventsCount).toBeVisible();
+    const eventCount = await explorePage.getEventCount();
+    expect(eventCount).toBeGreaterThanOrEqual(0);
   });
 
   test("should handle date filtering with any data", async () => {
@@ -103,7 +103,8 @@ test.describe("Explore Page - Real Data Tests", () => {
     expect(mapBox!.height).toBeGreaterThan(100);
 
     // URL should eventually have bounds parameter after interaction
-    await page.waitForTimeout(2000); // Give time for bounds to update
+    // Wait briefly for any map updates
+    await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {});
     const url = new URL(page.url());
     // Bounds might or might not be set depending on map events, but URL should be valid
     expect(url.pathname).toBe("/explore");

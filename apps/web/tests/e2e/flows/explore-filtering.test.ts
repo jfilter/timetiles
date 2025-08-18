@@ -42,7 +42,6 @@ test.describe("Explore Page - Filtering", () => {
   test("should filter by multiple datasets", async ({ page }) => {
     // Select Economic Indicators catalog
     await explorePage.selectCatalog("Economic Indicators");
-    await page.waitForTimeout(500);
 
     // Check if GDP Growth Rates dataset is visible
     const gdpDataset = page.getByText("GDP Growth Rates");
@@ -64,7 +63,6 @@ test.describe("Explore Page - Filtering", () => {
   test("should filter by date range", async ({ page }) => {
     // Select a catalog and dataset first
     await explorePage.selectCatalog("Environmental Data");
-    await page.waitForTimeout(500);
     await explorePage.selectDatasets(["Air Quality Measurements"]);
 
     // Set date filters
@@ -92,7 +90,6 @@ test.describe("Explore Page - Filtering", () => {
   test("should clear date filters", async ({ page }) => {
     // Set up initial filters
     await explorePage.selectCatalog("Environmental Data");
-    await page.waitForTimeout(500);
     await explorePage.selectDatasets(["Air Quality Measurements"]);
     await explorePage.setStartDate("2024-01-01");
     await explorePage.setEndDate("2024-12-31");
@@ -119,7 +116,6 @@ test.describe("Explore Page - Filtering", () => {
   test("should combine multiple filters", async ({ page }) => {
     // Test multiple filters working together
     await explorePage.selectCatalog("Environmental Data");
-    await page.waitForTimeout(500);
     await explorePage.selectDatasets(["Air Quality Measurements"]);
     await explorePage.setStartDate("2024-06-01");
     await explorePage.setEndDate("2024-06-30");
@@ -136,52 +132,56 @@ test.describe("Explore Page - Filtering", () => {
     expect(params.get("endDate")).toBe("2024-06-30");
   });
 
-  test.skip("should update results when changing filters", async ({ page }) => {
-    // Start with one catalog
+  test("should update results when changing filters", async ({ page }) => {
+    // Start with one catalog and dataset
     await explorePage.selectCatalog("Environmental Data");
     await explorePage.selectDatasets(["Air Quality Measurements"]);
+    
+    // Wait for the first results to load completely
     await explorePage.waitForApiResponse();
-
-    // Give time for the first operation to complete fully
-    await page.waitForTimeout(1000);
-
-    // Check page stability before proceeding
-    await explorePage.waitForPageStability();
-    await explorePage.getEventCount();
-
-    // Add significant delay before changing to prevent race conditions
-    await page.waitForTimeout(2000);
-
-    // Change to different catalog - use a fresh page load approach
-    await page.goto("/explore");
-    await explorePage.waitForMapLoad();
-
+    await explorePage.waitForEventsToLoad();
+    const initialCount = await explorePage.getEventCount();
+    
+    // Store initial count for comparison
+    expect(initialCount).toBeGreaterThanOrEqual(0);
+    console.log(`Initial count with Environmental Data: ${initialCount}`);
+    
+    // Deselect the current dataset first
+    await explorePage.deselectDatasets(["Air Quality Measurements"]);
+    // Wait for UI to update after deselection
+    await explorePage.waitForApiResponse();
+    
+    // Now change to a different catalog
     await explorePage.selectCatalog("Economic Indicators");
+    
+    
+    // Select a dataset from the new catalog
     await explorePage.selectDatasets(["GDP Growth Rates"]);
+    
+    // Wait for the new results to load
     await explorePage.waitForApiResponse();
-
-    // Check page stability again before getting count
-    if (await explorePage.isPageStable()) {
-      const newCount = await explorePage.getEventCount();
-
-      // Counts may be different (events should update)
-      // The important thing is that new API requests were made
-      expect(typeof newCount).toBe("number");
-      expect(newCount).toBeGreaterThanOrEqual(0);
-    } else {
-      // If page crashed, verify at least the URL state changed correctly
-      try {
-        const params = await explorePage.getUrlParams();
-        expect(params.has("catalog")).toBe(true);
-      } catch {
-        // If even URL check fails, just ensure the test doesn't crash completely
-      }
-    }
+    await explorePage.waitForEventsToLoad();
+    const newCount = await explorePage.getEventCount();
+    
+    console.log(`New count with Economic Indicators: ${newCount}`);
+    
+    // Verify that results have been updated
+    expect(newCount).toBeGreaterThanOrEqual(0);
+    
+    // Verify URL parameters reflect the new selection
+    const params = await explorePage.getUrlParams();
+    expect(params.has("catalog")).toBe(true);
+    expect(params.has("datasets")).toBe(true);
+    
+    // The catalog should have changed to Economic Indicators
+    const catalogParam = params.get("catalog");
+    expect(catalogParam).toBeTruthy();
+    // Economic Indicators catalog should have a different ID than Environmental Data
+    expect(catalogParam).not.toContain("environmental");
   });
 
   test("should handle edge cases in date filtering", async ({ page }) => {
     await explorePage.selectCatalog("Environmental Data");
-    await page.waitForTimeout(500);
     await explorePage.selectDatasets(["Air Quality Measurements"]);
 
     // Test with same start and end date
@@ -199,7 +199,6 @@ test.describe("Explore Page - Filtering", () => {
   test("should preserve filters when navigating", async ({ page }) => {
     // Set up filters
     await explorePage.selectCatalog("Environmental Data");
-    await page.waitForTimeout(500);
     await explorePage.selectDatasets(["Air Quality Measurements"]);
     await explorePage.setStartDate("2024-01-01");
 

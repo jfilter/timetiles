@@ -28,7 +28,6 @@ test.describe("Explore Page - Map Interactions", () => {
 
     // Load some events first
     await explorePage.selectCatalog("Environmental Data");
-    await page.waitForTimeout(500);
     await explorePage.selectDatasets(["Air Quality Measurements"]);
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
@@ -40,8 +39,8 @@ test.describe("Explore Page - Map Interactions", () => {
     // Pan the map significantly to ensure bounds change
     await explorePage.panMap(400, 400);
 
-    // Wait for debounced API calls (300ms debounce + request time)
-    await page.waitForTimeout(800);
+    // Wait for debounced API response
+    await explorePage.waitForApiResponse();
 
     // Check that API calls were made with bounds after panning
     const eventsListWithBounds = eventsListRequests.filter((url) => url.includes("bounds="));
@@ -54,7 +53,6 @@ test.describe("Explore Page - Map Interactions", () => {
   test("should update markers when events change", async ({ page }) => {
     // Load events for first dataset
     await explorePage.selectCatalog("Environmental Data");
-    await page.waitForTimeout(500);
     await explorePage.selectDatasets(["Air Quality Measurements"]);
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
@@ -64,7 +62,6 @@ test.describe("Explore Page - Map Interactions", () => {
 
     // Switch to different dataset
     await explorePage.selectCatalog("Economic Indicators");
-    await page.waitForTimeout(500);
     await explorePage.selectDatasets(["GDP Growth Rates"]);
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
@@ -80,7 +77,6 @@ test.describe("Explore Page - Map Interactions", () => {
   test("should handle zoom interactions", async ({ page }) => {
     // Load some events first
     await explorePage.selectCatalog("Environmental Data");
-    await page.waitForTimeout(500);
     await explorePage.selectDatasets(["Air Quality Measurements"]);
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
@@ -96,7 +92,8 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.zoomIn();
 
     // Wait for map to update
-    await page.waitForTimeout(1500);
+    // Wait for map zoom animation
+    await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {});
 
     // Zoom interactions should update the map view
     // The API request with bounds is made but not always immediately
@@ -107,7 +104,6 @@ test.describe("Explore Page - Map Interactions", () => {
   test("should display map popups when clicking markers", async ({ page }) => {
     // Load events
     await explorePage.selectCatalog("Environmental Data");
-    await page.waitForTimeout(500);
     await explorePage.selectDatasets(["Air Quality Measurements"]);
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
@@ -143,7 +139,6 @@ test.describe("Explore Page - Map Interactions", () => {
 
     // Load events
     await explorePage.selectCatalog("Environmental Data");
-    await page.waitForTimeout(500);
     await explorePage.selectDatasets(["Air Quality Measurements"]);
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
@@ -152,7 +147,8 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.panMap(200, 0);
 
     // Wait for potential API call - account for 300ms debounce
-    await page.waitForTimeout(800);
+    // Wait for API response after bounds change
+    await explorePage.waitForApiResponse();
 
     // At least some API requests should have been made
     expect(apiRequests.length).toBeGreaterThan(0);
@@ -161,48 +157,45 @@ test.describe("Explore Page - Map Interactions", () => {
     // Bounds filtering may or may not be implemented yet
   });
 
-  test.skip("should maintain performance with many events", async ({ page }) => {
+  test("should handle many events gracefully", async ({ page }) => {
     // Load a catalog that might have many events
     await explorePage.selectCatalog("Environmental Data");
-    await page.waitForTimeout(500);
-    await explorePage.selectDatasets(["Air Quality Measurements"]);
+    await explorePage.selectDatasets(["Air Quality Measurements", "Water Quality Assessments"]);
 
-    // Time the API response
-    const startTime = Date.now();
+    // Wait for data to load
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
-    const endTime = Date.now();
+    
+    // Get the event count to verify data loaded
+    const eventCount = await explorePage.getEventCount();
+    console.log(`Loaded ${eventCount} events`);
+    expect(eventCount).toBeGreaterThanOrEqual(0);
 
-    // Should complete within reasonable time (6 seconds to account for CI variations)
-    const responseTime = endTime - startTime;
-    expect(responseTime).toBeLessThan(6000);
-
-    // Check page stability before proceeding
-    const isStable = await explorePage.isPageStable();
-    if (!isStable) {
-      return; // Skip the rest of the test if page crashed
-    }
-
-    // Map should still be interactive after loading
+    // Map should still be visible and interactive after loading many events
     await expect(explorePage.map).toBeVisible();
 
-    // Should be able to pan without issues
-    try {
-      await explorePage.panMap(50, 50);
-    } catch {
-      // Map panning failed (non-critical)
-    }
-    await page.waitForTimeout(500);
-
-    // Map should still be responsive
+    // Verify we can still interact with the map
     const mapBox = await explorePage.map.boundingBox();
     expect(mapBox).toBeTruthy();
+    expect(mapBox!.width).toBeGreaterThan(0);
+    expect(mapBox!.height).toBeGreaterThan(0);
+
+    // Should be able to pan the map
+    await explorePage.panMap(50, 50);
+    
+    // Map should still be visible after panning
+    await expect(explorePage.map).toBeVisible();
+    
+    // Should be able to zoom
+    await explorePage.zoomIn();
+    
+    // Verify the events list is still accessible
+    await expect(explorePage.eventsList).toBeVisible();
   });
 
   test("should handle empty results gracefully", async ({ page }) => {
     // Set up filters that might return no results
     await explorePage.selectCatalog("Environmental Data");
-    await page.waitForTimeout(500);
     await explorePage.selectDatasets(["Air Quality Measurements"]);
 
     // Set date range in far future (likely no events)

@@ -36,8 +36,15 @@ export class ExplorePage {
 
   async waitForMapLoad() {
     await this.map.waitFor({ state: "visible" });
-    // Wait for map to be interactive
-    await this.page.waitForTimeout(500);
+    // Wait for map to be fully loaded and interactive
+    await this.page.waitForFunction(
+      () => {
+        // Check if map container exists and has content
+        const mapContainer = document.querySelector('[data-testid="map-container"], .maplibregl-canvas, .mapboxgl-canvas');
+        return mapContainer !== null;
+      },
+      { timeout: 5000 }
+    );
   }
 
   async selectCatalog(catalogName: string) {
@@ -49,8 +56,8 @@ export class ExplorePage {
     const option = this.page.getByRole("option", { name: catalogName });
     await option.waitFor({ state: "visible", timeout: 5000 });
 
-    // Add a small delay to ensure UI stability
-    await this.page.waitForTimeout(200);
+    // Wait for the option to be clickable
+    await option.waitFor({ state: "attached" });
 
     await option.click();
 
@@ -83,32 +90,38 @@ export class ExplorePage {
       await datasetCheckbox.waitFor({ state: "visible", timeout: 3000 });
       await datasetCheckbox.check();
 
-      // Brief wait for the selection to register
-      await this.page.waitForTimeout(100);
+      // Ensure checkbox state has been updated
+      await expect(datasetCheckbox).toBeChecked();
     }
   }
 
   async deselectDatasets(datasetNames: string[]) {
     for (const name of datasetNames) {
-      await this.page.getByLabel(name).uncheck();
+      // Use the same specific selector as selectDatasets to avoid ambiguity
+      const datasetCheckbox = this.page.locator(`label:has-text("${name}") input[type="checkbox"]`);
+      await datasetCheckbox.uncheck();
     }
   }
 
   async setStartDate(date: string) {
     await this.startDateInput.fill(date);
     await this.startDateInput.blur();
-    await this.page.waitForTimeout(100);
+    // Verify the value was set
+    await expect(this.startDateInput).toHaveValue(date);
   }
 
   async setEndDate(date: string) {
     await this.endDateInput.fill(date);
     await this.endDateInput.blur();
-    await this.page.waitForTimeout(100);
+    // Verify the value was set
+    await expect(this.endDateInput).toHaveValue(date);
   }
 
   async clearDateFilters() {
     await this.clearDatesButton.click();
-    await this.page.waitForTimeout(200);
+    // Wait for inputs to be cleared
+    await expect(this.startDateInput).toHaveValue("");
+    await expect(this.endDateInput).toHaveValue("");
   }
 
   async panMap(deltaX: number, deltaY: number) {
@@ -147,26 +160,25 @@ export class ExplorePage {
   }
 
   async getEventCount(): Promise<number> {
-    try {
-      // Check if the page is still available
-      if (this.page.isClosed()) {
-        return 0;
-      }
-
-      // Wait for the events count element to be visible with the expected pattern
-      await this.eventsCount.waitFor({ state: "visible", timeout: 5000 });
-      const text = await this.eventsCount.textContent({ timeout: 3000 });
-      const matches = /Events \((\d+)\)/.exec(text ?? "");
-      const count = matches?.[1] ? Number.parseInt(matches[1], 10) : 0;
-
-      // Debug logging to help understand what's happening
-      console.log(`getEventCount: text="${text}", count=${count}`);
-
-      return count;
-    } catch (error) {
-      console.log(`getEventCount error: ${error}`);
-      return 0;
+    // Wait for the events count element to be visible with the expected pattern
+    await this.eventsCount.waitFor({ state: "visible", timeout: 5000 });
+    const text = await this.eventsCount.textContent({ timeout: 3000 });
+    
+    if (!text) {
+      throw new Error("Events count text is empty");
     }
+    
+    const matches = /Events \((\d+)\)/.exec(text);
+    if (!matches?.[1]) {
+      throw new Error(`Events count text does not match expected pattern: "${text}"`);
+    }
+    
+    const count = Number.parseInt(matches[1], 10);
+    
+    // Debug logging to help understand what's happening
+    console.log(`getEventCount: text="${text}", count=${count}`);
+    
+    return count;
   }
 
   async getEventTitles(): Promise<string[]> {
@@ -184,29 +196,22 @@ export class ExplorePage {
   }
 
   async waitForEventsToLoad() {
-    try {
-      // Check if the page is still available
-      if (this.page.isClosed()) {
-        return;
-      }
-
-      await expect(this.loadingIndicator).not.toBeVisible({ timeout: 5000 });
-    } catch {
-      // If loading indicator check fails, just continue
-      // Loading indicator check failed (non-critical)
-    }
+    // Wait for loading indicator to disappear
+    await expect(this.loadingIndicator).not.toBeVisible({ timeout: 10000 });
   }
 
   async waitForApiResponse() {
+    // Wait for API response with a reasonable timeout
+    // Don't wait forever if no API call is made
     try {
       await this.page.waitForResponse(
-        (response) => response.url().includes("/api/events") && response.status() === 200,
-        { timeout: 5000 }
+        (response) => response.url().includes("/api/events"),
+        { timeout: 2000 }
       );
-    } catch {
-      // If we can't catch the API response quickly, just continue
-      // The test should focus on UI state, not API timing
-      // API response timeout (non-critical)
+    } catch (error) {
+      // If no API call within 2s, just ensure network is idle
+      // This handles cases where data is cached or no request is triggered
+      await this.page.waitForLoadState('networkidle', { timeout: 500 });
     }
   }
 
@@ -240,15 +245,16 @@ export class ExplorePage {
   }
 
   async isPageStable(): Promise<boolean> {
-    try {
-      if (this.page.isClosed()) {
-        return false;
-      }
+    if (this.page.isClosed()) {
+      throw new Error("Page is closed");
+    }
 
+    try {
       // Check if we can access a basic element
       await this.page.locator("h1").waitFor({ state: "visible", timeout: 1000 });
       return true;
-    } catch {
+    } catch (error) {
+      // Page is not stable yet, but this is expected during checks
       return false;
     }
   }
@@ -262,7 +268,8 @@ export class ExplorePage {
         return;
       }
 
-      await this.page.waitForTimeout(500);
+      // Brief pause between stability checks
+      await new Promise(resolve => setTimeout(resolve, 500));
       attempts++;
     }
 
