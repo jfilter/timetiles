@@ -328,6 +328,11 @@ const ImportFiles: CollectionConfig = {
         if (operation !== "create") return doc;
         const { payload } = req;
 
+        // Skip processing for duplicate imports (they're already marked as completed)
+        if (doc.metadata?.urlFetch?.isDuplicate === true) {
+          return doc;
+        }
+
         // Check file type - reject JSON files (using Payload's auto-generated mimeType field)
         if (doc.mimeType?.includes("json")) {
           // Update the record immediately for JSON rejection
