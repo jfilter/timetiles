@@ -11,7 +11,7 @@
  * - Detects potential ID fields, geographic coordinate fields, and enumerations (enums).
  * - Tracks field statistics and type conflicts.
  * - Can compare the generated schema against a previous version to detect changes.
- * 
+ *
  * @module
  * @category Services
  */
@@ -19,6 +19,9 @@ import { InputData, jsonInputForTargetLanguage, quicktype } from "quicktype-core
 
 import { logger } from "../logger";
 import type { FieldStatistics, SchemaBuilderState, SchemaChange, SchemaComparison } from "../types/schema-detection";
+
+type DataRecord = Record<string, unknown>;
+type SchemaProperty = Record<string, unknown>;
 
 export class ProgressiveSchemaBuilder {
   private readonly state: SchemaBuilderState;
@@ -40,7 +43,7 @@ export class ProgressiveSchemaBuilder {
       ...config,
     };
 
-    this.state = initialState || {
+    this.state = initialState ?? {
       version: 0,
       fieldStats: {},
       recordCount: 0,
@@ -54,13 +57,10 @@ export class ProgressiveSchemaBuilder {
     };
   }
 
-  async processBatch(
-    records: any[],
-    batchNumber: number
-  ): Promise<{
+  processBatch(records: DataRecord[]): {
     schemaChanged: boolean;
     changes: SchemaChange[];
-  }> {
+  } {
     const changes: SchemaChange[] = [];
 
     // Update samples (rotating buffer)
@@ -92,7 +92,7 @@ export class ProgressiveSchemaBuilder {
     return { schemaChanged, changes };
   }
 
-  private processRecord(obj: any, pathPrefix: string, depth: number = 0): SchemaChange[] {
+  private processRecord(obj: unknown, pathPrefix: string, depth: number = 0): SchemaChange[] {
     const changes: SchemaChange[] = [];
 
     if (depth >= this.config.maxDepth) return changes;
@@ -123,7 +123,7 @@ export class ProgressiveSchemaBuilder {
         const valueType = this.getValueType(value);
 
         // Track type distribution
-        stats.typeDistribution[valueType] = (stats.typeDistribution[valueType] || 0) + 1;
+        stats.typeDistribution[valueType] = (stats.typeDistribution[valueType] ?? 0) + 1;
 
         // Check for type conflicts
         if (Object.keys(stats.typeDistribution).length > 1) {
@@ -162,27 +162,26 @@ export class ProgressiveSchemaBuilder {
     return changes;
   }
 
-  private processValueType(value: any, type: string, stats: FieldStatistics): void {
+  private processValueType(value: unknown, type: string, stats: FieldStatistics): void {
     switch (type) {
       case "string":
-        this.processString(value, stats);
+        this.processString(value as string, stats);
         break;
       case "number":
-        this.processNumber(value, stats);
+        this.processNumber(value as number, stats);
         break;
       case "array":
-        this.processArray(value, stats);
+        this.processArray(value as unknown[], stats);
         break;
     }
 
     // Track unique values for enum detection
     if (
       (type === "string" || type === "number" || type === "boolean") &&
-      stats.uniqueSamples.length < this.config.maxUniqueValues
+      stats.uniqueSamples.length < this.config.maxUniqueValues &&
+      !stats.uniqueSamples.includes(value)
     ) {
-      if (!stats.uniqueSamples.includes(value)) {
-        stats.uniqueSamples.push(value);
-      }
+      stats.uniqueSamples.push(value);
     }
 
     stats.uniqueValues = stats.uniqueSamples.length;
@@ -191,16 +190,16 @@ export class ProgressiveSchemaBuilder {
   private processString(value: string, stats: FieldStatistics): void {
     // Detect formats
     if (this.isEmail(value)) {
-      stats.formats.email = (stats.formats.email || 0) + 1;
+      stats.formats.email = (stats.formats.email ?? 0) + 1;
     }
     if (this.isUrl(value)) {
-      stats.formats.url = (stats.formats.url || 0) + 1;
+      stats.formats.url = (stats.formats.url ?? 0) + 1;
     }
     if (this.isDateTime(value)) {
-      stats.formats.dateTime = (stats.formats.dateTime || 0) + 1;
+      stats.formats.dateTime = (stats.formats.dateTime ?? 0) + 1;
     }
     if (this.isNumericString(value)) {
-      stats.formats.numeric = (stats.formats.numeric || 0) + 1;
+      stats.formats.numeric = (stats.formats.numeric ?? 0) + 1;
     }
   }
 
@@ -220,7 +219,7 @@ export class ProgressiveSchemaBuilder {
     }
   }
 
-  private processArray(value: any[], stats: FieldStatistics): void {
+  private processArray(value: unknown[], stats: FieldStatistics): void {
     // Track array items for nested schema detection
     // In a full implementation, we'd analyze array item types
   }
@@ -234,7 +233,7 @@ export class ProgressiveSchemaBuilder {
     let confidence = 0;
 
     for (const [path, stats] of Object.entries(this.state.fieldStats)) {
-      const fieldName = path.split(".").pop() || "";
+      const fieldName = path.split(".").pop() ?? "";
 
       // Check numeric fields only
       if ((stats.typeDistribution.number ?? 0) > stats.occurrences * 0.9) {
@@ -285,14 +284,15 @@ export class ProgressiveSchemaBuilder {
     const detectedIds: string[] = [];
 
     for (const [path, stats] of Object.entries(this.state.fieldStats)) {
-      const fieldName = path.split(".").pop() || "";
+      const fieldName = path.split(".").pop() ?? "";
 
       // Check if field name matches ID patterns
-      if (idPatterns.test(fieldName)) {
-        // High occurrence rate and high uniqueness
-        if (stats.occurrences > this.state.recordCount * 0.9 && stats.uniqueValues === stats.occurrences) {
-          detectedIds.push(path);
-        }
+      if (
+        idPatterns.test(fieldName) &&
+        stats.occurrences > this.state.recordCount * 0.9 &&
+        stats.uniqueValues === stats.occurrences
+      ) {
+        detectedIds.push(path);
       }
     }
 
@@ -300,7 +300,7 @@ export class ProgressiveSchemaBuilder {
   }
 
   private detectEnums(): void {
-    for (const [path, stats] of Object.entries(this.state.fieldStats)) {
+    for (const stats of Object.values(this.state.fieldStats)) {
       const uniqueRatio = stats.uniqueValues / stats.occurrences;
 
       if (this.config.enumMode === "count") {
@@ -310,8 +310,6 @@ export class ProgressiveSchemaBuilder {
       }
 
       if (stats.isEnumCandidate && stats.uniqueSamples.length > 0) {
-        // Calculate value distribution
-        const valueCounts = new Map<any, number>();
         // In real implementation, we'd track this during processing
         stats.enumValues = stats.uniqueSamples.map((value) => ({
           value,
@@ -322,7 +320,7 @@ export class ProgressiveSchemaBuilder {
     }
   }
 
-  async generateSchema(): Promise<any> {
+  async generateSchema(): Promise<SchemaProperty | null> {
     if (this.state.dataSamples.length === 0) {
       return null;
     }
@@ -362,13 +360,17 @@ export class ProgressiveSchemaBuilder {
     }
   }
 
-  private enhanceSchemaWithStats(schema: any): void {
+  private enhanceSchemaWithStats(schema: Record<string, unknown>): void {
     // Handle both direct format and quicktype format
     let properties;
-    if (schema?.definitions?.EventData?.properties) {
-      properties = schema.definitions.EventData.properties;
+    const schemaWithDefs = schema as {
+      definitions?: { EventData?: { properties?: Record<string, unknown> } };
+      properties?: Record<string, unknown>;
+    };
+    if (schemaWithDefs.definitions?.EventData?.properties) {
+      properties = schemaWithDefs.definitions.EventData.properties;
     } else {
-      properties = schema.properties;
+      properties = schemaWithDefs.properties;
     }
 
     if (!properties) return;
@@ -377,31 +379,32 @@ export class ProgressiveSchemaBuilder {
       const schemaProp = this.getSchemaProperty(schema, path);
       if (!schemaProp) continue;
 
+      const prop = schemaProp as Record<string, unknown>;
       // Add format hints
       if (stats.formats.email && stats.formats.email > stats.occurrences * 0.9) {
-        schemaProp.format = "email";
+        prop.format = "email";
       } else if (stats.formats.url && stats.formats.url > stats.occurrences * 0.9) {
-        schemaProp.format = "uri";
+        prop.format = "uri";
       } else if (stats.formats.dateTime && stats.formats.dateTime > stats.occurrences * 0.9) {
-        schemaProp.format = "date-time";
+        prop.format = "date-time";
       }
 
       // Add enum values
       if (stats.isEnumCandidate && stats.enumValues) {
-        schemaProp.enum = stats.enumValues.map((e) => e.value);
+        prop.enum = stats.enumValues.map((e) => e.value);
       }
 
       // Add numeric constraints
       if (stats.numericStats) {
-        schemaProp.minimum = stats.numericStats.min;
-        schemaProp.maximum = stats.numericStats.max;
+        prop.minimum = stats.numericStats.min;
+        prop.maximum = stats.numericStats.max;
         if (stats.numericStats.isInteger) {
-          schemaProp.type = "integer";
+          prop.type = "integer";
         }
       }
 
       // Add custom metadata
-      schemaProp["x-field-metadata"] = {
+      prop["x-field-metadata"] = {
         occurrencePercent: (stats.occurrences / this.state.recordCount) * 100,
         nullable: stats.nullCount > 0,
         geoHint: stats.geoHints,
@@ -425,18 +428,22 @@ export class ProgressiveSchemaBuilder {
     return this.generateSchema();
   }
 
-  async compareWithPrevious(previousSchema: any): Promise<SchemaComparison> {
+  async compareWithPrevious(previousSchema: unknown): Promise<SchemaComparison> {
     const currentSchema = await this.generateSchema();
     const changes: SchemaChange[] = [];
 
     // Helper to extract properties from schema (handles both direct and quicktype formats)
-    const getSchemaProperties = (schema: any) => {
+    const getSchemaProperties = (schema: unknown): Record<string, unknown> => {
+      const schemaObj = schema as {
+        definitions?: { EventData?: { properties?: Record<string, unknown> } };
+        properties?: Record<string, unknown>;
+      };
       // Quicktype format: schema.definitions.EventData.properties
-      if (schema?.definitions?.EventData?.properties) {
-        return schema.definitions.EventData.properties;
+      if (schemaObj.definitions?.EventData?.properties) {
+        return schemaObj.definitions.EventData.properties;
       }
       // Direct format: schema.properties
-      return schema?.properties || {};
+      return schemaObj.properties || {};
     };
 
     // Compare schemas
@@ -474,8 +481,8 @@ export class ProgressiveSchemaBuilder {
     // Type changes
     for (const prop of currProps) {
       if (prevProps.has(prop)) {
-        const prevType = prevProperties[prop]?.type;
-        const currType = currProperties[prop]?.type;
+        const prevType = (prevProperties[prop] as Record<string, unknown>)?.type;
+        const currType = (currProperties[prop] as Record<string, unknown>)?.type;
 
         if (prevType !== currType) {
           changes.push({
@@ -488,12 +495,12 @@ export class ProgressiveSchemaBuilder {
         }
 
         // Enum changes
-        const prevEnum = prevProperties[prop]?.enum;
-        const currEnum = currProperties[prop]?.enum;
+        const prevEnum = (prevProperties[prop] as Record<string, unknown>)?.enum as unknown[] | undefined;
+        const currEnum = (currProperties[prop] as Record<string, unknown>)?.enum as unknown[] | undefined;
 
         if (prevEnum && currEnum) {
-          const added = currEnum.filter((v: any) => !prevEnum.includes(v));
-          const removed = prevEnum.filter((v: any) => !currEnum.includes(v));
+          const added = currEnum.filter((v: unknown) => !prevEnum.includes(v));
+          const removed = prevEnum.filter((v: unknown) => !currEnum.includes(v));
 
           if (added.length > 0 || removed.length > 0) {
             changes.push({
@@ -538,14 +545,14 @@ export class ProgressiveSchemaBuilder {
     };
   }
 
-  private getValueType(value: any): string {
+  private getValueType(value: unknown): string {
     if (Array.isArray(value)) return "array";
     if (value instanceof Date) return "date";
     if (value === null) return "null";
     return typeof value;
   }
 
-  private updateSamples(records: any[]): void {
+  private updateSamples(records: unknown[]): void {
     // Add new samples, maintaining max size
     for (const record of records) {
       if (this.state.dataSamples.length >= this.config.maxSamples) {
@@ -570,18 +577,24 @@ export class ProgressiveSchemaBuilder {
   }
 
   private isNumericString(value: string): boolean {
+    // This regex is safe - it has no backtracking issues
+    // eslint-disable-next-line security/detect-unsafe-regex
     return /^\d+(\.\d+)?$/.test(value);
   }
 
-  private getSchemaProperty(schema: any, path: string): any {
+  private getSchemaProperty(schema: unknown, path: string): unknown {
     const parts = path.split(".");
 
     // Handle quicktype format vs direct format
     let properties;
-    if (schema?.definitions?.EventData?.properties) {
-      properties = schema.definitions.EventData.properties;
+    const schemaObj = schema as {
+      definitions?: { EventData?: { properties?: Record<string, unknown> } };
+      properties?: Record<string, unknown>;
+    };
+    if (schemaObj.definitions?.EventData?.properties) {
+      properties = schemaObj.definitions.EventData.properties;
     } else {
-      properties = schema.properties;
+      properties = schemaObj.properties;
     }
 
     if (!properties) return null;
@@ -593,7 +606,7 @@ export class ProgressiveSchemaBuilder {
       if (parts[parts.length - 1] === part) {
         return current[part];
       }
-      current = current[part].properties;
+      current = (current[part] as Record<string, unknown>).properties as Record<string, unknown>;
     }
 
     return null;

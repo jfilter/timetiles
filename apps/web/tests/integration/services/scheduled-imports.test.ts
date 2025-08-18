@@ -91,7 +91,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         collection: "scheduled-imports",
         limit: 1000,
       });
-      
+
       for (const scheduledImport of allScheduledImports.docs) {
         await payload.delete({
           collection: "scheduled-imports",
@@ -107,7 +107,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         collection: "import-files",
         limit: 1000,
       });
-      
+
       for (const importFile of allImportFiles.docs) {
         await payload.delete({
           collection: "import-files",
@@ -253,14 +253,14 @@ describe.sequential("Scheduled Imports Integration", () => {
       // Move time forward to ensure we're past the next run time (daily at midnight)
       // Since lastRun was yesterday at midnight, next run should be today at midnight
       // Current time is 01:00, which is past midnight, so it should trigger
-      vi.setSystemTime(new Date("2024-01-15T01:00:00.000Z")); 
-      
+      vi.setSystemTime(new Date("2024-01-15T01:00:00.000Z"));
+
       // Check the schedule before running
       const scheduleBeforeRun = await payload.findByID({
         collection: "scheduled-imports",
         id: scheduledImport.id,
       });
-      
+
       // Run schedule manager
       const result = await scheduleManagerJob.handler({
         job: { id: "test-job" },
@@ -399,10 +399,10 @@ describe.sequential("Scheduled Imports Integration", () => {
         where: { enabled: { equals: true } },
         limit: 100,
       });
-      
+
       // There should be exactly 3 schedules
       expect(schedulesBeforeRun.docs.length).toBe(3);
-      
+
       const result = await scheduleManagerJob.handler({
         job: { id: "test-job" },
         req: { payload },
@@ -410,7 +410,8 @@ describe.sequential("Scheduled Imports Integration", () => {
 
       // Debug: log what actually happened
       if (result.output.triggered !== 2) {
-        console.log("Unexpected trigger count. Schedules:", 
+        console.log(
+          "Unexpected trigger count. Schedules:",
           schedulesBeforeRun.docs.map((s: any) => ({
             name: s.name,
             lastRun: s.lastRun,
@@ -424,7 +425,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       // All three schedules are found, but let's check which ones actually trigger
       // Current time is 10:30
       // 1. First hourly (lastRun 09:00): next is 10:00, past due, triggers
-      // 2. Daily (lastRun today 00:00): next is tomorrow 00:00, NOT due  
+      // 2. Daily (lastRun today 00:00): next is tomorrow 00:00, NOT due
       // 3. Second hourly (lastRun 08:00): next is 09:00, past due, triggers
       expect(result.output.success).toBe(true);
       expect(result.output.totalScheduled).toBe(3);
@@ -480,9 +481,9 @@ describe.sequential("Scheduled Imports Integration", () => {
         input: {
           sourceUrl: "https://api.example.com/data.csv",
           authConfig: scheduledImport.authConfig,
-          catalogId: testCatalog.id,
+          catalogId: String(testCatalog.id),
           originalName: "test-import.csv",
-          userId: testUser.id,
+          userId: String(testUser.id),
           scheduledImportId: scheduledImport.id,
         },
         job: { id: "url-job-123" },
@@ -564,10 +565,10 @@ describe.sequential("Scheduled Imports Integration", () => {
         await urlFetchJob.handler({
           input: {
             sourceUrl: "https://api.example.com/data",
-            authConfig: { type: authTest.type, ...authTest.config },
-            catalogId: testCatalog.id,
+            authConfig: { type: authTest.type as "none" | "api-key" | "bearer" | "basic", ...authTest.config },
+            catalogId: String(testCatalog.id),
             originalName: "test.csv",
-            userId: testUser.id,
+            userId: String(testUser.id),
           },
           job: { id: "test-job" },
           req: { payload },
@@ -594,14 +595,14 @@ describe.sequential("Scheduled Imports Integration", () => {
         input: {
           sourceUrl: "https://api.example.com/data.csv",
           authConfig: { type: "none" },
-          catalogId: testCatalog.id,
+          catalogId: String(testCatalog.id),
           originalName: "test.csv",
-          userId: testUser.id,
+          userId: String(testUser.id),
         },
         job: { id: "test-job" },
         req: { payload },
       });
-      
+
       expect(result.output.success).toBe(false);
       expect(result.output.error).toBe("HTTP 404: Not Found");
     });
@@ -650,7 +651,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduledImportId: scheduledImport.id,
           sourceUrl: scheduledImport.sourceUrl,
           authConfig: scheduledImport.authConfig,
-          catalogId: testCatalog.id,
+          catalogId: String(testCatalog.id),
           originalName: "First Import",
         },
         job: { id: "job-1" },
@@ -677,7 +678,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduledImportId: scheduledImport.id,
           sourceUrl: scheduledImport.sourceUrl,
           authConfig: scheduledImport.authConfig,
-          catalogId: testCatalog.id,
+          catalogId: String(testCatalog.id),
           originalName: "Second Import",
         },
         job: { id: "job-2" },
@@ -744,7 +745,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduledImportId: scheduledImport.id,
           sourceUrl: scheduledImport.sourceUrl,
           authConfig: scheduledImport.authConfig,
-          catalogId: testCatalog.id,
+          catalogId: String(testCatalog.id),
           originalName: "First Import",
         },
         job: { id: "job-1" },
@@ -762,7 +763,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduledImportId: scheduledImport.id,
           sourceUrl: scheduledImport.sourceUrl,
           authConfig: scheduledImport.authConfig,
-          catalogId: testCatalog.id,
+          catalogId: String(testCatalog.id),
           originalName: "Second Import",
         },
         job: { id: "job-2" },
@@ -814,7 +815,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduledImportId: scheduledImport.id,
           sourceUrl: scheduledImport.sourceUrl,
           authConfig: scheduledImport.authConfig,
-          catalogId: testCatalog.id,
+          catalogId: String(testCatalog.id),
           originalName: "Content Type Test",
         },
         job: { id: "job-1" },
@@ -866,13 +867,13 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduledImportId: scheduledImport.id,
           sourceUrl: scheduledImport.sourceUrl,
           authConfig: scheduledImport.authConfig,
-          catalogId: testCatalog.id,
+          catalogId: String(testCatalog.id),
           originalName: "Large File",
         },
         job: { id: "job-1" },
         req: { payload },
       });
-      
+
       expect(result.output.success).toBe(false);
       expect(result.output.error).toMatch(/file.*too large/i);
     });
@@ -922,7 +923,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduledImportId: scheduledImport.id,
           sourceUrl: scheduledImport.sourceUrl,
           authConfig: scheduledImport.authConfig,
-          catalogId: testCatalog.id,
+          catalogId: String(testCatalog.id),
           originalName: "Headers Test",
         },
         job: { id: "job-1" },
@@ -990,7 +991,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduledImportId: scheduledImport.id,
           sourceUrl: scheduledImport.sourceUrl,
           authConfig: scheduledImport.authConfig,
-          catalogId: testCatalog.id,
+          catalogId: String(testCatalog.id),
           originalName: "Mapping Test",
         },
         job: { id: "job-1" },
@@ -1065,7 +1066,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduledImportId: scheduledImport.id,
           sourceUrl: scheduledImport.sourceUrl,
           authConfig: scheduledImport.authConfig,
-          catalogId: testCatalog.id,
+          catalogId: String(testCatalog.id),
           originalName: "Duration Test",
         },
         job: { id: "job-1" },
@@ -1133,7 +1134,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduledImportId: scheduledImport.id,
           sourceUrl: scheduledImport.sourceUrl,
           authConfig: scheduledImport.authConfig,
-          catalogId: testCatalog.id,
+          catalogId: String(testCatalog.id),
           originalName: "Retry Test",
         },
         job: { id: "job-retry" },
@@ -1192,13 +1193,13 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduledImportId: scheduledImport.id,
           sourceUrl: scheduledImport.sourceUrl,
           authConfig: scheduledImport.authConfig,
-          catalogId: testCatalog.id,
+          catalogId: String(testCatalog.id),
           originalName: "Timeout Test",
         },
         job: { id: "job-timeout" },
         req: { payload },
       });
-      
+
       expect(result.output.success).toBe(false);
       expect(result.output.error).toMatch(/timeout/i);
 
@@ -1279,7 +1280,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: scheduledImport.catalog,
           originalName: "Hourly Import - 2024-01-15 - api.example.com",
-          userId: testUser.id,
+          userId: String(testUser.id),
           scheduledImportId: scheduledImport.id,
         },
         job: { id: "url-fetch-job" },

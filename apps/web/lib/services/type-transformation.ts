@@ -13,24 +13,41 @@
  */
 import { logger } from "../logger";
 
-export class TypeTransformationService {
-  constructor(
-    private readonly transformations: Array<{
-      fieldPath: string;
-      fromType: string;
-      toType: string;
-      transformStrategy: string;
-      customTransform?: string;
-      enabled: boolean;
-    }>
-  ) {}
+type DataRecord = Record<string, unknown>;
 
-  async transformRecord(record: any): Promise<{
-    transformed: any;
-    changes: Array<{ path: string; oldValue: any; newValue: any; error?: string }>;
+interface TransformationChange {
+  path: string;
+  oldValue: unknown;
+  newValue: unknown;
+  error?: string;
+}
+
+interface TransformationRule {
+  fieldPath: string;
+  fromType: string;
+  toType: string;
+  transformStrategy: string;
+  customTransform?: string;
+  enabled: boolean;
+}
+
+interface TransformationResult {
+  changed: boolean;
+  path?: string;
+  oldValue?: unknown;
+  newValue?: unknown;
+  error?: string;
+}
+
+export class TypeTransformationService {
+  constructor(private readonly transformations: TransformationRule[]) {}
+
+  async transformRecord(record: DataRecord): Promise<{
+    transformed: DataRecord;
+    changes: TransformationChange[];
   }> {
-    const transformed = JSON.parse(JSON.stringify(record)); // Deep clone
-    const changes: any[] = [];
+    const transformed = JSON.parse(JSON.stringify(record)) as DataRecord; // Deep clone
+    const changes: TransformationChange[] = [];
 
     for (const rule of this.transformations) {
       if (!rule.enabled) continue;
@@ -38,14 +55,14 @@ export class TypeTransformationService {
       try {
         const result = await this.applyTransformation(transformed, rule);
         if (result.changed) {
-          changes.push(result);
+          changes.push(result as TransformationChange);
         }
-      } catch (error: any) {
+      } catch (error) {
         changes.push({
           path: rule.fieldPath,
           oldValue: this.getValueAtPath(record, rule.fieldPath),
           newValue: null,
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }
@@ -53,7 +70,7 @@ export class TypeTransformationService {
     return { transformed, changes };
   }
 
-  private async applyTransformation(obj: any, rule: any): Promise<any> {
+  private async applyTransformation(obj: DataRecord, rule: TransformationRule): Promise<TransformationResult> {
     const value = this.getValueAtPath(obj, rule.fieldPath);
     if (value === undefined || value === null) {
       return { changed: false };
@@ -64,7 +81,7 @@ export class TypeTransformationService {
       return { changed: false };
     }
 
-    let newValue: any;
+    let newValue: unknown;
 
     switch (rule.transformStrategy) {
       case "parse":
@@ -76,7 +93,7 @@ export class TypeTransformationService {
         break;
 
       case "custom":
-        newValue = await this.runCustomTransform(value, rule.customTransform);
+        newValue = await this.runCustomTransform(value, rule.customTransform || "");
         break;
 
       case "reject":
@@ -96,32 +113,32 @@ export class TypeTransformationService {
     };
   }
 
-  private parseValue(value: any, toType: string): any {
+  private parseValue(value: unknown, toType: string): unknown {
     switch (toType) {
-      case "number":
+      case "number": {
         const num = Number(value);
-        if (isNaN(num)) throw new Error(`Cannot parse "${value}" as number`);
+        if (isNaN(num)) throw new Error(`Cannot parse "${String(value)}" as number`);
         return num;
-
-      case "boolean":
+      }
+      case "boolean": {
         if (typeof value === "string") {
           const lower = value.toLowerCase();
           if (lower === "true" || lower === "1" || lower === "yes") return true;
           if (lower === "false" || lower === "0" || lower === "no") return false;
         }
-        throw new Error(`Cannot parse "${value}" as boolean`);
-
-      case "date":
-        const date = new Date(value);
-        if (isNaN(date.getTime())) throw new Error(`Cannot parse "${value}" as date`);
+        throw new Error(`Cannot parse "${String(value)}" as boolean`);
+      }
+      case "date": {
+        const date = new Date(String(value));
+        if (isNaN(date.getTime())) throw new Error(`Cannot parse "${String(value)}" as date`);
         return date.toISOString();
-
+      }
       default:
         throw new Error(`Cannot parse to type: ${toType}`);
     }
   }
 
-  private castValue(value: any, toType: string): any {
+  private castValue(value: unknown, toType: string): unknown {
     switch (toType) {
       case "string":
         return String(value);
@@ -137,61 +154,64 @@ export class TypeTransformationService {
     }
   }
 
-  private async runCustomTransform(value: any, customCode: string): Promise<any> {
+  private async runCustomTransform(value: unknown, customCode: string): Promise<unknown> {
     try {
       // Create safe function context
-      const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor;
+      const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor as new (
+        ...args: string[]
+      ) => (...args: unknown[]) => Promise<unknown>;
       const fn = new AsyncFunction("value", "context", customCode);
 
       const context = {
         logger: logger.child({ component: "custom-transform" }),
         parse: {
-          date: (v: any) => new Date(v),
-          number: (v: any) => Number(v),
-          boolean: (v: any) => Boolean(v),
+          date: (v: unknown) => new Date(v as string | number | Date),
+          number: (v: unknown) => Number(v),
+          boolean: (v: unknown) => Boolean(v),
         },
       };
 
       return await fn(value, context);
-    } catch (error: any) {
-      throw new Error(`Custom transform failed: ${error.message}`);
+    } catch (error) {
+      throw new Error(`Custom transform failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
-  private getActualType(value: any): string {
+  private getActualType(value: unknown): string {
     if (value === null) return "null";
     if (Array.isArray(value)) return "array";
     if (value instanceof Date) return "date";
     return typeof value;
   }
 
-  private getValueAtPath(obj: any, path: string): any {
+  private getValueAtPath(obj: unknown, path: string): unknown {
     const parts = path.split(".");
     let current = obj;
 
     for (const part of parts) {
       if (current === null || current === undefined) return undefined;
-      current = current[part];
+      current = (current as Record<string, unknown>)[part];
     }
 
     return current;
   }
 
-  private setValueAtPath(obj: any, path: string, value: any): void {
+  private setValueAtPath(obj: unknown, path: string, value: unknown): void {
     const parts = path.split(".");
     let current = obj;
 
     for (let i = 0; i < parts.length - 1; i++) {
       const part = parts[i];
-      if (part && !current[part]) {
-        current[part] = {};
+      const currentObj = current as Record<string, unknown>;
+      if (part && !currentObj[part]) {
+        currentObj[part] = {};
       }
-      current = current[part!];
+      current = currentObj[part!];
     }
 
     const lastPart = parts[parts.length - 1];
     if (lastPart) {
-      current[lastPart] = value;
+      (current as Record<string, unknown>)[lastPart] = value;
     }
   }
 }

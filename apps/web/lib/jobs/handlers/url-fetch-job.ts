@@ -10,10 +10,11 @@ import crypto from "crypto";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 
+import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import type { ScheduledImport } from "@/payload-types";
 
-interface UrlFetchJobInput {
+export interface UrlFetchJobInput {
   // For scheduled imports
   scheduledImportId?: string;
   // Direct URL fetch parameters
@@ -35,8 +36,7 @@ interface FetchOptions {
 /**
  * Calculates hash of data for duplicate checking
  */
-const calculateDataHash = async (data: Buffer): Promise<string> =>
-  crypto.createHash("sha256").update(data).digest("hex");
+const calculateDataHash = (data: Buffer): string => crypto.createHash("sha256").update(data).digest("hex");
 
 /**
  * Builds HTTP headers based on authentication configuration
@@ -94,7 +94,7 @@ const detectFileTypeFromResponse = (
   url: string,
   expectedContentType?: string
 ): { extension: string; mimeType: string } => {
-  let contentType = response.headers.get("content-type")?.toLowerCase() || "";
+  let contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
 
   // Use expected content type if provided and actual content type is generic
   if (
@@ -109,7 +109,7 @@ const detectFileTypeFromResponse = (
       xls: "application/vnd.ms-excel",
       xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     };
-    contentType = mimeTypeMap[expectedContentType] || expectedContentType;
+    contentType = mimeTypeMap[expectedContentType] ?? expectedContentType;
   }
 
   // Try to detect from Content-Type header
@@ -135,7 +135,7 @@ const detectFileTypeFromResponse = (
       xls: "application/vnd.ms-excel",
       xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     };
-    return { extension: urlExtension, mimeType: mimeTypes[urlExtension] || "application/octet-stream" };
+    return { extension: urlExtension, mimeType: mimeTypes[urlExtension] ?? "application/octet-stream" };
   }
 
   // Default to CSV
@@ -183,7 +183,7 @@ const fetchUrlData = async (
       throw new Error(`File too large: ${contentLength} bytes (max: ${maxSize})`);
     }
 
-    const contentType = response.headers.get("content-type") || "application/octet-stream";
+    const contentType = response.headers.get("content-type") ?? "application/octet-stream";
 
     // Stream the response to handle large files efficiently
     const chunks: Uint8Array[] = [];
@@ -271,25 +271,25 @@ const fetchWithRetry = async (
     }
   }
 
-  throw lastError || new Error("Failed to fetch URL after retries");
+  throw lastError ?? new Error("Failed to fetch URL after retries");
 };
 
 export const urlFetchJob = {
   slug: "url-fetch",
-  handler: async ({ input, job, req }: any) => {
-    const { sourceUrl, authConfig, catalogId, originalName, userId, scheduledImportId } = input;
-    const { payload } = req;
+  handler: async ({ input, job, req }: JobHandlerContext<UrlFetchJobInput>) => {
+    const { sourceUrl, authConfig, catalogId, originalName, userId, scheduledImportId } = input!;
+    const { payload } = req!;
     const startTime = Date.now();
 
     try {
-      logger.info("Starting URL fetch job", { sourceUrl, jobId: job.id, scheduledImportId });
+      logger.info("Starting URL fetch job", { sourceUrl, jobId: job?.id, scheduledImportId });
 
       if (!sourceUrl) {
         throw new Error("Source URL is required for URL fetch job");
       }
 
       let scheduledImport: ScheduledImport | null = null;
-      let advancedConfig: any = {};
+      let advancedConfig: ScheduledImport["advancedConfig"] = {};
 
       // Load scheduled import configuration if this is from a scheduled import
       if (scheduledImportId) {
@@ -313,17 +313,17 @@ export const urlFetchJob = {
         timeout:
           process.env.NODE_ENV === "test"
             ? 2000 // 2 seconds in tests
-            : (scheduledImport?.timeoutSeconds || 120) * 1000,
-        maxSize: (advancedConfig.maxFileSize || 100) * 1024 * 1024,
-        expectedContentType: advancedConfig.expectedContentType,
+            : (scheduledImport?.timeoutSeconds ?? 120) * 1000,
+        maxSize: (advancedConfig?.maxFileSize ?? 100) * 1024 * 1024,
+        expectedContentType: advancedConfig?.expectedContentType ?? undefined,
       };
 
       // Fetch the data with retry logic
       const { data, contentType, contentLength, attempts } = await fetchWithRetry(
         sourceUrl,
         fetchOptions,
-        scheduledImport?.maxRetries || 1,
-        scheduledImport?.retryDelayMinutes || 5
+        scheduledImport?.maxRetries ?? 1,
+        scheduledImport?.retryDelayMinutes ?? 5
       );
 
       // Check for duplicate content if not skipped
@@ -331,7 +331,7 @@ export const urlFetchJob = {
       let isDuplicate = false;
 
       if (scheduledImportId && advancedConfig?.skipDuplicateCheck !== true) {
-        contentHash = await calculateDataHash(data);
+        contentHash = calculateDataHash(data);
 
         // Check last successful import for this schedule
         const lastSuccessfulImport = await payload.find({
@@ -349,7 +349,8 @@ export const urlFetchJob = {
         });
 
         if (lastSuccessfulImport?.docs && lastSuccessfulImport.docs.length > 0) {
-          const lastHash = lastSuccessfulImport.docs[0].metadata?.urlFetch?.contentHash;
+          const metadata = lastSuccessfulImport.docs[0]?.metadata as Record<string, unknown>;
+          const lastHash = (metadata?.urlFetch as Record<string, unknown>)?.contentHash;
           if (lastHash === contentHash) {
             isDuplicate = true;
             logger.info("Duplicate content detected, skipping import", {
@@ -360,14 +361,14 @@ export const urlFetchJob = {
         }
       } else if (scheduledImportId) {
         // Still calculate hash for metadata even if skipping duplicate check
-        contentHash = await calculateDataHash(data);
+        contentHash = calculateDataHash(data);
       }
 
       // Detect file type and generate filename
       const { extension, mimeType } = detectFileTypeFromResponse(
         new Response(null, { headers: { "content-type": contentType } }),
         sourceUrl,
-        advancedConfig.expectedContentType
+        advancedConfig?.expectedContentType ?? undefined
       );
 
       const timestamp = Date.now();
@@ -375,7 +376,7 @@ export const urlFetchJob = {
       const filename = `url-${timestamp}-${uniqueId}.${extension}`;
 
       // Create import-files data
-      const importFileData: any = {
+      const importFileData: Record<string, unknown> = {
         originalName: originalName.includes(".") ? originalName : `${originalName}.${extension}`,
         status: isDuplicate ? "completed" : "pending",
         catalog: catalogId,
@@ -395,7 +396,7 @@ export const urlFetchJob = {
 
       // Add scheduled import metadata if this is from a scheduled import
       if (scheduledImportId && scheduledImport) {
-        importFileData.metadata.scheduledExecution = {
+        (importFileData.metadata as Record<string, unknown>).scheduledExecution = {
           scheduledImportId,
           scheduledImportName: scheduledImport.name,
           executedAt: new Date().toISOString(),
@@ -406,7 +407,7 @@ export const urlFetchJob = {
 
         // Add dataset mapping configuration
         if (scheduledImport.datasetMapping) {
-          importFileData.metadata.datasetMapping = scheduledImport.datasetMapping;
+          (importFileData.metadata as Record<string, unknown>).datasetMapping = scheduledImport.datasetMapping;
         }
       }
 
@@ -425,7 +426,7 @@ export const urlFetchJob = {
       // Update scheduled import statistics on success
       if (scheduledImportId && scheduledImport) {
         const duration = (Date.now() - startTime) / 1000; // in seconds
-        const stats = scheduledImport.statistics || {
+        const stats = scheduledImport.statistics ?? {
           totalRuns: 0,
           successfulRuns: 0,
           failedRuns: 0,
@@ -433,8 +434,8 @@ export const urlFetchJob = {
         };
 
         // Calculate new average duration
-        const totalRuns = stats.totalRuns || 0;
-        const avgDuration = stats.averageDuration || 0;
+        const totalRuns = stats.totalRuns ?? 0;
+        const avgDuration = stats.averageDuration ?? 0;
         const newAverage = totalRuns > 0 ? (avgDuration * totalRuns + duration) / (totalRuns + 1) : duration;
 
         await payload.update({
@@ -446,8 +447,8 @@ export const urlFetchJob = {
             currentRetries: 0,
             statistics: {
               ...stats,
-              totalRuns: (stats.totalRuns || 0) + 1,
-              successfulRuns: (stats.successfulRuns || 0) + 1,
+              totalRuns: (stats.totalRuns ?? 0) + 1,
+              successfulRuns: (stats.successfulRuns ?? 0) + 1,
               averageDuration: Math.round(newAverage * 100) / 100, // Round to 2 decimals
             },
           },
@@ -478,7 +479,7 @@ export const urlFetchJob = {
         },
       };
     } catch (error) {
-      logError(error, "URL fetch job failed", { sourceUrl, jobId: job.id });
+      logError(error, "URL fetch job failed", { sourceUrl, jobId: job?.id });
 
       // If this is from a scheduled import, update its status
       if (scheduledImportId) {
@@ -490,7 +491,7 @@ export const urlFetchJob = {
 
           if (scheduledImport) {
             const duration = (Date.now() - startTime) / 1000;
-            const stats = scheduledImport.statistics || {
+            const stats = scheduledImport.statistics ?? {
               totalRuns: 0,
               successfulRuns: 0,
               failedRuns: 0,
@@ -498,8 +499,8 @@ export const urlFetchJob = {
             };
 
             // Update average duration even for failures
-            const totalRuns = stats.totalRuns || 0;
-            const avgDuration = stats.averageDuration || 0;
+            const totalRuns = stats.totalRuns ?? 0;
+            const avgDuration = stats.averageDuration ?? 0;
             const newAverage = totalRuns > 0 ? (avgDuration * totalRuns + duration) / (totalRuns + 1) : duration;
 
             await payload.update({
@@ -508,11 +509,11 @@ export const urlFetchJob = {
               data: {
                 lastStatus: "failed",
                 lastError: error instanceof Error ? error.message : "Unknown error",
-                currentRetries: (scheduledImport.currentRetries || 0) + 1,
+                currentRetries: (scheduledImport.currentRetries ?? 0) + 1,
                 statistics: {
                   ...stats,
-                  totalRuns: (stats.totalRuns || 0) + 1,
-                  failedRuns: (stats.failedRuns || 0) + 1,
+                  totalRuns: (stats.totalRuns ?? 0) + 1,
+                  failedRuns: (stats.failedRuns ?? 0) + 1,
                   averageDuration: Math.round(newAverage * 100) / 100,
                 },
               },
