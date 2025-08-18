@@ -16,18 +16,18 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 
-import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
+import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
 describe.sequential("End-to-End Job Processing with Manual Execution", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
   let testDir: string;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
-    testDir = testEnv.tempDir;
+    testDir = testEnv.tempDir || "/tmp";
 
     // Create temp directory for test files
     const csvDir = path.join(testDir, "csv-files");

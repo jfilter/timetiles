@@ -35,16 +35,16 @@ const mockNominatimGeocoder = {
 };
 
 import { GeocodingError, GeocodingService } from "../../../lib/services/geocoding/geocoding-service";
-import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
+import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
 describe("GeocodingService", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let geocodingService: GeocodingService;
   let testCounter = 0;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
   });
 

@@ -30,26 +30,6 @@ export const createImportFileWithUpload = async (
  */
 export const FIXTURES_PATH = path.join(__dirname, "../fixtures");
 
-/**
- * Creates an isolated test environment for each test
- * Uses the test-environment-builder for consistency
- */
-export const createIsolatedTestEnvironment = async (): Promise<{
-  seedManager: any;
-  payload: any;
-  cleanup: () => Promise<void>;
-  tempDir: string;
-}> => {
-  const builder = new TestEnvironmentBuilder();
-  const env = await builder.createIsolatedTestEnvironment();
-
-  return {
-    seedManager: env.seedManager,
-    payload: env.payload,
-    cleanup: env.cleanup,
-    tempDir: env.tempDir || "",
-  };
-};
 
 /**
  * Helper to create unique identifiers for tests

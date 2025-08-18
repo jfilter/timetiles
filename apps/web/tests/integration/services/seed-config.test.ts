@@ -10,13 +10,13 @@ import {
   getEnvironmentSettings,
   SEED_CONFIG,
 } from "../../../lib/seed/seed.config";
-import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
+import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
 describe.sequential("Configuration-Driven Seeding", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
   });
 
   afterAll(async () => {

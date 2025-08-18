@@ -164,29 +164,23 @@ export class TestEnvironmentBuilder {
     return this.createTestEnvironment({
       collections: [
         "users",
+        "media",
+        "pages",
         "catalogs",
         "datasets",
+        "dataset-schemas",
         "events",
         "import-files",
         "import-jobs",
         "scheduled-imports",
+        "geocoding-providers",
+        "location-cache",
       ] as CollectionName[],
       seedData: false, // Don't seed automatically to avoid relationship issues
       isolationLevel: "suite",
       customSeedData: customData ?? {},
       environment: "test",
-    });
-  }
-
-  /**
-   * Create an isolated test environment for parallel testing
-   */
-  async createIsolatedTestEnvironment(): Promise<TestEnvironment> {
-    return this.createTestEnvironment({
-      collections: ["users", "catalogs", "datasets", "events"] as CollectionName[],
-      seedData: false,
-      isolationLevel: "worker",
-      createTempDir: true,
+      createTempDir: true, // Enable temp directory for file operations
     });
   }
 
@@ -350,6 +344,18 @@ export const createUnitTestEnvironment = async (): Promise<TestEnvironment> => {
 export const createIntegrationTestEnvironment = async (
   customData?: Record<string, any[]>
 ): Promise<TestEnvironment> => {
+  // Check if database is available before attempting to create environment
+  const { isDatabaseAvailable } = await import("./check-database");
+  const dbAvailable = await isDatabaseAvailable();
+
+  if (!dbAvailable) {
+    throw new Error(
+      "❌ PostgreSQL is not running!\n" +
+        "   Integration tests require a running database.\n" +
+        "   Run 'make dev' or 'docker compose up -d postgres' to start the database."
+    );
+  }
+
   const builder = new TestEnvironmentBuilder();
   return builder.createIntegrationTestEnvironment(customData);
 };

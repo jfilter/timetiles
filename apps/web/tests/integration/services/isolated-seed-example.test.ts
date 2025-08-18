@@ -1,12 +1,13 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createIsolatedTestEnvironment, createTestId } from "../../setup/test-helpers";
+import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import { createTestId } from "../../setup/test-helpers";
 
 describe("Isolated Seed System Test Example", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
   });
 
   afterAll(async () => {
@@ -78,7 +79,7 @@ describe("Isolated Seed System Test Example", () => {
       const path = await import("path");
 
       const testId = createTestId();
-      const testFile = path.join(testEnv.tempDir, `${testId}.csv`);
+      const testFile = path.join(testEnv.tempDir || "/tmp", `${testId}.csv`);
 
       await fs.promises.writeFile(testFile, "test,data\n1,2");
 

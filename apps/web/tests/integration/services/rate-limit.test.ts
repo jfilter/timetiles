@@ -6,15 +6,15 @@ import {
   RATE_LIMITS,
   RateLimitService,
 } from "../../../lib/services/rate-limit-service";
-import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
+import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
 describe.sequential("RateLimitService", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let rateLimitService: RateLimitService;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
   });
 
@@ -348,11 +348,11 @@ describe.sequential("RateLimitService", () => {
 });
 
 describe.sequential("getRateLimitService", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
   });
 
@@ -440,12 +440,12 @@ describe.sequential("getClientIdentifier", () => {
 });
 
 describe.sequential("Multi-window rate limiting", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let rateLimitService: RateLimitService;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
   });
 

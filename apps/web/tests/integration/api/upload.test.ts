@@ -2,15 +2,15 @@ import fs from "fs";
 import { join } from "path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
+import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
 describe.sequential("Import Files Collection", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
   });
 

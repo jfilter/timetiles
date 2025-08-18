@@ -11,15 +11,15 @@
 // Import geospatial assertions (they extend expect automatically) and helper utilities
 import "../../utils/geospatial-assertions";
 
-import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
+import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 import { GeospatialTestHelper, TEST_COORDINATES } from "../../utils/geospatial-assertions";
 import { TestDataBuilder } from "../../utils/test-data-builder";
 
 describe("Enhanced Testing Infrastructure", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
   });
 
   afterAll(async () => {

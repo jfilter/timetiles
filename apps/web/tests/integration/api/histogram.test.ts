@@ -16,8 +16,8 @@ describe("/api/events/histogram", () => {
   const uniqueSuffix = Date.now().toString();
 
   beforeAll(async () => {
-    const { createIsolatedTestEnvironment } = await import("../../setup/test-helpers");
-    testEnv = await createIsolatedTestEnvironment();
+    const { createIntegrationTestEnvironment } = await import("../../setup/test-environment-builder");
+    testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
 
     // Create test catalog

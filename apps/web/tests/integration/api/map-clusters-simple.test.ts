@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
 
 import { GET } from "../../../app/api/events/map-clusters/route";
-import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
+import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
 describe("Map-clusters API test", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   afterEach(async () => {
     if (testEnv) {
@@ -14,7 +14,7 @@ describe("Map-clusters API test", () => {
 
   it("should handle map-clusters API request without errors", async () => {
     try {
-      testEnv = await createIsolatedTestEnvironment();
+      testEnv = await createIntegrationTestEnvironment();
 
       // API routes now use getPayload({ config }) directly
 

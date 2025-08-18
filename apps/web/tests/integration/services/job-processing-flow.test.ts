@@ -13,18 +13,19 @@ import { geocodeBatchJob } from "@/lib/jobs/handlers/geocode-batch-job";
 import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
 import { validateSchemaJob } from "@/lib/jobs/handlers/validate-schema-job";
 
-import { createImportFileWithUpload, createIsolatedTestEnvironment } from "../../setup/test-helpers";
+import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import { createImportFileWithUpload } from "../../setup/test-helpers";
 
 describe.sequential("Job Processing Flow Integration", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
   let testDir: string;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
-    testDir = testEnv.tempDir;
+    testDir = testEnv.tempDir || "/tmp";
 
     // Create temp directory for CSV files
     const csvDir = path.join(testDir, "csv-files");

@@ -1,10 +1,11 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createImportFileWithUpload, createIsolatedTestEnvironment } from "../../setup/test-helpers";
+import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import { createImportFileWithUpload } from "../../setup/test-helpers";
 
 describe.sequential("Schema Approval Workflow", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
-  let payload: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>["payload"];
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
+  let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   let adminUser: any;
   let editorUser: any;
   let viewerUser: any;
@@ -14,7 +15,7 @@ describe.sequential("Schema Approval Workflow", () => {
   let testImportJobId: string;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
   });
 

@@ -17,40 +17,19 @@ import { utils as xlsxUtils, write as xlsxWrite } from "xlsx";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 
-import { createIsolatedTestEnvironment } from "../../setup/test-helpers";
-
-// Helper function to create import file with proper upload
-const createImportFileWithUpload = async (
-  payload: any,
-  data: any,
-  fileContent: string | Buffer,
-  fileName: string,
-  mimeType: string
-) => {
-  const fileBuffer = typeof fileContent === "string" ? Buffer.from(fileContent, "utf8") : fileContent;
-
-  return await payload.create({
-    collection: "import-files",
-    data,
-    file: {
-      data: fileBuffer,
-      name: fileName,
-      size: fileBuffer.length,
-      mimetype: mimeType,
-    },
-  });
-};
+import { createImportFileWithUpload } from "../../setup/test-helpers";
+import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
 describe.sequential("Comprehensive File Upload Tests", () => {
-  let testEnv: Awaited<ReturnType<typeof createIsolatedTestEnvironment>>;
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
   let testDir: string;
 
   beforeAll(async () => {
-    testEnv = await createIsolatedTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
-    testDir = testEnv.tempDir;
+    testDir = testEnv.tempDir || "/tmp";
 
     // Create temp directory for test files
     const filesDir = path.join(testDir, "test-files");
