@@ -42,7 +42,8 @@ const isIntegrationTest = (() => {
   }
 
   // For CI, always setup database (it's isolated per worker anyway)
-  if (process.env.CI === "true") {
+  // GitHub Actions sets CI=true (could be "true", "1", or just present)
+  if (process.env.CI) {
     return true;
   }
 
@@ -81,7 +82,7 @@ beforeAll(async () => {
     throw new Error("Database is not available. Cannot run integration tests without PostgreSQL.");
   }
 
-  if (process.env.LOG_LEVEL === "debug" || process.env.CI === "true") {
+  if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
     logger.info(`Setting up test environment for worker ${workerId}`, {
       dbName: testDbName,
       isIntegrationTest,
@@ -132,7 +133,7 @@ beforeAll(async () => {
     await verifyDatabaseSchema(dbUrl);
 
     // Log successful setup for debugging
-    if (process.env.LOG_LEVEL === "debug" || process.env.CI === "true") {
+    if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
       logger.info(`Database setup completed for worker ${workerId}`, {
         dbName: testDbName,
         dbUrl: dbUrl.replace(/:[^:@]+@/, ":***@"), // Hide password
