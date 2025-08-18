@@ -3,6 +3,16 @@ import baseConfig from "@workspace/eslint-config/next-js";
 /** @type {import("eslint").Linter.Config} */
 export default [
   ...baseConfig,
+  // Override parserOptions to point to this project's tsconfig
+  {
+    files: ["**/*.ts", "**/*.tsx"],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
   // Migration files - allow long functions for SQL/schema changes
   {
     files: ["migrations/**/*.ts", "**/migrations/**/*.ts"],
@@ -67,18 +77,13 @@ export default [
       // Relax file size limits for test files
       "sonarjs/max-lines": ["error", { maximum: 2000 }], // Increased for integration tests
       "sonarjs/max-lines-per-function": ["error", { maximum: 1500 }], // Allow longer test functions for complex scenarios
+      "sonarjs/cognitive-complexity": ["error", 30], // More complex test setups allowed
       // Allow longer functions in tests (setup, teardown, comprehensive test scenarios)
-      complexity: ["error", 25], // Increase from 15 to 25
-      "max-nested-callbacks": ["error", 6], // Increase from 4 to 6 for test nesting
+      complexity: ["error", 25], // Increase from 20 to 25 for tests
+      "max-nested-callbacks": ["error", 6], // Increase from 5 to 6 for test nesting
       "sonarjs/no-nested-functions": "off", // Common in test scenarios
       // Relax some strict rules that are less important in tests
       "@typescript-eslint/no-explicit-any": "off", // Allow any in tests for mocking and flexibility
-      "@typescript-eslint/strict-boolean-expressions": "off", // Allow flexible boolean expressions in tests
-      "@typescript-eslint/no-unsafe-assignment": "off",
-      "@typescript-eslint/no-unsafe-member-access": "off",
-      "@typescript-eslint/no-unsafe-call": "off",
-      "@typescript-eslint/no-unsafe-return": "off",
-      "@typescript-eslint/no-unsafe-argument": "off",
       // Allow relative imports in tests (common pattern for test utilities)
       "no-restricted-imports": "off",
       // Pseudorandom is often OK in tests
@@ -89,8 +94,6 @@ export default [
       "sonarjs/no-duplicate-string": "off", // Test files often repeat strings for clarity
       // React performance rules are less critical in tests
       "react-perf/jsx-no-new-array-as-prop": "off", // Allow inline arrays in test JSX
-      // Allow default exports for specific test infrastructure files
-      "import/no-default-export": "off", // Test setup files often need default exports
       // Enforce kebab-case for test files (override base config exemption)
       "unicorn/filename-case": [
         "error",

@@ -16,8 +16,8 @@ export const cleanupApprovalLocksJob = {
       queue: "maintenance",
     },
   ],
-  handler: async () => {
-    const transitionResult = await StageTransitionService.cleanupTask();
+  handler: () => {
+    const transitionResult = StageTransitionService.cleanupTask();
 
     return {
       output: {

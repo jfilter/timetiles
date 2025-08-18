@@ -230,7 +230,7 @@ export const scheduleManagerJob = {
 
           // Generate import name from template
           let importName = scheduledImport.importNameTemplate || "{{name}} - {{date}}";
-          const timeString = `${currentTime.getUTCHours().toString().padStart(2, '0')}:${currentTime.getUTCMinutes().toString().padStart(2, '0')}:${currentTime.getUTCSeconds().toString().padStart(2, '0')}`;
+          const timeString = `${currentTime.getUTCHours().toString().padStart(2, "0")}:${currentTime.getUTCMinutes().toString().padStart(2, "0")}:${currentTime.getUTCSeconds().toString().padStart(2, "0")}`;
           importName = importName
             .replace("{{name}}", scheduledImport.name)
             .replace("{{date}}", currentTime.toISOString().split("T")[0])

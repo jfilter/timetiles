@@ -30,7 +30,7 @@ export const GET = async (request: NextRequest): Promise<NextResponse> => {
 
     // Simple auth check - in production you might want more sophisticated auth
     const authHeader = request.headers.get("authorization");
-    if (authHeader === null || authHeader === undefined || !authHeader.startsWith("Bearer ")) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ error: AUTH_ERROR }, { status: AUTH_STATUS });
     }
 
@@ -57,7 +57,7 @@ export const POST = async (request: NextRequest): Promise<NextResponse> => {
 
     // Simple auth check - in production you might want more sophisticated auth
     const authHeader = request.headers.get("authorization");
-    if (authHeader === null || authHeader === undefined || !authHeader.startsWith("Bearer ")) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ error: AUTH_ERROR }, { status: AUTH_STATUS });
     }
 
@@ -87,11 +87,11 @@ export const POST = async (request: NextRequest): Promise<NextResponse> => {
  * DELETE /api/admin/schedule-service
  * Stops the schedule service
  */
-export const DELETE = async (request: NextRequest): Promise<NextResponse> => {
+export const DELETE = (request: NextRequest): NextResponse => {
   try {
     // Simple auth check - in production you might want more sophisticated auth
     const authHeader = request.headers.get("authorization");
-    if (authHeader === null || authHeader === undefined || !authHeader.startsWith("Bearer ")) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ error: AUTH_ERROR }, { status: AUTH_STATUS });
     }
 

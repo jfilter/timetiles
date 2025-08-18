@@ -2,8 +2,6 @@
  * Unit tests for URL Fetch Job Handler
  */
 
-import { promises as fs } from "fs";
-import path from "path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";

@@ -27,7 +27,7 @@ const createImportJob = (
   stage,
   sheetIndex,
   // These fields will be resolved by the relationship system
-  importFile: (importFileName || "air_quality_2024_01_15.csv") as unknown as number | ImportFile,
+  importFile: (importFileName ?? "air_quality_2024_01_15.csv") as unknown as number | ImportFile,
   dataset: datasetName as unknown as number | Dataset,
   progress: {
     current: stage === "completed" ? 100 : Math.floor(Math.random() * 80 + 10),

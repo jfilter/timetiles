@@ -247,19 +247,20 @@ describe.sequential("Security Validation Tests", () => {
       fetchMock.mockImplementation(async (url, options) => {
         // Check if custom headers are sent
         const headers = options?.headers || {};
-        const hasAdminHeader = headers['X-Admin'] === 'true';
-        const hasBypassHeader = headers['X-Bypass-Auth'] === '1';
-        
+        const hasAdminHeader = headers["X-Admin"] === "true";
+        const hasBypassHeader = headers["X-Bypass-Auth"] === "1";
+
         return {
           ok: true,
           status: 200,
           statusText: "OK",
           headers: {
-            get: (key: string) => key === "content-type" ? "text/csv" : null,
+            get: (key: string) => (key === "content-type" ? "text/csv" : null),
           },
           body: {
             getReader: () => ({
-              read: vi.fn()
+              read: vi
+                .fn()
                 .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("test,data\n1,2") })
                 .mockResolvedValueOnce({ done: true }),
             }),
@@ -309,27 +310,28 @@ describe.sequential("Security Validation Tests", () => {
       // Mock the API endpoint to verify Basic Auth header
       fetchMock.mockImplementation(async (url, options) => {
         // Check if Basic Auth header is present
-        const authHeader = options?.headers?.['Authorization'];
-        const expectedAuth = 'Basic ' + Buffer.from('user@example.com:password123').toString('base64');
-        
+        const authHeader = options?.headers?.["Authorization"];
+        const expectedAuth = "Basic " + Buffer.from("user@example.com:password123").toString("base64");
+
         if (authHeader === expectedAuth) {
           return {
             ok: true,
             status: 200,
             statusText: "OK",
             headers: {
-              get: (key: string) => key === "content-type" ? "text/csv" : null,
+              get: (key: string) => (key === "content-type" ? "text/csv" : null),
             },
             body: {
               getReader: () => ({
-                read: vi.fn()
+                read: vi
+                  .fn()
                   .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("test,data\n1,2") })
                   .mockResolvedValueOnce({ done: true }),
               }),
             },
           };
         }
-        
+
         return {
           ok: false,
           status: 401,
@@ -378,11 +380,12 @@ describe.sequential("Security Validation Tests", () => {
         status: 200,
         statusText: "OK",
         headers: {
-          get: (key: string) => key === "content-type" ? "text/csv" : null,
+          get: (key: string) => (key === "content-type" ? "text/csv" : null),
         },
         body: {
           getReader: () => ({
-            read: vi.fn()
+            read: vi
+              .fn()
               .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("test,data\n1,2") })
               .mockResolvedValueOnce({ done: true }),
           }),
@@ -436,11 +439,12 @@ describe.sequential("Security Validation Tests", () => {
         status: 200,
         statusText: "OK",
         headers: {
-          get: (key: string) => key === "content-type" ? "text/csv" : null,
+          get: (key: string) => (key === "content-type" ? "text/csv" : null),
         },
         body: {
           getReader: () => ({
-            read: vi.fn()
+            read: vi
+              .fn()
               .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("test,data\n1,2") })
               .mockResolvedValueOnce({ done: true }),
           }),
@@ -476,11 +480,12 @@ describe.sequential("Security Validation Tests", () => {
         status: 200,
         statusText: "OK",
         headers: {
-          get: (key: string) => key === "content-type" ? "text/csv" : null,
+          get: (key: string) => (key === "content-type" ? "text/csv" : null),
         },
         body: {
           getReader: () => ({
-            read: vi.fn()
+            read: vi
+              .fn()
               .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("test,data\n1,2") })
               .mockResolvedValueOnce({ done: true }),
           }),
@@ -537,11 +542,12 @@ describe.sequential("Security Validation Tests", () => {
         status: 200,
         statusText: "OK",
         headers: {
-          get: (key: string) => key === "content-type" ? "text/csv" : null,
+          get: (key: string) => (key === "content-type" ? "text/csv" : null),
         },
         body: {
           getReader: () => ({
-            read: vi.fn()
+            read: vi
+              .fn()
               .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("test,data\n1,2") })
               .mockResolvedValueOnce({ done: true }),
           }),
@@ -597,14 +603,15 @@ describe.sequential("Security Validation Tests", () => {
         status: 200,
         statusText: "OK",
         headers: {
-          get: (key: string) => key === "content-type" ? "text/csv" : null,
+          get: (key: string) => (key === "content-type" ? "text/csv" : null),
         },
         body: {
           getReader: () => ({
-            read: vi.fn()
-              .mockResolvedValueOnce({ 
-                done: false, 
-                value: new TextEncoder().encode('=cmd|"/c calc"!A1,@SUM(1+9)*cmd|"/c calc"!A1\n=1+1,normal data') 
+            read: vi
+              .fn()
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode('=cmd|"/c calc"!A1,@SUM(1+9)*cmd|"/c calc"!A1\n=1+1,normal data'),
               })
               .mockResolvedValueOnce({ done: true }),
           }),
@@ -649,9 +656,9 @@ describe.sequential("Security Validation Tests", () => {
       });
 
       // Mock a response that sends large data
-      const largeData = 'data,'.repeat(1000) + '\n';
+      const largeData = "data,".repeat(1000) + "\n";
       const fullData = largeData.repeat(2000); // Generate 2MB of data
-      
+
       fetchMock.mockResolvedValue({
         ok: true,
         status: 200,
@@ -665,7 +672,8 @@ describe.sequential("Security Validation Tests", () => {
         },
         body: {
           getReader: () => ({
-            read: vi.fn()
+            read: vi
+              .fn()
               .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode(fullData) })
               .mockResolvedValueOnce({ done: true }),
           }),
@@ -713,9 +721,7 @@ describe.sequential("Security Validation Tests", () => {
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
       // Mock DNS failure for the non-existent domain
-      fetchMock.mockRejectedValue(
-        new Error("getaddrinfo ENOTFOUND internal.system.error")
-      );
+      fetchMock.mockRejectedValue(new Error("getaddrinfo ENOTFOUND internal.system.error"));
 
       // Execute the job (will fail due to DNS)
       const result = await urlFetchJob.handler({

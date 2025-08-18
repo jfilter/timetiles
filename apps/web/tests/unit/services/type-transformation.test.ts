@@ -114,9 +114,10 @@ describe("TypeTransformationService", () => {
       };
 
       const result = await service.transformRecord(record);
+      const transformed = result.transformed as { user: { details: { age: number; city: string } } };
 
-      expect(result.transformed.user.details.age).toBe(25);
-      expect(result.transformed.user.details.city).toBe("NYC");
+      expect(transformed.user.details.age).toBe(25);
+      expect(transformed.user.details.city).toBe("NYC");
     });
 
     it("creates nested structure if missing", async () => {
@@ -319,8 +320,9 @@ describe("TypeTransformationService", () => {
 
         for (const input of testCases) {
           const result = await service.transformRecord({ value: input });
-          expect(result.transformed.value).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-          expect(new Date(result.transformed.value).toISOString()).toBe(result.transformed.value);
+          const transformed = result.transformed as { value: string };
+          expect(transformed.value).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+          expect(new Date(transformed.value).toISOString()).toBe(transformed.value);
         }
       });
 
@@ -638,14 +640,15 @@ describe("TypeTransformationService", () => {
       };
 
       const result = await service.transformRecord(original);
+      const transformed = result.transformed as { data: { value: number; other: { nested: boolean } } };
 
       // Original should be unchanged
       expect(original.data.value).toBe("123");
-      expect(result.transformed.data.value).toBe(123);
+      expect(transformed.data.value).toBe(123);
 
       // Deep properties should be cloned
-      expect(result.transformed.data.other).toEqual({ nested: true });
-      expect(result.transformed.data.other).not.toBe(original.data.other);
+      expect(transformed.data.other).toEqual({ nested: true });
+      expect(transformed.data.other).not.toBe(original.data.other);
     });
   });
 });

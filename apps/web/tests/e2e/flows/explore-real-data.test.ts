@@ -42,21 +42,20 @@ test.describe("Explore Page - Real Data Tests", () => {
 
     // Select the first dataset
     const firstDatasetCheckbox = page.locator('input[type="checkbox"]').first();
-    
+
     // Set up promise to wait for API response before checking the box
-    const responsePromise = page.waitForResponse(
-      (response) => response.url().includes("/api/events"),
-      { timeout: 5000 }
-    ).catch(() => {
-      // Response might not come if data is cached or already loaded
-      return null;
-    });
-    
+    const responsePromise = page
+      .waitForResponse((response) => response.url().includes("/api/events"), { timeout: 5000 })
+      .catch(() => {
+        // Response might not come if data is cached or already loaded
+        return null;
+      });
+
     await firstDatasetCheckbox.check();
-    
+
     // Wait for response if it comes
     await responsePromise;
-    
+
     // Wait for events to load
     await explorePage.waitForEventsToLoad();
 
@@ -104,7 +103,7 @@ test.describe("Explore Page - Real Data Tests", () => {
 
     // URL should eventually have bounds parameter after interaction
     // Wait briefly for any map updates
-    await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {});
+    await page.waitForLoadState("networkidle", { timeout: 2000 }).catch(() => {});
     const url = new URL(page.url());
     // Bounds might or might not be set depending on map events, but URL should be valid
     expect(url.pathname).toBe("/explore");

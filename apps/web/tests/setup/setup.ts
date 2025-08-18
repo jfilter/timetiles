@@ -22,9 +22,6 @@ process.env.NEXT_PUBLIC_PAYLOAD_URL = "http://localhost:3000";
 const workerId = process.env.VITEST_WORKER_ID ?? "1";
 const testDbName = `timetiles_test_${workerId}`;
 const dbUrl = `postgresql://timetiles_user:timetiles_password@localhost:5432/${testDbName}`;
-
-// IMPORTANT: Always set DATABASE_URL for consistency across the worker process
-// This ensures createIntegrationTestEnvironment can find the correct database
 process.env.DATABASE_URL = dbUrl;
 
 // Create unique temp directory for each test worker
@@ -61,18 +58,6 @@ const isIntegrationTest = (() => {
 
 // Global setup to ensure clean test environment
 beforeAll(async () => {
-  // Always log in CI to debug issues
-  if (process.env.CI) {
-    console.log("[SETUP] Running with:", {
-      workerId,
-      testDbName,
-      isIntegrationTest,
-      CI: process.env.CI,
-      VITEST_WORKER_ID: process.env.VITEST_WORKER_ID,
-      DATABASE_URL: process.env.DATABASE_URL?.replace(/:[^:@]+@/, ":***@"),
-    });
-  }
-
   // Skip database setup for unit tests
   if (!isIntegrationTest) {
     if (process.env.LOG_LEVEL === "debug" || process.env.CI) {

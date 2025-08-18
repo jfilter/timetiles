@@ -54,7 +54,7 @@ export class StageTransitionService {
     if (fromStage === toStage) return true;
 
     // Check if transition is valid
-    const validTransitions = VALID_STAGE_TRANSITIONS[fromStage] || [];
+    const validTransitions = VALID_STAGE_TRANSITIONS[fromStage] ?? [];
     return validTransitions.includes(toStage);
   }
 
@@ -239,7 +239,7 @@ export class StageTransitionService {
    * Cleanup task handler for Payload jobs
    * This should be registered as a Payload task with a schedule
    */
-  static async cleanupTask(): Promise<{ output: { cleaned: number } }> {
+  static cleanupTask(): { output: { cleaned: number } } {
     const cleaned = this.cleanupOldLocks();
     if (cleaned > 0) {
       logger.info("Cleaned up stage transition locks", { count: cleaned });

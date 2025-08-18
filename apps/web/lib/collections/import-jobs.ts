@@ -115,17 +115,17 @@ const ImportJobs: CollectionConfig = {
       name: "stage",
       type: "select",
       required: true,
-      defaultValue: "analyze-duplicates",
+      defaultValue: PROCESSING_STAGE.ANALYZE_DUPLICATES,
       options: [
-        { label: "Analyze Duplicates", value: "analyze-duplicates" },
-        { label: "Detect Schema", value: "detect-schema" },
-        { label: "Validate Schema", value: "validate-schema" },
-        { label: "Await Approval", value: "await-approval" },
-        { label: "Create Schema Version", value: "create-schema-version" },
-        { label: "Geocode Batch", value: "geocode-batch" },
-        { label: "Create Events", value: "create-events" },
-        { label: "Completed", value: "completed" },
-        { label: "Failed", value: "failed" },
+        { label: "Analyze Duplicates", value: PROCESSING_STAGE.ANALYZE_DUPLICATES },
+        { label: "Detect Schema", value: PROCESSING_STAGE.DETECT_SCHEMA },
+        { label: "Validate Schema", value: PROCESSING_STAGE.VALIDATE_SCHEMA },
+        { label: "Await Approval", value: PROCESSING_STAGE.AWAIT_APPROVAL },
+        { label: "Create Schema Version", value: PROCESSING_STAGE.CREATE_SCHEMA_VERSION },
+        { label: "Geocode Batch", value: PROCESSING_STAGE.GEOCODE_BATCH },
+        { label: "Create Events", value: PROCESSING_STAGE.CREATE_EVENTS },
+        { label: "Completed", value: PROCESSING_STAGE.COMPLETED },
+        { label: "Failed", value: PROCESSING_STAGE.FAILED },
       ],
       admin: {
         position: "sidebar",
@@ -178,7 +178,7 @@ const ImportJobs: CollectionConfig = {
       type: "json",
       admin: {
         description: "Progressive schema builder state for continuity across batches",
-        condition: (data) => ["detect-schema", "validate-schema"].includes(data.stage),
+        condition: (data) => [PROCESSING_STAGE.DETECT_SCHEMA, PROCESSING_STAGE.VALIDATE_SCHEMA].includes(data.stage),
       },
     },
 
@@ -189,12 +189,12 @@ const ImportJobs: CollectionConfig = {
       admin: {
         condition: (data) =>
           [
-            "detect-schema",
-            "validate-schema",
-            "await-approval",
-            "geocode-batch",
-            "create-events",
-            "completed",
+            PROCESSING_STAGE.DETECT_SCHEMA,
+            PROCESSING_STAGE.VALIDATE_SCHEMA,
+            PROCESSING_STAGE.AWAIT_APPROVAL,
+            PROCESSING_STAGE.GEOCODE_BATCH,
+            PROCESSING_STAGE.CREATE_EVENTS,
+            PROCESSING_STAGE.COMPLETED,
           ].includes(data.stage),
       },
       fields: [
@@ -282,12 +282,12 @@ const ImportJobs: CollectionConfig = {
       admin: {
         condition: (data) =>
           [
-            "detect-schema",
-            "validate-schema",
-            "await-approval",
-            "geocode-batch",
-            "create-events",
-            "completed",
+            PROCESSING_STAGE.DETECT_SCHEMA,
+            PROCESSING_STAGE.VALIDATE_SCHEMA,
+            PROCESSING_STAGE.AWAIT_APPROVAL,
+            PROCESSING_STAGE.GEOCODE_BATCH,
+            PROCESSING_STAGE.CREATE_EVENTS,
+            PROCESSING_STAGE.COMPLETED,
           ].includes(data.stage),
       },
       fields: [
@@ -495,7 +495,7 @@ const ImportJobs: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      async ({ data, operation, req, originalDoc }) => {
+      ({ data, operation, req, originalDoc }) => {
         // Update the stage when approved is set to true
         if (
           operation === "update" &&
@@ -503,7 +503,7 @@ const ImportJobs: CollectionConfig = {
           data.schemaValidation?.approved === true &&
           originalDoc?.schemaValidation?.approved !== true
         ) {
-          const approvedBy = req.user?.id || 1;
+          const approvedBy = req.user?.id ?? 1;
           data.stage = PROCESSING_STAGE.CREATE_SCHEMA_VERSION;
           data.schemaValidation.approvedAt = new Date();
           data.schemaValidation.approvedBy = approvedBy;
@@ -516,6 +516,7 @@ const ImportJobs: CollectionConfig = {
       },
     ],
     afterChange: [
+      // eslint-disable-next-line sonarjs/no-invariant-returns -- afterChange hooks must return the document
       async ({ doc, previousDoc, req, operation }) => {
         // Handle initial job creation
         if (operation === "create") {

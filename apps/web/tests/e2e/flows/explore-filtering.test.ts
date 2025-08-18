@@ -136,43 +136,42 @@ test.describe("Explore Page - Filtering", () => {
     // Start with one catalog and dataset
     await explorePage.selectCatalog("Environmental Data");
     await explorePage.selectDatasets(["Air Quality Measurements"]);
-    
+
     // Wait for the first results to load completely
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
     const initialCount = await explorePage.getEventCount();
-    
+
     // Store initial count for comparison
     expect(initialCount).toBeGreaterThanOrEqual(0);
     console.log(`Initial count with Environmental Data: ${initialCount}`);
-    
+
     // Deselect the current dataset first
     await explorePage.deselectDatasets(["Air Quality Measurements"]);
     // Wait for UI to update after deselection
     await explorePage.waitForApiResponse();
-    
+
     // Now change to a different catalog
     await explorePage.selectCatalog("Economic Indicators");
-    
-    
+
     // Select a dataset from the new catalog
     await explorePage.selectDatasets(["GDP Growth Rates"]);
-    
+
     // Wait for the new results to load
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
     const newCount = await explorePage.getEventCount();
-    
+
     console.log(`New count with Economic Indicators: ${newCount}`);
-    
+
     // Verify that results have been updated
     expect(newCount).toBeGreaterThanOrEqual(0);
-    
+
     // Verify URL parameters reflect the new selection
     const params = await explorePage.getUrlParams();
     expect(params.has("catalog")).toBe(true);
     expect(params.has("datasets")).toBe(true);
-    
+
     // The catalog should have changed to Economic Indicators
     const catalogParam = params.get("catalog");
     expect(catalogParam).toBeTruthy();

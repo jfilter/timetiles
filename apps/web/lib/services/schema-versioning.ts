@@ -34,7 +34,7 @@ export class SchemaVersioningService {
       limit: 1,
     });
 
-    const lastVersion = existingSchemas.docs[0]?.versionNumber || 0;
+    const lastVersion = existingSchemas.docs[0]?.versionNumber ?? 0;
     return lastVersion + 1;
   }
 

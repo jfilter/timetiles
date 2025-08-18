@@ -344,18 +344,8 @@ export const createUnitTestEnvironment = async (): Promise<TestEnvironment> => {
 export const createIntegrationTestEnvironment = async (
   customData?: Record<string, any[]>
 ): Promise<TestEnvironment> => {
-  // Check if database is available before attempting to create environment
-  const { isDatabaseAvailable } = await import("./check-database");
-  const dbAvailable = await isDatabaseAvailable();
-
-  if (!dbAvailable) {
-    throw new Error(
-      "❌ PostgreSQL is not running!\n" +
-        "   Integration tests require a running database.\n" +
-        "   Run 'make dev' or 'docker compose up -d postgres' to start the database."
-    );
-  }
-
+  // Database setup is handled by the global setup in setup.ts
+  // No need to check here as it causes a race condition
   const builder = new TestEnvironmentBuilder();
   return builder.createIntegrationTestEnvironment(customData);
 };

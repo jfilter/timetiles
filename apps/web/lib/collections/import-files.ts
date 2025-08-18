@@ -18,6 +18,8 @@ import { v4 as uuidv4 } from "uuid";
 
 import { createRequestLogger } from "../logger";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "../services/rate-limit-service";
+
+const logger = createRequestLogger("import-files");
 import { createCommonConfig } from "./shared-fields";
 
 const ALLOWED_MIME_TYPES = [
@@ -215,7 +217,7 @@ const ImportFiles: CollectionConfig = {
   ],
   hooks: {
     beforeOperation: [
-      async ({ operation, req }) => {
+      ({ operation, req }) => {
         // Only run on create operations
         if (operation !== "create") return;
 
@@ -229,14 +231,14 @@ const ImportFiles: CollectionConfig = {
           // Generate unique filename with timestamp and UUID to prevent conflicts
           const timestamp = Date.now();
           const uniqueId = uuidv4().substring(0, 8); // Short UUID for readability
-          const fileExtension = originalName.split(".").pop() || "csv";
+          const fileExtension = originalName.split(".").pop() ?? "csv";
           const uniqueFilename = `${timestamp}-${uniqueId}.${fileExtension}`;
 
           // Update the file name
           req.file.name = uniqueFilename;
 
           // Store original name in request context for use in beforeChange hook
-          (req as any).originalFileName = originalName;
+          (req as typeof req & { originalFileName?: string }).originalFileName = originalName;
 
           logger.debug("Generated unique filename", {
             originalName,
@@ -248,7 +250,7 @@ const ImportFiles: CollectionConfig = {
       },
     ],
     beforeValidate: [
-      async ({ data, req, operation }) => {
+      ({ data, req, operation }) => {
         // Only run on create operations
         if (operation !== "create") return data;
 
@@ -273,7 +275,7 @@ const ImportFiles: CollectionConfig = {
       },
     ],
     beforeChange: [
-      async ({ data, req, operation }) => {
+      ({ data, req, operation }) => {
         // Only run on create operations
         if (operation !== "create") return data;
 
@@ -297,11 +299,11 @@ const ImportFiles: CollectionConfig = {
 
         // Extract custom metadata from the request
         // SessionId comes from the _payload data
-        const sessionId = data.sessionId || null;
-        const userAgent = req.headers?.get?.("user-agent") || null;
+        const sessionId = data.sessionId ?? null;
+        const userAgent = req.headers?.get?.("user-agent") ?? null;
 
         // Get original filename from beforeOperation hook
-        const originalName = (req as any).originalFileName || null;
+        const originalName = (req as typeof req & { originalFileName?: string }).originalFileName ?? null;
 
         // Add rate limiting and metadata info
         return {
@@ -347,20 +349,19 @@ const ImportFiles: CollectionConfig = {
               },
             });
           } catch (error) {
-            // Silently ignore errors during tests - the record may be cleaned up
-            if (process.env.NODE_ENV !== "test") {
-              console.error("Failed to update import-files record for JSON rejection:", error);
-            }
+            logger.error("Failed to update import-files record for JSON rejection", error);
           }
           return doc;
         }
 
         // Get the catalog if specified
-        const catalog = doc.catalog
-          ? typeof doc.catalog === "object"
-            ? doc.catalog
-            : await payload.findByID({ collection: "catalogs", id: doc.catalog })
-          : null;
+        let catalog = null;
+        if (doc.catalog) {
+          catalog =
+            typeof doc.catalog === "object"
+              ? doc.catalog
+              : await payload.findByID({ collection: "catalogs", id: doc.catalog });
+        }
 
         // Queue the dataset detection job to detect sheets/datasets
         try {
@@ -372,27 +373,22 @@ const ImportFiles: CollectionConfig = {
             },
           });
 
-          // Update with job ID - use setTimeout to avoid transaction conflicts during tests
-          setTimeout(async () => {
-            try {
-              await payload.update({
-                collection: "import-files",
-                id: String(doc.id),
-                data: {
-                  status: "parsing",
-                  jobId: String(job.id),
-                  importedAt: new Date().toISOString(),
-                },
-              });
-            } catch (error) {
-              // Silently ignore errors during tests - the record may be cleaned up
-              if (process.env.NODE_ENV !== "test") {
-                console.error("Failed to update import-files record with job ID:", error);
-              }
-            }
-          }, 100);
+          // Update with job ID
+          try {
+            await payload.update({
+              collection: "import-files",
+              id: String(doc.id),
+              data: {
+                status: "parsing",
+                jobId: String(job.id),
+                importedAt: new Date().toISOString(),
+              },
+            });
+          } catch (error) {
+            logger.error("Failed to update import-files record with job ID", error);
+          }
         } catch (error) {
-          console.error("Failed to queue dataset detection job:", error);
+          logger.error("Failed to queue dataset detection job", error);
         }
 
         return doc;

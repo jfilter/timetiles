@@ -17,8 +17,8 @@ import { utils as xlsxUtils, write as xlsxWrite } from "xlsx";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 
-import { createImportFileWithUpload } from "../../setup/test-helpers";
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import { createImportFileWithUpload } from "../../setup/test-helpers";
 
 describe.sequential("Comprehensive File Upload Tests", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

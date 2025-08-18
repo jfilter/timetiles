@@ -40,7 +40,9 @@ export class ExplorePage {
     await this.page.waitForFunction(
       () => {
         // Check if map container exists and has content
-        const mapContainer = document.querySelector('[data-testid="map-container"], .maplibregl-canvas, .mapboxgl-canvas');
+        const mapContainer = document.querySelector(
+          '[data-testid="map-container"], .maplibregl-canvas, .mapboxgl-canvas'
+        );
         return mapContainer !== null;
       },
       { timeout: 5000 }
@@ -163,21 +165,21 @@ export class ExplorePage {
     // Wait for the events count element to be visible with the expected pattern
     await this.eventsCount.waitFor({ state: "visible", timeout: 5000 });
     const text = await this.eventsCount.textContent({ timeout: 3000 });
-    
+
     if (!text) {
       throw new Error("Events count text is empty");
     }
-    
+
     const matches = /Events \((\d+)\)/.exec(text);
     if (!matches?.[1]) {
       throw new Error(`Events count text does not match expected pattern: "${text}"`);
     }
-    
+
     const count = Number.parseInt(matches[1], 10);
-    
+
     // Debug logging to help understand what's happening
     console.log(`getEventCount: text="${text}", count=${count}`);
-    
+
     return count;
   }
 
@@ -204,14 +206,11 @@ export class ExplorePage {
     // Wait for API response with a reasonable timeout
     // Don't wait forever if no API call is made
     try {
-      await this.page.waitForResponse(
-        (response) => response.url().includes("/api/events"),
-        { timeout: 2000 }
-      );
+      await this.page.waitForResponse((response) => response.url().includes("/api/events"), { timeout: 2000 });
     } catch (error) {
       // If no API call within 2s, just ensure network is idle
       // This handles cases where data is cached or no request is triggered
-      await this.page.waitForLoadState('networkidle', { timeout: 500 });
+      await this.page.waitForLoadState("networkidle", { timeout: 500 });
     }
   }
 
@@ -269,7 +268,7 @@ export class ExplorePage {
       }
 
       // Brief pause between stability checks
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       attempts++;
     }
 

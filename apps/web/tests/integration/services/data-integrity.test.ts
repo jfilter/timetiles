@@ -322,7 +322,7 @@ describe.sequential("Data Integrity Tests", () => {
           duration: 100 + i * 50,
           importFileId: null,
         };
-        
+
         executionHistory.push(executionEntry);
       }
 
@@ -338,7 +338,8 @@ describe.sequential("Data Integrity Tests", () => {
             totalRuns: 3,
             successfulRuns: 3,
             failedRuns: 0,
-            averageDuration: executionHistory.reduce((acc: number, ex: any) => acc + ex.duration, 0) / executionHistory.length,
+            averageDuration:
+              executionHistory.reduce((acc: number, ex: any) => acc + ex.duration, 0) / executionHistory.length,
           },
         },
       });
@@ -427,7 +428,8 @@ describe.sequential("Data Integrity Tests", () => {
               totalRuns: i + 1,
               successfulRuns: i + 1,
               failedRuns: 0,
-              averageDuration: executionHistory.reduce((acc: number, ex: any) => acc + ex.duration, 0) / executionHistory.length,
+              averageDuration:
+                executionHistory.reduce((acc: number, ex: any) => acc + ex.duration, 0) / executionHistory.length,
             },
           },
         });
@@ -510,7 +512,7 @@ describe.sequential("Data Integrity Tests", () => {
         vi.setSystemTime(new Date(baseTime.getTime() + (i + 1) * 3600000));
 
         const shouldFail = i === 1 || i === 3; // Fail on 2nd and 4th runs
-        
+
         try {
           const result = await scheduleManagerJob.handler({
             job: { id: `test-schedule-stats-${i}` },
@@ -623,9 +625,10 @@ describe.sequential("Data Integrity Tests", () => {
         };
 
         const duration = delays[i] || 100;
-        const newAverage = stats.totalRuns === 0 
-          ? duration 
-          : (stats.averageDuration * stats.totalRuns + duration) / (stats.totalRuns + 1);
+        const newAverage =
+          stats.totalRuns === 0
+            ? duration
+            : (stats.averageDuration * stats.totalRuns + duration) / (stats.totalRuns + 1);
 
         const executionEntry = {
           executedAt: new Date(baseTime.getTime() + (i + 1) * 3600000).toISOString(),

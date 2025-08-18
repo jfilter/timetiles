@@ -430,7 +430,9 @@ describe.sequential("scheduleManagerJob", () => {
       expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
         task: "url-fetch",
         input: expect.objectContaining({
-          originalName: expect.stringMatching(/Template Test - \d{4}-\d{2}-\d{2} at \d{2}:\d{2}:\d{2} from api\.example\.com/),
+          originalName: expect.stringMatching(
+            /Template Test - \d{4}-\d{2}-\d{2} at \d{2}:\d{2}:\d{2} from api\.example\.com/
+          ),
         }),
       });
     });

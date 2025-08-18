@@ -1,8 +1,6 @@
 import { randomUUID } from "crypto";
 import path from "path";
 
-import { TestEnvironmentBuilder } from "./test-environment-builder";
-
 // Helper function to create import file with proper upload
 export const createImportFileWithUpload = async (
   payload: any,
@@ -29,7 +27,6 @@ export const createImportFileWithUpload = async (
  * Path to test fixtures directory
  */
 export const FIXTURES_PATH = path.join(__dirname, "../fixtures");
-
 
 /**
  * Helper to create unique identifiers for tests

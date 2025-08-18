@@ -195,7 +195,7 @@ export const ClusteredMap = ({ onBoundsChange, clusters = DEFAULT_CLUSTERS }: Re
       interactiveLayerIds={INTERACTIVE_LAYER_IDS}
       cursor="auto"
     >
-      <Source type="geojson" data={geojsonData} id="clustered-map-source" key={"clustered-map-source"}>
+      <Source type="geojson" data={geojsonData} id="clustered-map-source" key="clustered-map-source">
         <Layer {...eventPointLayer} />
         <Layer {...clusterLayer} />
       </Source>

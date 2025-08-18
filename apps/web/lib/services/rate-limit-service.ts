@@ -202,13 +202,13 @@ export class RateLimitService {
 
   /**
    * Check multiple rate limit windows for a single identifier
-   * 
+   *
    * This method checks all configured windows and returns on the first failure.
    * It's useful for implementing complex rate limiting strategies like:
    * - Burst protection (e.g., 1 request per 10 seconds)
    * - Hourly limits (e.g., 5 requests per hour)
    * - Daily limits (e.g., 100 requests per day)
-   * 
+   *
    * @param baseIdentifier - Base identifier for the request (e.g., "webhook:token123")
    * @param windows - Array of rate limit windows to check
    * @returns Result indicating if request is allowed and which window failed (if any)
@@ -219,17 +219,17 @@ export class RateLimitService {
   ): MultiWindowRateLimitResult {
     // Find the most restrictive remaining count for allowed requests
     let minRemaining = Number.MAX_SAFE_INTEGER;
-    
+
     for (const window of windows) {
-      const windowName = window.name || `${window.windowMs}ms`;
+      const windowName = window.name ?? `${window.windowMs}ms`;
       const identifier = `${baseIdentifier}:${windowName}`;
       const check = this.checkRateLimit(identifier, window.limit, window.windowMs);
-      
+
       // Track minimum remaining across all windows
       if (check.allowed && check.remaining < minRemaining) {
         minRemaining = check.remaining;
       }
-      
+
       // Return immediately on first failure
       if (!check.allowed) {
         return {
@@ -246,7 +246,7 @@ export class RateLimitService {
         };
       }
     }
-    
+
     // All windows passed
     return {
       allowed: true,
@@ -256,15 +256,12 @@ export class RateLimitService {
 
   /**
    * Check rate limits using a configuration object
-   * 
+   *
    * @param baseIdentifier - Base identifier for the request
    * @param config - Rate limit configuration with windows
    * @returns Result indicating if request is allowed
    */
-  checkConfiguredRateLimit(
-    baseIdentifier: string,
-    config: RateLimitConfig
-  ): MultiWindowRateLimitResult {
+  checkConfiguredRateLimit(baseIdentifier: string, config: RateLimitConfig): MultiWindowRateLimitResult {
     // Convert readonly array to mutable array for the method call
     const windows = [...config.windows];
     return this.checkMultiWindowRateLimit(baseIdentifier, windows);
@@ -444,26 +441,26 @@ export const getClientIdentifier = (request: Request): string => {
 export const RATE_LIMITS = {
   FILE_UPLOAD: {
     windows: [
-      { limit: 1, windowMs: 5 * 1000, name: "burst" },        // 1 per 5 seconds
+      { limit: 1, windowMs: 5 * 1000, name: "burst" }, // 1 per 5 seconds
       { limit: 5, windowMs: 60 * 60 * 1000, name: "hourly" }, // 5 per hour
       { limit: 20, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 20 per day
     ],
   },
   PROGRESS_CHECK: {
     windows: [
-      { limit: 10, windowMs: 1000, name: "burst" },           // 10 per second
+      { limit: 10, windowMs: 1000, name: "burst" }, // 10 per second
       { limit: 100, windowMs: 60 * 60 * 1000, name: "hourly" }, // 100 per hour
     ],
   },
   API_GENERAL: {
     windows: [
-      { limit: 5, windowMs: 1000, name: "burst" },            // 5 per second
+      { limit: 5, windowMs: 1000, name: "burst" }, // 5 per second
       { limit: 50, windowMs: 60 * 60 * 1000, name: "hourly" }, // 50 per hour
     ],
   },
   WEBHOOK_TRIGGER: {
     windows: [
-      { limit: 1, windowMs: 10 * 1000, name: "burst" },      // 1 per 10 seconds (prevents race conditions)
+      { limit: 1, windowMs: 10 * 1000, name: "burst" }, // 1 per 10 seconds (prevents race conditions)
       { limit: 5, windowMs: 60 * 60 * 1000, name: "hourly" }, // 5 per hour (prevents abuse)
     ],
   },

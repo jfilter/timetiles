@@ -74,14 +74,14 @@ describe.sequential("Schedule Edge Case Tests", () => {
 
   afterEach(async () => {
     vi.useRealTimers();
-    
+
     // Clean up all scheduled imports created during the test to prevent interference
     try {
       const allScheduledImports = await payload.find({
         collection: "scheduled-imports",
         limit: 1000,
       });
-      
+
       for (const scheduledImport of allScheduledImports.docs) {
         // Only delete imports that aren't the test catalog's initial data
         await payload.delete({

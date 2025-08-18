@@ -523,7 +523,7 @@ describe.sequential("Multi-window rate limiting", () => {
       expect(rateLimitService.checkMultiWindowRateLimit(identifier, windows).allowed).toBe(false);
 
       // Wait for short window to expire
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Should pass again (short window reset, long window still has capacity)
       const result = rateLimitService.checkMultiWindowRateLimit(identifier, windows);

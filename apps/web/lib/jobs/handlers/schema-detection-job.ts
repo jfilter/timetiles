@@ -100,7 +100,7 @@ export const schemaDetectionJob = {
 
       // Process only non-duplicate rows for schema
       if (nonDuplicateRows.length > 0) {
-        await schemaBuilder.processBatch(nonDuplicateRows, batchNumber);
+        await schemaBuilder.processBatch(nonDuplicateRows);
       }
       const updatedSchema = await schemaBuilder.getSchema();
 

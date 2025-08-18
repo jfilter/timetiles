@@ -73,9 +73,9 @@ export interface ImportJobProgress {
     internal: number;
     external: number;
   };
-  schemaValidation?: any;
-  geocodingProgress?: any;
-  results?: any;
+  schemaValidation?: Record<string, unknown>;
+  geocodingProgress?: Record<string, unknown>;
+  results?: Record<string, unknown>;
 }
 
 export interface ImportProgressResponse {

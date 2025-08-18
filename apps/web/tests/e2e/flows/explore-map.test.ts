@@ -93,7 +93,7 @@ test.describe("Explore Page - Map Interactions", () => {
 
     // Wait for map to update
     // Wait for map zoom animation
-    await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {});
+    await page.waitForLoadState("networkidle", { timeout: 2000 }).catch(() => {});
 
     // Zoom interactions should update the map view
     // The API request with bounds is made but not always immediately
@@ -165,7 +165,7 @@ test.describe("Explore Page - Map Interactions", () => {
     // Wait for data to load
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
-    
+
     // Get the event count to verify data loaded
     const eventCount = await explorePage.getEventCount();
     console.log(`Loaded ${eventCount} events`);
@@ -182,13 +182,13 @@ test.describe("Explore Page - Map Interactions", () => {
 
     // Should be able to pan the map
     await explorePage.panMap(50, 50);
-    
+
     // Map should still be visible after panning
     await expect(explorePage.map).toBeVisible();
-    
+
     // Should be able to zoom
     await explorePage.zoomIn();
-    
+
     // Verify the events list is still accessible
     await expect(explorePage.eventsList).toBeVisible();
   });

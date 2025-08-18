@@ -276,19 +276,19 @@ const ScheduledImports: CollectionConfig = {
       validate: (val: string | null | undefined, { data }: any) => {
         if (data?.scheduleType === "cron") {
           if (!val) return "Cron expression is required";
-          
+
           // Split and validate cron expression
           const parts = val.trim().split(/\s+/);
           if (parts.length !== 5) {
             return "Cron expression must have exactly 5 fields (minute hour day month weekday)";
           }
-          
+
           const [minute, hour, day, month, weekday] = parts;
-          
+
           // Helper function to validate numeric values
           const validateField = (field: string, min: number, max: number, name: string): string | true => {
             if (field === "*") return true;
-            
+
             // Handle ranges (e.g., "1-5")
             if (field.includes("-")) {
               const parts = field.split("-");
@@ -303,7 +303,7 @@ const ScheduledImports: CollectionConfig = {
               }
               return true;
             }
-            
+
             // Handle steps (e.g., "*/5")
             if (field.startsWith("*/")) {
               const step = parseInt(field.substring(2));
@@ -312,7 +312,7 @@ const ScheduledImports: CollectionConfig = {
               }
               return true;
             }
-            
+
             // Handle lists (e.g., "1,3,5")
             if (field.includes(",")) {
               const values = field.split(",");
@@ -324,7 +324,7 @@ const ScheduledImports: CollectionConfig = {
               }
               return true;
             }
-            
+
             // Simple numeric value
             const num = parseInt(field);
             if (isNaN(num) || num < min || num > max) {
@@ -332,20 +332,20 @@ const ScheduledImports: CollectionConfig = {
             }
             return true;
           };
-          
+
           // Validate each field
           const minuteValid = validateField(minute || "", 0, 59, "minute");
           if (minuteValid !== true) return minuteValid;
-          
+
           const hourValid = validateField(hour || "", 0, 23, "hour");
           if (hourValid !== true) return hourValid;
-          
+
           const dayValid = validateField(day || "", 1, 31, "day");
           if (dayValid !== true) return dayValid;
-          
+
           const monthValid = validateField(month || "", 1, 12, "month");
           if (monthValid !== true) return monthValid;
-          
+
           const weekdayValid = validateField(weekday || "", 0, 7, "weekday");
           if (weekdayValid !== true) return weekdayValid;
         }

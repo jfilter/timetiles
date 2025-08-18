@@ -108,7 +108,7 @@ export const validateSchemaJob = {
 
         // Process schema for non-duplicate rows only
         if (nonDuplicateRows.length > 0) {
-          await schemaBuilder.processBatch(nonDuplicateRows, batchNumber);
+          await schemaBuilder.processBatch(nonDuplicateRows);
         }
 
         batchNumber++;

@@ -130,7 +130,9 @@ describe.sequential("Network Error Handling Tests", () => {
           get: (key: string) => null,
         },
         text: async () => "Not Found",
-        json: async () => { throw new Error("Not JSON"); },
+        json: async () => {
+          throw new Error("Not JSON");
+        },
         body: null,
       });
 
@@ -168,10 +170,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       // Mock DNS resolution failure BEFORE importing
-      fetchMock.mockRejectedValue(
-        new Error("getaddrinfo ENOTFOUND this-domain-definitely-does-not-exist-12345.com")
-      );
-
+      fetchMock.mockRejectedValue(new Error("getaddrinfo ENOTFOUND this-domain-definitely-does-not-exist-12345.com"));
 
       // Execute the job
       const result = await urlFetchJob.handler({
@@ -207,10 +206,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       // Mock connection refused error BEFORE importing
-      fetchMock.mockRejectedValue(
-        new Error("connect ECONNREFUSED 127.0.0.1:1")
-      );
-
+      fetchMock.mockRejectedValue(new Error("connect ECONNREFUSED 127.0.0.1:1"));
 
       // Execute the job
       const result = await urlFetchJob.handler({
@@ -253,18 +249,18 @@ describe.sequential("Network Error Handling Tests", () => {
           status: 200,
           statusText: "OK",
           headers: {
-            get: (key: string) => key === "content-type" ? "text/csv" : null,
+            get: (key: string) => (key === "content-type" ? "text/csv" : null),
           },
           body: {
             getReader: () => ({
-              read: vi.fn()
+              read: vi
+                .fn()
                 .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("test,data\n1,2") })
                 .mockResolvedValueOnce({ done: true }),
             }),
           },
         };
       });
-
 
       // Execute the job
       const result = await urlFetchJob.handler({
@@ -311,7 +307,6 @@ describe.sequential("Network Error Handling Tests", () => {
         body: null,
       });
 
-
       // Execute the job
       const result = await urlFetchJob.handler({
         job: { id: "test-job-5" },
@@ -353,7 +348,6 @@ describe.sequential("Network Error Handling Tests", () => {
         },
         body: null,
       });
-
 
       // Execute the job
       const result = await urlFetchJob.handler({
@@ -400,7 +394,6 @@ describe.sequential("Network Error Handling Tests", () => {
         },
         body: null,
       });
-
 
       // Execute the job
       const result = await urlFetchJob.handler({
@@ -462,7 +455,6 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-
       // Execute the job
       const result = await urlFetchJob.handler({
         job: { id: "test-job-8" },
@@ -505,17 +497,20 @@ describe.sequential("Network Error Handling Tests", () => {
         status: 200,
         statusText: "OK",
         headers: {
-          get: (key: string) => key === "content-type" ? "text/html" : null,
+          get: (key: string) => (key === "content-type" ? "text/html" : null),
         },
         body: {
           getReader: () => ({
-            read: vi.fn()
-              .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("<html><body>Not a CSV</body></html>") })
+            read: vi
+              .fn()
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode("<html><body>Not a CSV</body></html>"),
+              })
               .mockResolvedValueOnce({ done: true }),
           }),
         },
       });
-
 
       // Execute the job
       const result = await urlFetchJob.handler({
@@ -560,17 +555,17 @@ describe.sequential("Network Error Handling Tests", () => {
         status: 200,
         statusText: "OK",
         headers: {
-          get: (key: string) => key === "content-type" ? "image/png" : null,
+          get: (key: string) => (key === "content-type" ? "image/png" : null),
         },
         body: {
           getReader: () => ({
-            read: vi.fn()
+            read: vi
+              .fn()
               .mockResolvedValueOnce({ done: false, value: new Uint8Array(binaryData) })
               .mockResolvedValueOnce({ done: true }),
           }),
         },
       });
-
 
       // Execute the job
       const result = await urlFetchJob.handler({
@@ -625,13 +620,13 @@ describe.sequential("Network Error Handling Tests", () => {
         },
         body: {
           getReader: () => ({
-            read: vi.fn()
+            read: vi
+              .fn()
               .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode(largeData) })
               .mockResolvedValueOnce({ done: true }),
           }),
         },
       });
-
 
       // Execute the job
       const result = await urlFetchJob.handler({
@@ -675,7 +670,6 @@ describe.sequential("Network Error Handling Tests", () => {
         })
       );
 
-
       // Execute the job
       const result = await urlFetchJob.handler({
         job: { id: "test-job-12" },
@@ -707,10 +701,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       // Mock redirect loop error
-      fetchMock.mockRejectedValue(
-        new Error("Too many redirects")
-      );
-
+      fetchMock.mockRejectedValue(new Error("Too many redirects"));
 
       // Execute the job
       const result = await urlFetchJob.handler({
