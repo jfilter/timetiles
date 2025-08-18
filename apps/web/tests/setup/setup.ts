@@ -33,30 +33,60 @@ process.env.UPLOAD_DIR_IMPORT_FILES = `/tmp/import-files`;
 process.env.UPLOAD_TEMP_DIR = `/tmp/temp`;
 
 // Check if we're running integration tests
-const isIntegrationTest = process.env.VITEST_POOL_ID && 
-  (process.argv.some(arg => arg.includes('integration')) || 
-   process.cwd().includes('integration'));
+// In CI, always setup database for all tests (isolated per worker)
+// Locally, only setup for integration tests to save time
+const isIntegrationTest = (() => {
+  // Check if we're in a test environment with workers
+  if (!process.env.VITEST_WORKER_ID) {
+    return false;
+  }
+
+  // For CI, always setup database (it's isolated per worker anyway)
+  if (process.env.CI === "true") {
+    return true;
+  }
+
+  // For local dev, check if running integration tests
+  // Since we can't reliably detect test path here, check for any integration markers
+  return (
+    process.argv.some((arg) => arg.includes("integration")) ||
+    process.cwd().includes("integration") ||
+    // Fallback: if DATABASE_URL is set to a test database, assume we need setup
+    (process.env.DATABASE_URL?.includes("test") ?? false)
+  );
+})();
 
 // Global setup to ensure clean test environment
 beforeAll(async () => {
   // Skip database setup for unit tests
   if (!isIntegrationTest) {
+    if (process.env.LOG_LEVEL === "debug") {
+      logger.info("Skipping database setup (not an integration test)", {
+        workerId,
+        ci: process.env.CI,
+        argv: process.argv.join(" "),
+      });
+    }
     return;
   }
 
   // Check if database is available for integration tests
   const dbAvailable = await isDatabaseAvailable();
-  
+
   if (!dbAvailable) {
-    console.error('\n❌ PostgreSQL is not running!');
-    console.error('   Integration tests require a running database.');
+    console.error("\n❌ PostgreSQL is not running!");
+    console.error("   Integration tests require a running database.");
     console.error('   Run "make dev" or "docker compose up -d postgres" to start the database.\n');
-    
-    throw new Error('Database is not available. Cannot run integration tests without PostgreSQL.');
+
+    throw new Error("Database is not available. Cannot run integration tests without PostgreSQL.");
   }
 
-  if (process.env.LOG_LEVEL && process.env.LOG_LEVEL !== "silent") {
-    logger.info(`Setting up test environment for worker ${workerId}`);
+  if (process.env.LOG_LEVEL === "debug" || process.env.CI === "true") {
+    logger.info(`Setting up test environment for worker ${workerId}`, {
+      dbName: testDbName,
+      isIntegrationTest,
+      ci: process.env.CI,
+    });
   }
 
   // Ensure temp directory exists
@@ -100,6 +130,14 @@ beforeAll(async () => {
 
     // Verify the schema was created correctly
     await verifyDatabaseSchema(dbUrl);
+
+    // Log successful setup for debugging
+    if (process.env.LOG_LEVEL === "debug" || process.env.CI === "true") {
+      logger.info(`Database setup completed for worker ${workerId}`, {
+        dbName: testDbName,
+        dbUrl: dbUrl.replace(/:[^:@]+@/, ":***@"), // Hide password
+      });
+    }
   } catch (error) {
     // Always show migration errors, regardless of log level
     logger.error(`Migration FAILED for global setup ${testDbName}:`, error);
