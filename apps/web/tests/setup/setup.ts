@@ -5,7 +5,6 @@ import path from "path";
 
 import { logger } from "@/lib/logger";
 
-import { isDatabaseAvailable } from "./check-database";
 import { createTestDatabase } from "./database-setup";
 import { verifyDatabaseSchema } from "./verify-schema";
 
@@ -68,17 +67,6 @@ beforeAll(async () => {
       });
     }
     return;
-  }
-
-  // Check if database is available for integration tests
-  const dbAvailable = await isDatabaseAvailable();
-
-  if (!dbAvailable) {
-    console.error("\n❌ PostgreSQL is not running!");
-    console.error("   Integration tests require a running database.");
-    console.error('   Run "make dev" or "docker compose up -d postgres" to start the database.\n');
-
-    throw new Error("Database is not available. Cannot run integration tests without PostgreSQL.");
   }
 
   if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
