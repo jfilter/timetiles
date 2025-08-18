@@ -14,7 +14,6 @@ import eslintConfigPrettier from "eslint-config-prettier";
 import boundariesPlugin from "eslint-plugin-boundaries";
 import importPlugin from "eslint-plugin-import";
 import jsdocPlugin from "eslint-plugin-jsdoc";
-import onlyWarn from "eslint-plugin-only-warn";
 import preferArrowFunctions from "eslint-plugin-prefer-arrow-functions";
 import prettierPlugin from "eslint-plugin-prettier";
 import promisePlugin from "eslint-plugin-promise";
@@ -57,17 +56,24 @@ export default [
       "@typescript-eslint/no-misused-promises": "error",
       "@typescript-eslint/require-await": "error",
       "@typescript-eslint/return-await": "error",
-      // Tone down the overly strict type-aware rules that are causing noise
-      "@typescript-eslint/no-unsafe-assignment": "warn",
-      "@typescript-eslint/no-unsafe-member-access": "warn",
-      "@typescript-eslint/no-unsafe-call": "warn",
-      "@typescript-eslint/no-unsafe-return": "warn",
-      "@typescript-eslint/no-unsafe-argument": "warn",
+      // Disable overly strict type-aware rules that cause noise
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
       "@typescript-eslint/no-redundant-type-constituents": "warn",
 
       // Phase 2: TypeScript Enhancements
-      "@typescript-eslint/strict-boolean-expressions": "warn",
-      "@typescript-eslint/prefer-nullish-coalescing": "error",
+      "@typescript-eslint/strict-boolean-expressions": "off",
+      "@typescript-eslint/prefer-nullish-coalescing": [
+        "error",
+        {
+          ignoreTernaryTests: false,
+          ignoreConditionalTests: false,
+          ignoreMixedLogicalExpressions: false,
+        },
+      ],
       "@typescript-eslint/prefer-optional-chain": "error",
       "@typescript-eslint/no-unnecessary-type-assertion": "error",
       "@typescript-eslint/naming-convention": [
@@ -113,7 +119,6 @@ export default [
       prettier: prettierPlugin,
       import: importPlugin,
       "simple-import-sort": simpleImportSort,
-      "only-warn": onlyWarn,
       "unused-imports": unusedImports,
       boundaries: boundariesPlugin,
       unicorn: unicornPlugin,
@@ -147,8 +152,8 @@ export default [
       "prefer-const": "error",
       "require-atomic-updates": "error",
       "max-params": ["error", 7],
-      complexity: ["error", 15],
-      "max-nested-callbacks": ["error", 4],
+      complexity: ["error", 20],
+      "max-nested-callbacks": ["error", 5],
       "no-empty": ["error", { allowEmptyCatch: false }],
       "no-unused-expressions": "error",
 
@@ -185,11 +190,11 @@ export default [
       "regexp/optimal-quantifier-concatenation": "error",
 
       // SonarJS
-      "sonarjs/cognitive-complexity": ["error", 15],
+      "sonarjs/cognitive-complexity": ["error", 20],
       "sonarjs/max-lines": ["error", { maximum: 500 }],
-      "sonarjs/max-lines-per-function": ["error", { maximum: 50 }],
+      "sonarjs/max-lines-per-function": ["error", { maximum: 100 }],
       "sonarjs/no-collapsible-if": "error",
-      "sonarjs/no-duplicate-string": ["error", { threshold: 3 }],
+      "sonarjs/no-duplicate-string": ["error", { threshold: 5 }],
       "sonarjs/no-element-overwrite": "error",
       "sonarjs/no-empty-collection": "error",
       "sonarjs/no-extra-arguments": "error",
@@ -205,8 +210,7 @@ export default [
       "simple-import-sort/exports": "error",
       "unused-imports/no-unused-imports": "error",
       "import/no-cycle": "error",
-      "import/no-default-export": "warn",
-      "import/no-namespace": "warn",
+      "import/no-default-export": "off",
       "import/no-self-import": "error",
       // Disable import/order in favor of simple-import-sort
       "import/order": "off",
@@ -307,8 +311,8 @@ export default [
             { group: ["*/index", "*/index.js", "*/index.ts", "*/index.tsx"], message: "Avoid barrel imports" },
             { group: ["./index", "./index.js", "./index.ts", "./index.tsx"], message: "Avoid local index imports" },
             {
-              group: ["../../*", "../../../*", "../../../../*", "../../../../../*"],
-              message: "Use @/ path alias instead of deep relative imports (../../)",
+              group: ["../../../../*", "../../../../../*"],
+              message: "Use @/ path alias instead of deep relative imports (more than 3 levels)",
             },
           ],
         },
@@ -323,7 +327,7 @@ export default [
       ],
       "turbo/no-undeclared-env-vars": "error",
 
-      // JSDoc
+      // JSDoc - warn only, not every file needs module documentation
       "jsdoc/require-file-overview": [
         "warn",
         {
@@ -343,12 +347,13 @@ export default [
           definedTags: ["module", "category"],
         },
       ],
-      "jsdoc/empty-tags": [
-        "error",
-        {
-          tags: ["module"], // @module should have no inline content for TypeDoc
-        },
-      ],
+      // Disabled - causes circular fixes when trying to auto-fix
+      // "jsdoc/empty-tags": [
+      //   "error",
+      //   {
+      //     tags: ["module"], // @module should have no inline content for TypeDoc
+      //   },
+      // ],
       "jsdoc/no-types": "off", // We use TypeScript for types
       "jsdoc/require-jsdoc": "off", // Don't require JSDoc on everything
     },

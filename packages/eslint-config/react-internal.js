@@ -1,9 +1,11 @@
 /**
- * @module This file contains the ESLint configuration for internal React packages.
+ * This file contains the ESLint configuration for internal React packages.
  *
  * It extends the base configuration and adds React-specific rules, including those
  * from the React Compiler and performance-related plugins. This configuration is
  * intended for internal UI packages and components within the monorepo.
+ *
+ * @module
  */
 import eslintReact from "@eslint-react/eslint-plugin";
 import react from "eslint-plugin-react";
@@ -41,38 +43,32 @@ export default [
       // Set to warn as React Compiler may optimize dependencies differently
       "react-hooks/exhaustive-deps": "warn",
 
-      // Core React rules
+      // Core React rules (minimal set, most handled by @eslint-react)
       "react/jsx-uses-react": "off", // Not needed with React 17+ JSX transform
       "react/react-in-jsx-scope": "off", // Not needed with React 17+ JSX transform
       "react/prop-types": "off", // TypeScript handles this
+      "react/jsx-uses-vars": "error", // Still needed for variable usage detection
       "react/display-name": "warn", // Warn as React Compiler may handle this
-      "react/jsx-key": "error",
-      "react/jsx-no-comment-textnodes": "error",
-      "react/jsx-no-duplicate-props": "error",
-      "react/jsx-no-target-blank": "error",
-      "react/jsx-no-undef": "error",
-      "react/jsx-uses-vars": "error",
-      "react/no-children-prop": "error",
-      "react/no-danger-with-children": "error",
-      "react/no-deprecated": "error",
-      "react/no-direct-mutation-state": "error",
-      "react/no-find-dom-node": "error",
-      "react/no-is-mounted": "error",
-      "react/no-render-return-value": "error",
-      "react/no-string-refs": "error",
-      "react/no-unescaped-entities": "error",
-      "react/no-unknown-property": "error",
-      "react/no-unsafe": "warn",
-      "react/require-render-return": "error",
+      // Additional React rules not covered by @eslint-react
       "react/jsx-boolean-value": ["error", "never"],
       "react/jsx-curly-brace-presence": ["error", { props: "never", children: "never" }],
       "react/jsx-fragments": ["error", "syntax"],
-      "react/jsx-no-useless-fragment": "error",
       "react/jsx-pascal-case": "error",
-      "react/no-array-index-key": "warn",
-      "react/no-unstable-nested-components": "error",
       "react/self-closing-comp": "error",
       "react/void-dom-elements-no-children": "error",
+      "react/jsx-no-target-blank": "error",
+      "react/jsx-no-duplicate-props": "error",
+      "react/jsx-no-undef": "error",
+      "react/no-danger-with-children": "error",
+      "react/no-deprecated": "error",
+      "react/no-find-dom-node": "error",
+      "react/no-is-mounted": "error",
+      "react/no-render-return-value": "error",
+      "react/no-unknown-property": "error",
+      "react/no-unsafe": "warn",
+      "react/require-render-return": "error",
+      "react/no-unescaped-entities": "error",
+      "react/no-children-prop": "error",
 
       // React performance rules
       "react-perf/jsx-no-new-object-as-prop": "error",

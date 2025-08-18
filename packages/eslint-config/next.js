@@ -4,10 +4,12 @@
  * It extends the react-internal configuration (which includes React Compiler
  * and all React rules) and incorporates the recommended rules from
  * `@next/eslint-plugin-next` to ensure that Next.js best practices are followed.
+ * Also includes TanStack Query linting for applications using React Query.
  *
  * @module
  */
 import nextPlugin from "@next/eslint-plugin-next";
+import pluginQuery from "@tanstack/eslint-plugin-query";
 
 import reactConfig from "./react-internal.js";
 
@@ -16,6 +18,8 @@ import reactConfig from "./react-internal.js";
  */
 export default [
   ...reactConfig,
+  // TanStack Query recommended configuration
+  ...pluginQuery.configs["flat/recommended"],
   {
     files: ["**/*.ts", "**/*.tsx"],
     plugins: {

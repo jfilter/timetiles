@@ -1,8 +1,10 @@
 /**
- * @module This file contains the ESLint configuration for MDX files.
+ * This file contains the ESLint configuration for MDX files.
  *
  * It extends the base configuration and adds rules specifically for MDX, ensuring that
  * code blocks and other syntax within Markdown documents are linted correctly.
+ *
+ * @module
  */
 import * as mdx from "eslint-plugin-mdx";
 
