@@ -22,6 +22,9 @@ process.env.NEXT_PUBLIC_PAYLOAD_URL = "http://localhost:3000";
 const workerId = process.env.VITEST_WORKER_ID ?? "1";
 const testDbName = `timetiles_test_${workerId}`;
 const dbUrl = `postgresql://timetiles_user:timetiles_password@localhost:5432/${testDbName}`;
+
+// IMPORTANT: Always set DATABASE_URL for consistency across the worker process
+// This ensures createIntegrationTestEnvironment can find the correct database
 process.env.DATABASE_URL = dbUrl;
 
 // Create unique temp directory for each test worker
@@ -36,15 +39,14 @@ process.env.UPLOAD_TEMP_DIR = `/tmp/temp`;
 // In CI, always setup database for all tests (isolated per worker)
 // Locally, only setup for integration tests to save time
 const isIntegrationTest = (() => {
+  // Always set up in CI
+  if (process.env.CI) {
+    return true;
+  }
+
   // Check if we're in a test environment with workers
   if (!process.env.VITEST_WORKER_ID) {
     return false;
-  }
-
-  // For CI, always setup database (it's isolated per worker anyway)
-  // GitHub Actions sets CI=true (could be "true", "1", or just present)
-  if (process.env.CI) {
-    return true;
   }
 
   // For local dev, check if running integration tests
@@ -52,16 +54,28 @@ const isIntegrationTest = (() => {
   return (
     process.argv.some((arg) => arg.includes("integration")) ||
     process.cwd().includes("integration") ||
-    // Fallback: if DATABASE_URL is set to a test database, assume we need setup
-    (process.env.DATABASE_URL?.includes("test") ?? false)
+    // If DATABASE_URL is already set to a test database, assume we need setup
+    process.env.DATABASE_URL?.includes("test")
   );
 })();
 
 // Global setup to ensure clean test environment
 beforeAll(async () => {
+  // Always log in CI to debug issues
+  if (process.env.CI) {
+    console.log("[SETUP] Running with:", {
+      workerId,
+      testDbName,
+      isIntegrationTest,
+      CI: process.env.CI,
+      VITEST_WORKER_ID: process.env.VITEST_WORKER_ID,
+      DATABASE_URL: process.env.DATABASE_URL?.replace(/:[^:@]+@/, ":***@"),
+    });
+  }
+
   // Skip database setup for unit tests
   if (!isIntegrationTest) {
-    if (process.env.LOG_LEVEL === "debug") {
+    if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
       logger.info("Skipping database setup (not an integration test)", {
         workerId,
         ci: process.env.CI,
