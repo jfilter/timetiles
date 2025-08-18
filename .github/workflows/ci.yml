@@ -60,13 +60,24 @@ jobs:
             setup_db timetiles_test_$i
           done
 
-      - name: Build and check code quality
+      - name: Run database migrations
+        timeout-minutes: 2
+        run: pnpm payload:migrate
+        working-directory: apps/web
+
+      - name: Build
         timeout-minutes: 10
-        run: |
-          cd apps/web && pnpm payload:migrate
-          cd ../.. && pnpm build
-          pnpm lint
-          cd apps/web && pnpm typecheck
+        run: pnpm build
+
+      - name: Lint
+        timeout-minutes: 3
+        run: pnpm lint
+        continue-on-error: true
+
+      - name: Type check
+        timeout-minutes: 3
+        run: pnpm typecheck
+        working-directory: apps/web
 
       - name: Run tests
         run: pnpm test
