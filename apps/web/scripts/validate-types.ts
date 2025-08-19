@@ -66,7 +66,7 @@ const validateTypes = () => {
 
     if (hasChanges) {
       logger.error("❌ Generated files are out of sync!");
-      logger.error('Run "pnpm payload:generate" and "pnpm payload:generate-schema" to update files.');
+      logger.error('Run "pnpm payload:generate" to update files.');
       process.exit(1);
     }
 

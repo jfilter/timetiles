@@ -75,7 +75,7 @@ jobs:
         run: |
           if [[ -n $(git status --porcelain) ]]; then
             echo "❌ Payload generated files are out of sync!"
-            echo "Please run 'pnpm payload:generate' and 'pnpm payload:generate-schema' and commit the changes."
+            echo "Please run 'pnpm payload:generate' and commit the changes."
             git status
             exit 1
           else
