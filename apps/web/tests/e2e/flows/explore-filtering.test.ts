@@ -1,3 +1,12 @@
+/**
+ * E2E tests for explore page filtering functionality.
+ *
+ * Tests catalog filtering, dataset filtering, and search
+ * capabilities on the explore page.
+ *
+ * @module
+ * @category E2E Tests
+ */
 import { expect, test } from "@playwright/test";
 
 import { ExplorePage } from "../pages/explore.page";
@@ -11,12 +20,12 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.waitForMapLoad();
   });
 
-  test("should filter by catalog", async ({ page }) => {
+  test("should filter by catalog", async () => {
     // Select a specific catalog (Environmental Data from seed data)
     await explorePage.selectCatalog("Environmental Data");
 
     // Verify that datasets specific to this catalog are shown
-    await expect(page.getByText("Air Quality Measurements")).toBeVisible();
+    await expect(explorePage.page.getByText("Air Quality Measurements")).toBeVisible();
 
     // Select a dataset
     await explorePage.selectDatasets(["Air Quality Measurements"]);
@@ -33,10 +42,10 @@ test.describe("Explore Page - Filtering", () => {
     expect(params.has("datasets")).toBe(true);
 
     // Verify the catalog selection persisted
-    await expect(page.locator("#catalog-select")).toContainText("Environmental Data");
+    await expect(explorePage.page.locator("#catalog-select")).toContainText("Environmental Data");
 
     // Verify the dataset checkbox is checked
-    await expect(page.locator('input[type="checkbox"]:checked')).toBeVisible();
+    await expect(explorePage.page.locator('input[type="checkbox"]:checked')).toBeVisible();
   });
 
   test("should filter by multiple datasets", async ({ page }) => {
@@ -44,7 +53,7 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.selectCatalog("Economic Indicators");
 
     // Check if GDP Growth Rates dataset is visible
-    const gdpDataset = page.getByText("GDP Growth Rates");
+    const gdpDataset = explorePage.page.getByText("GDP Growth Rates");
     await expect(gdpDataset).toBeVisible();
 
     // Select the dataset
@@ -60,7 +69,7 @@ test.describe("Explore Page - Filtering", () => {
     expect(params.has("datasets")).toBe(true);
   });
 
-  test("should filter by date range", async ({ page }) => {
+  test("should filter by date range", async () => {
     // Select a catalog and dataset first
     await explorePage.selectCatalog("Environmental Data");
     await explorePage.selectDatasets(["Air Quality Measurements"]);
@@ -70,7 +79,7 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.setEndDate("2024-12-31");
 
     // Wait for URL to update with date parameters
-    await page.waitForFunction(
+    await explorePage.page.waitForFunction(
       () => {
         const url = new URL(window.location.href);
         return url.searchParams.has("startDate") && url.searchParams.has("endDate");
@@ -100,7 +109,7 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.clearDateFilters();
 
     // Wait for URL parameters to be removed
-    await page.waitForFunction(
+    await explorePage.page.waitForFunction(
       () => {
         const url = new URL(window.location.href);
         return !url.searchParams.has("startDate") && !url.searchParams.has("endDate");
@@ -113,7 +122,7 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.assertUrlParam("endDate", null);
   });
 
-  test("should combine multiple filters", async ({ page }) => {
+  test("should combine multiple filters", async () => {
     // Test multiple filters working together
     await explorePage.selectCatalog("Environmental Data");
     await explorePage.selectDatasets(["Air Quality Measurements"]);
@@ -204,15 +213,15 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.waitForApiResponse();
 
     // Get current URL with params
-    const urlWithParams = page.url();
+    const urlWithParams = explorePage.page.url();
 
     // Navigate away and back
-    await page.goto("/");
-    await page.goto(urlWithParams);
+    await explorePage.page.goto("/");
+    await explorePage.page.goto(urlWithParams);
 
     // Check that filters are restored
     await explorePage.waitForApiResponse();
-    await expect(page.locator("#catalog-select")).toContainText("Environmental Data");
-    await expect(page.locator("#start-date")).toHaveValue("2024-01-01");
+    await expect(explorePage.page.locator("#catalog-select")).toContainText("Environmental Data");
+    await expect(explorePage.page.locator("#start-date")).toHaveValue("2024-01-01");
   });
 });

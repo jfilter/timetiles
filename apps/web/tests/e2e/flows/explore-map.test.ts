@@ -1,3 +1,12 @@
+/**
+ * E2E tests for explore page map functionality.
+ *
+ * Tests map interactions including clustering, zoom,
+ * pan, and marker interactions.
+ *
+ * @module
+ * @category E2E Tests
+ */
 import { expect, test } from "@playwright/test";
 
 import { ExplorePage } from "../pages/explore.page";
@@ -157,7 +166,7 @@ test.describe("Explore Page - Map Interactions", () => {
     // Bounds filtering may or may not be implemented yet
   });
 
-  test("should handle many events gracefully", async ({ page }) => {
+  test("should handle many events gracefully", async () => {
     // Load a catalog that might have many events
     await explorePage.selectCatalog("Environmental Data");
     await explorePage.selectDatasets(["Air Quality Measurements", "Water Quality Assessments"]);
@@ -193,7 +202,7 @@ test.describe("Explore Page - Map Interactions", () => {
     await expect(explorePage.eventsList).toBeVisible();
   });
 
-  test("should handle empty results gracefully", async ({ page }) => {
+  test("should handle empty results gracefully", async () => {
     // Set up filters that might return no results
     await explorePage.selectCatalog("Environmental Data");
     await explorePage.selectDatasets(["Air Quality Measurements"]);

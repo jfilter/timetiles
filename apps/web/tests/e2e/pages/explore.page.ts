@@ -1,3 +1,12 @@
+/**
+ * Page object model for the explore page.
+ *
+ * Provides methods and locators for interacting with
+ * the explore page during E2E tests.
+ *
+ * @module
+ * @category E2E Tests
+ */
 import { expect, type Locator, type Page } from "@playwright/test";
 
 export class ExplorePage {
@@ -55,7 +64,8 @@ export class ExplorePage {
     await this.page.waitForSelector('[role="option"]', { timeout: 5000 });
 
     // Wait for the specific option to be available and stable
-    const option = this.page.getByRole("option", { name: catalogName });
+    // Use .first() to handle potential duplicate entries in test data
+    const option = this.page.getByRole("option", { name: catalogName }).first();
     await option.waitFor({ state: "visible", timeout: 5000 });
 
     // Wait for the option to be clickable
@@ -86,7 +96,8 @@ export class ExplorePage {
       await this.page.waitForSelector(`text=${datasetName}`, { timeout: 5000 });
 
       // Use more specific selector to find checkboxes within dataset labels
-      const datasetCheckbox = this.page.locator(`label:has-text("${datasetName}") input[type="checkbox"]`);
+      // Use .first() to handle potential duplicate entries in test data
+      const datasetCheckbox = this.page.locator(`label:has-text("${datasetName}") input[type="checkbox"]`).first();
 
       // Wait for the checkbox to be visible and enabled
       await datasetCheckbox.waitFor({ state: "visible", timeout: 3000 });
@@ -100,7 +111,8 @@ export class ExplorePage {
   async deselectDatasets(datasetNames: string[]) {
     for (const name of datasetNames) {
       // Use the same specific selector as selectDatasets to avoid ambiguity
-      const datasetCheckbox = this.page.locator(`label:has-text("${name}") input[type="checkbox"]`);
+      // Use .first() to handle potential duplicate entries in test data
+      const datasetCheckbox = this.page.locator(`label:has-text("${name}") input[type="checkbox"]`).first();
       await datasetCheckbox.uncheck();
     }
   }
@@ -207,7 +219,7 @@ export class ExplorePage {
     // Don't wait forever if no API call is made
     try {
       await this.page.waitForResponse((response) => response.url().includes("/api/events"), { timeout: 2000 });
-    } catch (error) {
+    } catch {
       // If no API call within 2s, just ensure network is idle
       // This handles cases where data is cached or no request is triggered
       await this.page.waitForLoadState("networkidle", { timeout: 500 });
@@ -252,7 +264,7 @@ export class ExplorePage {
       // Check if we can access a basic element
       await this.page.locator("h1").waitFor({ state: "visible", timeout: 1000 });
       return true;
-    } catch (error) {
+    } catch {
       // Page is not stable yet, but this is expected during checks
       return false;
     }

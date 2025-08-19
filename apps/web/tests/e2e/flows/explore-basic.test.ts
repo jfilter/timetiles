@@ -1,3 +1,12 @@
+/**
+ * E2E tests for basic explore page functionality.
+ *
+ * Tests core navigation, UI elements, and basic interactions
+ * on the explore page.
+ *
+ * @module
+ * @category E2E Tests
+ */
 import { expect, test } from "@playwright/test";
 
 import { ExplorePage } from "../pages/explore.page";
