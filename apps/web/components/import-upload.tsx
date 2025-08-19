@@ -1,3 +1,13 @@
+/**
+ * File upload component for importing CSV and Excel data.
+ *
+ * Provides a drag-and-drop interface for uploading event data files with
+ * real-time progress tracking, schema detection, and approval workflow.
+ * Supports CSV and Excel formats with automatic parsing and validation.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import { useCallback, useRef, useState } from "react";
@@ -339,12 +349,6 @@ export const ImportUpload = () => {
       fileInputRef.current.value = "";
     }
   }, [uploadMutation]);
-
-  const formatTime = useCallback((seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
-  }, []);
 
   const isFormDisabled = uploading || (importId != null && typeof importId === "string" && importId.trim() !== "");
 

@@ -1,14 +1,13 @@
 /**
- * Data Integrity Tests for Scheduled Imports
+ * Integration tests for data integrity verification in the import system.
  *
- * Tests various data integrity scenarios including:
- * - Hash-based duplicate detection
- * - Data consistency across retries
- * - Import history tracking
- * - Statistics accuracy
- * - File content preservation
+ * Tests comprehensive data validation including deduplication, schema validation,
+ * geocoding integrity, and error recovery scenarios. Verifies that imported data
+ * maintains consistency and correctness throughout the processing pipeline.
+ *
+ * @module
+ * @category Tests
  */
-
 import crypto from "crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -50,16 +49,16 @@ describe.sequential("Data Integrity Tests", () => {
     testCatalogId = catalog.id;
 
     // Mock payload.jobs.queue
-    vi.spyOn(payload.jobs, "queue").mockImplementation(async (params: any) => {
+    vi.spyOn(payload.jobs, "queue").mockImplementation((params: any) => {
       const { task, input } = params;
-      return {
+      return Promise.resolve({
         id: `mock-job-${Date.now()}-${Math.random()}`,
         task,
         input,
         status: "queued",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      } as any;
+      } as any);
     });
   }, 60000);
 
@@ -68,7 +67,7 @@ describe.sequential("Data Integrity Tests", () => {
     await cleanup();
   });
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
   });
 
@@ -115,15 +114,18 @@ describe.sequential("Data Integrity Tests", () => {
       });
 
       expect(result.output.success).toBe(true);
-      expect(result.output.contentHash).toBe(expectedHash);
+      if (result.output.success) {
+        const successOutput = result.output as any;
+        expect(successOutput.contentHash).toBe(expectedHash);
 
-      // Check that the import file was created with the hash
-      const importFile = await payload.findByID({
-        collection: "import-files",
-        id: result.output.importFileId,
-      });
+        // Check that the import file was created with the hash
+        const importFile = await payload.findByID({
+          collection: "import-files",
+          id: successOutput.importFileId,
+        });
 
-      expect(importFile.metadata?.urlFetch?.contentHash).toBe(expectedHash);
+        expect(importFile.metadata?.urlFetch?.contentHash).toBe(expectedHash);
+      }
     });
 
     it("should detect duplicate content across multiple imports", async () => {
@@ -174,16 +176,19 @@ describe.sequential("Data Integrity Tests", () => {
       });
 
       expect(result1.output.success).toBe(true);
-      expect(result1.output.isDuplicate).toBe(false);
+      if (result1.output.success) {
+        const successOutput = result1.output as any;
+        expect(successOutput.isDuplicate).toBe(false);
 
-      // Mark the first import as completed so duplicate detection can find it
-      await payload.update({
-        collection: "import-files",
-        id: result1.output.importFileId,
-        data: {
-          status: "completed",
-        },
-      });
+        // Mark the first import as completed so duplicate detection can find it
+        await payload.update({
+          collection: "import-files",
+          id: successOutput.importFileId,
+          data: {
+            status: "completed",
+          },
+        });
+      }
 
       // Second execution (should detect duplicate)
       const result2 = await urlFetchJob.handler({
@@ -200,8 +205,11 @@ describe.sequential("Data Integrity Tests", () => {
       });
 
       expect(result2.output.success).toBe(true);
-      expect(result2.output.isDuplicate).toBe(true);
-      expect(result2.output.skippedReason).toContain("Duplicate");
+      if (result2.output.success) {
+        const successOutput = result2.output as any;
+        expect(successOutput.isDuplicate).toBe(true);
+        expect(successOutput.skippedReason).toContain("Duplicate");
+      }
     });
 
     it("should handle hash calculation for large files", async () => {
@@ -278,15 +286,15 @@ describe.sequential("Data Integrity Tests", () => {
       });
 
       // Mock responses for multiple executions
-      let callCount = 0;
-      (global.fetch as any).mockImplementation(async () => {
-        callCount++;
+      (global.fetch as any).mockImplementation(() => {
         const timestamp = Date.now();
         const csvContent = `timestamp,value\n${timestamp},${Math.random()}`;
-        return new Response(csvContent, {
-          status: 200,
-          headers: { "content-type": "text/csv" },
-        });
+        return Promise.resolve(
+          new Response(csvContent, {
+            status: 200,
+            headers: { "content-type": "text/csv" },
+          })
+        );
       });
 
       // Use fake timers
@@ -311,7 +319,7 @@ describe.sequential("Data Integrity Tests", () => {
         if (!execTime) continue;
         vi.setSystemTime(execTime);
 
-        const result = await scheduleManagerJob.handler({
+        await scheduleManagerJob.handler({
           job: { id: `test-schedule-history-${execTime.getTime()}` },
           req: { payload },
         });
@@ -379,11 +387,13 @@ describe.sequential("Data Integrity Tests", () => {
       });
 
       // Mock endpoint
-      (global.fetch as any).mockImplementation(async () => {
-        return new Response("test,data\n1,2", {
-          status: 200,
-          headers: { "content-type": "text/csv" },
-        });
+      (global.fetch as any).mockImplementation(() => {
+        return Promise.resolve(
+          new Response("test,data\n1,2", {
+            status: 200,
+            headers: { "content-type": "text/csv" },
+          })
+        );
       });
 
       // Use fake timers
@@ -397,7 +407,7 @@ describe.sequential("Data Integrity Tests", () => {
       for (let i = 0; i < 15; i++) {
         vi.setSystemTime(new Date(baseTime.getTime() + (i + 1) * 3600000)); // Each hour
 
-        const result = await scheduleManagerJob.handler({
+        await scheduleManagerJob.handler({
           job: { id: `test-schedule-history-limit-${i}` },
           req: { payload },
         });
@@ -472,19 +482,23 @@ describe.sequential("Data Integrity Tests", () => {
 
       // Mock mixed success/failure responses
       let callCount = 0;
-      (global.fetch as any).mockImplementation(async () => {
+      (global.fetch as any).mockImplementation(() => {
         callCount++;
         // Fail on 2nd and 4th calls
         if (callCount === 2 || callCount === 4) {
-          return new Response(null, {
-            status: 500,
-            statusText: "Internal Server Error",
-          });
+          return Promise.resolve(
+            new Response(null, {
+              status: 500,
+              statusText: "Internal Server Error",
+            })
+          );
         }
-        return new Response("test,data\n1,2", {
-          status: 200,
-          headers: { "content-type": "text/csv" },
-        });
+        return Promise.resolve(
+          new Response("test,data\n1,2", {
+            status: 200,
+            headers: { "content-type": "text/csv" },
+          })
+        );
       });
 
       // Use fake timers
@@ -495,17 +509,7 @@ describe.sequential("Data Integrity Tests", () => {
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
 
       // Mock url-fetch job to simulate failures
-      const originalUrlFetchJob = await import("@/lib/jobs/handlers/url-fetch-job");
-      const urlFetchHandler = vi.fn().mockImplementation(async ({ input }) => {
-        if (callCount === 2 || callCount === 4) {
-          throw new Error("Simulated failure");
-        }
-        return originalUrlFetchJob.urlFetchJob.handler({
-          job: { id: "test" },
-          req: { payload },
-          input,
-        });
-      });
+      await import("@/lib/jobs/handlers/url-fetch-job");
 
       // Execute 5 times
       for (let i = 0; i < 5; i++) {
@@ -514,7 +518,7 @@ describe.sequential("Data Integrity Tests", () => {
         const shouldFail = i === 1 || i === 3; // Fail on 2nd and 4th runs
 
         try {
-          const result = await scheduleManagerJob.handler({
+          await scheduleManagerJob.handler({
             job: { id: `test-schedule-stats-${i}` },
             req: { payload },
           });
@@ -544,7 +548,7 @@ describe.sequential("Data Integrity Tests", () => {
               },
             },
           });
-        } catch (error) {
+        } catch {
           // Expected for failures
         }
       }
@@ -587,7 +591,7 @@ describe.sequential("Data Integrity Tests", () => {
       let callIndex = 0;
 
       (global.fetch as any).mockImplementation(async () => {
-        const delay = delays[callIndex++] || 100;
+        const delay = delays[callIndex++] ?? 100;
         await new Promise((resolve) => setTimeout(resolve, delay));
         return new Response("test,data\n1,2", {
           status: 200,
@@ -606,7 +610,7 @@ describe.sequential("Data Integrity Tests", () => {
       for (let i = 0; i < 5; i++) {
         vi.setSystemTime(new Date(baseTime.getTime() + (i + 1) * 3600000));
 
-        const result = await scheduleManagerJob.handler({
+        await scheduleManagerJob.handler({
           job: { id: `test-schedule-duration-${i}` },
           req: { payload },
         });
@@ -624,7 +628,7 @@ describe.sequential("Data Integrity Tests", () => {
           averageDuration: 0,
         };
 
-        const duration = delays[i] || 100;
+        const duration = delays[i] ?? 100;
         const newAverage =
           stats.totalRuns === 0
             ? duration
@@ -716,10 +720,12 @@ describe.sequential("Data Integrity Tests", () => {
       });
 
       expect(result.output.success).toBe(true);
-
-      // Content hash should be consistent
-      const expectedHash = crypto.createHash("sha256").update(specialContent).digest("hex");
-      expect(result.output.contentHash).toBe(expectedHash);
+      if (result.output.success) {
+        const successOutput = result.output as any;
+        // Content hash should be consistent
+        const expectedHash = crypto.createHash("sha256").update(specialContent).digest("hex");
+        expect(successOutput.contentHash).toBe(expectedHash);
+      }
     });
 
     it("should handle different encodings correctly", async () => {
@@ -764,7 +770,10 @@ describe.sequential("Data Integrity Tests", () => {
       });
 
       expect(result.output.success).toBe(true);
-      expect(result.output.filesize).toBe(latin1Content.length);
+      if (result.output.success) {
+        const successOutput = result.output as any;
+        expect(successOutput.fileSize).toBe(latin1Content.length);
+      }
     });
   });
 
@@ -779,7 +788,11 @@ describe.sequential("Data Integrity Tests", () => {
           catalog: testCatalogId as any,
           scheduleType: "frequency",
           frequency: "daily",
-          maxRetries: 3,
+          retryConfig: {
+            maxRetries: 1,
+            retryDelayMinutes: 1, // Will use 100ms in test env
+            exponentialBackoff: false,
+          },
         },
       });
 
@@ -787,18 +800,22 @@ describe.sequential("Data Integrity Tests", () => {
       let attemptCount = 0;
       const consistentData = "id,value,timestamp\n1,100,2024-01-01T12:00:00Z";
 
-      (global.fetch as any).mockImplementation(async () => {
+      (global.fetch as any).mockImplementation(() => {
         attemptCount++;
-        if (attemptCount < 3) {
-          return new Response(null, {
-            status: 503,
-            statusText: "Service Unavailable",
-          });
+        if (attemptCount === 1) {
+          return Promise.resolve(
+            new Response(null, {
+              status: 503,
+              statusText: "Service Unavailable",
+            })
+          );
         }
-        return new Response(consistentData, {
-          status: 200,
-          headers: { "content-type": "text/csv" },
-        });
+        return Promise.resolve(
+          new Response(consistentData, {
+            status: 200,
+            headers: { "content-type": "text/csv" },
+          })
+        );
       });
 
       // Import the job handler
@@ -818,9 +835,9 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      // Should succeed, but might take fewer attempts due to immediate retry
+      // Should succeed after one retry
       expect(result.output.success).toBe(true);
-      expect(attemptCount).toBeGreaterThanOrEqual(1);
+      expect(attemptCount).toBe(2);
     });
   });
 });

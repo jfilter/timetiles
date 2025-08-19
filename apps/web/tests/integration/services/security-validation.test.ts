@@ -7,6 +7,7 @@
  * - Input sanitization
  * - URL validation and SSRF prevention
  * - Sensitive data handling
+ * @module
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,6 +20,25 @@ const { fetchMock } = vi.hoisted(() => {
   globalThis.fetch = fetchMock;
   return { fetchMock };
 });
+
+// Type definitions for urlFetchJob output
+interface UrlFetchSuccessOutput {
+  success: true;
+  importFileId: string | number;
+  filename: string;
+  fileSize: number | undefined;
+  contentType: string;
+  isDuplicate: boolean;
+  contentHash: string | undefined;
+  skippedReason?: string;
+}
+
+interface UrlFetchFailureOutput {
+  success: false;
+  error: string;
+}
+
+type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
 
 describe.sequential("Security Validation Tests", () => {
   let payload: any;
@@ -118,6 +138,7 @@ describe.sequential("Security Validation Tests", () => {
     });
 
     it("should reject private IP ranges", async () => {
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols
       const privateIPs = ["http://192.168.1.1/data.csv", "http://10.0.0.1/data.csv", "http://172.16.0.1/data.csv"];
 
       for (const url of privateIPs) {
@@ -244,11 +265,8 @@ describe.sequential("Security Validation Tests", () => {
       });
 
       // Mock the API endpoint
-      fetchMock.mockImplementation(async (url, options) => {
+      fetchMock.mockImplementation(() => {
         // Check if custom headers are sent
-        const headers = options?.headers || {};
-        const hasAdminHeader = headers["X-Admin"] === "true";
-        const hasBypassHeader = headers["X-Bypass-Auth"] === "1";
 
         return {
           ok: true,
@@ -301,20 +319,20 @@ describe.sequential("Security Validation Tests", () => {
           frequency: "daily",
           authConfig: {
             type: "basic",
-            basicUsername: "user@example.com",
-            basicPassword: "password123",
+            username: "user@example.com",
+            password: "password123",
           },
         },
       });
 
       // Mock the API endpoint to verify Basic Auth header
-      fetchMock.mockImplementation(async (url, options) => {
+      fetchMock.mockImplementation((url, options) => {
         // Check if Basic Auth header is present
         const authHeader = options?.headers?.["Authorization"];
         const expectedAuth = "Basic " + Buffer.from("user@example.com:password123").toString("base64");
 
         if (authHeader === expectedAuth) {
-          return {
+          return Promise.resolve({
             ok: true,
             status: 200,
             statusText: "OK",
@@ -329,18 +347,18 @@ describe.sequential("Security Validation Tests", () => {
                   .mockResolvedValueOnce({ done: true }),
               }),
             },
-          };
+          });
         }
 
-        return {
+        return Promise.resolve({
           ok: false,
           status: 401,
           statusText: "Unauthorized",
           headers: {
-            get: (key: string) => null,
+            get: () => null,
           },
           body: null,
-        };
+        });
       });
 
       // Import the job handler
@@ -649,8 +667,8 @@ describe.sequential("Security Validation Tests", () => {
           catalog: testCatalogId,
           scheduleType: "frequency",
           frequency: "daily",
-          advancedConfig: {
-            maxFileSize: 1, // 1MB limit
+          advancedOptions: {
+            maxFileSizeMB: 1, // 1MB limit
           },
         },
       });
@@ -699,7 +717,8 @@ describe.sequential("Security Validation Tests", () => {
 
       // Should fail due to size limit
       expect(result.output.success).toBe(false);
-      expect(result.output.error).toContain("too large");
+      const failureOutput = result.output as UrlFetchFailureOutput;
+      expect(failureOutput.error).toContain("too large");
     });
   });
 
@@ -739,9 +758,10 @@ describe.sequential("Security Validation Tests", () => {
 
       expect(result.output.success).toBe(false);
       // Error should be generic, not expose system details
-      expect(result.output.error).toBeTruthy();
-      expect(result.output.error).not.toContain("/etc/");
-      expect(result.output.error).not.toContain("\\Windows\\");
+      const failureOutput = result.output as UrlFetchFailureOutput;
+      expect(failureOutput.error).toBeTruthy();
+      expect(failureOutput.error).not.toContain("/etc/");
+      expect(failureOutput.error).not.toContain("\\Windows\\");
     });
   });
 });

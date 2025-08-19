@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createEventsBatchJob } from "@/lib/jobs/handlers/create-events-batch-job";
@@ -119,7 +122,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockImportFile);
 
-      mocks.readBatchFromFile.mockResolvedValueOnce(mockFileData);
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
 
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1").mockReturnValueOnce("dataset-456:ext:2");
 
@@ -217,7 +220,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockImportFile);
 
-      mocks.readBatchFromFile.mockResolvedValueOnce(mockFileData);
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
       mocks.generateUniqueId
         .mockReturnValueOnce("dataset-456:ext:1")
         .mockReturnValueOnce("dataset-456:ext:2")
@@ -282,7 +285,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: `${i + 1}`,
         title: `Event ${i + 1}`,
       }));
-      mocks.readBatchFromFile.mockResolvedValueOnce(fullBatch);
+      mocks.readBatchFromFile.mockReturnValueOnce(fullBatch);
 
       // Mock unique ID generation for all 1000 rows
       mocks.generateUniqueId.mockImplementation((row: any) => `dataset-456:ext:${row.id}`);
@@ -339,7 +342,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         .mockResolvedValueOnce(mockImportFile);
 
       // Mock empty batch (no more data)
-      mocks.readBatchFromFile.mockResolvedValueOnce([]);
+      mocks.readBatchFromFile.mockReturnValueOnce([]);
 
       // Set up geocoding results properly - the job handler uses getGeocodingResults(job)
       // which looks at job.geocodingResults and returns a GeocodingResultsMap (object)
@@ -362,6 +365,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
             totalEvents: 10,
             duplicatesSkipped: 3, // 1 internal + 2 external
             geocoded: 2, // 2 geocoding results
+            errors: 0,
           },
         },
       });
@@ -424,7 +428,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         .mockResolvedValueOnce(mockImportFile);
 
       // Mock empty file
-      mocks.readBatchFromFile.mockResolvedValueOnce([]);
+      mocks.readBatchFromFile.mockReturnValueOnce([]);
       mocks.getGeocodingResults.mockReturnValue(new Map());
 
       const result = await createEventsBatchJob.handler(mockContext);
@@ -441,6 +445,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
             totalEvents: 0,
             duplicatesSkipped: 0,
             geocoded: 0,
+            errors: 0,
           },
         },
       });

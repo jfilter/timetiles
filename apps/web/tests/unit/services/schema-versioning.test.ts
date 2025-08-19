@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SchemaVersioningService } from "@/lib/services/schema-versioning";

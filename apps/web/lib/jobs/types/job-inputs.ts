@@ -35,16 +35,16 @@ export interface BatchJobInput extends BaseJobInput {
 }
 
 // Specific job input types
-export interface DatasetDetectionJobInput extends FileJobInput {}
+export type DatasetDetectionJobInput = FileJobInput;
 
-export interface AnalyzeDuplicatesJobInput extends ImportJobInput {}
+export type AnalyzeDuplicatesJobInput = ImportJobInput;
 
-export interface SchemaDetectionJobInput extends BatchJobInput {}
+export type SchemaDetectionJobInput = BatchJobInput;
 
-export interface ValidateSchemaJobInput extends ImportJobInput {}
+export type ValidateSchemaJobInput = ImportJobInput;
 
-export interface CreateSchemaVersionJobInput extends ImportJobInput {}
+export type CreateSchemaVersionJobInput = ImportJobInput;
 
-export interface GeocodingBatchJobInput extends BatchJobInput {}
+export type GeocodingBatchJobInput = BatchJobInput;
 
-export interface CreateEventsBatchJobInput extends BatchJobInput {}
+export type CreateEventsBatchJobInput = BatchJobInput;

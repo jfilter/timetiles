@@ -1,6 +1,12 @@
 /**
- * Simple cron expression parser for common patterns
- * Supports basic scheduling patterns used in scheduled imports
+ * Cron expression parser and scheduler utilities.
+ *
+ * Provides parsing and evaluation of cron expressions for scheduled imports.
+ * Supports standard 5-field cron syntax with common patterns like daily,
+ * weekly, and monthly schedules. Used by the scheduled import system.
+ *
+ * @module
+ * @category Utilities
  */
 
 interface CronParts {
@@ -24,57 +30,33 @@ export const parseCronExpression = (cronExpression: string): CronParts => {
   const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
 
   return {
-    minute: minute || "*",
-    hour: hour || "*",
-    dayOfMonth: dayOfMonth || "*",
-    month: month || "*",
-    dayOfWeek: dayOfWeek || "*",
+    minute: minute ?? "*",
+    hour: hour ?? "*",
+    dayOfMonth: dayOfMonth ?? "*",
+    month: month ?? "*",
+    dayOfWeek: dayOfWeek ?? "*",
   };
+};
+
+// Helper function to validate numeric cron field
+const validateNumericField = (value: string, fieldName: string, min: number, max: number): void => {
+  if (value === "*") return;
+
+  const num = parseInt(value);
+  if (isNaN(num) || num < min || num > max) {
+    throw new Error(`Invalid ${fieldName} in cron expression: ${value}`);
+  }
 };
 
 /**
  * Validate cron expression parts
  */
 export const validateCronParts = (parts: CronParts): void => {
-  // Validate minute (0-59)
-  if (parts.minute !== "*") {
-    const minute = parseInt(parts.minute);
-    if (isNaN(minute) || minute < 0 || minute > 59) {
-      throw new Error(`Invalid minute in cron expression: ${parts.minute}`);
-    }
-  }
-
-  // Validate hour (0-23)
-  if (parts.hour !== "*") {
-    const hour = parseInt(parts.hour);
-    if (isNaN(hour) || hour < 0 || hour > 23) {
-      throw new Error(`Invalid hour in cron expression: ${parts.hour}`);
-    }
-  }
-
-  // Validate day of month (1-31)
-  if (parts.dayOfMonth !== "*") {
-    const day = parseInt(parts.dayOfMonth);
-    if (isNaN(day) || day < 1 || day > 31) {
-      throw new Error(`Invalid day of month in cron expression: ${parts.dayOfMonth}`);
-    }
-  }
-
-  // Validate month (1-12)
-  if (parts.month !== "*") {
-    const month = parseInt(parts.month);
-    if (isNaN(month) || month < 1 || month > 12) {
-      throw new Error(`Invalid month in cron expression: ${parts.month}`);
-    }
-  }
-
-  // Validate day of week (0-6, where 0 and 7 are Sunday)
-  if (parts.dayOfWeek !== "*") {
-    const dow = parseInt(parts.dayOfWeek);
-    if (isNaN(dow) || dow < 0 || dow > 7) {
-      throw new Error(`Invalid day of week in cron expression: ${parts.dayOfWeek}`);
-    }
-  }
+  validateNumericField(parts.minute, "minute", 0, 59);
+  validateNumericField(parts.hour, "hour", 0, 23);
+  validateNumericField(parts.dayOfMonth, "day of month", 1, 31);
+  validateNumericField(parts.month, "month", 1, 12);
+  validateNumericField(parts.dayOfWeek, "day of week", 0, 7);
 };
 
 /**
@@ -82,35 +64,32 @@ export const validateCronParts = (parts: CronParts): void => {
  */
 export type CronPattern = "every-minute" | "hourly" | "daily" | "weekly" | "monthly" | "complex";
 
+// Helper to check if all fields match a pattern
+const matchesPattern = (parts: CronParts, pattern: string[]): boolean => {
+  const fields = [parts.minute, parts.hour, parts.dayOfMonth, parts.month, parts.dayOfWeek];
+  return fields.every((field, index) => {
+    const expected = pattern[index];
+    return expected === "N" ? field !== "*" : field === expected;
+  });
+};
+
 export const detectCronPattern = (parts: CronParts): CronPattern => {
-  const { minute, hour, dayOfMonth, month, dayOfWeek } = parts;
+  // Define patterns: [minute, hour, dayOfMonth, month, dayOfWeek]
+  // "N" means non-wildcard, "*" means wildcard
+  const patterns: Array<[string[], CronPattern]> = [
+    [["*", "*", "*", "*", "*"], "every-minute"],
+    [["N", "*", "*", "*", "*"], "hourly"],
+    [["N", "N", "*", "*", "*"], "daily"],
+    [["N", "N", "*", "*", "N"], "weekly"],
+    [["N", "N", "N", "*", "*"], "monthly"],
+  ];
 
-  // Every minute: * * * * *
-  if (minute === "*" && hour === "*" && dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
-    return "every-minute";
+  for (const [pattern, type] of patterns) {
+    if (matchesPattern(parts, pattern)) {
+      return type;
+    }
   }
 
-  // Hourly: N * * * * (specific minute, any hour)
-  if (minute !== "*" && hour === "*" && dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
-    return "hourly";
-  }
-
-  // Daily: N N * * * (specific time, any day)
-  if (minute !== "*" && hour !== "*" && dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
-    return "daily";
-  }
-
-  // Weekly: N N * * D (specific time and day of week)
-  if (minute !== "*" && hour !== "*" && dayOfMonth === "*" && month === "*" && dayOfWeek !== "*") {
-    return "weekly";
-  }
-
-  // Monthly: N N D * * (specific time and day of month)
-  if (minute !== "*" && hour !== "*" && dayOfMonth !== "*" && month === "*" && dayOfWeek === "*") {
-    return "monthly";
-  }
-
-  // Everything else is complex
   return "complex";
 };
 
@@ -164,5 +143,5 @@ export const describeCronExpression = (cronExpression: string): string => {
 const getOrdinalSuffix = (n: number): string => {
   const s = ["th", "st", "nd", "rd"];
   const v = n % 100;
-  return s[(v - 20) % 10] || s[v] || s[0] || "th";
+  return s[(v - 20) % 10] ?? s[v] ?? s[0] ?? "th";
 };

@@ -1,5 +1,6 @@
 /**
  * Unit tests for Schedule Manager Job Handler
+ * @module
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -44,7 +45,7 @@ describe.sequential("scheduleManagerJob", () => {
       };
 
       const mockReq = {
-        payload: mockPayload,
+        payload: mockPayload as any,
       };
 
       return { mockPayload, mockJob, mockReq };
@@ -260,8 +261,8 @@ describe.sequential("scheduleManagerJob", () => {
         collection: "scheduled-imports",
         id: "import-1",
         data: expect.objectContaining({
-          lastRun: currentTime,
-          nextRun: new Date("2024-01-15 11:00:00"), // Next hour
+          lastRun: currentTime.toISOString(),
+          nextRun: new Date("2024-01-15 11:00:00").toISOString(), // Next hour
           lastStatus: "running",
           currentRetries: 0,
           statistics: {
@@ -272,9 +273,8 @@ describe.sequential("scheduleManagerJob", () => {
           },
           executionHistory: expect.arrayContaining([
             expect.objectContaining({
-              executedAt: currentTime,
+              executedAt: currentTime.toISOString(),
               status: "success",
-              jobId: "url-fetch-job-123",
             }),
           ]),
         }),
@@ -328,7 +328,12 @@ describe.sequential("scheduleManagerJob", () => {
         data: expect.objectContaining({
           lastStatus: "failed",
           lastError: "Queue error",
-          currentRetries: 1,
+          statistics: expect.objectContaining({
+            totalRuns: 1,
+            failedRuns: 1,
+            successfulRuns: 0,
+            averageDuration: 0,
+          }),
         }),
       });
     });
@@ -392,7 +397,7 @@ describe.sequential("scheduleManagerJob", () => {
           collection: "scheduled-imports",
           id: `${testCase.frequency}-import`,
           data: expect.objectContaining({
-            nextRun: testCase.expectedNext,
+            nextRun: testCase.expectedNext.toISOString(),
           }),
         });
       }

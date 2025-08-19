@@ -1,3 +1,12 @@
+/**
+ * Unit tests for seed data validation.
+ *
+ * Validates that seed data used for development and testing
+ * maintains referential integrity and proper relationships.
+ *
+ * @module
+ * @category Tests
+ */
 import { catalogSeeds } from "../../../lib/seed/seeds/catalogs";
 import { datasetSeeds } from "../../../lib/seed/seeds/datasets";
 import { eventSeeds } from "../../../lib/seed/seeds/events";

@@ -1,3 +1,12 @@
+/**
+ * Unit tests for Excel file parsing functionality.
+ *
+ * Tests parsing of Excel files including multi-sheet support,
+ * data type detection, and error handling.
+ *
+ * @module
+ * @category Tests
+ */
 import fs from "fs";
 import path from "path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";

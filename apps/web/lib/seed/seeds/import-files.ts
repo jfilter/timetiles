@@ -9,6 +9,9 @@ import type { Catalog, Dataset, ImportFile } from "@/payload-types";
 // Use Payload type with specific omissions for seed data
 export type ImportFileSeed = Omit<ImportFile, "id" | "createdAt" | "updatedAt">;
 
+// Constants
+const EXCEL_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
 // Helper function to create import file entry
 const createImportFile = (
   fileName: string,
@@ -31,9 +34,13 @@ const createImportFile = (
   // These fields will be resolved by the relationship system
   catalog: catalogSlug as unknown as number | Catalog,
   datasets: datasetName ? [datasetName as unknown as number | Dataset] : [],
+  // eslint-disable-next-line sonarjs/pseudo-random -- Seeding doesn't need crypto-secure random
   importedAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(), // Random date within last week
   completedAt:
-    status === "completed" ? new Date(Date.now() - Math.random() * 5 * 24 * 60 * 60 * 1000).toISOString() : undefined,
+    status === "completed"
+      ? // eslint-disable-next-line sonarjs/pseudo-random -- Seeding doesn't need crypto-secure random
+        new Date(Date.now() - Math.random() * 5 * 24 * 60 * 60 * 1000).toISOString()
+      : undefined,
   metadata: {
     source: "seed-data",
     environment: "development",
@@ -56,7 +63,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
     createImportFile(
       "economic_indicators_q1_2024.xlsx",
       "Economic Indicators Q1 2024.xlsx",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      EXCEL_MIME_TYPE,
       512000, // ~500KB
       "economic-indicators",
       "completed",
@@ -93,7 +100,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
       createImportFile(
         "cultural_events_archive.xlsx",
         "Cultural Heritage Events Archive.xlsx",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        EXCEL_MIME_TYPE,
         2097152, // 2MB
         "cultural-events",
         "processing",
@@ -124,7 +131,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
       createImportFile(
         "pending_validation.xlsx",
         "Economic Data - Pending Validation.xlsx",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        EXCEL_MIME_TYPE,
         716800, // ~700KB
         "economic-indicators",
         "parsing",
@@ -134,7 +141,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
       createImportFile(
         "multi_sheet_research.xlsx",
         "Multi-Sheet Research Data.xlsx",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        EXCEL_MIME_TYPE,
         3145728, // 3MB
         "academic-research-portal",
         "completed",
@@ -161,7 +168,7 @@ export const importFileSeeds = (environment: string): ImportFileSeed[] => {
       createImportFile(
         "test_data_processing.xlsx",
         "Test Dataset - Processing.xlsx",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        EXCEL_MIME_TYPE,
         204800, // ~200KB
         "economic-indicators",
         "processing",

@@ -10,21 +10,20 @@
  *
  * The service includes helpers for extracting values from nested objects and sanitizing IDs.
  */
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
 
 import type { Dataset } from "@/payload-types";
 
 // Simple wrapper for use in job handlers
 export const generateUniqueId = (data: unknown, idStrategy: Dataset["idStrategy"]): string => {
-  const result = IdGenerationService.generateEventId(data, { idStrategy } as Dataset, "import");
+  const result = IdGenerationService.generateEventId(data, { idStrategy } as Dataset);
   return result.uniqueId;
 };
 
 export class IdGenerationService {
   static generateEventId(
     data: unknown,
-    dataset: Dataset,
-    importId: string
+    dataset: Dataset
   ): {
     uniqueId: string;
     sourceId?: string;
@@ -118,10 +117,8 @@ export class IdGenerationService {
     }
 
     // Create stable hash
-    const hashInput = values
-      .sort((a, b) => a.field.localeCompare(b.field))
-      .map((v) => `${v.field}:${JSON.stringify(v.value)}`)
-      .join("|");
+    const sortedValues = [...values].sort((a, b) => a.field.localeCompare(b.field));
+    const hashInput = sortedValues.map((v) => `${v.field}:${JSON.stringify(v.value)}`).join("|");
 
     const hash = createHash("sha256").update(`${datasetId}:${hashInput}`).digest("hex").substring(0, 16);
 
@@ -143,9 +140,9 @@ export class IdGenerationService {
     const contentHash = this.generateContentHash(data);
 
     // Unique ID will be assigned after duplicate check
-    // Using timestamp + random for uniqueness
+    // Using timestamp + cryptographically secure random for uniqueness
     const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 8);
+    const random = randomBytes(4).toString("hex"); // 8 hex characters
 
     return {
       uniqueId: `${datasetId}:auto:${timestamp}:${random}`,
@@ -184,7 +181,8 @@ export class IdGenerationService {
   private static generateContentHash(data: unknown): string {
     // Sort keys for consistent hashing
     const obj = data as Record<string, unknown>;
-    const normalized = JSON.stringify(obj, Object.keys(obj).sort());
+    const sortedKeys = Object.keys(obj).sort((a, b) => a.localeCompare(b));
+    const normalized = JSON.stringify(obj, sortedKeys);
 
     return createHash("sha256").update(normalized).digest("hex");
   }

@@ -1,3 +1,13 @@
+/**
+ * List component for displaying event items.
+ *
+ * Renders a scrollable list of events with title, date, location, and
+ * description. Includes loading states and empty state handling.
+ * Used in the explore page sidebar for browsing events.
+ *
+ * @module
+ * @category Components
+ */
 import type { Event } from "../payload-types";
 
 interface EventsListProps {

@@ -1,3 +1,12 @@
+/**
+ * Unit tests for the schema detection job handler.
+ *
+ * Tests automatic schema detection from imported data,
+ * including field type inference and data structure analysis.
+ *
+ * @module
+ * @category Tests
+ */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
@@ -142,7 +151,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       // Setup mocks
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
 
-      mocks.readBatchFromFile.mockResolvedValueOnce(mockFileData);
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
       mocks.getSchemaBuilderState.mockReturnValueOnce(null);
 
       mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);
@@ -236,7 +245,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       // Setup mocks
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
 
-      mocks.readBatchFromFile.mockResolvedValueOnce(mockData);
+      mocks.readBatchFromFile.mockReturnValueOnce(mockData);
       mocks.getSchemaBuilderState.mockReturnValueOnce(null);
 
       mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);
@@ -320,7 +329,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       // Setup mocks
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
 
-      mocks.readBatchFromFile.mockResolvedValueOnce(fullBatch);
+      mocks.readBatchFromFile.mockReturnValueOnce(fullBatch);
       mocks.getSchemaBuilderState.mockReturnValueOnce(null);
 
       mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);
@@ -373,7 +382,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
 
       // Mock empty batch (no more data)
-      mocks.readBatchFromFile.mockResolvedValueOnce([]);
+      mocks.readBatchFromFile.mockReturnValueOnce([]);
 
       // Execute job
       const result = await schemaDetectionJob.handler(mockContext);
@@ -444,7 +453,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       // Setup mocks
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
 
-      mocks.readBatchFromFile.mockResolvedValueOnce(mockFileData);
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
       mocks.getSchemaBuilderState.mockReturnValueOnce(null);
 
       mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);
@@ -517,7 +526,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
 
-      mocks.readBatchFromFile.mockRejectedValueOnce(new Error("File not found"));
+      mocks.readBatchFromFile.mockImplementationOnce(() => {
+        throw new Error("File not found");
+      });
 
       await expect(schemaDetectionJob.handler(mockContext)).rejects.toThrow("File not found");
 
@@ -588,7 +599,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       // Setup mocks
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
 
-      mocks.readBatchFromFile.mockResolvedValueOnce(mockFileData);
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
       mocks.getSchemaBuilderState.mockReturnValueOnce(existingState);
 
       mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);

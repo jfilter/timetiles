@@ -15,6 +15,7 @@ import path from "path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { logger } from "@/lib/logger";
 
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
@@ -27,7 +28,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
-    testDir = testEnv.tempDir || "/tmp";
+    testDir = testEnv.tempDir ?? "/tmp";
 
     // Create temp directory for test files
     const csvDir = path.join(testDir, "csv-files");
@@ -79,7 +80,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
       fs.writeFileSync(importPath, csvContent, "utf8");
 
       try {
-        console.log("1. Creating import-files record to trigger job pipeline...");
+        logger.info("1. Creating import-files record to trigger job pipeline...");
 
         // Create import-files record with actual file upload
         // This will trigger the afterChange hook which queues the first job
@@ -98,12 +99,12 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
           },
         });
 
-        console.log(`✓ Created import-files record: ${importFile.id}`);
+        logger.info(`✓ Created import-files record: ${importFile.id}`);
 
         // Brief wait for the afterChange hook to queue the first job
         await new Promise((resolve) => setTimeout(resolve, 200));
 
-        console.log("2. Starting manual job execution loop...");
+        logger.info("2. Starting manual job execution loop...");
 
         // Manual job execution loop - simulates worker/cron process
         let pipelineComplete = false;
@@ -112,7 +113,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
 
         while (!pipelineComplete && iteration < maxIterations) {
           iteration++;
-          console.log(`   Iteration ${iteration}: Running queued jobs...`);
+          logger.info(`   Iteration ${iteration}: Running queued jobs...`);
 
           // Execute all queued jobs
           const jobResults = await payload.jobs.run({
@@ -120,7 +121,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
             limit: 100,
           });
 
-          console.log(`   → Executed ${jobResults?.length || 0} jobs`);
+          logger.info(`   → Executed ${jobResults?.length || 0} jobs`);
 
           // Check pipeline status
           const updatedImportFile = await payload.findByID({
@@ -134,12 +135,12 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
             where: { importFile: { equals: importFile.id } },
           });
 
-          console.log(`   → Import file status: ${updatedImportFile.status}`);
-          console.log(`   → Found ${importJobs.docs.length} import jobs`);
+          logger.info(`   → Import file status: ${updatedImportFile.status}`);
+          logger.info(`   → Found ${importJobs.docs.length} import jobs`);
 
           if (importJobs.docs.length > 0) {
             importJobs.docs.forEach((job: any, index: number) => {
-              console.log(`   → Job ${index + 1}: ${job.stage} (${job.id})`);
+              logger.info(`   → Job ${index + 1}: ${job.stage} (${job.id})`);
             });
           }
 
@@ -156,7 +157,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
           throw new Error(`Pipeline did not complete after ${maxIterations} iterations`);
         }
 
-        console.log("3. Pipeline completed! Verifying results...");
+        logger.info("3. Pipeline completed! Verifying results...");
 
         // Verify final import file status
         const finalImportFile = await payload.findByID({
@@ -165,7 +166,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
         });
 
         expect(finalImportFile.status).toBe("completed");
-        console.log("✓ Import file status: completed");
+        logger.info("✓ Import file status: completed");
 
         // Verify all import jobs completed
         const finalImportJobs = await payload.find({
@@ -176,12 +177,12 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
         expect(finalImportJobs.docs).toHaveLength(1);
         const importJob = finalImportJobs.docs[0];
         expect(importJob.stage).toBe(PROCESSING_STAGE.COMPLETED);
-        console.log("✓ Import job completed successfully");
+        logger.info("✓ Import job completed successfully");
 
         // Verify dataset was created
         expect(importJob.dataset).toBeDefined();
         const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
-        console.log(`✓ Dataset created: ${datasetId}`);
+        logger.info(`✓ Dataset created: ${datasetId}`);
 
         // Verify events were created
         const events = await payload.find({
@@ -191,7 +192,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
         });
 
         expect(events.docs).toHaveLength(4);
-        console.log(`✓ Created ${events.docs.length} events`);
+        logger.info(`✓ Created ${events.docs.length} events`);
 
         // Verify event data matches CSV content
         const eventTitles = events.docs.map((e: any) => e.data.title).sort();
@@ -208,14 +209,14 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
         const eventLocations = events.docs.map((e: any) => e.data.location).sort();
         expect(eventLocations).toEqual(["Austin, TX", "New York, NY", "San Francisco, CA", "Seattle, WA"]);
 
-        console.log("✓ Event data verification passed");
+        logger.info("✓ Event data verification passed");
 
         // Verify job progression through all stages
         expect(importJob.progress?.total).toBeGreaterThan(0);
         expect(importJob.progress?.current).toBeGreaterThan(0); // Events were created
-        console.log(`✓ Job progress tracking verified: ${importJob.progress?.current}/${importJob.progress?.total}`);
+        logger.info(`✓ Job progress tracking verified: ${importJob.progress?.current}/${importJob.progress?.total}`);
 
-        console.log("🎉 End-to-end pipeline test completed successfully!");
+        logger.info("🎉 End-to-end pipeline test completed successfully!");
       } finally {
         // Cleanup temp files
         if (fs.existsSync(importPath)) {
@@ -225,14 +226,14 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
     }, 30000); // 30 second timeout for complete pipeline
 
     it("should handle job execution with no queued jobs gracefully", async () => {
-      console.log("Testing job execution with empty queue...");
+      logger.info("Testing job execution with empty queue...");
 
       // Execute jobs when queue is empty
       const results = await payload.jobs.run({ allQueues: true });
 
       // Should handle empty queue gracefully
       expect(results).toBeDefined();
-      console.log("✓ Empty queue handled gracefully");
+      logger.info("✓ Empty queue handled gracefully");
     });
 
     it("should track import file status progression correctly", async () => {
@@ -281,9 +282,9 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
 
         // Status should have progressed from initial pending
         // May be parsing, processing, or even completed for simple files
-        console.log(`Status after hook: ${afterHook.status}`);
+        logger.info(`Status after hook: ${afterHook.status}`);
         expect(["pending", "parsing", "processing", "completed"].includes(afterHook.status)).toBe(true);
-        console.log(`✓ Status progressed from pending to: ${afterHook.status}`);
+        logger.info(`✓ Status progressed from pending to: ${afterHook.status}`);
 
         // Execute jobs to completion
         let complete = false;
@@ -306,7 +307,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
         });
         expect(final.status).toBe("completed");
 
-        console.log("✓ Import file status progression verified");
+        logger.info("✓ Import file status progression verified");
       } finally {
         if (fs.existsSync(importPath)) {
           fs.unlinkSync(importPath);

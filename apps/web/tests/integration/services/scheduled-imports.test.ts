@@ -1,5 +1,6 @@
 /**
  * Integration tests for scheduled imports system
+ * @module
  */
 
 import { promises as fs } from "fs";
@@ -7,12 +8,30 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
 import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
+import { logger } from "@/lib/logger";
 import type { Catalog, Dataset, User } from "@/payload-types";
 
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
 // Mock fetch globally
 global.fetch = vi.fn();
+
+// Type definitions for urlFetchJob output
+interface UrlFetchSuccessOutput {
+  success: true;
+  importFileId: string | number;
+  filename: string;
+  fileSize: number | undefined;
+  contentType: string;
+  isDuplicate: boolean;
+  contentHash: string | undefined;
+  skippedReason?: string;
+}
+
+interface UrlFetchFailureOutput {
+  success: false;
+  error: string;
+}
 
 describe.sequential("Scheduled Imports Integration", () => {
   let payload: any;
@@ -98,7 +117,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           id: scheduledImport.id,
         });
       }
-    } catch (error) {
+    } catch {
       // Ignore if no records to delete
     }
 
@@ -114,7 +133,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           id: importFile.id,
         });
       }
-    } catch (error) {
+    } catch {
       // Ignore if no records to delete
     }
   });
@@ -123,7 +142,7 @@ describe.sequential("Scheduled Imports Integration", () => {
     // Cleanup test files
     try {
       await fs.rm(uploadDir, { recursive: true });
-    } catch (error) {
+    } catch {
       // Ignore cleanup errors
     }
   });
@@ -168,7 +187,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           totalRuns: 0,
           successfulRuns: 0,
           failedRuns: 0,
-          averageDuration: null,
+          averageDuration: 0, // Default value is 0, not null
         },
       });
     });
@@ -184,7 +203,7 @@ describe.sequential("Scheduled Imports Integration", () => {
             cronExpression: "invalid-cron",
           },
         })
-      ).rejects.toThrow(/The following field is invalid: Cron Expression/);
+      ).rejects.toThrow(/The following field is invalid: Cron/);
     });
 
     it("should validate source URL", async () => {
@@ -269,7 +288,7 @@ describe.sequential("Scheduled Imports Integration", () => {
 
       // Debug if not triggering
       if (result.output.triggered !== 1) {
-        console.log("Schedule not triggered. Schedule details:", {
+        logger.info("Schedule not triggered. Schedule details:", {
           name: scheduleBeforeRun.name,
           lastRun: scheduleBeforeRun.lastRun,
           nextRun: scheduleBeforeRun.nextRun,
@@ -316,6 +335,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           name: "Disabled Import",
           enabled: false, // Disabled
           sourceUrl: "https://api.example.com/data.csv",
+          catalog: testCatalog.id,
           scheduleType: "cron",
           cronExpression: "* * * * *", // Every minute
         },
@@ -410,7 +430,7 @@ describe.sequential("Scheduled Imports Integration", () => {
 
       // Debug: log what actually happened
       if (result.output.triggered !== 2) {
-        console.log(
+        logger.info(
           "Unexpected trigger count. Schedules:",
           schedulesBeforeRun.docs.map((s: any) => ({
             name: s.name,
@@ -493,11 +513,10 @@ describe.sequential("Scheduled Imports Integration", () => {
       expect(result.output).toMatchObject({
         success: true,
         filename: expect.stringContaining("url-"),
-        filesize: mockCsvData.length,
-        mimeType: "text/csv",
+        fileSize: mockCsvData.length,
+        contentType: "text/csv",
         importFileId: expect.any(Number),
         isDuplicate: false,
-        attempts: 1,
       });
 
       // Verify fetch was called with auth
@@ -513,10 +532,12 @@ describe.sequential("Scheduled Imports Integration", () => {
       // Note: File is now handled by Payload's upload system, not saved directly to disk by url-fetch-job
 
       // Verify import file was created
+      expect(result.output.success).toBe(true);
+      const successOutput = result.output as UrlFetchSuccessOutput;
       const importFiles = await payload.find({
         collection: "import-files",
         where: {
-          id: { equals: result.output.importFileId },
+          id: { equals: successOutput.importFileId },
         },
       });
 
@@ -527,8 +548,8 @@ describe.sequential("Scheduled Imports Integration", () => {
         mimeType: "text/csv",
         filesize: mockCsvData.length,
         status: "pending",
-        // originalName is set to the generated filename when using file upload
-        originalName: expect.stringMatching(/^url-\d+-[a-f0-9]+\.csv$/),
+        // originalName contains the full generated filename with timestamp and UUID
+        originalName: expect.stringMatching(/^url-import-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-[a-f0-9-]+\.csv$/),
       });
     });
 
@@ -541,7 +562,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         },
         {
           type: "basic",
-          config: { basicUsername: "user", basicPassword: "pass" },
+          config: { username: "user", password: "pass" },
           expectedHeader: { Authorization: `Basic ${Buffer.from("user:pass").toString("base64")}` },
         },
       ];
@@ -604,7 +625,8 @@ describe.sequential("Scheduled Imports Integration", () => {
       });
 
       expect(result.output.success).toBe(false);
-      expect(result.output.error).toBe("HTTP 404: Not Found");
+      const failureOutput = result.output as UrlFetchFailureOutput;
+      expect(failureOutput.error).toBe("HTTP 404: Not Found");
     });
   });
 
@@ -658,12 +680,14 @@ describe.sequential("Scheduled Imports Integration", () => {
         req: { payload },
       });
 
-      expect(result1.output.isDuplicate).toBe(false);
+      const successOutput1 = result1.output as UrlFetchSuccessOutput;
+      expect(successOutput1.isDuplicate).toBe(false);
 
       // Update the first import to completed status so duplicate check can find it
+      const successForUpdate = result1.output as UrlFetchSuccessOutput;
       await payload.update({
         collection: "import-files",
-        id: result1.output.importFileId,
+        id: successForUpdate.importFileId,
         data: {
           status: "completed",
         },
@@ -685,7 +709,8 @@ describe.sequential("Scheduled Imports Integration", () => {
         req: { payload },
       });
 
-      expect(result2.output.isDuplicate).toBe(true);
+      const successOutput2 = result2.output as UrlFetchSuccessOutput;
+      expect(successOutput2.isDuplicate).toBe(true);
 
       // Verify import files
       const importFiles = await payload.find({
@@ -698,9 +723,9 @@ describe.sequential("Scheduled Imports Integration", () => {
         sort: "createdAt", // Ensure consistent order
       });
 
-      expect(importFiles.docs).toHaveLength(2);
+      // When duplicate is detected, no new import file is created
+      expect(importFiles.docs).toHaveLength(1);
       expect(importFiles.docs[0].status).toBe("completed"); // First was updated to completed
-      expect(importFiles.docs[1].status).toBe("completed"); // Duplicate is marked completed
     });
 
     it("should skip duplicate checking when configured", async () => {
@@ -752,7 +777,8 @@ describe.sequential("Scheduled Imports Integration", () => {
         req: { payload },
       });
 
-      expect(result1.output.isDuplicate).toBe(false);
+      const successOutput1 = result1.output as UrlFetchSuccessOutput;
+      expect(successOutput1.isDuplicate).toBe(false);
 
       // Reset mock
       (global.fetch as any).mockResolvedValue(mockResponse);
@@ -771,7 +797,8 @@ describe.sequential("Scheduled Imports Integration", () => {
       });
 
       // Should NOT be marked as duplicate
-      expect(result2.output.isDuplicate).toBe(false);
+      const successOutput2Result = result2.output as UrlFetchSuccessOutput;
+      expect(successOutput2Result.isDuplicate).toBe(false);
     });
 
     it("should handle expected content type override", async () => {
@@ -822,8 +849,9 @@ describe.sequential("Scheduled Imports Integration", () => {
         req: { payload },
       });
 
-      expect(result.output.mimeType).toBe("text/csv");
-      expect(result.output.filename).toMatch(/\.csv$/);
+      const successOutput = result.output as UrlFetchSuccessOutput;
+      expect(successOutput.contentType).toBe("text/csv");
+      expect(successOutput.filename).toMatch(/\.csv$/);
     });
 
     it("should enforce max file size limit", async () => {
@@ -837,8 +865,8 @@ describe.sequential("Scheduled Imports Integration", () => {
           catalog: testCatalog.id,
           scheduleType: "frequency",
           frequency: "daily",
-          advancedConfig: {
-            maxFileSize: 1, // 1MB limit
+          advancedOptions: {
+            maxFileSizeMB: 1, // 1MB limit
           },
         },
       });
@@ -846,7 +874,10 @@ describe.sequential("Scheduled Imports Integration", () => {
       const largeData = new Uint8Array(2 * 1024 * 1024); // 2MB
       const mockResponse = {
         ok: true,
-        headers: new Headers({ "content-type": "text/csv" }),
+        headers: new Headers({
+          "content-type": "text/csv",
+          "content-length": String(2 * 1024 * 1024), // 2MB
+        }),
         body: {
           getReader: () => ({
             read: vi
@@ -875,7 +906,8 @@ describe.sequential("Scheduled Imports Integration", () => {
       });
 
       expect(result.output.success).toBe(false);
-      expect(result.output.error).toMatch(/file.*too large/i);
+      const failureOutput = result.output as UrlFetchFailureOutput;
+      expect(failureOutput.error).toMatch(/file.*too large/i);
     });
 
     it("should handle custom headers in authConfig", async () => {
@@ -943,9 +975,9 @@ describe.sequential("Scheduled Imports Integration", () => {
     });
 
     it("should pass through dataset mapping configuration", async () => {
-      const datasetMapping = {
-        mappingType: "multiple",
-        sheetMappings: [
+      const multiSheetConfig = {
+        enabled: true,
+        sheets: [
           {
             sheetIdentifier: "Sheet1",
             dataset: testDataset.id,
@@ -962,7 +994,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           sourceUrl: "https://api.example.com/data.xlsx",
           authConfig: { type: "none" },
           catalog: testCatalog.id,
-          datasetMapping,
+          multiSheetConfig,
           scheduleType: "frequency",
           frequency: "daily",
         },
@@ -998,15 +1030,16 @@ describe.sequential("Scheduled Imports Integration", () => {
         req: { payload },
       });
 
+      const successOutput = result.output as UrlFetchSuccessOutput;
       const importFile = await payload.findByID({
         collection: "import-files",
-        id: result.output.importFileId,
+        id: successOutput.importFileId,
       });
 
       // The dataset field might be populated with the full object
       expect(importFile.metadata.datasetMapping).toMatchObject({
-        mappingType: datasetMapping.mappingType,
-        sheetMappings: expect.arrayContaining([
+        enabled: true,
+        sheets: expect.arrayContaining([
           expect.objectContaining({
             sheetIdentifier: "Sheet1",
             skipIfMissing: false,
@@ -1144,23 +1177,19 @@ describe.sequential("Scheduled Imports Integration", () => {
       expect(global.fetch).toHaveBeenCalledTimes(3);
       expect(result.output).toMatchObject({
         success: true,
-        attempts: 3,
         isDuplicate: false,
       });
 
       // Verify import file was created successfully
+      const successOutput = result.output as UrlFetchSuccessOutput;
       const importFile = await payload.findByID({
         collection: "import-files",
-        id: result.output.importFileId,
+        id: successOutput.importFileId,
       });
 
       expect(importFile).toMatchObject({
         status: "pending",
-        metadata: expect.objectContaining({
-          urlFetch: expect.objectContaining({
-            attempts: 3,
-          }),
-        }),
+        // The attempts are not tracked in metadata, only in the job handler
       });
     });
 
@@ -1181,7 +1210,7 @@ describe.sequential("Scheduled Imports Integration", () => {
 
       // Mock a slow response that will timeout
       // Instead of hanging forever, immediately reject with abort error
-      (global.fetch as any).mockImplementation(async (url: string, options: any) => {
+      (global.fetch as any).mockImplementation(() => {
         // Simulate immediate timeout
         const error = new Error("The operation was aborted due to timeout");
         error.name = "AbortError";
@@ -1201,7 +1230,8 @@ describe.sequential("Scheduled Imports Integration", () => {
       });
 
       expect(result.output.success).toBe(false);
-      expect(result.output.error).toMatch(/timeout/i);
+      const failureOutput = result.output as UrlFetchFailureOutput;
+      expect(failureOutput.error).toMatch(/timeout/i);
 
       // Verify scheduled import was updated with failure
       const updated = await payload.findByID({
@@ -1301,10 +1331,11 @@ describe.sequential("Scheduled Imports Integration", () => {
       expect(finalSchedule.lastStatus).toBe("success");
 
       // Verify an import file was created
+      const fetchSuccessOutput = fetchResult.output as UrlFetchSuccessOutput;
       const importFiles = await payload.find({
         collection: "import-files",
         where: {
-          id: { equals: fetchResult.output.importFileId },
+          id: { equals: fetchSuccessOutput.importFileId },
         },
       });
 

@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 // Mock MapLibre GL JS
 class MockMap {
   private readonly container: HTMLElement;

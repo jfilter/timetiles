@@ -13,6 +13,9 @@
  * Usage:
  *   node --import tsx/esm scripts/validate-test-db-schema.ts
  *   node --import tsx/esm scripts/validate-test-db-schema.ts --fix
+ *
+ * @module
+ * @category Scripts
  */
 
 import { execSync } from "child_process";
@@ -105,6 +108,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
     const postgisLines = postgisResult
       .split("\n")
       .filter((line) => line.trim() && !line.includes("---") && !line.includes("count"));
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
     const postgisCount = parseInt(postgisLines[0]?.trim() || "0");
     const hasPostGIS = postgisCount > 0;
 
@@ -117,6 +121,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
     const schemaLines = schemaResult
       .split("\n")
       .filter((line) => line.trim() && !line.includes("---") && !line.includes("count"));
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
     const schemaCount = parseInt(schemaLines[0]?.trim() || "0");
     const hasPayloadSchema = schemaCount > 0;
 
@@ -131,6 +136,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
       const tableLines = tableResult
         .split("\n")
         .filter((line) => line.trim() && !line.includes("---") && !line.includes("count"));
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
       tableCount = parseInt(tableLines[0]?.trim() || "0");
     }
 
@@ -164,6 +170,7 @@ const getExpectedMigrations = (): string[] => {
 
     // Extract migration names from the imports/exports
     // Look for patterns like: export { default as Migration_20250729_195546 }
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- match() returns null, not undefined
     const migrationMatches = content.match(/Migration_(\d{8}_\d{6})/g) || [];
 
     return migrationMatches.map((match) => match.replace("Migration_", ""));
@@ -186,7 +193,7 @@ const getCompletedMigrations = (): string[] => {
       .map((line) => line.trim())
       .filter((line) => line && !line.startsWith("name") && line !== "---")
       .map((name) => name.replace(/^migration_/i, ""));
-  } catch (error) {
+  } catch {
     logger.debug("No completed migrations found or table doesn't exist");
     return [];
   }
@@ -328,7 +335,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
   const shouldFix = args.includes("--fix") || args.includes("--force");
 
-  (async () => {
+  void (async () => {
     try {
       const result = await validateTestDatabaseSchema();
 

@@ -6,7 +6,9 @@
     "DATABASE_URL",
     "PAYLOAD_SECRET",
     "PAYLOAD_PREVIEW_SECRET",
+    "NEXT_PUBLIC_PAYLOAD_URL",
     "CI",
+    "GITHUB_ACTIONS",
     "VITEST",
     "VITEST_WORKER_ID",
     "TEMP_DIR",
@@ -19,7 +21,10 @@
     "GEOCODING_CACHE_TTL_DAYS",
     "UPLOAD_DIR_IMPORT_FILES",
     "UPLOAD_DIR_MEDIA",
-    "UPLOAD_TEMP_DIR"
+    "UPLOAD_TEMP_DIR",
+    "TEST_ALL_BROWSERS",
+    "E2E_DEBUG",
+    "PGPASSWORD"
   ],
   "tasks": {
     "build": {

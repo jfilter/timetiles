@@ -20,6 +20,8 @@ import { createRequestLogger } from "../logger";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "../services/rate-limit-service";
 
 const logger = createRequestLogger("import-files");
+import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
+
 import { createCommonConfig } from "./shared-fields";
 
 const ALLOWED_MIME_TYPES = [
@@ -340,7 +342,7 @@ const ImportFiles: CollectionConfig = {
           // Update the record immediately for JSON rejection
           try {
             await payload.update({
-              collection: "import-files",
+              collection: COLLECTION_NAMES.IMPORT_FILES,
               id: doc.id,
               data: {
                 status: "failed",
@@ -360,7 +362,7 @@ const ImportFiles: CollectionConfig = {
           catalog =
             typeof doc.catalog === "object"
               ? doc.catalog
-              : await payload.findByID({ collection: "catalogs", id: doc.catalog });
+              : await payload.findByID({ collection: COLLECTION_NAMES.CATALOGS, id: doc.catalog });
         }
 
         // Queue the dataset detection job to detect sheets/datasets
@@ -376,7 +378,7 @@ const ImportFiles: CollectionConfig = {
           // Update with job ID
           try {
             await payload.update({
-              collection: "import-files",
+              collection: COLLECTION_NAMES.IMPORT_FILES,
               id: String(doc.id),
               data: {
                 status: "parsing",

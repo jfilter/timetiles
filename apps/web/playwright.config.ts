@@ -115,7 +115,7 @@ export default defineConfig({
     process.env.CI != null && process.env.CI !== ""
       ? undefined // In CI, the server is already running
       : {
-          command: "next dev --port 3002",
+          command: "pnpm dev --port 3002",
           url: "http://localhost:3002/explore", // Test against the explore page
           reuseExistingServer: true,
           timeout: 60 * 1000, // Give more time for database setup and migrations

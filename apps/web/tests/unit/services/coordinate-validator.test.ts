@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { CoordinateValidator } from "../../../lib/services/import/coordinate-validator";
 
 describe("CoordinateValidator", () => {

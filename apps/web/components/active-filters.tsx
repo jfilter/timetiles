@@ -1,3 +1,13 @@
+/**
+ * Display component for active filter badges.
+ *
+ * Shows currently applied filters as removable badges, allowing users to
+ * quickly see and remove active filters. Includes date range, dataset,
+ * and catalog filters with click-to-remove functionality.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import { X } from "lucide-react";

@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { describe, expect, it, vi } from "vitest";
 
 import { TypeTransformationService } from "../../../lib/services/type-transformation";

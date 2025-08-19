@@ -1,3 +1,13 @@
+/**
+ * Theme toggle dropdown component.
+ *
+ * Provides a dropdown menu for switching between light, dark, and system
+ * theme modes. Persists theme preference to localStorage and applies
+ * appropriate CSS classes to the document root.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 

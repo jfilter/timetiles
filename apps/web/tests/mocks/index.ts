@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 // Centralized exports for all mocks and test data
 
 // External mocks (auto-mocked libraries)

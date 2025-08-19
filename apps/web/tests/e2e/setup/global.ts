@@ -1,4 +1,12 @@
-// Setup for E2E tests
+/**
+ * E2E test setup configuration.
+ *
+ * Configures the test environment and ensures database
+ * is properly initialized with test data.
+ *
+ * @module
+ * @category E2E Tests
+ */
 
 import { test as setup } from "@playwright/test";
 
@@ -6,7 +14,7 @@ import { logger } from "../../../lib/logger";
 import { SeedManager } from "../../../lib/seed";
 import { setupTestDatabase } from "../../../scripts/setup-test-db";
 
-setup("create test database and seed data", async ({}) => {
+setup("create test database and seed data", async () => {
   logger.info("🚀 Setting up E2E test environment...");
 
   // Check if we're running a subset of tests (single test or specific file)

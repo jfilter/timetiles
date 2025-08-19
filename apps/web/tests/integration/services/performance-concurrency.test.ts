@@ -7,6 +7,7 @@
  * - Rate limiting
  * - Memory usage
  * - Job queue performance
+ * @module
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,6 +16,25 @@ import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment
 
 // Mock fetch globally
 global.fetch = vi.fn();
+
+// Type definitions for urlFetchJob output
+interface UrlFetchSuccessOutput {
+  success: true;
+  importFileId: string | number;
+  filename: string;
+  fileSize: number | undefined;
+  contentType: string;
+  isDuplicate: boolean;
+  contentHash: string | undefined;
+  skippedReason?: string;
+}
+
+interface UrlFetchFailureOutput {
+  success: false;
+  error: string;
+}
+
+type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
 
 describe.sequential.skip("Performance and Concurrency Tests", () => {
   let payload: any;
@@ -49,16 +69,16 @@ describe.sequential.skip("Performance and Concurrency Tests", () => {
     testCatalogId = catalog.id;
 
     // Mock payload.jobs.queue
-    vi.spyOn(payload.jobs, "queue").mockImplementation(async (params: any) => {
+    vi.spyOn(payload.jobs, "queue").mockImplementation((params: any) => {
       const { task, input } = params;
-      return {
+      return Promise.resolve({
         id: `mock-job-${Date.now()}-${Math.random()}`,
         task,
         input,
         status: "queued",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      } as any;
+      } as any);
     });
   }, 60000);
 
@@ -68,7 +88,7 @@ describe.sequential.skip("Performance and Concurrency Tests", () => {
     await cleanup();
   });
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
   });
 
@@ -133,7 +153,10 @@ describe.sequential.skip("Performance and Concurrency Tests", () => {
       const endMemory = process.memoryUsage();
 
       expect(result.output.success).toBe(true);
-      expect(result.output.filesize).toBeGreaterThan(1000000); // At least 1MB
+      if (result.output.success) {
+        const successOutput = result.output as UrlFetchSuccessOutput;
+        expect(successOutput.fileSize).toBeGreaterThan(1000000); // At least 1MB
+      }
 
       // Performance assertions
       const duration = endTime - startTime;
@@ -192,7 +215,10 @@ describe.sequential.skip("Performance and Concurrency Tests", () => {
       });
 
       expect(result.output.success).toBe(true);
-      expect(result.output.filesize).toBe(largeExcelData.length);
+      if (result.output.success) {
+        const successOutput = result.output as UrlFetchSuccessOutput;
+        expect(successOutput.fileSize).toBe(largeExcelData.length);
+      }
     });
   });
 
@@ -200,7 +226,7 @@ describe.sequential.skip("Performance and Concurrency Tests", () => {
     it("should handle multiple concurrent URL fetches", async () => {
       // Create multiple scheduled imports
       const schedules = await Promise.all(
-        Array.from({ length: 10 }, async (_, i) => {
+        Array.from({ length: 10 }, (_, i) => {
           return payload.create({
             collection: "scheduled-imports",
             data: {
@@ -251,7 +277,7 @@ describe.sequential.skip("Performance and Concurrency Tests", () => {
       const endTime = Date.now();
 
       // All should succeed
-      results.forEach((result) => {
+      results.forEach((result: { output: { success: boolean } }) => {
         expect(result.output.success).toBe(true);
       });
 
@@ -281,7 +307,7 @@ describe.sequential.skip("Performance and Concurrency Tests", () => {
       });
 
       // Mock the endpoint
-      (global.fetch as any).mockImplementation(async () => {
+      (global.fetch as any).mockImplementation(() => {
         return new Response("test,data\n1,2", {
           status: 200,
           headers: { "content-type": "text/csv" },
@@ -299,7 +325,7 @@ describe.sequential.skip("Performance and Concurrency Tests", () => {
 
       // Run schedule manager multiple times concurrently
       const runs = await Promise.all(
-        Array.from({ length: 5 }, async (_, i) => {
+        Array.from({ length: 5 }, (_, i) => {
           return scheduleManagerJob.handler({
             job: { id: `test-schedule-manager-concurrent-${i}` },
             req: { payload },
@@ -329,7 +355,7 @@ describe.sequential.skip("Performance and Concurrency Tests", () => {
 
       // Create 50 scheduled imports quickly
       const schedules = await Promise.all(
-        Array.from({ length: 50 }, async (_, i) => {
+        Array.from({ length: 50 }, (_, i) => {
           return payload.create({
             collection: "scheduled-imports",
             data: {
@@ -379,7 +405,7 @@ describe.sequential.skip("Performance and Concurrency Tests", () => {
       for (let batch = 0; batch < 5; batch++) {
         // Create 10 schedules
         const schedules = await Promise.all(
-          Array.from({ length: 10 }, async (_, i) => {
+          Array.from({ length: 10 }, (_, i) => {
             return payload.create({
               collection: "scheduled-imports",
               data: {
@@ -395,12 +421,14 @@ describe.sequential.skip("Performance and Concurrency Tests", () => {
         );
 
         // Mock endpoints
-        schedules.forEach((_, i) => {
-          (global.fetch as any).mockImplementationOnce(async () => {
-            return new Response("test,data\n1,2", {
-              status: 200,
-              headers: { "content-type": "text/csv" },
-            });
+        schedules.forEach(() => {
+          (global.fetch as any).mockImplementationOnce(() => {
+            return Promise.resolve(
+              new Response("test,data\n1,2", {
+                status: 200,
+                headers: { "content-type": "text/csv" },
+              })
+            );
           });
         });
 
@@ -455,25 +483,29 @@ describe.sequential.skip("Performance and Concurrency Tests", () => {
 
       // Mock rate limit response
       let requestCount = 0;
-      (global.fetch as any).mockImplementation(async () => {
+      (global.fetch as any).mockImplementation(() => {
         requestCount++;
         if (requestCount <= 2) {
           // First two attempts fail with rate limit
-          return new Response(null, {
-            status: 429,
-            statusText: "Too Many Requests",
-            headers: {
-              "Retry-After": "1",
-              "X-RateLimit-Limit": "100",
-              "X-RateLimit-Remaining": "0",
-            },
-          });
+          return Promise.resolve(
+            new Response(null, {
+              status: 429,
+              statusText: "Too Many Requests",
+              headers: {
+                "Retry-After": "1",
+                "X-RateLimit-Limit": "100",
+                "X-RateLimit-Remaining": "0",
+              },
+            })
+          );
         }
         // Third attempt succeeds
-        return new Response("test,data\n1,2", {
-          status: 200,
-          headers: { "content-type": "text/csv" },
-        });
+        return Promise.resolve(
+          new Response("test,data\n1,2", {
+            status: 200,
+            headers: { "content-type": "text/csv" },
+          })
+        );
       });
 
       // Import the job handler
@@ -495,7 +527,7 @@ describe.sequential.skip("Performance and Concurrency Tests", () => {
 
       // Should eventually succeed after retries
       expect(result.output.success).toBe(true);
-      expect(result.output.attempts).toBeGreaterThan(1); // Should have retried
+      // Note: attempts not included in output, but request count verifies retries happened
       expect(requestCount).toBeGreaterThan(2); // Should have made at least 3 requests
     }, 30000);
   });

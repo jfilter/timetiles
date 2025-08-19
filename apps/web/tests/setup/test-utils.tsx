@@ -1,3 +1,12 @@
+/**
+ * React Testing Library utilities.
+ *
+ * Provides custom render function with all necessary providers for
+ * component testing including React Query, theme, and URL state management.
+ *
+ * @module
+ * @category Test Setup
+ */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, type RenderOptions } from "@testing-library/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
@@ -9,9 +18,11 @@ interface CustomRenderOptions extends Omit<RenderOptions, "wrapper"> {
   searchParams?: URLSearchParams;
 }
 
+const defaultSearchParams = new URLSearchParams();
+
 const AllTheProviders = ({
   children,
-  searchParams = new URLSearchParams(),
+  searchParams = defaultSearchParams,
 }: {
   children: React.ReactNode;
   searchParams?: URLSearchParams;

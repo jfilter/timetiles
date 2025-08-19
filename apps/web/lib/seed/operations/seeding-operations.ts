@@ -281,12 +281,12 @@ export class SeedingOperations {
     }
 
     // Check if this is an upload collection and create dummy file data if needed
-    const collectionConfig = payload.config.collections?.find((c: any) => c.slug === collectionName);
+    const collectionConfig = payload.config.collections?.find((c: { slug: string }) => c.slug === collectionName);
     const isUploadCollection = collectionConfig?.upload;
 
     if (isUploadCollection) {
       // Create dummy file data for upload collections
-      const filename = (resolvedItem as any).filename || `seed-${Date.now()}.txt`;
+      const filename = (resolvedItem as { filename?: string }).filename ?? `seed-${Date.now()}.txt`;
       const fileContent = `Dummy seed file for ${collectionName}`;
       const fileBuffer = Buffer.from(fileContent, "utf8");
 
@@ -297,7 +297,7 @@ export class SeedingOperations {
           data: fileBuffer,
           name: filename,
           size: fileBuffer.length,
-          mimetype: (resolvedItem as any).mimeType || "text/plain",
+          mimetype: (resolvedItem as { mimeType?: string }).mimeType ?? "text/plain",
         },
       });
     } else {

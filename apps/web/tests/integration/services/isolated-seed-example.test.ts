@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
@@ -79,7 +82,7 @@ describe("Isolated Seed System Test Example", () => {
       const path = await import("path");
 
       const testId = createTestId();
-      const testFile = path.join(testEnv.tempDir || "/tmp", `${testId}.csv`);
+      const testFile = path.join(testEnv.tempDir ?? "/tmp", `${testId}.csv`);
 
       await fs.promises.writeFile(testFile, "test,data\n1,2");
 

@@ -1,3 +1,13 @@
+/**
+ * Drawer component for event filtering controls.
+ *
+ * Provides a collapsible sidebar with filter options for events including
+ * date range, dataset selection, and other filter criteria. Manages filter
+ * state and communicates changes to parent components.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import { cn } from "@workspace/ui/lib/utils";

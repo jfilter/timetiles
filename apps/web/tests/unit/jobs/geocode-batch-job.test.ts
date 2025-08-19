@@ -1,3 +1,12 @@
+/**
+ * Unit tests for the geocode batch job handler.
+ *
+ * Tests batch geocoding of events during import processing,
+ * including address resolution and error handling.
+ *
+ * @module
+ * @category Tests
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { geocodeBatchJob } from "@/lib/jobs/handlers/geocode-batch-job";
@@ -8,6 +17,8 @@ const mocks = vi.hoisted(() => {
   return {
     readBatchFromFile: vi.fn(),
     geocodeAddress: vi.fn(),
+    updateGeocodingProgress: vi.fn().mockResolvedValue(undefined),
+    getGeocodingCandidate: vi.fn(),
   };
 });
 
@@ -32,12 +43,12 @@ vi.mock("@/lib/utils/file-readers", () => ({
 
 vi.mock("@/lib/services/progress-tracking", () => ({
   ProgressTrackingService: {
-    updateGeocodingProgress: vi.fn().mockResolvedValue(undefined),
+    updateGeocodingProgress: mocks.updateGeocodingProgress,
   },
 }));
 
 vi.mock("@/lib/types/geocoding", () => ({
-  getGeocodingCandidate: vi.fn(),
+  getGeocodingCandidate: mocks.getGeocodingCandidate,
   getGeocodingResults: vi.fn().mockReturnValue({}),
 }));
 
@@ -50,7 +61,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     vi.clearAllMocks();
 
     // Set default mock implementations
-    mocks.readBatchFromFile.mockResolvedValue([
+    mocks.readBatchFromFile.mockReturnValue([
       { id: "1", title: "Event 1", address: "123 Main St, NYC" },
       { id: "2", title: "Event 2", address: "456 Oak Ave, LA" },
     ]);
@@ -147,8 +158,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.geocodeAddress).toHaveBeenCalledWith("456 Oak Ave, LA");
 
       // Check that ProgressTrackingService.updateGeocodingProgress was called
-      const { ProgressTrackingService } = await import("@/lib/services/progress-tracking");
-      expect(ProgressTrackingService.updateGeocodingProgress).toHaveBeenCalledWith(
+      expect(mocks.updateGeocodingProgress).toHaveBeenCalledWith(
         mockPayload,
         "import-123",
         2, // processedCount (both rows have addresses and were processed)
@@ -182,7 +192,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       });
 
       // Mock file with no addresses
-      mocks.readBatchFromFile.mockResolvedValue([
+      mocks.readBatchFromFile.mockReturnValue([
         { id: "1", title: "Event 1" }, // No address field
       ]);
 
@@ -196,8 +206,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.geocodeAddress).not.toHaveBeenCalled();
 
       // Check that ProgressTrackingService.updateGeocodingProgress was called
-      const { ProgressTrackingService } = await import("@/lib/services/progress-tracking");
-      expect(ProgressTrackingService.updateGeocodingProgress).toHaveBeenCalledWith(
+      expect(mocks.updateGeocodingProgress).toHaveBeenCalledWith(
         mockPayload,
         "import-123",
         1, // processedCount (all rows were processed)
@@ -230,7 +239,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         addressField: "address",
       });
 
-      mocks.readBatchFromFile.mockResolvedValue([
+      mocks.readBatchFromFile.mockReturnValue([
         { id: "1", title: "Event 1", address: "123 Main St, NYC" },
         { id: "2", title: "Event 2", address: "Invalid Address" },
       ]);
@@ -253,8 +262,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       await geocodeBatchJob.handler(mockContext);
 
       // Check that ProgressTrackingService.updateGeocodingProgress was called
-      const { ProgressTrackingService } = await import("@/lib/services/progress-tracking");
-      expect(ProgressTrackingService.updateGeocodingProgress).toHaveBeenCalledWith(
+      expect(mocks.updateGeocodingProgress).toHaveBeenCalledWith(
         mockPayload,
         "import-123",
         2, // processedCount (both rows processed)
@@ -294,7 +302,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         title: `Event ${i + 1}`,
         address: `${i + 1} Main St`,
       }));
-      mocks.readBatchFromFile.mockResolvedValue(fullBatch);
+      mocks.readBatchFromFile.mockReturnValue(fullBatch);
 
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
@@ -337,7 +345,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       });
 
       // Mock a small batch (less than batch size, indicating completion)
-      mocks.readBatchFromFile.mockResolvedValue([
+      mocks.readBatchFromFile.mockReturnValue([
         { id: "1", title: "Event 1", address: "123 Main St" },
         { id: "2", title: "Event 2", address: "456 Oak Ave" },
       ]);
@@ -392,7 +400,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       });
       vi.mocked(getGeocodingResults).mockReturnValue(existingResults);
 
-      mocks.readBatchFromFile.mockResolvedValue([{ id: "1", title: "Event 1", address: "123 Main St, NYC" }]);
+      mocks.readBatchFromFile.mockReturnValue([{ id: "1", title: "Event 1", address: "123 Main St, NYC" }]);
 
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
@@ -402,7 +410,8 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       await geocodeBatchJob.handler(mockContext);
 
       // Check that ProgressTrackingService.updateGeocodingProgress was called with combined results
-      const { ProgressTrackingService } = await import("@/lib/services/progress-tracking");
+      const progressModule = await import("@/lib/services/progress-tracking");
+      const { ProgressTrackingService } = progressModule;
       expect(ProgressTrackingService.updateGeocodingProgress).toHaveBeenCalledWith(
         mockPayload,
         "import-123",
@@ -453,7 +462,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         addressField: "address",
       });
 
-      mocks.readBatchFromFile.mockResolvedValue([{ id: "1", title: "Event 1", address: "123 Main St" }]);
+      mocks.readBatchFromFile.mockReturnValue([{ id: "1", title: "Event 1", address: "123 Main St" }]);
 
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
@@ -498,7 +507,9 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockImportFile);
 
-      mocks.readBatchFromFile.mockRejectedValue(new Error("File not found"));
+      mocks.readBatchFromFile.mockImplementation(() => {
+        throw new Error("File not found");
+      });
 
       await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow();
     });
@@ -516,12 +527,15 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       };
 
       const mockDataset = { id: "dataset-123" };
+      const mockImportFile = { id: "file-123", filename: "test.csv" };
 
       // Mock getGeocodingCandidate to return null (no candidates)
-      const { getGeocodingCandidate } = await import("@/lib/types/geocoding");
-      vi.mocked(getGeocodingCandidate).mockReturnValue(null);
+      mocks.getGeocodingCandidate.mockReturnValue(null);
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockDataset);
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockImportFile);
 
       const result = await geocodeBatchJob.handler(mockContext);
 
@@ -559,7 +573,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         addressField: "address",
       });
 
-      mocks.readBatchFromFile.mockResolvedValue([]);
+      mocks.readBatchFromFile.mockReturnValue([]);
 
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
@@ -603,7 +617,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         addressField: "address",
       });
 
-      mocks.readBatchFromFile.mockResolvedValue([
+      mocks.readBatchFromFile.mockReturnValue([
         { id: "1", address: "123 Main St, NYC" },
         { id: "2", address: "" }, // Empty address
         { id: "3", address: null }, // Null address
@@ -622,8 +636,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.geocodeAddress).toHaveBeenCalledWith("123 Main St, NYC");
 
       // Check that ProgressTrackingService.updateGeocodingProgress was called
-      const { ProgressTrackingService } = await import("@/lib/services/progress-tracking");
-      expect(ProgressTrackingService.updateGeocodingProgress).toHaveBeenCalledWith(
+      expect(mocks.updateGeocodingProgress).toHaveBeenCalledWith(
         mockPayload,
         "import-123",
         4, // processedCount (all rows processed)
@@ -670,7 +683,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         title: `Event ${i + 1}`,
         address: `${i + 1} Main St`,
       }));
-      mocks.readBatchFromFile.mockResolvedValue(fullBatch);
+      mocks.readBatchFromFile.mockReturnValue(fullBatch);
 
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
@@ -712,7 +725,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         addressField: "address",
       });
 
-      mocks.readBatchFromFile.mockResolvedValue([{ id: "1", title: "Event 1", address: "123 Main St" }]);
+      mocks.readBatchFromFile.mockReturnValue([{ id: "1", title: "Event 1", address: "123 Main St" }]);
 
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)

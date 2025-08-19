@@ -11,7 +11,7 @@ export interface SchemaField {
   type: "string" | "number" | "boolean" | "null" | "date" | "array" | "object" | "mixed";
   format?: string; // email, uri, date-time, latitude, longitude
   nullable: boolean;
-  enum?: any[];
+  enum?: Array<string | number | boolean | null>;
   items?: SchemaField; // for arrays
   properties?: Record<string, SchemaField>; // for objects
 }
@@ -22,7 +22,7 @@ export interface FieldStatistics {
   occurrencePercent: number;
   nullCount: number;
   uniqueValues: number;
-  uniqueSamples: any[]; // Keep up to threshold
+  uniqueSamples: Array<string | number | boolean | null | Record<string, unknown>>; // Keep up to threshold
   typeDistribution: Record<string, number>;
 
   // Type hints
@@ -44,7 +44,7 @@ export interface FieldStatistics {
 
   // Enum detection
   isEnumCandidate: boolean;
-  enumValues?: Array<{ value: any; count: number; percent: number }>;
+  enumValues?: Array<{ value: unknown; count: number; percent: number }>;
 
   // Geographic detection
   geoHints?: {
@@ -68,7 +68,7 @@ export interface SchemaBuilderState {
   lastUpdated: Date;
 
   // Samples for quicktype
-  dataSamples: any[]; // Keep rotating buffer of N samples
+  dataSamples: unknown[]; // Keep rotating buffer of N samples
   maxSamples: number;
 
   // Detected patterns
@@ -83,14 +83,14 @@ export interface SchemaBuilderState {
   typeConflicts: Array<{
     path: string;
     types: Record<string, number>;
-    samples: Array<{ type: string; value: any }>;
+    samples: Array<{ type: string; value: unknown }>;
   }>;
 }
 
 export interface SchemaChange {
   type: "new_field" | "removed_field" | "type_change" | "enum_change" | "format_change";
   path: string;
-  details: any;
+  details: unknown;
   severity: "info" | "warning" | "error";
   autoApprovable: boolean;
 }
@@ -122,7 +122,7 @@ export const isValidSchemaBuilderState = (state: unknown): state is SchemaBuilde
     return false;
   }
 
-  const s = state as any;
+  const s = state as Record<string, unknown>;
   return (
     typeof s.version === "number" &&
     typeof s.fieldStats === "object" &&
@@ -152,5 +152,5 @@ export const getSchemaBuilderState = (job: { schemaBuilderState?: unknown }): Sc
  */
 export const getFieldStats = (job: { schemaBuilderState?: unknown }): Record<string, FieldStatistics> => {
   const state = getSchemaBuilderState(job);
-  return state?.fieldStats || {};
+  return state?.fieldStats ?? {};
 };

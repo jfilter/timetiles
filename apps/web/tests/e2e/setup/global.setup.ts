@@ -1,14 +1,21 @@
-// Global setup for E2E tests using Playwright's project dependencies pattern
+/**
+ * Global setup for E2E tests.
+ *
+ * Uses Playwright's project dependencies pattern to ensure
+ * database is prepared before running tests.
+ *
+ * @module
+ * @category E2E Tests
+ */
 
 import { test as setup } from "@playwright/test";
 
-import { logger } from "../../../lib/logger";
-import { SeedManager } from "../../../lib/seed";
+// Import scripts directly as they are standalone
 import { setupTestDatabase } from "../../../scripts/setup-test-db";
 import { validateTestDatabaseSchema } from "../../../scripts/validate-test-db-schema";
 
-setup("create test database and seed data", async ({}) => {
-  logger.info("🚀 Setting up E2E test environment...");
+setup("create test database and seed data", async () => {
+  console.log("🚀 Setting up E2E test environment...");
 
   // Check if we're running a subset of tests (single test or specific file)
   const isFullSuite = !process.argv.some(
@@ -19,56 +26,58 @@ setup("create test database and seed data", async ({}) => {
   );
 
   if (!isFullSuite) {
-    logger.info("🔍 Single test run detected - validating existing database");
+    console.log("🔍 Single test run detected - validating existing database");
 
     // Even for single tests, validate the database schema
     try {
       const validationResult = await validateTestDatabaseSchema();
 
       if (!validationResult.isValid) {
-        logger.warn("❌ Database schema issues detected in fast mode:");
-        validationResult.issues.forEach((issue) => logger.warn(`  • ${issue}`));
-        logger.info("🔧 Running full setup due to schema issues");
+        console.warn("❌ Database schema issues detected in fast mode:");
+        validationResult.issues.forEach((issue) => console.warn(`  • ${issue}`));
+        console.log("🔧 Running full setup due to schema issues");
 
         // Fall through to full setup
       } else {
-        logger.info("✅ Database schema is valid");
-        logger.info("🎯 E2E test environment ready (fast mode)");
+        console.log("✅ Database schema is valid");
+        console.log("🎯 E2E test environment ready (fast mode)");
         return;
       }
     } catch (error) {
-      logger.warn("Failed to validate database schema in fast mode:", error);
-      logger.info("🔧 Running full setup due to validation failure");
+      console.warn("Failed to validate database schema in fast mode:", error);
+      console.log("🔧 Running full setup due to validation failure");
       // Fall through to full setup
     }
   }
 
   try {
     // Setup project runs BEFORE webServer, so we need to ensure database exists
-    logger.info("🗄️ Setting up test database...");
+    console.log("🗄️ Setting up test database...");
 
     // Use enhanced setup with auto-recovery
     await setupTestDatabase({ forceReset: false });
 
-    logger.info("🌱 Seeding fresh test data...");
-    const seedManager = new SeedManager();
-
+    console.log("🌱 Seeding test data using seed script...");
+    
+    // Use the seed script directly to avoid module resolution issues
+    const { execSync } = await import("child_process");
     try {
-      // For E2E tests, we want clean, predictable state via table truncation
-      await seedManager.seed({
-        environment: "test",
-        truncate: true, // Truncate all tables for clean state
-        collections: ["users", "catalogs", "datasets", "events"],
+      execSync("pnpm seed test", {
+        stdio: "inherit",
+        env: {
+          ...process.env,
+          DATABASE_URL: "postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test",
+        },
       });
-
-      logger.info("✅ Test database seeded successfully");
-    } finally {
-      await seedManager.cleanup();
+      console.log("✅ Test database seeded successfully");
+    } catch (seedError) {
+      console.error("Failed to seed database:", seedError);
+      throw seedError;
     }
 
-    logger.info("🎯 E2E test environment ready");
+    console.log("🎯 E2E test environment ready");
   } catch (error) {
-    logger.error("❌ Failed to set up E2E test environment:", { error });
+    console.error("❌ Failed to set up E2E test environment:", error);
     throw error; // Fail fast if setup fails
   }
 });

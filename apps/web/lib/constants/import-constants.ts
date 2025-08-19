@@ -37,6 +37,8 @@ export const JOB_TYPES = {
   CREATE_SCHEMA_VERSION: "create-schema-version",
   GEOCODE_BATCH: "geocode-batch",
   CREATE_EVENTS: "create-events",
+  URL_FETCH: "url-fetch",
+  SCHEDULE_MANAGER: "schedule-manager",
 } as const;
 
 export const COLLECTION_NAMES = {
@@ -46,6 +48,10 @@ export const COLLECTION_NAMES = {
   CATALOGS: "catalogs",
   DATASETS: "datasets",
   DATASET_SCHEMAS: "dataset-schemas",
+  GEOCODING_PROVIDERS: "geocoding-providers",
+  SCHEDULED_IMPORTS: "scheduled-imports",
+  USERS: "users",
+  PAYLOAD_MIGRATIONS: "payload-migrations",
 } as const;
 
 export const BATCH_SIZES = {

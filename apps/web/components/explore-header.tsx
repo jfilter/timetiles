@@ -1,3 +1,13 @@
+/**
+ * Header component for the explore page.
+ *
+ * Provides navigation controls, filter toggle, and action buttons for
+ * the explore interface. Shows filter count badge and manages drawer
+ * visibility state.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import { Download, Filter, Menu, Settings } from "lucide-react";

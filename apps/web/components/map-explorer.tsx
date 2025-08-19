@@ -1,3 +1,13 @@
+/**
+ * Main map exploration interface component.
+ *
+ * Combines the clustered map, event list, filters, and histogram into
+ * a unified exploration interface. Manages state synchronization between
+ * map viewport, filters, and data queries.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import type { LngLatBounds } from "maplibre-gl";

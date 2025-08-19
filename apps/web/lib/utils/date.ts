@@ -30,7 +30,7 @@ export const formatDate = (date: string | Date | null | undefined): string => {
       minute: "2-digit",
       hour12: true,
     }).format(dateObj);
-  } catch (error) {
+  } catch {
     return "Invalid date";
   }
 };
@@ -55,7 +55,7 @@ export const formatDateShort = (date: string | Date | null | undefined): string 
       month: "short",
       day: "numeric",
     }).format(dateObj);
-  } catch (error) {
+  } catch {
     return "Invalid date";
   }
 };

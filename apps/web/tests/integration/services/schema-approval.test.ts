@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
@@ -283,13 +286,6 @@ describe.sequential("Schema Approval Workflow", () => {
         },
       });
 
-      // Mock user context (no edit permissions)
-      const mockReq = {
-        user: viewerUser,
-        payload,
-        id: draftSchema.id,
-      };
-
       // Regular user should not be able to approve
       // In real implementation, this would throw an error
       // For testing, we verify the permission check would occur
@@ -518,6 +514,11 @@ describe.sequential("Schema Approval Workflow", () => {
         versions.push(schema);
       }
 
+      // Verify versions were created correctly
+      expect(versions).toHaveLength(3);
+      expect(versions[2].versionNumber).toBe(4);
+      expect(versions[2]._status).toBe("published");
+
       // Query schema history
       const schemaHistory = await payload.find({
         collection: "dataset-schemas",
@@ -718,7 +719,7 @@ describe.sequential("Schema Approval Workflow", () => {
         },
       });
 
-      const otherDataset = await payload.create({
+      await payload.create({
         collection: "datasets",
         data: {
           name: "Other Dataset",

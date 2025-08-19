@@ -14,15 +14,104 @@
 import path from "path";
 import type { Payload } from "payload";
 
-import { BATCH_SIZES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { getSchemaBuilderState } from "@/lib/types/schema-detection";
 import { readBatchFromFile } from "@/lib/utils/file-readers";
+import type { ImportJob } from "@/payload-types";
 
 import type { SchemaDetectionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
+
+// Helper to load job and file resources
+const loadJobAndFile = async (payload: Payload, importJobId: number | string) => {
+  const job = await payload.findByID({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: importJobId,
+  });
+
+  if (!job) {
+    throw new Error(`Import job not found: ${importJobId}`);
+  }
+
+  const importFile =
+    typeof job.importFile === "object"
+      ? job.importFile
+      : await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: job.importFile });
+
+  if (!importFile) {
+    throw new Error("Import file not found");
+  }
+
+  const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+  const filePath = path.join(uploadDir, importFile.filename ?? "");
+
+  return { job, importFile, filePath };
+};
+
+// Helper to extract duplicate row numbers
+const extractDuplicateRows = (job: ImportJob): Set<number> => {
+  const duplicateRows = new Set<number>();
+
+  // Handle the duplicates field which can be of various types
+  const duplicates = job.duplicates;
+  if (duplicates && typeof duplicates === "object" && !Array.isArray(duplicates)) {
+    // Check for internal duplicates
+    if (Array.isArray(duplicates.internal)) {
+      duplicates.internal.forEach((d: unknown) => {
+        if (typeof d === "object" && d !== null && "rowNumber" in d) {
+          duplicateRows.add((d as { rowNumber: number }).rowNumber);
+        }
+      });
+    }
+    // Check for external duplicates
+    if (Array.isArray(duplicates.external)) {
+      duplicates.external.forEach((d: unknown) => {
+        if (typeof d === "object" && d !== null && "rowNumber" in d) {
+          duplicateRows.add((d as { rowNumber: number }).rowNumber);
+        }
+      });
+    }
+  }
+
+  return duplicateRows;
+};
+
+// Helper to process batch and update schema
+const processBatchSchema = async (
+  rows: Record<string, unknown>[],
+  job: ImportJob,
+  batchNumber: number,
+  duplicateRows: Set<number>
+) => {
+  const BATCH_SIZE = BATCH_SIZES.SCHEMA_DETECTION;
+
+  // Filter out duplicate rows
+  const nonDuplicateRows = rows.filter((row, index) => {
+    const rowNumber = batchNumber * BATCH_SIZE + index;
+    return !duplicateRows.has(rowNumber);
+  });
+
+  // Build schema progressively
+  const previousState = getSchemaBuilderState(job);
+  const schemaBuilder = new ProgressiveSchemaBuilder(previousState ?? undefined);
+
+  if (nonDuplicateRows.length > 0) {
+    schemaBuilder.processBatch(nonDuplicateRows);
+  }
+
+  const updatedSchema = await schemaBuilder.getSchema();
+  const geocodingCandidates = nonDuplicateRows.length > 0 ? detectGeocodingFields(nonDuplicateRows) : [];
+
+  return {
+    nonDuplicateRows,
+    schemaBuilder,
+    updatedSchema,
+    geocodingCandidates,
+  };
+};
 
 export const schemaDetectionJob = {
   slug: JOB_TYPES.DETECT_SCHEMA,
@@ -37,77 +126,39 @@ export const schemaDetectionJob = {
     const startTime = Date.now();
 
     try {
-      // Get import job
-      const job = await payload.findByID({
-        collection: "import-jobs",
-        id: importJobId,
-      });
+      // Load resources
+      const { job, filePath } = await loadJobAndFile(payload, importJobId);
 
-      if (!job) {
-        throw new Error(`Import job not found: ${importJobId}`);
-      }
-
-      // Get file details
-      const importFile =
-        typeof job.importFile === "object"
-          ? job.importFile
-          : await payload.findByID({ collection: "import-files", id: job.importFile });
-
-      if (!importFile) {
-        throw new Error("Import file not found");
-      }
-
-      const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
-      const filePath = path.join(uploadDir, importFile.filename || "");
-
-      const BATCH_SIZE = BATCH_SIZES.SCHEMA_DETECTION;
-
-      // Get duplicate rows to skip
-      const duplicateRows = new Set<number>();
-      if (Array.isArray(job.duplicates?.internal)) {
-        job.duplicates.internal.forEach((d: any) => duplicateRows.add(d.rowNumber));
-      }
-      if (Array.isArray(job.duplicates?.external)) {
-        job.duplicates.external.forEach((d: any) => duplicateRows.add(d.rowNumber));
-      }
+      // Extract duplicate rows
+      const duplicateRows = extractDuplicateRows(job);
 
       // Read batch from file
-      const rows = await readBatchFromFile(filePath, {
+      const BATCH_SIZE = BATCH_SIZES.SCHEMA_DETECTION;
+      const rows = readBatchFromFile(filePath, {
         sheetIndex: job.sheetIndex ?? undefined,
         startRow: batchNumber * BATCH_SIZE,
         limit: BATCH_SIZE,
       });
 
+      // Check if we're done
       if (rows.length === 0) {
-        // No more data, move to schema validation stage
         await payload.update({
-          collection: "import-jobs",
+          collection: COLLECTION_NAMES.IMPORT_JOBS,
           id: importJobId,
           data: { stage: PROCESSING_STAGE.VALIDATE_SCHEMA },
         });
         return { output: { completed: true } };
       }
 
-      // Filter out duplicate rows before schema processing
-      const nonDuplicateRows = rows.filter((row, index) => {
-        const rowNumber = batchNumber * BATCH_SIZE + index;
-        return !duplicateRows.has(rowNumber);
-      });
+      // Process batch and build schema
+      const { nonDuplicateRows, schemaBuilder, updatedSchema, geocodingCandidates } = await processBatchSchema(
+        rows,
+        job,
+        batchNumber,
+        duplicateRows
+      );
 
-      // Build schema progressively using previous state
-      const previousState = getSchemaBuilderState(job);
-      const schemaBuilder = new ProgressiveSchemaBuilder(previousState ?? undefined);
-
-      // Process only non-duplicate rows for schema
-      if (nonDuplicateRows.length > 0) {
-        await schemaBuilder.processBatch(nonDuplicateRows);
-      }
-      const updatedSchema = await schemaBuilder.getSchema();
-
-      // Detect geocoding candidates from non-duplicate rows
-      const geocodingCandidates = nonDuplicateRows.length > 0 ? detectGeocodingFields(nonDuplicateRows) : [];
-
-      // Update job with progress using standardized service
+      // Update job progress
       const hasMore = rows.length === BATCH_SIZE;
       await ProgressTrackingService.updateJobProgress(
         payload,
@@ -122,16 +173,15 @@ export const schemaDetectionJob = {
         }
       );
 
-      // Queue next batch if needed
+      // Handle next steps
       if (hasMore) {
         await payload.jobs.queue({
           task: JOB_TYPES.DETECT_SCHEMA,
           input: { importJobId, batchNumber: batchNumber + 1 },
         });
       } else {
-        // No more data, move to schema validation stage
         await payload.update({
-          collection: "import-jobs",
+          collection: COLLECTION_NAMES.IMPORT_JOBS,
           id: importJobId,
           data: { stage: PROCESSING_STAGE.VALIDATE_SCHEMA },
         });
@@ -158,7 +208,7 @@ export const schemaDetectionJob = {
 
       // Update job status to failed
       await payload.update({
-        collection: "import-jobs",
+        collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
         data: {
           stage: PROCESSING_STAGE.FAILED,

@@ -1,3 +1,13 @@
+/**
+ * Base map component using MapLibre GL.
+ *
+ * Provides a foundational map component with Mapbox tiles, supporting
+ * various map interactions, custom overlays, and event handlers.
+ * Used as the base for more specialized map components.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";

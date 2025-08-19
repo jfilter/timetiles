@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { cleanup, screen, waitFor } from "@testing-library/react";
 
 import { EventHistogram } from "../../../components/event-histogram";

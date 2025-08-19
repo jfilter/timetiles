@@ -885,6 +885,10 @@ export interface ScheduledImport {
    */
   name: string;
   /**
+   * User who created this scheduled import
+   */
+  createdBy?: (number | null) | User;
+  /**
    * Optional description of what this import does
    */
   description?: string | null;
@@ -902,7 +906,7 @@ export interface ScheduledImport {
   authConfig?: {
     type?: ('none' | 'api-key' | 'bearer' | 'basic') | null;
     /**
-     * API key value
+     * API key to include in request header
      */
     apiKey?: string | null;
     /**
@@ -910,17 +914,17 @@ export interface ScheduledImport {
      */
     apiKeyHeader?: string | null;
     /**
-     * Bearer token value
+     * Bearer token for Authorization header
      */
     bearerToken?: string | null;
     /**
-     * Basic auth username
+     * Username for basic authentication
      */
-    basicUsername?: string | null;
+    username?: string | null;
     /**
-     * Basic auth password
+     * Password for basic authentication
      */
-    basicPassword?: string | null;
+    password?: string | null;
     /**
      * Additional custom headers as JSON object
      */
@@ -935,25 +939,25 @@ export interface ScheduledImport {
       | null;
   };
   /**
-   * Target catalog for imported data
+   * Catalog to import data into
    */
-  catalog?: (number | null) | Catalog;
+  catalog: number | Catalog;
   /**
-   * Configuration for mapping source data to datasets
+   * Target dataset for single-sheet imports
    */
-  datasetMapping?: {
+  dataset?: (number | null) | Dataset;
+  /**
+   * Configuration for Excel files with multiple sheets
+   */
+  multiSheetConfig?: {
     /**
-     * How to map the source data to datasets
+     * Enable multi-sheet import configuration
      */
-    mappingType?: ('auto' | 'single' | 'multiple') | null;
+    enabled?: boolean | null;
     /**
-     * Target dataset for single-dataset imports
+     * Configure dataset mapping for each sheet
      */
-    singleDataset?: (number | null) | Dataset;
-    /**
-     * Map specific sheets to datasets
-     */
-    sheetMappings?:
+    sheets?:
       | {
           /**
            * Sheet name or index (0-based)
@@ -964,7 +968,7 @@ export interface ScheduledImport {
            */
           dataset: number | Dataset;
           /**
-           * Skip this sheet if not found (instead of failing)
+           * Skip this sheet if not found in the file
            */
           skipIfMissing?: boolean | null;
           id?: string | null;
@@ -972,35 +976,61 @@ export interface ScheduledImport {
       | null;
   };
   /**
-   * Template for import file names. Supports: {{name}}, {{date}}, {{time}}, {{url}}
-   */
-  importNameTemplate?: string | null;
-  /**
-   * Choose between simple frequency or advanced cron scheduling
+   * Choose scheduling method
    */
   scheduleType: 'frequency' | 'cron';
   /**
-   * How often to run this import
+   * How often to run the import
    */
   frequency?: ('hourly' | 'daily' | 'weekly' | 'monthly') | null;
   /**
-   * Cron expression in UTC (e.g., '0 0 * * *' for daily at midnight UTC)
+   * Cron expression (e.g., '0 * /6 * * *' for every 6 hours)
    */
   cronExpression?: string | null;
   /**
-   * Maximum retry attempts on failure
+   * Template for generated import names. Available variables: {{name}}, {{date}}, {{time}}, {{url}}
    */
-  maxRetries?: number | null;
+  importNameTemplate?: string | null;
   /**
-   * Delay between retries in minutes
+   * Retry behavior configuration
    */
-  retryDelayMinutes?: number | null;
+  retryConfig?: {
+    /**
+     * Maximum number of retry attempts
+     */
+    maxRetries?: number | null;
+    /**
+     * Delay between retries in minutes
+     */
+    retryDelayMinutes?: number | null;
+    /**
+     * Use exponential backoff for retries
+     */
+    exponentialBackoff?: boolean | null;
+  };
   /**
-   * Timeout for URL fetch in seconds
+   * Advanced import options
    */
-  timeoutSeconds?: number | null;
+  advancedOptions?: {
+    /**
+     * Maximum time to wait for response in minutes
+     */
+    timeoutMinutes?: number | null;
+    /**
+     * Skip duplicate content checking
+     */
+    skipDuplicateChecking?: boolean | null;
+    /**
+     * Automatically approve schema changes
+     */
+    autoApproveSchema?: boolean | null;
+    /**
+     * Maximum file size in MB (leave empty for no limit)
+     */
+    maxFileSizeMB?: number | null;
+  };
   /**
-   * Last time this import was executed
+   * Last execution time
    */
   lastRun?: string | null;
   /**
@@ -1020,28 +1050,6 @@ export interface ScheduledImport {
    */
   currentRetries?: number | null;
   /**
-   * Recent execution history (last 10 runs)
-   */
-  executionHistory?:
-    | {
-        executedAt: string;
-        status: 'success' | 'failed';
-        /**
-         * ID of the created import-files record
-         */
-        importFileId?: string | null;
-        /**
-         * Error message if failed
-         */
-        error?: string | null;
-        /**
-         * Execution duration in seconds
-         */
-        duration?: number | null;
-        id?: string | null;
-      }[]
-    | null;
-  /**
    * Execution statistics
    */
   statistics?: {
@@ -1058,38 +1066,29 @@ export interface ScheduledImport {
      */
     failedRuns?: number | null;
     /**
-     * Average execution duration in seconds
+     * Average execution duration in milliseconds
      */
     averageDuration?: number | null;
   };
   /**
-   * Advanced configuration options
+   * History of recent executions
    */
-  advancedConfig?: {
-    /**
-     * Skip checking if URL content has changed since last run
-     */
-    skipDuplicateCheck?: boolean | null;
-    /**
-     * Expected content type (helps with format detection)
-     */
-    expectedContentType?: ('auto' | 'csv' | 'json' | 'xls' | 'xlsx') | null;
-    /**
-     * Maximum file size in MB
-     */
-    maxFileSize?: number | null;
-  };
-  /**
-   * Additional metadata and notes
-   */
-  metadata?:
+  executionHistory?:
     | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
+        executedAt: string;
+        status: 'success' | 'failed';
+        /**
+         * Duration in milliseconds
+         */
+        duration?: number | null;
+        recordsImported?: number | null;
+        error?: string | null;
+        /**
+         * Background job ID
+         */
+        jobId?: string | null;
+        id?: string | null;
+      }[]
     | null;
   updatedAt: string;
   createdAt: string;
@@ -2015,6 +2014,7 @@ export interface ImportJobsSelect<T extends boolean = true> {
  */
 export interface ScheduledImportsSelect<T extends boolean = true> {
   name?: T;
+  createdBy?: T;
   description?: T;
   enabled?: T;
   sourceUrl?: T;
@@ -2025,17 +2025,17 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
         apiKey?: T;
         apiKeyHeader?: T;
         bearerToken?: T;
-        basicUsername?: T;
-        basicPassword?: T;
+        username?: T;
+        password?: T;
         customHeaders?: T;
       };
   catalog?: T;
-  datasetMapping?:
+  dataset?: T;
+  multiSheetConfig?:
     | T
     | {
-        mappingType?: T;
-        singleDataset?: T;
-        sheetMappings?:
+        enabled?: T;
+        sheets?:
           | T
           | {
               sheetIdentifier?: T;
@@ -2044,28 +2044,30 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
               id?: T;
             };
       };
-  importNameTemplate?: T;
   scheduleType?: T;
   frequency?: T;
   cronExpression?: T;
-  maxRetries?: T;
-  retryDelayMinutes?: T;
-  timeoutSeconds?: T;
+  importNameTemplate?: T;
+  retryConfig?:
+    | T
+    | {
+        maxRetries?: T;
+        retryDelayMinutes?: T;
+        exponentialBackoff?: T;
+      };
+  advancedOptions?:
+    | T
+    | {
+        timeoutMinutes?: T;
+        skipDuplicateChecking?: T;
+        autoApproveSchema?: T;
+        maxFileSizeMB?: T;
+      };
   lastRun?: T;
   nextRun?: T;
   lastStatus?: T;
   lastError?: T;
   currentRetries?: T;
-  executionHistory?:
-    | T
-    | {
-        executedAt?: T;
-        status?: T;
-        importFileId?: T;
-        error?: T;
-        duration?: T;
-        id?: T;
-      };
   statistics?:
     | T
     | {
@@ -2074,14 +2076,17 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
         failedRuns?: T;
         averageDuration?: T;
       };
-  advancedConfig?:
+  executionHistory?:
     | T
     | {
-        skipDuplicateCheck?: T;
-        expectedContentType?: T;
-        maxFileSize?: T;
+        executedAt?: T;
+        status?: T;
+        duration?: T;
+        recordsImported?: T;
+        error?: T;
+        jobId?: T;
+        id?: T;
       };
-  metadata?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;

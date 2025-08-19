@@ -1,3 +1,12 @@
+/**
+ * E2E tests for explore page with real data.
+ *
+ * Tests the explore page functionality with actual seeded
+ * data to verify real-world scenarios.
+ *
+ * @module
+ * @category E2E Tests
+ */
 import { expect, test } from "@playwright/test";
 
 import { ExplorePage } from "../pages/explore.page";

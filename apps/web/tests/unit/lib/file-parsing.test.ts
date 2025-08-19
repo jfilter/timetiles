@@ -1,3 +1,12 @@
+/**
+ * Unit tests for file parsing utilities.
+ *
+ * Tests CSV and Excel file parsing, including data extraction,
+ * type conversion, and error handling for malformed files.
+ *
+ * @module
+ * @category Tests
+ */
 // No mocking needed - use real file parsing libraries
 import fs from "fs";
 import os from "os";

@@ -1,3 +1,13 @@
+/**
+ * Client-side conditional wrapper for top menu bar.
+ *
+ * Conditionally renders the top menu bar based on the current route,
+ * hiding it on admin and API routes. Handles client-side route detection
+ * and hydration-safe rendering.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import { usePathname } from "next/navigation";

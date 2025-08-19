@@ -2,6 +2,9 @@
  * Basic Enhanced Testing Infrastructure Test
  *
  * Simple test to verify the core functionality works
+ *
+ * @module
+ * @category Integration Tests
  */
 
 // Import geospatial assertions

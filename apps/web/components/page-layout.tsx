@@ -1,3 +1,13 @@
+/**
+ * Layout component for standard page containers.
+ *
+ * Provides consistent page layout with configurable maximum width,
+ * padding, and responsive behavior. Used as a wrapper for page content
+ * to maintain consistent spacing and alignment.
+ *
+ * @module
+ * @category Components
+ */
 import React from "react";
 
 const getMaxWidthClass = (

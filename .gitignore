@@ -17,6 +17,10 @@ coverage
 # Playwright
 playwright-report/
 test-results/
+# Test outputs
+.test-results.json
+test-results.json
+*.test-results.json
 
 # Turbo
 .turbo

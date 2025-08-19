@@ -1,3 +1,13 @@
+/**
+ * Draggable list for managing geocoding provider priority.
+ *
+ * Allows users to reorder geocoding providers via drag-and-drop to set
+ * priority order for geocoding operations. Higher priority providers
+ * are tried first when geocoding addresses.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import React, { useCallback, useState } from "react";

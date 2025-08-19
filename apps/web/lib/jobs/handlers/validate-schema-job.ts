@@ -13,15 +13,166 @@
 import path from "path";
 import type { Payload } from "payload";
 
-import { BATCH_SIZES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { SchemaVersioningService } from "@/lib/services/schema-versioning";
 import { getSchemaBuilderState } from "@/lib/types/schema-detection";
 import { readBatchFromFile } from "@/lib/utils/file-readers";
+import type { ImportJob } from "@/payload-types";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
+
+// Helper function to load required resources
+const loadResources = async (payload: Payload, importJobId: number) => {
+  const job = await payload.findByID({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: importJobId,
+  });
+
+  if (!job) {
+    throw new Error(`Import job not found: ${importJobId}`);
+  }
+
+  const dataset =
+    typeof job.dataset === "object"
+      ? job.dataset
+      : await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: job.dataset });
+
+  if (!dataset) {
+    throw new Error("Dataset not found");
+  }
+
+  const importFile =
+    typeof job.importFile === "object"
+      ? job.importFile
+      : await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: job.importFile });
+
+  if (!importFile) {
+    throw new Error("Import file not found");
+  }
+
+  return { job, dataset, importFile };
+};
+
+// Helper function to extract duplicate row numbers
+const extractDuplicateRows = (job: ImportJob): Set<number> => {
+  const duplicateRows = new Set<number>();
+
+  // Handle the duplicates field which can be of various types
+  const duplicates = job.duplicates;
+  if (duplicates && typeof duplicates === "object" && !Array.isArray(duplicates)) {
+    // Check for internal duplicates
+    if (Array.isArray(duplicates.internal)) {
+      duplicates.internal.forEach((d: unknown) => {
+        if (typeof d === "object" && d !== null && "rowNumber" in d) {
+          duplicateRows.add((d as { rowNumber: number }).rowNumber);
+        }
+      });
+    }
+    // Check for external duplicates
+    if (Array.isArray(duplicates.external)) {
+      duplicates.external.forEach((d: unknown) => {
+        if (typeof d === "object" && d !== null && "rowNumber" in d) {
+          duplicateRows.add((d as { rowNumber: number }).rowNumber);
+        }
+      });
+    }
+  }
+
+  return duplicateRows;
+};
+
+// Helper function to process file schema
+const processFileSchema = async (
+  filePath: string,
+  job: { sheetIndex: number; schemaBuilderState?: unknown },
+  duplicateRows: Set<number>
+): Promise<{ schemaBuilder: ProgressiveSchemaBuilder; detectedSchema: Record<string, unknown> }> => {
+  const previousState = getSchemaBuilderState(job);
+  const schemaBuilder = new ProgressiveSchemaBuilder(previousState ?? undefined);
+  const BATCH_SIZE = BATCH_SIZES.SCHEMA_VALIDATION;
+  let batchNumber = 0;
+
+  while (true) {
+    const rows = readBatchFromFile(filePath, {
+      sheetIndex: job.sheetIndex ?? undefined,
+      startRow: batchNumber * BATCH_SIZE,
+      limit: BATCH_SIZE,
+    });
+
+    if (rows.length === 0) break;
+
+    const nonDuplicateRows = rows.filter((row, index) => {
+      const rowNumber = batchNumber * BATCH_SIZE + index;
+      return !duplicateRows.has(rowNumber);
+    });
+
+    if (nonDuplicateRows.length > 0) {
+      schemaBuilder.processBatch(nonDuplicateRows);
+    }
+
+    batchNumber++;
+  }
+
+  const detectedSchemaRaw = await schemaBuilder.getSchema();
+  const detectedSchema =
+    typeof detectedSchemaRaw === "object" && !Array.isArray(detectedSchemaRaw) ? detectedSchemaRaw : {};
+
+  return { schemaBuilder, detectedSchema };
+};
+
+// Helper function to get current schema
+const getCurrentSchema = async (payload: Payload, datasetId: number | string): Promise<Record<string, unknown>> => {
+  const currentSchemaDoc = await payload.find({
+    collection: COLLECTION_NAMES.DATASET_SCHEMAS,
+    where: {
+      dataset: { equals: datasetId },
+    },
+    sort: "-version",
+    limit: 1,
+  });
+
+  const currentSchemaRaw = currentSchemaDoc.docs[0]?.schema ?? {};
+  return typeof currentSchemaRaw === "object" && !Array.isArray(currentSchemaRaw)
+    ? (currentSchemaRaw as Record<string, unknown>)
+    : {};
+};
+
+// Helper function to determine if approval is required
+const checkRequiresApproval = (
+  comparison: SchemaComparison,
+  dataset: { schemaConfig?: { locked?: boolean | null; autoApproveNonBreaking?: boolean | null } | null }
+): boolean =>
+  comparison.hasBreakingChanges || !!dataset.schemaConfig?.locked || !dataset.schemaConfig?.autoApproveNonBreaking;
+
+// Helper function to handle schema approval
+const handleSchemaApproval = async (
+  payload: Payload,
+  requiresApproval: boolean,
+  comparison: SchemaComparison,
+  detectedSchema: Record<string, unknown>,
+  schemaBuilder: ProgressiveSchemaBuilder,
+  dataset: {
+    id: string | number;
+    schemaConfig?: { locked?: boolean | null; autoApproveNonBreaking?: boolean | null } | null;
+  },
+  importJobId: number | string
+) => {
+  if (!requiresApproval && comparison.hasChanges) {
+    const schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
+      dataset: dataset.id,
+      schema: detectedSchema,
+      fieldMetadata: schemaBuilder.getState().fieldStats,
+      autoApproved: true,
+      approvedBy: null, // No user for auto-approval
+      importSources: [],
+    });
+
+    await SchemaVersioningService.linkImportToSchemaVersion(payload, importJobId, schemaVersion.id);
+  }
+};
 
 export const validateSchemaJob = {
   slug: JOB_TYPES.VALIDATE_SCHEMA,
@@ -30,127 +181,45 @@ export const validateSchemaJob = {
     const input = (context.input ?? context.job?.input) as ValidateSchemaJobInput["input"];
     const { importJobId } = input;
 
-    // Ensure importJobId is properly typed
     const jobIdTyped = typeof importJobId === "string" ? parseInt(importJobId, 10) : importJobId;
-
     const jobId = context.job?.id ?? "unknown";
     const logger = createJobLogger(jobId, "validate-schema");
     logger.info("Starting schema validation", { importJobId });
     const startTime = Date.now();
 
     try {
-      // Get import job
-      const job = await payload.findByID({
-        collection: "import-jobs",
-        id: jobIdTyped,
-      });
+      // Load all required resources
+      const { job, dataset, importFile } = await loadResources(payload, jobIdTyped);
 
-      if (!job) {
-        throw new Error(`Import job not found: ${importJobId}`);
-      }
-
-      // Get dataset configuration
-      const dataset =
-        typeof job.dataset === "object"
-          ? job.dataset
-          : await payload.findByID({ collection: "datasets", id: job.dataset });
-
-      if (!dataset) {
-        throw new Error("Dataset not found");
-      }
-
-      // Get file details
-      const importFile =
-        typeof job.importFile === "object"
-          ? job.importFile
-          : await payload.findByID({ collection: "import-files", id: job.importFile });
-
-      if (!importFile) {
-        throw new Error("Import file not found");
-      }
-
+      // Setup file path
       const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
-      const filePath = path.join(uploadDir, importFile.filename || "");
+      const filePath = path.join(uploadDir, importFile.filename ?? "");
 
-      // Get duplicate row numbers to skip
-      const duplicateRows = new Set<number>();
-      if (job.duplicates?.internal && Array.isArray(job.duplicates.internal)) {
-        for (const d of job.duplicates.internal) {
-          duplicateRows.add((d as { rowNumber: number }).rowNumber);
-        }
-      }
-      if (job.duplicates?.external && Array.isArray(job.duplicates.external)) {
-        for (const d of job.duplicates.external) {
-          duplicateRows.add((d as { rowNumber: number }).rowNumber);
-        }
-      }
+      // Extract duplicate rows
+      const duplicateRows = extractDuplicateRows(job);
 
-      // Re-build schema using progressive state from schema detection phase
-      const previousState = getSchemaBuilderState(job);
-      const schemaBuilder = new ProgressiveSchemaBuilder(previousState ?? undefined);
-      const BATCH_SIZE = BATCH_SIZES.SCHEMA_VALIDATION;
-      let batchNumber = 0;
-
-      while (true) {
-        const rows = await readBatchFromFile(filePath, {
-          sheetIndex: job.sheetIndex ?? undefined,
-          startRow: batchNumber * BATCH_SIZE,
-          limit: BATCH_SIZE,
-        });
-
-        if (rows.length === 0) break;
-
-        // Filter out duplicate rows before schema analysis
-        const nonDuplicateRows = rows.filter((row, index) => {
-          const rowNumber = batchNumber * BATCH_SIZE + index;
-          return !duplicateRows.has(rowNumber);
-        });
-
-        // Process schema for non-duplicate rows only
-        if (nonDuplicateRows.length > 0) {
-          await schemaBuilder.processBatch(nonDuplicateRows);
-        }
-
-        batchNumber++;
-      }
-
-      const detectedSchemaRaw = await schemaBuilder.getSchema();
-      const detectedSchema =
-        typeof detectedSchemaRaw === "object" && !Array.isArray(detectedSchemaRaw)
-          ? (detectedSchemaRaw as Record<string, unknown>)
-          : {};
-
-      // Get current schema from dataset-schemas collection
-      const currentSchemaDoc = await payload.find({
-        collection: "dataset-schemas",
-        where: {
-          dataset: { equals: dataset.id },
+      // Process file schema
+      const { schemaBuilder, detectedSchema } = await processFileSchema(
+        filePath,
+        {
+          sheetIndex: job.sheetIndex ?? 0,
+          schemaBuilderState: job.schemaBuilderState,
         },
-        sort: "-version",
-        limit: 1,
-      });
+        duplicateRows
+      );
 
-      const currentSchemaRaw = currentSchemaDoc.docs[0]?.schema || {};
-      const currentSchema =
-        typeof currentSchemaRaw === "object" && !Array.isArray(currentSchemaRaw)
-          ? (currentSchemaRaw as Record<string, unknown>)
-          : {};
+      // Get current schema
+      const currentSchema = await getCurrentSchema(payload, dataset.id);
 
       // Compare schemas
       const comparison = compareSchemas(currentSchema, detectedSchema);
 
-      // Determine if auto-approval is possible
-      const canAutoApprove =
-        dataset.schemaConfig?.autoGrow &&
-        !comparison.hasBreakingChanges &&
-        comparison.newFields.every((f: any) => f.optional);
-
-      const requiresApproval =
-        comparison.hasBreakingChanges || dataset.schemaConfig?.locked || !dataset.schemaConfig?.autoApproveNonBreaking;
+      // Check if approval is required
+      const requiresApproval = checkRequiresApproval(comparison, dataset);
 
       // Update job with validation results
       await payload.update({
-        collection: "import-jobs",
+        collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: jobIdTyped,
         data: {
           schema: detectedSchema,
@@ -167,19 +236,16 @@ export const validateSchemaJob = {
         },
       });
 
-      // If auto-approved, create new schema version
-      if (!requiresApproval && comparison.hasChanges) {
-        const schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
-          dataset: dataset.id,
-          schema: detectedSchema,
-          fieldMetadata: schemaBuilder.getState().fieldStats,
-          autoApproved: true,
-          approvedBy: 1, // System user
-          importSources: [], // Keep empty to avoid circular dependency
-        });
-
-        await SchemaVersioningService.linkImportToSchemaVersion(payload, importJobId, schemaVersion.id);
-      }
+      // Handle schema approval if needed
+      await handleSchemaApproval(
+        payload,
+        requiresApproval,
+        comparison,
+        detectedSchema,
+        schemaBuilder,
+        dataset,
+        importJobId
+      );
 
       logPerformance("Schema validation", Date.now() - startTime, {
         importJobId,
@@ -197,9 +263,8 @@ export const validateSchemaJob = {
     } catch (error) {
       logError(error, "Schema validation failed", { importJobId });
 
-      // Update job status to failed
       await payload.update({
-        collection: "import-jobs",
+        collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: jobIdTyped,
         data: {
           stage: PROCESSING_STAGE.FAILED,
@@ -239,8 +304,8 @@ const compareSchemas = (current: Record<string, unknown>, detected: Record<strin
   const newFields: SchemaComparison["newFields"] = [];
 
   // Type guards for schema properties
-  const currentProps = (current.properties as Record<string, any>) || {};
-  const detectedProps = (detected.properties as Record<string, any>) || {};
+  const currentProps = (current.properties as Record<string, { type: string }>) || {};
+  const detectedProps = (detected.properties as Record<string, { type: string }>) || {};
 
   // Check for type changes (breaking)
   for (const [field, currentType] of Object.entries(currentProps)) {

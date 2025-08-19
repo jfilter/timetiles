@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
@@ -491,8 +494,8 @@ describe.sequential("StageTransitionService", () => {
       // Start transitions but don't await (they'll be blocked by queue mock)
       mockPayload.jobs.queue.mockImplementation(() => new Promise(() => {})); // Never resolves
 
-      StageTransitionService.processStageTransition(mockPayload, newJob1, previousJob);
-      StageTransitionService.processStageTransition(mockPayload, newJob2, previousJob);
+      void StageTransitionService.processStageTransition(mockPayload, newJob1, previousJob);
+      void StageTransitionService.processStageTransition(mockPayload, newJob2, previousJob);
 
       // Wait a bit for the transitions to start
       return new Promise<void>((resolve) => {
@@ -515,7 +518,7 @@ describe.sequential("StageTransitionService", () => {
 
       mockPayload.jobs.queue.mockImplementation(() => new Promise(() => {})); // Never resolves
 
-      StageTransitionService.processStageTransition(mockPayload, newJob, previousJob);
+      void StageTransitionService.processStageTransition(mockPayload, newJob, previousJob);
 
       return new Promise<void>((resolve) => {
         setTimeout(() => {
@@ -537,14 +540,14 @@ describe.sequential("StageTransitionService", () => {
 
       mockPayload.jobs.queue.mockImplementation(() => new Promise(() => {})); // Never resolves
 
-      StageTransitionService.processStageTransition(mockPayload, newJob, previousJob);
+      void StageTransitionService.processStageTransition(mockPayload, newJob, previousJob);
 
       // Wait for transition to start
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(StageTransitionService.getTransitioningCount()).toBe(1);
 
-      const result = await StageTransitionService.cleanupTask();
+      const result = StageTransitionService.cleanupTask();
 
       expect(result).toEqual({ output: { cleaned: 1 } });
       expect(StageTransitionService.getTransitioningCount()).toBe(0);
@@ -553,10 +556,10 @@ describe.sequential("StageTransitionService", () => {
       });
     });
 
-    it("should handle cleanup task with no locks to clean", async () => {
+    it("should handle cleanup task with no locks to clean", () => {
       expect(StageTransitionService.getTransitioningCount()).toBe(0);
 
-      const result = await StageTransitionService.cleanupTask();
+      const result = StageTransitionService.cleanupTask();
 
       expect(result).toEqual({ output: { cleaned: 0 } });
       expect(mocks.logger.info).not.toHaveBeenCalled();

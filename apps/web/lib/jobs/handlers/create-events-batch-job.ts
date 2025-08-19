@@ -1,5 +1,5 @@
 /**
- * @module Defines the job handler for creating events from a batch of imported data.
+ * Defines the job handler for creating events from a batch of imported data.
  *
  * This job processes a specific batch of rows from an import file. For each row, it performs the following:
  * - Skips rows that have been identified as duplicates in the `analyze-duplicates-job`.
@@ -10,14 +10,16 @@
  * The job updates the import job's progress and handles errors for individual rows.
  * If more data is available in the file, it queues another `CREATE_EVENTS_BATCH` job for the next batch.
  * Once all batches are processed, it marks the import job as `COMPLETED`.
+ *
+ * @module
+ * @category Jobs
  */
 import path from "path";
 import type { Payload } from "payload";
 
-import { BATCH_SIZES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
-import type { GeocodingResultsMap } from "@/lib/types/geocoding";
 import { getGeocodingResultForRow, getGeocodingResults } from "@/lib/types/geocoding";
 import { readBatchFromFile } from "@/lib/utils/file-readers";
 import type { Dataset } from "@/payload-types";
@@ -28,6 +30,7 @@ import type { JobHandlerContext } from "../utils/job-context";
 /**
  * Updates import file status based on the status of all associated jobs
  */
+
 const updateImportFileStatusIfAllJobsComplete = async (
   payload: Payload,
   importFileId: string | number
@@ -36,7 +39,7 @@ const updateImportFileStatusIfAllJobsComplete = async (
 
   // Check if all import jobs for this file are completed or failed
   const pendingJobs = await payload.find({
-    collection: "import-jobs",
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
     where: {
       importFile: { equals: importFileIdNum },
       stage: {
@@ -49,7 +52,7 @@ const updateImportFileStatusIfAllJobsComplete = async (
   // If no pending jobs, check if any failed
   if (pendingJobs.docs.length === 0) {
     const failedJobs = await payload.find({
-      collection: "import-jobs",
+      collection: COLLECTION_NAMES.IMPORT_JOBS,
       where: {
         importFile: { equals: importFileIdNum },
         stage: { equals: PROCESSING_STAGE.FAILED },
@@ -60,13 +63,211 @@ const updateImportFileStatusIfAllJobsComplete = async (
     // Update import file status based on job outcomes
     const newStatus = failedJobs.docs.length > 0 ? "failed" : "completed";
     await payload.update({
-      collection: "import-files",
+      collection: COLLECTION_NAMES.IMPORT_FILES,
       id: importFileIdNum,
       data: {
         status: newStatus,
       },
     });
   }
+};
+
+// Extract helper functions to reduce complexity
+type DuplicatesData = string | number | boolean | unknown[] | { [k: string]: unknown } | null;
+
+const getDuplicateRows = (job: {
+  duplicates?: {
+    internal?: DuplicatesData;
+    external?: DuplicatesData;
+  };
+}): Set<number> => {
+  const duplicateRows = new Set<number>();
+
+  if (Array.isArray(job.duplicates?.internal)) {
+    job.duplicates.internal.forEach((d) => {
+      if (typeof d === "object" && d !== null && "rowNumber" in d) {
+        duplicateRows.add((d as { rowNumber: number }).rowNumber);
+      }
+    });
+  }
+
+  if (Array.isArray(job.duplicates?.external)) {
+    job.duplicates.external.forEach((d) => {
+      if (typeof d === "object" && d !== null && "rowNumber" in d) {
+        duplicateRows.add((d as { rowNumber: number }).rowNumber);
+      }
+    });
+  }
+
+  return duplicateRows;
+};
+
+const createEventData = (
+  row: Record<string, unknown>,
+  dataset: Dataset,
+  importJobId: string | number,
+  geocoding: ReturnType<typeof getGeocodingResultForRow>,
+  job: { datasetSchemaVersion?: unknown }
+) => {
+  const uniqueId = generateUniqueId(row, dataset.idStrategy);
+  const importJobNum = typeof importJobId === "string" ? parseInt(importJobId, 10) : importJobId;
+
+  const schemaVersionData = job.datasetSchemaVersion;
+  let schemaVersion: number | undefined;
+  if (typeof schemaVersionData === "object" && schemaVersionData) {
+    schemaVersion = (schemaVersionData as { versionNumber: number }).versionNumber;
+  } else if (typeof schemaVersionData === "number") {
+    schemaVersion = schemaVersionData;
+  } else {
+    schemaVersion = undefined;
+  }
+
+  return {
+    dataset: dataset.id,
+    importJob: importJobNum,
+    data: row,
+    uniqueId,
+    eventTimestamp: extractTimestamp(row).toISOString(),
+    location: geocoding
+      ? {
+          latitude: geocoding.coordinates.lat,
+          longitude: geocoding.coordinates.lng,
+        }
+      : undefined,
+    coordinateSource: geocoding
+      ? {
+          type: "geocoded" as const,
+          confidence: geocoding.confidence,
+        }
+      : {
+          type: "none" as const,
+        },
+    validationStatus: "pending" as const,
+    schemaVersionNumber: schemaVersion,
+  };
+};
+
+const processEventBatch = async (
+  payload: Payload,
+  rows: Record<string, unknown>[],
+  job: {
+    duplicates?: {
+      internal?: DuplicatesData;
+      external?: DuplicatesData;
+    };
+    datasetSchemaVersion?: unknown;
+    geocodingResults?: unknown;
+  },
+  dataset: Dataset,
+  importJobId: string | number,
+  batchNumber: number,
+  logger: ReturnType<typeof createJobLogger>
+) => {
+  const BATCH_SIZE = BATCH_SIZES.EVENT_CREATION;
+  const duplicateRows = getDuplicateRows(job);
+  const geocodingResults = getGeocodingResults(job);
+
+  let eventsCreated = 0;
+  let eventsSkipped = 0;
+  const errors: Array<{ row: number; error: string }> = [];
+
+  for (const [index, row] of rows.entries()) {
+    const rowNumber = batchNumber * BATCH_SIZE + index;
+
+    if (duplicateRows.has(rowNumber)) {
+      eventsSkipped++;
+      continue;
+    }
+
+    try {
+      const geocoding = getGeocodingResultForRow(geocodingResults, rowNumber);
+      const eventData = createEventData(row, dataset, importJobId, geocoding, job);
+
+      await payload.create({
+        collection: COLLECTION_NAMES.EVENTS,
+        data: eventData,
+      });
+
+      eventsCreated++;
+    } catch (error) {
+      logger.error("Failed to create event", { rowNumber, error });
+      errors.push({
+        row: rowNumber,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      eventsSkipped++;
+    }
+  }
+
+  return { eventsCreated, eventsSkipped, errors };
+};
+
+const markJobCompleted = async (
+  payload: Payload,
+  importJobId: string | number,
+  job: {
+    progress?: { current?: number | null };
+    duplicates?: {
+      summary?: {
+        internalDuplicates?: number | null;
+        externalDuplicates?: number | null;
+        totalRows?: number | null;
+        uniqueRows?: number | null;
+      };
+    };
+    errors?: unknown[];
+    geocodingResults?: unknown;
+  },
+  eventsCreated: number
+) => {
+  const currentProgress = job.progress?.current ?? 0;
+  const duplicatesSkipped =
+    (job.duplicates?.summary?.internalDuplicates ?? 0) + (job.duplicates?.summary?.externalDuplicates ?? 0);
+
+  await payload.update({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: importJobId,
+    data: {
+      stage: PROCESSING_STAGE.COMPLETED,
+      results: {
+        totalEvents: currentProgress + eventsCreated,
+        duplicatesSkipped,
+        geocoded: Object.keys(getGeocodingResults(job)).length,
+        errors: job.errors?.length ?? 0,
+      },
+    },
+  });
+};
+
+const getJobResources = async (payload: Payload, importJobId: string | number) => {
+  const job = await payload.findByID({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: importJobId,
+  });
+
+  if (!job) {
+    throw new Error(`Import job not found: ${importJobId}`);
+  }
+
+  const dataset =
+    typeof job.dataset === "object"
+      ? job.dataset
+      : await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: job.dataset });
+
+  if (!dataset) {
+    throw new Error("Dataset not found");
+  }
+
+  const importFile =
+    typeof job.importFile === "object"
+      ? job.importFile
+      : await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: job.importFile });
+
+  if (!importFile) {
+    throw new Error("Import file not found");
+  }
+
+  return { job, dataset, importFile };
 };
 
 export const createEventsBatchJob = {
@@ -82,158 +283,60 @@ export const createEventsBatchJob = {
     const startTime = Date.now();
 
     try {
-      // Get import job
-      const job = await payload.findByID({
-        collection: "import-jobs",
-        id: importJobId,
-      });
-
-      if (!job) {
-        throw new Error(`Import job not found: ${importJobId}`);
-      }
-
-      // Get dataset configuration
-      const dataset =
-        typeof job.dataset === "object"
-          ? job.dataset
-          : await payload.findByID({ collection: "datasets", id: job.dataset });
-
-      if (!dataset) {
-        throw new Error("Dataset not found");
-      }
-
-      // Get file details
-      const importFile =
-        typeof job.importFile === "object"
-          ? job.importFile
-          : await payload.findByID({ collection: "import-files", id: job.importFile });
-
-      if (!importFile) {
-        throw new Error("Import file not found");
-      }
+      const { job, dataset, importFile } = await getJobResources(payload, importJobId);
 
       const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
-      const filePath = path.join(uploadDir, importFile.filename || "");
+      const filePath = path.join(uploadDir, importFile.filename ?? "");
       const BATCH_SIZE = BATCH_SIZES.EVENT_CREATION;
 
-      // Read batch of rows from file
-      const rows = await readBatchFromFile(filePath, {
+      const rows = readBatchFromFile(filePath, {
         sheetIndex: job.sheetIndex ?? undefined,
         startRow: batchNumber * BATCH_SIZE,
         limit: BATCH_SIZE,
       });
 
       if (rows.length === 0) {
-        // No more data, mark as completed
-        await payload.update({
-          collection: "import-jobs",
-          id: importJobId,
-          data: {
-            stage: PROCESSING_STAGE.COMPLETED,
-            results: {
-              totalEvents: job.progress?.current || 0,
-              duplicatesSkipped:
-                (job.duplicates?.summary?.internalDuplicates || 0) + (job.duplicates?.summary?.externalDuplicates || 0),
-              geocoded: Object.keys(getGeocodingResults(job)).length,
-            },
+        await markJobCompleted(
+          payload,
+          importJobId,
+          {
+            progress: job.progress,
+            duplicates: job.duplicates,
+            errors: job.errors ?? undefined,
+            geocodingResults: job.geocodingResults,
           },
-        });
+          0
+        );
         return { output: { completed: true } };
       }
 
-      // Get duplicate rows to skip
-      const duplicateRows = new Set<number>();
-      if (Array.isArray(job.duplicates?.internal)) {
-        job.duplicates.internal.forEach((d: any) => duplicateRows.add(d.rowNumber));
-      }
-      if (Array.isArray(job.duplicates?.external)) {
-        job.duplicates.external.forEach((d: any) => duplicateRows.add(d.rowNumber));
-      }
+      const { eventsCreated, eventsSkipped, errors } = await processEventBatch(
+        payload,
+        rows,
+        {
+          duplicates: job.duplicates,
+          datasetSchemaVersion: job.datasetSchemaVersion,
+          geocodingResults: job.geocodingResults,
+        },
+        dataset,
+        importJobId,
+        batchNumber,
+        logger
+      );
 
-      // Get geocoding results safely
-      const geocodingResults: GeocodingResultsMap = getGeocodingResults(job);
-
-      // Process rows and create events
-      let eventsCreated = 0;
-      let eventsSkipped = 0;
-      const errors: any[] = [];
-
-      for (const [index, row] of rows.entries()) {
-        const rowNumber = batchNumber * BATCH_SIZE + index;
-
-        // Skip duplicate rows
-        if (duplicateRows.has(rowNumber)) {
-          eventsSkipped++;
-          continue;
-        }
-
-        try {
-          // Generate unique ID
-          const uniqueId = generateUniqueId(row, dataset.idStrategy);
-
-          // Get geocoding result if available
-          const geocoding = getGeocodingResultForRow(geocodingResults, rowNumber);
-
-          // Create event
-          await payload.create({
-            collection: "events",
-            data: {
-              dataset: dataset.id,
-              importJob: typeof importJobId === "string" ? parseInt(importJobId, 10) : importJobId, // Reference to import job
-              data: row, // The actual row data from file
-              uniqueId,
-              eventTimestamp: extractTimestamp(row, dataset).toISOString(),
-              // Add geocoded location if available
-              location: geocoding
-                ? {
-                    latitude: geocoding.coordinates.lat,
-                    longitude: geocoding.coordinates.lng,
-                  }
-                : undefined,
-              coordinateSource: geocoding
-                ? {
-                    type: "geocoded" as const,
-                    confidence: geocoding.confidence,
-                  }
-                : {
-                    type: "none" as const,
-                  },
-              validationStatus: "pending" as const,
-              schemaVersionNumber:
-                typeof job.datasetSchemaVersion === "object" && job.datasetSchemaVersion
-                  ? job.datasetSchemaVersion.versionNumber
-                  : typeof job.datasetSchemaVersion === "number"
-                    ? job.datasetSchemaVersion
-                    : undefined,
-            },
-          });
-
-          eventsCreated++;
-        } catch (error) {
-          logger.error("Failed to create event", { rowNumber, error });
-          errors.push({
-            row: rowNumber,
-            error: error instanceof Error ? error.message : "Unknown error",
-          });
-          eventsSkipped++;
-        }
-      }
-
-      // Update progress
-      const currentProgress = job.progress?.current || 0;
+      const currentProgress = job.progress?.current ?? 0;
       await payload.update({
-        collection: "import-jobs",
+        collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
         data: {
           progress: {
             ...job.progress,
             current: currentProgress + eventsCreated,
           },
-          errors: [...(job.errors || []), ...errors],
+          errors: [...(job.errors ?? []), ...errors],
         },
       });
 
-      // Queue next batch if needed
       const hasMore = rows.length === BATCH_SIZE;
       if (hasMore) {
         await payload.jobs.queue({
@@ -241,23 +344,17 @@ export const createEventsBatchJob = {
           input: { importJobId, batchNumber: batchNumber + 1 },
         });
       } else {
-        // All done, mark as completed
-        await payload.update({
-          collection: "import-jobs",
-          id: importJobId,
-          data: {
-            stage: PROCESSING_STAGE.COMPLETED,
-            results: {
-              totalEvents: currentProgress + eventsCreated,
-              duplicatesSkipped:
-                (job.duplicates?.summary?.internalDuplicates || 0) + (job.duplicates?.summary?.externalDuplicates || 0),
-              geocoded: Object.keys(getGeocodingResults(job)).length,
-              errors: job.errors?.length || 0,
-            },
+        await markJobCompleted(
+          payload,
+          importJobId,
+          {
+            progress: job.progress,
+            duplicates: job.duplicates,
+            errors: job.errors ?? undefined,
+            geocodingResults: job.geocodingResults,
           },
-        });
-
-        // Check if all jobs for this import file are completed
+          eventsCreated
+        );
         const importFileId = typeof job.importFile === "object" ? job.importFile.id : job.importFile;
         await updateImportFileStatusIfAllJobsComplete(payload, importFileId);
       }
@@ -282,9 +379,8 @@ export const createEventsBatchJob = {
     } catch (error) {
       logError(error, "Event creation batch failed", { importJobId, batchNumber });
 
-      // Update job status to failed
       await payload.update({
-        collection: "import-jobs",
+        collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
         data: {
           stage: PROCESSING_STAGE.FAILED,
@@ -297,17 +393,14 @@ export const createEventsBatchJob = {
         },
       });
 
-      // Check if import file should be marked as failed
-      // Need to get the job again to access importFile since 'job' is out of scope
       try {
         const failedJob = await payload.findByID({
-          collection: "import-jobs",
+          collection: COLLECTION_NAMES.IMPORT_JOBS,
           id: importJobId,
         });
         const importFileId = typeof failedJob.importFile === "object" ? failedJob.importFile.id : failedJob.importFile;
         await updateImportFileStatusIfAllJobsComplete(payload, importFileId);
       } catch (updateError) {
-        // Log but don't throw - the original error is more important
         logError(updateError, "Failed to update import file status", { importJobId });
       }
 
@@ -317,13 +410,13 @@ export const createEventsBatchJob = {
 };
 
 // Helper to extract timestamp from row data
-const extractTimestamp = (row: any, dataset: Dataset): Date => {
+const extractTimestamp = (row: Record<string, unknown>): Date => {
   // Look for common timestamp fields
   const timestampFields = ["timestamp", "date", "datetime", "created_at", "event_date", "event_time"];
 
   for (const field of timestampFields) {
     if (row[field]) {
-      const date = new Date(row[field]);
+      const date = new Date(row[field] as string | number);
       if (!isNaN(date.getTime())) {
         return date;
       }
@@ -332,24 +425,4 @@ const extractTimestamp = (row: any, dataset: Dataset): Date => {
 
   // Default to current time
   return new Date();
-};
-
-// Helper to extract location display from row data
-const extractLocationDisplay = (row: any, dataset: Dataset): string | null => {
-  // Look for location-related fields
-  const locationFields = ["location", "address", "place", "venue", "city", "country"];
-
-  for (const field of locationFields) {
-    if (row[field] && typeof row[field] === "string") {
-      return row[field];
-    }
-  }
-
-  // Try to build from city/state/country
-  const parts = [];
-  if (row.city) parts.push(row.city);
-  if (row.state) parts.push(row.state);
-  if (row.country) parts.push(row.country);
-
-  return parts.length > 0 ? parts.join(", ") : null;
 };

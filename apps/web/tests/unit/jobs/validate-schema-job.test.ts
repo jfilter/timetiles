@@ -1,3 +1,12 @@
+/**
+ * Unit tests for the validate schema job handler.
+ *
+ * Tests schema validation and comparison during import processing,
+ * including breaking change detection and approval workflows.
+ *
+ * @module
+ * @category Tests
+ */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { validateSchemaJob } from "@/lib/jobs/handlers/validate-schema-job";
@@ -171,7 +180,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         docs: [{ schema: mockCurrentSchema }],
       });
 
-      mocks.readBatchFromFile.mockResolvedValueOnce(mockFileData).mockResolvedValueOnce([]); // End of file
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData).mockReturnValueOnce([]); // End of file
 
       mocks.getSchemaBuilderState.mockReturnValueOnce(null);
 
@@ -202,7 +211,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         schema: mockDetectedSchema,
         fieldMetadata: mockSchemaBuilderState.fieldStats,
         autoApproved: true,
-        approvedBy: 1,
+        approvedBy: null, // No user for auto-approval
         importSources: [],
       });
 
@@ -308,7 +317,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         docs: [{ schema: mockCurrentSchema }],
       });
 
-      mocks.readBatchFromFile.mockResolvedValueOnce(mockFileData).mockResolvedValueOnce([]); // End of file
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData).mockReturnValueOnce([]); // End of file
 
       mocks.getSchemaBuilderState.mockReturnValueOnce(null);
 
@@ -428,7 +437,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         docs: [{ schema: mockCurrentSchema }],
       });
 
-      mocks.readBatchFromFile.mockResolvedValueOnce(mockFileData).mockResolvedValueOnce([]); // End of file
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData).mockReturnValueOnce([]); // End of file
 
       mocks.getSchemaBuilderState.mockReturnValueOnce(null);
 
@@ -539,7 +548,9 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockImportFile);
 
       mocks.getSchemaBuilderState.mockReturnValueOnce(null);
-      mocks.readBatchFromFile.mockRejectedValueOnce(new Error("File not found"));
+      mocks.readBatchFromFile.mockImplementation(() => {
+        throw new Error("File not found");
+      });
 
       await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("File not found");
 
@@ -620,7 +631,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         docs: [{ schema: mockSchema }],
       });
 
-      mocks.readBatchFromFile.mockResolvedValueOnce(mockFileData).mockResolvedValueOnce([]); // End of file
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData).mockReturnValueOnce([]); // End of file
 
       mocks.getSchemaBuilderState.mockReturnValueOnce(null);
 
@@ -725,7 +736,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         docs: [{ schema: mockSchema }],
       });
 
-      mocks.readBatchFromFile.mockResolvedValueOnce(mockFileData).mockResolvedValueOnce([]); // End of file
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData).mockReturnValueOnce([]); // End of file
 
       mocks.getSchemaBuilderState.mockReturnValueOnce(null);
 

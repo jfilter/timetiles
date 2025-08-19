@@ -1,3 +1,13 @@
+/**
+ * Rich text renderer for Payload CMS content.
+ *
+ * Converts Payload's rich text JSON structure into React components,
+ * supporting various text formatting, links, lists, and block elements.
+ * Handles nested content recursively with proper semantic HTML output.
+ *
+ * @module
+ * @category Components
+ */
 import React from "react";
 
 interface RichTextNode {

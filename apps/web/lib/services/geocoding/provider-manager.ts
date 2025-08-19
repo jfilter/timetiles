@@ -13,6 +13,7 @@
 import NodeGeocoder, { type Options } from "node-geocoder";
 import type { Payload } from "payload";
 
+import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { createLogger } from "@/lib/logger";
 import type { GeocodingProvider } from "@/payload-types";
 
@@ -47,7 +48,7 @@ export class ProviderManager {
       }
 
       const providerResults = await this.payload.find({
-        collection: "geocoding-providers",
+        collection: COLLECTION_NAMES.GEOCODING_PROVIDERS,
         where: whereClause,
         limit: 100,
       });

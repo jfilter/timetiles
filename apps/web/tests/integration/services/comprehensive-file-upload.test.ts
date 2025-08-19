@@ -13,9 +13,9 @@
 import fs from "fs";
 import path from "path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { utils as xlsxUtils, write as xlsxWrite } from "xlsx";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { logger } from "@/lib/logger";
 
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 import { createImportFileWithUpload } from "../../setup/test-helpers";
@@ -29,7 +29,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
-    testDir = testEnv.tempDir || "/tmp";
+    testDir = testEnv.tempDir ?? "/tmp";
 
     // Create temp directory for test files
     const filesDir = path.join(testDir, "test-files");
@@ -63,39 +63,6 @@ describe.sequential("Comprehensive File Upload Tests", () => {
   });
 
   // Helper functions
-  const createTestExcelFile = (filename: string, sheets: Array<{ name: string; data: any[][] }>) => {
-    const workbook = xlsxUtils.book_new();
-
-    sheets.forEach((sheet) => {
-      const worksheet = xlsxUtils.aoa_to_sheet(sheet.data);
-      xlsxUtils.book_append_sheet(workbook, worksheet, sheet.name);
-    });
-
-    // Create file in import directory for job processing
-    const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
-    if (!fs.existsSync(importDir)) {
-      fs.mkdirSync(importDir, { recursive: true });
-    }
-
-    const importFilePath = path.join(importDir, filename);
-    const buffer = xlsxWrite(workbook, {
-      type: "buffer",
-      bookType: "xlsx",
-    });
-
-    fs.writeFileSync(importFilePath, buffer);
-
-    // Force sync to ensure file is written
-    const fd = fs.openSync(importFilePath, "r+");
-    fs.fsyncSync(fd);
-    fs.closeSync(fd);
-
-    // Also create in the test temp directory for cleanup tracking
-    const tempFilePath = path.join(testDir, "test-files", filename);
-    fs.writeFileSync(tempFilePath, buffer);
-
-    return { importFilePath, tempFilePath, filesize: buffer.length };
-  };
 
   const createDatasetWithSchemaConfig = async (schemaConfig: {
     locked?: boolean;
@@ -136,7 +103,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           collection: "import-jobs",
           where: { importFile: { equals: importFileId } },
         });
-        console.log(
+        logger.debug(
           `Iteration ${iteration}: File status=${importFile.status}, Jobs:`,
           jobs.docs.map((j: any) => ({ id: j.id, stage: j.stage }))
         );
@@ -171,7 +138,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       id: importJobId,
     });
 
-    console.log("Job before approval:", JSON.stringify(beforeJob.schemaValidation, null, 2));
+    logger.debug("Job before approval:", JSON.stringify(beforeJob.schemaValidation, null, 2));
 
     // Only update the approval fields - let the system handle stage transitions properly
     const updatedSchemaValidation = {
@@ -189,19 +156,19 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       },
     });
 
-    console.log(`✓ Schema ${approved ? "approved" : "rejected"} - approval fields updated`);
+    logger.debug(`✓ Schema ${approved ? "approved" : "rejected"} - approval fields updated`);
   };
 
   describe("File Type Support", () => {
     it("should process Excel file with multiple sheets", async () => {
-      console.log("Testing Excel file with multiple sheets...");
+      logger.info("Testing Excel file with multiple sheets...");
 
       // Use existing fixture file
       const fixturePath = path.join(__dirname, "../../fixtures", "multi-sheet.xlsx");
       const fileBuffer = fs.readFileSync(fixturePath);
       const fileName = "multi-sheet.xlsx";
 
-      console.log(`✓ Using fixture file: ${fixturePath} (${fileBuffer.length} bytes)`);
+      logger.debug(`✓ Using fixture file: ${fixturePath} (${fileBuffer.length} bytes)`);
 
       // Create import file record with file upload using the same pattern as upload.test.ts
       const importFile = await payload.create({
@@ -220,7 +187,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         },
       });
 
-      console.log(`✓ Created Excel import file: ${importFile.id}`);
+      logger.debug(`✓ Created Excel import file: ${importFile.id}`);
 
       // Wait for file to be written and hook to trigger
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -235,9 +202,9 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       });
 
       if (finalImportFile.status !== "completed") {
-        console.log(`Import file status: ${finalImportFile.status}`);
+        logger.debug(`Import file status: ${finalImportFile.status}`);
         if (finalImportFile.errorLog) {
-          console.log(`Error log: ${finalImportFile.errorLog}`);
+          logger.debug(`Error log: ${finalImportFile.errorLog}`);
         }
 
         // Check import jobs for more details
@@ -247,9 +214,9 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         });
 
         importJobs.docs.forEach((job: any, index: number) => {
-          console.log(`Job ${index + 1}: stage=${job.stage}, errors=${job.errors?.length || 0}`);
+          logger.debug(`Job ${index + 1}: stage=${job.stage}, errors=${job.errors?.length || 0}`);
           if (job.errors?.length > 0) {
-            console.log(`  Errors:`, job.errors);
+            logger.debug(`  Errors:`, job.errors);
           }
         });
       }
@@ -264,7 +231,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       });
 
       expect(importJobs.docs.length).toBeGreaterThan(0); // At least one sheet
-      console.log(`✓ Created ${importJobs.docs.length} import jobs for sheets`);
+      logger.debug(`✓ Created ${importJobs.docs.length} import jobs for sheets`);
 
       // Verify jobs completed
       importJobs.docs.forEach((job: any) => {
@@ -278,13 +245,13 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       });
 
       expect(events.docs.length).toBeGreaterThan(0);
-      console.log(`✓ Created ${events.docs.length} events from Excel sheets`);
+      logger.debug(`✓ Created ${events.docs.length} events from Excel sheets`);
 
-      console.log("🎉 Excel multi-sheet test completed successfully!");
+      logger.info("🎉 Excel multi-sheet test completed successfully!");
     });
 
     it("should reject invalid file types gracefully", async () => {
-      console.log("Testing invalid file type rejection...");
+      logger.info("Testing invalid file type rejection...");
 
       const invalidFiles = [
         { name: "test.pdf", mimeType: "application/pdf", content: "PDF content" },
@@ -294,7 +261,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       ];
 
       for (const fileTest of invalidFiles) {
-        console.log(`  Testing ${fileTest.name}...`);
+        logger.debug(`  Testing ${fileTest.name}...`);
 
         try {
           // Try to create import file record with invalid MIME type
@@ -312,22 +279,21 @@ describe.sequential("Comprehensive File Upload Tests", () => {
             )
           ).rejects.toThrow();
 
-          console.log(`  ✓ ${fileTest.name} correctly rejected during upload (MIME type validation)`);
+          logger.debug(`  ✓ ${fileTest.name} correctly rejected during upload (MIME type validation)`);
         } catch (error) {
           // If the test framework error handling doesn't work, check manually
-          if (error instanceof Error && error.message.includes("Invalid file type")) {
-            console.log(`  ✓ ${fileTest.name} correctly rejected (Invalid file type)`);
-          } else {
+          if (!(error instanceof Error) || !error.message.includes("Invalid file type")) {
             throw error;
           }
+          logger.debug(`  ✓ ${fileTest.name} correctly rejected (Invalid file type)`);
         }
       }
 
-      console.log("✓ All invalid file types rejected correctly");
+      logger.debug("✓ All invalid file types rejected correctly");
     });
 
     it("should handle corrupted Excel files gracefully", async () => {
-      console.log("Testing corrupted Excel file handling...");
+      logger.info("Testing corrupted Excel file handling...");
 
       // Create corrupted file content (text content with Excel MIME type)
       const corruptedContent = "This is not a valid Excel file";
@@ -356,9 +322,9 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         });
 
         expect(failedFile.status).toBe("failed");
-        console.log("✓ Corrupted Excel file handled gracefully");
-      } catch (error) {
-        console.log("✓ Corrupted Excel file rejected during upload");
+        logger.debug("✓ Corrupted Excel file handled gracefully");
+      } catch {
+        logger.debug("✓ Corrupted Excel file rejected during upload");
         // This is also acceptable - Payload might reject the file immediately
       }
     });
@@ -366,7 +332,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 
   describe("Schema Approval Workflows", () => {
     it("should require approval for locked dataset schema", async () => {
-      console.log("Testing schema approval requirement...");
+      logger.info("Testing schema approval requirement...");
 
       // Create dataset with locked schema
       const dataset = await createDatasetWithSchemaConfig({
@@ -408,7 +374,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
             id: initialJobs.docs[0].id,
             data: { dataset: dataset.id },
           });
-          console.log(`✓ Linked import job to locked dataset: ${dataset.id}`);
+          logger.debug(`✓ Linked import job to locked dataset: ${dataset.id}`);
         }
 
         // Run jobs until they stop (should stop at approval)
@@ -442,15 +408,15 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         expect(job.stage).toBe(PROCESSING_STAGE.AWAIT_APPROVAL);
         expect(job.schemaValidation?.requiresApproval).toBe(true);
 
-        console.log("✓ Pipeline correctly stopped at approval stage");
+        logger.debug("✓ Pipeline correctly stopped at approval stage");
       } catch (error) {
-        console.error("Approval test failed:", error);
+        logger.error("Approval test failed:", error);
         throw error;
       }
     });
 
     it("should continue processing after schema approval", async () => {
-      console.log("Testing schema approval and continuation...");
+      logger.info("Testing schema approval and continuation...");
 
       // Create dataset requiring approval
       const dataset = await createDatasetWithSchemaConfig({
@@ -490,7 +456,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
             id: continueInitialJobs.docs[0].id,
             data: { dataset: dataset.id },
           });
-          console.log(`✓ Linked import job to approval-required dataset: ${dataset.id}`);
+          logger.debug(`✓ Linked import job to approval-required dataset: ${dataset.id}`);
         }
 
         // Run until approval required
@@ -523,7 +489,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 
         // Approve the schema (this now properly triggers the approval workflow)
         await simulateSchemaApproval(job.id, true);
-        console.log("✓ Schema approval update sent");
+        logger.debug("✓ Schema approval update sent");
 
         // Wait for hooks to process the approval update
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -533,7 +499,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           collection: "import-jobs",
           id: job.id,
         });
-        console.log("Job before running jobs:", {
+        logger.debug("Job before running jobs:", {
           stage: jobBeforeRun.stage,
           approved: jobBeforeRun.schemaValidation?.approved,
         });
@@ -546,7 +512,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           collection: "import-jobs",
           id: job.id,
         });
-        console.log("Job after running jobs:", {
+        logger.debug("Job after running jobs:", {
           stage: jobAfterRun.stage,
           schemaVersionId: jobAfterRun.datasetSchemaVersion,
         });
@@ -556,7 +522,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           collection: "payload-jobs",
           limit: 10,
         });
-        console.log(
+        logger.debug(
           "Queued jobs:",
           queuedJobs.docs.map((j: any) => ({
             id: j.id,
@@ -570,11 +536,11 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 
         // Check specifically for CREATE_SCHEMA_VERSION job
         const schemaVersionJobs = queuedJobs.docs.filter((j: any) => j.taskSlug === "create-schema-version");
-        console.log(`Found ${schemaVersionJobs.length} CREATE_SCHEMA_VERSION jobs`);
+        logger.debug(`Found ${schemaVersionJobs.length} CREATE_SCHEMA_VERSION jobs`);
 
         if (schemaVersionJobs.length === 0) {
-          console.log("❌ No CREATE_SCHEMA_VERSION job was queued - this is the problem!");
-          console.log("Job approval details:", jobBeforeRun.schemaValidation);
+          logger.error("❌ No CREATE_SCHEMA_VERSION job was queued - this is the problem!");
+          logger.error("Job approval details:", jobBeforeRun.schemaValidation);
         }
 
         // Check the job status after approval processing
@@ -583,8 +549,8 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           id: job.id,
         });
 
-        console.log(`Job stage after approval processing: ${postApprovalJob.stage}`);
-        console.log(`Job approval status: ${postApprovalJob.schemaValidation?.approved}`);
+        logger.debug(`Job stage after approval processing: ${postApprovalJob.stage}`);
+        logger.debug(`Job approval status: ${postApprovalJob.schemaValidation?.approved}`);
 
         // Continue processing until completion
         const finalCompleted = await runJobsUntilComplete(importFile.id, 100);
@@ -603,15 +569,15 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         });
         expect(finalJob.stage).toBe(PROCESSING_STAGE.COMPLETED);
 
-        console.log("✓ Pipeline completed after approval");
+        logger.debug("✓ Pipeline completed after approval");
       } catch (error) {
-        console.error("Approval continuation test failed:", error);
+        logger.error("Approval continuation test failed:", error);
         throw error;
       }
     }, 30000); // 30 second timeout
 
     it("should auto-approve non-breaking schema changes", async () => {
-      console.log("Testing schema auto-approval...");
+      logger.info("Testing schema auto-approval...");
 
       // Create dataset with auto-approval enabled
       const dataset = await createDatasetWithSchemaConfig({
@@ -659,7 +625,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
             id: autoInitialJobs.docs[0].id,
             data: { dataset: dataset.id },
           });
-          console.log(`✓ Linked import job to auto-approval dataset: ${dataset.id}`);
+          logger.debug(`✓ Linked import job to auto-approval dataset: ${dataset.id}`);
         }
 
         // Process completely without manual intervention
@@ -683,7 +649,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         });
         expect(finalImportFile.status).toBe("completed");
 
-        console.log("✓ Schema auto-approved and pipeline completed");
+        logger.debug("✓ Schema auto-approved and pipeline completed");
       } finally {
         if (fs.existsSync(importPath)) {
           fs.unlinkSync(importPath);
@@ -692,7 +658,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     });
 
     it("should handle schema rejection properly", async () => {
-      console.log("Testing schema rejection...");
+      logger.info("Testing schema rejection...");
 
       // Create dataset requiring approval
       const dataset = await createDatasetWithSchemaConfig({
@@ -731,7 +697,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
             id: rejectInitialJobs.docs[0].id,
             data: { dataset: dataset.id },
           });
-          console.log(`✓ Linked import job to rejection test dataset: ${dataset.id}`);
+          logger.debug(`✓ Linked import job to rejection test dataset: ${dataset.id}`);
         }
 
         // Run until approval required
@@ -761,7 +727,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 
         const job = rejectJobQuery.docs[0];
         await simulateSchemaApproval(job.id, false); // Reject
-        console.log("✓ Schema rejected manually");
+        logger.debug("✓ Schema rejected manually");
 
         // Continue processing (should fail)
         await payload.jobs.run({ allQueues: true, limit: 10 });
@@ -774,9 +740,9 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 
         // Should still be awaiting approval or failed
         expect([PROCESSING_STAGE.AWAIT_APPROVAL, PROCESSING_STAGE.FAILED].includes(rejectedJob.stage)).toBe(true);
-        console.log(`✓ Job correctly handled rejection (stage: ${rejectedJob.stage})`);
+        logger.debug(`✓ Job correctly handled rejection (stage: ${rejectedJob.stage}`);
       } catch (error) {
-        console.error("Schema rejection test failed:", error);
+        logger.error("Schema rejection test failed:", error);
         throw error;
       }
     });
@@ -784,7 +750,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 
   describe("Large File Processing", () => {
     it("should handle large CSV files with proper batching", async () => {
-      console.log("Testing large file processing...");
+      logger.info("Testing large file processing...");
 
       // Generate large CSV content (500 rows)
       const headers = "title,date,location,description";
@@ -808,7 +774,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           "text/csv"
         );
 
-        console.log(`✓ Created large file import (${csvContent.length} bytes)`);
+        logger.debug(`✓ Created large file import (${csvContent.length} bytes)`);
 
         // Process with extended timeout for large file
         const completed = await runJobsUntilComplete(importFile.id, 100);
@@ -821,7 +787,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         });
 
         expect(events.docs.length).toBe(500);
-        console.log(`✓ Successfully processed ${events.docs.length} events`);
+        logger.debug(`✓ Successfully processed ${events.docs.length} events`);
 
         // Verify final status
         const finalImportFile = await payload.findByID({
@@ -830,9 +796,9 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         });
         expect(finalImportFile.status).toBe("completed");
 
-        console.log("✓ Large file processing completed successfully");
+        logger.debug("✓ Large file processing completed successfully");
       } catch (error) {
-        console.error("Large file processing test failed:", error);
+        logger.error("Large file processing test failed:", error);
         throw error;
       }
     }, 60000); // 60 second timeout for large file

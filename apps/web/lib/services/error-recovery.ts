@@ -14,9 +14,18 @@
  */
 import type { Payload } from "payload";
 
-import { JOB_TYPES, type JobType, PROCESSING_STAGE, type ProcessingStage } from "@/lib/constants/import-constants";
+import {
+  COLLECTION_NAMES,
+  JOB_TYPES,
+  type JobType,
+  PROCESSING_STAGE,
+  type ProcessingStage,
+} from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
 import type { ImportJob } from "@/payload-types";
+
+// Constants
+const IMPORT_JOBS_COLLECTION = "import-jobs";
 
 interface ErrorLogState {
   lastError?: string;
@@ -82,7 +91,7 @@ export class ErrorRecoveryService {
     try {
       // Get the failed job
       const job = await payload.findByID({
-        collection: "import-jobs",
+        collection: IMPORT_JOBS_COLLECTION,
         id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
       });
 
@@ -106,7 +115,7 @@ export class ErrorRecoveryService {
       }
 
       // Check retry count
-      const retryCount = job.retryAttempts || 0;
+      const retryCount = job.retryAttempts ?? 0;
       if (retryCount >= config.maxRetries) {
         return {
           success: false,
@@ -124,15 +133,15 @@ export class ErrorRecoveryService {
       const recoveryStage = this.determineRecoveryStage(job, classification);
 
       await payload.update({
-        collection: "import-jobs",
+        collection: IMPORT_JOBS_COLLECTION,
         id: job.id,
         data: {
           stage: recoveryStage,
           retryAttempts: retryCount + 1,
-          lastRetryAt: new Date().toISOString() as any,
-          nextRetryAt: nextRetryAt.toISOString() as any,
+          lastRetryAt: new Date().toISOString(),
+          nextRetryAt: nextRetryAt.toISOString(),
           errorLog: {
-            ...(getErrorLogState(job) || {}),
+            ...(getErrorLogState(job) ?? {}),
             recoveryAttempt: {
               attempt: retryCount + 1,
               previousError: getErrorLogState(job)?.lastError,
@@ -172,7 +181,7 @@ export class ErrorRecoveryService {
    * Classify error type to determine recovery strategy
    */
   private static classifyError(job: ImportJob): ErrorClassification {
-    const errorMessage = getErrorLogState(job)?.lastError?.toLowerCase() || "";
+    const errorMessage = getErrorLogState(job)?.lastError?.toLowerCase() ?? "";
 
     // File access errors - often recoverable
     if (errorMessage.includes("enoent") || errorMessage.includes("file not found")) {
@@ -279,7 +288,7 @@ export class ErrorRecoveryService {
     try {
       // Find jobs that are ready for retry
       const readyJobs = await payload.find({
-        collection: "import-jobs",
+        collection: IMPORT_JOBS_COLLECTION,
         where: {
           stage: { equals: PROCESSING_STAGE.FAILED },
           nextRetryAt: { less_than_equal: new Date().toISOString() },
@@ -301,7 +310,7 @@ export class ErrorRecoveryService {
 
         // Update job to recovery stage
         await payload.update({
-          collection: "import-jobs",
+          collection: IMPORT_JOBS_COLLECTION,
           id: job.id,
           data: {
             stage: recoveryStage,
@@ -361,7 +370,7 @@ export class ErrorRecoveryService {
   ): Promise<RecoveryResult> {
     try {
       const job = await payload.findByID({
-        collection: "import-jobs",
+        collection: IMPORT_JOBS_COLLECTION,
         id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
       });
 
@@ -371,9 +380,9 @@ export class ErrorRecoveryService {
 
       const updateData: Partial<ImportJob> = {
         stage: targetStage,
-        lastRetryAt: new Date().toISOString() as any,
+        lastRetryAt: new Date().toISOString(),
         errorLog: {
-          ...(getErrorLogState(job) || {}),
+          ...(getErrorLogState(job) ?? {}),
           manualReset: {
             resetAt: new Date().toISOString(),
             previousStage: job.stage,
@@ -387,7 +396,7 @@ export class ErrorRecoveryService {
       }
 
       await payload.update({
-        collection: "import-jobs",
+        collection: IMPORT_JOBS_COLLECTION,
         id: job.id,
         data: updateData,
       });
@@ -437,7 +446,7 @@ export class ErrorRecoveryService {
     }>
   > {
     const failedJobs = await payload.find({
-      collection: "import-jobs",
+      collection: COLLECTION_NAMES.IMPORT_JOBS,
       where: {
         stage: { equals: PROCESSING_STAGE.FAILED },
       },
@@ -446,14 +455,14 @@ export class ErrorRecoveryService {
 
     return failedJobs.docs.map((job) => {
       const classification = this.classifyError(job);
-      const retryCount = job.retryAttempts || 0;
+      const retryCount = job.retryAttempts ?? 0;
 
       let recommendedAction = "No action recommended";
 
       if (classification.retryable && retryCount < this.DEFAULT_RETRY_CONFIG.maxRetries) {
         recommendedAction = "Automatic retry available";
       } else if (classification.type === "user-action-required") {
-        recommendedAction = classification.suggestedAction || "Manual review required";
+        recommendedAction = classification.suggestedAction ?? "Manual review required";
       } else if (retryCount >= this.DEFAULT_RETRY_CONFIG.maxRetries) {
         recommendedAction = "Manual intervention required - max retries exceeded";
       }

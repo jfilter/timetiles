@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import type { Catalog } from "@/payload-types";
 
 const createRichTextDescription = (text: string) => ({

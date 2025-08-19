@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { MapComponent } from "@/components/map";
 
 import { createMapEvents } from "../../mocks";

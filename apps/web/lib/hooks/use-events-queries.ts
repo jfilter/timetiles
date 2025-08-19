@@ -252,12 +252,11 @@ const uploadImport = async (
 
   // Get other fields and put them in _payload as JSON
   const catalogId = formData.get("catalogId");
-  const datasetId = formData.get("datasetId");
   const sessionId = formData.get("sessionId");
 
   const payloadData = {
     catalog: catalogId ? parseInt(catalogId as string, 10) : undefined,
-    sessionId: sessionId || undefined,
+    sessionId: sessionId ?? undefined,
     status: "pending",
     datasetsCount: 0,
     datasetsProcessed: 0,

@@ -1,3 +1,13 @@
+/**
+ * Filter controls for event exploration.
+ *
+ * Provides UI controls for filtering events by date range, catalog,
+ * dataset, and other criteria. Manages filter state and communicates
+ * changes via URL parameters for shareable filter states.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import { Label } from "@workspace/ui/components/label";

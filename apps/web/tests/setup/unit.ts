@@ -1,4 +1,12 @@
-// Vitest setup file for tests that don't need database
+/**
+ * Vitest setup for unit tests.
+ *
+ * Configures test environment for unit tests that don't require database
+ * access. Sets up temporary directories and minimal environment variables.
+ *
+ * @module
+ * @category Test Setup
+ */
 import { randomUUID } from "crypto";
 import fs from "fs";
 import path from "path";

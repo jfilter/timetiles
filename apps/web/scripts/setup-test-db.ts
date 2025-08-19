@@ -9,6 +9,9 @@
  * - PostGIS extension setup
  * - Schema migrations
  * - Basic validation
+ *
+ * @module
+ * @category Scripts
  */
 
 import { execSync } from "child_process";
@@ -111,7 +114,7 @@ const setupTestDatabase = async (options: { forceReset?: boolean } = {}): Promis
     logger.info("Step 3: Running database migrations");
     try {
       runCommand(`DATABASE_URL="${TEST_DATABASE_URL}" pnpm payload migrate`, "Run Payload migrations");
-    } catch (migrationError) {
+    } catch {
       logger.error("❌ Migration failed - this usually indicates schema conflicts");
       logger.info("🔧 Attempting automatic recovery by resetting database");
 

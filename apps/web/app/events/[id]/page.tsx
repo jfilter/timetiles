@@ -37,6 +37,28 @@ interface EventDetailsPageProps {
   }>;
 }
 
+// Helper component for draft mode banner
+const DraftModeBanner = () => (
+  <div className="mb-6 rounded border border-yellow-400 bg-yellow-100 px-4 py-3 text-yellow-700">
+    <p className="font-bold">Preview Mode</p>
+    <p className="text-sm">You are viewing a draft version of this event.</p>
+  </div>
+);
+
+// Helper to extract event title
+const getEventTitle = (eventData: Record<string, unknown>): string => {
+  return (
+    (typeof eventData.title === "string" && eventData.title) ||
+    (typeof eventData.name === "string" && eventData.name) ||
+    "Untitled Event"
+  );
+};
+
+// Helper to extract event description
+const _getEventDescription = (eventData: Record<string, unknown>): string | null => {
+  return typeof eventData.description === "string" ? eventData.description : null;
+};
+
 export default async function EventDetailsPage({ params }: Readonly<EventDetailsPageProps>) {
   const { id } = await params;
   const { isEnabled: isDraftMode } = await draftMode();
@@ -70,20 +92,11 @@ export default async function EventDetailsPage({ params }: Readonly<EventDetails
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
       {/* Draft Mode Banner */}
-      {isDraftMode && (
-        <div className="mb-6 rounded border border-yellow-400 bg-yellow-100 px-4 py-3 text-yellow-700">
-          <p className="font-bold">Preview Mode</p>
-          <p className="text-sm">You are viewing a draft version of this event.</p>
-        </div>
-      )}
+      {isDraftMode && <DraftModeBanner />}
 
       {/* Event Header */}
       <header className="mb-8">
-        <h1 className="mb-2 text-3xl font-bold">
-          {(typeof eventData.title === "string" && eventData.title) ||
-            (typeof eventData.name === "string" && eventData.name) ||
-            `Event ${event.id}`}
-        </h1>
+        <h1 className="mb-2 text-3xl font-bold">{getEventTitle(eventData)}</h1>
 
         <div className="flex flex-wrap gap-4 text-sm text-gray-600">
           {event.eventTimestamp != null && <span>Event Date: {formatDate(event.eventTimestamp)}</span>}

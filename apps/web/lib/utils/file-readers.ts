@@ -21,13 +21,13 @@ interface ReadBatchOptions {
 /**
  * Read a batch of rows from a file (CSV or Excel)
  */
-export const readBatchFromFile = async (filePath: string, options: ReadBatchOptions): Promise<any[]> => {
+export const readBatchFromFile = (filePath: string, options: ReadBatchOptions): Record<string, unknown>[] => {
   const { sheetIndex = 0, startRow, limit } = options;
   const fileExtension = filePath.toLowerCase().split(".").pop();
 
   try {
     if (fileExtension === "csv") {
-      return await readBatchFromCSV(filePath, startRow, limit);
+      return readBatchFromCSV(filePath, startRow, limit);
     } else if (fileExtension === "xlsx" || fileExtension === "xls") {
       return readBatchFromExcel(filePath, sheetIndex, startRow, limit);
     } else {
@@ -47,7 +47,7 @@ export const readBatchFromFile = async (filePath: string, options: ReadBatchOpti
 /**
  * Read a batch of rows from a CSV file
  */
-const readBatchFromCSV = async (filePath: string, startRow: number, limit: number): Promise<any[]> => {
+const readBatchFromCSV = (filePath: string, startRow: number, limit: number): Record<string, unknown>[] => {
   const fileContent = fs.readFileSync(filePath, "utf-8");
 
   // Parse CSV with headers using PapaParse
@@ -63,13 +63,18 @@ const readBatchFromCSV = async (filePath: string, startRow: number, limit: numbe
   }
 
   // Return the requested batch
-  return result.data.slice(startRow, startRow + limit);
+  return (result.data as Record<string, unknown>[]).slice(startRow, startRow + limit);
 };
 
 /**
  * Read a batch of rows from an Excel file
  */
-const readBatchFromExcel = (filePath: string, sheetIndex: number, startRow: number, limit: number): unknown[] => {
+const readBatchFromExcel = (
+  filePath: string,
+  sheetIndex: number,
+  startRow: number,
+  limit: number
+): Record<string, unknown>[] => {
   // Use buffer approach instead of direct file path for better compatibility
   const fileBuffer = fs.readFileSync(filePath);
   const workbook = read(fileBuffer, { type: "buffer" });
@@ -101,7 +106,7 @@ const readBatchFromExcel = (filePath: string, sheetIndex: number, startRow: numb
   const dataStartRow = startRow + 1; // +1 to skip header
   const dataEndRow = Math.min(dataStartRow + limit, jsonData.length);
 
-  const rows: unknown[] = [];
+  const rows: Record<string, unknown>[] = [];
   for (let i = dataStartRow; i < dataEndRow; i++) {
     const row = jsonData[i];
     if (!row || !Array.isArray(row)) continue;
@@ -122,7 +127,7 @@ const readBatchFromExcel = (filePath: string, sheetIndex: number, startRow: numb
 /**
  * Get total row count from a file
  */
-export const getFileRowCount = async (filePath: string, sheetIndex = 0): Promise<number> => {
+export const getFileRowCount = (filePath: string, sheetIndex = 0): number => {
   const fileExtension = filePath.toLowerCase().split(".").pop();
 
   if (fileExtension === "csv") {

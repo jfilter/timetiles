@@ -1,3 +1,12 @@
+/**
+ * Integration tests for advanced map clustering features.
+ *
+ * Tests complex clustering scenarios including boundary conditions,
+ * performance with large datasets, and cluster aggregation.
+ *
+ * @module
+ * @category Integration Tests
+ */
 import { sql } from "@payloadcms/db-postgres";
 import { NextRequest } from "next/server";
 import type { Payload } from "payload";
@@ -140,10 +149,8 @@ describe("/api/events/map-clusters", () => {
     if (testEnv?.cleanup) {
       try {
         await testEnv.cleanup();
-      } catch (error) {
-        // Cleanup error (non-critical) - explicitly ignore
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        error;
+      } catch {
+        // Cleanup error (non-critical) - silently continue
       }
     }
   });

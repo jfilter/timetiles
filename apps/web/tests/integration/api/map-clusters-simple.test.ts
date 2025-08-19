@@ -1,3 +1,12 @@
+/**
+ * Integration tests for map clustering API endpoint.
+ *
+ * Tests server-side clustering of events for map display,
+ * including zoom-based clustering and geospatial queries.
+ *
+ * @module
+ * @category Integration Tests
+ */
 import { NextRequest } from "next/server";
 
 import { GET } from "../../../app/api/events/map-clusters/route";

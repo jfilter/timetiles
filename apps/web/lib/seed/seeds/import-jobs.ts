@@ -30,8 +30,10 @@ const createImportJob = (
   importFile: (importFileName ?? "air_quality_2024_01_15.csv") as unknown as number | ImportFile,
   dataset: datasetName as unknown as number | Dataset,
   progress: {
+    // eslint-disable-next-line sonarjs/pseudo-random -- Seeding doesn't need crypto-secure random
     current: stage === "completed" ? 100 : Math.floor(Math.random() * 80 + 10),
     total: 100,
+    // eslint-disable-next-line sonarjs/pseudo-random -- Seeding doesn't need crypto-secure random
     batchNumber: stage === "completed" ? undefined : Math.floor(Math.random() * 5 + 1),
   },
 });

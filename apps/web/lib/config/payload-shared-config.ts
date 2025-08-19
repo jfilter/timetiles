@@ -1,8 +1,12 @@
 /**
- * Shared Payload Configuration Constants
+ * Shared Payload CMS configuration constants and utilities.
  *
- * This file contains shared configuration elements used by both the main
- * payload.config.ts and the payload-config-factory.ts to reduce duplication.
+ * Provides centralized configuration elements used across both production
+ * and test Payload configurations. Includes collection definitions, globals,
+ * plugins, and common configuration options to ensure consistency.
+ *
+ * @module
+ * @category Configuration
  */
 
 // Import all collections
@@ -114,7 +118,7 @@ export const DEFAULT_UPLOAD_CONFIG = {
   abortOnLimit: true,
   uploadTimeout: 600000, // 10 minutes
   useTempFiles: true,
-  tempFileDir: process.env.UPLOAD_TEMP_DIR || "/tmp",
+  tempFileDir: process.env.UPLOAD_TEMP_DIR ?? "/tmp",
   safeFileNames: true,
   preserveExtension: 4,
 };

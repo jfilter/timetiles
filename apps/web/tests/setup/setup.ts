@@ -1,4 +1,13 @@
-// Vitest setup file
+/**
+ * Vitest global test setup.
+ *
+ * Configures the test environment, creates isolated test databases,
+ * verifies schema integrity, and sets up environment variables for
+ * all test suites.
+ *
+ * @module
+ * @category Test Setup
+ */
 import { randomUUID } from "crypto";
 import fs from "fs";
 import path from "path";

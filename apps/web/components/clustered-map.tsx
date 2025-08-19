@@ -1,3 +1,13 @@
+/**
+ * Map component with clustering support for event visualization.
+ *
+ * Renders events as clustered markers on a Mapbox map, with dynamic
+ * clustering based on zoom level and viewport bounds. Supports popups,
+ * click interactions, and real-time cluster updates.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";

@@ -12,7 +12,7 @@
  */
 import type { Payload } from "payload";
 
-import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { COLLECTION_NAMES, PROCESSING_STAGE, type ProcessingStage } from "@/lib/constants/import-constants";
 import type { ImportJob } from "@/payload-types";
 
 export interface ProgressInfo {
@@ -38,20 +38,21 @@ export class ProgressTrackingService {
    */
   static getTotalForStage(job: ImportJob, stage: string): number {
     // For stages after deduplication, use unique rows if available
-    const postDeduplicationStages = [
+    const postDeduplicationStages: ProcessingStage[] = [
       PROCESSING_STAGE.DETECT_SCHEMA,
       PROCESSING_STAGE.VALIDATE_SCHEMA,
       PROCESSING_STAGE.AWAIT_APPROVAL,
       PROCESSING_STAGE.GEOCODE_BATCH,
       PROCESSING_STAGE.CREATE_EVENTS,
+      PROCESSING_STAGE.COMPLETED,
     ];
 
-    if (job.duplicates?.summary && postDeduplicationStages.includes(stage as any)) {
-      return job.duplicates.summary.uniqueRows || 0;
+    if (job.duplicates?.summary && postDeduplicationStages.includes(stage as ProcessingStage)) {
+      return job.duplicates.summary.uniqueRows ?? 0;
     }
 
     // For initial stages or when deduplication disabled, use original total
-    return job.progress?.total || 0;
+    return job.progress?.total ?? 0;
   }
 
   /**
@@ -83,16 +84,16 @@ export class ProgressTrackingService {
     additionalData: Record<string, unknown> = {}
   ): Promise<void> {
     const total = this.getTotalForStage(job, stage);
-    const currentProgress = (job.progress?.current || 0) + processedCount;
+    const currentProgress = (job.progress?.current ?? 0) + processedCount;
 
     await payload.update({
-      collection: "import-jobs",
+      collection: COLLECTION_NAMES.IMPORT_JOBS,
       id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
       data: {
         progress: {
           current: currentProgress,
           total,
-          batchNumber: (job.progress?.batchNumber || 0) + 1,
+          batchNumber: (job.progress?.batchNumber ?? 0) + 1,
         },
         ...additionalData,
       },
@@ -110,10 +111,10 @@ export class ProgressTrackingService {
     geocodingResults: Record<string, unknown>
   ): Promise<void> {
     const total = this.getTotalForStage(job, PROCESSING_STAGE.GEOCODE_BATCH);
-    const currentProgress = (job.geocodingProgress?.current || 0) + processedCount;
+    const currentProgress = (job.geocodingProgress?.current ?? 0) + processedCount;
 
     await payload.update({
-      collection: "import-jobs",
+      collection: COLLECTION_NAMES.IMPORT_JOBS,
       id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
       data: {
         geocodingResults,
@@ -141,12 +142,12 @@ export class ProgressTrackingService {
    */
   static isStageComplete(job: ImportJob, stage: string): boolean {
     if (stage === PROCESSING_STAGE.GEOCODE_BATCH && job.geocodingProgress) {
-      return (job.geocodingProgress.current || 0) >= (job.geocodingProgress.total || 0);
+      return (job.geocodingProgress.current ?? 0) >= (job.geocodingProgress.total ?? 0);
     }
 
     if (job.progress) {
       const total = this.getTotalForStage(job, stage);
-      return (job.progress.current || 0) >= total;
+      return (job.progress.current ?? 0) >= total;
     }
 
     return false;
@@ -157,15 +158,15 @@ export class ProgressTrackingService {
    */
   static getCompletionPercentage(job: ImportJob, stage: string): number {
     if (stage === PROCESSING_STAGE.GEOCODE_BATCH && job.geocodingProgress) {
-      const total = job.geocodingProgress.total || 0;
-      const current = job.geocodingProgress.current || 0;
+      const total = job.geocodingProgress.total ?? 0;
+      const current = job.geocodingProgress.current ?? 0;
       if (total === 0) return 100;
       return Math.round((current / total) * 100);
     }
 
     if (job.progress) {
       const total = this.getTotalForStage(job, stage);
-      const current = job.progress.current || 0;
+      const current = job.progress.current ?? 0;
       if (total === 0) return 100;
       return Math.round((current / total) * 100);
     }

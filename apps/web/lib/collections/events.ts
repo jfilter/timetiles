@@ -15,6 +15,8 @@
  */
 import type { CollectionConfig } from "payload";
 
+import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
+
 import { createCommonConfig } from "./shared-fields";
 
 const Events: CollectionConfig = {
@@ -29,7 +31,7 @@ const Events: CollectionConfig = {
     preview: (doc) => {
       // Generate preview URL with authentication
       const params = new URLSearchParams({
-        collection: "events",
+        collection: COLLECTION_NAMES.EVENTS,
         slug: String(doc.id),
         secret: process.env.PAYLOAD_PREVIEW_SECRET ?? "",
       });

@@ -1,3 +1,13 @@
+/**
+ * Provides theme context and initialization for the application.
+ *
+ * This component wraps the application and ensures the theme is properly
+ * initialized on mount using the useTheme hook. It manages dark/light
+ * mode preferences and system theme detection.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 import type React from "react";
 

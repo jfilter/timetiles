@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import {

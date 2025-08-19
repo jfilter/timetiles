@@ -1,3 +1,12 @@
+/**
+ * Unit tests for the create schema version job handler.
+ *
+ * Tests the creation of new schema versions during import processing,
+ * including version management and schema evolution tracking.
+ *
+ * @module
+ * @category Tests
+ */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createSchemaVersionJob } from "@/lib/jobs/handlers/create-schema-version-job";
@@ -38,6 +47,11 @@ vi.mock("@/lib/constants/import-constants", () => ({
   PROCESSING_STAGE: {
     GEOCODE_BATCH: "geocode-batch",
     FAILED: "failed",
+  },
+  COLLECTION_NAMES: {
+    IMPORT_JOBS: "import-jobs",
+    SCHEMA_VERSIONS: "schema-versions",
+    DATASETS: "datasets",
   },
 }));
 

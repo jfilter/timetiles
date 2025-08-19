@@ -25,7 +25,7 @@ describe.sequential("Job Processing Flow Integration", () => {
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
-    testDir = testEnv.tempDir || "/tmp";
+    testDir = testEnv.tempDir ?? "/tmp";
 
     // Create temp directory for CSV files
     const csvDir = path.join(testDir, "csv-files");

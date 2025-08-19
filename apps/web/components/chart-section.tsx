@@ -1,3 +1,13 @@
+/**
+ * Chart visualization section with multiple chart types.
+ *
+ * Container component that allows switching between different chart
+ * visualizations including time-based histograms and dataset bar charts.
+ * Manages chart type selection and passes data to appropriate chart components.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";

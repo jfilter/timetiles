@@ -1,3 +1,12 @@
+/**
+ * Test helper utilities.
+ *
+ * Provides common helper functions for test setup including file uploads,
+ * data creation, and test environment configuration.
+ *
+ * @module
+ * @category Test Setup
+ */
 import { randomUUID } from "crypto";
 import path from "path";
 

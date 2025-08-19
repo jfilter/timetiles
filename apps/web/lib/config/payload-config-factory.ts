@@ -1,8 +1,12 @@
 /**
- * Payload Configuration Factory
+ * Factory for creating environment-specific Payload CMS configurations.
  *
  * Provides a centralized way to create Payload configurations for different environments
  * (production, test, development) with consistent settings and reduced duplication.
+ * Handles database connections, plugin initialization, and environment-specific overrides.
+ *
+ * @module
+ * @category Configuration
  */
 
 import { postgresAdapter } from "@payloadcms/db-postgres";
@@ -64,6 +68,73 @@ export interface PayloadConfigOptions {
   };
 }
 
+// Helper function to validate production requirements
+const validateProductionConfig = (environment: string, secret?: string, serverURL?: string, databaseUrl?: string) => {
+  if (environment !== "production") return;
+
+  if (!secret) {
+    throw new Error("PAYLOAD_SECRET environment variable is required");
+  }
+  if (!serverURL) {
+    throw new Error("NEXT_PUBLIC_PAYLOAD_URL environment variable is required");
+  }
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL environment variable is required");
+  }
+};
+
+// Helper function to configure logger
+const createLoggerConfig = (logLevel: string | undefined, environment: string) => {
+  if (logLevel === "silent") {
+    return { options: { level: "fatal" } };
+  }
+  if (logLevel) {
+    return { options: { level: logLevel } };
+  }
+  if (environment === "test") {
+    return { options: { level: "fatal" } };
+  }
+  return undefined;
+};
+
+// Helper function to create database configuration
+const createDatabaseConfig = (
+  databaseUrl: string | undefined,
+  environment: string,
+  poolConfig: { max?: number; connectionString?: string } | undefined,
+  runMigrations: boolean
+) =>
+  postgresAdapter({
+    ...DEFAULT_DB_CONFIG,
+    pool: {
+      connectionString: databaseUrl ?? "",
+      max: environment === "test" ? 5 : undefined,
+      ...poolConfig,
+    },
+    prodMigrations: runMigrations ? DEFAULT_DB_CONFIG.prodMigrations : undefined,
+  });
+
+// Helper function to add production-specific configuration
+const addProductionConfig = (
+  config: Config,
+  environment: string,
+  serverURL?: string,
+  uploadLimits?: { fileSize?: number }
+) => {
+  if (environment !== "production" || !serverURL) return;
+
+  config.serverURL = serverURL;
+  config.cors = [serverURL];
+  config.csrf = [serverURL];
+  config.sharp = sharp;
+  config.upload = {
+    ...DEFAULT_UPLOAD_CONFIG,
+    limits: {
+      fileSize: uploadLimits?.fileSize ?? DEFAULT_UPLOAD_CONFIG.limits.fileSize,
+    },
+  };
+};
+
 /**
  * Creates a Payload configuration with the specified options
  */
@@ -75,45 +146,27 @@ export const createPayloadConfig = async (options: PayloadConfigOptions = {}) =>
     serverURL = process.env.NEXT_PUBLIC_PAYLOAD_URL,
     disableAdmin = false,
     disableGraphQL = true,
-    collections = DEFAULT_COLLECTIONS[environment] || DEFAULT_COLLECTIONS.production,
+    collections = DEFAULT_COLLECTIONS[environment] ?? DEFAULT_COLLECTIONS.production,
     poolConfig,
     logLevel,
     runMigrations = true,
     uploadLimits,
   } = options;
 
-  // Validate required fields for production
-  if (environment === "production") {
-    if (!secret) {
-      throw new Error("PAYLOAD_SECRET environment variable is required");
-    }
-    if (!serverURL) {
-      throw new Error("NEXT_PUBLIC_PAYLOAD_URL environment variable is required");
-    }
-    if (!databaseUrl) {
-      throw new Error("DATABASE_URL environment variable is required");
-    }
-  }
+  // Validate production requirements
+  validateProductionConfig(environment, secret, serverURL, databaseUrl);
 
   // Select collections based on the provided list
-  const selectedCollections = (collections || []).map((name) => COLLECTIONS[name]).filter(Boolean);
+  const selectedCollections = (collections ?? []).map((name) => COLLECTIONS[name]).filter(Boolean);
 
-  // Configure logging based on environment and options
-  const loggerConfig = logLevel
-    ? logLevel === "silent"
-      ? { options: { level: "fatal" } }
-      : { options: { level: logLevel } }
-    : environment === "test"
-      ? { options: { level: "fatal" } }
-      : undefined;
-
+  // Create base configuration
   const config: Config = {
-    secret: secret || "default-secret-key",
+    secret: secret ?? "default-secret-key",
     admin: {
       user: collections?.includes("users") ? Users.slug : undefined,
-      disable: disableAdmin || environment === "test",
+      disable: disableAdmin ?? environment === "test",
     },
-    logger: loggerConfig,
+    logger: createLoggerConfig(logLevel, environment),
     debug: environment === "development",
     collections: selectedCollections,
     globals: ALL_GLOBALS,
@@ -122,33 +175,14 @@ export const createPayloadConfig = async (options: PayloadConfigOptions = {}) =>
     },
     editor: lexicalEditor({}),
     typescript: DEFAULT_TYPESCRIPT_CONFIG,
-    db: postgresAdapter({
-      ...DEFAULT_DB_CONFIG,
-      pool: {
-        connectionString: databaseUrl || "",
-        max: environment === "test" ? 5 : undefined,
-        ...poolConfig,
-      },
-      prodMigrations: runMigrations ? DEFAULT_DB_CONFIG.prodMigrations : undefined,
-    }),
+    db: createDatabaseConfig(databaseUrl, environment, poolConfig, runMigrations),
     graphQL: {
       disable: disableGraphQL,
     },
   };
 
   // Add production-specific configuration
-  if (environment === "production" && serverURL) {
-    config.serverURL = serverURL;
-    config.cors = [serverURL];
-    config.csrf = [serverURL];
-    config.sharp = sharp as any;
-    config.upload = {
-      ...DEFAULT_UPLOAD_CONFIG,
-      limits: {
-        fileSize: uploadLimits?.fileSize || DEFAULT_UPLOAD_CONFIG.limits.fileSize,
-      },
-    };
-  }
+  addProductionConfig(config, environment, serverURL, uploadLimits);
 
   return buildConfig(config);
 };

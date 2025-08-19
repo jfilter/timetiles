@@ -1,3 +1,13 @@
+/**
+ * Top navigation menu bar component with theme toggle.
+ *
+ * Renders a fixed position navigation bar at the top of the page with
+ * navigation links from the MainMenu collection and a theme toggle button.
+ * Features a glassmorphism design with backdrop blur.
+ *
+ * @module
+ * @category Components
+ */
 import Link from "next/link";
 import React from "react";
 

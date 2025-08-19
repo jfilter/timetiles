@@ -93,7 +93,7 @@ export class TypeTransformationService {
         break;
 
       case "custom":
-        newValue = await this.runCustomTransform(value, rule.customTransform || "");
+        newValue = await this.runCustomTransform(value, rule.customTransform ?? "");
         break;
 
       case "reject":

@@ -2,6 +2,7 @@
  * Configuration-Driven Seeding Tests
  *
  * Tests the new seed.config.ts system and configuration-driven seeding
+ * @module
  */
 
 import {

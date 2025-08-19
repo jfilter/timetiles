@@ -1,4 +1,14 @@
 #!/usr/bin/env node
+/**
+ * Database seeding CLI script.
+ *
+ * Provides commands to seed the database with test data for different
+ * environments (development, test, production). Supports truncating
+ * existing data and seeding specific collections.
+ *
+ * @module
+ * @category Scripts
+ */
 
 import { createLogger, logError } from "../lib/logger.js";
 import { createSeedManager } from "../lib/seed/index.js";

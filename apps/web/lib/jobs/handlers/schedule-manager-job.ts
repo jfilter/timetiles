@@ -1,23 +1,31 @@
 /**
- * Schedule Manager Job Handler
+ * Background job handler for managing scheduled imports.
  *
- * This job runs periodically (every minute) to check for scheduled imports that need to be executed.
- * It creates new import-files records for scheduled URLs and triggers URL fetch jobs.
- * This implements a cron-like scheduler using Payload's job system.
+ * Runs periodically to check for scheduled imports that are due for execution.
+ * Creates new import-files records for scheduled URLs and triggers URL fetch jobs.
+ * Implements a cron-like scheduler using Payload's job system with support for
+ * various frequency patterns and retry logic.
+ *
+ * @module
+ * @category Jobs
  */
 
+import type { Payload } from "payload";
+
+import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
 import type { ScheduledImport } from "@/payload-types";
 
-interface ScheduleManagerJobInput {
-  // No input needed - this job scans all scheduled imports
-}
+// Unused but kept for future expansion
+// interface ScheduleManagerJobInput {
+//   scanAll?: boolean; // Optionally scan all schedules instead of just due ones
+// }
 
 /**
  * Gets the next execution time based on frequency (UTC)
  */
 const getNextFrequencyExecution = (frequency: string, fromDate?: Date): Date => {
-  const now = fromDate || new Date();
+  const now = fromDate ?? new Date();
   const next = new Date(now);
   next.setUTCSeconds(0);
   next.setUTCMilliseconds(0);
@@ -36,13 +44,14 @@ const getNextFrequencyExecution = (frequency: string, fromDate?: Date): Date => 
       next.setUTCDate(next.getUTCDate() + 1);
       break;
 
-    case "weekly":
+    case "weekly": {
       // Next Sunday at midnight UTC
       next.setUTCMinutes(0);
       next.setUTCHours(0);
       const daysUntilSunday = 7 - next.getUTCDay() || 7;
       next.setUTCDate(next.getUTCDate() + daysUntilSunday);
       break;
+    }
 
     case "monthly":
       // First of next month at midnight UTC
@@ -59,64 +68,72 @@ const getNextFrequencyExecution = (frequency: string, fromDate?: Date): Date => 
   return next;
 };
 
-/**
- * Parses a cron expression and returns the next execution time (UTC)
- * Note: This is a basic implementation. For production, consider using a library like 'node-cron' or 'cron-parser'
- */
-const getNextCronExecution = (cronExpression: string, fromDate?: Date): Date => {
-  // For now, we'll implement basic cron parsing
-  // In production, use a proper cron parsing library
-
-  const now = fromDate || new Date();
+// Helper to parse and validate cron parts
+const parseCronExpression = (cronExpression: string) => {
   const parts = cronExpression.trim().split(/\s+/);
-
   if (parts.length !== 5) {
     throw new Error(`Invalid cron expression: ${cronExpression}`);
   }
-
   const [minute = "*", hour = "*", dayOfMonth = "*", month = "*", dayOfWeek = "*"] = parts;
+  return { minute, hour, dayOfMonth, month, dayOfWeek };
+};
 
-  // Simple implementation for common patterns
-  // This handles basic cases like "0 0 * * *" (daily at midnight), "0 * * * *" (hourly), etc.
+// Helper to set cron time fields
+const setCronTimeFields = (date: Date, minute: string, hour: string): void => {
+  date.setUTCSeconds(0);
+  date.setUTCMilliseconds(0);
 
-  const next = new Date(now);
-  next.setUTCSeconds(0);
-  next.setUTCMilliseconds(0);
-
-  // Handle minute
   if (minute !== "*") {
     const targetMinute = parseInt(minute);
     if (isNaN(targetMinute) || targetMinute < 0 || targetMinute > 59) {
       throw new Error(`Invalid minute in cron expression: ${minute}`);
     }
-    next.setUTCMinutes(targetMinute);
+    date.setUTCMinutes(targetMinute);
   }
 
-  // Handle hour
   if (hour !== "*") {
     const targetHour = parseInt(hour);
     if (isNaN(targetHour) || targetHour < 0 || targetHour > 23) {
       throw new Error(`Invalid hour in cron expression: ${hour}`);
     }
-    next.setUTCHours(targetHour);
+    date.setUTCHours(targetHour);
   }
+};
 
-  // If the calculated time is in the past, move to the next occurrence
-  if (next <= now) {
+// Helper to advance to next occurrence
+const advanceToNextOccurrence = (
+  date: Date,
+  now: Date,
+  minute: string,
+  hour: string,
+  dayOfMonth: string,
+  month: string,
+  dayOfWeek: string
+): void => {
+  if (date <= now) {
     if (hour === "*" && minute === "*") {
-      // Every minute
-      next.setMinutes(next.getMinutes() + 1);
+      date.setMinutes(date.getMinutes() + 1);
     } else if (hour === "*") {
-      // Every hour at specific minute
-      next.setHours(next.getHours() + 1);
+      date.setHours(date.getHours() + 1);
     } else if (dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
-      // Daily at specific time
-      next.setDate(next.getDate() + 1);
+      date.setDate(date.getDate() + 1);
     } else {
-      // For more complex expressions, add a day and let the user handle it
-      next.setDate(next.getDate() + 1);
+      date.setDate(date.getDate() + 1);
     }
   }
+};
+
+/**
+ * Parses a cron expression and returns the next execution time (UTC)
+ * Note: This is a basic implementation. For production, consider using a library like 'node-cron' or 'cron-parser'
+ */
+const getNextCronExecution = (cronExpression: string, fromDate?: Date): Date => {
+  const now = fromDate ?? new Date();
+  const { minute, hour, dayOfMonth, month, dayOfWeek } = parseCronExpression(cronExpression);
+
+  const next = new Date(now);
+  setCronTimeFields(next, minute, hour);
+  advanceToNextOccurrence(next, now, minute, hour, dayOfMonth, month, dayOfWeek);
 
   return next;
 };
@@ -143,9 +160,11 @@ const shouldRunNow = (scheduledImport: ScheduledImport, currentTime: Date): bool
   }
 
   // Check schedule configuration
-  const hasValidSchedule =
+
+  const hasValidSchedule = Boolean(
     (scheduledImport.scheduleType === "frequency" && scheduledImport.frequency) ||
-    (scheduledImport.scheduleType === "cron" && scheduledImport.cronExpression);
+      (scheduledImport.scheduleType === "cron" && scheduledImport.cronExpression)
+  );
 
   if (!hasValidSchedule) {
     return false;
@@ -190,25 +209,185 @@ const shouldRunNow = (scheduledImport: ScheduledImport, currentTime: Date): bool
   }
 };
 
+// Helper to generate import name from template
+const generateImportName = (
+  template: string | null | undefined,
+  scheduledImport: ScheduledImport,
+  currentTime: Date
+): string => {
+  const importName = template ?? "{{name}} - {{date}}";
+  const timeString = `${currentTime.getUTCHours().toString().padStart(2, "0")}:${currentTime.getUTCMinutes().toString().padStart(2, "0")}:${currentTime.getUTCSeconds().toString().padStart(2, "0")}`;
+
+  return importName
+    .replace("{{name}}", scheduledImport.name)
+    .replace("{{date}}", currentTime.toISOString().split("T")[0] ?? "")
+    .replace("{{time}}", timeString)
+    .replace("{{url}}", new URL(scheduledImport.sourceUrl).hostname);
+};
+
+// Helper to calculate next run with fallback
+const calculateNextRun = (scheduledImport: ScheduledImport, currentTime: Date): Date => {
+  try {
+    return getNextExecutionTime(scheduledImport, currentTime);
+  } catch (error) {
+    logger.error("Failed to calculate next run time", {
+      scheduledImportId: scheduledImport.id,
+      scheduleType: scheduledImport.scheduleType,
+      frequency: scheduledImport.frequency,
+      cronExpression: scheduledImport.cronExpression,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+    return new Date(currentTime.getTime() + 24 * 60 * 60 * 1000); // Default to 24 hours
+  }
+};
+
+// Helper to update execution history
+const updateExecutionHistory = (
+  scheduledImport: ScheduledImport,
+  currentTime: Date,
+  jobId: string,
+  startTime: number
+) => {
+  const executionHistory = scheduledImport.executionHistory ?? [];
+  executionHistory.unshift({
+    executedAt: currentTime.toISOString(),
+    status: "success",
+    duration: Date.now() - startTime,
+  });
+
+  // Keep only last 10 executions
+  if (executionHistory.length > 10) {
+    executionHistory.splice(10);
+  }
+
+  return executionHistory;
+};
+
+// Helper to process a single scheduled import
+const processScheduledImport = async (
+  payload: Payload,
+  scheduledImport: ScheduledImport,
+  currentTime: Date
+): Promise<boolean> => {
+  if (!shouldRunNow(scheduledImport, currentTime)) {
+    return false;
+  }
+
+  const startTime = Date.now();
+  const importName = generateImportName(scheduledImport.importNameTemplate, scheduledImport, currentTime);
+
+  // Queue the URL fetch job
+  const urlFetchJob = await payload.jobs.queue({
+    task: JOB_TYPES.URL_FETCH,
+    input: {
+      scheduledImportId: scheduledImport.id,
+      sourceUrl: scheduledImport.sourceUrl,
+      authConfig: scheduledImport.authConfig,
+      catalogId:
+        typeof scheduledImport.catalog === "object" && scheduledImport.catalog !== null
+          ? scheduledImport.catalog.id
+          : (scheduledImport.catalog ?? undefined),
+      originalName: importName,
+      userId:
+        typeof scheduledImport.createdBy === "object" && scheduledImport.createdBy !== null
+          ? scheduledImport.createdBy.id
+          : scheduledImport.createdBy,
+    },
+  });
+
+  const nextRun = calculateNextRun(scheduledImport, currentTime);
+  const executionHistory = updateExecutionHistory(scheduledImport, currentTime, urlFetchJob.id.toString(), startTime);
+
+  // Update statistics
+  const stats = scheduledImport.statistics ?? {
+    totalRuns: 0,
+    successfulRuns: 0,
+    failedRuns: 0,
+    averageDuration: 0,
+  };
+  stats.totalRuns = (stats.totalRuns ?? 0) + 1;
+  stats.successfulRuns = (stats.successfulRuns ?? 0) + 1;
+
+  // Update the scheduled import record
+  await payload.update({
+    collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
+    id: scheduledImport.id,
+    data: {
+      lastRun: currentTime.toISOString(),
+      nextRun: nextRun.toISOString(),
+      lastStatus: "running",
+      currentRetries: 0,
+      executionHistory,
+      statistics: stats,
+    },
+  });
+
+  logger.info("Triggered scheduled import", {
+    scheduledImportId: scheduledImport.id,
+    scheduledImportName: scheduledImport.name,
+    urlFetchJobId: urlFetchJob.id,
+    nextRun: nextRun.toISOString(),
+    url: scheduledImport.sourceUrl,
+  });
+
+  return true;
+};
+
+// Helper to handle import error
+const handleImportError = async (payload: Payload, scheduledImport: ScheduledImport, error: unknown): Promise<void> => {
+  logError(error, "Failed to trigger scheduled import", {
+    scheduledImportId: scheduledImport.id,
+    name: scheduledImport.name,
+    url: scheduledImport.sourceUrl,
+  });
+
+  try {
+    const stats = scheduledImport.statistics ?? {
+      totalRuns: 0,
+      successfulRuns: 0,
+      failedRuns: 0,
+      averageDuration: 0,
+    };
+    stats.totalRuns = (stats.totalRuns ?? 0) + 1;
+    stats.failedRuns = (stats.failedRuns ?? 0) + 1;
+
+    await payload.update({
+      collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
+      id: scheduledImport.id,
+      data: {
+        lastStatus: "failed",
+        lastError: error instanceof Error ? error.message : "Unknown error",
+        statistics: stats,
+      },
+    });
+  } catch (updateError) {
+    logError(updateError, "Failed to update scheduled import error status");
+  }
+};
+
 export const scheduleManagerJob = {
   slug: "schedule-manager",
-  handler: async ({ job, req }: any) => {
-    const { payload } = req;
+  handler: async ({ job, req }: { job?: { id?: string | number }; req?: { payload?: Payload } }) => {
+    const payload = req?.payload;
+
+    if (!payload) {
+      throw new Error("Payload not available in job context");
+    }
 
     try {
-      logger.info("Starting schedule manager job", { jobId: job.id });
+      logger.info("Starting schedule manager job", { jobId: job?.id });
 
       const currentTime = new Date();
 
-      // Find all enabled scheduled imports (excluding manual-only)
+      // Find all enabled scheduled imports
       const scheduledImports = await payload.find({
-        collection: "scheduled-imports",
+        collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
         where: {
           enabled: {
             equals: true,
           },
         },
-        limit: 1000, // Reasonable limit for scheduled imports
+        limit: 1000,
       });
 
       logger.info("Found scheduled imports", {
@@ -221,145 +400,18 @@ export const scheduleManagerJob = {
 
       for (const scheduledImport of scheduledImports.docs) {
         try {
-          // Check if this import should run now
-          if (!shouldRunNow(scheduledImport, currentTime)) {
-            continue;
+          const triggered = await processScheduledImport(payload, scheduledImport, currentTime);
+          if (triggered) {
+            triggeredCount++;
           }
-
-          const startTime = Date.now();
-
-          // Generate import name from template
-          let importName = scheduledImport.importNameTemplate || "{{name}} - {{date}}";
-          const timeString = `${currentTime.getUTCHours().toString().padStart(2, "0")}:${currentTime.getUTCMinutes().toString().padStart(2, "0")}:${currentTime.getUTCSeconds().toString().padStart(2, "0")}`;
-          importName = importName
-            .replace("{{name}}", scheduledImport.name)
-            .replace("{{date}}", currentTime.toISOString().split("T")[0])
-            .replace("{{time}}", timeString)
-            .replace("{{url}}", new URL(scheduledImport.sourceUrl).hostname);
-
-          // Queue the URL fetch job directly with all necessary parameters
-          const urlFetchJob = await payload.jobs.queue({
-            task: "url-fetch",
-            input: {
-              scheduledImportId: scheduledImport.id,
-              sourceUrl: scheduledImport.sourceUrl,
-              authConfig: scheduledImport.authConfig,
-              catalogId:
-                typeof scheduledImport.catalog === "object" ? scheduledImport.catalog.id : scheduledImport.catalog,
-              originalName: importName,
-              userId:
-                typeof scheduledImport.createdBy === "object"
-                  ? scheduledImport.createdBy.id
-                  : scheduledImport.createdBy,
-            },
-          });
-
-          // Calculate next run time
-          let nextRun: Date;
-          try {
-            nextRun = getNextExecutionTime(scheduledImport, currentTime);
-          } catch (error) {
-            logger.error("Failed to calculate next run time", {
-              scheduledImportId: scheduledImport.id,
-              scheduleType: scheduledImport.scheduleType,
-              frequency: scheduledImport.frequency,
-              cronExpression: scheduledImport.cronExpression,
-              error: error instanceof Error ? error.message : "Unknown error",
-            });
-            nextRun = new Date(currentTime.getTime() + 24 * 60 * 60 * 1000); // Default to 24 hours
-          }
-
-          // Update execution history
-          const executionHistory = scheduledImport.executionHistory || [];
-          executionHistory.unshift({
-            executedAt: currentTime,
-            status: "success",
-            jobId: urlFetchJob.id,
-            duration: Date.now() - startTime,
-          });
-
-          // Keep only last 10 executions
-          if (executionHistory.length > 10) {
-            executionHistory.splice(10);
-          }
-
-          // Update statistics
-          const stats = scheduledImport.statistics || {
-            totalRuns: 0,
-            successfulRuns: 0,
-            failedRuns: 0,
-            averageDuration: 0,
-          };
-          stats.totalRuns++;
-          stats.successfulRuns++;
-
-          // Update the scheduled import record
-          const updateData: any = {
-            lastRun: currentTime,
-            nextRun,
-            lastStatus: "running",
-            currentRetries: 0,
-            executionHistory,
-            statistics: stats,
-          };
-
-          await payload.update({
-            collection: "scheduled-imports",
-            id: scheduledImport.id,
-            data: updateData,
-          });
-
-          triggeredCount++;
-
-          logger.info("Triggered scheduled import", {
-            scheduledImportId: scheduledImport.id,
-            scheduledImportName: scheduledImport.name,
-            urlFetchJobId: urlFetchJob.id,
-            nextRun: nextRun ? nextRun.toISOString() : null,
-            url: scheduledImport.sourceUrl,
-            scheduleType: scheduledImport.scheduleType,
-            frequency: scheduledImport.frequency,
-          });
         } catch (error) {
           errorCount++;
-          logError(error, "Failed to trigger scheduled import", {
-            scheduledImportId: scheduledImport.id,
-            name: scheduledImport.name,
-            url: scheduledImport.sourceUrl,
-          });
-
-          // Update scheduled import with error status
-          try {
-            const stats = scheduledImport.statistics || {
-              totalRuns: 0,
-              successfulRuns: 0,
-              failedRuns: 0,
-              averageDuration: 0,
-            };
-            stats.totalRuns++;
-            stats.failedRuns++;
-
-            await payload.update({
-              collection: "scheduled-imports",
-              id: scheduledImport.id,
-              data: {
-                lastStatus: "failed",
-                lastError: error instanceof Error ? error.message : "Unknown error",
-                currentRetries: (scheduledImport.currentRetries || 0) + 1,
-                statistics: stats,
-              },
-            });
-          } catch (updateError) {
-            logError(updateError, "Failed to update scheduled import error status");
-          }
-
-          // Continue with other scheduled imports even if one fails
-          continue;
+          await handleImportError(payload, scheduledImport, error);
         }
       }
 
       logger.info("Schedule manager job completed", {
-        jobId: job.id,
+        jobId: job?.id,
         totalScheduled: scheduledImports.docs.length,
         triggered: triggeredCount,
         errors: errorCount,
@@ -374,7 +426,7 @@ export const scheduleManagerJob = {
         },
       };
     } catch (error) {
-      logError(error, "Schedule manager job failed", { jobId: job.id });
+      logError(error, "Schedule manager job failed", { jobId: job?.id });
       throw error;
     }
   },

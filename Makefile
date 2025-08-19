@@ -78,6 +78,10 @@ format:
 test:
 	pnpm test
 
+# Run tests with AI-friendly output
+test-ai:
+	cd apps/web && pnpm test:ai
+
 # Seed database
 seed:
 	pnpm seed

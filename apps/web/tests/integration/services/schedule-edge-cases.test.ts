@@ -3,6 +3,9 @@
  *
  * Tests various scheduling edge cases including:
  * - Cron expression validation
+ *
+ * @module
+ * @category Integration Tests
  * - Daylight saving time transitions
  * - Overlapping schedule executions
  * - Disabled/re-enabled schedules
@@ -19,7 +22,6 @@ global.fetch = vi.fn();
 describe.sequential("Schedule Edge Case Tests", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
-  let testUserId: string;
   let testCatalogId: string;
 
   beforeAll(async () => {
@@ -28,7 +30,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
     cleanup = env.cleanup;
 
     // Create test user
-    const user = await payload.create({
+    await payload.create({
       collection: "users",
       data: {
         email: "schedule-test@example.com",
@@ -36,7 +38,6 @@ describe.sequential("Schedule Edge Case Tests", () => {
         role: "admin",
       },
     });
-    testUserId = user.id;
 
     // Create test catalog
     const catalog = await payload.create({
@@ -49,16 +50,16 @@ describe.sequential("Schedule Edge Case Tests", () => {
     testCatalogId = catalog.id;
 
     // Mock payload.jobs.queue
-    vi.spyOn(payload.jobs, "queue").mockImplementation(async (params: any) => {
+    vi.spyOn(payload.jobs, "queue").mockImplementation((params: any) => {
       const { task, input } = params;
-      return {
+      return Promise.resolve({
         id: `mock-job-${Date.now()}`,
         task,
         input,
         status: "queued",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      } as any;
+      } as any);
     });
   }, 60000);
 
@@ -89,7 +90,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
           id: scheduledImport.id,
         });
       }
-    } catch (error) {
+    } catch {
       // Ignore cleanup errors
     }
   });
@@ -223,7 +224,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
       vi.setSystemTime(baseTime);
 
       // Create multiple hourly schedules
-      const schedules = await Promise.all([
+      await Promise.all([
         payload.create({
           collection: "scheduled-imports",
           data: {
@@ -306,7 +307,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
         },
       });
 
-      const disabledSchedule = await payload.create({
+      await payload.create({
         collection: "scheduled-imports",
         data: {
           name: "Disabled Import",
@@ -342,7 +343,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
       const currentTime = new Date("2024-01-01T12:00:00.000Z");
       vi.setSystemTime(currentTime);
 
-      const scheduledImport = await payload.create({
+      await payload.create({
         collection: "scheduled-imports",
         data: {
           name: "Running Import",
@@ -516,7 +517,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
       vi.setSystemTime(currentTime);
 
       // Create multiple schedules
-      const schedule1 = await payload.create({
+      await payload.create({
         collection: "scheduled-imports",
         data: {
           name: "Success Import",
@@ -540,7 +541,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
         },
       });
 
-      const schedule3 = await payload.create({
+      await payload.create({
         collection: "scheduled-imports",
         data: {
           name: "Another Success Import",
@@ -553,18 +554,18 @@ describe.sequential("Schedule Edge Case Tests", () => {
       });
 
       // Mock job queue to fail for the second schedule
-      const queueMock = vi.spyOn(payload.jobs, "queue").mockImplementation(async (params: any) => {
+      const queueMock = vi.spyOn(payload.jobs, "queue").mockImplementation((params: any) => {
         const { input } = params;
         if (input.scheduledImportId === schedule2.id) {
           throw new Error("Job queue failed");
         }
-        return {
+        return Promise.resolve({
           id: `mock-job-${Date.now()}`,
           task: "url-fetch",
           status: "queued",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        } as any;
+        } as any);
       });
 
       // Move to next hour
@@ -638,7 +639,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
       const currentTime = new Date("2024-01-01T12:00:00.000Z");
       vi.setSystemTime(currentTime);
 
-      const scheduledImport = await payload.create({
+      await payload.create({
         collection: "scheduled-imports",
         data: {
           name: "Template Test Import",

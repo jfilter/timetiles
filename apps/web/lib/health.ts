@@ -19,6 +19,7 @@ import path from "path";
 import { getPayload } from "payload";
 
 import config from "../payload.config";
+import { COLLECTION_NAMES } from "./constants/import-constants";
 import { createLogger } from "./logger";
 
 const logger = createLogger("health-checks");
@@ -113,7 +114,7 @@ const checkGeocodingService = async (): Promise<HealthCheckResult> => {
 
     logger.debug("Querying geocoding providers");
     const providers = await payload.find({
-      collection: "geocoding-providers",
+      collection: COLLECTION_NAMES.GEOCODING_PROVIDERS,
       where: { enabled: { equals: true } },
       limit: 1,
     });
@@ -159,7 +160,7 @@ const checkPayloadCMS = async (): Promise<HealthCheckResult> => {
     const payload = await getPayload({ config });
 
     logger.debug("Testing Payload by querying users collection");
-    await payload.find({ collection: "users", limit: 1 });
+    await payload.find({ collection: COLLECTION_NAMES.USERS, limit: 1 });
 
     logger.debug("Payload CMS check passed");
     return { status: "healthy", message: "Payload CMS is accessible" };
@@ -203,7 +204,7 @@ const checkMigrations = async (): Promise<HealthCheckResult> => {
     logger.debug("Found migration files", { count: migrationFiles.length });
 
     const executedMigrations = await payload.find({
-      collection: "payload-migrations",
+      collection: COLLECTION_NAMES.PAYLOAD_MIGRATIONS,
       limit: 1000,
     });
 

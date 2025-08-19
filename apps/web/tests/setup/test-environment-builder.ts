@@ -4,6 +4,9 @@
  * Provides a simplified and flexible way to create test environments with
  * different isolation levels and seeding options. This replaces the basic
  * test-helpers with a more robust and configurable system.
+ *
+ * @module
+ * @category Test Setup
  */
 
 import { randomUUID } from "crypto";

@@ -1,3 +1,12 @@
+/**
+ * Vitest workspace configuration for monorepo test organization.
+ *
+ * Defines separate test configurations for unit, integration, and component tests
+ * with appropriate environments and setup files for each test type.
+ *
+ * @module
+ * @category Configuration
+ */
 import { defineWorkspace } from "vitest/config";
 
 export default defineWorkspace([

@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { GeoLocationDetector } from "../../../lib/services/import/geo-location-detector";
 
 describe("GeoLocationDetector", () => {

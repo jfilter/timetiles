@@ -1,3 +1,12 @@
+/**
+ * Integration tests for file upload API endpoint.
+ *
+ * Tests CSV and Excel file upload functionality including
+ * validation, processing, and import job creation.
+ *
+ * @module
+ * @category Integration Tests
+ */
 import fs from "fs";
 import { join } from "path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -100,7 +109,7 @@ describe.sequential("Import Files Collection", () => {
     expect(importFile.importedAt).toBeDefined();
   });
 
-  it("should validate file size limits in beforeValidate hook", async () => {
+  it("should validate file size limits in beforeValidate hook", () => {
     // Test would require mocking the file size or creating a large test file
     // For now, just verify the collection configuration is correct
     const collections = payload.config.collections;

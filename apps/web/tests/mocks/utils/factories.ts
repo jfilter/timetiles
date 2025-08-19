@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 // Utility functions for creating test data with common patterns
 
 export const createDateRange = (startDate: string, days: number) => {

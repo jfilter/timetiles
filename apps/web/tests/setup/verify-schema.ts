@@ -1,3 +1,12 @@
+/**
+ * Database schema verification utilities.
+ *
+ * Verifies that the test database schema has been properly set up with all
+ * required tables, extensions, and functions before running tests.
+ *
+ * @module
+ * @category Test Setup
+ */
 import { Client } from "pg";
 
 /**

@@ -1,3 +1,13 @@
+/**
+ * Interactive histogram visualization for temporal event distribution.
+ *
+ * Displays a time-based histogram of event data with configurable granularity
+ * (day, week, month, year). Supports interactive tooltips and click-to-filter
+ * functionality for exploring event patterns over time.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import ReactECharts from "echarts-for-react";

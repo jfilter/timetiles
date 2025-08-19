@@ -6,7 +6,7 @@
  */
 import type { Payload } from "payload";
 
-import { JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { createJobLogger, logError } from "@/lib/logger";
 import { SchemaVersioningService } from "@/lib/services/schema-versioning";
 import { getFieldStats } from "@/lib/types/schema-detection";
@@ -28,7 +28,7 @@ export const createSchemaVersionJob = {
     try {
       // Get import job
       const job = await payload.findByID({
-        collection: "import-jobs",
+        collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
       });
 
@@ -55,7 +55,7 @@ export const createSchemaVersionJob = {
       const dataset =
         typeof job.dataset === "object"
           ? job.dataset
-          : await payload.findByID({ collection: "datasets", id: job.dataset });
+          : await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: job.dataset });
 
       if (!dataset) {
         throw new Error("Dataset not found");
@@ -84,7 +84,7 @@ export const createSchemaVersionJob = {
 
       // Update job with schema version
       await payload.update({
-        collection: "import-jobs",
+        collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
         data: {
           datasetSchemaVersion: schemaVersion.id,
@@ -98,7 +98,7 @@ export const createSchemaVersionJob = {
 
       // Transition to next stage
       await payload.update({
-        collection: "import-jobs",
+        collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
         data: {
           stage: PROCESSING_STAGE.GEOCODE_BATCH,
@@ -111,7 +111,7 @@ export const createSchemaVersionJob = {
 
       // Update job to failed state
       await payload.update({
-        collection: "import-jobs",
+        collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
         data: {
           stage: PROCESSING_STAGE.FAILED,

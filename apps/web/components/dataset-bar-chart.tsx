@@ -1,3 +1,13 @@
+/**
+ * Bar chart visualization for dataset and catalog event counts.
+ *
+ * Displays event distribution across datasets or catalogs as an interactive
+ * bar chart. Supports click-to-filter functionality and theme-aware styling.
+ * Automatically updates based on current filter state.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import { BarChart, type BarChartDataItem } from "@workspace/ui/components/charts";

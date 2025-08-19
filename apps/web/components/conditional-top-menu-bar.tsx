@@ -1,3 +1,13 @@
+/**
+ * Server component wrapper for conditional top menu bar.
+ *
+ * Fetches main menu data from Payload CMS and passes it to the client-side
+ * conditional menu bar component. Handles server-side data fetching and
+ * error handling for menu configuration.
+ *
+ * @module
+ * @category Components
+ */
 import { getPayload } from "payload";
 
 import config from "../payload.config";

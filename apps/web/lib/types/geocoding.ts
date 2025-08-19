@@ -68,7 +68,7 @@ export const isValidGeocodingCandidate = (candidate: unknown): candidate is Geoc
     return false;
   }
 
-  const cand = candidate as any;
+  const cand = candidate as Record<string, unknown>;
   return (
     (typeof cand.addressField === "string" || cand.addressField === undefined) &&
     (typeof cand.latitudeField === "string" || cand.latitudeField === undefined) &&
@@ -105,5 +105,5 @@ export const getGeocodingResultForRow = (
   rowNumber: number
 ): GeocodingResult | null => {
   const result = geocodingResults[String(rowNumber)];
-  return result || null;
+  return result ?? null;
 };

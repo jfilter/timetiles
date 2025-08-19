@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 export const mockNextNavigation = {
   redirect: vi.fn(),
   notFound: vi.fn(),

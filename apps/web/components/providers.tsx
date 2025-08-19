@@ -1,3 +1,13 @@
+/**
+ * Root provider component for application context.
+ *
+ * Wraps the application with essential providers including React Query
+ * for data fetching, Nuqs for URL state management, and theme context.
+ * Configures query client with appropriate cache and retry settings.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

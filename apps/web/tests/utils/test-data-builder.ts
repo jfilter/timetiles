@@ -4,6 +4,9 @@
  * Enhanced test utilities with builder patterns for creating realistic test data.
  * Provides fluent APIs for constructing events, catalogs, datasets, and other entities
  * with realistic relationships and constraints.
+ *
+ * @module
+ * @category Test Utilities
  */
 
 import type { Catalog, Dataset, Event, ImportFile, User } from "@/payload-types";

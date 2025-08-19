@@ -1,5 +1,5 @@
 /**
- * @module Defines the job handler for detecting datasets within an uploaded file.
+ * Defines the job handler for detecting datasets within an uploaded file.
  *
  * This job is the first step in the import process after a file is uploaded. It performs the following actions:
  * - Reads the uploaded file (supports CSV and Excel formats).
@@ -7,6 +7,9 @@
  * - For each detected sheet, it creates a corresponding `import-jobs` document.
  * - It either matches the sheet to an existing dataset in the specified catalog or creates a new dataset.
  * - It populates the `import-jobs` with initial metadata like row count and sets the first processing stage to `DEDUPLICATION`.
+ *
+ * @module
+ * @category Jobs
  */
 import fs from "fs";
 import Papa from "papaparse";
@@ -14,7 +17,7 @@ import path from "path";
 import type { Payload } from "payload";
 import { read, utils } from "xlsx";
 
-import { COLLECTION_NAMES, IMPORT_STATUS, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import type { Dataset } from "@/payload-types";
@@ -30,25 +33,202 @@ interface SheetInfo {
   headers?: string[];
 }
 
+// Extract file processing functions
+const processCSVFile = (filePath: string): { sheets: SheetInfo[]; workbook: unknown } => {
+  logger.info("Processing CSV file", { filePath });
+  const csvContent = fs.readFileSync(filePath, "utf8");
+
+  const parseResult = Papa.parse(csvContent, {
+    header: false,
+    skipEmptyLines: true,
+    dynamicTyping: true,
+  });
+
+  const rows = parseResult.data as string[][];
+  if (rows.length === 0) {
+    throw new Error("No data rows found in file");
+  }
+
+  const sheets: SheetInfo[] = [
+    {
+      name: "CSV Data",
+      index: 0,
+      rowCount: rows.length - 1,
+      columnCount: rows[0]?.length ?? 0,
+      headers: rows[0] ?? [],
+    },
+  ];
+
+  const workbook = {
+    SheetNames: ["Sheet1"],
+    Sheets: {
+      Sheet1: utils.aoa_to_sheet(rows),
+    },
+  };
+
+  return { sheets, workbook };
+};
+
+const processExcelFile = (filePath: string): { sheets: SheetInfo[]; workbook: unknown } => {
+  logger.info("Processing Excel file", { filePath });
+  const fileBuffer = fs.readFileSync(filePath);
+  const workbook = read(fileBuffer, { type: "buffer" });
+  const sheets: SheetInfo[] = [];
+
+  for (let i = 0; i < workbook.SheetNames.length; i++) {
+    const sheetName = workbook.SheetNames[i];
+    const worksheet = workbook.Sheets[sheetName!];
+    if (!worksheet) continue;
+
+    const jsonData = utils.sheet_to_json(worksheet, { header: 1 });
+    if (jsonData.length > 0 && jsonData[0]) {
+      sheets.push({
+        name: sheetName ?? `Sheet${i}`,
+        index: i,
+        rowCount: jsonData.length - 1,
+        columnCount: Array.isArray(jsonData[0]) ? jsonData[0].length : 0,
+        headers: Array.isArray(jsonData[0]) ? jsonData[0] : [],
+      });
+    }
+  }
+
+  return { sheets, workbook };
+};
+
+const handleSingleSheet = async (
+  payload: Payload,
+  importFile: { id: string | number; originalName?: string | null; metadata?: unknown },
+  sheet: SheetInfo,
+  catalogId?: string,
+  datasetMapping?: { mappingType: string; singleDataset?: unknown }
+) => {
+  let dataset;
+
+  if (datasetMapping?.mappingType === "single" && datasetMapping.singleDataset) {
+    const datasetId =
+      typeof datasetMapping.singleDataset === "object" && datasetMapping.singleDataset != null
+        ? (datasetMapping.singleDataset as { id: string }).id
+        : (datasetMapping.singleDataset as string);
+
+    dataset = await payload.findByID({
+      collection: COLLECTION_NAMES.DATASETS,
+      id: datasetId,
+    });
+
+    if (!dataset) {
+      throw new Error(`Configured dataset not found: ${datasetId}`);
+    }
+  } else {
+    const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId);
+    dataset = await findOrCreateDataset(payload, resolvedCatalogId, importFile.originalName ?? "Imported Data");
+  }
+
+  return payload.create({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    data: {
+      importFile: typeof importFile.id === "string" ? parseInt(importFile.id, 10) : importFile.id,
+      dataset: dataset.id,
+      sheetIndex: 0,
+      stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
+      progress: ProgressTrackingService.createInitialProgress(sheet.rowCount),
+    },
+  });
+};
+
+const handleMultipleSheets = async (
+  payload: Payload,
+  importFile: { id: string | number },
+  sheets: SheetInfo[],
+  catalogId?: string,
+  datasetMapping?: { mappingType: string; sheetMappings?: unknown[] }
+) => {
+  const createdJobs = [];
+
+  for (const sheet of sheets) {
+    const sheetName = sheet.name?.toString() ?? `Sheet_${sheet.index?.toString() ?? "Unknown"}`;
+    const job = await processSheetWithMapping(payload, importFile, sheet, sheetName, catalogId, datasetMapping);
+
+    if (job) {
+      createdJobs.push(job);
+    }
+  }
+
+  return createdJobs;
+};
+
+const processSheetWithMapping = async (
+  payload: Payload,
+  importFile: { id: string | number },
+  sheet: SheetInfo,
+  sheetName: string,
+  catalogId?: string,
+  datasetMapping?: { mappingType: string; sheetMappings?: unknown[] }
+) => {
+  let dataset;
+  let skipSheet = false;
+
+  if (datasetMapping?.mappingType === "multiple" && datasetMapping.sheetMappings) {
+    const sheetMappings = datasetMapping.sheetMappings as Array<{
+      sheetIdentifier?: string;
+      dataset?: unknown;
+      skipIfMissing?: boolean;
+    }>;
+    const mapping = sheetMappings.find(
+      (m) => m.sheetIdentifier === sheetName || m.sheetIdentifier === sheet.index?.toString()
+    );
+
+    if (mapping) {
+      const datasetId = typeof mapping.dataset === "object" ? (mapping.dataset as { id: string }).id : mapping.dataset;
+
+      dataset = await payload.findByID({
+        collection: COLLECTION_NAMES.DATASETS,
+        id: datasetId as string,
+      });
+
+      if (!dataset) {
+        if (!mapping.skipIfMissing) {
+          throw new Error(`Configured dataset not found for sheet ${sheetName}`);
+        }
+        skipSheet = true;
+      }
+    } else {
+      logger.info("No mapping found for sheet, skipping", { sheetName });
+      return null;
+    }
+  } else {
+    const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId);
+    dataset = await findOrCreateDataset(payload, resolvedCatalogId, sheetName);
+  }
+
+  if (skipSheet || !dataset) {
+    return null;
+  }
+
+  return payload.create({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    data: {
+      importFile: typeof importFile.id === "string" ? parseInt(importFile.id, 10) : importFile.id,
+      dataset: dataset.id,
+      sheetIndex: sheet.index,
+      stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
+      progress: ProgressTrackingService.createInitialProgress(sheet.rowCount),
+    },
+  });
+};
+
 export const datasetDetectionJob = {
   slug: JOB_TYPES.DATASET_DETECTION,
   handler: async (context: JobHandlerContext) => {
     const payload = (context.req?.payload ?? context.payload) as Payload;
     const input = (context.input ?? context.job?.input) as DatasetDetectionJobInput["input"];
     const { importFileId, catalogId } = input;
-
     const jobId = String(context.job?.id ?? "unknown");
 
-    logger.info("Starting dataset detection job", {
-      jobId,
-      importFileId,
-      catalogId,
-    });
+    logger.info("Starting dataset detection job", { jobId, importFileId, catalogId });
 
     try {
-      // Get the import file
       const importFile = await payload.findByID({
-        collection: "import-files",
+        collection: COLLECTION_NAMES.IMPORT_FILES,
         id: String(importFileId),
       });
 
@@ -56,90 +236,15 @@ export const datasetDetectionJob = {
         throw new Error("Import file not found");
       }
 
-      // Get the actual file path
       const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
-      const filePath = path.join(uploadDir, importFile.filename || "");
+      const filePath = path.join(uploadDir, importFile.filename ?? "");
 
-      // Debug file access
-      logger.info("Attempting to access file", {
-        filePath,
-        filename: importFile.filename,
-        uploadDir,
-        fileExists: fs.existsSync(filePath),
-      });
-
-      // Check if file exists before processing
       if (!fs.existsSync(filePath)) {
         throw new Error(`Cannot access file ${filePath}`);
       }
 
-      // Determine file type and parse accordingly
       const fileExtension = path.extname(filePath).toLowerCase();
-      const sheets: SheetInfo[] = [];
-      let workbook: any;
-
-      if (fileExtension === ".csv") {
-        // Handle CSV files with PapaParse
-        logger.info("Processing CSV file", { filePath });
-
-        const csvContent = fs.readFileSync(filePath, "utf8");
-
-        // Parse CSV with PapaParse
-        const parseResult = Papa.parse(csvContent, {
-          header: false, // Keep as array of arrays for consistency
-          skipEmptyLines: true,
-          dynamicTyping: true,
-        });
-
-        const rows = parseResult.data as string[][];
-
-        if (rows.length === 0) {
-          throw new Error("No data rows found in file");
-        }
-
-        if (rows.length > 0) {
-          sheets.push({
-            name: "CSV Data",
-            index: 0,
-            rowCount: rows.length - 1, // Exclude header row
-            columnCount: rows[0]?.length || 0,
-            headers: rows[0] || [],
-          });
-        }
-
-        // Create a mock workbook for consistency with Excel flow
-        workbook = {
-          SheetNames: ["Sheet1"],
-          Sheets: {
-            Sheet1: utils.aoa_to_sheet(rows),
-          },
-        };
-      } else {
-        // Handle Excel files with XLSX library
-        logger.info("Processing Excel file", { filePath });
-        const fileBuffer = fs.readFileSync(filePath);
-        workbook = read(fileBuffer, { type: "buffer" }); // Use read with buffer and proper type
-      }
-
-      // For Excel files, process all sheets (CSV already processed above)
-      if (fileExtension !== ".csv") {
-        for (let i = 0; i < workbook.SheetNames.length; i++) {
-          const sheetName = workbook.SheetNames[i];
-          const worksheet = workbook.Sheets[sheetName!];
-          if (!worksheet) continue;
-          const jsonData = utils.sheet_to_json(worksheet, { header: 1 });
-
-          if (jsonData.length > 0 && jsonData[0]) {
-            sheets.push({
-              name: sheetName || `Sheet${i}`,
-              index: i,
-              rowCount: jsonData.length - 1, // Exclude header
-              columnCount: Array.isArray(jsonData[0]) ? jsonData[0].length : 0,
-              headers: Array.isArray(jsonData[0]) ? jsonData[0] : [],
-            });
-          }
-        }
-      }
+      const { sheets } = fileExtension === ".csv" ? processCSVFile(filePath) : processExcelFile(filePath);
 
       if (sheets.length === 0) {
         throw new Error("No valid sheets found in file");
@@ -151,9 +256,8 @@ export const datasetDetectionJob = {
         sheets: sheets.map((s) => ({ name: s.name, rows: s.rowCount })),
       });
 
-      // Update import file with detected datasets
       await payload.update({
-        collection: "import-files",
+        collection: COLLECTION_NAMES.IMPORT_FILES,
         id: importFileId,
         data: {
           datasetsCount: sheets.length,
@@ -161,98 +265,14 @@ export const datasetDetectionJob = {
         },
       });
 
-      // Check for dataset mapping configuration from scheduled import
-      const datasetMapping = (importFile.metadata as any)?.datasetMapping;
+      const datasetMapping = (importFile.metadata as Record<string, unknown>)?.datasetMapping as
+        | { mappingType: string; singleDataset?: unknown; sheetMappings?: unknown[] }
+        | undefined;
 
-      // Create import jobs for each sheet
-      const createdJobs = [];
-
-      if (sheets.length === 1) {
-        // Single sheet - check mapping configuration
-        let dataset;
-
-        if (datasetMapping?.mappingType === "single" && datasetMapping.singleDataset) {
-          // Use specified dataset
-          dataset = await payload.findByID({
-            collection: "datasets",
-            id:
-              typeof datasetMapping.singleDataset === "object"
-                ? datasetMapping.singleDataset.id
-                : datasetMapping.singleDataset,
-          });
-
-          if (!dataset) {
-            throw new Error(`Configured dataset not found: ${datasetMapping.singleDataset}`);
-          }
-        } else {
-          // Auto-detect or create dataset
-          const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId);
-          dataset = await findOrCreateDataset(payload, resolvedCatalogId, importFile.originalName || "Imported Data");
-        }
-
-        const importJob = await payload.create({
-          collection: "import-jobs",
-          data: {
-            importFile: importFile.id,
-            dataset: dataset.id,
-            sheetIndex: 0,
-            stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
-            progress: ProgressTrackingService.createInitialProgress(sheets[0]!.rowCount),
-          },
-        });
-
-        createdJobs.push(importJob);
-      } else {
-        // Multiple sheets - check mapping configuration
-        for (const sheet of sheets) {
-          const sheetName = sheet.name?.toString() ?? `Sheet_${sheet.index?.toString() ?? "Unknown"}`;
-          let dataset;
-          let skipSheet = false;
-
-          if (datasetMapping?.mappingType === "multiple" && datasetMapping.sheetMappings) {
-            // Look for configured mapping for this sheet
-            const mapping = datasetMapping.sheetMappings.find(
-              (m: any) => m.sheetIdentifier === sheetName || m.sheetIdentifier === sheet.index?.toString()
-            );
-
-            if (mapping) {
-              dataset = await payload.findByID({
-                collection: "datasets",
-                id: typeof mapping.dataset === "object" ? mapping.dataset.id : mapping.dataset,
-              });
-
-              if (!dataset && !mapping.skipIfMissing) {
-                throw new Error(`Configured dataset not found for sheet ${sheetName}`);
-              } else if (!dataset && mapping.skipIfMissing) {
-                skipSheet = true;
-              }
-            } else {
-              // No mapping for this sheet - skip if using explicit mappings
-              logger.info("No mapping found for sheet, skipping", { sheetName });
-              continue;
-            }
-          } else {
-            // Auto-detect or create dataset
-            const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId);
-            dataset = await findOrCreateDataset(payload, resolvedCatalogId, sheetName);
-          }
-
-          if (!skipSheet && dataset) {
-            const importJob = await payload.create({
-              collection: "import-jobs",
-              data: {
-                importFile: importFile.id,
-                dataset: dataset.id,
-                sheetIndex: sheet.index,
-                stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
-                progress: ProgressTrackingService.createInitialProgress(sheet.rowCount),
-              },
-            });
-
-            createdJobs.push(importJob);
-          }
-        }
-      }
+      const createdJobs =
+        sheets.length === 1
+          ? [await handleSingleSheet(payload, importFile, sheets[0]!, catalogId, datasetMapping)]
+          : await handleMultipleSheets(payload, importFile, sheets, catalogId, datasetMapping);
 
       logger.info("Created import jobs", {
         importFileId,
@@ -267,14 +287,10 @@ export const datasetDetectionJob = {
         },
       };
     } catch (error) {
-      logError(error, "Dataset detection failed", {
-        jobId,
-        importFileId,
-      });
+      logError(error, "Dataset detection failed", { jobId, importFileId });
 
-      // Update import file status to failed
       await payload.update({
-        collection: "import-files",
+        collection: COLLECTION_NAMES.IMPORT_FILES,
         id: importFileId,
         data: {
           status: "failed",
@@ -295,7 +311,7 @@ const getOrCreateCatalog = async (payload: Payload, catalogId?: string): Promise
 
   // Create new catalog for this import
   const newCatalog = await payload.create({
-    collection: "catalogs",
+    collection: COLLECTION_NAMES.CATALOGS,
     data: {
       name: `Import Catalog ${new Date().toISOString().split("T")[0]}`,
       description: {
@@ -325,7 +341,7 @@ const getOrCreateCatalog = async (payload: Payload, catalogId?: string): Promise
 const findOrCreateDataset = async (payload: Payload, catalogId: string, datasetName: string): Promise<Dataset> => {
   // Try to find existing dataset in catalog
   const existingDatasets = await payload.find({
-    collection: "datasets",
+    collection: COLLECTION_NAMES.DATASETS,
     where: {
       catalog: { equals: parseInt(catalogId, 10) },
       name: { equals: datasetName },
@@ -343,7 +359,7 @@ const findOrCreateDataset = async (payload: Payload, catalogId: string, datasetN
 
   // Create new dataset if not found
   const newDataset = await payload.create({
-    collection: "datasets",
+    collection: COLLECTION_NAMES.DATASETS,
     data: {
       name: datasetName,
       catalog: parseInt(catalogId, 10),
@@ -391,45 +407,4 @@ const findOrCreateDataset = async (payload: Payload, catalogId: string, datasetN
   });
 
   return newDataset;
-};
-
-// Remove old createImportDataset function
-const _unusedCreateImportDataset = async ({
-  payload,
-  importFileId,
-  dataset,
-  sheetInfo,
-  filePath,
-  userId,
-  sessionId,
-}: {
-  payload: any;
-  importFileId: string;
-  dataset: Dataset;
-  sheetInfo: SheetInfo;
-  filePath: string;
-  userId?: string;
-  sessionId?: string;
-}) => {
-  return payload.create({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
-    data: {
-      name: `${dataset.name} - ${sheetInfo.name}`,
-      dataset: dataset.id,
-      importFile: importFileId,
-      status: IMPORT_STATUS.PENDING,
-      processingStage: PROCESSING_STAGE.DETECT_SCHEMA,
-      sheetName: sheetInfo.name,
-      sheetIndex: sheetInfo.index,
-      rowCount: sheetInfo.rowCount,
-      columnCount: sheetInfo.columnCount,
-      columnNames: sheetInfo.headers,
-      filePath,
-      user: userId || null,
-      sessionId: sessionId || null,
-      geocodingEnabled: false,
-      validationEnabled: true,
-      duplicateCheckEnabled: true,
-    },
-  });
 };

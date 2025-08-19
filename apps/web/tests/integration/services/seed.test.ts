@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { catalogSeeds } from "../../../lib/seed/seeds/catalogs";
 import { datasetSeeds } from "../../../lib/seed/seeds/datasets";
 import { eventSeeds } from "../../../lib/seed/seeds/events";
@@ -17,10 +20,8 @@ describe.sequential("Seed System", () => {
   afterAll(async () => {
     try {
       await testEnv.cleanup();
-    } catch (error) {
-      // Test environment cleanup error (non-critical) - using logger
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-      error;
+    } catch {
+      // Test environment cleanup error (non-critical) - silently continue
     }
   }, 60000); // 60 second timeout for cleanup
 

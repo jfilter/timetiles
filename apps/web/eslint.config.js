@@ -12,6 +12,21 @@ export default [
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    rules: {
+      "sonarjs/no-unused-vars": "error",
+      // Allow unused variables with _ prefix (in some cases not found by SonarJS)
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          args: "all",
+          argsIgnorePattern: "^_", // Allow _ prefix for intentionally unused args
+          varsIgnorePattern: "^_", // Allow _ prefix for intentionally unused vars
+          caughtErrors: "all",
+          caughtErrorsIgnorePattern: "^_", // Allow _ prefix for unused caught errors
+          ignoreRestSiblings: true, // Allow unused rest siblings in destructuring
+        },
+      ],
+    },
   },
   // Migration files - allow long functions for SQL/schema changes
   {

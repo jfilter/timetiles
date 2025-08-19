@@ -15,7 +15,7 @@
  */
 import type { CollectionConfig, Payload } from "payload";
 
-import { JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
 import { StageTransitionService } from "@/lib/services/stage-transition";
 import type { ImportJob } from "@/payload-types";
@@ -34,7 +34,7 @@ const handleJobCompletion = async (payload: Payload, doc: ImportJob): Promise<vo
 
   // Check if all jobs for this import file are completed before marking file as completed
   const allJobs = await payload.find({
-    collection: "import-jobs",
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
     where: {
       importFile: { equals: importFileId },
     },
@@ -48,7 +48,7 @@ const handleJobCompletion = async (payload: Payload, doc: ImportJob): Promise<vo
     // All jobs for this file are done, mark file as completed
     const hasFailures = allJobs.docs.some((job: ImportJob) => job.stage === PROCESSING_STAGE.FAILED);
     await payload.update({
-      collection: "import-files",
+      collection: COLLECTION_NAMES.IMPORT_FILES,
       id: importFileId,
       data: { status: hasFailures ? "failed" : "completed" },
     });

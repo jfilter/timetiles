@@ -1,3 +1,12 @@
+/**
+ * Integration tests for geocoding services.
+ *
+ * Tests address geocoding functionality including Google Maps
+ * integration, fallback providers, and caching mechanisms.
+ *
+ * @module
+ * @category Integration Tests
+ */
 // Create mock geocoder instances with proper typing - must be defined before mocking
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 

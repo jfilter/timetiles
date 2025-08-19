@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { analyzeDuplicatesJob } from "@/lib/jobs/handlers/analyze-duplicates-job";
@@ -97,10 +100,17 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         },
       };
 
+      // Mock import file
+      const mockImportFile = {
+        id: "file-789",
+        filename: "test.csv",
+      };
+
       // Setup payload mock responses
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob) // First call returns import job
-        .mockResolvedValueOnce(mockDataset); // Second call returns dataset
+        .mockResolvedValueOnce(mockDataset) // Second call returns dataset
+        .mockResolvedValueOnce(mockImportFile); // Third call returns import file
 
       mockPayload.update.mockResolvedValueOnce({});
 
@@ -111,7 +121,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       expect(result).toEqual({ output: { skipped: true } });
 
       // Verify payload calls
-      expect(mockPayload.findByID).toHaveBeenCalledTimes(2);
+      expect(mockPayload.findByID).toHaveBeenCalledTimes(3);
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(1, {
         collection: "import-jobs",
         id: "import-123",
@@ -119,6 +129,10 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(2, {
         collection: "datasets",
         id: "dataset-456",
+      });
+      expect(mockPayload.findByID).toHaveBeenNthCalledWith(3, {
+        collection: "import-files",
+        id: "file-789",
       });
 
       // Verify update call
@@ -183,8 +197,8 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockImportFile);
 
       mocks.readBatchFromFile
-        .mockResolvedValueOnce(mockFileData) // First batch
-        .mockResolvedValueOnce([]); // End of file
+        .mockReturnValueOnce(mockFileData) // First batch
+        .mockReturnValueOnce([]); // End of file
 
       mocks.generateUniqueId
         .mockReturnValueOnce("dataset-456:ext:1")
@@ -275,7 +289,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockImportFile);
 
-      mocks.readBatchFromFile.mockResolvedValueOnce(mockFileData).mockResolvedValueOnce([]);
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData).mockReturnValueOnce([]);
 
       mocks.generateUniqueId
         .mockReturnValueOnce("dataset-456:ext:1")
@@ -344,7 +358,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockImportFile);
 
-      mocks.readBatchFromFile.mockResolvedValueOnce(mockFileData).mockResolvedValueOnce([]);
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData).mockReturnValueOnce([]);
 
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1").mockReturnValueOnce("dataset-456:ext:2");
 
@@ -446,7 +460,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockImportFile);
 
       // Mock empty file
-      mocks.readBatchFromFile.mockResolvedValueOnce([]);
+      mocks.readBatchFromFile.mockReturnValueOnce([]);
 
       mockPayload.update.mockResolvedValueOnce({});
 

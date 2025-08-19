@@ -6,6 +6,9 @@
  * - Enhanced test utilities with builder patterns
  * - Geospatial assertion helpers
  * - Efficient database operations
+ *
+ * @module
+ * @category Integration Tests
  */
 
 // Import geospatial assertions (they extend expect automatically) and helper utilities

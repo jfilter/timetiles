@@ -12,14 +12,182 @@
 import path from "path";
 import type { Payload } from "payload";
 
-import { BATCH_SIZES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { readBatchFromFile } from "@/lib/utils/file-readers";
+import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
+
+interface DuplicateAnalysisResult {
+  internalDuplicates: Array<{
+    rowNumber: number;
+    uniqueId: string;
+    firstOccurrence?: number;
+    count?: number;
+  }>;
+  externalDuplicates: Array<{
+    rowNumber: number;
+    uniqueId: string;
+    existingEventId: number | string;
+  }>;
+  totalRows: number;
+  uniqueIdMap: Map<string, number>;
+}
+
+// Helper functions to reduce complexity
+const getJobResources = async (
+  payload: Payload,
+  importJobId: string | number
+): Promise<{ job: ImportJob; dataset: Dataset; importFile: ImportFile }> => {
+  const job = await payload.findByID({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: importJobId,
+  });
+
+  if (!job) {
+    throw new Error(`Import job not found: ${importJobId}`);
+  }
+
+  const dataset =
+    typeof job.dataset === "object"
+      ? job.dataset
+      : await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: job.dataset });
+
+  if (!dataset) {
+    throw new Error("Dataset not found");
+  }
+
+  const importFile =
+    typeof job.importFile === "object"
+      ? job.importFile
+      : await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: job.importFile });
+
+  if (!importFile) {
+    throw new Error("Import file not found");
+  }
+
+  return { job, dataset, importFile };
+};
+
+const skipDeduplication = async (
+  payload: Payload,
+  importJobId: string | number,
+  job: ImportJob,
+  dataset: Dataset,
+  logger: ReturnType<typeof createJobLogger>
+): Promise<boolean> => {
+  if (!dataset?.deduplicationConfig?.enabled) {
+    logger.info("Deduplication disabled for dataset, skipping", { datasetId: dataset?.id });
+
+    await payload.update({
+      collection: COLLECTION_NAMES.IMPORT_JOBS,
+      id: importJobId,
+      data: {
+        stage: PROCESSING_STAGE.DETECT_SCHEMA,
+        duplicates: {
+          strategy: "disabled",
+          internal: [],
+          external: [],
+          summary: ProgressTrackingService.createDeduplicationProgress(
+            job.progress?.total ?? 0,
+            job.progress?.total ?? 0,
+            0,
+            0
+          ),
+        },
+      },
+    });
+    return true;
+  }
+  return false;
+};
+
+const analyzeInternalDuplicates = (
+  filePath: string,
+  dataset: Dataset,
+  job: ImportJob
+): {
+  internalDuplicates: DuplicateAnalysisResult["internalDuplicates"];
+  uniqueIdMap: Map<string, number>;
+  totalRows: number;
+} => {
+  const internalDuplicates: DuplicateAnalysisResult["internalDuplicates"] = [];
+  const uniqueIdMap = new Map<string, number>();
+  let totalRows = 0;
+
+  const ANALYSIS_BATCH_SIZE = BATCH_SIZES.DUPLICATE_ANALYSIS;
+  let batchNumber = 0;
+
+  while (true) {
+    const rows = readBatchFromFile(filePath, {
+      sheetIndex: job.sheetIndex ?? undefined,
+      startRow: batchNumber * ANALYSIS_BATCH_SIZE,
+      limit: ANALYSIS_BATCH_SIZE,
+    });
+
+    if (rows.length === 0) break;
+
+    for (const [index, row] of rows.entries()) {
+      const rowNumber = batchNumber * ANALYSIS_BATCH_SIZE + index;
+      const uniqueId = generateUniqueId(row, dataset.idStrategy);
+
+      if (uniqueIdMap.has(uniqueId)) {
+        internalDuplicates.push({
+          rowNumber,
+          uniqueId,
+          firstOccurrence: uniqueIdMap.get(uniqueId),
+        });
+      } else {
+        uniqueIdMap.set(uniqueId, rowNumber);
+      }
+      totalRows++;
+    }
+
+    batchNumber++;
+  }
+
+  return { internalDuplicates, uniqueIdMap, totalRows };
+};
+
+const analyzeExternalDuplicates = async (
+  payload: Payload,
+  dataset: Dataset,
+  uniqueIdMap: Map<string, number>
+): Promise<DuplicateAnalysisResult["externalDuplicates"]> => {
+  const uniqueIds = Array.from(uniqueIdMap.keys());
+  const externalDuplicates: DuplicateAnalysisResult["externalDuplicates"] = [];
+
+  const CHUNK_SIZE = 1000;
+  for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
+    const chunk = uniqueIds.slice(i, i + CHUNK_SIZE);
+
+    const existingEvents = await payload.find({
+      collection: COLLECTION_NAMES.EVENTS,
+      where: {
+        dataset: { equals: dataset.id },
+        uniqueId: { in: chunk },
+      },
+      limit: chunk.length,
+    });
+
+    for (const event of existingEvents.docs) {
+      const rowNumber = uniqueIdMap.get(event.uniqueId);
+      if (rowNumber !== undefined) {
+        externalDuplicates.push({
+          rowNumber,
+          uniqueId: event.uniqueId,
+          existingEventId: event.id,
+        });
+      }
+    }
+  }
+
+  return externalDuplicates;
+};
 
 export const analyzeDuplicatesJob = {
   slug: JOB_TYPES.ANALYZE_DUPLICATES,
@@ -34,143 +202,35 @@ export const analyzeDuplicatesJob = {
     const startTime = Date.now();
 
     try {
-      // Get import job
-      const job = await payload.findByID({
-        collection: "import-jobs",
-        id: importJobId,
-      });
+      // Get all required resources
+      const { job, dataset, importFile } = await getJobResources(payload, importJobId);
 
-      if (!job) {
-        throw new Error(`Import job not found: ${importJobId}`);
-      }
-
-      // Get dataset configuration
-      const dataset =
-        typeof job.dataset === "object"
-          ? job.dataset
-          : await payload.findByID({ collection: "datasets", id: job.dataset });
-
-      if (!dataset) {
-        throw new Error("Dataset not found");
-      }
-
-      // Check if deduplication is enabled
-      if (!dataset.deduplicationConfig?.enabled) {
-        logger.info("Deduplication disabled for dataset, skipping", { datasetId: dataset.id });
-
-        // Set empty duplicates structure so other handlers can safely access these fields
-        await payload.update({
-          collection: "import-jobs",
-          id: importJobId,
-          data: {
-            stage: PROCESSING_STAGE.DETECT_SCHEMA,
-            duplicates: {
-              strategy: "disabled",
-              internal: [],
-              external: [],
-              summary: ProgressTrackingService.createDeduplicationProgress(
-                job.progress?.total || 0,
-                job.progress?.total || 0,
-                0,
-                0
-              ),
-            },
-          },
-        });
+      // Check if deduplication should be skipped
+      const shouldSkip = await skipDeduplication(payload, importJobId, job, dataset, logger);
+      if (shouldSkip) {
         return { output: { skipped: true } };
       }
 
-      // Get file details
-      const importFile =
-        typeof job.importFile === "object"
-          ? job.importFile
-          : await payload.findByID({ collection: "import-files", id: job.importFile });
-
-      if (!importFile) {
-        throw new Error("Import file not found");
-      }
-
+      // Get file path
       const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
-      const filePath = path.join(uploadDir, importFile.filename || "");
+      const filePath = path.join(uploadDir, importFile.filename ?? "");
 
-      // Analyze duplicates
-      let totalRows = 0;
-      const internalDuplicates: any[] = [];
-      const uniqueIdMap = new Map<string, number>();
+      // Analyze internal duplicates
+      const { internalDuplicates, uniqueIdMap, totalRows } = analyzeInternalDuplicates(filePath, dataset, job);
 
-      const ANALYSIS_BATCH_SIZE = BATCH_SIZES.DUPLICATE_ANALYSIS;
-      let batchNumber = 0;
-
-      // Process file in batches to build duplicate map
-      while (true) {
-        const rows = await readBatchFromFile(filePath, {
-          sheetIndex: job.sheetIndex ?? undefined,
-          startRow: batchNumber * ANALYSIS_BATCH_SIZE,
-          limit: ANALYSIS_BATCH_SIZE,
-        });
-
-        if (rows.length === 0) break;
-
-        // Generate unique IDs and check for internal duplicates
-        for (const [index, row] of rows.entries()) {
-          const rowNumber = batchNumber * ANALYSIS_BATCH_SIZE + index;
-          const uniqueId = generateUniqueId(row, dataset.idStrategy);
-
-          if (uniqueIdMap.has(uniqueId)) {
-            internalDuplicates.push({
-              rowNumber,
-              uniqueId,
-              firstOccurrence: uniqueIdMap.get(uniqueId),
-            });
-          } else {
-            uniqueIdMap.set(uniqueId, rowNumber);
-          }
-          totalRows++;
-        }
-
-        batchNumber++;
-      }
-
-      // Check for external duplicates (against existing events)
-      const uniqueIds = Array.from(uniqueIdMap.keys());
-      const externalDuplicates: any[] = [];
-
-      // Process in chunks to avoid query size limits
-      const CHUNK_SIZE = 1000;
-      for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
-        const chunk = uniqueIds.slice(i, i + CHUNK_SIZE);
-
-        const existingEvents = await payload.find({
-          collection: "events",
-          where: {
-            dataset: { equals: dataset.id },
-            uniqueId: { in: chunk },
-          },
-          limit: chunk.length,
-        });
-
-        for (const event of existingEvents.docs) {
-          const rowNumber = uniqueIdMap.get(event.uniqueId);
-          if (rowNumber !== undefined) {
-            externalDuplicates.push({
-              rowNumber,
-              uniqueId: event.uniqueId,
-              existingEventId: event.id,
-            });
-          }
-        }
-      }
+      // Analyze external duplicates
+      const externalDuplicates = await analyzeExternalDuplicates(payload, dataset, uniqueIdMap);
 
       // Calculate summary
-      const uniqueRows = uniqueIdMap.size; // Number of distinct unique IDs
+      const uniqueRows = uniqueIdMap.size;
 
       // Update job with duplicate analysis
       await payload.update({
-        collection: "import-jobs",
+        collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
         data: {
           duplicates: {
-            strategy: dataset.idStrategy?.type || "content-hash",
+            strategy: dataset.idStrategy?.type ?? "content-hash",
             internal: internalDuplicates,
             external: externalDuplicates,
             summary: {
@@ -180,7 +240,7 @@ export const analyzeDuplicatesJob = {
               externalDuplicates: externalDuplicates.length,
             },
           },
-          stage: PROCESSING_STAGE.DETECT_SCHEMA, // Continue to schema detection
+          stage: PROCESSING_STAGE.DETECT_SCHEMA,
         },
       });
 
@@ -203,9 +263,8 @@ export const analyzeDuplicatesJob = {
     } catch (error) {
       logError(error, "Duplicate analysis failed", { importJobId });
 
-      // Update job status to failed
       await payload.update({
-        collection: "import-jobs",
+        collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
         data: {
           stage: PROCESSING_STAGE.FAILED,

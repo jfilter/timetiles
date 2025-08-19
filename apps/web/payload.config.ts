@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { postgresAdapter } from "@payloadcms/db-postgres";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { buildConfig } from "payload";
@@ -50,7 +53,7 @@ export default buildConfig({
   }),
   cors: [serverURL],
   csrf: [serverURL],
-  sharp: sharp as any,
+  sharp,
   upload: DEFAULT_UPLOAD_CONFIG,
   graphQL: {
     disable: true,

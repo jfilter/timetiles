@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { EventsList } from "@/components/events-list";
 import type { Event } from "@/payload-types";
 

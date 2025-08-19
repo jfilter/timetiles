@@ -1,10 +1,10 @@
+/**
+ * Creates isolated test database for each worker
+ * @module
+ */
 import { Client } from "pg";
 
 import { logger } from "../../lib/logger";
-
-/**
- * Creates isolated test database for each worker
- */
 export const createTestDatabase = async (dbName: string): Promise<void> => {
   const client = new Client({
     host: "localhost",

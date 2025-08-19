@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { cleanup, render, screen } from "@testing-library/react";
 
 import { DatasetBarChart } from "../../../components/dataset-bar-chart";

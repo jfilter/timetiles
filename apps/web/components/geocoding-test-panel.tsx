@@ -1,3 +1,13 @@
+/**
+ * Testing panel for geocoding service configuration.
+ *
+ * Provides an interface to test geocoding providers with sample addresses,
+ * displaying results, accuracy, and performance metrics. Useful for
+ * debugging geocoding issues and provider configuration.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import { Button } from "@workspace/ui/components/button";

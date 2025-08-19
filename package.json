@@ -17,7 +17,7 @@
     "typecheck": "turbo typecheck",
     "check": "pnpm lint && pnpm typecheck",
     "setup:git": "./scripts/setup-git.sh",
-    "sonarcloud:fetch": "node scripts/fetch-sonarcloud-issues.js",
+    "sonarcloud:fetch": "tsx scripts/fetch-sonarcloud-issues.ts",
     "prepare": "husky"
   },
   "devDependencies": {

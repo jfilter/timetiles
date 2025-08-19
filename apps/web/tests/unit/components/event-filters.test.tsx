@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { EventFilters } from "@/components/event-filters";
 import type { Catalog } from "@/payload-types";
 

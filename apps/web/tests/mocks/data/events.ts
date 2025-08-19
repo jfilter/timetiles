@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import type { Event } from "@/payload-types";
 
 export const createMockEvent = (overrides: Partial<Event> = {}): Event => ({

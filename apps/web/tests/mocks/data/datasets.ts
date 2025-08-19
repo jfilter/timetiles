@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import type { Dataset } from "@/payload-types";
 
 const createRichTextDescription = (text: string) => ({

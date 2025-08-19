@@ -1,8 +1,12 @@
 /**
- * Schedule Service
+ * Service for managing periodic execution of scheduled imports.
  *
- * This service manages the periodic execution of the schedule manager job.
- * It ensures that scheduled imports are checked regularly and executed when due.
+ * Coordinates the execution of the schedule manager job at regular intervals,
+ * ensuring scheduled imports are checked and triggered when due. Provides
+ * lifecycle management for the scheduling system with configurable intervals.
+ *
+ * @module
+ * @category Services
  */
 
 import type { Payload } from "payload";
@@ -33,7 +37,7 @@ export class ScheduleService {
    * Starts the schedule service
    */
   start(): void {
-    if (this.intervalId || !this.config.enabled) {
+    if (this.intervalId !== null || !this.config.enabled) {
       logger.warn("Schedule service already running or disabled", {
         isRunning: !!this.intervalId,
         enabled: this.config.enabled,
@@ -46,11 +50,11 @@ export class ScheduleService {
     });
 
     // Run immediately, then at intervals
-    this.runScheduleManager();
+    void this.runScheduleManager();
 
     this.intervalId = setInterval(() => {
       if (!this.isShuttingDown) {
-        this.runScheduleManager();
+        void this.runScheduleManager();
       }
     }, this.config.intervalMs);
 

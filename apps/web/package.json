@@ -20,6 +20,7 @@
     "payload:validate": "tsx scripts/validate-types.ts",
     "seed": "tsx scripts/seed.ts development users catalogs datasets events imports main-menu pages",
     "test": "NODE_OPTIONS=\"--no-warnings\" vitest run",
+    "test:ai": "NODE_OPTIONS=\"--no-warnings\" vitest run --reporter=dot --reporter=json --outputFile.json=.test-results.json && tsx scripts/test-summary.ts",
     "test:silent": "NODE_OPTIONS=\"--no-warnings\" vitest run --reporter=basic --silent",
     "test:debug": "LOG_LEVEL=debug vitest run --reporter=verbose",
     "test:watch": "NODE_OPTIONS=\"--no-warnings\" vitest",

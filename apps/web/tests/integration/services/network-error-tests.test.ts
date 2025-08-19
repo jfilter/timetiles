@@ -7,9 +7,9 @@
  * - Connection failures
  * - Partial downloads
  * - Corrupted file handling
+ * @module
  */
 
-import { Readable } from "stream";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Use vi.hoisted to ensure mock is set up before ANY module evaluation
@@ -21,6 +21,25 @@ const { fetchMock } = vi.hoisted(() => {
 
 import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
 import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
+
+// Type definitions for urlFetchJob output
+interface UrlFetchSuccessOutput {
+  success: true;
+  importFileId: string | number;
+  filename: string;
+  fileSize: number | undefined;
+  contentType: string;
+  isDuplicate: boolean;
+  contentHash: string | undefined;
+  skippedReason?: string;
+}
+
+interface UrlFetchFailureOutput {
+  success: false;
+  error: string;
+}
+
+type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
 
 describe.sequential("Network Error Handling Tests", () => {
   let payload: any;
@@ -127,12 +146,10 @@ describe.sequential("Network Error Handling Tests", () => {
         status: 404,
         statusText: "Not Found",
         headers: {
-          get: (key: string) => null,
+          get: () => null,
         },
-        text: async () => "Not Found",
-        json: async () => {
-          throw new Error("Not JSON");
-        },
+        text: () => Promise.resolve("Not Found"),
+        json: () => Promise.reject(new Error("Not JSON")),
         body: null,
       });
 
@@ -151,7 +168,10 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       expect(result.output.success).toBe(false);
-      expect(result.output.error).toContain("404");
+      if (!result.output.success) {
+        const failureOutput = result.output as UrlFetchFailureOutput;
+        expect(failureOutput.error).toContain("404");
+      }
     });
   });
 
@@ -187,7 +207,10 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       expect(result.output.success).toBe(false);
-      expect(result.output.error).toMatch(/ENOTFOUND|getaddrinfo|network/i);
+      if (!result.output.success) {
+        const failureOutput = result.output as UrlFetchFailureOutput;
+        expect(failureOutput.error).toMatch(/ENOTFOUND|getaddrinfo|network/i);
+      }
     });
   });
 
@@ -223,7 +246,10 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       expect(result.output.success).toBe(false);
-      expect(result.output.error).toMatch(/ECONNREFUSED|connection refused|network/i);
+      if (!result.output.success) {
+        const failureOutput = result.output as UrlFetchFailureOutput;
+        expect(failureOutput.error).toMatch(/ECONNREFUSED|connection refused|network/i);
+      }
     });
 
     it("should handle connection timeout", async () => {
@@ -236,31 +262,21 @@ describe.sequential("Network Error Handling Tests", () => {
           catalog: testCatalogId as any,
           scheduleType: "frequency",
           frequency: "daily",
-          timeoutSeconds: 30, // Minimum allowed timeout
+          advancedOptions: {
+            timeoutMinutes: 1, // 1 minute timeout (minimum allowed)
+          },
         },
       });
 
-      // Mock a slow response that will timeout BEFORE importing
-      fetchMock.mockImplementation(async () => {
-        // Simulate a very slow response that will timeout in test environment
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        return {
-          ok: true,
-          status: 200,
-          statusText: "OK",
-          headers: {
-            get: (key: string) => (key === "content-type" ? "text/csv" : null),
-          },
-          body: {
-            getReader: () => ({
-              read: vi
-                .fn()
-                .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("test,data\n1,2") })
-                .mockResolvedValueOnce({ done: true }),
-            }),
-          },
-        };
-      });
+      // Mock a fetch that simulates a timeout by immediately rejecting with AbortError
+      // Since we're in test environment, timeout is 3 seconds but we'll reject immediately
+      fetchMock.mockRejectedValue(
+        (() => {
+          const error = new Error("The operation was aborted");
+          (error as any).name = "AbortError";
+          return error;
+        })()
+      );
 
       // Execute the job
       const result = await urlFetchJob.handler({
@@ -276,10 +292,13 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      // The mock waits 5 seconds but handler timeout is 30 seconds
-      // So it doesn't actually timeout - it succeeds after delay
-      expect(result.output.success).toBe(true);
-    });
+      // Should fail due to timeout
+      expect(result.output.success).toBe(false);
+      if (!result.output.success) {
+        const failureOutput = result.output as UrlFetchFailureOutput;
+        expect(failureOutput.error).toMatch(/abort|timeout/i);
+      }
+    }, 5000); // Allow 5 seconds for the test (3s timeout + buffer)
   });
 
   describe("HTTP Error Responses", () => {
@@ -302,7 +321,7 @@ describe.sequential("Network Error Handling Tests", () => {
         status: 404,
         statusText: "Not Found",
         headers: {
-          get: (key: string) => null,
+          get: () => null,
         },
         body: null,
       });
@@ -322,7 +341,10 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       expect(result.output.success).toBe(false);
-      expect(result.output.error).toContain("404");
+      if (!result.output.success) {
+        const failureOutput = result.output as UrlFetchFailureOutput;
+        expect(failureOutput.error).toContain("404");
+      }
     });
 
     it("should handle 500 Internal Server Error", async () => {
@@ -344,7 +366,7 @@ describe.sequential("Network Error Handling Tests", () => {
         status: 500,
         statusText: "Internal Server Error",
         headers: {
-          get: (key: string) => null,
+          get: () => null,
         },
         body: null,
       });
@@ -364,7 +386,10 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       expect(result.output.success).toBe(false);
-      expect(result.output.error).toContain("500");
+      if (!result.output.success) {
+        const failureOutput = result.output as UrlFetchFailureOutput;
+        expect(failureOutput.error).toContain("500");
+      }
     });
 
     it("should handle authentication failures", async () => {
@@ -390,7 +415,7 @@ describe.sequential("Network Error Handling Tests", () => {
         status: 401,
         statusText: "Unauthorized",
         headers: {
-          get: (key: string) => null,
+          get: () => null,
         },
         body: null,
       });
@@ -410,7 +435,10 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       expect(result.output.success).toBe(false);
-      expect(result.output.error).toContain("401");
+      if (!result.output.success) {
+        const failureOutput = result.output as UrlFetchFailureOutput;
+        expect(failureOutput.error).toContain("401");
+      }
     });
   });
 
@@ -428,18 +456,6 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      // Create a stream that errors after some data
-      const brokenStream = new Readable({
-        read() {
-          this.push("header1,header2\n");
-          this.push("data1,data2\n");
-          // Emit error after pushing some data
-          process.nextTick(() => {
-            this.destroy(new Error("Connection reset by peer"));
-          });
-        },
-      });
-
       // Mock a broken stream response
       fetchMock.mockResolvedValue({
         ok: true,
@@ -450,9 +466,7 @@ describe.sequential("Network Error Handling Tests", () => {
             read: vi.fn().mockRejectedValue(new Error("Connection reset by peer")),
           }),
         },
-        arrayBuffer: async () => {
-          throw new Error("Connection reset by peer");
-        },
+        arrayBuffer: () => Promise.reject(new Error("Connection reset by peer")),
       });
 
       // Execute the job
@@ -470,7 +484,10 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       expect(result.output.success).toBe(false);
-      expect(result.output.error).toMatch(/Connection reset|stream|error/i);
+      if (!result.output.success) {
+        const failureOutput = result.output as UrlFetchFailureOutput;
+        expect(failureOutput.error).toMatch(/Connection reset|stream|error/i);
+      }
     });
   });
 
@@ -529,7 +546,10 @@ describe.sequential("Network Error Handling Tests", () => {
       // TODO: Handler should reject HTML content when expecting CSV
       // Currently it accepts it and overrides content type to CSV
       expect(result.output.success).toBe(true);
-      expect(result.output.mimeType).toBe("text/csv");
+      if (result.output.success) {
+        const successOutput = result.output as UrlFetchSuccessOutput;
+        expect(successOutput.contentType).toBe("text/csv");
+      }
     });
 
     it("should handle binary data when expecting text", async () => {
@@ -584,7 +604,10 @@ describe.sequential("Network Error Handling Tests", () => {
       // TODO: Handler should reject binary data when expecting text
       // Currently it accepts it and overrides content type to CSV
       expect(result.output.success).toBe(true);
-      expect(result.output.mimeType).toBe("text/csv");
+      if (result.output.success) {
+        const successOutput = result.output as UrlFetchSuccessOutput;
+        expect(successOutput.contentType).toBe("text/csv");
+      }
     });
   });
 
@@ -599,8 +622,8 @@ describe.sequential("Network Error Handling Tests", () => {
           catalog: testCatalogId as any,
           scheduleType: "frequency",
           frequency: "daily",
-          advancedConfig: {
-            maxFileSize: 1, // 1MB limit
+          advancedOptions: {
+            maxFileSizeMB: 1, // 1MB limit
           },
         },
       });
@@ -644,7 +667,10 @@ describe.sequential("Network Error Handling Tests", () => {
 
       // Handler should reject files exceeding max size limit
       expect(result.output.success).toBe(false);
-      expect(result.output.error).toContain("too large");
+      if (!result.output.success) {
+        const failureOutput = result.output as UrlFetchFailureOutput;
+        expect(failureOutput.error).toContain("too large");
+      }
     });
   });
 
@@ -718,7 +744,10 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       expect(result.output.success).toBe(false);
-      expect(result.output.error).toMatch(/Too many redirects/i);
+      if (!result.output.success) {
+        const failureOutput = result.output as UrlFetchFailureOutput;
+        expect(failureOutput.error).toMatch(/Too many redirects/i);
+      }
     });
   });
 });

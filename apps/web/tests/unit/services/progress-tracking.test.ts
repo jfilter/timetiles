@@ -1,3 +1,6 @@
+/**
+ * @module
+ */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";

@@ -1,11 +1,27 @@
+/**
+ * Unit tests for the cleanup approval locks job handler.
+ *
+ * Tests the maintenance job that cleans up stale approval locks
+ * from import processing workflows.
+ *
+ * @module
+ * @category Tests
+ */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cleanupApprovalLocksJob } from "@/lib/jobs/handlers/cleanup-approval-locks-job";
 
+// Use vi.hoisted to create mocks that can be used in vi.mock factories
+const mocks = vi.hoisted(() => {
+  return {
+    cleanupTask: vi.fn(),
+  };
+});
+
 // Mock external dependencies
 vi.mock("@/lib/services/stage-transition", () => ({
   StageTransitionService: {
-    cleanupTask: vi.fn(),
+    cleanupTask: mocks.cleanupTask,
   },
 }));
 
@@ -16,9 +32,7 @@ describe.sequential("CleanupApprovalLocksJob Handler", () => {
   });
 
   describe("Success Cases", () => {
-    it("should clean up locks and return correct output", async () => {
-      const { StageTransitionService } = await import("@/lib/services/stage-transition");
-
+    it("should clean up locks and return correct output", () => {
       // Mock successful cleanup
       const mockCleanupResult = {
         output: {
@@ -26,7 +40,7 @@ describe.sequential("CleanupApprovalLocksJob Handler", () => {
         },
       };
 
-      (StageTransitionService.cleanupTask as any).mockReturnValue(mockCleanupResult);
+      mocks.cleanupTask.mockReturnValue(mockCleanupResult);
 
       // Execute job
       const result = cleanupApprovalLocksJob.handler();
@@ -40,12 +54,10 @@ describe.sequential("CleanupApprovalLocksJob Handler", () => {
       });
 
       // Verify service call
-      expect(StageTransitionService.cleanupTask).toHaveBeenCalledTimes(1);
+      expect(mocks.cleanupTask).toHaveBeenCalledTimes(1);
     });
 
-    it("should handle zero locks cleaned", async () => {
-      const { StageTransitionService } = await import("@/lib/services/stage-transition");
-
+    it("should handle zero locks cleaned", () => {
       // Mock cleanup with no locks to clean
       const mockCleanupResult = {
         output: {
@@ -53,7 +65,7 @@ describe.sequential("CleanupApprovalLocksJob Handler", () => {
         },
       };
 
-      (StageTransitionService.cleanupTask as any).mockReturnValue(mockCleanupResult);
+      mocks.cleanupTask.mockReturnValue(mockCleanupResult);
 
       // Execute job
       const result = cleanupApprovalLocksJob.handler();
@@ -67,16 +79,14 @@ describe.sequential("CleanupApprovalLocksJob Handler", () => {
       });
 
       // Verify service call
-      expect(StageTransitionService.cleanupTask).toHaveBeenCalledTimes(1);
+      expect(mocks.cleanupTask).toHaveBeenCalledTimes(1);
     });
   });
 
   describe("Error Handling", () => {
-    it("should propagate errors from StageTransitionService", async () => {
-      const { StageTransitionService } = await import("@/lib/services/stage-transition");
-
+    it("should propagate errors from StageTransitionService", () => {
       const mockError = new Error("Service cleanup failed");
-      (StageTransitionService.cleanupTask as any).mockImplementation(() => {
+      mocks.cleanupTask.mockImplementation(() => {
         throw mockError;
       });
 
@@ -84,7 +94,7 @@ describe.sequential("CleanupApprovalLocksJob Handler", () => {
       expect(() => cleanupApprovalLocksJob.handler()).toThrow("Service cleanup failed");
 
       // Verify service call was made
-      expect(StageTransitionService.cleanupTask).toHaveBeenCalledTimes(1);
+      expect(mocks.cleanupTask).toHaveBeenCalledTimes(1);
     });
   });
 

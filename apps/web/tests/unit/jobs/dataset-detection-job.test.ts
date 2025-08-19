@@ -1,3 +1,12 @@
+/**
+ * Unit tests for the dataset detection job handler.
+ *
+ * Tests automatic dataset detection and creation during import processing,
+ * including handling of single and multi-sheet files.
+ *
+ * @module
+ * @category Tests
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { datasetDetectionJob } from "@/lib/jobs/handlers/dataset-detection-job";
@@ -32,6 +41,9 @@ vi.mock("@/lib/logger", () => ({
 
 vi.mock("fs", () => ({
   default: mocks.fs,
+  promises: {
+    readFile: vi.fn(),
+  },
 }));
 
 vi.mock("@/lib/services/progress-tracking", () => ({
@@ -96,7 +108,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
   describe("Success Cases", () => {
     it("should process CSV file successfully", async () => {
       const mockImportFile = {
-        id: "import-file-123",
+        id: 123, // Use numeric ID as handler expects
         filename: "test.csv",
         filePath: "/tmp/test.csv",
         catalog: 456,
@@ -113,11 +125,16 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         .mockResolvedValueOnce(mockCatalog); // catalog
 
       mockPayload.find.mockResolvedValue({ docs: [] }); // No existing datasets
-      mockPayload.create.mockResolvedValue({ id: "test-id" }); // Generic response for all creates
+
+      // Mock creates to return appropriate IDs
+      mockPayload.create
+        .mockResolvedValueOnce({ id: "test-id" }) // dataset creation
+        .mockResolvedValueOnce({ id: "import-job-id" }); // import job creation
 
       await datasetDetectionJob.handler(mockContext);
 
-      expect(mockPayload.create).toHaveBeenCalledWith({
+      // Check that dataset was created first
+      expect(mockPayload.create).toHaveBeenNthCalledWith(1, {
         collection: "datasets",
         data: expect.objectContaining({
           name: "test.csv", // Uses originalName from importFile
@@ -125,11 +142,12 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         }),
       });
 
-      expect(mockPayload.create).toHaveBeenCalledWith({
+      // Check that import job was created second with correct dataset ID
+      expect(mockPayload.create).toHaveBeenNthCalledWith(2, {
         collection: "import-jobs",
         data: expect.objectContaining({
           dataset: "test-id",
-          importFile: "import-file-123",
+          importFile: 123, // importFile ID is converted to number
           sheetIndex: 0,
           stage: "analyze-duplicates",
         }),
@@ -139,17 +157,50 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     });
 
     it("should process Excel file with multiple sheets", async () => {
-      // Use actual fixture file for this test
-      const fs = require("fs");
-      const path = require("path");
-      const fixturePath = path.join(__dirname, "../../fixtures/multi-sheet.xlsx");
-      const fixtureBuffer = fs.readFileSync(fixturePath);
+      // Create a real Excel file with multiple sheets using xlsx library
+      const XLSX = await import("xlsx");
 
-      // Mock fs.readFileSync to return the actual fixture content
-      mocks.fs.readFileSync.mockReturnValue(fixtureBuffer);
+      // Create workbook with 3 sheets
+      const workbook = XLSX.utils.book_new();
+
+      // Sheet 1: Events
+      const eventsData = [
+        ["id", "title", "date", "location"],
+        ["1", "Event 1", "2024-01-01", "San Francisco"],
+        ["2", "Event 2", "2024-01-02", "New York"],
+        ["3", "Event 3", "2024-01-03", "Los Angeles"],
+      ];
+      const eventsSheet = XLSX.utils.aoa_to_sheet(eventsData);
+      XLSX.utils.book_append_sheet(workbook, eventsSheet, "Events");
+
+      // Sheet 2: Locations
+      const locationsData = [
+        ["id", "name", "lat", "lng"],
+        ["1", "San Francisco", "37.7749", "-122.4194"],
+        ["2", "New York", "40.7128", "-74.0060"],
+        ["3", "Los Angeles", "34.0522", "-118.2437"],
+      ];
+      const locationsSheet = XLSX.utils.aoa_to_sheet(locationsData);
+      XLSX.utils.book_append_sheet(workbook, locationsSheet, "Locations");
+
+      // Sheet 3: Categories
+      const categoriesData = [
+        ["id", "name", "color"],
+        ["1", "Conference", "#FF0000"],
+        ["2", "Workshop", "#00FF00"],
+        ["3", "Meetup", "#0000FF"],
+      ];
+      const categoriesSheet = XLSX.utils.aoa_to_sheet(categoriesData);
+      XLSX.utils.book_append_sheet(workbook, categoriesSheet, "Categories");
+
+      // Convert workbook to buffer
+      const excelBuffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+
+      // Mock fs.readFileSync to return the Excel buffer
+      mocks.fs.readFileSync.mockReturnValue(excelBuffer);
 
       const mockImportFile = {
-        id: "import-file-123",
+        id: 123, // Use numeric ID as handler expects
         filename: "multi-sheet.xlsx",
         filePath: "/tmp/multi-sheet.xlsx",
         catalog: 456,
@@ -164,16 +215,29 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce(mockCatalog);
 
       mockPayload.find.mockResolvedValue({ docs: [] });
-      mockPayload.create.mockResolvedValue({ id: "test-id" }); // Generic response for all creates
+
+      // Mock dataset creation to return unique IDs for each dataset
+      let datasetCounter = 1;
+      let jobCounter = 1;
+      mockPayload.create.mockImplementation((params: any) => {
+        if (params.collection === "datasets") {
+          return Promise.resolve({ id: `dataset-${datasetCounter++}` });
+        } else if (params.collection === "import-jobs") {
+          return Promise.resolve({ id: `job-${jobCounter++}` });
+        }
+        return Promise.resolve({ id: "test-id" });
+      });
 
       await datasetDetectionJob.handler(mockContext);
 
       expect(mockPayload.create).toHaveBeenCalledTimes(6); // 3 datasets + 3 import jobs
 
+      // Check that datasets were created with correct names
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "datasets",
         data: expect.objectContaining({
           name: "Events",
+          catalog: 456,
         }),
       });
 
@@ -181,6 +245,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         collection: "datasets",
         data: expect.objectContaining({
           name: "Locations",
+          catalog: 456,
         }),
       });
 
@@ -188,13 +253,45 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         collection: "datasets",
         data: expect.objectContaining({
           name: "Categories",
+          catalog: 456,
+        }),
+      });
+
+      // Check that import jobs were created for each sheet
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "import-jobs",
+        data: expect.objectContaining({
+          dataset: "dataset-1",
+          importFile: 123,
+          sheetIndex: 0,
+          stage: "analyze-duplicates",
+        }),
+      });
+
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "import-jobs",
+        data: expect.objectContaining({
+          dataset: "dataset-2",
+          importFile: 123,
+          sheetIndex: 1,
+          stage: "analyze-duplicates",
+        }),
+      });
+
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "import-jobs",
+        data: expect.objectContaining({
+          dataset: "dataset-3",
+          importFile: 123,
+          sheetIndex: 2,
+          stage: "analyze-duplicates",
         }),
       });
     });
 
     it("should match existing dataset by name", async () => {
       const mockImportFile = {
-        id: "import-file-123",
+        id: 123, // Use numeric ID
         filename: "existing.csv",
         filePath: "/tmp/existing.csv",
         catalog: 456,
@@ -226,7 +323,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         collection: "import-jobs",
         data: expect.objectContaining({
           dataset: "existing-dataset-999", // Use existing dataset
-          importFile: "import-file-123",
+          importFile: 123, // importFile ID is converted to number
           sheetIndex: 0,
           stage: "analyze-duplicates",
         }),
@@ -273,6 +370,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       await datasetDetectionJob.handler(mockContext);
 
       // Note: File cleanup is not implemented in the current handler
+      expect(mockPayload.findByID).toHaveBeenCalled();
     });
   });
 
@@ -383,7 +481,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
     it("should handle Excel file with empty sheets", async () => {
       // Create a simple Excel file with truly empty sheets using xlsx library
-      const XLSX = require("xlsx");
+      const XLSX = await import("xlsx");
       const emptyWorkbook = XLSX.utils.book_new();
       const emptyWorksheet = XLSX.utils.aoa_to_sheet([]); // Completely empty sheet
       XLSX.utils.book_append_sheet(emptyWorkbook, emptyWorksheet, "EmptySheet");

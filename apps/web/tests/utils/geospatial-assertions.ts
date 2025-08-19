@@ -4,6 +4,9 @@
  * Custom assertion helpers for geospatial data testing.
  * Extends Vitest's expect with specialized matchers for coordinates,
  * distances, and geospatial relationships.
+ *
+ * @module
+ * @category Test Utilities
  */
 
 // Utility functions for geospatial testing
