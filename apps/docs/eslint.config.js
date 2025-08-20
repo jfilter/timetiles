@@ -6,13 +6,16 @@ export default [
   // Only configure MDX files explicitly here
   ...mdxConfig,
   {
-    files: ["**/*.mdx", "**/*.md"],
-    // Ignore auto-generated API documentation
+    // Global ignores for auto-generated API documentation
     ignores: [
       "pages/reference/api/**/*.md",
       "pages/reference/api/**/*.mdx",
       // Keep manual files
       "!pages/reference/api/index.mdx",
+      "!pages/reference/api/_meta.json",
     ],
+  },
+  {
+    files: ["**/*.mdx", "**/*.md"],
   },
 ];
