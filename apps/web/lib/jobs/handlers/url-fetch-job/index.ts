@@ -18,7 +18,7 @@ import { logError, logger } from "@/lib/logger";
 import type { ScheduledImport } from "@/payload-types";
 
 import { buildAuthHeaders } from "./auth";
-import { calculateDataHash, detectFileTypeFromResponse, fetchWithRetry } from "./fetch-utils";
+import { calculateDataHash, detectFileTypeFromResponse, type FetchResult, fetchWithRetry } from "./fetch-utils";
 import {
   checkForDuplicateContent,
   loadScheduledImportConfig,
@@ -169,6 +169,67 @@ const handleFetchSuccess = async (
   };
 };
 
+const prepareFetchOptions = (scheduledImport: ScheduledImport | null) => {
+  // Determine timeout from config
+  const timeoutMinutes = scheduledImport?.advancedOptions?.timeoutMinutes ?? 30;
+  // Use much shorter timeout in test environment (3 seconds instead of minutes)
+  const isTestEnv = process.env.NODE_ENV === "test";
+  const timeout = isTestEnv ? 3000 : timeoutMinutes * 60 * 1000;
+
+  // Determine max file size from config
+  const maxFileSizeMB = scheduledImport?.advancedOptions?.maxFileSizeMB;
+  const maxSize = maxFileSizeMB ? maxFileSizeMB * 1024 * 1024 : undefined;
+
+  return { timeout, maxSize };
+};
+
+const createImportContext = (input: UrlFetchJobInput, scheduledImport: ScheduledImport | null): ImportContext => {
+  return {
+    originalName: input.originalName,
+    catalogId:
+      input.catalogId ??
+      (typeof scheduledImport?.catalog === "object" ? scheduledImport.catalog.id : scheduledImport?.catalog),
+    userId: input.userId,
+    scheduledImportId: input.scheduledImportId,
+    scheduledImport,
+    advancedConfig: scheduledImport?.advancedOptions,
+  };
+};
+
+const buildSuccessOutput = (
+  importFileId: string | number,
+  filename: string,
+  contentHash: string,
+  isDuplicate: boolean,
+  fetchResult: FetchResult
+) => {
+  return {
+    output: {
+      success: true,
+      importFileId,
+      filename,
+      contentHash,
+      isDuplicate,
+      contentType: fetchResult.contentType,
+      fileSize: fetchResult.contentLength,
+      ...(isDuplicate && { skippedReason: "Duplicate content detected" }),
+    },
+  };
+};
+
+const buildErrorOutput = (error: Error) => {
+  return {
+    output: {
+      success: false,
+      error: error.message,
+      errorDetails: {
+        name: error.name,
+        stack: error.stack,
+      },
+    },
+  };
+};
+
 export const urlFetchJob = {
   slug: "url-fetch",
   handler: async (context: JobHandlerContext) => {
@@ -195,15 +256,8 @@ export const urlFetchJob = {
       // Build authentication headers
       const authHeaders = buildAuthHeaders(input.authConfig ?? scheduledImport?.authConfig);
 
-      // Determine timeout from config
-      const timeoutMinutes = scheduledImport?.advancedOptions?.timeoutMinutes ?? 30;
-      // Use much shorter timeout in test environment (3 seconds instead of minutes)
-      const isTestEnv = process.env.NODE_ENV === "test";
-      const timeout = isTestEnv ? 3000 : timeoutMinutes * 60 * 1000;
-
-      // Determine max file size from config
-      const maxFileSizeMB = scheduledImport?.advancedOptions?.maxFileSizeMB;
-      const maxSize = maxFileSizeMB ? maxFileSizeMB * 1024 * 1024 : undefined;
+      // Prepare fetch options
+      const { timeout, maxSize } = prepareFetchOptions(scheduledImport);
 
       // Fetch data with retry
       const fetchResult = await fetchWithRetry(input.sourceUrl, {
@@ -221,16 +275,7 @@ export const urlFetchJob = {
       });
 
       // Create context for import handling
-      const context: ImportContext = {
-        originalName: input.originalName,
-        catalogId:
-          input.catalogId ??
-          (typeof scheduledImport?.catalog === "object" ? scheduledImport.catalog.id : scheduledImport?.catalog),
-        userId: input.userId,
-        scheduledImportId: input.scheduledImportId,
-        scheduledImport,
-        advancedConfig: scheduledImport?.advancedOptions,
-      };
+      const importContext = createImportContext(input, scheduledImport);
 
       // Handle successful fetch
       const { importFileId, filename, contentHash, isDuplicate } = await handleFetchSuccess(
@@ -238,7 +283,7 @@ export const urlFetchJob = {
         fetchResult.data,
         fetchResult.contentType,
         input.sourceUrl,
-        context
+        importContext
       );
 
       // Update scheduled import status if applicable
@@ -247,18 +292,7 @@ export const urlFetchJob = {
         await updateScheduledImportSuccess(payload, scheduledImport, importFileId, duration);
       }
 
-      return {
-        output: {
-          success: true,
-          importFileId,
-          filename,
-          contentHash,
-          isDuplicate,
-          contentType: fetchResult.contentType,
-          fileSize: fetchResult.contentLength,
-          ...(isDuplicate && { skippedReason: "Duplicate content detected" }),
-        },
-      };
+      return buildSuccessOutput(importFileId, filename, contentHash, isDuplicate, fetchResult);
     } catch (error) {
       const errorObj = error as Error;
       logError(errorObj, "URL fetch job failed", {
@@ -272,16 +306,7 @@ export const urlFetchJob = {
       }
 
       // Return failure output instead of throwing
-      return {
-        output: {
-          success: false,
-          error: errorObj.message,
-          errorDetails: {
-            name: errorObj.name,
-            stack: errorObj.stack,
-          },
-        },
-      };
+      return buildErrorOutput(errorObj);
     }
   },
 };

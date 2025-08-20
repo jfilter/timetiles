@@ -160,9 +160,8 @@ const shouldRunNow = (scheduledImport: ScheduledImport, currentTime: Date): bool
   }
 
   // Check schedule configuration
-
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Logical OR is correct here for boolean logic
   const hasValidSchedule = Boolean(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (scheduledImport.scheduleType === "frequency" && scheduledImport.frequency) ||
       (scheduledImport.scheduleType === "cron" && scheduledImport.cronExpression)
   );

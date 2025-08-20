@@ -22,7 +22,7 @@ import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import { getGeocodingResultForRow, getGeocodingResults } from "@/lib/types/geocoding";
 import { readBatchFromFile } from "@/lib/utils/file-readers";
-import type { Dataset } from "@/payload-types";
+import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 
 import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
@@ -270,6 +270,115 @@ const getJobResources = async (payload: Payload, importJobId: string | number) =
   return { job, dataset, importFile };
 };
 
+const processBatchData = async (
+  payload: Payload,
+  job: ImportJob,
+  dataset: Dataset,
+  importFile: ImportFile,
+  batchNumber: number,
+  logger: ReturnType<typeof createJobLogger>
+) => {
+  const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+  const filePath = path.join(uploadDir, importFile.filename ?? "");
+  const BATCH_SIZE = BATCH_SIZES.EVENT_CREATION;
+
+  const rows = readBatchFromFile(filePath, {
+    sheetIndex: job.sheetIndex ?? undefined,
+    startRow: batchNumber * BATCH_SIZE,
+    limit: BATCH_SIZE,
+  });
+
+  if (rows.length === 0) {
+    return { rows, eventsCreated: 0, eventsSkipped: 0, errors: [] };
+  }
+
+  const result = await processEventBatch(
+    payload,
+    rows,
+    {
+      duplicates: job.duplicates,
+      datasetSchemaVersion: job.datasetSchemaVersion,
+      geocodingResults: job.geocodingResults,
+    },
+    dataset,
+    job.id,
+    batchNumber,
+    logger
+  );
+
+  return { rows, ...result };
+};
+
+const updateJobProgress = async (
+  payload: Payload,
+  importJobId: string | number,
+  job: ImportJob,
+  eventsCreated: number,
+  errors: Array<{ row: number; error: string }>
+) => {
+  const currentProgress = job.progress?.current ?? 0;
+  await payload.update({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: importJobId,
+    data: {
+      progress: {
+        ...job.progress,
+        current: currentProgress + eventsCreated,
+      },
+      errors: [...(job.errors ?? []), ...errors],
+    },
+  });
+};
+
+const handleBatchCompletion = async (
+  payload: Payload,
+  job: ImportJob,
+  importJobId: string | number,
+  batchNumber: number,
+  eventsCreated: number,
+  hasMore: boolean
+) => {
+  if (!hasMore) {
+    await markJobCompleted(
+      payload,
+      importJobId,
+      {
+        progress: job.progress,
+        duplicates: job.duplicates,
+        errors: job.errors ?? undefined,
+        geocodingResults: job.geocodingResults,
+      },
+      eventsCreated
+    );
+    const importFileId = typeof job.importFile === "object" ? job.importFile.id : job.importFile;
+    await updateImportFileStatusIfAllJobsComplete(payload, importFileId);
+    return;
+  }
+
+  await payload.jobs.queue({
+    task: JOB_TYPES.CREATE_EVENTS,
+    input: { importJobId, batchNumber: batchNumber + 1 },
+  });
+};
+
+const handleJobError = async (payload: Payload, importJobId: string | number, batchNumber: number, error: unknown) => {
+  logError(error, "Event creation batch failed", { importJobId, batchNumber });
+
+  await payload.update({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: importJobId,
+    data: {
+      stage: PROCESSING_STAGE.FAILED,
+      errors: [
+        {
+          row: batchNumber * 1000,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+      ],
+    },
+  });
+};
+
 export const createEventsBatchJob = {
   slug: JOB_TYPES.CREATE_EVENTS,
   handler: async (context: JobHandlerContext) => {
@@ -285,15 +394,14 @@ export const createEventsBatchJob = {
     try {
       const { job, dataset, importFile } = await getJobResources(payload, importJobId);
 
-      const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
-      const filePath = path.join(uploadDir, importFile.filename ?? "");
-      const BATCH_SIZE = BATCH_SIZES.EVENT_CREATION;
-
-      const rows = readBatchFromFile(filePath, {
-        sheetIndex: job.sheetIndex ?? undefined,
-        startRow: batchNumber * BATCH_SIZE,
-        limit: BATCH_SIZE,
-      });
+      const { rows, eventsCreated, eventsSkipped, errors } = await processBatchData(
+        payload,
+        job,
+        dataset,
+        importFile,
+        batchNumber,
+        logger
+      );
 
       if (rows.length === 0) {
         await markJobCompleted(
@@ -310,54 +418,10 @@ export const createEventsBatchJob = {
         return { output: { completed: true } };
       }
 
-      const { eventsCreated, eventsSkipped, errors } = await processEventBatch(
-        payload,
-        rows,
-        {
-          duplicates: job.duplicates,
-          datasetSchemaVersion: job.datasetSchemaVersion,
-          geocodingResults: job.geocodingResults,
-        },
-        dataset,
-        importJobId,
-        batchNumber,
-        logger
-      );
+      await updateJobProgress(payload, importJobId, job, eventsCreated, errors);
 
-      const currentProgress = job.progress?.current ?? 0;
-      await payload.update({
-        collection: COLLECTION_NAMES.IMPORT_JOBS,
-        id: importJobId,
-        data: {
-          progress: {
-            ...job.progress,
-            current: currentProgress + eventsCreated,
-          },
-          errors: [...(job.errors ?? []), ...errors],
-        },
-      });
-
-      const hasMore = rows.length === BATCH_SIZE;
-      if (hasMore) {
-        await payload.jobs.queue({
-          task: JOB_TYPES.CREATE_EVENTS,
-          input: { importJobId, batchNumber: batchNumber + 1 },
-        });
-      } else {
-        await markJobCompleted(
-          payload,
-          importJobId,
-          {
-            progress: job.progress,
-            duplicates: job.duplicates,
-            errors: job.errors ?? undefined,
-            geocodingResults: job.geocodingResults,
-          },
-          eventsCreated
-        );
-        const importFileId = typeof job.importFile === "object" ? job.importFile.id : job.importFile;
-        await updateImportFileStatusIfAllJobsComplete(payload, importFileId);
-      }
+      const hasMore = rows.length === BATCH_SIZES.EVENT_CREATION;
+      await handleBatchCompletion(payload, job, importJobId, batchNumber, eventsCreated, hasMore);
 
       logPerformance("Event creation batch", Date.now() - startTime, {
         importJobId,
@@ -377,21 +441,7 @@ export const createEventsBatchJob = {
         },
       };
     } catch (error) {
-      logError(error, "Event creation batch failed", { importJobId, batchNumber });
-
-      await payload.update({
-        collection: COLLECTION_NAMES.IMPORT_JOBS,
-        id: importJobId,
-        data: {
-          stage: PROCESSING_STAGE.FAILED,
-          errors: [
-            {
-              row: batchNumber * 1000,
-              error: error instanceof Error ? error.message : "Unknown error",
-            },
-          ],
-        },
-      });
+      await handleJobError(payload, importJobId, batchNumber, error);
 
       try {
         const failedJob = await payload.findByID({
