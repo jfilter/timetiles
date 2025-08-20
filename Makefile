@@ -82,6 +82,10 @@ test:
 test-ai:
 	cd apps/web && pnpm test:ai
 
+# Run tests with coverage report
+test-coverage:
+	pnpm test:coverage
+
 # Seed database
 seed:
 	pnpm seed

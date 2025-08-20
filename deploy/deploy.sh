@@ -295,14 +295,6 @@ EOF
             echo -e "${RED}✗ Unhealthy${NC}"
         fi
         
-        # Check Redis
-        echo -n "Redis: "
-        if $DC_CMD exec redis redis-cli ping > /dev/null 2>&1; then
-            echo -e "${GREEN}✓ Healthy${NC}"
-        else
-            echo -e "${RED}✗ Unhealthy${NC}"
-        fi
-        
         # Check Web App
         echo -n "Web App: "
         if curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then

@@ -9,7 +9,6 @@ TimeTiles provides a production-ready Docker deployment that includes:
 - **Nginx** reverse proxy with SSL/TLS termination
 - **Next.js** application server (standalone build)
 - **PostgreSQL 17** with PostGIS extension
-- **Redis** for caching and session management
 - **Certbot** for automatic SSL certificate renewal
 
 ## Quick Start
@@ -85,7 +84,6 @@ GOOGLE_MAPS_API_KEY=<your-api-key>
 The environment file supports extensive customization:
 
 - **PostgreSQL tuning**: Memory, connections, cache settings
-- **Redis configuration**: Memory limits, persistence
 - **Port mapping**: Custom ports without modifying compose files
 - **Container naming**: Support for multiple deployments
 

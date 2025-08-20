@@ -37,26 +37,6 @@ services:
     networks:
       - timetiles-network
 
-  # Redis for caching and sessions
-  redis:
-    image: redis:${REDIS_VERSION:-7-alpine}
-    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-redis
-    restart: unless-stopped
-    command: >
-      redis-server
-      --maxmemory ${REDIS_MAX_MEMORY:-256mb}
-      --maxmemory-policy ${REDIS_POLICY:-allkeys-lru}
-      --appendonly ${REDIS_PERSISTENCE:-yes}
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - timetiles-network
-
   # Web application
   web:
     build:
@@ -80,9 +60,6 @@ services:
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
       NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
       
-      # Redis
-      REDIS_URL: redis://redis:6379
-      
       # Application
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${CONTAINER_PORT:-3000}
@@ -95,8 +72,6 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     volumes:
       # Persist uploaded files if not using S3
@@ -141,8 +116,6 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
-  redis_data:
     driver: local
   uploads_data:
     driver: local

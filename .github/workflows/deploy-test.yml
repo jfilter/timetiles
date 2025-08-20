@@ -74,9 +74,6 @@ jobs:
           echo "Waiting for PostgreSQL..."
           timeout 60 bash -c 'until docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T postgres pg_isready -U timetiles_user -d timetiles; do sleep 2; done'
           
-          echo "Waiting for Redis..."
-          timeout 30 bash -c 'until docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T redis redis-cli ping; do sleep 2; done'
-          
           echo "Waiting for web app..."
           timeout 60 bash -c 'until curl -f http://localhost:80/api/health 2>/dev/null; do sleep 2; done'
           
@@ -173,22 +170,6 @@ jobs:
           docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T postgres \
             psql -U timetiles_user -d timetiles -c "\dn payload"
             
-      - name: Test Redis connectivity
-        run: |
-          echo "Testing Redis..."
-          
-          # Set and get a test key
-          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T redis \
-            redis-cli SET test_key "test_value"
-          
-          VALUE=$(docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T redis \
-            redis-cli GET test_key)
-          
-          if [ "$VALUE" != "test_value" ]; then
-            echo "Redis test failed!"
-            exit 1
-          fi
-          
       - name: Test container restart
         run: |
           echo "Testing container restart..."
@@ -224,9 +205,6 @@ jobs:
           
           echo "=== PostgreSQL Logs ==="
           docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production logs postgres
-          
-          echo "=== Redis Logs ==="
-          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production logs redis
           
       - name: Cleanup
         if: always()

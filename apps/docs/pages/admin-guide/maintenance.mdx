@@ -155,19 +155,6 @@ FROM pg_stat_user_indexes
 ORDER BY idx_scan;
 ```
 
-### Redis Cache Management
-
-```bash
-# Monitor Redis memory
-docker-compose -f deploy/docker-compose.prod.yml exec redis redis-cli INFO memory
-
-# Clear cache if needed
-docker-compose -f deploy/docker-compose.prod.yml exec redis redis-cli FLUSHALL
-
-# View cache keys
-docker-compose -f deploy/docker-compose.prod.yml exec redis redis-cli KEYS "*"
-```
-
 ## Monitoring
 
 ### Log Management

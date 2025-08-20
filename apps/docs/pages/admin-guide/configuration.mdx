@@ -26,9 +26,6 @@ NODE_ENV=development|production
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_PAYLOAD_URL=http://localhost:3000
 
-# Redis (required for production)
-REDIS_URL=redis://localhost:6379
-
 # Logging
 LOG_LEVEL=info|debug|warn|error
 ```
@@ -126,10 +123,6 @@ NODE_OPTIONS="--max-old-space-size=4096"
 # Database Pool
 DB_POOL_MIN=2
 DB_POOL_MAX=10
-
-# Redis Cache
-REDIS_MAX_MEMORY=1gb
-REDIS_EVICTION_POLICY=allkeys-lru
 ```
 
 ## Production vs Development
@@ -149,7 +142,6 @@ LOG_LEVEL=debug
 NODE_ENV=production
 DATABASE_URL=postgresql://prod_user:strong_password@db.internal:5432/timetiles_prod
 PAYLOAD_SECRET=<generate-with-openssl-rand-base64-32>
-REDIS_URL=redis://redis.internal:6379
 LOG_LEVEL=info
 ENABLE_SECURITY_HEADERS=true
 ```
@@ -190,7 +182,6 @@ TimeTiles validates configuration on startup:
 1. **Required variables**: Checks for DATABASE_URL and PAYLOAD_SECRET
 2. **Database connection**: Verifies PostgreSQL is accessible
 3. **PostGIS extension**: Ensures spatial functions are available
-4. **Redis connection**: Checks Redis if configured (required in production)
 
 ## Troubleshooting Configuration
 
