@@ -36,9 +36,10 @@ ARG NEXT_PUBLIC_PAYLOAD_URL
 # Set build environment
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV DATABASE_URL=${DATABASE_URL}
-ENV PAYLOAD_SECRET=${PAYLOAD_SECRET}
-ENV NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL}
+# Use dummy values for build if not provided (Payload needs them for schema generation)
+ENV DATABASE_URL=${DATABASE_URL:-postgresql://user:pass@postgres:5432/db}
+ENV PAYLOAD_SECRET=${PAYLOAD_SECRET:-dummy_secret_for_build_only}
+ENV NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
 
 # Build the application
 WORKDIR /app/apps/web
