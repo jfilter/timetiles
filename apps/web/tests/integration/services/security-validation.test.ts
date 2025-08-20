@@ -326,7 +326,7 @@ describe.sequential("Security Validation Tests", () => {
       });
 
       // Mock the API endpoint to verify Basic Auth header
-      fetchMock.mockImplementation((url, options) => {
+      fetchMock.mockImplementation((_url, options) => {
         // Check if Basic Auth header is present
         const authHeader = options?.headers?.["Authorization"];
         const expectedAuth = "Basic " + Buffer.from("user@example.com:password123").toString("base64");

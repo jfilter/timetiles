@@ -256,7 +256,7 @@ export const GeocodingProviders: CollectionConfig = {
                   type: "group",
                   label: "Southwest Corner",
                   admin: {
-                    condition: (data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
+                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
                   },
                   fields: [
                     {
@@ -280,7 +280,7 @@ export const GeocodingProviders: CollectionConfig = {
                   type: "group",
                   label: "Northeast Corner",
                   admin: {
-                    condition: (data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
+                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
                   },
                   fields: [
                     {

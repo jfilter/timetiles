@@ -131,7 +131,7 @@ const getCatalogConfigs = (environment: string) => {
 const createDatasetFromTemplate = (
   template: { name: string; description: string; slug: string },
   catalog: { slug: string; type: string },
-  schema: { [k: string]: unknown } | null,
+  _schema: { [k: string]: unknown } | null,
   datasetIndex: number
 ): DatasetSeed => {
   const isArchived = catalog.slug === "historical-records";

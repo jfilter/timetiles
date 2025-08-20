@@ -66,7 +66,7 @@ Examples:
       // Add timeout protection for truncate operations
       await Promise.race([
         seedManager.truncate(collections),
-        new Promise((resolve, reject) =>
+        new Promise((_resolve, reject) =>
           setTimeout(() => reject(new Error(`Truncate operation timeout after ${TOTAL_TIMEOUT}ms`)), TOTAL_TIMEOUT)
         ),
       ]);
@@ -94,7 +94,7 @@ Examples:
           collections: collections.length > 0 ? collections : undefined,
           truncate: false,
         }),
-        new Promise((resolve, reject) =>
+        new Promise((_resolve, reject) =>
           setTimeout(() => reject(new Error(`Seed operation timeout after ${TOTAL_TIMEOUT}ms`)), TOTAL_TIMEOUT)
         ),
       ]);

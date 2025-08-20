@@ -70,7 +70,7 @@ const formatJobProgress = (job: ImportJob): JobProgress => {
 };
 
 export const GET = async (
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ importId: string }> }
 ): Promise<NextResponse> => {
   try {

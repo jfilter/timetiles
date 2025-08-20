@@ -121,7 +121,7 @@ export const validateCronExpression = (value: string | null | undefined): string
  * Validates that either frequency or cron expression is provided when enabled
  */
 export const validateScheduleConfig = (
-  value: unknown,
+  _value: unknown,
   {
     siblingData,
   }: {

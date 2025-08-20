@@ -64,7 +64,7 @@ export const GeocodingTestPanel = ({ testAddress: initialTestAddress, onTest }: 
     void handleTest();
   }, [handleTest]);
 
-  const renderResult = (providerName: string, result: TestResult | undefined) => {
+  const renderResult = (_providerName: string, result: TestResult | undefined) => {
     if (!result) {
       return <div className="text-sm text-gray-500">Not configured or not tested</div>;
     }

@@ -89,7 +89,7 @@ const processBatchSchema = async (
   const BATCH_SIZE = BATCH_SIZES.SCHEMA_DETECTION;
 
   // Filter out duplicate rows
-  const nonDuplicateRows = rows.filter((row, index) => {
+  const nonDuplicateRows = rows.filter((_row, index) => {
     const rowNumber = batchNumber * BATCH_SIZE + index;
     return !duplicateRows.has(rowNumber);
   });

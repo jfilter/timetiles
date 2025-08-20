@@ -30,7 +30,7 @@ const TEST_DB_NAME = "timetiles_test";
 const DB_USER = "timetiles_user";
 const DB_PASSWORD = "timetiles_password";
 const DB_HOST = "localhost";
-const DB_PORT = "5432";
+const _DB_PORT = "5432";
 
 export interface SchemaValidationResult {
   isValid: boolean;
@@ -68,9 +68,10 @@ const runDatabaseQuery = (dbName: string, sql: string, description?: string): st
       logger.debug(`✓ ${description}: ${result.trim()}`);
     }
     return result.trim();
-  } catch (error: any) {
+  } catch (error) {
     if (description) {
-      logger.debug(`✗ ${description} failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      logger.debug(`✗ ${description} failed: ${message}`);
     }
     throw error;
   }

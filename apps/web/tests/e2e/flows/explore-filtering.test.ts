@@ -48,7 +48,7 @@ test.describe("Explore Page - Filtering", () => {
     await expect(explorePage.page.locator('input[type="checkbox"]:checked')).toBeVisible();
   });
 
-  test("should filter by multiple datasets", async ({ page }) => {
+  test("should filter by multiple datasets", async () => {
     // Select Economic Indicators catalog
     await explorePage.selectCatalog("Economic Indicators");
 
@@ -96,7 +96,7 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.assertUrlParam("endDate", "2024-12-31");
   });
 
-  test("should clear date filters", async ({ page }) => {
+  test("should clear date filters", async () => {
     // Set up initial filters
     await explorePage.selectCatalog("Environmental Data");
     await explorePage.selectDatasets(["Air Quality Measurements"]);
@@ -141,7 +141,7 @@ test.describe("Explore Page - Filtering", () => {
     expect(params.get("endDate")).toBe("2024-06-30");
   });
 
-  test("should update results when changing filters", async ({ page }) => {
+  test("should update results when changing filters", async () => {
     // Start with one catalog and dataset
     await explorePage.selectCatalog("Environmental Data");
     await explorePage.selectDatasets(["Air Quality Measurements"]);
@@ -188,7 +188,7 @@ test.describe("Explore Page - Filtering", () => {
     expect(catalogParam).not.toContain("environmental");
   });
 
-  test("should handle edge cases in date filtering", async ({ page }) => {
+  test("should handle edge cases in date filtering", async () => {
     await explorePage.selectCatalog("Environmental Data");
     await explorePage.selectDatasets(["Air Quality Measurements"]);
 
@@ -204,7 +204,7 @@ test.describe("Explore Page - Filtering", () => {
     expect(count).toBeGreaterThanOrEqual(0);
   });
 
-  test("should preserve filters when navigating", async ({ page }) => {
+  test("should preserve filters when navigating", async () => {
     // Set up filters
     await explorePage.selectCatalog("Environmental Data");
     await explorePage.selectDatasets(["Air Quality Measurements"]);

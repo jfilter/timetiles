@@ -208,7 +208,7 @@ export class SeedingOperations {
       if (isCI) {
         await Promise.race([
           createItemPromise,
-          new Promise((resolve, reject) =>
+          new Promise((_resolve, reject) =>
             setTimeout(
               () => reject(new Error(`Timeout creating ${collectionName} item after ${OPERATION_TIMEOUT}ms`)),
               OPERATION_TIMEOUT

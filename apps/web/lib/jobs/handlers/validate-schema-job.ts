@@ -104,7 +104,7 @@ const processFileSchema = async (
 
     if (rows.length === 0) break;
 
-    const nonDuplicateRows = rows.filter((row, index) => {
+    const nonDuplicateRows = rows.filter((_row, index) => {
       const rowNumber = batchNumber * BATCH_SIZE + index;
       return !duplicateRows.has(rowNumber);
     });
