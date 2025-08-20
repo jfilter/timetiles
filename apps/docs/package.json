@@ -8,7 +8,7 @@
     "dev": "pnpm docs:api && next dev --port 3001",
     "build": "pnpm docs:api && next build",
     "docs:build": "pnpm docs:api && next build",
-    "docs:api": "cd ../web && pnpm exec typedoc && cd ../docs && node scripts/process-api-docs.js",
+    "docs:api": "cd ../web && pnpm exec typedoc",
     "docs:api:watch": "nodemon --watch ../web/lib --ext ts --exec \"pnpm docs:api\"",
     "start": "next start --port 3001",
     "lint": "next lint",

@@ -53,4 +53,12 @@ CLAUDE.md
 uploads/
 
 # Generated API Documentation
-apps/docs/pages/developers/api/
+# These files are auto-generated from JSDoc comments via TypeDoc
+# Run 'pnpm docs:api' to regenerate them
+apps/docs/pages/reference/api/**/*.md
+apps/docs/pages/reference/api/**/*.mdx
+# Keep navigation and index files
+!apps/docs/pages/reference/api/_meta.json
+!apps/docs/pages/reference/api/**/_meta.json
+!apps/docs/pages/reference/api/index.mdx
+!apps/docs/pages/reference/api/.gitkeep

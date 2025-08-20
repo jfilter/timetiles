@@ -1,0 +1,317 @@
+# Documentation Guide
+
+This guide explains how documentation works in the TimeTiles project, including both manual documentation and auto-generated API references.
+
+## Documentation Structure
+
+The TimeTiles documentation is divided into two main categories:
+
+### 1. Manual Documentation
+**Location:** Various directories under `/apps/docs/pages/`
+- **Getting Started** (`/getting-started/`) - Installation, quick start guides
+- **User Guides** (`/users/`) - Features, use cases, tutorials
+- **Developer Docs** (`/developers/`) - Architecture, development guides
+- **Reference** (`/reference/`) - Changelog, roadmap, glossary
+
+These are **hand-written MDX files** that you edit directly.
+
+### 2. Auto-generated API Documentation
+**Location:** `/apps/docs/pages/reference/api/`
+- Generated from JSDoc comments in source code
+- Created using TypeDoc
+- **Should NOT be edited manually** (changes will be overwritten)
+
+## Working with Manual Documentation
+
+### Creating New Pages
+
+1. Create an `.mdx` file in the appropriate directory:
+```bash
+apps/docs/pages/developers/guides/my-new-guide.mdx
+```
+
+2. Write your content using MDX (Markdown + JSX):
+```mdx
+# My Guide Title
+
+import { Callout } from 'nextra/components'
+
+<Callout type="info">
+  Important information here
+</Callout>
+
+## Section with code
+
+\`\`\`typescript
+const example = "code here"
+\`\`\`
+```
+
+3. Update the navigation by editing `_meta.json` in the same directory:
+```json
+{
+  "existing-page": "Existing Page",
+  "my-new-guide": "My New Guide"
+}
+```
+
+### Best Practices for Manual Docs
+
+- Use clear, descriptive titles
+- Include practical examples
+- Add screenshots where helpful
+- Link to related documentation
+- Keep content up-to-date with code changes
+
+## Working with Auto-generated API Documentation
+
+### How It Works
+
+1. **Source**: JSDoc comments in TypeScript files
+   - Located in `apps/web/lib/`, `apps/web/app/api/`
+   
+2. **Generation**: TypeDoc processes JSDoc comments
+   - Configuration in `apps/web/typedoc.json`
+   
+3. **Output**: Markdown files in `apps/docs/pages/reference/api/`
+   - Automatically organized by module
+
+### Writing Good JSDoc Comments
+
+Add comprehensive JSDoc comments to your TypeScript code:
+
+```typescript
+/**
+ * Processes import jobs with support for various file formats.
+ * 
+ * This service handles the complete import pipeline including:
+ * - File parsing (CSV, Excel)
+ * - Schema detection
+ * - Data validation
+ * - Geocoding
+ * - Event creation
+ * 
+ * @module
+ * @category Services
+ */
+
+/**
+ * Validates and transforms import data.
+ * 
+ * @param data - Raw data from the import file
+ * @param schema - Expected schema for validation
+ * @returns Validated and transformed data ready for processing
+ * @throws {ValidationError} When data doesn't match schema
+ * @example
+ * ```typescript
+ * const validatedData = await validateImportData(rawData, schema);
+ * console.log(`Validated ${validatedData.length} records`);
+ * ```
+ */
+export async function validateImportData(
+  data: unknown[],
+  schema: Schema
+): Promise<ValidatedData[]> {
+  // Implementation
+}
+```
+
+### JSDoc Tags Reference
+
+| Tag | Purpose | Example |
+|-----|---------|---------|
+| `@module` | File-level documentation | `@module` |
+| `@category` | Group related items | `@category Services` |
+| `@param` | Document parameters | `@param name - Description` |
+| `@returns` | Document return value | `@returns Description` |
+| `@throws` | Document exceptions | `@throws {ErrorType} When...` |
+| `@example` | Provide usage examples | `@example` followed by code block |
+| `@deprecated` | Mark as deprecated | `@deprecated Use newFunction instead` |
+| `@since` | Version introduced | `@since 1.2.0` |
+| `@see` | Reference related items | `@see {@link OtherFunction}` |
+
+### Generating API Documentation
+
+#### One-time Generation
+```bash
+# From project root
+pnpm docs:api
+
+# Or from docs directory
+cd apps/docs
+pnpm docs:api
+```
+
+#### Watch Mode (Development)
+```bash
+# Regenerate on source file changes
+pnpm docs:api:watch
+```
+
+#### What Gets Generated
+
+The TypeDoc configuration (`apps/web/typedoc.json`) specifies:
+- **Entry points**: Which directories to process
+- **Output location**: `apps/docs/pages/reference/api/`
+- **Exclusions**: Test files, internal functions
+- **Organization**: Grouped by category
+
+### Navigation Structure
+
+While the content is auto-generated, navigation is manually configured:
+
+1. **Main navigation**: `apps/docs/pages/reference/api/_meta.json`
+2. **Section navigation**: `apps/docs/pages/reference/api/lib/_meta.json`
+3. **Subsection navigation**: Various `_meta.json` files in subdirectories
+
+Example `_meta.json`:
+```json
+{
+  "collections": "Collections",
+  "services": "Services", 
+  "jobs": "Background Jobs",
+  "hooks": "React Hooks",
+  "utils": "Utilities"
+}
+```
+
+## Git Configuration
+
+### What's Tracked vs Ignored
+
+The `.gitignore` is configured to:
+
+**Ignored (Auto-generated)**:
+```gitignore
+apps/docs/pages/reference/api/**/*.md
+apps/docs/pages/reference/api/**/*.mdx
+```
+
+**Tracked (Manual)**:
+```gitignore
+!apps/docs/pages/reference/api/_meta.json
+!apps/docs/pages/reference/api/**/_meta.json
+!apps/docs/pages/reference/api/index.mdx
+!apps/docs/pages/reference/api/.gitkeep
+```
+
+This means:
+- ✅ Generated API docs don't clutter git history
+- ✅ Can regenerate anytime from source
+- ✅ Navigation structure is preserved
+- ✅ Manual overrides are possible
+
+## Development Workflow
+
+### When Adding New Features
+
+1. **Write the code** with comprehensive JSDoc comments
+2. **Run tests** to ensure everything works
+3. **Generate docs** with `pnpm docs:api`
+4. **Write guides** if needed (manual documentation)
+5. **Review** the generated documentation
+6. **Commit** code changes (docs are regenerated in CI)
+
+### When Updating Documentation
+
+#### For API Changes:
+1. Update JSDoc comments in source files
+2. Run `pnpm docs:api` to regenerate
+3. Verify the output looks correct
+4. Commit the source code changes
+
+#### For Guides/Tutorials:
+1. Edit the `.mdx` files directly
+2. Preview with `pnpm dev`
+3. Commit the documentation changes
+
+## CI/CD Integration
+
+The documentation build process:
+
+1. **Development**: Docs generated on-demand
+2. **Pull Requests**: Docs built to verify they compile
+3. **Production**: Docs generated fresh during build
+
+Build command:
+```json
+{
+  "build": "pnpm docs:api && next build"
+}
+```
+
+This ensures documentation is always up-to-date with the code.
+
+## Troubleshooting
+
+### Common Issues
+
+#### Generated docs look wrong
+- Check JSDoc syntax in source files
+- Verify TypeDoc configuration
+- Run `pnpm docs:api` with clean output directory
+
+#### Navigation not updating
+- Edit the appropriate `_meta.json` file
+- These are NOT auto-generated
+
+#### Broken links in documentation
+- Use relative paths for internal links
+- Verify file exists after generation
+- Check for typos in paths
+
+#### TypeDoc warnings
+- Missing type exports: Export the type from index
+- Unresolved references: Ensure proper imports
+- Private members documented: Add `@internal` tag
+
+### Debugging Commands
+
+```bash
+# Clean generated docs
+rm -rf apps/docs/pages/reference/api/lib
+rm -rf apps/docs/pages/reference/api/app
+
+# Regenerate fresh
+pnpm docs:api
+
+# Check what's ignored by git
+git check-ignore apps/docs/pages/reference/api/**
+
+# See TypeDoc configuration
+cat apps/web/typedoc.json
+```
+
+## Best Practices
+
+### For JSDoc Comments
+
+1. **Be comprehensive**: Document all public APIs
+2. **Include examples**: Show real usage patterns
+3. **Explain "why"**: Not just what the code does
+4. **Keep updated**: Update docs when changing code
+5. **Use proper tags**: Follow JSDoc conventions
+
+### For Manual Documentation
+
+1. **User-focused**: Write for your audience
+2. **Practical examples**: Show real-world usage
+3. **Visual aids**: Include diagrams/screenshots
+4. **Cross-reference**: Link to API docs and guides
+5. **Version notes**: Document breaking changes
+
+### Documentation Review Checklist
+
+- [ ] JSDoc comments added/updated for new code
+- [ ] Examples included for complex functions
+- [ ] Manual guides updated if behavior changed
+- [ ] Navigation (`_meta.json`) updated if needed
+- [ ] Links verified and working
+- [ ] Generated docs reviewed for accuracy
+
+## Resources
+
+- [Nextra Documentation](https://nextra.site)
+- [TypeDoc Documentation](https://typedoc.org)
+- [JSDoc Reference](https://jsdoc.app)
+- [MDX Documentation](https://mdxjs.com)

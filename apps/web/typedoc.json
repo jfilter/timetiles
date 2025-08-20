@@ -1,36 +1,29 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["./lib/**/*.ts", "./app/api/**/*.ts"],
-  "out": "../docs/pages/developers/api",
+  "entryPointStrategy": "expand",
+  "entryPoints": [
+    "./lib/collections",
+    "./lib/services",
+    "./lib/jobs",
+    "./app/api",
+    "./lib/hooks",
+    "./lib/utils",
+    "./lib/constants",
+    "./lib/types",
+    "./lib/globals"
+  ],
+  "out": "../docs/pages/reference/api",
   "plugin": ["typedoc-plugin-markdown"],
+  "router": "module",
   "readme": "none",
+  "exclude": ["./lib/**/*.spec.ts", "./lib/**/*.test.ts"],
   "excludePrivate": true,
   "excludeInternal": true,
   "includeVersion": false,
-  "disableSources": false,
+  "disableSources": true,
   "gitRevision": "main",
   "sort": ["source-order"],
   "categorizeByGroup": true,
-  "defaultCategory": "Other",
-  "categoryOrder": [
-    "Collections",
-    "Services",
-    "Job Handlers",
-    "API Routes",
-    "React Hooks",
-    "Utilities",
-    "Constants",
-    "Types",
-    "*"
-  ],
-  "searchInComments": true,
-  "searchCategoryBoosts": {
-    "Collections": 2.0,
-    "Services": 1.8,
-    "Job Handlers": 1.6,
-    "API Routes": 1.4,
-    "React Hooks": 1.2
-  },
   "cleanOutputDir": true,
   "skipErrorChecking": true,
   "compilerOptions": {
@@ -39,5 +32,15 @@
     "noEmit": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
+  },
+  "useTsLinkResolution": false,
+  "preserveLinkText": true,
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  },
+  "textContentMappings": {
+    "title.indexPage": "API Reference",
+    "title.memberPage": "{name} | API Reference"
   }
 }

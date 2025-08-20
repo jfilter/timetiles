@@ -11,6 +11,12 @@ node_modules/
 *.generated.*
 payload-generated-schema.ts
 
+# Auto-generated API documentation
+apps/docs/pages/reference/api/**/*.md
+apps/docs/pages/reference/api/**/*.mdx
+# Keep manual index file
+!apps/docs/pages/reference/api/index.mdx
+
 # Logs
 *.log
 

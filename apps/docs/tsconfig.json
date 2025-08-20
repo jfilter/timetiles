@@ -12,5 +12,10 @@
     ]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.mdx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "pages/reference/api/**/*.md",
+    "pages/reference/api/**/*.mdx",
+    "!pages/reference/api/index.mdx"
+  ]
 }

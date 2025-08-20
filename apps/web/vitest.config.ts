@@ -1,3 +1,11 @@
+/**
+ * Vitest configuration file.
+ *
+ * Configures Vitest for unit and integration testing with jsdom environment,
+ * path aliases, and test timeouts.
+ *
+ * @module
+ */
 import path from "path";
 import { defineConfig } from "vitest/config";
 
@@ -12,8 +20,8 @@ export default defineConfig({
     environment: "jsdom",
     exclude: ["**/node_modules/**"],
     setupFiles: ["tests/setup/setup.ts"],
-    testTimeout: 15000,
-    hookTimeout: 15000,
+    testTimeout: 30000,
+    hookTimeout: 30000,
     reporters: ["verbose"],
     silent: false,
     // Reduce console output noise
