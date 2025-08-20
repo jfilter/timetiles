@@ -19,6 +19,9 @@ const nextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
+  // Enable standalone output for Docker deployments
+  // This reduces the image size significantly
+  output: process.env.NODE_ENV === "production" ? "standalone" : undefined,
 };
 
 export default withPayload(nextConfig);

@@ -1,6 +1,7 @@
 {
   "index": "Overview",
-  "installation": "Installation & Deployment",
+  "installation": "Prerequisites",
   "configuration": "Configuration",
+  "deployment": "Production Deployment",
   "maintenance": "Maintenance & Operations"
 }

@@ -1,0 +1,362 @@
+# Production Deployment
+
+This guide covers deploying TimeTiles to production using Docker and Docker Compose.
+
+## Overview
+
+TimeTiles provides a production-ready Docker deployment that includes:
+
+- **Nginx** reverse proxy with SSL/TLS termination
+- **Next.js** application server (standalone build)
+- **PostgreSQL 17** with PostGIS extension
+- **Redis** for caching and session management
+- **Certbot** for automatic SSL certificate renewal
+
+## Quick Start
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/jfilter/timetiles.git
+cd timetiles
+
+# 2. Run setup script
+./deploy.sh setup
+
+# 3. Configure environment
+nano deploy/.env.production
+# Set your domain, passwords, and email
+
+# 4. Build and deploy
+./deploy.sh build
+./deploy.sh up
+./deploy.sh migrate
+
+# 5. Initialize SSL (after DNS is configured)
+./deploy.sh ssl
+```
+
+## File Structure
+
+All production deployment files are located in the `deploy/` directory:
+
+```
+deploy/
+├── Dockerfile.prod              # Multi-stage production build
+├── docker-compose.prod.yml      # Service orchestration
+├── deploy.sh                    # Deployment script
+├── .env.production.example      # Environment template
+├── .env.production             # Your configuration (create from .example)
+└── nginx/                       # Nginx configuration
+    ├── nginx.conf              # Main configuration
+    └── sites-enabled/          # Site-specific configs
+```
+
+## Configuration
+
+### Required Environment Variables
+
+Create `deploy/.env.production` from the template:
+
+```bash
+cp deploy/.env.production.example deploy/.env.production
+```
+
+Essential settings:
+
+```env
+# Domain Configuration
+DOMAIN_NAME=your-domain.com
+LETSENCRYPT_EMAIL=admin@your-domain.com
+
+# Database
+DB_PASSWORD=<strong-password>
+DB_USER=timetiles_user
+DB_NAME=timetiles
+
+# Payload CMS
+PAYLOAD_SECRET=<32+ character secret>
+
+# Optional: Geocoding
+GOOGLE_MAPS_API_KEY=<your-api-key>
+```
+
+### Advanced Configuration
+
+The environment file supports extensive customization:
+
+- **PostgreSQL tuning**: Memory, connections, cache settings
+- **Redis configuration**: Memory limits, persistence
+- **Port mapping**: Custom ports without modifying compose files
+- **Container naming**: Support for multiple deployments
+
+## SSL/TLS Setup
+
+### Let's Encrypt (Recommended)
+
+Automatic SSL certificates from Let's Encrypt:
+
+1. **Ensure DNS is configured**: Point your domain to the server
+2. **Run SSL initialization**: `./deploy.sh ssl`
+3. **Automatic renewal**: Certificates renew every 12 hours automatically
+
+### Custom Certificates
+
+To use your own SSL certificates:
+
+1. Place certificates in `deploy/nginx/ssl/`
+2. Update nginx configuration to reference your certificates
+3. Restart nginx: `docker-compose -f deploy/docker-compose.prod.yml restart nginx`
+
+## Deployment Commands
+
+The `deploy.sh` script provides convenient management commands:
+
+```bash
+# Service Management
+./deploy.sh up        # Start all services
+./deploy.sh down      # Stop all services
+./deploy.sh restart   # Restart services
+./deploy.sh status    # Check service health
+
+# Database
+./deploy.sh migrate   # Run database migrations
+./deploy.sh backup    # Backup database
+
+# Maintenance
+./deploy.sh logs      # View logs
+./deploy.sh update    # Pull updates and redeploy
+```
+
+### Direct Docker Commands
+
+For advanced usage, you can use Docker Compose directly:
+
+```bash
+# Define alias for convenience
+alias dc-prod="docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production"
+
+# Examples
+dc-prod ps            # List containers
+dc-prod logs web      # View web logs
+dc-prod exec web sh   # Shell into web container
+```
+
+## System Requirements
+
+### Minimum Requirements
+
+- **CPU**: 2 cores
+- **RAM**: 2GB (4GB for building)
+- **Storage**: 10GB SSD
+- **OS**: Linux (Ubuntu 20.04+ recommended)
+- **Docker**: 20.10+
+- **Docker Compose**: 2.0+
+
+### Recommended for Production
+
+- **CPU**: 4+ cores
+- **RAM**: 8GB+
+- **Storage**: 50GB+ SSD
+- **Network**: Stable internet for geocoding services
+
+## Security Considerations
+
+### Network Security
+
+- Only ports 80 and 443 are exposed
+- Internal services communicate on private Docker network
+- PostgreSQL and Redis are not exposed externally
+
+### Application Security
+
+- Next.js runs as non-root user
+- Environment secrets are isolated
+- HTTPS enforced with security headers
+- Rate limiting on API endpoints
+
+### Best Practices
+
+1. **Use strong passwords** for database and admin accounts
+2. **Enable firewall** allowing only necessary ports
+3. **Regular updates**: Keep Docker images updated
+4. **Backup strategy**: Implement automated backups
+5. **Monitoring**: Set up health checks and alerts
+
+## Backup and Recovery
+
+### Database Backup
+
+```bash
+# Manual backup
+./deploy.sh backup
+
+# Automated backup (add to crontab)
+0 2 * * * /path/to/timetiles/deploy.sh backup
+```
+
+### Full Backup
+
+Including uploaded files and configuration:
+
+```bash
+# Stop services
+./deploy.sh down
+
+# Backup volumes
+tar -czf backup.tar.gz \
+  deploy/.env.production \
+  /var/lib/docker/volumes/timetiles_*
+
+# Restart services
+./deploy.sh up
+```
+
+### Recovery
+
+```bash
+# Restore database
+gunzip < backup.sql.gz | docker-compose -f deploy/docker-compose.prod.yml exec -T postgres psql -U timetiles_user timetiles
+
+# Restore volumes
+tar -xzf backup.tar.gz
+docker-compose -f deploy/docker-compose.prod.yml up -d
+```
+
+## Monitoring
+
+### Health Checks
+
+- **Application**: `https://your-domain.com/api/health`
+- **Database**: Automatic health checks via Docker
+- **Redis**: Automatic health checks via Docker
+
+### Resource Monitoring
+
+```bash
+# Container statistics
+docker stats
+
+# Disk usage
+df -h
+
+# Service logs
+./deploy.sh logs
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Database Connection Failed**
+
+```bash
+# Check PostgreSQL status
+docker-compose -f deploy/docker-compose.prod.yml exec postgres pg_isready
+
+# View database logs
+docker-compose -f deploy/docker-compose.prod.yml logs postgres
+```
+
+**SSL Certificate Issues**
+
+```bash
+# Test Let's Encrypt challenge
+curl http://your-domain.com/.well-known/acme-challenge/test
+
+# Renew certificates manually
+docker-compose -f deploy/docker-compose.prod.yml exec certbot certbot renew --force-renewal
+```
+
+**Build Failures**
+
+```bash
+# Clean rebuild
+./deploy.sh down
+docker system prune -f
+./deploy.sh build
+```
+
+**Memory Issues**
+
+If builds fail due to memory:
+
+1. Add swap space: `sudo fallocate -l 4G /swapfile`
+2. Or build locally and transfer image
+
+### Debug Mode
+
+Enable detailed logging:
+
+```bash
+# Edit deploy/.env.production
+LOG_LEVEL=debug
+
+# Restart services
+./deploy.sh restart
+
+# View debug logs
+./deploy.sh logs
+```
+
+## Performance Optimization
+
+### Database Tuning
+
+Adjust PostgreSQL settings in `.env.production`:
+
+```env
+# For 8GB RAM server
+PG_SHARED_BUFFERS=2GB
+PG_CACHE_SIZE=6GB
+PG_WORK_MEM=64MB
+```
+
+### Redis Optimization
+
+```env
+# Increase cache size
+REDIS_MAX_MEMORY=1gb
+```
+
+### Application Caching
+
+- Static assets cached by Nginx
+- API responses cached in Redis
+- Next.js optimizations enabled
+
+## Scaling
+
+### Horizontal Scaling
+
+For high traffic, deploy multiple web instances:
+
+1. Use external PostgreSQL (RDS, Cloud SQL)
+2. Use external Redis (ElastiCache, Memorystore)
+3. Deploy multiple web containers behind load balancer
+
+### Vertical Scaling
+
+Increase resources in `.env.production`:
+
+```env
+# Resource limits
+PG_MAX_CONNECTIONS=200
+REDIS_MAX_MEMORY=2gb
+```
+
+## Migration from Development
+
+When moving from development to production:
+
+1. **Export data**: Use Payload CMS export functionality
+2. **Transfer files**: Copy uploaded media files
+3. **Update configuration**: Production database and URLs
+4. **Run migrations**: Ensure schema is up-to-date
+5. **Test thoroughly**: Verify all features work
+
+## Next Steps
+
+- Configure [monitoring and alerts](/admin-guide/maintenance#monitoring)
+- Set up [automated backups](/admin-guide/maintenance#backups)
+- Review [security checklist](/admin-guide/configuration#security)
+- Enable [advanced features](/user-guide/features)

@@ -1,132 +1,332 @@
 # Maintenance & Operations
 
-Keep your TimeTiles instance running smoothly.
+Routine tasks and troubleshooting for TimeTiles administrators.
 
-## Regular Maintenance
+## Daily Operations
 
-### Database Backups
+### Health Monitoring
 
-Automated daily backups:
+Check system health regularly:
 
 ```bash
-# Backup script
-#!/bin/bash
-pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql
+# API health check
+curl https://your-domain.com/api/health
 
-# Cron job (daily at 2 AM)
-0 2 * * * /path/to/backup.sh
+# Container status (production)
+docker-compose -f deploy/docker-compose.prod.yml ps
+
+# Database connectivity
+docker-compose -f deploy/docker-compose.prod.yml exec postgres pg_isready
+
+# View recent logs
+./deploy.sh logs --tail=100
 ```
 
-### Updates
+### Backup Procedures
 
-Stay current with security patches:
+#### Quick Commands
 
 ```bash
-# Pull latest changes
+# Database backup (default)
+./deploy.sh backup
+
+# Full backup (database + uploads)
+./deploy.sh backup full
+
+# Setup automatic daily backups at 2 AM
+./deploy.sh backup auto
+
+# List available backups
+./deploy.sh backup list
+
+# Clean old backups (>30 days)
+./deploy.sh backup clean
+```
+
+#### Restore from Backup
+
+```bash
+# List available backups
+./deploy.sh restore
+
+# Restore database
+./deploy.sh restore db-20241220-143022.sql.gz
+
+# Restore database and uploads
+./deploy.sh restore db-20241220-143022.sql.gz uploads-20241220-143022.tar.gz
+```
+
+The backup system automatically:
+- Keeps only the last 30 database backups
+- Stores backups in `deploy/backups/`
+- Names files with timestamps for easy identification
+- Compresses backups to save space
+
+## Updates & Upgrades
+
+### Application Updates
+
+```bash
+# 1. Backup first
+./deploy.sh backup
+
+# 2. Pull latest code
 git pull origin main
 
-# Update dependencies
-pnpm install
+# 3. Rebuild and deploy
+./deploy.sh down
+./deploy.sh build
+./deploy.sh up
+
+# 4. Run migrations
+./deploy.sh migrate
+
+# 5. Verify health
+curl https://your-domain.com/api/health
+```
+
+### Dependency Updates
+
+```bash
+# Update dependencies (development)
+pnpm update --latest
+pnpm test
+pnpm build
+
+# Commit and deploy
+git add -A
+git commit -m "chore: update dependencies"
+git push
+```
+
+### Database Migrations
+
+```bash
+# Check pending migrations
+docker-compose -f deploy/docker-compose.prod.yml exec web \
+  pnpm payload migrate:status
 
 # Run migrations
-pnpm payload:migrate
+./deploy.sh migrate
+```
 
-# Restart services
-docker-compose restart
+## Performance Optimization
+
+### Database Maintenance
+
+Run regularly (weekly recommended):
+
+```bash
+# Connect to database
+docker-compose -f deploy/docker-compose.prod.yml exec postgres psql -U timetiles_user timetiles
+
+# Vacuum and analyze
+VACUUM ANALYZE;
+
+# Reindex for performance
+REINDEX DATABASE timetiles;
+
+# Update table statistics
+ANALYZE;
+```
+
+### Query Performance
+
+```sql
+-- Enable query stats
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+-- Find slow queries
+SELECT 
+  mean_exec_time,
+  calls,
+  query 
+FROM pg_stat_statements 
+ORDER BY mean_exec_time DESC 
+LIMIT 10;
+
+-- Check index usage
+SELECT 
+  schemaname,
+  tablename,
+  indexname,
+  idx_scan
+FROM pg_stat_user_indexes
+ORDER BY idx_scan;
+```
+
+### Redis Cache Management
+
+```bash
+# Monitor Redis memory
+docker-compose -f deploy/docker-compose.prod.yml exec redis redis-cli INFO memory
+
+# Clear cache if needed
+docker-compose -f deploy/docker-compose.prod.yml exec redis redis-cli FLUSHALL
+
+# View cache keys
+docker-compose -f deploy/docker-compose.prod.yml exec redis redis-cli KEYS "*"
 ```
 
 ## Monitoring
 
-### Health Checks
-
-Monitor endpoint availability:
+### Log Management
 
 ```bash
-# Health check endpoint
-curl https://your-instance.com/api/health
+# View live logs
+./deploy.sh logs -f
 
-# Expected response
-{"status":"healthy","database":"connected"}
+# Check specific service
+docker-compose -f deploy/docker-compose.prod.yml logs web --tail=100
+docker-compose -f deploy/docker-compose.prod.yml logs postgres --tail=50
+
+# Search logs
+docker-compose -f deploy/docker-compose.prod.yml logs | grep ERROR
+docker-compose -f deploy/docker-compose.prod.yml logs | grep "import.*failed"
 ```
 
-### Resource Monitoring
-
-Key metrics to track:
-
-- CPU usage (should stay below 80%)
-- Memory usage (watch for leaks)
-- Disk I/O (database performance)
-- Network traffic (API usage)
-
-### Logs
-
-Important log locations:
+### Disk Usage
 
 ```bash
-# Application logs
-docker logs timetiles_web
+# Check disk space
+df -h
 
-# Database logs
-docker logs timetiles_postgres
+# Find large files
+du -h /var/lib/docker/volumes | sort -rh | head -20
 
-# Nginx logs (if using)
-/var/log/nginx/access.log
-/var/log/nginx/error.log
+# Clean up Docker
+docker system prune -a --volumes
+```
+
+### Resource Usage
+
+```bash
+# Container stats
+docker stats
+
+# Database size
+docker-compose -f deploy/docker-compose.prod.yml exec postgres \
+  psql -U timetiles_user -d timetiles -c \
+  "SELECT pg_size_pretty(pg_database_size('timetiles'));"
+
+# Table sizes
+docker-compose -f deploy/docker-compose.prod.yml exec postgres \
+  psql -U timetiles_user -d timetiles -c \
+  "SELECT schemaname, tablename, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size 
+   FROM pg_tables 
+   WHERE schemaname = 'payload' 
+   ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;"
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-**High memory usage:**
-
-- Check for memory leaks
-- Increase Node.js heap size
-- Review large chronicle queries
-
-**Slow performance:**
-
-- Run `VACUUM ANALYZE` on database
-- Check PostGIS spatial indexes
-- Review slow query logs
-
-**Import failures:**
-
-- Check file size limits
-- Verify geocoding API quotas
-- Review error logs
-
-### Getting Help
-
-- Check [GitHub Issues](https://github.com/jfilter/timetiles/issues)
-- Join [Discussions](https://github.com/jfilter/timetiles/discussions)
-- Review application logs for detailed errors
-
-## Performance Optimization
-
-### Database Tuning
-
-```sql
--- Update statistics
-VACUUM ANALYZE;
-
--- Rebuild indexes
-REINDEX DATABASE timetiles;
-
--- Check slow queries
-SELECT * FROM pg_stat_statements
-ORDER BY mean_exec_time DESC
-LIMIT 10;
-```
-
-### Caching
-
-Implement caching for better performance:
+#### Application Won't Start
 
 ```bash
-# Redis for session cache
-REDIS_URL=redis://localhost:6379
+# Check logs
+./deploy.sh logs web
 
-# CDN for static assets
-CDN_URL=https://cdn.your-domain.com
+# Verify environment
+docker-compose -f deploy/docker-compose.prod.yml exec web env | grep -E "DATABASE|PAYLOAD"
+
+# Test database connection
+docker-compose -f deploy/docker-compose.prod.yml exec web \
+  psql $DATABASE_URL -c "SELECT 1"
 ```
+
+#### Import Failures
+
+```bash
+# Check import job status
+docker-compose -f deploy/docker-compose.prod.yml exec web \
+  psql $DATABASE_URL -c "SELECT * FROM payload.import_jobs ORDER BY created_at DESC LIMIT 5;"
+
+# View error details
+docker-compose -f deploy/docker-compose.prod.yml logs web | grep -A5 "import.*error"
+
+# Reset stuck imports
+docker-compose -f deploy/docker-compose.prod.yml exec web \
+  psql $DATABASE_URL -c "UPDATE payload.import_jobs SET status = 'failed' WHERE status = 'processing' AND updated_at < NOW() - INTERVAL '1 hour';"
+```
+
+#### High Memory Usage
+
+```bash
+# Check Node.js memory
+docker-compose -f deploy/docker-compose.prod.yml exec web \
+  node -e "console.log(process.memoryUsage())"
+
+# Restart to clear memory
+docker-compose -f deploy/docker-compose.prod.yml restart web
+
+# Increase memory limit if needed
+# Edit deploy/.env.production
+NODE_OPTIONS="--max-old-space-size=4096"
+```
+
+#### SSL Certificate Issues
+
+```bash
+# Check certificate expiry
+docker-compose -f deploy/docker-compose.prod.yml exec nginx \
+  openssl x509 -in /etc/letsencrypt/live/your-domain.com/cert.pem -text -noout | grep "Not After"
+
+# Force renewal
+docker-compose -f deploy/docker-compose.prod.yml exec certbot \
+  certbot renew --force-renewal
+
+# Restart nginx
+docker-compose -f deploy/docker-compose.prod.yml restart nginx
+```
+
+### Debug Mode
+
+Enable detailed logging for troubleshooting:
+
+```bash
+# Edit deploy/.env.production
+LOG_LEVEL=debug
+
+# Restart application
+./deploy.sh restart
+
+# View debug logs
+./deploy.sh logs web | grep DEBUG
+```
+
+## Security Updates
+
+### SSL Certificate Renewal
+
+Certificates auto-renew, but verify monthly:
+
+```bash
+# Check renewal
+docker-compose -f deploy/docker-compose.prod.yml exec certbot \
+  certbot certificates
+
+# Test renewal
+docker-compose -f deploy/docker-compose.prod.yml exec certbot \
+  certbot renew --dry-run
+```
+
+### Security Patches
+
+```bash
+# Update base images
+docker-compose -f deploy/docker-compose.prod.yml pull
+./deploy.sh down
+./deploy.sh up
+
+# Check for vulnerabilities
+pnpm audit
+```
+
+## Getting Help
+
+- **Documentation**: Review this guide and [deployment docs](./deployment)
+- **Issues**: [GitHub Issues](https://github.com/jfilter/timetiles/issues)
+- **Community**: [GitHub Discussions](https://github.com/jfilter/timetiles/discussions)
+- **Logs**: Always check logs first with `./deploy.sh logs`

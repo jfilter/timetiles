@@ -1,38 +1,77 @@
-# Administrator Documentation
+# Administrator Guide
 
-This section covers everything you need to know about deploying, configuring, and maintaining TimeTiles instances.
+Documentation for deploying and operating TimeTiles.
 
-## Who is this for?
+## Overview
 
-This documentation is for **system administrators** and **DevOps engineers** who:
+This guide covers everything administrators need to know:
 
-- Deploy TimeTiles on their infrastructure
-- Configure and maintain TimeTiles instances
-- Manage users and permissions
-- Monitor performance and troubleshoot issues
+- Setting up TimeTiles for development or production
+- Configuring the application and its dependencies
+- Deploying with Docker and managing SSL certificates
+- Maintaining and monitoring your instance
 
-## Key Topics
+## Documentation Structure
 
-### 🚀 Installation & Deployment
+### [Installation](./installation)
+Prerequisites, system requirements, and initial setup for both development and production environments.
 
-Learn how to deploy TimeTiles in various environments, from simple Docker setups to production-ready cloud deployments.
+### [Configuration](./configuration)
+Complete reference for environment variables, feature flags, and application settings.
 
-### ⚙️ Configuration
+### [Production Deployment](./deployment)
+Step-by-step guide for deploying TimeTiles in production with Docker, nginx, and SSL/TLS.
 
-Configure TimeTiles for your needs - environment variables, API keys, storage backends, and security settings.
+### [Maintenance & Operations](./maintenance)
+Routine tasks, backups, updates, monitoring, and troubleshooting.
 
-### 🔧 Maintenance & Operations
+## Quick Start
 
-Keep your TimeTiles instance running smoothly with guides on backups, updates, monitoring, and performance tuning.
+### Development Setup
+```bash
+# Clone and setup
+git clone https://github.com/jfilter/timetiles.git
+cd timetiles
+make setup
 
-## Quick Links
+# Start development environment
+make dev
+```
 
-- **First time?** Start with [Installation & Deployment](./installation)
-- **Setting up production?** See [Configuration](./configuration)
-- **Running instance?** Check [Maintenance & Operations](./maintenance)
+Access at http://localhost:3000
 
-## Not what you're looking for?
+### Production Deployment
+```bash
+# Setup production environment
+cd deploy
+cp .env.production.example .env.production
+# Edit .env.production with your settings
 
-- **Creating chronicles?** See [User Guides](/users/guides)
-- **Contributing code?** See [Developer Documentation](/developers/development)
-- **API integration?** See [API Documentation](/developers/api-guide)
+# Deploy
+./deploy.sh setup
+./deploy.sh build
+./deploy.sh up
+./deploy.sh migrate
+./deploy.sh ssl  # After DNS is configured
+```
+
+## Architecture
+
+TimeTiles consists of:
+
+- **Next.js Application**: Main web application with Payload CMS
+- **PostgreSQL + PostGIS**: Spatial database for events and timelines
+- **Redis**: Caching and session storage
+- **Nginx**: Reverse proxy with SSL termination (production)
+
+## Getting Help
+
+- **Issues**: [GitHub Issues](https://github.com/jfilter/timetiles/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/jfilter/timetiles/discussions)
+- **Documentation**: You're reading it!
+
+## Related Guides
+
+- [User Guide](/users) - For end users
+- [Developer Guide](/developers) - For contributors
+- [API Reference](/reference/api) - API documentation

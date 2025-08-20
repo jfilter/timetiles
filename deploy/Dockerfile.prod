@@ -1,0 +1,78 @@
+# Production Dockerfile for TimeTiles Web Application
+# Multi-stage build optimized for Next.js with Payload CMS
+
+# Stage 1: Base dependencies
+FROM node:24-alpine AS base
+RUN apk add --no-cache libc6-compat
+RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
+WORKDIR /app
+
+# Stage 2: Prune the monorepo to get only web app dependencies
+FROM base AS pruner
+COPY . .
+RUN pnpm dlx turbo prune web --docker
+
+# Stage 3: Install production dependencies
+FROM base AS deps
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+
+# Install dependencies
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile --prod
+
+# Stage 4: Build the application
+FROM base AS builder
+COPY --from=pruner /app/out/full/ .
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+
+# Build arguments for Payload CMS
+ARG DATABASE_URL
+ARG PAYLOAD_SECRET
+ARG NEXT_PUBLIC_PAYLOAD_URL
+
+# Set build environment
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV DATABASE_URL=${DATABASE_URL}
+ENV PAYLOAD_SECRET=${PAYLOAD_SECRET}
+ENV NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL}
+
+# Build the application
+WORKDIR /app/apps/web
+RUN pnpm run build
+
+# Stage 5: Production runner
+FROM node:24-alpine AS runner
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apk add --no-cache libc6-compat
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy standalone output
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
+
+# Copy Payload migrations (required at runtime)
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/migrations ./apps/web/migrations
+
+# Set runtime environment
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+USER nextjs
+
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => { process.exit(1); })"
+
+# Start the server
+CMD ["node", "apps/web/server.js"]

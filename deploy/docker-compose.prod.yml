@@ -1,0 +1,156 @@
+version: "3.8"
+
+# Load environment variables from .env.production
+# Usage: docker-compose -f docker-compose.prod.yml --env-file .env.production up
+
+services:
+  # PostgreSQL with PostGIS extensions
+  postgres:
+    image: postgis/postgis:${POSTGRES_VERSION:-17-3.5}
+    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-timetiles}
+      POSTGRES_USER: ${DB_USER:-timetiles_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    command: >
+      postgres
+      -c max_locks_per_transaction=${PG_MAX_LOCKS:-1024}
+      -c max_stack_depth=${PG_STACK_DEPTH:-7680kB}
+      -c work_mem=${PG_WORK_MEM:-32MB}
+      -c shared_buffers=${PG_SHARED_BUFFERS:-256MB}
+      -c max_connections=${PG_MAX_CONNECTIONS:-100}
+      -c effective_cache_size=${PG_CACHE_SIZE:-1GB}
+      -c maintenance_work_mem=${PG_MAINTENANCE_MEM:-128MB}
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c random_page_cost=1.1
+      -c log_statement=${PG_LOG_STATEMENT:-none}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-timetiles_user} -d ${DB_NAME:-timetiles}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - timetiles-network
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:${REDIS_VERSION:-7-alpine}
+    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory ${REDIS_MAX_MEMORY:-256mb}
+      --maxmemory-policy ${REDIS_POLICY:-allkeys-lru}
+      --appendonly ${REDIS_PERSISTENCE:-yes}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - timetiles-network
+
+  # Web application
+  web:
+    build:
+      context: ..
+      dockerfile: ${DOCKERFILE_PATH:-deploy/Dockerfile.prod}
+      args:
+        DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
+        PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+        NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
+    image: ${IMAGE_NAME:-timetiles-web}:${IMAGE_TAG:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-web
+    restart: unless-stopped
+    # No ports exposed directly - nginx handles this
+    expose:
+      - "${CONTAINER_PORT:-3000}"
+    environment:
+      # Database
+      DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
+      
+      # Payload CMS
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
+      
+      # Redis
+      REDIS_URL: redis://redis:6379
+      
+      # Application
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${CONTAINER_PORT:-3000}
+      
+      # Geocoding (optional)
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
+      GEOCODING_RATE_LIMIT: ${GEOCODING_RATE_LIMIT:-10}
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # Persist uploaded files if not using S3
+      - uploads_data:/app/apps/web/uploads
+    networks:
+      - timetiles-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => { process.exit(1); })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Nginx reverse proxy with SSL support
+  nginx:
+    image: nginx:${NGINX_VERSION:-alpine}
+    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ${NGINX_CONF_PATH:-./nginx/nginx.conf}:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites-enabled:/etc/nginx/sites-enabled:ro
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/certbot:ro
+    depends_on:
+      - web
+    networks:
+      - timetiles-network
+
+  # Certbot for Let's Encrypt SSL certificates
+  certbot:
+    image: certbot/certbot:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-certbot
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    depends_on:
+      - nginx
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  uploads_data:
+    driver: local
+  letsencrypt:
+    driver: local
+  certbot-webroot:
+    driver: local
+
+networks:
+  timetiles-network:
+    driver: bridge

@@ -1,90 +1,223 @@
 # Configuration
 
-Configure TimeTiles to meet your organization's needs.
+Complete reference for TimeTiles environment variables and settings.
 
 ## Environment Variables
 
-Essential configuration through environment variables:
+### Required Variables
 
-### Core Settings
+These must be set for TimeTiles to function:
 
-```bash
-# Application
-NODE_ENV=production
-NEXT_PUBLIC_APP_URL=https://your-domain.com
-
-# Database
+```env
+# Database Connection
 DATABASE_URL=postgresql://user:password@localhost:5432/timetiles
 
-# Security
-PAYLOAD_SECRET=your-secret-key-min-32-chars
-JWT_SECRET=your-jwt-secret
-
-# Storage (optional)
-S3_BUCKET=your-bucket
-S3_REGION=us-east-1
-S3_ACCESS_KEY=your-key
-S3_SECRET_KEY=your-secret
+# Security (generate with: openssl rand -base64 32)
+PAYLOAD_SECRET=your-secret-key-minimum-32-characters
 ```
 
-### Geocoding Services
+### Application Settings
 
-Configure geocoding for address resolution:
+```env
+# Environment
+NODE_ENV=development|production
 
-```bash
-# Google Maps (recommended)
-GOOGLE_MAPS_API_KEY=your-api-key
+# Application URLs
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_PAYLOAD_URL=http://localhost:3000
 
-# OpenStreetMap (fallback)
-NOMINATIM_USER_AGENT=your-app-name
+# Redis (required for production)
+REDIS_URL=redis://localhost:6379
+
+# Logging
+LOG_LEVEL=info|debug|warn|error
 ```
 
-### Email Configuration
+### Geocoding Configuration
 
-For user notifications:
+TimeTiles supports multiple geocoding providers that can be configured in two ways:
 
-```bash
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-password
+#### Option 1: Admin Panel (Recommended)
+Configure providers directly in the admin interface at `/admin/collections/geocoding-providers`:
+- Add multiple providers with different priorities
+- Enable/disable providers without restart
+- Set API keys securely
+- Configure rate limits per provider
+
+#### Option 2: Environment Variables (Fallback)
+If no providers are configured in the admin panel, TimeTiles falls back to environment variables:
+
+```env
+# Google Maps (Priority 1 - most accurate)
+GEOCODING_GOOGLE_MAPS_API_KEY=your-api-key
+
+# OpenCage (Priority 5 - good alternative)
+GEOCODING_OPENCAGE_API_KEY=your-api-key
+
+# Nominatim/OpenStreetMap (Priority 10 - free fallback, always enabled)
+# No API key required - uses public servers by default
+
+# Rate limiting for all providers
+GEOCODING_RATE_LIMIT=10  # requests per second
+GEOCODING_BATCH_SIZE=100
 ```
 
-## Feature Flags
+**Supported Providers:**
+- **Google Maps**: Most accurate, requires API key
+- **OpenCage**: Good alternative, requires API key
+- **Nominatim/OpenStreetMap**: Free, no API key needed, automatic fallback
 
-Enable/disable features:
+Providers are tried in priority order (lower number = higher priority).
 
-```bash
-# Features
-ENABLE_PUBLIC_REGISTRATION=false
-ENABLE_API_ACCESS=true
+### Import Settings
+
+Control file upload and processing:
+
+```env
+# File Upload Limits
 MAX_UPLOAD_SIZE=50MB
-MAX_EVENTS_PER_CHRONICLE=100000
+MAX_IMPORT_FILE_SIZE=100MB
+ALLOWED_FILE_TYPES=csv,xlsx,xls,json,geojson
+
+# Processing Limits
+MAX_EVENTS_PER_IMPORT=100000
+IMPORT_TIMEOUT_SECONDS=600
+IMPORT_BATCH_SIZE=1000
+
+# Scheduled Imports
+ENABLE_SCHEDULED_IMPORTS=true
+SCHEDULE_CHECK_INTERVAL=300000  # 5 minutes in ms
 ```
 
-## Performance Tuning
+### Storage Configuration
 
-### Database Optimization
+File uploads are stored locally:
 
-```sql
--- Increase work memory for complex queries
-ALTER SYSTEM SET work_mem = '256MB';
-
--- Optimize for SSDs
-ALTER SYSTEM SET random_page_cost = 1.1;
+```env
+# Upload directory (inside container)
+UPLOAD_DIR=/app/uploads
 ```
 
-### Node.js Optimization
+### Authentication & Security
 
-```bash
-# Increase memory limit
+```env
+# Session Management
+SESSION_SECRET=another-32-char-secret
+SESSION_MAX_AGE=86400  # 24 hours in seconds
+
+# CORS Settings
+CORS_ORIGINS=https://your-domain.com,https://another-domain.com
+
+# Rate Limiting
+RATE_LIMIT_WINDOW=60000  # 1 minute in ms
+RATE_LIMIT_MAX_REQUESTS=100
+
+# Security Headers
+ENABLE_SECURITY_HEADERS=true
+CSP_DIRECTIVES="default-src 'self'"
+```
+
+### Performance Tuning
+
+```env
+# Node.js
 NODE_OPTIONS="--max-old-space-size=4096"
 
-# Enable clustering
-CLUSTER_WORKERS=4
+# Database Pool
+DB_POOL_MIN=2
+DB_POOL_MAX=10
+
+# Redis Cache
+REDIS_MAX_MEMORY=1gb
+REDIS_EVICTION_POLICY=allkeys-lru
+```
+
+## Production vs Development
+
+### Development Settings (.env.local)
+
+```env
+NODE_ENV=development
+DATABASE_URL=postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+PAYLOAD_SECRET=dev-secret-change-in-production
+LOG_LEVEL=debug
+```
+
+### Production Settings (.env.production)
+
+```env
+NODE_ENV=production
+DATABASE_URL=postgresql://prod_user:strong_password@db.internal:5432/timetiles_prod
+PAYLOAD_SECRET=<generate-with-openssl-rand-base64-32>
+REDIS_URL=redis://redis.internal:6379
+LOG_LEVEL=info
+ENABLE_SECURITY_HEADERS=true
+```
+
+## Configuration Files
+
+### Next.js Configuration
+
+The `apps/web/next.config.mjs` file contains:
+- Standalone output for production
+- Image optimization settings
+- Security headers
+- Webpack customizations
+
+### TypeScript Configuration
+
+Strict mode is enabled across the monorepo with shared configs in `packages/typescript-config/`.
+
+### Database Configuration
+
+PostgreSQL settings can be tuned via environment variables or directly:
+
+```sql
+-- For production workloads
+ALTER SYSTEM SET shared_buffers = '2GB';
+ALTER SYSTEM SET effective_cache_size = '6GB';
+ALTER SYSTEM SET work_mem = '64MB';
+ALTER SYSTEM SET maintenance_work_mem = '512MB';
+
+-- Apply changes
+SELECT pg_reload_conf();
+```
+
+## Validation
+
+TimeTiles validates configuration on startup:
+
+1. **Required variables**: Checks for DATABASE_URL and PAYLOAD_SECRET
+2. **Database connection**: Verifies PostgreSQL is accessible
+3. **PostGIS extension**: Ensures spatial functions are available
+4. **Redis connection**: Checks Redis if configured (required in production)
+
+## Troubleshooting Configuration
+
+### Missing Environment Variables
+
+```bash
+# Check loaded variables
+pnpm dev
+# Look for warnings about missing configuration
+```
+
+### Invalid Database URL
+
+```bash
+# Test connection
+psql $DATABASE_URL -c "SELECT 1"
+```
+
+### Geocoding Issues
+
+```bash
+# Test Google Maps API
+curl "https://maps.googleapis.com/maps/api/geocode/json?address=Paris&key=$GEOCODING_GOOGLE_MAPS_API_KEY"
 ```
 
 ## Next Steps
 
-- [Maintenance & monitoring](./maintenance)
-- [Troubleshooting common issues](./maintenance#troubleshooting)
+- [Deploy to Production](./deployment) with your configuration
+- [Setup Monitoring](./maintenance#monitoring) for your instance
+- Review [Security Best Practices](./deployment#security-considerations)

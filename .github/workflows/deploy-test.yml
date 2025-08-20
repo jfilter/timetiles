@@ -1,0 +1,384 @@
+name: Test Production Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/**'
+      - 'deploy.sh'
+      - 'docker-compose.dev.yml'
+      - '.dockerignore'
+      - '.github/workflows/deploy-test.yml'
+      
+  pull_request:
+    branches: [main]
+    paths:
+      - 'deploy/**'
+      - 'deploy.sh'
+      - 'docker-compose.dev.yml'
+      - '.dockerignore'
+      - '.github/workflows/deploy-test.yml'
+      
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Enable debug logging'
+        required: false
+        default: 'false'
+
+jobs:
+  test-deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Create test environment file
+        run: |
+          cp deploy/.env.production.example deploy/.env.production
+          
+          # Set test values
+          sed -i 's/CHANGE_ME_STRONG_PASSWORD/test_password_123/g' deploy/.env.production
+          sed -i 's/CHANGE_ME_RANDOM_32_CHAR_SECRET/test_secret_key_that_is_32_chars/g' deploy/.env.production
+          sed -i 's/your-domain.com/localhost/g' deploy/.env.production
+          sed -i 's/admin@${DOMAIN_NAME}/test@localhost/g' deploy/.env.production
+          
+          # Show config (without secrets in real deployment)
+          echo "=== Test Configuration ==="
+          grep -E "^[^#]" deploy/.env.production | grep -v PASSWORD | grep -v SECRET
+          
+      - name: Build Docker image
+        run: |
+          echo "Building production Docker image..."
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production build
+          
+          # Check image size
+          IMAGE_SIZE=$(docker images --format "{{.Size}}" timetiles-web:latest)
+          echo "Docker image size: $IMAGE_SIZE"
+          
+      - name: Start services
+        run: |
+          echo "Starting all services..."
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production up -d
+          
+          # Show running containers
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production ps
+          
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for PostgreSQL..."
+          timeout 60 bash -c 'until docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T postgres pg_isready -U timetiles_user -d timetiles; do sleep 2; done'
+          
+          echo "Waiting for Redis..."
+          timeout 30 bash -c 'until docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T redis redis-cli ping; do sleep 2; done'
+          
+          echo "Waiting for web app..."
+          timeout 60 bash -c 'until curl -f http://localhost:80/api/health 2>/dev/null; do sleep 2; done'
+          
+      - name: Run database migrations
+        run: |
+          echo "Running Payload migrations..."
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T web \
+            pnpm payload:migrate
+            
+      - name: Generate self-signed SSL certificate
+        run: |
+          echo "Generating self-signed certificate for testing..."
+          
+          # Create directory for certificates
+          mkdir -p ssl
+          
+          # Generate self-signed certificate
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout ssl/privkey.pem \
+            -out ssl/fullchain.pem \
+            -subj "/C=US/ST=Test/L=Test/O=Test/CN=localhost"
+          
+          # Create the certificate directory structure that matches Let's Encrypt
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T nginx \
+            mkdir -p /etc/letsencrypt/live/localhost
+          
+          # Copy certificates into nginx container
+          docker cp ssl/fullchain.pem timetiles-nginx:/etc/letsencrypt/live/localhost/fullchain.pem
+          docker cp ssl/privkey.pem timetiles-nginx:/etc/letsencrypt/live/localhost/privkey.pem
+          
+          # Update nginx config to use the certificates
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T nginx \
+            sed -i 's/${DOMAIN_NAME}/localhost/g' /etc/nginx/sites-enabled/app.conf
+          
+          # Reload nginx to apply SSL config
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T nginx \
+            nginx -s reload
+          
+          sleep 5
+          
+      - name: Test nginx proxy (HTTP and HTTPS)
+        run: |
+          echo "Testing nginx is proxying correctly..."
+          
+          # Test health endpoint through nginx HTTP
+          curl -f -v http://localhost:80/api/health || exit 1
+          
+          # Test health endpoint through nginx HTTPS (ignore cert validation)
+          curl -f -k -v https://localhost:443/api/health || exit 1
+          
+          # Test static files
+          curl -f -I http://localhost:80/_next/static/ || exit 1
+          
+          # Test HTTPS redirect (should get 301)
+          REDIRECT_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:80/)
+          echo "HTTP to HTTPS redirect code: $REDIRECT_CODE"
+          
+          # Test Let's Encrypt challenge path (still works on HTTP)
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T nginx \
+            mkdir -p /var/www/certbot/.well-known/acme-challenge
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T nginx \
+            echo "test" > /var/www/certbot/.well-known/acme-challenge/test.txt
+          curl -f http://localhost:80/.well-known/acme-challenge/test.txt || exit 1
+          
+      - name: Test application endpoints (HTTPS)
+        run: |
+          echo "Testing application endpoints over HTTPS..."
+          
+          # Test API health over HTTPS
+          HEALTH_RESPONSE=$(curl -k -s https://localhost:443/api/health)
+          echo "Health check response: $HEALTH_RESPONSE"
+          
+          # Test main page loads over HTTPS
+          curl -f -k -s https://localhost:443/ | grep -q "<html" || exit 1
+          
+          # Test admin panel endpoint over HTTPS
+          curl -f -k -I https://localhost:443/admin || exit 1
+          
+          # Test security headers are present
+          echo "Checking security headers..."
+          curl -k -I https://localhost:443/ | grep -i "strict-transport-security" || echo "Warning: HSTS header missing"
+          curl -k -I https://localhost:443/ | grep -i "x-frame-options" || echo "Warning: X-Frame-Options missing"
+          curl -k -I https://localhost:443/ | grep -i "x-content-type-options" || echo "Warning: X-Content-Type-Options missing"
+          
+      - name: Test database connectivity
+        run: |
+          echo "Testing database operations..."
+          
+          # Check PostGIS is installed
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T postgres \
+            psql -U timetiles_user -d timetiles -c "SELECT PostGIS_Version();"
+            
+          # Check Payload schema exists
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T postgres \
+            psql -U timetiles_user -d timetiles -c "\dn payload"
+            
+      - name: Test Redis connectivity
+        run: |
+          echo "Testing Redis..."
+          
+          # Set and get a test key
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T redis \
+            redis-cli SET test_key "test_value"
+          
+          VALUE=$(docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T redis \
+            redis-cli GET test_key)
+          
+          if [ "$VALUE" != "test_value" ]; then
+            echo "Redis test failed!"
+            exit 1
+          fi
+          
+      - name: Test container restart
+        run: |
+          echo "Testing container restart..."
+          
+          # Restart web container
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production restart web
+          
+          # Wait for it to come back
+          sleep 10
+          timeout 60 bash -c 'until curl -f http://localhost:80/api/health 2>/dev/null; do sleep 2; done'
+          
+          echo "Container restart successful!"
+          
+      - name: Check resource usage
+        run: |
+          echo "=== Container Resource Usage ==="
+          docker stats --no-stream
+          
+          echo "=== Docker Images ==="
+          docker images | grep timetiles
+          
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "=== Docker Compose Status ==="
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production ps
+          
+          echo "=== Web App Logs ==="
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production logs web
+          
+          echo "=== Nginx Logs ==="
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production logs nginx
+          
+          echo "=== PostgreSQL Logs ==="
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production logs postgres
+          
+          echo "=== Redis Logs ==="
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production logs redis
+          
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "Stopping and removing containers..."
+          docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production down -v
+          
+          echo "Cleanup complete!"
+
+  test-deploy-script:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Make deploy script executable
+        run: chmod +x deploy.sh deploy/deploy.sh
+        
+      - name: Test deploy script setup
+        run: |
+          echo "Testing deploy.sh setup command..."
+          ./deploy.sh setup
+          
+          # Verify files were created
+          if [ ! -f deploy/.env.production ]; then
+            echo "Setup failed - .env.production not created!"
+            exit 1
+          fi
+          
+          # Update test values
+          sed -i 's/CHANGE_ME_STRONG_PASSWORD/test_password_123/g' deploy/.env.production
+          sed -i 's/your-domain.com/localhost/g' deploy/.env.production
+          sed -i 's/admin@${DOMAIN_NAME}/test@localhost/g' deploy/.env.production
+          
+      - name: Test deploy script build
+        run: |
+          echo "Testing deploy.sh build command..."
+          ./deploy.sh build
+          
+      - name: Test deploy script status
+        run: |
+          echo "Testing deploy.sh status command..."
+          ./deploy.sh up
+          
+          # Wait for services
+          sleep 20
+          
+          ./deploy.sh status
+      
+      - name: Run database migrations
+        run: |
+          cd deploy
+          ./deploy.sh migrate
+          
+      - name: Check application health
+        run: |
+          cd deploy
+          ./deploy.sh status
+          
+          # Test health endpoint
+          max_attempts=30
+          attempt=0
+          while [ $attempt -lt $max_attempts ]; do
+            if curl -f http://localhost:3000/api/health; then
+              echo "Health check passed!"
+              break
+            fi
+            echo "Waiting for application to be ready... (attempt $((attempt+1))/$max_attempts)"
+            sleep 5
+            attempt=$((attempt+1))
+          done
+          
+          if [ $attempt -eq $max_attempts ]; then
+            echo "Health check failed after $max_attempts attempts"
+            ./deploy.sh logs
+            exit 1
+          fi
+      
+      - name: Test backup and restore functionality
+        run: |
+          cd deploy
+          
+          # Create some test data
+          docker-compose -f docker-compose.prod.yml exec -T postgres psql -U timetiles_user timetiles -c \
+            "INSERT INTO payload.users (email, created_at, updated_at) VALUES ('test@backup.com', NOW(), NOW());"
+          
+          # Test database backup
+          echo "Testing database backup..."
+          ./deploy.sh backup db
+          
+          # Verify backup was created
+          if ! ls backups/db-*.sql.gz > /dev/null 2>&1; then
+            echo "Database backup failed - no backup file found"
+            exit 1
+          fi
+          
+          # Test full backup (with uploads)
+          echo "Testing full backup..."
+          ./deploy.sh backup full
+          
+          # Verify full backup files
+          if ! ls backups/uploads-*.tar.gz > /dev/null 2>&1; then
+            echo "Full backup failed - no uploads backup found"
+            exit 1
+          fi
+          
+          # List backups
+          echo "Listing backups..."
+          ./deploy.sh backup list
+          
+          # Get the latest backup file
+          LATEST_BACKUP=$(ls -t backups/db-*.sql.gz | head -1)
+          echo "Latest backup: $LATEST_BACKUP"
+          
+          # Delete test data
+          docker-compose -f docker-compose.prod.yml exec -T postgres psql -U timetiles_user timetiles -c \
+            "DELETE FROM payload.users WHERE email = 'test@backup.com';"
+          
+          # Verify data is gone
+          COUNT=$(docker-compose -f docker-compose.prod.yml exec -T postgres psql -U timetiles_user timetiles -t -c \
+            "SELECT COUNT(*) FROM payload.users WHERE email = 'test@backup.com';" | tr -d ' ')
+          if [ "$COUNT" != "0" ]; then
+            echo "Failed to delete test data"
+            exit 1
+          fi
+          
+          # Test restore (auto-confirm for CI)
+          echo "Testing restore..."
+          echo "yes" | ./deploy.sh restore "$LATEST_BACKUP"
+          
+          # Verify data was restored
+          COUNT=$(docker-compose -f docker-compose.prod.yml exec -T postgres psql -U timetiles_user timetiles -t -c \
+            "SELECT COUNT(*) FROM payload.users WHERE email = 'test@backup.com';" | tr -d ' ')
+          if [ "$COUNT" != "1" ]; then
+            echo "Restore failed - test data not found after restore"
+            exit 1
+          fi
+          
+          echo "Backup and restore tests passed!"
+          
+          # Test backup cleanup
+          echo "Testing backup cleanup..."
+          ./deploy.sh backup clean
+          
+          # Clean up test data
+          docker-compose -f docker-compose.prod.yml exec -T postgres psql -U timetiles_user timetiles -c \
+            "DELETE FROM payload.users WHERE email = 'test@backup.com';"
+          
+      - name: Cleanup
+        if: always()
+        run: |
+          ./deploy.sh down || true
+          docker system prune -f
