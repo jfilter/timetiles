@@ -9,7 +9,7 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ENV_FILE="$SCRIPT_DIR/.env.production"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.prod.yml"
-DC_CMD="docker-compose -f $COMPOSE_FILE --env-file $ENV_FILE"
+DC_CMD="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE"
 
 # Change to project root for build context
 cd "$SCRIPT_DIR/.."
@@ -91,7 +91,7 @@ case "$1" in
         
         # Copy env file if it doesn't exist
         if [ ! -f "$ENV_FILE" ]; then
-            cp .env.production.example "$ENV_FILE"
+            cp "$SCRIPT_DIR/.env.production.example" "$ENV_FILE"
             echo -e "${GREEN}Created $ENV_FILE from template${NC}"
             
             # Generate random secret for Payload
