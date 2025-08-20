@@ -63,11 +63,14 @@ export const detectGeoFields = (
     if (!latField && latPatterns.some((p) => p.test(fieldName))) {
       const hasNumericType =
         (stats.typeDistribution["number"] ?? 0) > 0 || (stats.typeDistribution["integer"] ?? 0) > 0;
-      if (hasNumericType && stats.numericStats) {
-        if (stats.numericStats.min >= -90 && stats.numericStats.max <= 90) {
-          latField = fieldPath;
-          confidence += 0.5;
-        }
+      if (
+        hasNumericType &&
+        stats.numericStats &&
+        stats.numericStats.min >= -90 &&
+        stats.numericStats.max <= 90
+      ) {
+        latField = fieldPath;
+        confidence += 0.5;
       }
     }
 
@@ -75,11 +78,14 @@ export const detectGeoFields = (
     if (!lngField && lngPatterns.some((p) => p.test(fieldName))) {
       const hasNumericType =
         (stats.typeDistribution["number"] ?? 0) > 0 || (stats.typeDistribution["integer"] ?? 0) > 0;
-      if (hasNumericType && stats.numericStats) {
-        if (stats.numericStats.min >= -180 && stats.numericStats.max <= 180) {
-          lngField = fieldPath;
-          confidence += 0.5;
-        }
+      if (
+        hasNumericType &&
+        stats.numericStats &&
+        stats.numericStats.min >= -180 &&
+        stats.numericStats.max <= 180
+      ) {
+        lngField = fieldPath;
+        confidence += 0.5;
       }
     }
   }

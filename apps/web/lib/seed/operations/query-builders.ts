@@ -100,16 +100,14 @@ export class QueryBuilders {
   }
 
   private buildImportFilesWhereClause(item: Record<string, unknown>): Where {
-    const where: Where = {};
-    if (item.filename != null && item.filename != undefined && item.filename != "") {
-      where.filename = {
-        equals: item.filename,
-      };
-    }
-    return where;
+    return this.buildFilenameWhereClause(item);
   }
 
   private buildImportJobsWhereClause(item: Record<string, unknown>): Where {
+    return this.buildFilenameWhereClause(item);
+  }
+
+  private buildFilenameWhereClause(item: Record<string, unknown>): Where {
     const where: Where = {};
     if (item.filename != null && item.filename != undefined && item.filename != "") {
       where.filename = {

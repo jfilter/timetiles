@@ -161,6 +161,7 @@ const shouldRunNow = (scheduledImport: ScheduledImport, currentTime: Date): bool
 
   // Check schedule configuration
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Logical OR is correct here for boolean logic
   const hasValidSchedule = Boolean(
     (scheduledImport.scheduleType === "frequency" && scheduledImport.frequency) ||
       (scheduledImport.scheduleType === "cron" && scheduledImport.cronExpression)
@@ -245,7 +246,7 @@ const calculateNextRun = (scheduledImport: ScheduledImport, currentTime: Date): 
 const updateExecutionHistory = (
   scheduledImport: ScheduledImport,
   currentTime: Date,
-  jobId: string,
+  _jobId: string,
   startTime: number
 ) => {
   const executionHistory = scheduledImport.executionHistory ?? [];
@@ -284,6 +285,7 @@ const processScheduledImport = async (
       sourceUrl: scheduledImport.sourceUrl,
       authConfig: scheduledImport.authConfig,
       catalogId:
+        // eslint-disable-next-line sonarjs/different-types-comparison -- Checking for object type is correct
         typeof scheduledImport.catalog === "object" && scheduledImport.catalog !== null
           ? scheduledImport.catalog.id
           : (scheduledImport.catalog ?? undefined),

@@ -187,7 +187,8 @@ const getFieldType = (prop: unknown): string => {
     if (typeof property.type === "object") {
       return JSON.stringify(property.type);
     }
-    return String(property.type);
+    // Type is guaranteed to be a primitive here
+    return property.type as string;
   }
 
   if (property.oneOf || property.anyOf) {
@@ -223,7 +224,8 @@ export const generateChangeSummary = (comparison: SchemaComparison): string => {
     lines.push("Breaking Changes:");
     for (const change of breakingChanges) {
       const details = change.details as { description?: string };
-      lines.push(`  - ${details.description ?? `${change.type} at ${change.path}`}`);
+      const fallback = change.type + " at " + change.path;
+      lines.push(`  - ${details.description ?? fallback}`);
     }
   }
 
@@ -233,7 +235,8 @@ export const generateChangeSummary = (comparison: SchemaComparison): string => {
     lines.push("Non-Breaking Changes:");
     for (const change of nonBreaking) {
       const details = change.details as { description?: string };
-      lines.push(`  - ${details.description ?? `${change.type} at ${change.path}`}`);
+      const fallback = change.type + " at " + change.path;
+      lines.push(`  - ${details.description ?? fallback}`);
     }
   }
 

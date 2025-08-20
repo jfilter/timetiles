@@ -48,12 +48,12 @@ export const updateFieldStats = (stats: FieldStatistics, value: unknown, maxUniq
   }
 
   // Track unique samples
-  if (stats.uniqueSamples.length < maxUniqueValues) {
-    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) {
-      if (!stats.uniqueSamples.includes(value)) {
-        stats.uniqueSamples.push(value);
-      }
-    }
+  if (
+    stats.uniqueSamples.length < maxUniqueValues &&
+    (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) &&
+    !stats.uniqueSamples.includes(value)
+  ) {
+    stats.uniqueSamples.push(value);
   }
 
   // Track formats for strings
