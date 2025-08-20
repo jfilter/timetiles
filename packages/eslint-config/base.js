@@ -8,7 +8,6 @@
  *
  * @module
  */
-/* eslint-disable sonarjs/no-duplicate-string */
 import js from "@eslint/js";
 import eslintConfigPrettier from "eslint-config-prettier";
 import boundariesPlugin from "eslint-plugin-boundaries";
