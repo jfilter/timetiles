@@ -17,6 +17,7 @@
     "format": "next lint --fix --quiet && prettier --write . --ignore-path ../../.prettierignore --log-level error"
   },
   "dependencies": {
+    "@timetiles/assets": "workspace:*",
     "@workspace/ui": "workspace:*",
     "next": "^15.2.3",
     "nextra": "^2.13.4",
@@ -25,6 +26,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@svgr/webpack": "^8.1.0",
     "@types/node": "^20",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
