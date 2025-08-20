@@ -10,29 +10,25 @@
 
 import type { SchemaChange, SchemaComparison } from "@/lib/types/schema-detection";
 
+interface SchemaPropertyMap {
+  [key: string]: unknown;
+}
+
+interface ChangeDetectionContext {
+  oldProps: SchemaPropertyMap;
+  newProps: SchemaPropertyMap;
+  oldRequired: string[];
+  newRequired: string[];
+  changes: SchemaChange[];
+}
+
 /**
- * Compares two schemas and identifies changes
+ * Detects removed fields from schema
  */
-export const compareSchemas = (
-  oldSchema: Record<string, unknown>,
-  newSchema: Record<string, unknown>
-): SchemaComparison => {
-  const changes: SchemaChange[] = [];
+const detectRemovedFields = (context: ChangeDetectionContext): boolean => {
+  let hasBreakingChanges = false;
+  const { oldProps, newProps, changes } = context;
 
-  const oldProps = (oldSchema.properties as Record<string, unknown>) ?? {};
-  const newProps = (newSchema.properties as Record<string, unknown>) ?? {};
-
-  // Debug check for test environment
-  if (process.env.NODE_ENV === "test" && Object.keys(oldProps).length === 0 && oldSchema.properties) {
-    // oldProps is empty but oldSchema.properties exists - this shouldn't happen
-  }
-
-  const oldRequired = (oldSchema.required as string[]) ?? [];
-  const newRequired = (newSchema.required as string[]) ?? [];
-
-  let isBreaking = false;
-
-  // Check for removed fields (breaking)
   for (const field of Object.keys(oldProps)) {
     if (!newProps[field]) {
       const change: SchemaChange = {
@@ -45,11 +41,20 @@ export const compareSchemas = (
         autoApprovable: false,
       };
       changes.push(change);
-      isBreaking = true;
+      hasBreakingChanges = true;
     }
   }
 
-  // Check for added fields (non-breaking if optional)
+  return hasBreakingChanges;
+};
+
+/**
+ * Detects newly added fields in schema
+ */
+const detectAddedFields = (context: ChangeDetectionContext): boolean => {
+  let hasBreakingChanges = false;
+  const { oldProps, newProps, newRequired, changes } = context;
+
   for (const field of Object.keys(newProps)) {
     if (!oldProps[field]) {
       const isRequired = newRequired.includes(field);
@@ -65,64 +70,97 @@ export const compareSchemas = (
       };
       changes.push(change);
       if (isRequired) {
-        isBreaking = true;
+        hasBreakingChanges = true;
       }
     }
   }
 
-  // Check for type changes and enum changes
+  return hasBreakingChanges;
+};
+
+/**
+ * Detects enum value changes
+ */
+const detectEnumChanges = (
+  field: string,
+  oldProp: Record<string, unknown>,
+  newProp: Record<string, unknown>,
+  changes: SchemaChange[]
+): boolean => {
+  if (!oldProp.enum || !newProp.enum) {
+    return false;
+  }
+
+  const oldEnum = (oldProp.enum as unknown[]) || [];
+  const newEnum = (newProp.enum as unknown[]) || [];
+
+  const added = newEnum.filter((v) => !oldEnum.includes(v));
+  const removed = oldEnum.filter((v) => !newEnum.includes(v));
+
+  if (added.length > 0 || removed.length > 0) {
+    const change: SchemaChange = {
+      type: "enum_change",
+      path: field,
+      details: {
+        description: `Enum values changed for '${field}'`,
+        added,
+        removed,
+      },
+      severity: removed.length > 0 ? "warning" : "info",
+      autoApprovable: removed.length === 0,
+    };
+    changes.push(change);
+    return removed.length > 0;
+  }
+
+  return false;
+};
+
+/**
+ * Detects type and enum changes in existing fields
+ */
+const detectFieldModifications = (context: ChangeDetectionContext): boolean => {
+  let hasBreakingChanges = false;
+  const { oldProps, newProps, changes } = context;
+
   for (const field of Object.keys(oldProps)) {
-    if (newProps[field]) {
-      const oldProp = oldProps[field] as Record<string, unknown>;
-      const newProp = newProps[field] as Record<string, unknown>;
+    if (!newProps[field]) continue;
 
-      const oldType = getFieldType(oldProp);
-      const newType = getFieldType(newProp);
+    const oldProp = oldProps[field] as Record<string, unknown>;
+    const newProp = newProps[field] as Record<string, unknown>;
 
-      if (oldType !== newType) {
-        const change: SchemaChange = {
-          type: "type_change",
-          path: field,
-          details: {
-            description: `Field '${field}' type changed from ${oldType} to ${newType}`,
-            oldType,
-            newType,
-          },
-          severity: "error",
-          autoApprovable: false,
-        };
-        changes.push(change);
-        isBreaking = true;
-      } else if (oldProp.enum && newProp.enum) {
-        // Check for enum changes
-        const oldEnum = (oldProp.enum as unknown[]) || [];
-        const newEnum = (newProp.enum as unknown[]) || [];
+    const oldType = getFieldType(oldProp);
+    const newType = getFieldType(newProp);
 
-        const added = newEnum.filter((v) => !oldEnum.includes(v));
-        const removed = oldEnum.filter((v) => !newEnum.includes(v));
-
-        if (added.length > 0 || removed.length > 0) {
-          const change: SchemaChange = {
-            type: "enum_change",
-            path: field,
-            details: {
-              description: `Enum values changed for '${field}'`,
-              added,
-              removed,
-            },
-            severity: removed.length > 0 ? "warning" : "info",
-            autoApprovable: removed.length === 0,
-          };
-          changes.push(change);
-          if (removed.length > 0) {
-            isBreaking = true;
-          }
-        }
-      }
+    if (oldType !== newType) {
+      const change: SchemaChange = {
+        type: "type_change",
+        path: field,
+        details: {
+          description: `Field '${field}' type changed from ${oldType} to ${newType}`,
+          oldType,
+          newType,
+        },
+        severity: "error",
+        autoApprovable: false,
+      };
+      changes.push(change);
+      hasBreakingChanges = true;
+    } else if (detectEnumChanges(field, oldProp, newProp, changes)) {
+      hasBreakingChanges = true;
     }
   }
 
-  // Check for required field changes
+  return hasBreakingChanges;
+};
+
+/**
+ * Detects changes in required field status
+ */
+const detectRequiredFieldChanges = (context: ChangeDetectionContext): boolean => {
+  let hasBreakingChanges = false;
+  const { oldProps, newProps, oldRequired, newRequired, changes } = context;
+
   const addedRequired = newRequired.filter((f) => !oldRequired.includes(f));
   const removedRequired = oldRequired.filter((f) => !newRequired.includes(f));
 
@@ -139,7 +177,7 @@ export const compareSchemas = (
         autoApprovable: false,
       };
       changes.push(change);
-      isBreaking = true;
+      hasBreakingChanges = true;
     }
   }
 
@@ -158,6 +196,39 @@ export const compareSchemas = (
       changes.push(change);
     }
   }
+
+  return hasBreakingChanges;
+};
+
+/**
+ * Compares two schemas and identifies changes
+ */
+export const compareSchemas = (
+  oldSchema: Record<string, unknown>,
+  newSchema: Record<string, unknown>
+): SchemaComparison => {
+  const changes: SchemaChange[] = [];
+
+  const context: ChangeDetectionContext = {
+    oldProps: (oldSchema.properties as SchemaPropertyMap) ?? {},
+    newProps: (newSchema.properties as SchemaPropertyMap) ?? {},
+    oldRequired: (oldSchema.required as string[]) ?? [],
+    newRequired: (newSchema.required as string[]) ?? [],
+    changes,
+  };
+
+  // Debug check for test environment
+  if (process.env.NODE_ENV === "test" && Object.keys(context.oldProps).length === 0 && oldSchema.properties) {
+    // oldProps is empty but oldSchema.properties exists - this shouldn't happen
+  }
+
+  // Run all detection phases
+  const removedBreaking = detectRemovedFields(context);
+  const addedBreaking = detectAddedFields(context);
+  const modificationBreaking = detectFieldModifications(context);
+  const requiredBreaking = detectRequiredFieldChanges(context);
+
+  const isBreaking = removedBreaking || addedBreaking || modificationBreaking || requiredBreaking;
 
   // Determine if changes require approval
   const requiresApproval = changes.some((c) => c.severity === "error" || c.severity === "warning");

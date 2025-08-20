@@ -8,7 +8,7 @@
  * @category Services/SchemaBuilder
  */
 
-import type { SchemaBuilderState } from "@/lib/types/schema-detection";
+import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-detection";
 
 /**
  * Detects potential ID fields based on naming patterns and characteristics
@@ -39,6 +39,40 @@ export const detectIdFields = (state: SchemaBuilderState): string[] => {
   return idFields;
 };
 
+const COORDINATE_PATTERNS = {
+  latitude: [/^lat(itude)?$/i, /^location[._]?lat(itude)?$/i, /^geo[._]?lat(itude)?$/i],
+  longitude: [/^(lng|lon)(gitude)?$/i, /^location[._]?(lng|lon)(gitude)?$/i, /^geo[._]?(lng|lon)(gitude)?$/i],
+};
+
+const COORDINATE_BOUNDS = {
+  latitude: { min: -90, max: 90 },
+  longitude: { min: -180, max: 180 },
+};
+
+const isValidCoordinateField = (stats: FieldStatistics, bounds: { min: number; max: number }): boolean => {
+  const hasNumericType = (stats.typeDistribution["number"] ?? 0) > 0 || (stats.typeDistribution["integer"] ?? 0) > 0;
+  return (
+    hasNumericType &&
+    stats.numericStats !== undefined &&
+    stats.numericStats.min >= bounds.min &&
+    stats.numericStats.max <= bounds.max
+  );
+};
+
+const findCoordinateField = (
+  fieldStats: Record<string, FieldStatistics>,
+  patterns: RegExp[],
+  bounds: { min: number; max: number }
+): string | undefined => {
+  for (const [fieldPath, stats] of Object.entries(fieldStats)) {
+    const fieldName = fieldPath.split(".").pop() ?? "";
+    if (patterns.some((p) => p.test(fieldName)) && isValidCoordinateField(stats, bounds)) {
+      return fieldPath;
+    }
+  }
+  return undefined;
+};
+
 /**
  * Detects geographic coordinate fields
  */
@@ -49,46 +83,10 @@ export const detectGeoFields = (
   longitude?: string;
   confidence: number;
 } => {
-  const latPatterns = [/^lat(itude)?$/i, /^location[._]?lat(itude)?$/i, /^geo[._]?lat(itude)?$/i];
-  const lngPatterns = [/^(lng|lon)(gitude)?$/i, /^location[._]?(lng|lon)(gitude)?$/i, /^geo[._]?(lng|lon)(gitude)?$/i];
+  const latField = findCoordinateField(state.fieldStats, COORDINATE_PATTERNS.latitude, COORDINATE_BOUNDS.latitude);
+  const lngField = findCoordinateField(state.fieldStats, COORDINATE_PATTERNS.longitude, COORDINATE_BOUNDS.longitude);
 
-  let latField: string | undefined;
-  let lngField: string | undefined;
-  let confidence = 0;
-
-  for (const [fieldPath, stats] of Object.entries(state.fieldStats)) {
-    const fieldName = fieldPath.split(".").pop() ?? "";
-
-    // Check for latitude
-    if (!latField && latPatterns.some((p) => p.test(fieldName))) {
-      const hasNumericType =
-        (stats.typeDistribution["number"] ?? 0) > 0 || (stats.typeDistribution["integer"] ?? 0) > 0;
-      if (
-        hasNumericType &&
-        stats.numericStats &&
-        stats.numericStats.min >= -90 &&
-        stats.numericStats.max <= 90
-      ) {
-        latField = fieldPath;
-        confidence += 0.5;
-      }
-    }
-
-    // Check for longitude
-    if (!lngField && lngPatterns.some((p) => p.test(fieldName))) {
-      const hasNumericType =
-        (stats.typeDistribution["number"] ?? 0) > 0 || (stats.typeDistribution["integer"] ?? 0) > 0;
-      if (
-        hasNumericType &&
-        stats.numericStats &&
-        stats.numericStats.min >= -180 &&
-        stats.numericStats.max <= 180
-      ) {
-        lngField = fieldPath;
-        confidence += 0.5;
-      }
-    }
-  }
+  const confidence = (latField ? 0.5 : 0) + (lngField ? 0.5 : 0);
 
   return { latitude: latField, longitude: lngField, confidence };
 };

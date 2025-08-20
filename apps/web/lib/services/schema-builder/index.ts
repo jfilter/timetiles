@@ -96,6 +96,101 @@ export class ProgressiveSchemaBuilder {
     return { schemaChanged, changes };
   }
 
+  private handleNewField(fieldPath: string, value: unknown): SchemaChange {
+    this.state.fieldStats[fieldPath] = createFieldStats(fieldPath);
+    return {
+      type: "new_field",
+      path: fieldPath,
+      details: { dataType: getValueType(value) },
+      severity: "info",
+      autoApprovable: true,
+    };
+  }
+
+  private checkTypeConflict(
+    fieldPath: string,
+    stats: FieldStatistics,
+    newType: string,
+    value: unknown
+  ): SchemaChange | null {
+    if (stats.occurrences === 0) return null;
+
+    const hasExistingType = (stats.typeDistribution[newType] ?? 0) > 0;
+    const hasOtherTypes = Object.keys(stats.typeDistribution).some(
+      (t) => t !== newType && t !== "null" && t !== "undefined" && (stats.typeDistribution[t] ?? 0) > 0
+    );
+
+    if (!hasExistingType && hasOtherTypes) {
+      const oldType = Object.keys(stats.typeDistribution).find(
+        (t) => t !== "null" && t !== "undefined" && (stats.typeDistribution[t] ?? 0) > 0
+      );
+
+      this.updateTypeConflict(fieldPath, stats, newType, value);
+
+      return {
+        type: "type_change",
+        path: fieldPath,
+        details: { oldType, newType },
+        severity: "warning",
+        autoApprovable: false,
+      };
+    }
+
+    return null;
+  }
+
+  private updateTypeConflict(fieldPath: string, stats: FieldStatistics, newType: string, value: unknown): void {
+    let conflict = this.state.typeConflicts.find((c) => c.path === fieldPath);
+
+    if (!conflict) {
+      conflict = {
+        path: fieldPath,
+        types: {},
+        samples: [],
+      };
+
+      // Add all existing non-null types
+      for (const [type, count] of Object.entries(stats.typeDistribution)) {
+        if (type !== "null" && type !== "undefined" && count > 0) {
+          conflict.types[type] = count;
+        }
+      }
+
+      // Add the new conflicting type with count 1
+      conflict.types[newType] = 1;
+      this.state.typeConflicts.push(conflict);
+    } else {
+      // Update existing conflict - increment count for the new type
+      conflict.types[newType] = (conflict.types[newType] ?? 0) + 1;
+    }
+
+    if (conflict.samples.length < 5) {
+      conflict.samples.push({ type: newType, value });
+    }
+  }
+
+  private processNestedValue(value: unknown, fieldPath: string, depth: number): SchemaChange[] {
+    const changes: SchemaChange[] = [];
+
+    // Recursively process nested objects
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      const nestedChanges = this.processRecord(value, fieldPath, depth + 1);
+      changes.push(...nestedChanges);
+    }
+
+    // Process array items (sample first item)
+    if (Array.isArray(value) && value.length > 0) {
+      const firstItem = value[0];
+      if (typeof firstItem === "object" && firstItem !== null) {
+        const itemPath = `${fieldPath}[]`;
+        const nestedChanges = this.processRecord(firstItem, itemPath, depth + 1);
+        changes.push(...nestedChanges);
+      }
+    }
+
+    return changes;
+  }
+
   private processRecord(obj: unknown, pathPrefix: string, depth: number = 0): SchemaChange[] {
     const changes: SchemaChange[] = [];
 
@@ -106,94 +201,24 @@ export class ProgressiveSchemaBuilder {
 
       // Initialize field stats if new
       if (!this.state.fieldStats[fieldPath]) {
-        this.state.fieldStats[fieldPath] = createFieldStats(fieldPath);
-        changes.push({
-          type: "new_field",
-          path: fieldPath,
-          details: { dataType: getValueType(value) },
-          severity: "info",
-          autoApprovable: true,
-        });
+        changes.push(this.handleNewField(fieldPath, value));
       }
 
-      const stats = this.state.fieldStats[fieldPath];
+      const stats = this.state.fieldStats[fieldPath]!; // Safe after initialization above
       const newType = getValueType(value);
 
       // Check for type conflicts BEFORE updating stats
-      if (stats.occurrences > 0) {
-        const hasExistingType = (stats.typeDistribution[newType] ?? 0) > 0;
-        const hasOtherTypes = Object.keys(stats.typeDistribution).some(
-          (t) => t !== newType && t !== "null" && t !== "undefined" && (stats.typeDistribution[t] ?? 0) > 0
-        );
-
-        if (!hasExistingType && hasOtherTypes) {
-          // This is a new type conflicting with existing types
-          // Generate change event
-          const oldType = Object.keys(stats.typeDistribution).find(
-            (t) => t !== "null" && t !== "undefined" && (stats.typeDistribution[t] ?? 0) > 0
-          );
-          changes.push({
-            type: "type_change",
-            path: fieldPath,
-            details: {
-              oldType,
-              newType,
-            },
-            severity: "warning",
-            autoApprovable: false,
-          });
-
-          // Find or update existing conflict
-          let conflict = this.state.typeConflicts.find((c) => c.path === fieldPath);
-          if (!conflict) {
-            // When creating a new conflict, we need to track both the existing type(s) and the new type
-            // The existing types are already in stats.typeDistribution
-            // The new type hasn't been added yet (we check BEFORE updating stats)
-            conflict = {
-              path: fieldPath,
-              types: {},
-              samples: [],
-            };
-
-            // Add all existing non-null types
-            for (const [type, count] of Object.entries(stats.typeDistribution)) {
-              if (type !== "null" && type !== "undefined" && count > 0) {
-                conflict.types[type] = count;
-              }
-            }
-
-            // Add the new conflicting type with count 1
-            conflict.types[newType] = 1;
-
-            this.state.typeConflicts.push(conflict);
-          } else {
-            // Update existing conflict - increment count for the new type
-            conflict.types[newType] = (conflict.types[newType] ?? 0) + 1;
-          }
-          if (conflict.samples.length < 5) {
-            conflict.samples.push({ type: newType, value });
-          }
-        }
+      const typeChange = this.checkTypeConflict(fieldPath, stats, newType, value);
+      if (typeChange) {
+        changes.push(typeChange);
       }
 
       // Update field statistics
       updateFieldStats(stats, value, this.config.maxUniqueValues);
 
-      // Recursively process nested objects
-      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-        const nestedChanges = this.processRecord(value, fieldPath, depth + 1);
-        changes.push(...nestedChanges);
-      }
-
-      // Process array items (sample first item)
-      if (Array.isArray(value) && value.length > 0) {
-        const firstItem = value[0];
-        if (typeof firstItem === "object" && firstItem !== null) {
-          const itemPath = `${fieldPath}[]`;
-          const nestedChanges = this.processRecord(firstItem, itemPath, depth + 1);
-          changes.push(...nestedChanges);
-        }
-      }
+      // Process nested values
+      const nestedChanges = this.processNestedValue(value, fieldPath, depth);
+      changes.push(...nestedChanges);
     }
 
     return changes;
@@ -317,6 +342,30 @@ export class ProgressiveSchemaBuilder {
     }
   }
 
+  private processArrayPart(current: unknown, fieldName: string): unknown {
+    if (typeof current !== "object" || current === null || !(fieldName in current)) {
+      return null;
+    }
+
+    const field = (current as Record<string, unknown>)[fieldName];
+    if (typeof field !== "object" || field === null || !("items" in field)) {
+      return null;
+    }
+
+    const items = (field as { items: unknown }).items;
+    if (typeof items === "object" && items !== null && "properties" in items) {
+      return (items as { properties: unknown }).properties;
+    }
+    return items;
+  }
+
+  private processObjectPart(current: unknown, part: string): unknown {
+    if (typeof current === "object" && current !== null && part in current) {
+      return (current as Record<string, unknown>)[part];
+    }
+    return null;
+  }
+
   private getNestedProperty(properties: Record<string, SchemaProperty>, path: string): SchemaProperty | null {
     const parts = path.split(".");
     let current: unknown = properties;
@@ -324,27 +373,69 @@ export class ProgressiveSchemaBuilder {
     for (const part of parts) {
       if (part.endsWith("[]")) {
         const fieldName = part.slice(0, -2);
-        if (typeof current === "object" && current !== null && fieldName in current) {
-          const field = (current as Record<string, unknown>)[fieldName];
-          if (typeof field === "object" && field !== null && "items" in field) {
-            current = (field as { items: unknown }).items;
-            if (typeof current === "object" && current !== null && "properties" in current) {
-              current = (current as { properties: unknown }).properties;
-            }
-          }
-        } else {
-          return null;
-        }
+        current = this.processArrayPart(current, fieldName);
       } else {
-        if (typeof current === "object" && current !== null && part in current) {
-          current = (current as Record<string, unknown>)[part];
-        } else {
-          return null;
-        }
+        current = this.processObjectPart(current, part);
+      }
+
+      if (current === null) {
+        return null;
       }
     }
 
     return current as SchemaProperty;
+  }
+
+  private createArrayProperty(): Record<string, unknown> {
+    return {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {},
+      },
+    };
+  }
+
+  private createObjectProperty(): Record<string, unknown> {
+    return {
+      type: "object",
+      properties: {},
+    };
+  }
+
+  private processFieldPath(
+    properties: Record<string, unknown>,
+    fieldPath: string,
+    stats: FieldStatistics,
+    required: string[]
+  ): void {
+    const parts = fieldPath.split(".").filter((p) => p !== "");
+    let current = properties;
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      if (!part) continue;
+      const isLast = i === parts.length - 1;
+
+      if (part.endsWith("[]")) {
+        const fieldName = part.slice(0, -2);
+        if (!current[fieldName]) {
+          current[fieldName] = this.createArrayProperty();
+        }
+        current = (current[fieldName] as { items: { properties: Record<string, unknown> } }).items.properties;
+      } else if (isLast) {
+        current[part] = this.buildPropertySchema(stats);
+        // Mark as required if appears in most records
+        if (stats.occurrences >= this.state.recordCount * 0.9) {
+          required.push(part);
+        }
+      } else {
+        if (!current[part]) {
+          current[part] = this.createObjectProperty();
+        }
+        current = (current[part] as { properties: Record<string, unknown> }).properties;
+      }
+    }
   }
 
   private buildManualSchema(): Record<string, unknown> {
@@ -352,43 +443,7 @@ export class ProgressiveSchemaBuilder {
     const required: string[] = [];
 
     for (const [fieldPath, stats] of Object.entries(this.state.fieldStats)) {
-      const parts = fieldPath.split(".").filter((p) => p !== "");
-      let current = properties;
-
-      for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        if (!part) continue;
-        const isLast = i === parts.length - 1;
-
-        if (part.endsWith("[]")) {
-          const fieldName = part.slice(0, -2);
-          if (!current[fieldName]) {
-            current[fieldName] = {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {},
-              },
-            };
-          }
-          current = (current[fieldName] as { items: { properties: Record<string, unknown> } }).items.properties;
-        } else if (isLast && part) {
-          current[part] = this.buildPropertySchema(stats);
-
-          // Mark as required if appears in most records
-          if (stats.occurrences >= this.state.recordCount * 0.9) {
-            required.push(part);
-          }
-        } else if (part) {
-          if (!current[part]) {
-            current[part] = {
-              type: "object",
-              properties: {},
-            };
-          }
-          current = (current[part] as { properties: Record<string, unknown> }).properties;
-        }
-      }
+      this.processFieldPath(properties, fieldPath, stats, required);
     }
 
     return {
