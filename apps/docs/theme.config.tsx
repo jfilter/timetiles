@@ -1,8 +1,14 @@
 import React from "react";
 import { DocsThemeConfig } from "nextra-theme-docs";
+import logoHorizontal from "@timetiles/assets/logos/static/logo-with-text-horizontal-tight.svg";
+import faviconPng from "@timetiles/assets/logos/static/logo-256.png";
 
 const config: DocsThemeConfig = {
-  logo: <span>TimeTiles Documentation</span>,
+  logo: (
+    <>
+      <img src={logoHorizontal} alt="TimeTiles" style={{ height: '40px' }} />
+    </>
+  ),
   project: {
     link: "https://github.com/jfilter/timetiles",
   },
@@ -23,6 +29,8 @@ const config: DocsThemeConfig = {
         property="og:description"
         content="Comprehensive documentation for TimeTiles - A spatial data management platform"
       />
+      <link rel="icon" href={typeof faviconPng === 'string' ? faviconPng : faviconPng.src} />
+      <link rel="shortcut icon" href={typeof faviconPng === 'string' ? faviconPng : faviconPng.src} />
     </>
   ),
   sidebar: {

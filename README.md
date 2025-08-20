@@ -53,6 +53,10 @@ Built with Next.js, React, PostgreSQL/PostGIS, and Payload CMS. Funded by the [P
 git clone https://github.com/jfilter/timetiles.git
 cd timetiles
 
+# Install Git LFS and pull assets
+git lfs install
+git lfs pull
+
 # Start with Docker (recommended)
 make setup  # One-time setup
 make dev    # Start everything

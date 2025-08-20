@@ -1,0 +1,184 @@
+# Assets Package
+
+The `@timetiles/assets` package provides shared visual resources like logos and images for use across the TimeTiles monorepo.
+
+## Overview
+
+This package centralizes all brand assets and visual resources, ensuring consistency across applications and preventing duplication.
+
+## Package Structure
+
+```
+packages/assets/
+├── logos/
+│   ├── animated/              # Animated SVG variations
+│   │   └── logo-*.svg        # 10 animation variants
+│   └── static/               # Static logos
+│       ├── logo-static.svg   # Base logo
+│       ├── logo-with-text-*  # Logos with text
+│       ├── logo-*.png        # PNG exports (Git LFS)
+│       └── logo-*.jpg        # JPEG exports (Git LFS)
+└── package.json
+```
+
+## Available Assets
+
+### Logo Variants
+
+#### Static SVG Logos
+- `logo-static.svg` - Base logo without animation
+- `logo-with-text-horizontal.svg` - Logo with text beside it
+- `logo-with-text-horizontal-tight.svg` - Compact horizontal version
+- `logo-with-text-vertical.svg` - Logo with text below
+- `logo-with-text-vertical-tight.svg` - Compact vertical version
+
+#### Animated SVG Logos
+Ten different animation variants (logo-1.svg through logo-10.svg) featuring:
+- Staggered fade-ins
+- Rotating elements
+- Pulsing effects
+- Wave animations
+
+#### Raster Exports
+Each static logo is exported in multiple resolutions:
+- **256x256** - Favicons, small icons
+- **512x512** - Medium displays, social media
+- **1024x1024** - Standard web usage
+- **2048x2048** - High-resolution displays
+- **4096x4096** - Print materials
+
+## Using Assets in Your App
+
+### Installation
+
+The assets package is already included in the monorepo. No separate installation needed.
+
+### Importing in Next.js
+
+```typescript
+// Import SVG logos
+import logo from "@timetiles/assets/logos/static/logo-static.svg";
+import logoWithText from "@timetiles/assets/logos/static/logo-with-text-horizontal.svg";
+
+// Use in React components
+export function Header() {
+  return (
+    <header>
+      <img src={logo} alt="TimeTiles" />
+    </header>
+  );
+}
+```
+
+### Importing PNG/JPEG Files
+
+For raster images, ensure your Next.js config includes the proper webpack configuration:
+
+```javascript
+// next.config.js
+module.exports = {
+  transpilePackages: ["@timetiles/assets"],
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /\.(svg|png|jpg|jpeg)$/,
+      type: "asset/resource",
+    });
+    return config;
+  },
+};
+```
+
+Then import normally:
+
+```typescript
+import favicon from "@timetiles/assets/logos/static/logo-256.png";
+import heroImage from "@timetiles/assets/logos/static/logo-1024.jpg";
+```
+
+### Using in HTML/CSS
+
+For static HTML or CSS usage, you can reference the files directly after building:
+
+```html
+<link rel="icon" href="/assets/logo-256.png" />
+```
+
+## Git LFS Considerations
+
+PNG and JPEG files in this package are stored using Git LFS to keep the repository size manageable.
+
+### Why Git LFS?
+
+- Prevents repository bloat from binary files
+- Faster cloning for developers who don't need assets
+- Better performance for Git operations
+
+### Working with LFS Files
+
+```bash
+# Ensure Git LFS is installed
+git lfs install
+
+# Pull all image assets
+git lfs pull
+
+# Check which files are managed by LFS
+git lfs ls-files
+```
+
+## Regenerating Exports
+
+If you modify the SVG source files, regenerate the raster exports:
+
+### Prerequisites
+
+```bash
+# Install required tools
+brew install librsvg imagemagick  # macOS
+apt-get install librsvg2-bin imagemagick  # Ubuntu/Debian
+```
+
+### Generate Exports
+
+```bash
+cd packages/assets/logos
+
+# Generate PNG files
+for size in 256 512 1024 2048 4096; do
+  rsvg-convert -w $size -h $size static/logo-static.svg -o static/logo-${size}.png
+done
+
+# Generate JPEG files
+for size in 256 512 1024 2048 4096; do
+  convert static/logo-${size}.png -quality 90 static/logo-${size}.jpg
+done
+```
+
+## Design Guidelines
+
+### Color Palette
+- Primary gradient: `#0ea5e9` → `#0284c7` (Sky blue)
+- Secondary: `#06b6d4` → `#0891b2` (Cyan)
+- Accent: `#22d3ee` → `#06b6d4` (Light cyan)
+
+### Typography
+- Font stack: `system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif`
+- Weight: 700 (bold) for logo text
+
+### Usage Guidelines
+- Maintain minimum clear space around logos
+- Don't alter colors or gradients
+- Preserve aspect ratios when scaling
+- Use appropriate variant for context (horizontal for headers, vertical for sidebars)
+
+## Adding New Assets
+
+1. Add your asset to the appropriate directory
+2. Follow the naming convention: `{type}-{variant}-{size}.{ext}`
+3. For new images, ensure they're tracked by Git LFS
+4. Update this documentation if adding new asset types
+
+## Related Documentation
+
+- [Development Setup](/developer-guide/development) - Getting started with the codebase
+- [Documentation Guide](/developer-guide/development/documentation-guide) - Writing documentation

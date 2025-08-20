@@ -1,0 +1,9 @@
+{
+  "name": "@timetiles/assets",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared assets for TimeTiles",
+  "exports": {
+    "./logos/*": "./logos/*"
+  }
+}

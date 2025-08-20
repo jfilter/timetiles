@@ -10,6 +10,7 @@ Welcome to TimeTiles development! This section covers everything you need to kno
 - **pnpm**: v10.12.4 (package manager)
 - **PostgreSQL**: 17+ with PostGIS 3.5+ extension
 - **Git**: For version control
+- **Git LFS**: For managing image assets
 
 ### Development Environment Setup
 
@@ -20,13 +21,23 @@ Welcome to TimeTiles development! This section covers everything you need to kno
    cd timetiles
    ```
 
-2. **Install Dependencies**
+2. **Setup Git LFS**
+
+   ```bash
+   # Install Git LFS if not already installed
+   git lfs install
+   
+   # Pull image assets
+   git lfs pull
+   ```
+
+3. **Install Dependencies**
 
    ```bash
    pnpm install
    ```
 
-3. **Database Setup**
+4. **Database Setup**
 
    ```bash
    # Start PostgreSQL with PostGIS
@@ -36,7 +47,7 @@ Welcome to TimeTiles development! This section covers everything you need to kno
    cp apps/web/.env.example apps/web/.env.local
    ```
 
-4. **Run Migrations**
+5. **Run Migrations**
 
    ```bash
    cd apps/web
@@ -44,7 +55,7 @@ Welcome to TimeTiles development! This section covers everything you need to kno
    cd ../..
    ```
 
-5. **Start Development Server**
+6. **Start Development Server**
    ```bash
    pnpm dev
    ```

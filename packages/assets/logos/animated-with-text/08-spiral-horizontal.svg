@@ -1,0 +1,182 @@
+<svg width="360" height="120" viewBox="0 0 360 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="moveGrad1h" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9">
+        <animate attributeName="stop-color" values="#0ea5e9;#06b6d4;#0891b2;#06b6d4;#0ea5e9" dur="6s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" style="stop-color:#0284c7">
+        <animate attributeName="stop-color" values="#0284c7;#0369a1;#075985;#0369a1;#0284c7" dur="6s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+    <linearGradient id="moveGrad2h" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4"/>
+      <stop offset="100%" style="stop-color:#0891b2"/>
+    </linearGradient>
+    <linearGradient id="moveGrad3h" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22d3ee"/>
+      <stop offset="100%" style="stop-color:#06b6d4"/>
+    </linearGradient>
+  
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0ea5e9"/>
+      <stop offset="50%" style="stop-color:#0891b2"/>
+      <stop offset="100%" style="stop-color:#0284c7"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Logo scaled and positioned -->
+  <g transform="translate(60, 60)">
+    <g transform="scale(0.8)">
+    <!-- Spiral movement pattern -->
+    <g>
+      <!-- Large tiles -->
+      <rect x="-40" y="-40" width="20" height="25" fill="url(#moveGrad1h)" opacity="0.9" rx="3" ry="3">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; 2,-1; 1,2; -2,1; -1,-2; 0,0" 
+          dur="5s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="-18" y="-40" width="18" height="15" fill="url(#moveGrad2h)" opacity="0.8" rx="2" ry="2">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; 1,2; -2,1; -1,-2; 2,-1; 0,0" 
+          dur="4.5s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="2" y="-40" width="25" height="20" fill="url(#moveGrad3h)" opacity="0.85" rx="4" ry="4">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; -2,1; -1,-2; 2,-1; 1,2; 0,0" 
+          dur="4s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="28" y="-40" width="12" height="30" fill="url(#moveGrad1h)" opacity="0.8" rx="2" ry="2">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; -1,-2; 2,-1; 1,2; -2,1; 0,0" 
+          dur="5.5s" repeatCount="indefinite"/>
+      </rect>
+      
+      <!-- Medium tiles -->
+      <rect x="-40" y="-13" width="15" height="18" fill="url(#moveGrad3h)" opacity="0.75" rx="2" ry="2">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; 3,0; 0,3; -3,0; 0,-3; 0,0" 
+          dur="4.2s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="-23" y="-23" width="20" height="20" fill="url(#moveGrad1h)" opacity="0.9" rx="5" ry="5">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; 0,-3; 3,0; 0,3; -3,0; 0,0" 
+          dur="5s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="-2" y="-18" width="22" height="16" fill="url(#moveGrad2h)" opacity="0.85" rx="3" ry="3">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; -3,0; 0,-3; 3,0; 0,3; 0,0" 
+          dur="3.8s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="22" y="-8" width="18" height="15" fill="url(#moveGrad3h)" opacity="0.8" rx="2" ry="2">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; 0,3; -3,0; 0,-3; 3,0; 0,0" 
+          dur="4.6s" repeatCount="indefinite"/>
+      </rect>
+      
+      <!-- Small tiles -->
+      <rect x="-15" y="-2" width="12" height="12" fill="url(#moveGrad1h)" opacity="0.95" rx="3" ry="3">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; 2,2; -2,2; -2,-2; 2,-2; 0,0" 
+          dur="3s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="-2" y="-2" width="8" height="8" fill="#0284c7" opacity="0.9" rx="2" ry="2">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; -2,2; -2,-2; 2,-2; 2,2; 0,0" 
+          dur="4s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="7" y="-2" width="10" height="10" fill="url(#moveGrad2h)" opacity="0.85" rx="2" ry="2">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; -2,-2; 2,-2; 2,2; -2,2; 0,0" 
+          dur="3.2s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="-10" y="11" width="9" height="9" fill="url(#moveGrad3h)" opacity="0.8" rx="2" ry="2">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; 2,-2; 2,2; -2,2; -2,-2; 0,0" 
+          dur="3.7s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="1" y="9" width="11" height="11" fill="url(#moveGrad1h)" opacity="0.9" rx="3" ry="3">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; 1,-2; 2,1; -1,2; -2,-1; 0,0" 
+          dur="3.4s" repeatCount="indefinite"/>
+      </rect>
+      
+      <!-- Bottom section tiles -->
+      <rect x="-40" y="7" width="22" height="15" fill="url(#moveGrad2h)" opacity="0.8" rx="3" ry="3">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; -2,-1; 1,-2; 2,1; -1,2; 0,0" 
+          dur="4.8s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="-16" y="23" width="18" height="17" fill="url(#moveGrad3h)" opacity="0.85" rx="3" ry="3">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; 1,2; -2,1; -1,-2; 2,-1; 0,0" 
+          dur="4.3s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="4" y="22" width="20" height="18" fill="url(#moveGrad1h)" opacity="0.75" rx="4" ry="4">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; 2,1; -1,2; -2,-1; 1,-2; 0,0" 
+          dur="4.9s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="25" y="9" width="15" height="20" fill="url(#moveGrad2h)" opacity="0.8" rx="2" ry="2">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; -1,2; -2,-1; 1,-2; 2,1; 0,0" 
+          dur="4.1s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="18" y="30" width="22" height="10" fill="url(#moveGrad3h)" opacity="0.7" rx="2" ry="2">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; 2,-2; 2,2; -2,2; -2,-2; 0,0" 
+          dur="5.2s" repeatCount="indefinite"/>
+      </rect>
+      
+      <!-- Circular accents -->
+      <circle cx="-27.5" cy="-2.5" r="2.5" fill="#0e7490" opacity="0.7">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; 3,3; -3,3; -3,-3; 3,-3; 0,0" 
+          dur="2.5s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="17" cy="7" r="2" fill="#0891b2" opacity="0.8">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; -3,3; -3,-3; 3,-3; 3,3; 0,0" 
+          dur="2.3s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="-2" cy="23" r="3" fill="#06b6d4" opacity="0.75">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; -3,-3; 3,-3; 3,3; -3,3; 0,0" 
+          dur="2.8s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="22.5" cy="-22.5" r="2.5" fill="#0284c7" opacity="0.8">
+        <animateTransform attributeName="transform" type="translate" 
+          values="0,0; 3,-3; 3,3; -3,3; -3,-3; 0,0" 
+          dur="2.6s" repeatCount="indefinite"/>
+      </circle>
+    </g>
+    
+    <!-- Grid overlay -->
+    <g stroke="#0e7490" stroke-width="0.2" fill="none" opacity="0.3">
+      <line x1="-40" y1="-20" x2="40" y2="-20" stroke-linecap="round">
+        <animate attributeName="opacity" values="0.3;0.5;0.3;0.1;0.3" dur="4s" repeatCount="indefinite"/>
+      </line>
+      <line x1="-40" y1="0" x2="40" y2="0" stroke-linecap="round">
+        <animate attributeName="opacity" values="0.3;0.5;0.3;0.1;0.3" dur="4s" begin="0.5s" repeatCount="indefinite"/>
+      </line>
+      <line x1="-40" y1="20" x2="40" y2="20" stroke-linecap="round">
+        <animate attributeName="opacity" values="0.3;0.5;0.3;0.1;0.3" dur="4s" begin="1s" repeatCount="indefinite"/>
+      </line>
+      <line x1="-20" y1="-40" x2="-20" y2="40" stroke-linecap="round">
+        <animate attributeName="opacity" values="0.3;0.5;0.3;0.1;0.3" dur="4s" begin="1.5s" repeatCount="indefinite"/>
+      </line>
+      <line x1="0" y1="-40" x2="0" y2="40" stroke-linecap="round">
+        <animate attributeName="opacity" values="0.3;0.5;0.3;0.1;0.3" dur="4s" begin="2s" repeatCount="indefinite"/>
+      </line>
+      <line x1="20" y1="-40" x2="20" y2="40" stroke-linecap="round">
+        <animate attributeName="opacity" values="0.3;0.5;0.3;0.1;0.3" dur="4s" begin="2.5s" repeatCount="indefinite"/>
+      </line>
+    </g>
+  
+    </g>
+  </g>
+  
+  <!-- Text aligned with logo -->
+  <text x="110" y="75" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="48" font-weight="700" fill="url(#textGrad)">
+    TimeTiles
+  </text>
+</svg>
