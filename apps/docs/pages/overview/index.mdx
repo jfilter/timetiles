@@ -1,6 +1,10 @@
 # What is TimeTiles?
 
-TimeTiles is an **interactive chronicle platform** that transforms geo-temporal data into compelling, explorable stories. Whether you're investigating police shootings, documenting environmental disasters, or analyzing protest patterns, TimeTiles helps you create accessible visualizations that reveal patterns across time and space.
+TimeTiles is an **open-source platform** that transforms spreadsheets of events into interactive, explorable chronicles on a map. Built for journalists, researchers, activists, and organizations, TimeTiles makes complex spatio-temporal data accessible and engaging for any audience.
+
+### 🎯 In Simple Terms
+
+Upload a CSV file with events, dates, and locations → TimeTiles creates an interactive map with timeline controls → Share or embed your chronicle anywhere.
 
 ## The Problem TimeTiles Solves
 
@@ -29,7 +33,7 @@ Every data point in TimeTiles represents an **event** that happened at a specifi
 
 ### Non-Expert Friendly
 
-TimeTiles is designed for **storytelling**, not analysis. Your audience doesn't need to understand SQL queries or statistical concepts - they can simply pan, zoom, and filter to explore your data intuitively.
+TimeTiles is designed for **storytelling**, not analysis. Your audience doesn't need to understand SQL queries or statistical concepts - they can simply pan, zoom, and filter to explore your data intuitively
 
 ## How It Works
 
@@ -89,36 +93,34 @@ _"Document pollution incidents in marginalized communities over the past decade.
 
 **TimeTiles Solution**: Combine pollution incident data with community demographic information, allowing advocates to show clear patterns of environmental racism through interactive exploration.
 
-## Technical Flexibility
+## ⚡ Key Capabilities
 
-TimeTiles serves both **end users** and **developers**:
+### Data Import
 
-### Ready-to-Use Application
+- Upload CSV or Excel files
+- Automatic schema detection
+- Batch processing for large datasets
+- Smart geocoding with fallbacks
 
-- Deploy TimeTiles as a complete web application
-- Import data through the admin interface
-- Configure public/private access controls
-- Self-host or use managed hosting (coming soon)
+### Visualization
 
-### Customizable Library
+- Clustered map views for thousands of events
+- Timeline scrubbing and animation
+- Histogram and statistical charts
+- Customizable themes and styles
 
-- Use TimeTiles components in your own applications
-- Integrate with existing data pipelines
-- Customize visualizations and branding
-- Build domain-specific chronicle applications
+### Sharing
 
-## Comparison to Similar Tools
+- Public or private chronicles
+- Embeddable widgets for websites
+- Shareable links with filters preserved
+- Export capabilities
 
-| Tool            | Focus                  | Audience                   | Strengths                                   | Limitations                      |
-| --------------- | ---------------------- | -------------------------- | ------------------------------------------- | -------------------------------- |
-| **TimeTiles**   | Interactive chronicles | Non-technical storytellers | Narrative-focused, ready-to-use, geospatial | Newer ecosystem                  |
-| **Timemap**     | Incident monitoring    | Activists/researchers      | Proven in conflict documentation            | No longer maintained             |
-| **Datawrapper** | Data visualization     | Journalists                | Easy embedding, great design                | Limited geospatial features      |
-| **Metabase**    | Business dashboards    | Data analysts              | Powerful querying                           | Too complex for public audiences |
-| **uMap**        | Collaborative mapping  | General users              | Simple map creation                         | Limited temporal features        |
+## Learn More
 
-## Getting Started
+- **[Core Concepts](./core-concepts)** - Understand events, chronicles, and data flow
+- **[Comparison](./comparison)** - See how TimeTiles differs from similar tools
 
-Ready to create your first interactive chronicle? Check out our [Quick Start Guide](/getting-started/quick-start) to get TimeTiles running in minutes.
+---
 
-Have questions about whether TimeTiles is right for your use case? See our [FAQ](/faq) or [reach out to the community](/community).
+_TimeTiles is open-source software funded by the Prototype Fund from the German Federal Ministry of Education and Research._

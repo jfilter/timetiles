@@ -1,0 +1,90 @@
+# Configuration
+
+Configure TimeTiles to meet your organization's needs.
+
+## Environment Variables
+
+Essential configuration through environment variables:
+
+### Core Settings
+
+```bash
+# Application
+NODE_ENV=production
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/timetiles
+
+# Security
+PAYLOAD_SECRET=your-secret-key-min-32-chars
+JWT_SECRET=your-jwt-secret
+
+# Storage (optional)
+S3_BUCKET=your-bucket
+S3_REGION=us-east-1
+S3_ACCESS_KEY=your-key
+S3_SECRET_KEY=your-secret
+```
+
+### Geocoding Services
+
+Configure geocoding for address resolution:
+
+```bash
+# Google Maps (recommended)
+GOOGLE_MAPS_API_KEY=your-api-key
+
+# OpenStreetMap (fallback)
+NOMINATIM_USER_AGENT=your-app-name
+```
+
+### Email Configuration
+
+For user notifications:
+
+```bash
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-password
+```
+
+## Feature Flags
+
+Enable/disable features:
+
+```bash
+# Features
+ENABLE_PUBLIC_REGISTRATION=false
+ENABLE_API_ACCESS=true
+MAX_UPLOAD_SIZE=50MB
+MAX_EVENTS_PER_CHRONICLE=100000
+```
+
+## Performance Tuning
+
+### Database Optimization
+
+```sql
+-- Increase work memory for complex queries
+ALTER SYSTEM SET work_mem = '256MB';
+
+-- Optimize for SSDs
+ALTER SYSTEM SET random_page_cost = 1.1;
+```
+
+### Node.js Optimization
+
+```bash
+# Increase memory limit
+NODE_OPTIONS="--max-old-space-size=4096"
+
+# Enable clustering
+CLUSTER_WORKERS=4
+```
+
+## Next Steps
+
+- [Maintenance & monitoring](./maintenance)
+- [Troubleshooting common issues](./maintenance#troubleshooting)

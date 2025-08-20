@@ -1,0 +1,236 @@
+# Comparison with Similar Tools
+
+Understanding how TimeTiles compares to other tools helps you choose the right solution for your needs. This page provides a comprehensive comparison with similar projects across different categories.
+
+## 🎯 Primary Comparison Categories
+
+### 1. Spatio-Temporal Event Platforms
+
+Tools specifically designed for managing and exploring events with both location and time data:
+
+| Tool                                                                                                                     | Description & Focus                                                     | Audience                  | License          | Strengths                                                 | Limitations                                   | Status       |
+| ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- | ------------------------- | ---------------- | --------------------------------------------------------- | --------------------------------------------- | ------------ |
+| **[TimeTiles](https://github.com/jfilter/timetiles)**                                                                    | Platform for exploring and filtering geolocated event collections       | Journalists & researchers | AGPL (Self-host) | Faceted filtering, map + timeline, scales to 100k+ events | Newer ecosystem                               | Active       |
+| **[Timemap](https://github.com/forensic-architecture/timemap)** ([details](#most-similar-timemap-forensic-architecture)) | Platform for documenting human rights violations through timeline + map | Investigators & NGOs      | MIT (Self-host)  | Proven in real investigations, open source                | Original unmaintained, requires customization | Forks Active |
+
+### 2. Storytelling & Journalism Tools
+
+Tools focused on narrative presentation and data journalism:
+
+| Tool                                                                                                    | Description & Focus                                           | Audience                 | License         | Strengths                                                | Limitations                              | Status |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------ | --------------- | -------------------------------------------------------- | ---------------------------------------- | ------ |
+| **[TimelineJS](https://timeline.knightlab.com/)** ([details](#knight-lab-tools-timelinejs--storymapjs)) | Interactive timeline creator for media-rich linear narratives | Journalists & educators  | MPL (Self-host) | Beautiful design, Google Sheets integration, easy to use | Limited to ~200 events, no map view      | Active |
+| **[StoryMapJS](https://storymap.knightlab.com/)** ([details](#knight-lab-tools-timelinejs--storymapjs)) | Tool for creating location-based sequential stories           | Storytellers & educators | MIT (Self-host) | Intuitive interface, gigapixel support                   | Small datasets only, no timeline         | Active |
+| **[Datawrapper](https://www.datawrapper.de/)** ([details](#datawrapper))                                | No-code platform for charts, maps, and tables                 | Journalists & NGOs       | SaaS only       | Very easy to use, great design, embeddable               | Not self-hostable, limited interactivity | Active |
+| **[Flourish](https://flourish.studio/)**                                                                | Data visualization platform with story templates              | Marketing & media teams  | SaaS only       | Template library, no-code interface                      | Limited customization, not self-hostable | Active |
+
+### 3. Investigation & Document Analysis
+
+Tools for data investigation, document analysis, and entity extraction:
+
+| Tool                                                                                                       | Description & Focus                                                                     | Audience                   | License             | Strengths                                                | Limitations                       | Status  |
+| ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------- | ------------------- | -------------------------------------------------------- | --------------------------------- | ------- |
+| **[OpenAleph](https://github.com/openaleph/openaleph)** ([details](#aleph-ecosystem-openaleph--aleph-pro)) | Open-source document investigation platform with entity extraction and network analysis | Investigative journalists  | MIT (Self-host)     | Entity extraction, cross-referencing, fully open source  | Requires technical setup          | Active  |
+| **[Aleph Pro](https://www.occrp.org/en/alephpro)** ([details](#aleph-ecosystem-openaleph--aleph-pro))      | OCCRP's enhanced investigative platform with 4.5B+ records (launching Q4 2025)          | Investigative journalists | Free for nonprofits | 4.5B records, risk scoring, enhanced search              | Not self-hostable, Q4 2025 launch | Q4 2025 |
+| **[Uwazi](https://uwazi.io/)** ([details](#uwazi-huridocs))                                                | Document database for human rights organizations with basic timeline/map features       | Human rights organizations | MIT (Self-host)     | Multi-language, relationship mapping, human rights focus | Basic visualization features      | Active  |
+| **[Datashare](https://datashare.icij.org/)**                                                               | ICIJ's platform for searching and analyzing document collections                        | Investigative journalists  | AGPL (Self-host)    | OCR support, entity extraction, proven in leaks          | Document-focused, no timeline     | Active  |
+
+### 4. Similar Map-Based Tools (Without Timeline)
+
+Tools that allow mapping events/data but lack temporal visualization:
+
+| Tool                                                                        | Description & Focus                                                        | Audience                     | License           | Strengths                                                   | Limitations                        | Status |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------- | ----------------- | ----------------------------------------------------------- | ---------------------------------- | ------ |
+| **[uMap](https://umap.openstreetmap.fr/)** ([details](#umap-openstreetmap)) | Simple collaborative mapping on OpenStreetMap with data layers             | Community groups & activists | WTFPL (Self-host) | Easy CSV import, collaborative editing, OSM-based           | No timeline, limited to ~5k points | Active |
+| **[Kepler.gl](https://kepler.gl/)** ([details](#keplergl-uberfoursquare))   | GPU-powered analysis for millions of location points with 3D visualization | Data scientists              | MIT (Self-host)   | Handles millions of points, GPU acceleration, time playback | Steep learning curve, code-based   | Active |
+| **[Carto](https://carto.com/)**                                             | Cloud platform for spatial data science and location intelligence          | Enterprises & analysts       | SaaS/Partial OS   | Advanced spatial SQL, cloud platform, location intelligence | Expensive, limited self-hosting    | Active |
+| **[Mapbox](https://www.mapbox.com/)**                                       | Custom map design platform with developer APIs                             | Developers                   | SaaS/Partial OS   | Custom styles, vector tiles, GL rendering                   | API costs, primarily SaaS          | Active |
+| **[QGIS](https://qgis.org/)**                                               | Professional desktop GIS for spatial analysis and cartography              | Researchers & NGOs           | GPL (Desktop)     | Full GIS capabilities, time manager plugin, free            | Desktop only, steep learning curve | Active |
+| **[ArcGIS](https://www.arcgis.com/)**                                       | Enterprise GIS platform with comprehensive spatial tools                   | Government & enterprises     | Commercial        | Industry standard, cloud services, time-enabled layers      | Very expensive, complex            | Active |
+
+## 📚 Secondary Categories
+
+### 5. Digital Humanities & Academic Research
+
+Tools designed for academic research and digital humanities projects:
+
+| Tool                                                | Description & Focus                                                         | Audience                                                 | License            | Strengths                                             | Limitations                     | Status |
+| --------------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------ | ----------------------------------------------------- | ------------------------------- | ------ |
+| **[Palladio](http://hdlab.stanford.edu/palladio/)** | Platform for visualizing complex historical data with multiple linked views | Digital humanities scholars, history PhDs                | BSD (Web-only)     | Timeline + map + network views, historical focus      | Web-only, limited customization | Active |
+| **[Nodegoat](https://nodegoat.net/)**               | Research environment for humanities with relational data modeling           | Academic research projects, cultural heritage            | SaaS/Self-host     | Flexible schemas, relational data, timeline + map     | Complexity, subscription model  | Active |
+| **[Neatline](https://neatline.org/)**               | Omeka plugin for creating interactive scholarly exhibits                    | Libraries, archives, digital exhibits                    | Apache (Self-host) | Omeka integration, narrative focus, scholarly tools   | Requires Omeka, limited scale   | Active |
+| **[Gephi](https://gephi.org/)**                     | Desktop tool for network analysis and visualization                         | Social network analysts, computational social scientists | GPL/CDDL (Desktop) | Graph algorithms, time series, handles large networks | Desktop only, learning curve    | Active |
+
+### 6. Historical & Educational Platforms
+
+Tools focused on history education and exploration:
+
+| Tool                                         | Description & Focus                                                       | Audience                                   | License         | Strengths                                         | Limitations                  | Status   |
+| -------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------ | --------------- | ------------------------------------------------- | ---------------------------- | -------- |
+| **[Histography.io](http://histography.io/)** | Interactive world history timeline with innovative UI from Wikipedia data | History enthusiasts, casual learners       | MIT (Web-only)  | Advanced timeline UI, Wikipedia integration       | Web-only, no map view        | Active   |
+| **[Chronas](https://chronas.org/)**          | Collaborative history with maps showing borders and cultures over time    | World history teachers, amateur historians | MIT (Web-only)  | Historical borders, timeline + map, cultural data | Limited datasets, web-only   | Active   |
+| **[WorldMap](http://worldmap.harvard.edu/)** | Harvard's platform for sharing geospatial information                     | Harvard affiliates, GIS students           | GPL (Web-only)  | Academic focus, user uploads, map layers          | Limited timeline features    | Limited  |
+| **[Histropedia](http://histropedia.com/)**   | Interactive timelines from Wikipedia articles                             | Wikipedia readers, timeline hobbyists      | Web-only (Free) | Easy timeline creation, Wikipedia data            | No map support, unmaintained | Inactive |
+
+### 7. Data Processing & Visualization
+
+General-purpose data tools with some relevant capabilities:
+
+| Tool                                               | Description & Focus                                       | Audience                                       | License             | Strengths                                              | Limitations                        | Status |
+| -------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------- | ------------------- | ------------------------------------------------------ | ---------------------------------- | ------ |
+| **[OpenRefine](https://openrefine.org/)**          | Tool for cleaning and transforming messy data             | Data wranglers, librarians, journalists        | BSD (Self-host)     | Data cleaning, format transformation, faceted browsing | No visualization capabilities      | Active |
+| **[RAWGraphs](https://rawgraphs.io/)**             | Framework for creating custom data visualizations         | Data designers, viz specialists                | Apache (Self-host)  | Custom charts, no-code interface, export SVG/PNG       | No timeline/map features           | Active |
+| **[Vega-Lite](https://vega.github.io/vega-lite/)** | High-level grammar for programmatic visualizations        | Visualization engineers, data scientists       | BSD (Library)       | Grammar of graphics, embeddable, JSON spec             | Requires coding knowledge          | Active |
+| **[Observable](https://observablehq.com/)**        | Interactive notebooks for data visualization and analysis | Data journalists, creative coders, educators   | Freemium/Partial OS | Interactive notebooks, D3.js, collaborative            | Limited free tier, code-based      | Active |
+| **[Tableau Public](https://public.tableau.com/)**  | Free version of Tableau for public data visualizations    | Students, portfolio builders, data enthusiasts | Free tier (SaaS)    | Business analytics, desktop app, map support           | Public data only, limited timeline | Active |
+
+### 8. Legacy & Discontinued (Historical Interest)
+
+Influential tools that are no longer maintained but shaped the field:
+
+| Tool                                                            | Description & Focus                                                       | Audience                  | License           | Strengths                                  | Limitations                    | Status       |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------- | ----------------- | ------------------------------------------ | ------------------------------ | ------------ |
+| **[SIMILE Timeline](http://www.simile-widgets.org/timeline/)**  | MIT's pioneering timeline widget that influenced modern tools (2006-2011) | Historical interest only  | BSD (Library)     | Web pioneer, influenced TimelineJS         | Discontinued since 2011        | Discontinued |
+| **[Exhibit](http://simile-widgets.org/exhibit/)**               | Early no-code framework for interactive data pages (2007-2013)            | Historical interest only  | BSD (Library)     | Timeline + map, faceted browsing, no-code  | Discontinued since 2013        | Discontinued |
+| **[TimeMapper/TimeMap.js](https://github.com/okfn/timemapper)** | Tool combining timelines with maps using Google Sheets                    | Small projects, hobbyists | MIT (Web/Library) | Timeline + map, Google Sheets, simple UI   | Unmaintained, limited features | Limited\*\*  |
+| **[Hypercities](http://www.hypercities.com/)**                  | UCLA's thick mapping platform with historical layers (2008-2014)          | Historical reference      | Proprietary       | Historical maps, thick mapping, narratives | Discontinued since 2014        | Discontinued |
+
+_\*\* TimeMapper: Still available at http://timemapper.okfnlabs.org/ but no longer actively developed_
+
+## 🔍 Detailed Comparisons
+
+### Most Similar: Timemap (Forensic Architecture)
+
+#### Overview
+
+Timemap pioneered timeline + map visualization for documenting human rights violations. The original is unmaintained, but active forks like [Bellingcat's Ukraine Timemap](https://github.com/bellingcat/ukraine-timemap) continue for specific investigations.
+
+#### Key Differences
+
+- TimeTiles: General-purpose platform | Timemap: Investigation-specific forks
+- TimeTiles: Built-in data management | Timemap: External data management
+- Different tech stacks and deployment approaches
+
+### uMap (OpenStreetMap)
+
+#### Overview
+
+uMap creates simple collaborative maps on OpenStreetMap. Easy CSV import, rich popups, good for up to ~5,000 points.
+
+#### Key Differences
+
+- TimeTiles includes timeline dimension; uMap is map-only
+- Different scale: TimeTiles (100k+ events), uMap (~5k points)
+- TimeTiles has filtering and charts; uMap focuses on map editing
+
+#### Best For
+
+**uMap**: Simple collaborative maps, no time dimension needed, < 5,000 points  
+**TimeTiles**: Event collections with temporal data, pattern discovery, larger datasets
+
+### Knight Lab Tools (TimelineJS + StoryMapJS)
+
+#### Overview
+
+Knight Lab's tools excel at linear storytelling. TimelineJS creates beautiful timelines (≤200 events), StoryMapJS creates location-based narratives (≤100 points). Both use Google Sheets for data.
+
+#### Key Differences
+
+- Combined timeline + map vs. separate tools
+- Exploration interface vs. linear narratives
+- Different scale limits (100k+ vs. 200 events)
+- Database vs. Google Sheets
+
+### Kepler.gl (Uber/Foursquare)
+
+#### Overview
+
+GPU-powered analysis for millions of points with 3D visualization. Designed for data scientists.
+
+#### Key Differences
+
+- Different audiences: journalists/researchers vs. data scientists
+- TimeTiles has integrated timeline; Kepler focuses on spatial
+- Different workflows: UI-based vs. code-based
+
+#### Best For
+
+**Kepler.gl**: Millions of points, complex spatial analysis, technical users  
+**TimeTiles**: Non-technical users, integrated timeline needs, event exploration
+
+### Datawrapper
+
+#### Overview
+
+No-code tool for charts and simple maps. Popular with newsrooms for quick visualizations.
+
+#### Key Differences
+
+- TimeTiles: spatio-temporal events; Datawrapper: static charts
+- TimeTiles: interactive exploration; Datawrapper: embedded graphics
+- TimeTiles: self-hostable; Datawrapper: SaaS only
+
+#### Best For
+
+**Datawrapper**: Quick charts and infographics, static visualizations  
+**TimeTiles**: Interactive event exploration, temporal data, self-hosting needs
+
+### Aleph Ecosystem (OpenAleph & Aleph Pro)
+
+#### Overview
+
+In April 2025, OCCRP announced **[Aleph Pro](https://www.occrp.org/en/announcement/occrp-announces-a-new-chapter-for-its-investigative-data-platform-aleph-pro)** ([FAQ](https://www.occrp.org/en/announcement/aleph-pro-frequently-asked-questions-on-the-future-of-occrps-investigative-data-platform)), launching Q4 2025 with enhanced features but no longer fully open source. The community created **[OpenAleph](https://github.com/openaleph/openaleph)** to continue the open-source mission. Both handle millions of documents with entity extraction for investigations.
+
+#### Key Differences
+
+- TimeTiles: spatio-temporal events with map + timeline; Aleph: document analysis with entity extraction
+- TimeTiles: public exploration interface; Aleph: investigative research tools
+- OpenAleph: self-hostable open source; Aleph Pro: hosted platform (free for nonprofits)
+
+#### Best For
+
+**Aleph**: Document leaks, entity extraction, network analysis, investigative journalism  
+**TimeTiles**: Event collections, pattern discovery, public-facing exploration
+
+### Uwazi (HURIDOCS)
+
+#### Overview
+
+Document database for human rights organizations with basic timeline/map features. Strong on relationships and multi-language support.
+
+#### Key Differences
+
+- TimeTiles: event-first; Uwazi: document-first
+- TimeTiles: optimized visualization; Uwazi: basic timeline/map
+- TimeTiles: public exploration; Uwazi: document management
+
+#### Best For
+
+**Uwazi**: Document management, complex entity relationships, multi-language needs  
+**TimeTiles**: Event visualization, pattern discovery, public-facing interfaces
+
+## 🎯 Choosing the Right Tool
+
+### Consider TimeTiles for:
+
+- Geolocated event collections with temporal data
+- Faceted search and pattern discovery
+- Web-based data management needs
+- Self-hosted deployment
+
+### Consider Alternatives for:
+
+**Linear storytelling** → TimelineJS or StoryMapJS  
+**Millions of points** → Kepler.gl  
+**Quick charts** → Datawrapper  
+**Document investigation** → Aleph ecosystem  
+**Simple collaborative maps** → uMap  
+**Professional GIS** → QGIS
+
+## Summary
+
+TimeTiles fills a specific gap: a self-hostable platform for investigating patterns in event data through map, temporal, and faceted views. It sits between simple storytelling tools and complex GIS platforms.
+
+---
+
+_Have experience with these tools? Share your thoughts in our [GitHub Discussions](https://github.com/jfilter/timetiles/discussions)._

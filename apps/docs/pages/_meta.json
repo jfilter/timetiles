@@ -1,13 +1,16 @@
 {
   "index": "Introduction",
-  "getting-started": "Getting Started",
+  "overview": "Overview",
+  "quick-start": "Quick Start",
   "---": {
     "type": "separator"
   },
-  "users": "User Guide",
-  "developers": "Developer Docs",
+  "user-guide": "User Guide",
+  "admin-guide": "Admin Guide",
+  "developer-guide": "Developer Guide",
   "---2": {
     "type": "separator"
   },
+  "faq": "FAQ",
   "reference": "Reference"
 }

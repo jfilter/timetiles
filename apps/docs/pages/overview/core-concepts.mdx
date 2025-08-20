@@ -1,0 +1,198 @@
+# Core Concepts
+
+Understanding TimeTiles' data model will help you organize and present your data effectively. TimeTiles uses a hierarchical structure to organize events, making it easy to manage multiple projects and datasets.
+
+## 📚 The Three-Level Hierarchy
+
+TimeTiles organizes data in three levels:
+
+```
+Catalog (Project)
+  └── Dataset (Collection)
+      └── Event (Data Point)
+```
+
+## 🗂️ Catalogs
+
+A **Catalog** is the top-level container for your project. Think of it as a workspace or project folder that groups related datasets together.
+
+### What Catalogs Are For
+
+- **Project Organization**: Each research project, news story, or investigation gets its own catalog
+- **Access Control**: Set permissions at the catalog level to control who can view or edit
+- **Branding**: Customize the appearance and metadata for each catalog
+
+### Examples
+
+- "2024 Election Coverage" catalog containing multiple election-related datasets
+- "Climate Change Research" catalog with datasets from different time periods
+- "City Crime Statistics" catalog organizing crime data by year or type
+
+### Key Properties
+
+- **Name**: Display name for your project
+- **Description**: What this catalog contains and its purpose
+- **Visibility**: Public or private access
+- **Theme**: Custom colors and styling options
+
+## 📊 Datasets
+
+A **Dataset** is a collection of related events within a catalog. Datasets share a common structure (schema) and represent a specific data source or time period.
+
+### What Datasets Are For
+
+- **Data Organization**: Group events that share the same structure and source
+- **Schema Management**: Each dataset has its own field definitions
+- **Import Management**: Data imports create or update datasets
+- **Filtering**: Users can filter the view by selecting specific datasets
+
+### Examples
+
+- "January 2024 Incidents" dataset within a crime statistics catalog
+- "Twitter Posts" dataset within a social media analysis catalog
+- "Historical Earthquakes 1900-1950" dataset within a geological research catalog
+
+### Key Properties
+
+- **Name**: Descriptive name for this collection
+- **Schema**: Field definitions and data types
+- **Source**: Where the data came from
+- **Import Settings**: How to process new data
+- **Event Count**: Number of events in this dataset
+
+## 📍 Events
+
+An **Event** is an individual data point with a location, time, and associated information. Events are what appear on the map and timeline.
+
+### What Events Are
+
+- **Individual Occurrences**: Each row in your CSV becomes an event
+- **Geolocated**: Must have a location (coordinates or address)
+- **Temporal**: Should have a date/time when it occurred
+- **Rich Data**: Can include any additional fields from your data
+
+### Required Fields
+
+Every event needs at least:
+
+- **Title**: What happened (e.g., "Earthquake in San Francisco")
+- **Date**: When it happened (e.g., "2024-01-15")
+- **Location**: Where it happened (address or coordinates)
+
+### Optional Fields
+
+Events can include any additional data:
+
+- **Description**: Detailed information about the event
+- **Category**: Type or classification
+- **Magnitude/Severity**: Numerical values for analysis
+- **Source**: Where the information came from
+- **Images**: Visual documentation
+- **Custom Fields**: Any data specific to your use case
+
+### Examples
+
+```javascript
+// Example event data
+{
+  title: "Protest at City Hall",
+  date: "2024-03-15T14:00:00",
+  location: "City Hall, San Francisco, CA",
+  latitude: 37.7793,  // Auto-geocoded
+  longitude: -122.4193,
+  category: "Protest",
+  participants: 500,
+  description: "Climate action protest demanding policy changes",
+  source: "Local News Network",
+  custom_field_1: "Peaceful",
+  custom_field_2: "Environmental"
+}
+```
+
+## 🔄 Data Flow
+
+Understanding how data flows through TimeTiles:
+
+1. **Import**: Upload a CSV/Excel file to create a dataset
+2. **Processing**: TimeTiles detects the schema and geocodes addresses
+3. **Storage**: Events are stored in the dataset within a catalog
+4. **Visualization**: Events appear on the map with filters and timeline
+5. **Exploration**: Users interact with your data through the interface
+
+## 🎯 Best Practices
+
+### Organizing Your Data
+
+**Use Catalogs for Projects**
+
+- One catalog per major project or investigation
+- Keep related datasets together
+- Set appropriate access permissions
+
+**Use Datasets for Sources**
+
+- One dataset per data source or import
+- Maintain consistent schemas within datasets
+- Use descriptive names that indicate the content
+
+**Structure Events Consistently**
+
+- Use consistent date formats (ISO 8601 recommended)
+- Provide clear, descriptive titles
+- Include source information for credibility
+- Add categories for better filtering
+
+### Schema Design
+
+When preparing your data:
+
+1. **Identify Required Fields**: Ensure you have title, date, and location
+2. **Plan Categories**: Use consistent category names for filtering
+3. **Consider Analysis**: Include numerical fields for charts
+4. **Think About Display**: What information do users need to see?
+
+## 🔗 Relationships
+
+The hierarchical structure creates clear relationships:
+
+- **One-to-Many**: One catalog contains many datasets
+- **One-to-Many**: One dataset contains many events
+- **Inheritance**: Datasets inherit settings from their catalog
+- **Aggregation**: Catalogs aggregate statistics from all datasets
+
+## 💡 Common Use Cases
+
+### News Organization
+
+```
+Catalog: "2024 News Coverage"
+  ├── Dataset: "Political Events"
+  ├── Dataset: "Natural Disasters"
+  └── Dataset: "Economic Indicators"
+```
+
+### Research Project
+
+```
+Catalog: "Urban Development Study"
+  ├── Dataset: "Building Permits 2020"
+  ├── Dataset: "Building Permits 2021"
+  └── Dataset: "Demographic Changes"
+```
+
+### Activist Campaign
+
+```
+Catalog: "Environmental Monitoring"
+  ├── Dataset: "Pollution Reports"
+  ├── Dataset: "Wildlife Sightings"
+  └── Dataset: "Clean-up Events"
+```
+
+## Next Steps
+
+Now that you understand the core concepts:
+
+1. [Prepare your data](../users/guides/data-preparation) following our format guidelines
+2. [Create your first chronicle](../users/guides/creating-chronicles) by importing data
+3. [Explore the interface](../users/features) to see all available features

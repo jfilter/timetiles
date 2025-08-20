@@ -62,3 +62,4 @@ apps/docs/pages/reference/api/**/*.mdx
 !apps/docs/pages/reference/api/**/_meta.json
 !apps/docs/pages/reference/api/index.mdx
 !apps/docs/pages/reference/api/.gitkeep
+.playwright-mcp

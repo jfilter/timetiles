@@ -1,0 +1,128 @@
+# Maintenance & Operations
+
+Keep your TimeTiles instance running smoothly.
+
+## Regular Maintenance
+
+### Database Backups
+
+Automated daily backups:
+
+```bash
+# Backup script
+#!/bin/bash
+pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql
+
+# Cron job (daily at 2 AM)
+0 2 * * * /path/to/backup.sh
+```
+
+### Updates
+
+Stay current with security patches:
+
+```bash
+# Pull latest changes
+git pull origin main
+
+# Update dependencies
+pnpm install
+
+# Run migrations
+pnpm payload:migrate
+
+# Restart services
+docker-compose restart
+```
+
+## Monitoring
+
+### Health Checks
+
+Monitor endpoint availability:
+
+```bash
+# Health check endpoint
+curl https://your-instance.com/api/health
+
+# Expected response
+{"status":"healthy","database":"connected"}
+```
+
+### Resource Monitoring
+
+Key metrics to track:
+- CPU usage (should stay below 80%)
+- Memory usage (watch for leaks)
+- Disk I/O (database performance)
+- Network traffic (API usage)
+
+### Logs
+
+Important log locations:
+
+```bash
+# Application logs
+docker logs timetiles_web
+
+# Database logs
+docker logs timetiles_postgres
+
+# Nginx logs (if using)
+/var/log/nginx/access.log
+/var/log/nginx/error.log
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**High memory usage:**
+- Check for memory leaks
+- Increase Node.js heap size
+- Review large chronicle queries
+
+**Slow performance:**
+- Run `VACUUM ANALYZE` on database
+- Check PostGIS spatial indexes
+- Review slow query logs
+
+**Import failures:**
+- Check file size limits
+- Verify geocoding API quotas
+- Review error logs
+
+### Getting Help
+
+- Check [GitHub Issues](https://github.com/jfilter/timetiles/issues)
+- Join [Discussions](https://github.com/jfilter/timetiles/discussions)
+- Review application logs for detailed errors
+
+## Performance Optimization
+
+### Database Tuning
+
+```sql
+-- Update statistics
+VACUUM ANALYZE;
+
+-- Rebuild indexes
+REINDEX DATABASE timetiles;
+
+-- Check slow queries
+SELECT * FROM pg_stat_statements 
+ORDER BY mean_exec_time DESC 
+LIMIT 10;
+```
+
+### Caching
+
+Implement caching for better performance:
+
+```bash
+# Redis for session cache
+REDIS_URL=redis://localhost:6379
+
+# CDN for static assets
+CDN_URL=https://cdn.your-domain.com
+```

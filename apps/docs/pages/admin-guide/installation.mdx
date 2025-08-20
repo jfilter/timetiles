@@ -1,10 +1,6 @@
-# Installation Options
+# Installation Guide
 
-TimeTiles can be deployed in several ways depending on your needs and technical requirements.
-
-## Cloud Deployment (Recommended for Most Users)
-
-_Coming soon - we're working on cloud hosting options for easy access._
+TimeTiles can be deployed in several ways depending on your needs and technical requirements. Choose the option that best fits your use case.
 
 ## Self-Hosted Deployment
 
@@ -23,12 +19,12 @@ The fastest way to get TimeTiles running locally or on your own infrastructure:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/timetiles.git
+git clone https://github.com/jfilter/timetiles.git
 cd timetiles
 
-# Start with Docker
-make up    # Starts PostgreSQL with PostGIS
-make dev   # Starts the application
+# Setup and start with Docker
+make setup  # Initial setup (copies .env file)
+make dev    # Starts database and application
 ```
 
 The application will be available at:
@@ -44,7 +40,7 @@ For developers or advanced users who want full control:
 1. **Clone and Install Dependencies**
 
    ```bash
-   git clone https://github.com/yourusername/timetiles.git
+   git clone https://github.com/jfilter/timetiles.git
    cd timetiles
    pnpm install
    ```
@@ -63,9 +59,22 @@ For developers or advanced users who want full control:
    ```bash
    # Copy environment template
    cp apps/web/.env.example apps/web/.env.local
+   ```
 
-   # Edit with your database credentials
-   # DATABASE_URL=postgresql://user:password@localhost:5432/timetiles
+   Edit `apps/web/.env.local` with your configuration:
+
+   ```env
+   # Database connection (adjust for your PostgreSQL setup)
+   DATABASE_URL=postgresql://timetiles_user:password@localhost:5432/timetiles
+
+   # Required secrets (generate secure random strings)
+   PAYLOAD_SECRET=your-secret-key-min-32-chars
+
+   # Optional: Google Maps API for geocoding
+   GEOCODING_GOOGLE_MAPS_API_KEY=your-api-key
+
+   # Optional: Adjust rate limits
+   GEOCODING_RATE_LIMIT=10
    ```
 
 4. **Run Migrations and Start**

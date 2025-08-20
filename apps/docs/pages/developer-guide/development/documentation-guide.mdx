@@ -7,7 +7,9 @@ This guide explains how documentation works in the TimeTiles project, including 
 The TimeTiles documentation is divided into two main categories:
 
 ### 1. Manual Documentation
+
 **Location:** Various directories under `/apps/docs/pages/`
+
 - **Getting Started** (`/getting-started/`) - Installation, quick start guides
 - **User Guides** (`/users/`) - Features, use cases, tutorials
 - **Developer Docs** (`/developers/`) - Architecture, development guides
@@ -16,7 +18,9 @@ The TimeTiles documentation is divided into two main categories:
 These are **hand-written MDX files** that you edit directly.
 
 ### 2. Auto-generated API Documentation
+
 **Location:** `/apps/docs/pages/reference/api/`
+
 - Generated from JSDoc comments in source code
 - Created using TypeDoc
 - **Should NOT be edited manually** (changes will be overwritten)
@@ -26,19 +30,19 @@ These are **hand-written MDX files** that you edit directly.
 ### Creating New Pages
 
 1. Create an `.mdx` file in the appropriate directory:
+
 ```bash
 apps/docs/pages/developers/guides/my-new-guide.mdx
 ```
 
 2. Write your content using MDX (Markdown + JSX):
+
 ```mdx
 # My Guide Title
 
-import { Callout } from 'nextra/components'
+import { Callout } from "nextra/components";
 
-<Callout type="info">
-  Important information here
-</Callout>
+<Callout type="info">Important information here</Callout>
 
 ## Section with code
 
@@ -48,6 +52,7 @@ const example = "code here"
 ```
 
 3. Update the navigation by editing `_meta.json` in the same directory:
+
 ```json
 {
   "existing-page": "Existing Page",
@@ -69,10 +74,8 @@ const example = "code here"
 
 1. **Source**: JSDoc comments in TypeScript files
    - Located in `apps/web/lib/`, `apps/web/app/api/`
-   
 2. **Generation**: TypeDoc processes JSDoc comments
    - Configuration in `apps/web/typedoc.json`
-   
 3. **Output**: Markdown files in `apps/docs/pages/reference/api/`
    - Automatically organized by module
 
@@ -80,24 +83,24 @@ const example = "code here"
 
 Add comprehensive JSDoc comments to your TypeScript code:
 
-```typescript
+````typescript
 /**
  * Processes import jobs with support for various file formats.
- * 
+ *
  * This service handles the complete import pipeline including:
  * - File parsing (CSV, Excel)
  * - Schema detection
  * - Data validation
  * - Geocoding
  * - Event creation
- * 
+ *
  * @module
  * @category Services
  */
 
 /**
  * Validates and transforms import data.
- * 
+ *
  * @param data - Raw data from the import file
  * @param schema - Expected schema for validation
  * @returns Validated and transformed data ready for processing
@@ -108,31 +111,29 @@ Add comprehensive JSDoc comments to your TypeScript code:
  * console.log(`Validated ${validatedData.length} records`);
  * ```
  */
-export async function validateImportData(
-  data: unknown[],
-  schema: Schema
-): Promise<ValidatedData[]> {
+export async function validateImportData(data: unknown[], schema: Schema): Promise<ValidatedData[]> {
   // Implementation
 }
-```
+````
 
 ### JSDoc Tags Reference
 
-| Tag | Purpose | Example |
-|-----|---------|---------|
-| `@module` | File-level documentation | `@module` |
-| `@category` | Group related items | `@category Services` |
-| `@param` | Document parameters | `@param name - Description` |
-| `@returns` | Document return value | `@returns Description` |
-| `@throws` | Document exceptions | `@throws {ErrorType} When...` |
-| `@example` | Provide usage examples | `@example` followed by code block |
-| `@deprecated` | Mark as deprecated | `@deprecated Use newFunction instead` |
-| `@since` | Version introduced | `@since 1.2.0` |
-| `@see` | Reference related items | `@see {@link OtherFunction}` |
+| Tag           | Purpose                  | Example                               |
+| ------------- | ------------------------ | ------------------------------------- |
+| `@module`     | File-level documentation | `@module`                             |
+| `@category`   | Group related items      | `@category Services`                  |
+| `@param`      | Document parameters      | `@param name - Description`           |
+| `@returns`    | Document return value    | `@returns Description`                |
+| `@throws`     | Document exceptions      | `@throws {ErrorType} When...`         |
+| `@example`    | Provide usage examples   | `@example` followed by code block     |
+| `@deprecated` | Mark as deprecated       | `@deprecated Use newFunction instead` |
+| `@since`      | Version introduced       | `@since 1.2.0`                        |
+| `@see`        | Reference related items  | `@see {@link OtherFunction}`          |
 
 ### Generating API Documentation
 
 #### One-time Generation
+
 ```bash
 # From project root
 pnpm docs:api
@@ -143,6 +144,7 @@ pnpm docs:api
 ```
 
 #### Watch Mode (Development)
+
 ```bash
 # Regenerate on source file changes
 pnpm docs:api:watch
@@ -151,6 +153,7 @@ pnpm docs:api:watch
 #### What Gets Generated
 
 The TypeDoc configuration (`apps/web/typedoc.json`) specifies:
+
 - **Entry points**: Which directories to process
 - **Output location**: `apps/docs/pages/reference/api/`
 - **Exclusions**: Test files, internal functions
@@ -165,10 +168,11 @@ While the content is auto-generated, navigation is manually configured:
 3. **Subsection navigation**: Various `_meta.json` files in subdirectories
 
 Example `_meta.json`:
+
 ```json
 {
   "collections": "Collections",
-  "services": "Services", 
+  "services": "Services",
   "jobs": "Background Jobs",
   "hooks": "React Hooks",
   "utils": "Utilities"
@@ -182,12 +186,14 @@ Example `_meta.json`:
 The `.gitignore` is configured to:
 
 **Ignored (Auto-generated)**:
+
 ```gitignore
 apps/docs/pages/reference/api/**/*.md
 apps/docs/pages/reference/api/**/*.mdx
 ```
 
 **Tracked (Manual)**:
+
 ```gitignore
 !apps/docs/pages/reference/api/_meta.json
 !apps/docs/pages/reference/api/**/_meta.json
@@ -196,6 +202,7 @@ apps/docs/pages/reference/api/**/*.mdx
 ```
 
 This means:
+
 - ✅ Generated API docs don't clutter git history
 - ✅ Can regenerate anytime from source
 - ✅ Navigation structure is preserved
@@ -215,12 +222,14 @@ This means:
 ### When Updating Documentation
 
 #### For API Changes:
+
 1. Update JSDoc comments in source files
 2. Run `pnpm docs:api` to regenerate
 3. Verify the output looks correct
 4. Commit the source code changes
 
 #### For Guides/Tutorials:
+
 1. Edit the `.mdx` files directly
 2. Preview with `pnpm dev`
 3. Commit the documentation changes
@@ -234,6 +243,7 @@ The documentation build process:
 3. **Production**: Docs generated fresh during build
 
 Build command:
+
 ```json
 {
   "build": "pnpm docs:api && next build"
@@ -247,20 +257,24 @@ This ensures documentation is always up-to-date with the code.
 ### Common Issues
 
 #### Generated docs look wrong
+
 - Check JSDoc syntax in source files
 - Verify TypeDoc configuration
 - Run `pnpm docs:api` with clean output directory
 
 #### Navigation not updating
+
 - Edit the appropriate `_meta.json` file
 - These are NOT auto-generated
 
 #### Broken links in documentation
+
 - Use relative paths for internal links
 - Verify file exists after generation
 - Check for typos in paths
 
 #### TypeDoc warnings
+
 - Missing type exports: Export the type from index
 - Unresolved references: Ensure proper imports
 - Private members documented: Add `@internal` tag
