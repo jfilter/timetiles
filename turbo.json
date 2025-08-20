@@ -49,6 +49,11 @@
       "dependsOn": ["^build"],
       "outputs": ["coverage/**", "test-results.json"]
     },
+    "test:coverage": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**", ".nyc_output/**", "coverage.json"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"]
+    },
     "test:watch": {
       "cache": false,
       "persistent": true

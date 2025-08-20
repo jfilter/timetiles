@@ -86,6 +86,10 @@ test-ai:
 test-coverage:
 	pnpm test:coverage
 
+# Show coverage summary
+coverage:
+	@npx tsx scripts/coverage-summary.ts --details
+
 # Seed database
 seed:
 	pnpm seed
@@ -119,6 +123,8 @@ help:
 	@echo ""
 	@echo "🧪 Testing:"
 	@echo "  test        - Run tests"
+	@echo "  test-coverage - Run tests and generate coverage"
+	@echo "  coverage    - Show last coverage summary (quick)"
 	@echo "  test-e2e    - Run E2E tests with automatic database setup"
 	@echo ""
 	@echo "🌱 Database:"

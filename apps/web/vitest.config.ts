@@ -30,7 +30,8 @@ export default defineConfig({
       provider: "v8",
       include: ["lib/**/*.ts", "scripts/**/*.ts"],
       exclude: ["lib/**/*.d.ts", "**/node_modules/**"],
-      reporter: ["text", "lcov", "html"],
+      reporter: ["text", "lcov", "html", "json-summary"],
+      reportsDirectory: "./coverage",
     },
     pool: "forks",
     poolOptions: {

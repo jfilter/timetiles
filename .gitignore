@@ -15,6 +15,7 @@ deploy/.env.production
 
 # Testing
 coverage
+.nyc_output
 # Playwright
 playwright-report/
 test-results/

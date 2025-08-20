@@ -79,9 +79,13 @@ jobs:
         run: pnpm typecheck
         working-directory: apps/web
 
-      - name: Run tests
-        run: pnpm test
+      - name: Run tests with coverage
+        run: pnpm test:coverage
         working-directory: apps/web
+      
+      - name: Report coverage
+        if: always()
+        run: npx tsx scripts/coverage-summary.ts --details >> $GITHUB_STEP_SUMMARY
 
       - name: Setup E2E environment
         timeout-minutes: 10
