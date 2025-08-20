@@ -1377,6 +1377,7 @@ export const scheduled_imports = db_schema.table(
     advancedOptions_timeoutMinutes: numeric("advanced_options_timeout_minutes").default("30"),
     advancedOptions_skipDuplicateChecking: boolean("advanced_options_skip_duplicate_checking").default(false),
     advancedOptions_autoApproveSchema: boolean("advanced_options_auto_approve_schema").default(false),
+    advancedOptions_maxFileSizeMB: numeric("advanced_options_max_file_size_m_b"),
     lastRun: timestamp("last_run", { mode: "string", withTimezone: true, precision: 3 }),
     nextRun: timestamp("next_run", { mode: "string", withTimezone: true, precision: 3 }),
     lastStatus: enum_scheduled_imports_last_status("last_status"),
@@ -1493,6 +1494,7 @@ export const _scheduled_imports_v = db_schema.table(
       false
     ),
     version_advancedOptions_autoApproveSchema: boolean("version_advanced_options_auto_approve_schema").default(false),
+    version_advancedOptions_maxFileSizeMB: numeric("version_advanced_options_max_file_size_m_b"),
     version_lastRun: timestamp("version_last_run", { mode: "string", withTimezone: true, precision: 3 }),
     version_nextRun: timestamp("version_next_run", { mode: "string", withTimezone: true, precision: 3 }),
     version_lastStatus: enum__scheduled_imports_v_version_last_status("version_last_status"),

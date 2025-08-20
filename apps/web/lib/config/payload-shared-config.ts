@@ -20,7 +20,7 @@ import ImportJobs from "@/lib/collections/import-jobs";
 import LocationCache from "@/lib/collections/location-cache";
 import Media from "@/lib/collections/media";
 import { Pages } from "@/lib/collections/pages";
-import ScheduledImports from "@/lib/collections/scheduled-imports";
+import ScheduledImports from "@/lib/collections/scheduled-imports/index";
 import Users from "@/lib/collections/users";
 // Import globals
 import { MainMenu } from "@/lib/globals/main-menu";

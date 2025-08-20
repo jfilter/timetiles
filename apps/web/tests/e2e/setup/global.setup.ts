@@ -58,7 +58,7 @@ setup("create test database and seed data", async () => {
     await setupTestDatabase({ forceReset: false });
 
     console.log("🌱 Seeding test data using seed script...");
-    
+
     // Use the seed script directly to avoid module resolution issues
     const { execSync } = await import("child_process");
     try {
