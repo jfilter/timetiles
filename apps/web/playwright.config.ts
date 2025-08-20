@@ -1,3 +1,11 @@
+/**
+ * Playwright E2E test configuration.
+ *
+ * Configures Playwright for end-to-end testing with dedicated test database,
+ * browser settings, and test environment variables.
+ *
+ * @module
+ */
 import { defineConfig, devices } from "@playwright/test";
 
 // Use dedicated test database for E2E tests
