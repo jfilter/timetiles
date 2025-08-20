@@ -95,8 +95,9 @@ case "$1" in
             echo -e "${GREEN}Created $ENV_FILE from template${NC}"
             
             # Generate random secret for Payload
-            PAYLOAD_SECRET=$(openssl rand -base64 32)
-            sed -i.bak "s/PAYLOAD_SECRET=.*/PAYLOAD_SECRET=$PAYLOAD_SECRET/" "$ENV_FILE"
+            PAYLOAD_SECRET=$(openssl rand -base64 32 | tr -d '/')
+            # Use a delimiter that won't appear in base64 strings
+            sed -i.bak "s|PAYLOAD_SECRET=.*|PAYLOAD_SECRET=$PAYLOAD_SECRET|" "$ENV_FILE"
             echo -e "${GREEN}Generated PAYLOAD_SECRET${NC}"
             
             echo -e "${YELLOW}Please edit $ENV_FILE and set:${NC}"
