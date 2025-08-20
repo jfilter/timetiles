@@ -410,9 +410,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       await geocodeBatchJob.handler(mockContext);
 
       // Check that ProgressTrackingService.updateGeocodingProgress was called with combined results
-      const progressModule = await import("@/lib/services/progress-tracking");
-      const { ProgressTrackingService } = progressModule;
-      expect(ProgressTrackingService.updateGeocodingProgress).toHaveBeenCalledWith(
+      expect(mocks.updateGeocodingProgress).toHaveBeenCalledWith(
         mockPayload,
         "import-123",
         1, // processedCount

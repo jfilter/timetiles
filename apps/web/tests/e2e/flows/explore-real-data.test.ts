@@ -53,12 +53,14 @@ test.describe("Explore Page - Real Data Tests", () => {
     const firstDatasetCheckbox = page.locator('input[type="checkbox"]').first();
 
     // Set up promise to wait for API response before checking the box
-    const responsePromise = page
-      .waitForResponse((response) => response.url().includes("/api/events"), { timeout: 5000 })
-      .catch(() => {
+    const responsePromise = (async () => {
+      try {
+        return await page.waitForResponse((response) => response.url().includes("/api/events"), { timeout: 5000 });
+      } catch {
         // Response might not come if data is cached or already loaded
         return null;
-      });
+      }
+    })();
 
     await firstDatasetCheckbox.check();
 

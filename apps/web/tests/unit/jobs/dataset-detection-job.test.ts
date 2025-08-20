@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/publicly-writable-directories */
 /**
  * Unit tests for the dataset detection job handler.
  *

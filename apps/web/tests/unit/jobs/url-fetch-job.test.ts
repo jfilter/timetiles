@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/publicly-writable-directories */
 /**
  * Unit tests for URL Fetch Job Handler
  * @module
