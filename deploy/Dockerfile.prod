@@ -12,20 +12,21 @@ FROM base AS pruner
 COPY . .
 RUN pnpm dlx turbo prune web --docker
 
-# Stage 3: Install production dependencies
+# Stage 3: Install ALL dependencies for building
 FROM base AS deps
 COPY --from=pruner /app/out/json/ .
 COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 
-# Install dependencies (skip scripts to avoid husky in production)
+# Install ALL dependencies including dev deps for build phase
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --prod --ignore-scripts
+    pnpm install --frozen-lockfile --ignore-scripts
 
 # Stage 4: Build the application
 FROM base AS builder
 COPY --from=pruner /app/out/full/ .
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY --from=deps /app/packages ./packages
 
 # Build arguments for Payload CMS
 ARG DATABASE_URL
