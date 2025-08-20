@@ -38,10 +38,14 @@ const runCommand = (command: string, description: string): string => {
       logger.debug(`Command output: ${result}`);
     }
     return result;
-  } catch (error: any) {
+  } catch (error) {
     logger.error(`✗ ${description} failed:`);
-    if (error.stdout) logger.error(`stdout: ${error.stdout}`);
-    if (error.stderr) logger.error(`stderr: ${error.stderr}`);
+    if (error && typeof error === "object" && "stdout" in error) {
+      logger.error(`stdout: ${String(error.stdout)}`);
+    }
+    if (error && typeof error === "object" && "stderr" in error) {
+      logger.error(`stderr: ${String(error.stderr)}`);
+    }
     logger.error(`Command: ${command}`);
     throw error;
   }

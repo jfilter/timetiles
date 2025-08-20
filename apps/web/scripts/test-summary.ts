@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+/* eslint-disable no-console */
 /**
  * Test results summary script.
  *
@@ -11,10 +12,32 @@
 import fs from "fs";
 import path from "path";
 
+interface TestResult {
+  name: string;
+  status: string;
+  duration?: number;
+  assertionResults: Array<{
+    status: string;
+    title: string;
+    failureMessages?: string[];
+  }>;
+}
+
+interface TestSummary {
+  success: boolean;
+  numTotalTests: number;
+  numPassedTests: number;
+  numFailedTests: number;
+  numSkippedTests?: number;
+  numPendingTests?: number;
+  duration?: number;
+  testResults: TestResult[];
+}
+
 const resultsPath = path.join(process.cwd(), ".test-results.json");
 
 try {
-  const results = JSON.parse(fs.readFileSync(resultsPath, "utf-8"));
+  const results = JSON.parse(fs.readFileSync(resultsPath, "utf-8")) as TestSummary;
 
   // Print summary header
   console.log("\n" + "=".repeat(50));
@@ -32,12 +55,8 @@ try {
   console.log(`\nTotal: ${results.numTotalTests} tests`);
   console.log(`  ✓ Passed: ${results.numPassedTests}`);
   console.log(`  ✗ Failed: ${results.numFailedTests}`);
-  console.log(`  ○ Skipped: ${results.numSkippedTests || results.numPendingTests || 0}`);
-  const duration =
-    results.duration ??
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle 0 duration
-    results.testResults?.reduce((sum: number, t: { duration?: number }) => sum + (t.duration || 0), 0) ??
-    0;
+  console.log(`  ○ Skipped: ${results.numSkippedTests ?? results.numPendingTests ?? 0}`);
+  const duration = results.duration ?? results.testResults?.reduce((sum, t) => sum + (t.duration ?? 0), 0) ?? 0;
   console.log(`\nDuration: ${(duration / 1000).toFixed(2)}s`);
 
   // List failed tests if any
@@ -47,25 +66,20 @@ try {
     console.log("-".repeat(50));
 
     results.testResults
-      .filter((suite: { status: string }) => suite.status === "failed")
-      .forEach(
-        (suite: {
-          name: string;
-          assertionResults: Array<{ status: string; title: string; failureMessages?: string[] }>;
-        }) => {
-          console.log(`\n📁 ${suite.name}`);
-          suite.assertionResults
-            .filter((test: { status: string }) => test.status === "failed")
-            .forEach((test: { title: string; failureMessages?: string[] }) => {
-              console.log(`  ✗ ${test.title}`);
-              if (test.failureMessages?.[0]) {
-                // Just show first line of error
-                const firstLine = test.failureMessages[0].split("\n")[0];
-                console.log(`    → ${firstLine?.substring(0, 100) ?? ""}`);
-              }
-            });
-        }
-      );
+      .filter((suite) => suite.status === "failed")
+      .forEach((suite) => {
+        console.log(`\n📁 ${suite.name}`);
+        suite.assertionResults
+          .filter((test) => test.status === "failed")
+          .forEach((test) => {
+            console.log(`  ✗ ${test.title}`);
+            if (test.failureMessages?.[0]) {
+              // Just show first line of error
+              const firstLine = test.failureMessages[0].split("\n")[0];
+              console.log(`    → ${firstLine?.substring(0, 100) ?? ""}`);
+            }
+          });
+      });
   }
 
   console.log("\n" + "=".repeat(50));
