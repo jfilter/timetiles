@@ -1,11 +1,24 @@
-import { Callout } from 'nextra/components'
+Turn your spreadsheets into interactive map stories
 
-# Turn your spreadsheets into interactive map stories
+import { Callout } from "nextra/components";
+
+export const cardStyle = {
+  padding: "1.5rem",
+  border: "1px solid var(--nx-border)",
+  borderRadius: "8px",
+};
+
+export const linkCardStyle = {
+  ...cardStyle,
+  textDecoration: "none",
+  color: "inherit",
+  display: "block",
+};
 
 <Callout type="warning" emoji="⚠️">
-  **Documentation Under Construction**
-  
-  This documentation is incomplete and actively being developed. Many pages are missing or contain placeholder content. The TimeTiles project itself is in active development and not yet ready for production use.
+  **Documentation Under Construction** This documentation is incomplete and actively being developed. Many pages are
+  missing or contain placeholder content. The TimeTiles project itself is in active development and not yet ready for
+  production use.
 </Callout>
 
 TimeTiles is an **open-source platform** that transforms event data into interactive, explorable chronicles on a map. Built for journalists, researchers, activists, and organizations who need to make complex spatio-temporal data accessible and engaging.
@@ -20,26 +33,33 @@ graph LR
     B --> C[🗺️ Interactive Map]
     B --> D[📅 Timeline]
     B --> E[🔍 Filters]
-    
+
     C --> F[🌐 Share & Embed]
     D --> F
     E --> F
-    
+
     style A fill:#f9f9f9,stroke:#333,stroke-width:2px
     style B fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
     style F fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
 ```
 
-<div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginTop: '2rem'}}>
-  <div style={{padding: '1.5rem', border: '1px solid var(--nx-border)', borderRadius: '8px'}}>
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+    gap: "1rem",
+    marginTop: "2rem",
+  }}
+>
+  <div style={cardStyle}>
     <h3>📍 Map Visualization</h3>
     <p>See where events happened with automatic clustering and smooth interactions</p>
   </div>
-  <div style={{padding: '1.5rem', border: '1px solid var(--nx-border)', borderRadius: '8px'}}>
+  <div style={cardStyle}>
     <h3>📅 Timeline Controls</h3>
     <p>Navigate through time to see how stories unfold</p>
   </div>
-  <div style={{padding: '1.5rem', border: '1px solid var(--nx-border)', borderRadius: '8px'}}>
+  <div style={cardStyle}>
     <h3>🔍 Smart Filters</h3>
     <p>Let viewers explore data by categories, dates, and locations</p>
   </div>
@@ -48,15 +68,19 @@ graph LR
 ## Use Cases
 
 ### 📰 Journalism
+
 Document police shootings, environmental disasters, or political events across regions. Make investigative data accessible to readers without requiring data expertise.
 
 ### 🔬 Research
+
 Analyze historical patterns, migration flows, or disease outbreaks. Transform academic datasets into explorable narratives for broader audiences.
 
 ### ✊ Activism
+
 Track environmental violations, human rights abuses, or social movements. Create compelling data-driven stories that drive policy change.
 
 ### 🏢 Organizations
+
 Present corporate incidents, project timelines, or field operations. Share complex organizational data in an intuitive, map-based format.
 
 ## Try It Locally in 5 Minutes
@@ -88,16 +112,23 @@ TimeTiles bridges this gap by providing a **ready-made platform** specifically d
 
 ## Get Started
 
-<div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem', marginTop: '2rem'}}>
-  <a href="/overview" style={{padding: '1.5rem', border: '1px solid var(--nx-border)', borderRadius: '8px', textDecoration: 'none', color: 'inherit', display: 'block'}}>
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+    gap: "1rem",
+    marginTop: "2rem",
+  }}
+>
+  <a href="/overview" style={linkCardStyle}>
     <h3>📖 Learn More</h3>
     <p>Understand what TimeTiles is and how it works</p>
   </a>
-  <a href="/quick-start" style={{padding: '1.5rem', border: '1px solid var(--nx-border)', borderRadius: '8px', textDecoration: 'none', color: 'inherit', display: 'block'}}>
+  <a href="/quick-start" style={linkCardStyle}>
     <h3>🚀 Quick Start</h3>
     <p>Get TimeTiles running locally in minutes</p>
   </a>
-  <a href="/guides/user-guide" style={{padding: '1.5rem', border: '1px solid var(--nx-border)', borderRadius: '8px', textDecoration: 'none', color: 'inherit', display: 'block'}}>
+  <a href="/guides/user-guide" style={linkCardStyle}>
     <h3>🎯 User Guide</h3>
     <p>Learn how to create your first chronicle</p>
   </a>

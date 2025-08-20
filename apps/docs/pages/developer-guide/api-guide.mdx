@@ -117,7 +117,7 @@ Track user interactions:
 ```javascript
 window.addEventListener("message", (event) => {
   if (event.origin !== "https://your-timetiles.com") return;
-  
+
   const { action, data } = event.data;
   // Track with your analytics service
   analytics.track(action, data);

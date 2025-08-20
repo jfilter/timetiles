@@ -52,6 +52,7 @@ curl https://your-instance.com/api/health
 ### Resource Monitoring
 
 Key metrics to track:
+
 - CPU usage (should stay below 80%)
 - Memory usage (watch for leaks)
 - Disk I/O (database performance)
@@ -78,16 +79,19 @@ docker logs timetiles_postgres
 ### Common Issues
 
 **High memory usage:**
+
 - Check for memory leaks
 - Increase Node.js heap size
 - Review large chronicle queries
 
 **Slow performance:**
+
 - Run `VACUUM ANALYZE` on database
 - Check PostGIS spatial indexes
 - Review slow query logs
 
 **Import failures:**
+
 - Check file size limits
 - Verify geocoding API quotas
 - Review error logs
@@ -110,8 +114,8 @@ VACUUM ANALYZE;
 REINDEX DATABASE timetiles;
 
 -- Check slow queries
-SELECT * FROM pg_stat_statements 
-ORDER BY mean_exec_time DESC 
+SELECT * FROM pg_stat_statements
+ORDER BY mean_exec_time DESC
 LIMIT 10;
 ```
 
