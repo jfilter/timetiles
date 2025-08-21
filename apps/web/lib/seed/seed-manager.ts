@@ -68,7 +68,7 @@ export class SeedManager extends SeedManagerBase {
     }
 
     // Get dependency order for seeding
-    const seedOrder = this.seedingOperations.getDependencyOrder();
+    const seedOrder = this.seedingOperations.getDependencyOrder(collections);
 
     for (const collection of seedOrder) {
       if (collections.includes(collection)) {

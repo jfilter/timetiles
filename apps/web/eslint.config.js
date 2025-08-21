@@ -121,6 +121,7 @@ export default [
       "sonarjs/no-identical-functions": "off",
       "sonarjs/no-hardcoded-passwords": "off", // Test data may have mock passwords
       "sonarjs/no-duplicate-string": "off", // Test files often repeat strings for clarity
+      "sonarjs/no-clear-text-protocols": "off", // Tests often use HTTP for testing failure scenarios
       // React performance rules are less critical in tests
       "react-perf/jsx-no-new-array-as-prop": "off", // Allow inline arrays in test JSX
       // Enforce kebab-case for test files (override base config exemption)

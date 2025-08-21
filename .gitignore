@@ -23,6 +23,8 @@ test-results/
 .test-results.json
 test-results.json
 *.test-results.json
+.lint-results.json
+.typecheck-results.json
 
 # Turbo
 .turbo

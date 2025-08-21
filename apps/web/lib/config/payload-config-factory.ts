@@ -126,7 +126,8 @@ const addProductionConfig = (
   config.serverURL = serverURL;
   config.cors = [serverURL];
   config.csrf = [serverURL];
-  config.sharp = sharp;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  config.sharp = sharp as any;
   config.upload = {
     ...DEFAULT_UPLOAD_CONFIG,
     limits: {
