@@ -167,6 +167,7 @@ export const enum_scheduled_imports_execution_history_status = db_schema.enum(
   "enum_scheduled_imports_execution_history_status",
   ["success", "failed"]
 );
+export const trig_by = db_schema.enum("trig_by", ["schedule", "webhook", "manual", "system"]);
 export const enum_scheduled_imports_auth_config_type = db_schema.enum("enum_scheduled_imports_auth_config_type", [
   "none",
   "api-key",
@@ -337,6 +338,7 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum("enum_payload_jobs
   "cleanup-approval-locks",
   "url-fetch",
   "schedule-manager",
+  "cleanup-stuck-scheduled-imports",
 ]);
 export const enum_payload_jobs_log_state = db_schema.enum("enum_payload_jobs_log_state", ["failed", "succeeded"]);
 export const enum_payload_jobs_task_slug = db_schema.enum("enum_payload_jobs_task_slug", [
@@ -351,6 +353,7 @@ export const enum_payload_jobs_task_slug = db_schema.enum("enum_payload_jobs_tas
   "cleanup-approval-locks",
   "url-fetch",
   "schedule-manager",
+  "cleanup-stuck-scheduled-imports",
 ]);
 export const enum_main_menu_status = db_schema.enum("enum_main_menu_status", ["draft", "published"]);
 export const enum__main_menu_v_version_status = db_schema.enum("enum__main_menu_v_version_status", [
@@ -1330,6 +1333,7 @@ export const scheduled_imports_execution_history = db_schema.table(
     recordsImported: numeric("records_imported"),
     error: varchar("error"),
     jobId: varchar("job_id"),
+    triggeredBy: trig_by("triggered_by").default("schedule"),
   },
   (columns) => ({
     _orderIdx: index("scheduled_imports_execution_history_order_idx").on(columns._order),
@@ -1371,6 +1375,9 @@ export const scheduled_imports = db_schema.table(
     frequency: enum_scheduled_imports_frequency("frequency"),
     cronExpression: varchar("cron_expression"),
     importNameTemplate: varchar("import_name_template").default("{{name}} - {{date}}"),
+    webhookEnabled: boolean("webhook_enabled").default(false),
+    webhookToken: varchar("webhook_token"),
+    webhookUrl: varchar("webhook_url"),
     retryConfig_maxRetries: numeric("retry_config_max_retries").default("3"),
     retryConfig_retryDelayMinutes: numeric("retry_config_retry_delay_minutes").default("5"),
     retryConfig_exponentialBackoff: boolean("retry_config_exponential_backoff").default(true),
@@ -1440,6 +1447,7 @@ export const _scheduled_imports_v_version_execution_history = db_schema.table(
     recordsImported: numeric("records_imported"),
     error: varchar("error"),
     jobId: varchar("job_id"),
+    triggeredBy: trig_by("triggered_by").default("schedule"),
     _uuid: varchar("_uuid"),
   },
   (columns) => ({
@@ -1486,6 +1494,9 @@ export const _scheduled_imports_v = db_schema.table(
     version_frequency: enum__scheduled_imports_v_version_frequency("version_frequency"),
     version_cronExpression: varchar("version_cron_expression"),
     version_importNameTemplate: varchar("version_import_name_template").default("{{name}} - {{date}}"),
+    version_webhookEnabled: boolean("version_webhook_enabled").default(false),
+    version_webhookToken: varchar("version_webhook_token"),
+    version_webhookUrl: varchar("version_webhook_url"),
     version_retryConfig_maxRetries: numeric("version_retry_config_max_retries").default("3"),
     version_retryConfig_retryDelayMinutes: numeric("version_retry_config_retry_delay_minutes").default("5"),
     version_retryConfig_exponentialBackoff: boolean("version_retry_config_exponential_backoff").default(true),
@@ -3325,6 +3336,7 @@ type DatabaseSchema = {
   enum__import_jobs_v_version_stage: typeof enum__import_jobs_v_version_stage;
   enum__import_jobs_v_version_last_successful_stage: typeof enum__import_jobs_v_version_last_successful_stage;
   enum_scheduled_imports_execution_history_status: typeof enum_scheduled_imports_execution_history_status;
+  trig_by: typeof trig_by;
   enum_scheduled_imports_auth_config_type: typeof enum_scheduled_imports_auth_config_type;
   enum_scheduled_imports_schedule_type: typeof enum_scheduled_imports_schedule_type;
   enum_scheduled_imports_frequency: typeof enum_scheduled_imports_frequency;
