@@ -67,15 +67,13 @@ init_ssl() {
     echo -e "${YELLOW}Requesting certificate for $DOMAIN_NAME...${NC}"
     
     # Request certificate
-    $DC_CMD run --rm certbot certonly --webroot \
+    if $DC_CMD run --rm certbot certonly --webroot \
         --webroot-path=/var/www/certbot \
         --email "$LETSENCRYPT_EMAIL" \
         --agree-tos \
         --no-eff-email \
         -d "$DOMAIN_NAME" \
-        -d "www.$DOMAIN_NAME"
-    
-    if [ $? -eq 0 ]; then
+        -d "www.$DOMAIN_NAME"; then
         echo -e "${GREEN}SSL certificate obtained successfully!${NC}"
         # Reload nginx to use new certificate
         $DC_CMD exec nginx nginx -s reload
@@ -262,7 +260,7 @@ EOF
         fi
         
         echo -e "${RED}WARNING: This will replace the current database!${NC}"
-        read -p "Are you sure? (yes/no): " confirm
+        read -r -p "Are you sure? (yes/no): " confirm
         if [ "$confirm" != "yes" ]; then
             echo "Restore cancelled"
             exit 0

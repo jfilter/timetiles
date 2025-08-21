@@ -20,15 +20,19 @@ const secret = process.env.PAYLOAD_SECRET;
 const serverURL = process.env.NEXT_PUBLIC_PAYLOAD_URL;
 const connectionString = process.env.DATABASE_URL;
 
-if (!secret) {
+// During build phase, Next.js sets NEXT_PHASE environment variable
+// We can skip strict validation during build
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+
+if (!secret && !isBuildPhase) {
   throw new Error("PAYLOAD_SECRET environment variable is required");
 }
 
-if (!serverURL) {
+if (!serverURL && !isBuildPhase) {
   throw new Error("NEXT_PUBLIC_PAYLOAD_URL environment variable is required");
 }
 
-if (!connectionString) {
+if (!connectionString && !isBuildPhase) {
   throw new Error("DATABASE_URL environment variable is required");
 }
 
@@ -42,18 +46,19 @@ export default buildConfig({
     tasks: ALL_JOBS,
   },
   editor: lexicalEditor({}),
-  secret,
-  serverURL,
+  secret: secret || "dummy-build-secret",
+  serverURL: serverURL || "http://localhost:3000",
   typescript: DEFAULT_TYPESCRIPT_CONFIG,
   db: postgresAdapter({
     ...DEFAULT_DB_CONFIG,
     pool: {
-      connectionString: connectionString,
+      connectionString: connectionString || "postgresql://build:build@localhost:5432/build",
     },
   }),
-  cors: [serverURL],
-  csrf: [serverURL],
-  sharp,
+  cors: [serverURL || "http://localhost:3000"],
+  csrf: [serverURL || "http://localhost:3000"],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sharp: sharp as any,
   upload: DEFAULT_UPLOAD_CONFIG,
   graphQL: {
     disable: true,

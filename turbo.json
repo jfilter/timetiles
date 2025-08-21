@@ -54,10 +54,6 @@
       "outputs": ["coverage/**", ".nyc_output/**", "coverage.json"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"]
     },
-    "test:watch": {
-      "cache": false,
-      "persistent": true
-    },
     "seed": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],

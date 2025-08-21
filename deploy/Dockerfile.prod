@@ -1,32 +1,34 @@
 # Production Dockerfile for TimeTiles Web Application
 # Multi-stage build optimized for Next.js with Payload CMS
 
-# Stage 1: Base dependencies
+# Stage 1: Base image with pnpm
 FROM node:24-alpine AS base
-RUN apk add --no-cache libc6-compat
-RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
+# Combine RUN commands to reduce layers
+RUN apk add --no-cache libc6-compat \
+    && corepack enable \
+    && corepack prepare pnpm@10.12.4 --activate
 WORKDIR /app
 
-# Stage 2: Prune the monorepo to get only web app dependencies
+# Stage 2: Prune the monorepo for the web app
 FROM base AS pruner
 COPY . .
 RUN pnpm dlx turbo prune web --docker
 
-# Stage 3: Install ALL dependencies for building
+# Stage 3: Install dependencies
 FROM base AS deps
+# First copy the pruned lockfile and package.json files
 COPY --from=pruner /app/out/json/ .
 COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 
-# Install ALL dependencies including dev deps for build phase
+# Install dependencies
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile --ignore-scripts
 
 # Stage 4: Build the application
 FROM base AS builder
 COPY --from=pruner /app/out/full/ .
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=deps /app/packages ./packages
+COPY --from=deps /app/ .
 
 # Build arguments for Payload CMS
 ARG DATABASE_URL
@@ -43,16 +45,18 @@ ENV NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
 
 # Build the application
 WORKDIR /app/apps/web
-RUN pnpm run build
+# Use experimental build mode to avoid DB connection during build
+# This compiles the code without static generation
+RUN pnpm exec next build --experimental-build-mode compile
 
 # Stage 5: Production runner
 FROM node:24-alpine AS runner
 WORKDIR /app
 
-# Install runtime dependencies
-RUN apk add --no-cache libc6-compat
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Install runtime dependencies and create user in one layer
+RUN apk add --no-cache libc6-compat \
+    && addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
 
 # Copy standalone output
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./

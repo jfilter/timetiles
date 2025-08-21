@@ -2,8 +2,8 @@ version: "3.8"
 
 services:
   postgres:
-    image: postgis/postgis:17-3.5
-    platform: linux/amd64 # Force x86_64 emulation for PostGIS
+    image: imresamu/postgis:17-3.5
+    # Use imresamu/postgis which provides ARM64 support
     container_name: timetiles-postgres
     environment:
       POSTGRES_DB: timetiles

@@ -1,4 +1,4 @@
-.PHONY: up down logs db-reset db-shell db-query clean setup seed dev build lint typecheck format test test-e2e help
+.PHONY: up down logs db-reset db-shell db-query clean setup seed dev build lint typecheck format test test-e2e migrate migrate-create check help
 
 # Start the development environment
 up:
@@ -82,13 +82,17 @@ test:
 test-ai:
 	cd apps/web && pnpm test:ai
 
+# Run combined code quality checks with AI-friendly output (lint + typecheck)
+check-ai:
+	cd apps/web && pnpm check:ai
+
 # Run tests with coverage report
 test-coverage:
 	pnpm test:coverage
 
 # Show coverage summary
 coverage:
-	@npx tsx scripts/coverage-summary.ts --details
+	pnpm test:coverage:summary
 
 # Seed database
 seed:
@@ -104,7 +108,21 @@ dev-full: up
 # Run E2E tests (handles database setup automatically)
 test-e2e:
 	@echo "🧪 Running E2E tests with automatic database setup..."
-	cd apps/web && pnpm test:e2e
+	pnpm --filter web test:e2e
+
+# Run database migrations
+migrate:
+	@echo "🔄 Running database migrations..."
+	pnpm --filter web payload:migrate
+
+# Create a new database migration
+migrate-create:
+	@echo "📝 Creating new database migration..."
+	pnpm --filter web payload:migrate:create
+
+# Run combined lint and typecheck
+check:
+	pnpm check
 
 # Show help
 help:
@@ -118,7 +136,9 @@ help:
 	@echo ""
 	@echo "🔍 Code Quality:"
 	@echo "  lint        - Run ESLint"
-	@echo "  typecheck   - Run typecheck"
+	@echo "  typecheck   - Run TypeScript type checking"
+	@echo "  check       - Run lint + typecheck combined"
+	@echo "  check-ai    - Run all code quality checks (lint + typecheck) with AI-friendly output"
 	@echo "  format      - Format code with Prettier"
 	@echo ""
 	@echo "🧪 Testing:"
@@ -129,6 +149,8 @@ help:
 	@echo ""
 	@echo "🌱 Database:"
 	@echo "  seed        - Seed database with sample data"
+	@echo "  migrate     - Run pending database migrations"
+	@echo "  migrate-create - Create a new database migration"
 	@echo ""
 	@echo "🐳 Infrastructure:"
 	@echo "  up          - Start development environment"

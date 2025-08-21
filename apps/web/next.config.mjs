@@ -8,6 +8,9 @@
  */
 import { withPayload } from "@payloadcms/next/withPayload";
 
+/* eslint-disable no-undef */
+const isProduction = process.env.NODE_ENV === "production";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@workspace/ui"],
@@ -19,9 +22,13 @@ const nextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
+  typescript: {
+    // Use production tsconfig that excludes test files during build
+    tsconfigPath: isProduction ? "./tsconfig.build.json" : "./tsconfig.json",
+  },
   // Enable standalone output for Docker deployments
   // This reduces the image size significantly
-  output: process.env.NODE_ENV === "production" ? "standalone" : undefined,
+  output: isProduction ? "standalone" : undefined,
 };
 
 export default withPayload(nextConfig);
