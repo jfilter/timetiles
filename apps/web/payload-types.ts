@@ -128,6 +128,7 @@ export interface Config {
       'cleanup-approval-locks': TaskCleanupApprovalLocks;
       'url-fetch': TaskUrlFetch;
       'schedule-manager': TaskScheduleManager;
+      'cleanup-stuck-scheduled-imports': TaskCleanupStuckScheduledImports;
       inline: {
         input: unknown;
         output: unknown;
@@ -992,6 +993,15 @@ export interface ScheduledImport {
    */
   importNameTemplate?: string | null;
   /**
+   * Enable webhook URL for triggering this import on-demand
+   */
+  webhookEnabled?: boolean | null;
+  webhookToken?: string | null;
+  /**
+   * POST to this URL to trigger the import
+   */
+  webhookUrl?: string | null;
+  /**
    * Retry behavior configuration
    */
   retryConfig?: {
@@ -1087,6 +1097,10 @@ export interface ScheduledImport {
          * Background job ID
          */
         jobId?: string | null;
+        /**
+         * How this execution was triggered
+         */
+        triggeredBy?: ('schedule' | 'webhook' | 'manual' | 'system') | null;
         id?: string | null;
       }[]
     | null;
@@ -1604,7 +1618,8 @@ export interface PayloadJob {
           | 'create-events'
           | 'cleanup-approval-locks'
           | 'url-fetch'
-          | 'schedule-manager';
+          | 'schedule-manager'
+          | 'cleanup-stuck-scheduled-imports';
         taskID: string;
         input?:
           | {
@@ -1650,6 +1665,7 @@ export interface PayloadJob {
         | 'cleanup-approval-locks'
         | 'url-fetch'
         | 'schedule-manager'
+        | 'cleanup-stuck-scheduled-imports'
       )
     | null;
   queue?: string | null;
@@ -2048,6 +2064,9 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
   frequency?: T;
   cronExpression?: T;
   importNameTemplate?: T;
+  webhookEnabled?: T;
+  webhookToken?: T;
+  webhookUrl?: T;
   retryConfig?:
     | T
     | {
@@ -2085,6 +2104,7 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
         recordsImported?: T;
         error?: T;
         jobId?: T;
+        triggeredBy?: T;
         id?: T;
       };
   updatedAt?: T;
@@ -2509,6 +2529,14 @@ export interface TaskUrlFetch {
  * via the `definition` "TaskSchedule-manager".
  */
 export interface TaskScheduleManager {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskCleanup-stuck-scheduled-imports".
+ */
+export interface TaskCleanupStuckScheduledImports {
   input?: unknown;
   output?: unknown;
 }

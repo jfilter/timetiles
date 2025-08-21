@@ -234,6 +234,21 @@ export const executionFields: Field[] = [
           description: "Background job ID",
         },
       },
+      {
+        name: "triggeredBy",
+        type: "select",
+        dbName: "trig_by", // Shortened to avoid PostgreSQL identifier length limit
+        options: [
+          { label: "Schedule", value: "schedule" },
+          { label: "Webhook", value: "webhook" },
+          { label: "Manual", value: "manual" },
+          { label: "System", value: "system" },
+        ],
+        defaultValue: "schedule",
+        admin: {
+          description: "How this execution was triggered",
+        },
+      },
     ],
   },
 ];

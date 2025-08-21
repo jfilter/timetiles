@@ -23,6 +23,7 @@ import { basicFields } from "./fields/basic-fields";
 import { executionFields } from "./fields/execution-fields";
 import { scheduleFields } from "./fields/schedule-fields";
 import { targetFields } from "./fields/target-fields";
+import { webhookFields } from "./fields/webhook-fields";
 import { beforeChangeHook } from "./hooks";
 import { validateCronExpression, validateUrl } from "./validation";
 
@@ -41,7 +42,7 @@ const ScheduledImports: CollectionConfig = {
     update: ({ req: { user } }) => Boolean(user),
     delete: ({ req: { user } }) => user?.role === "admin" || false,
   },
-  fields: [...basicFields, ...authFields, ...targetFields, ...scheduleFields, ...executionFields],
+  fields: [...basicFields, ...authFields, ...targetFields, ...scheduleFields, ...webhookFields, ...executionFields],
   hooks: {
     beforeChange: [beforeChangeHook],
     beforeValidate: [
