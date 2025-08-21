@@ -1,0 +1,2 @@
+# This file ensures the public directory exists in git
+# Next.js uses this directory for static files
