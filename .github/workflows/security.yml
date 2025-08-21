@@ -1,0 +1,522 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Monday at 9am UTC to catch new vulnerabilities
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      scan_type:
+        description: 'Type of scan to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - dependencies
+          - docker
+          - filesystem
+          - config
+
+env:
+  TRIVY_VERSION: '0.58.0'
+  DOCKER_IMAGE: 'timetiles-web:latest'
+
+jobs:
+  dependency-scan:
+    name: Scan Dependencies
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'dependencies' || github.event.inputs.scan_type == '' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner (dependencies)
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'vuln,license'
+          format: 'sarif'
+          output: 'trivy-deps-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          # Only scan package files, not the entire filesystem
+          skip-dirs: 'node_modules,dist,build,.next,.turbo'
+          timeout: '10m'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-deps-results.sarif'
+          category: 'dependency-scan'
+
+      - name: Generate dependency report
+        uses: aquasecurity/trivy-action@0.29.0
+        if: always()
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'vuln,license'
+          format: 'json'
+          output: 'trivy-deps-report.json'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+          skip-dirs: 'node_modules,dist,build,.next,.turbo'
+
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## 📦 Dependency Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f trivy-deps-report.json ]; then
+            # Extract vulnerability counts
+            CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-deps-report.json)
+            HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-deps-report.json)
+            MEDIUM=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="MEDIUM")] | length' trivy-deps-report.json)
+            LOW=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="LOW")] | length' trivy-deps-report.json)
+            
+            echo "### Vulnerability Summary" >> $GITHUB_STEP_SUMMARY
+            echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| 🔴 CRITICAL | ${CRITICAL:-0} |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🟠 HIGH | ${HIGH:-0} |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🟡 MEDIUM | ${MEDIUM:-0} |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🟢 LOW | ${LOW:-0} |" >> $GITHUB_STEP_SUMMARY
+            
+            # Check for license issues
+            LICENSE_ISSUES=$(jq '[.Results[]?.Licenses[]? | select(.Severity=="CRITICAL" or .Severity=="HIGH")] | length' trivy-deps-report.json)
+            if [ "${LICENSE_ISSUES:-0}" -gt 0 ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "⚠️ **License Issues Found:** $LICENSE_ISSUES" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            # Fail if critical vulnerabilities found
+            if [ "${CRITICAL:-0}" -gt 0 ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "❌ **Build failed due to $CRITICAL critical vulnerabilities**" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+          fi
+
+      - name: Upload scan reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-scan-reports
+          path: |
+            trivy-deps-results.sarif
+            trivy-deps-report.json
+          retention-days: 30
+
+  docker-scan:
+    name: Scan Docker Image
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'docker' || github.event.inputs.scan_type == '' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          # Build the production Docker image
+          docker build -f deploy/Dockerfile.prod -t ${{ env.DOCKER_IMAGE }} .
+          
+          # Show image details
+          docker images ${{ env.DOCKER_IMAGE }}
+
+      - name: Run Trivy vulnerability scanner (Docker)
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          image-ref: ${{ env.DOCKER_IMAGE }}
+          format: 'sarif'
+          output: 'trivy-docker-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          timeout: '10m'
+          scanners: 'vuln,secret,misconfig'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-docker-results.sarif'
+          category: 'docker-scan'
+
+      - name: Generate detailed Docker report
+        uses: aquasecurity/trivy-action@0.29.0
+        if: always()
+        with:
+          image-ref: ${{ env.DOCKER_IMAGE }}
+          format: 'json'
+          output: 'trivy-docker-report.json'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+          scanners: 'vuln,secret,misconfig'
+
+      - name: Create Docker scan summary
+        if: always()
+        run: |
+          echo "## 🐳 Docker Image Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f trivy-docker-report.json ]; then
+            # Extract OS package vulnerabilities
+            OS_CRITICAL=$(jq '[.Results[]? | select(.Class=="os-pkgs") | .Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-docker-report.json)
+            OS_HIGH=$(jq '[.Results[]? | select(.Class=="os-pkgs") | .Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-docker-report.json)
+            
+            # Extract Node.js vulnerabilities
+            NODE_CRITICAL=$(jq '[.Results[]? | select(.Class=="lang-pkgs") | .Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-docker-report.json)
+            NODE_HIGH=$(jq '[.Results[]? | select(.Class=="lang-pkgs") | .Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-docker-report.json)
+            
+            # Extract secrets
+            SECRETS=$(jq '[.Results[]? | select(.Class=="secret") | .Secrets[]?] | length' trivy-docker-report.json)
+            
+            # Extract misconfigurations
+            MISCONFIGS=$(jq '[.Results[]? | select(.MisconfSummary) | .MisconfSummary.Failures] | add // 0' trivy-docker-report.json)
+            
+            echo "### Scan Summary" >> $GITHUB_STEP_SUMMARY
+            echo "| Component | Critical | High |" >> $GITHUB_STEP_SUMMARY
+            echo "|-----------|----------|------|" >> $GITHUB_STEP_SUMMARY
+            echo "| OS Packages | $OS_CRITICAL | $OS_HIGH |" >> $GITHUB_STEP_SUMMARY
+            echo "| Node Dependencies | $NODE_CRITICAL | $NODE_HIGH |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            if [ "$SECRETS" -gt 0 ]; then
+              echo "🚨 **Secrets Found:** $SECRETS" >> $GITHUB_STEP_SUMMARY
+              echo "Please review and remove any exposed credentials!" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+            
+            if [ "$MISCONFIGS" -gt 0 ]; then
+              echo "⚠️ **Misconfigurations Found:** $MISCONFIGS" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            # Calculate total critical vulnerabilities
+            TOTAL_CRITICAL=$((OS_CRITICAL + NODE_CRITICAL))
+            if [ "$TOTAL_CRITICAL" -gt 0 ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "❌ **Build failed due to $TOTAL_CRITICAL critical vulnerabilities in Docker image**" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+            
+            # Get image size
+            IMAGE_SIZE=$(docker images --format "{{.Size}}" ${{ env.DOCKER_IMAGE }})
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📦 **Image Size:** $IMAGE_SIZE" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Docker scan reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: docker-scan-reports
+          path: |
+            trivy-docker-results.sarif
+            trivy-docker-report.json
+          retention-days: 30
+
+  config-scan:
+    name: Scan Configuration Files
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'config' || github.event.inputs.scan_type == '' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy config scanner
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-config-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          timeout: '10m'
+
+      - name: Upload config scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-config-results.sarif'
+          category: 'config-scan'
+
+      - name: Generate config report
+        uses: aquasecurity/trivy-action@0.29.0
+        if: always()
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'json'
+          output: 'trivy-config-report.json'
+
+      - name: Create config scan summary
+        if: always()
+        run: |
+          echo "## ⚙️ Configuration Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f trivy-config-report.json ]; then
+            # Count misconfigurations by severity
+            CRITICAL=$(jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="CRITICAL")] | length' trivy-config-report.json)
+            HIGH=$(jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="HIGH")] | length' trivy-config-report.json)
+            MEDIUM=$(jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="MEDIUM")] | length' trivy-config-report.json)
+            LOW=$(jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="LOW")] | length' trivy-config-report.json)
+            
+            echo "### Misconfiguration Summary" >> $GITHUB_STEP_SUMMARY
+            echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| 🔴 CRITICAL | ${CRITICAL:-0} |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🟠 HIGH | ${HIGH:-0} |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🟡 MEDIUM | ${MEDIUM:-0} |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🟢 LOW | ${LOW:-0} |" >> $GITHUB_STEP_SUMMARY
+            
+            # List affected files
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Affected Files" >> $GITHUB_STEP_SUMMARY
+            jq -r '.Results[]? | select(.Misconfigurations) | .Target' trivy-config-report.json | while read -r file; do
+              echo "- \`$file\`" >> $GITHUB_STEP_SUMMARY
+            done
+            
+            if [ "${CRITICAL:-0}" -gt 0 ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "❌ **Critical misconfigurations found**" >> $GITHUB_STEP_SUMMARY
+              # Don't fail the build for config issues, just warn
+            fi
+          fi
+
+      - name: Upload config scan reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: config-scan-reports
+          path: |
+            trivy-config-results.sarif
+            trivy-config-report.json
+          retention-days: 30
+
+  filesystem-scan:
+    name: Scan Filesystem for Secrets
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'filesystem' || github.event.inputs.scan_type == '' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy secret scanner
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'secret'
+          format: 'sarif'
+          output: 'trivy-secrets-results.sarif'
+          timeout: '10m'
+          # Skip scanning common directories that shouldn't contain secrets
+          skip-dirs: 'node_modules,dist,build,.next,.turbo,.git'
+
+      - name: Upload secret scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-secrets-results.sarif'
+          category: 'secret-scan'
+
+      - name: Generate secret scan report
+        uses: aquasecurity/trivy-action@0.29.0
+        if: always()
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'secret'
+          format: 'json'
+          output: 'trivy-secrets-report.json'
+          skip-dirs: 'node_modules,dist,build,.next,.turbo,.git'
+
+      - name: Create secret scan summary
+        if: always()
+        run: |
+          echo "## 🔐 Secret Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f trivy-secrets-report.json ]; then
+            # Count secrets found
+            SECRET_COUNT=$(jq '[.Results[]?.Secrets[]?] | length' trivy-secrets-report.json)
+            
+            if [ "$SECRET_COUNT" -eq 0 ]; then
+              echo "✅ **No secrets detected**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "🚨 **$SECRET_COUNT potential secrets found!**" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### Detected Secrets" >> $GITHUB_STEP_SUMMARY
+              echo "| File | Line | Type |" >> $GITHUB_STEP_SUMMARY
+              echo "|------|------|------|" >> $GITHUB_STEP_SUMMARY
+              
+              # List secret locations (without exposing the actual secrets)
+              jq -r '.Results[]? | select(.Secrets) | .Target as $file | .Secrets[]? | "\($file) | \(.StartLine) | \(.Title)"' trivy-secrets-report.json | while IFS='|' read -r file line type; do
+                echo "| \`$file\` | $line | $type |" >> $GITHUB_STEP_SUMMARY
+              done
+              
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "⚠️ **Action Required:** Review and remove any exposed credentials immediately!" >> $GITHUB_STEP_SUMMARY
+              
+              # Fail the build if secrets are found
+              exit 1
+            fi
+          fi
+
+      - name: Upload secret scan reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: secret-scan-reports
+          path: |
+            trivy-secrets-results.sarif
+            trivy-secrets-report.json
+          retention-days: 30
+
+  pr-comment:
+    name: Comment on PR
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && always()
+    needs: [dependency-scan, docker-scan, config-scan, filesystem-scan]
+    
+    steps:
+      - name: Download all scan reports
+        uses: actions/download-artifact@v4
+        with:
+          path: scan-reports
+
+      - name: Create PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            let comment = '## 🔒 Security Scan Results\n\n';
+            comment += `Scan completed at ${new Date().toISOString()}\n\n`;
+            
+            // Function to safely read JSON
+            function readJSON(filePath) {
+              try {
+                if (fs.existsSync(filePath)) {
+                  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+                }
+              } catch (e) {
+                console.error(`Error reading ${filePath}:`, e);
+              }
+              return null;
+            }
+            
+            // Check each scan type
+            const scanTypes = [
+              { name: 'Dependencies', path: 'scan-reports/dependency-scan-reports/trivy-deps-report.json', icon: '📦' },
+              { name: 'Docker Image', path: 'scan-reports/docker-scan-reports/trivy-docker-report.json', icon: '🐳' },
+              { name: 'Configuration', path: 'scan-reports/config-scan-reports/trivy-config-report.json', icon: '⚙️' },
+              { name: 'Secrets', path: 'scan-reports/secret-scan-reports/trivy-secrets-report.json', icon: '🔐' }
+            ];
+            
+            let hasIssues = false;
+            
+            for (const scan of scanTypes) {
+              const report = readJSON(scan.path);
+              if (report) {
+                comment += `### ${scan.icon} ${scan.name}\n`;
+                
+                // Count vulnerabilities/issues
+                let criticalCount = 0;
+                let highCount = 0;
+                let secretCount = 0;
+                
+                if (report.Results) {
+                  report.Results.forEach(result => {
+                    if (result.Vulnerabilities) {
+                      result.Vulnerabilities.forEach(vuln => {
+                        if (vuln.Severity === 'CRITICAL') criticalCount++;
+                        if (vuln.Severity === 'HIGH') highCount++;
+                      });
+                    }
+                    if (result.Secrets) {
+                      secretCount += result.Secrets.length;
+                    }
+                  });
+                }
+                
+                if (criticalCount > 0 || highCount > 0 || secretCount > 0) {
+                  hasIssues = true;
+                  if (criticalCount > 0) comment += `- 🔴 **${criticalCount} Critical** issues\n`;
+                  if (highCount > 0) comment += `- 🟠 **${highCount} High** severity issues\n`;
+                  if (secretCount > 0) comment += `- 🚨 **${secretCount} Secrets** detected\n`;
+                } else {
+                  comment += '✅ No critical issues found\n';
+                }
+                comment += '\n';
+              }
+            }
+            
+            // Add action items if issues found
+            if (hasIssues) {
+              comment += '### ⚠️ Action Required\n';
+              comment += '- Review the security scan results in the [Security tab](../../security/code-scanning)\n';
+              comment += '- Fix critical vulnerabilities before merging\n';
+              comment += '- Remove any exposed secrets immediately\n';
+            } else {
+              comment += '### ✅ All Checks Passed\n';
+              comment += 'No critical security issues detected.\n';
+            }
+            
+            // Find and update or create comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🔒 Security Scan Results')
+            );
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [dependency-scan, docker-scan, config-scan, filesystem-scan]
+    
+    steps:
+      - name: Create final summary
+        run: |
+          echo "# 🛡️ Security Scan Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All security scans have been completed. Check individual job summaries for details." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Quick Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Security Alerts](../../security/code-scanning)" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Dependency Graph](../../network/dependencies)" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Security Policy](../../security/policy)" >> $GITHUB_STEP_SUMMARY

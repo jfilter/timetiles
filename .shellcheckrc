@@ -1,0 +1,16 @@
+# ShellCheck configuration - minimal ignores only
+# https://www.shellcheck.net/wiki/Ignore
+
+# Set default shell
+shell=bash
+
+# Only disable what we cannot reasonably fix:
+
+# SC1090: Can't follow non-constant source
+# This is a shellcheck limitation, not a real issue
+disable=SC1090
+
+# SC2012: Use find instead of ls 
+# In deploy.sh, ls is used for human-readable backup listings
+# with specific formatting that's harder with find
+disable=SC2012

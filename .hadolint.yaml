@@ -1,0 +1,8 @@
+# Hadolint configuration - minimal ignores only
+# https://github.com/hadolint/hadolint
+
+ignored:
+  # DL3018: Pin versions in apk add
+  # Ignoring for libc6-compat as it's a system library that should 
+  # track Alpine's version for compatibility
+  - DL3018
