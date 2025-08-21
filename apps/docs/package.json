@@ -33,6 +33,7 @@
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "^9.20.1",
+    "glob": "^11.0.3",
     "nodemon": "^3.1.10",
     "typedoc": "^0.28.8",
     "typedoc-plugin-markdown": "^4.8.0",

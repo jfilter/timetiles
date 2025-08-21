@@ -5,6 +5,7 @@ System requirements and preparation for production deployment.
 ## System Requirements
 
 ### Minimum Production Requirements
+
 - **CPU**: 2 cores
 - **Memory**: 4GB RAM (8GB for building)
 - **Storage**: 20GB SSD
@@ -13,6 +14,7 @@ System requirements and preparation for production deployment.
 - **Docker Compose**: 2.0 or higher
 
 ### Recommended for Production
+
 - **CPU**: 4+ cores
 - **Memory**: 8GB+ RAM
 - **Storage**: 50GB+ SSD
@@ -74,6 +76,7 @@ sudo sysctl -p
 Before deploying, configure your domain:
 
 1. **A Record**: Point your domain to your server's IP
+
    ```
    Type: A
    Name: @ (or subdomain)
@@ -82,6 +85,7 @@ Before deploying, configure your domain:
    ```
 
 2. **WWW Record** (optional):
+
    ```
    Type: CNAME
    Name: www
@@ -108,7 +112,7 @@ TimeTiles requires these services (all included in Docker deployment):
 
 Consider these for enhanced functionality:
 
-- **Geocoding API Keys**: 
+- **Geocoding API Keys**:
   - Google Maps (most accurate)
   - OpenCage (good alternative)
   - Nominatim/OpenStreetMap (free, no key needed, automatic fallback)

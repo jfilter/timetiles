@@ -57,6 +57,7 @@ docker-compose -f deploy/docker-compose.prod.yml exec postgres pg_isready
 ```
 
 The backup system automatically:
+
 - Keeps only the last 30 database backups
 - Stores backups in `deploy/backups/`
 - Names files with timestamps for easy identification
@@ -85,19 +86,23 @@ git pull origin main
 curl https://your-domain.com/api/health
 ```
 
-### Dependency Updates
+### Software Updates
+
+Production updates are handled through the deployment pipeline:
 
 ```bash
-# Update dependencies (development)
-pnpm update --latest
-pnpm test
-pnpm build
+# Pull latest approved changes
+git pull origin main
 
-# Commit and deploy
-git add -A
-git commit -m "chore: update dependencies"
-git push
+# Upgrade to new version
+./deploy.sh upgrade
+
+# Verify deployment
+./deploy.sh status
+curl https://your-domain.com/api/health
 ```
+
+> **Note**: Dependency updates should be handled by developers through pull requests, not directly in production.
 
 ### Database Migrations
 
@@ -137,16 +142,16 @@ ANALYZE;
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 
 -- Find slow queries
-SELECT 
+SELECT
   mean_exec_time,
   calls,
-  query 
-FROM pg_stat_statements 
-ORDER BY mean_exec_time DESC 
+  query
+FROM pg_stat_statements
+ORDER BY mean_exec_time DESC
 LIMIT 10;
 
 -- Check index usage
-SELECT 
+SELECT
   schemaname,
   tablename,
   indexname,
@@ -199,9 +204,9 @@ docker-compose -f deploy/docker-compose.prod.yml exec postgres \
 # Table sizes
 docker-compose -f deploy/docker-compose.prod.yml exec postgres \
   psql -U timetiles_user -d timetiles -c \
-  "SELECT schemaname, tablename, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size 
-   FROM pg_tables 
-   WHERE schemaname = 'payload' 
+  "SELECT schemaname, tablename, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+   FROM pg_tables
+   WHERE schemaname = 'payload'
    ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;"
 ```
 

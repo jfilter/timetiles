@@ -15,10 +15,9 @@ Unit and integration tests focus on individual components or small groups of com
 - **Framework:** [Vitest](https://vitest.dev/) is the testing framework used for unit and integration tests.
 
 - **Running Tests:**
-  - To run all unit/integration tests: `pnpm test` (from `apps/web` directory)
-  - To run tests in watch mode: `pnpm test:watch`
-  - To run tests with verbose output: `pnpm test:verbose`
-  - To generate coverage reports: `pnpm test:coverage`
+  - To run all unit/integration tests: `make test` (from project root) or `pnpm test` (from `apps/web` directory)
+  - To run tests with debug output: `pnpm test:debug` (from `apps/web` directory)
+  - To generate coverage reports: `make test-coverage` or `pnpm test:coverage`
 
 ## 2. End-to-End (E2E) Tests
 

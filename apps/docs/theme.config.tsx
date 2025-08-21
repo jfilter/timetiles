@@ -6,7 +6,7 @@ import faviconPng from "@timetiles/assets/logos/static/logo-256.png";
 const config: DocsThemeConfig = {
   logo: (
     <>
-      <img src={logoHorizontal} alt="TimeTiles" style={{ height: '40px' }} />
+      <img src={logoHorizontal} alt="TimeTiles" style={{ height: "40px" }} />
     </>
   ),
   project: {
@@ -29,8 +29,8 @@ const config: DocsThemeConfig = {
         property="og:description"
         content="Comprehensive documentation for TimeTiles - A spatial data management platform"
       />
-      <link rel="icon" href={typeof faviconPng === 'string' ? faviconPng : faviconPng.src} />
-      <link rel="shortcut icon" href={typeof faviconPng === 'string' ? faviconPng : faviconPng.src} />
+      <link rel="icon" href={typeof faviconPng === "string" ? faviconPng : faviconPng.src} />
+      <link rel="shortcut icon" href={typeof faviconPng === "string" ? faviconPng : faviconPng.src} />
     </>
   ),
   sidebar: {

@@ -111,21 +111,24 @@ cp apps/web/.env.example apps/web/.env.local
 make up
 
 # Run database migrations
-cd apps/web && pnpm payload:migrate && cd ../..
+make migrate
 
 # Start development server
-pnpm dev
+make dev
 ```
 
 ### Development Commands
 
 ```bash
 make dev        # Start development environment
+make test       # Run tests
 make test-ai    # Run tests with AI-friendly output
+make check      # Run lint + typecheck combined
+make lint       # Lint code
+make typecheck  # Type checking
+make format     # Format code
+make migrate    # Run database migrations
 make db-query   # Execute SQL queries
-pnpm lint       # Lint code
-pnpm typecheck  # Type checking
-pnpm format     # Format code
 ```
 
 ## 🤝 Contributing
