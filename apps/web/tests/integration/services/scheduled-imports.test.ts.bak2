@@ -169,16 +169,13 @@ describe.sequential("Scheduled Imports Integration", () => {
 
   describe("Scheduled Import Creation", () => {
     it("should create a scheduled import", async () => {
-      // Set up test server endpoint
-      testServer.respondWithCSV("/api/data.csv", "id,name,value\n1,test,100");
-
       const scheduledImport = await payload.create({
         collection: "scheduled-imports",
         data: {
           name: "Daily Data Import",
           description: "Imports data from API every day",
           enabled: true,
-          sourceUrl: `${testServerUrl}/api/data.csv`,
+          sourceUrl: "https://api.example.com/data.csv",
           authConfig: {
             type: "api-key",
             apiKey: "test-key-123",
@@ -197,7 +194,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       expect(scheduledImport).toMatchObject({
         name: "Daily Data Import",
         enabled: true,
-        sourceUrl: `${testServerUrl}/api/data.csv`,
+        sourceUrl: "https://api.example.com/data.csv",
         cronExpression: "0 0 * * *",
         statistics: {
           totalRuns: 0,
@@ -214,7 +211,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           collection: "scheduled-imports",
           data: {
             name: "Invalid Cron Import",
-            sourceUrl: `${testServerUrl}/duplicate-test.csv`,
+            sourceUrl: "https://api.example.com/data.csv",
             scheduleType: "cron",
             cronExpression: "invalid-cron",
           },
@@ -333,7 +330,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         data: {
           name: "Disabled Import",
           enabled: false, // Disabled
-          sourceUrl: `${testServerUrl}/duplicate-test.csv`,
+          sourceUrl: "https://api.example.com/data.csv",
           catalog: testCatalog.id,
           scheduleType: "cron",
           cronExpression: "* * * * *", // Every minute
@@ -446,22 +443,12 @@ describe.sequential("Scheduled Imports Integration", () => {
 
   describe("URL Fetch Job", () => {
     it("should fetch and process URL data", async () => {
-      // Set up test server endpoint
-      const mockCsvData = "id,name,value\n1,Product A,100\n2,Product B,200";
-      testServer.respondWithAuth(
-        "/auth-data.csv",
-        "bearer",
-        { token: "token-123" },
-        { status: 200, body: mockCsvData, headers: { "Content-Type": "text/csv" } },
-        { status: 401, body: "Unauthorized" }
-      );
-
       // First create a scheduled import to trigger the URL fetch
       const scheduledImport = await payload.create({
         collection: "scheduled-imports",
         data: {
           name: "Test URL Fetch",
-          sourceUrl: `${testServerUrl}/auth-data.csv`,
+          sourceUrl: "https://api.example.com/data.csv",
           authConfig: {
             type: "bearer",
             bearerToken: "token-123",
@@ -473,10 +460,20 @@ describe.sequential("Scheduled Imports Integration", () => {
         },
       });
 
+      // Set up test server endpoint
+      const mockCsvData = "id,name,value\n1,Product A,100\n2,Product B,200";
+      testServer.respondWithAuth(
+        "/auth-data.csv",
+        "bearer",
+        { token: "token-123" },
+        { status: 200, body: mockCsvData, headers: { "Content-Type": "text/csv" } },
+        { status: 401, body: "Unauthorized" }
+      );
+
       // Run URL fetch job
       const result = await urlFetchJob.handler({
         input: {
-          sourceUrl: scheduledImport.sourceUrl,
+          sourceUrl: `${testServerUrl}/url-fetch-test.csv`,
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalog.id,
           originalName: "test-import.csv",
@@ -496,7 +493,15 @@ describe.sequential("Scheduled Imports Integration", () => {
         isDuplicate: false,
       });
 
-      // Test server will have validated auth automatically
+      // Verify fetch was called with auth
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://api.example.com/data.csv",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: "Bearer token-123",
+          }),
+        })
+      );
 
       // Note: File is now handled by Payload's upload system, not saved directly to disk by url-fetch-job
 
@@ -600,7 +605,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         data: {
           name: "Duplicate Check Import",
           enabled: true,
-          sourceUrl: `${testServerUrl}/duplicate-test.csv`,
+          sourceUrl: "https://api.example.com/data.csv",
           authConfig: { type: "none" },
           catalog: testCatalog.id,
           scheduleType: "frequency",
@@ -612,9 +617,23 @@ describe.sequential("Scheduled Imports Integration", () => {
       });
 
       const mockCsvData = "id,name,value\n1,test,100";
+      const mockResponse = {
+        ok: true,
+        headers: new Headers({ "content-type": "text/csv" }),
+        body: {
+          getReader: () => ({
+            read: vi
+              .fn()
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode(mockCsvData),
+              })
+              .mockResolvedValueOnce({ done: true }),
+          }),
+        },
+      };
 
-      // Set up test server endpoint with duplicate content
-      testServer.respondWithCSV("/duplicate-test.csv", mockCsvData);
+      (global.fetch as any).mockResolvedValue(mockResponse);
 
       // First import
       const result1 = await urlFetchJob.handler({
@@ -642,7 +661,8 @@ describe.sequential("Scheduled Imports Integration", () => {
         },
       });
 
-      // Server will return same content for second request
+      // Reset mock for second fetch
+      (global.fetch as any).mockResolvedValue(mockResponse);
 
       // Second import with same content
       const result2 = await urlFetchJob.handler({
@@ -682,7 +702,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         data: {
           name: "Skip Duplicate Check Import",
           enabled: true,
-          sourceUrl: `${testServerUrl}/duplicate-test.csv`,
+          sourceUrl: "https://api.example.com/data.csv",
           authConfig: { type: "none" },
           catalog: testCatalog.id,
           scheduleType: "frequency",
@@ -694,9 +714,23 @@ describe.sequential("Scheduled Imports Integration", () => {
       });
 
       const mockCsvData = "id,name,value\n1,test,100";
+      const mockResponse = {
+        ok: true,
+        headers: new Headers({ "content-type": "text/csv" }),
+        body: {
+          getReader: () => ({
+            read: vi
+              .fn()
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode(mockCsvData),
+              })
+              .mockResolvedValueOnce({ done: true }),
+          }),
+        },
+      };
 
-      // Set up test server endpoint with duplicate content
-      testServer.respondWithCSV("/duplicate-test.csv", mockCsvData);
+      (global.fetch as any).mockResolvedValue(mockResponse);
 
       // First import
       const result1 = await urlFetchJob.handler({
@@ -714,7 +748,10 @@ describe.sequential("Scheduled Imports Integration", () => {
       const successOutput1 = result1.output as UrlFetchSuccessOutput;
       expect(successOutput1.isDuplicate).toBe(false);
 
-      // Second import with same content (test server will return same response)
+      // Reset mock
+      (global.fetch as any).mockResolvedValue(mockResponse);
+
+      // Second import with same content
       const result2 = await urlFetchJob.handler({
         input: {
           scheduledImportId: scheduledImport.id,
@@ -738,7 +775,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         data: {
           name: "Content Type Override Import",
           enabled: true,
-          sourceUrl: `${testServerUrl}/content-type-test`,
+          sourceUrl: "https://api.example.com/data",
           authConfig: { type: "none" },
           catalog: testCatalog.id,
           scheduleType: "frequency",
@@ -750,11 +787,23 @@ describe.sequential("Scheduled Imports Integration", () => {
       });
 
       // Server returns generic content type
-      testServer.respond("/content-type-test", {
-        status: 200,
-        body: "id,name\n1,test",
-        headers: { "Content-Type": "application/octet-stream" },
-      });
+      const mockResponse = {
+        ok: true,
+        headers: new Headers({ "content-type": "application/octet-stream" }),
+        body: {
+          getReader: () => ({
+            read: vi
+              .fn()
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode("id,name\n1,test"),
+              })
+              .mockResolvedValueOnce({ done: true }),
+          }),
+        },
+      };
+
+      (global.fetch as any).mockResolvedValue(mockResponse);
 
       const result = await urlFetchJob.handler({
         input: {
@@ -779,7 +828,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         data: {
           name: "File Size Limit Import",
           enabled: true,
-          sourceUrl: `${testServerUrl}/large-file`,
+          sourceUrl: "https://api.example.com/large-file",
           authConfig: { type: "none" },
           catalog: testCatalog.id,
           scheduleType: "frequency",
@@ -790,16 +839,27 @@ describe.sequential("Scheduled Imports Integration", () => {
         },
       });
 
-      // Create large data (2MB)
-      const largeData = Buffer.alloc(2 * 1024 * 1024).toString();
-      testServer.respond("/large-file", {
-        status: 200,
-        body: largeData,
-        headers: {
-          "Content-Type": "text/csv",
-          "Content-Length": String(2 * 1024 * 1024),
+      const largeData = new Uint8Array(2 * 1024 * 1024); // 2MB
+      const mockResponse = {
+        ok: true,
+        headers: new Headers({
+          "content-type": "text/csv",
+          "content-length": String(2 * 1024 * 1024), // 2MB
+        }),
+        body: {
+          getReader: () => ({
+            read: vi
+              .fn()
+              .mockResolvedValueOnce({
+                done: false,
+                value: largeData,
+              })
+              .mockResolvedValueOnce({ done: true }),
+          }),
         },
-      });
+      };
+
+      (global.fetch as any).mockResolvedValue(mockResponse);
 
       const result = await urlFetchJob.handler({
         input: {
@@ -824,7 +884,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         data: {
           name: "Custom Headers Import",
           enabled: true,
-          sourceUrl: `${testServerUrl}/content-type-test`,
+          sourceUrl: "https://api.example.com/data",
           authConfig: {
             type: "api-key",
             apiKey: "test-key",
@@ -840,14 +900,25 @@ describe.sequential("Scheduled Imports Integration", () => {
         },
       });
 
-      // Set up test server endpoint with JSON response
-      testServer.respond("/content-type-test", {
-        status: 200,
-        body: JSON.stringify({ data: "test" }),
-        headers: { "Content-Type": "application/json" },
-      });
+      const mockResponse = {
+        ok: true,
+        headers: new Headers({ "content-type": "application/json" }),
+        body: {
+          getReader: () => ({
+            read: vi
+              .fn()
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode("{}"),
+              })
+              .mockResolvedValueOnce({ done: true }),
+          }),
+        },
+      };
 
-      const result = await urlFetchJob.handler({
+      (global.fetch as any).mockResolvedValue(mockResponse);
+
+      await urlFetchJob.handler({
         input: {
           scheduledImportId: scheduledImport.id,
           sourceUrl: scheduledImport.sourceUrl,
@@ -859,11 +930,16 @@ describe.sequential("Scheduled Imports Integration", () => {
         req: { payload },
       });
 
-      // The fetch should succeed with the custom headers
-      expect(result.output.success).toBe(true);
-      if ("contentType" in result.output) {
-        expect(result.output.contentType).toContain("json");
-      }
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://api.example.com/data",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            "X-API-Key": "test-key",
+            "X-Custom-Header": "custom-value",
+            "Accept-Language": "en-US",
+          }),
+        })
+      );
     });
 
     it("should pass through dataset mapping configuration", async () => {
@@ -883,7 +959,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         data: {
           name: "Dataset Mapping Import",
           enabled: true,
-          sourceUrl: `${testServerUrl}/api/data.xlsx`,
+          sourceUrl: "https://api.example.com/data.xlsx",
           authConfig: { type: "none" },
           catalog: testCatalog.id,
           multiSheetConfig,
@@ -892,12 +968,23 @@ describe.sequential("Scheduled Imports Integration", () => {
         },
       });
 
-      // Set up test server endpoint with Excel mime type
-      testServer.respond("/api/data.xlsx", {
-        status: 200,
-        body: "mock excel data",
-        headers: { "Content-Type": "application/vnd.ms-excel" },
-      });
+      const mockResponse = {
+        ok: true,
+        headers: new Headers({ "content-type": "application/vnd.ms-excel" }),
+        body: {
+          getReader: () => ({
+            read: vi
+              .fn()
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode("data"),
+              })
+              .mockResolvedValueOnce({ done: true }),
+          }),
+        },
+      };
+
+      (global.fetch as any).mockResolvedValue(mockResponse);
 
       const result = await urlFetchJob.handler({
         input: {
@@ -937,7 +1024,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         data: {
           name: "Duration Statistics Import",
           enabled: true,
-          sourceUrl: `${testServerUrl}/duration-test.csv`,
+          sourceUrl: "https://api.example.com/data.csv",
           authConfig: { type: "none" },
           catalog: testCatalog.id,
           scheduleType: "frequency",
@@ -951,8 +1038,23 @@ describe.sequential("Scheduled Imports Integration", () => {
         },
       });
 
-      // Set up test server endpoint with CSV data
-      testServer.respondWithCSV("/duration-test.csv", "id,name\n1,test");
+      const mockResponse = {
+        ok: true,
+        headers: new Headers({ "content-type": "text/csv" }),
+        body: {
+          getReader: () => ({
+            read: vi
+              .fn()
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode("data"),
+              })
+              .mockResolvedValueOnce({ done: true }),
+          }),
+        },
+      };
+
+      (global.fetch as any).mockResolvedValue(mockResponse);
 
       // Mock timing
       const startTime = Date.now();
@@ -994,7 +1096,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         data: {
           name: "Retry Logic Import",
           enabled: true,
-          sourceUrl: `${testServerUrl}/flaky-endpoint`,
+          sourceUrl: "https://api.example.com/flaky-endpoint",
           authConfig: { type: "none" },
           catalog: testCatalog.id,
           scheduleType: "frequency",
@@ -1006,14 +1108,26 @@ describe.sequential("Scheduled Imports Integration", () => {
 
       // Fail twice, then succeed
       let attempt = 0;
-      testServer.route("/flaky-endpoint", (req, res) => {
+      (global.fetch as any).mockImplementation(() => {
         attempt++;
         if (attempt < 3) {
-          req.socket.destroy();
-        } else {
-          res.writeHead(200, { "Content-Type": "text/csv" });
-          res.end("success data");
+          return Promise.reject(new Error(`Network error attempt ${attempt}`));
         }
+        return Promise.resolve({
+          ok: true,
+          headers: new Headers({ "content-type": "text/csv" }),
+          body: {
+            getReader: () => ({
+              read: vi
+                .fn()
+                .mockResolvedValueOnce({
+                  done: false,
+                  value: new TextEncoder().encode("success data"),
+                })
+                .mockResolvedValueOnce({ done: true }),
+            }),
+          },
+        });
       });
 
       const result = await urlFetchJob.handler({
@@ -1028,7 +1142,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         req: { payload },
       });
 
-      // Verify retry succeeded after 3 attempts
+      expect(global.fetch).toHaveBeenCalledTimes(3);
       expect(result.output).toMatchObject({
         success: true,
         isDuplicate: false,
@@ -1053,7 +1167,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         data: {
           name: "Timeout Test Import",
           enabled: true,
-          sourceUrl: `${testServerUrl}/timeout-test`,
+          sourceUrl: "https://slow-server.com/timeout-test",
           authConfig: { type: "none" },
           catalog: testCatalog.id,
           scheduleType: "frequency",
@@ -1062,11 +1176,13 @@ describe.sequential("Scheduled Imports Integration", () => {
         },
       });
 
-      // Set up a slow endpoint that will timeout
-      testServer.respond("/timeout-test", {
-        delay: 60000, // 60 second delay will cause timeout
-        status: 200,
-        body: "Should timeout",
+      // Mock a slow response that will timeout
+      // Instead of hanging forever, immediately reject with abort error
+      (global.fetch as any).mockImplementation(() => {
+        // Simulate immediate timeout
+        const error = new Error("The operation was aborted due to timeout");
+        error.name = "AbortError";
+        throw error;
       });
 
       const result = await urlFetchJob.handler({
@@ -1115,7 +1231,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         data: {
           name: "Test Scheduled Import",
           enabled: true,
-          sourceUrl: `${testServerUrl}/products.csv`,
+          sourceUrl: "https://api.example.com/products.csv",
           authConfig: { type: "none" },
           catalog: testCatalog.id,
           scheduleType: "cron",
@@ -1127,7 +1243,24 @@ describe.sequential("Scheduled Imports Integration", () => {
 
       // Mock successful fetch
       const mockCsvData = "id,name,price\n1,Product A,99.99\n2,Product B,149.99";
-      testServer.respondWithCSV("/products.csv", mockCsvData);
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        headers: new Headers({
+          "content-type": "text/csv",
+          "content-length": mockCsvData.length.toString(),
+        }),
+        body: {
+          getReader: () => ({
+            read: vi
+              .fn()
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode(mockCsvData),
+              })
+              .mockResolvedValueOnce({ done: true }),
+          }),
+        },
+      });
 
       // Run schedule manager
       const scheduleResult = await scheduleManagerJob.handler({

@@ -1,6 +1,11 @@
 /* eslint-disable sonarjs/publicly-writable-directories */
+// @vitest-environment node
 /**
+ *
  * Unit tests for URL Fetch Job Handler
+ * Uses node environment instead of jsdom to avoid AbortController compatibility issues
+ * with Node 24's native fetch API.
+ *
  * @module
  */
 

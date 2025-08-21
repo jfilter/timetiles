@@ -1,6 +1,7 @@
 /**
  * @module
  */
+import type { Payload } from "payload";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
@@ -24,7 +25,8 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 describe.sequential("StageTransitionService", () => {
-  let mockPayload: any;
+  let mockQueue: ReturnType<typeof vi.fn>;
+  let mockPayload: Payload;
   let mockImportJob: ImportJob;
 
   beforeEach(() => {
@@ -34,12 +36,15 @@ describe.sequential("StageTransitionService", () => {
     // Clear any existing transition locks before each test
     StageTransitionService.clearTransitionLocks();
 
-    // Mock payload
+    // Create mock queue function
+    mockQueue = vi.fn().mockResolvedValue({});
+
+    // Mock payload - cast as unknown first to bypass type checking
     mockPayload = {
       jobs: {
-        queue: vi.fn().mockResolvedValue({}),
+        queue: mockQueue,
       },
-    };
+    } as unknown as Payload;
 
     // Mock import job
     mockImportJob = {
@@ -183,7 +188,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.jobQueued).toBe(true);
       expect(result.queuedJobType).toBe(JOB_TYPES.DETECT_SCHEMA);
 
-      expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
+      expect(mockQueue).toHaveBeenCalledWith({
         task: JOB_TYPES.DETECT_SCHEMA,
         input: { importJobId: newJob.id, batchNumber: 0 },
       });
@@ -205,7 +210,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.jobQueued).toBe(true);
       expect(result.queuedJobType).toBe(JOB_TYPES.VALIDATE_SCHEMA);
 
-      expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
+      expect(mockQueue).toHaveBeenCalledWith({
         task: JOB_TYPES.VALIDATE_SCHEMA,
         input: { importJobId: newJob.id },
       });
@@ -221,7 +226,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.jobQueued).toBe(true);
       expect(result.queuedJobType).toBe(JOB_TYPES.GEOCODE_BATCH);
 
-      expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
+      expect(mockQueue).toHaveBeenCalledWith({
         task: JOB_TYPES.GEOCODE_BATCH,
         input: { importJobId: newJob.id, batchNumber: 0 },
       });
@@ -237,7 +242,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.jobQueued).toBe(true);
       expect(result.queuedJobType).toBe(JOB_TYPES.CREATE_EVENTS);
 
-      expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
+      expect(mockQueue).toHaveBeenCalledWith({
         task: JOB_TYPES.CREATE_EVENTS,
         input: { importJobId: newJob.id, batchNumber: 0 },
       });
@@ -253,7 +258,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.jobQueued).toBe(false);
       expect(result.queuedJobType).toBeUndefined();
 
-      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+      expect(mockQueue).not.toHaveBeenCalled();
       expect(mocks.logger.info).toHaveBeenCalledWith("Import requires manual approval", {
         importJobId: newJob.id,
       });
@@ -269,7 +274,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.jobQueued).toBe(false);
       expect(result.queuedJobType).toBeUndefined();
 
-      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+      expect(mockQueue).not.toHaveBeenCalled();
       expect(mocks.logger.info).toHaveBeenCalledWith("Import job completed successfully", {
         importJobId: newJob.id,
       });
@@ -285,7 +290,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.jobQueued).toBe(false);
       expect(result.queuedJobType).toBeUndefined();
 
-      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+      expect(mockQueue).not.toHaveBeenCalled();
       expect(mocks.logger.error).toHaveBeenCalledWith("Import job failed", {
         importJobId: newJob.id,
       });
@@ -301,7 +306,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.jobQueued).toBeUndefined();
       expect(result.queuedJobType).toBeUndefined();
 
-      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+      expect(mockQueue).not.toHaveBeenCalled();
       expect(mocks.logger.info).not.toHaveBeenCalled();
     });
 
@@ -314,7 +319,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.jobQueued).toBe(true);
       expect(result.queuedJobType).toBe(JOB_TYPES.DETECT_SCHEMA);
 
-      expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
+      expect(mockQueue).toHaveBeenCalledWith({
         task: JOB_TYPES.DETECT_SCHEMA,
         input: { importJobId: newJob.id, batchNumber: 0 },
       });
@@ -327,7 +332,7 @@ describe.sequential("StageTransitionService", () => {
       const newJob = { ...mockImportJob, stage: PROCESSING_STAGE.DETECT_SCHEMA } as ImportJob;
 
       // Make the first transition take some time
-      mockPayload.jobs.queue.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 100)));
+      mockQueue.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 100)));
 
       // Start two transitions simultaneously
       const promise1 = StageTransitionService.processStageTransition(mockPayload, newJob, previousJob);
@@ -390,7 +395,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe("Invalid stage transition from 'analyze-duplicates' to 'create-events'");
 
-      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+      expect(mockQueue).not.toHaveBeenCalled();
       expect(mocks.logger.error).toHaveBeenCalledWith(
         "Invalid stage transition from 'analyze-duplicates' to 'create-events'",
         { importJobId: "123" }
@@ -399,7 +404,7 @@ describe.sequential("StageTransitionService", () => {
 
     it("should handle job queue failures", async () => {
       const queueError = new Error("Queue service unavailable");
-      mockPayload.jobs.queue.mockRejectedValue(queueError);
+      mockQueue.mockRejectedValue(queueError);
 
       const previousJob = { ...mockImportJob, stage: PROCESSING_STAGE.ANALYZE_DUPLICATES } as ImportJob;
       const newJob = { ...mockImportJob, stage: PROCESSING_STAGE.DETECT_SCHEMA } as ImportJob;
@@ -426,7 +431,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe("Invalid stage transition from 'analyze-duplicates' to 'unknown-stage'");
 
-      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+      expect(mockQueue).not.toHaveBeenCalled();
       expect(mocks.logger.error).toHaveBeenCalledWith(
         "Invalid stage transition from 'analyze-duplicates' to 'unknown-stage'",
         { importJobId: "123" }
@@ -435,7 +440,7 @@ describe.sequential("StageTransitionService", () => {
 
     it("should clean up transition locks after errors", async () => {
       const queueError = new Error("Queue failed");
-      mockPayload.jobs.queue.mockRejectedValue(queueError);
+      mockQueue.mockRejectedValue(queueError);
 
       const previousJob = { ...mockImportJob, stage: PROCESSING_STAGE.ANALYZE_DUPLICATES } as ImportJob;
       const newJob = { ...mockImportJob, stage: PROCESSING_STAGE.DETECT_SCHEMA } as ImportJob;
@@ -458,7 +463,7 @@ describe.sequential("StageTransitionService", () => {
       expect(StageTransitionService.isTransitioning("123")).toBe(false);
 
       // Make transition take some time
-      mockPayload.jobs.queue.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 50)));
+      mockQueue.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 50)));
 
       // Start transition
       const transitionPromise = StageTransitionService.processStageTransition(mockPayload, newJob, previousJob);
@@ -492,7 +497,7 @@ describe.sequential("StageTransitionService", () => {
       const newJob2 = { ...mockImportJob, id: 2, stage: PROCESSING_STAGE.DETECT_SCHEMA } as ImportJob;
 
       // Start transitions but don't await (they'll be blocked by queue mock)
-      mockPayload.jobs.queue.mockImplementation(() => new Promise(() => {})); // Never resolves
+      mockQueue.mockImplementation(() => new Promise(() => {})); // Never resolves
 
       void StageTransitionService.processStageTransition(mockPayload, newJob1, previousJob);
       void StageTransitionService.processStageTransition(mockPayload, newJob2, previousJob);
@@ -516,7 +521,7 @@ describe.sequential("StageTransitionService", () => {
       const previousJob = { ...mockImportJob, stage: PROCESSING_STAGE.ANALYZE_DUPLICATES } as ImportJob;
       const newJob = { ...mockImportJob, stage: PROCESSING_STAGE.DETECT_SCHEMA } as ImportJob;
 
-      mockPayload.jobs.queue.mockImplementation(() => new Promise(() => {})); // Never resolves
+      mockQueue.mockImplementation(() => new Promise(() => {})); // Never resolves
 
       void StageTransitionService.processStageTransition(mockPayload, newJob, previousJob);
 
@@ -538,7 +543,7 @@ describe.sequential("StageTransitionService", () => {
       const previousJob = { ...mockImportJob, stage: PROCESSING_STAGE.ANALYZE_DUPLICATES } as ImportJob;
       const newJob = { ...mockImportJob, stage: PROCESSING_STAGE.DETECT_SCHEMA } as ImportJob;
 
-      mockPayload.jobs.queue.mockImplementation(() => new Promise(() => {})); // Never resolves
+      mockQueue.mockImplementation(() => new Promise(() => {})); // Never resolves
 
       void StageTransitionService.processStageTransition(mockPayload, newJob, previousJob);
 
@@ -575,7 +580,7 @@ describe.sequential("StageTransitionService", () => {
       const result = await StageTransitionService.processStageTransition(mockPayload, newJob, previousJob);
 
       expect(result.success).toBe(true);
-      expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
+      expect(mockQueue).toHaveBeenCalledWith({
         task: JOB_TYPES.DETECT_SCHEMA,
         input: { importJobId: 123, batchNumber: 0 },
       });
@@ -608,7 +613,7 @@ describe.sequential("StageTransitionService", () => {
 
       expect(result1.success).toBe(true);
       expect(result2.success).toBe(true);
-      expect(mockPayload.jobs.queue).toHaveBeenCalledTimes(2);
+      expect(mockQueue).toHaveBeenCalledTimes(2);
     });
   });
 });

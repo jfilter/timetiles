@@ -1,4 +1,6 @@
+// @vitest-environment node
 /**
+ *
  * Security Validation Tests for Scheduled Imports
  *
  * Tests various security scenarios including:
@@ -7,19 +9,16 @@
  * - Input sanitization
  * - URL validation and SSRF prevention
  * - Sensitive data handling
+ * Uses node environment instead of jsdom to avoid AbortController compatibility issues
+ * with Node 24's native fetch API.
+ *
  * @module
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
-
-// Use vi.hoisted to ensure mock is set up before ANY module evaluation
-const { fetchMock } = vi.hoisted(() => {
-  const fetchMock = vi.fn();
-  globalThis.fetch = fetchMock;
-  return { fetchMock };
-});
+import { TestServer } from "@/tests/setup/test-server";
 
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
@@ -46,11 +45,17 @@ describe.sequential("Security Validation Tests", () => {
   let adminUserId: string;
   let regularUserId: string;
   let testCatalogId: string;
+  let testServer: TestServer;
+  let testServerUrl: string;
 
   beforeAll(async () => {
     const env = await createIntegrationTestEnvironment();
     payload = env.payload;
     cleanup = env.cleanup;
+
+    // Create and start test server
+    testServer = new TestServer();
+    testServerUrl = await testServer.start();
 
     // Create admin user
     const adminUser = await payload.create({
@@ -83,25 +88,24 @@ describe.sequential("Security Validation Tests", () => {
       },
     });
     testCatalogId = catalog.id;
-
-    // Mock payload.jobs.queue
-    vi.spyOn(payload.jobs, "queue").mockResolvedValue({
-      id: "mock-job-id",
-      task: "url-fetch",
-      status: "queued",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    } as any);
   }, 60000);
 
   afterAll(async () => {
-    vi.restoreAllMocks();
+    await testServer.stop();
     await cleanup();
   });
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    fetchMock.mockClear();
+  beforeEach(async () => {
+    // Stop current server and create new one with fresh routes
+    const oldServer = testServer;
+    if (oldServer) {
+      await oldServer.stop();
+    }
+    const newServer = new TestServer();
+    const newUrl = await newServer.start();
+    // eslint-disable-next-line require-atomic-updates
+    testServer = newServer;
+    testServerUrl = newUrl;
   });
 
   describe("URL Validation and SSRF Prevention", () => {
@@ -138,7 +142,6 @@ describe.sequential("Security Validation Tests", () => {
     });
 
     it("should reject private IP ranges", async () => {
-      // eslint-disable-next-line sonarjs/no-clear-text-protocols
       const privateIPs = ["http://192.168.1.1/data.csv", "http://10.0.0.1/data.csv", "http://172.16.0.1/data.csv"];
 
       for (const url of privateIPs) {
@@ -180,7 +183,7 @@ describe.sequential("Security Validation Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "Redirect to Private IP",
-          sourceUrl: "https://example.com/redirect-to-private.csv",
+          sourceUrl: `${testServerUrl}/redirect-to-private.csv`,
           enabled: true,
           catalog: testCatalogId,
           scheduleType: "frequency",
@@ -244,11 +247,14 @@ describe.sequential("Security Validation Tests", () => {
     });
 
     it("should handle invalid authentication types", async () => {
+      // Set up test server endpoint
+      testServer.respondWithCSV("/invalid-auth.csv", "test,data\n1,2");
+
       const scheduledImport = await payload.create({
         collection: "scheduled-imports",
         data: {
           name: "Invalid Auth Type Import",
-          sourceUrl: "https://api.example.com/data.csv",
+          sourceUrl: `${testServerUrl}/invalid-auth.csv`,
           enabled: true,
           catalog: testCatalogId,
           scheduleType: "frequency",
@@ -262,28 +268,6 @@ describe.sequential("Security Validation Tests", () => {
             },
           },
         },
-      });
-
-      // Mock the API endpoint
-      fetchMock.mockImplementation(() => {
-        // Check if custom headers are sent
-
-        return {
-          ok: true,
-          status: 200,
-          statusText: "OK",
-          headers: {
-            get: (key: string) => (key === "content-type" ? "text/csv" : null),
-          },
-          body: {
-            getReader: () => ({
-              read: vi
-                .fn()
-                .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("test,data\n1,2") })
-                .mockResolvedValueOnce({ done: true }),
-            }),
-          },
-        };
       });
 
       // Import the job handler
@@ -312,7 +296,7 @@ describe.sequential("Security Validation Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "Basic Auth Import",
-          sourceUrl: "https://api.example.com/basic-auth.csv",
+          sourceUrl: `${testServerUrl}/basic-auth.csv`,
           enabled: true,
           catalog: testCatalogId,
           scheduleType: "frequency",
@@ -325,41 +309,14 @@ describe.sequential("Security Validation Tests", () => {
         },
       });
 
-      // Mock the API endpoint to verify Basic Auth header
-      fetchMock.mockImplementation((_url, options) => {
-        // Check if Basic Auth header is present
-        const authHeader = options?.headers?.["Authorization"];
-        const expectedAuth = "Basic " + Buffer.from("user@example.com:password123").toString("base64");
-
-        if (authHeader === expectedAuth) {
-          return Promise.resolve({
-            ok: true,
-            status: 200,
-            statusText: "OK",
-            headers: {
-              get: (key: string) => (key === "content-type" ? "text/csv" : null),
-            },
-            body: {
-              getReader: () => ({
-                read: vi
-                  .fn()
-                  .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("test,data\n1,2") })
-                  .mockResolvedValueOnce({ done: true }),
-              }),
-            },
-          });
-        }
-
-        return Promise.resolve({
-          ok: false,
-          status: 401,
-          statusText: "Unauthorized",
-          headers: {
-            get: () => null,
-          },
-          body: null,
-        });
-      });
+      // Set up test server endpoint with Basic Auth
+      testServer.respondWithAuth(
+        "/basic-auth.csv",
+        "basic",
+        { username: "user@example.com", password: "password123" },
+        { body: "test,data\n1,2", headers: { "Content-Type": "text/csv" } },
+        { status: 401, body: "Unauthorized" }
+      );
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
@@ -392,30 +349,15 @@ describe.sequential("Security Validation Tests", () => {
         // "{{name}}" + "\x00" + "null-byte",
       ];
 
-      // Mock fetch for when jobs are executed
-      fetchMock.mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: "OK",
-        headers: {
-          get: (key: string) => (key === "content-type" ? "text/csv" : null),
-        },
-        body: {
-          getReader: () => ({
-            read: vi
-              .fn()
-              .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("test,data\n1,2") })
-              .mockResolvedValueOnce({ done: true }),
-          }),
-        },
-      });
+      // Set up test server endpoints for malicious templates
+      testServer.respondWithCSV("/malicious-template.csv", "test,data\n1,2");
 
       for (const template of maliciousTemplates) {
         const scheduledImport = await payload.create({
           collection: "scheduled-imports",
           data: {
             name: "XSS Test Import",
-            sourceUrl: "https://example.com/data.csv",
+            sourceUrl: `${testServerUrl}/malicious-template.csv`,
             enabled: true,
             catalog: testCatalogId,
             scheduleType: "frequency",
@@ -430,11 +372,14 @@ describe.sequential("Security Validation Tests", () => {
     });
 
     it("should sanitize custom headers JSON", async () => {
+      // Set up test server endpoint
+      testServer.respondWithCSV("/custom-headers.csv", "test,data\n1,2");
+
       const scheduledImport = await payload.create({
         collection: "scheduled-imports",
         data: {
           name: "Custom Headers Test",
-          sourceUrl: "https://example.com/data.csv",
+          sourceUrl: `${testServerUrl}/custom-headers.csv`,
           enabled: true,
           catalog: testCatalogId,
           scheduleType: "frequency",
@@ -448,24 +393,6 @@ describe.sequential("Security Validation Tests", () => {
               // 'Authorization': 'Bearer stolen-token', // Should not override auth
             },
           },
-        },
-      });
-
-      // Mock the endpoint
-      fetchMock.mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: "OK",
-        headers: {
-          get: (key: string) => (key === "content-type" ? "text/csv" : null),
-        },
-        body: {
-          getReader: () => ({
-            read: vi
-              .fn()
-              .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("test,data\n1,2") })
-              .mockResolvedValueOnce({ done: true }),
-          }),
         },
       });
 
@@ -492,30 +419,16 @@ describe.sequential("Security Validation Tests", () => {
 
   describe("Access Control", () => {
     it("should enforce role-based access for scheduled imports", async () => {
-      // Mock fetch for potential job executions
-      fetchMock.mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: "OK",
-        headers: {
-          get: (key: string) => (key === "content-type" ? "text/csv" : null),
-        },
-        body: {
-          getReader: () => ({
-            read: vi
-              .fn()
-              .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("test,data\n1,2") })
-              .mockResolvedValueOnce({ done: true }),
-          }),
-        },
-      });
+      // Set up test server endpoints for access control tests
+      testServer.respondWithCSV("/admin.csv", "test,data\n1,2");
+      testServer.respondWithCSV("/private-catalog.csv", "test,data\n1,2");
 
       // Create import as admin
       const adminImport = await payload.create({
         collection: "scheduled-imports",
         data: {
           name: "Admin Import",
-          sourceUrl: "https://example.com/admin.csv",
+          sourceUrl: `${testServerUrl}/admin.csv`,
           enabled: true,
           catalog: testCatalogId,
           scheduleType: "frequency",
@@ -554,23 +467,9 @@ describe.sequential("Security Validation Tests", () => {
     });
 
     it("should prevent unauthorized catalog access", async () => {
-      // Mock fetch for potential job executions
-      fetchMock.mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: "OK",
-        headers: {
-          get: (key: string) => (key === "content-type" ? "text/csv" : null),
-        },
-        body: {
-          getReader: () => ({
-            read: vi
-              .fn()
-              .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode("test,data\n1,2") })
-              .mockResolvedValueOnce({ done: true }),
-          }),
-        },
-      });
+      // Set up test server endpoints for access control tests
+      testServer.respondWithCSV("/admin.csv", "test,data\n1,2");
+      testServer.respondWithCSV("/private-catalog.csv", "test,data\n1,2");
 
       // Create a private catalog
       const privateCatalog = await payload.create({
@@ -586,7 +485,7 @@ describe.sequential("Security Validation Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "Unauthorized Catalog Import",
-          sourceUrl: "https://example.com/data.csv",
+          sourceUrl: `${testServerUrl}/malicious-template.csv`,
           enabled: true,
           catalog: privateCatalog.id,
           scheduleType: "frequency",
@@ -607,7 +506,7 @@ describe.sequential("Security Validation Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "Suspicious Content Import",
-          sourceUrl: "https://example.com/suspicious.csv",
+          sourceUrl: `${testServerUrl}/suspicious.csv`,
           enabled: true,
           catalog: testCatalogId,
           scheduleType: "frequency",
@@ -615,26 +514,8 @@ describe.sequential("Security Validation Tests", () => {
         },
       });
 
-      // Mock file with potential CSV injection
-      fetchMock.mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: "OK",
-        headers: {
-          get: (key: string) => (key === "content-type" ? "text/csv" : null),
-        },
-        body: {
-          getReader: () => ({
-            read: vi
-              .fn()
-              .mockResolvedValueOnce({
-                done: false,
-                value: new TextEncoder().encode('=cmd|"/c calc"!A1,@SUM(1+9)*cmd|"/c calc"!A1\n=1+1,normal data'),
-              })
-              .mockResolvedValueOnce({ done: true }),
-          }),
-        },
-      });
+      // Set up test server endpoint with CSV injection content
+      testServer.respondWithCSV("/suspicious.csv", '=cmd|"/c calc"!A1,@SUM(1+9)*cmd|"/c calc"!A1\n=1+1,normal data');
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
@@ -662,7 +543,7 @@ describe.sequential("Security Validation Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "Large File Import",
-          sourceUrl: "https://example.com/large.csv",
+          sourceUrl: `${testServerUrl}/large.csv`,
           enabled: true,
           catalog: testCatalogId,
           scheduleType: "frequency",
@@ -673,28 +554,14 @@ describe.sequential("Security Validation Tests", () => {
         },
       });
 
-      // Mock a response that sends large data
-      const largeData = "data,".repeat(1000) + "\n";
-      const fullData = largeData.repeat(2000); // Generate 2MB of data
-
-      fetchMock.mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: "OK",
+      // Set up test server endpoint with data larger than 1MB
+      const largeData = "data,value\n";
+      const fullData = largeData + "1,test\n".repeat(150000); // Generate ~1.2MB of data
+      testServer.respond("/large.csv", {
+        body: fullData,
         headers: {
-          get: (key: string) => {
-            if (key === "content-type") return "text/csv";
-            if (key === "content-length") return "1000"; // Lie about size
-            return null;
-          },
-        },
-        body: {
-          getReader: () => ({
-            read: vi
-              .fn()
-              .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode(fullData) })
-              .mockResolvedValueOnce({ done: true }),
-          }),
+          "Content-Type": "text/csv",
+          "Content-Length": String(fullData.length),
         },
       });
 
@@ -728,7 +595,7 @@ describe.sequential("Security Validation Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "Error Exposure Test",
-          sourceUrl: "https://internal.system.error/data.csv",
+          sourceUrl: `${testServerUrl}/error-test.csv`,
           enabled: true,
           catalog: testCatalogId,
           scheduleType: "frequency",
@@ -736,11 +603,11 @@ describe.sequential("Security Validation Tests", () => {
         },
       });
 
+      // Set up test server endpoint that simulates connection error
+      testServer.respond("/error-test.csv", { error: true });
+
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
-
-      // Mock DNS failure for the non-existent domain
-      fetchMock.mockRejectedValue(new Error("getaddrinfo ENOTFOUND internal.system.error"));
 
       // Execute the job (will fail due to DNS)
       const result = await urlFetchJob.handler({

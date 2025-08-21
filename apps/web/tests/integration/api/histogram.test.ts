@@ -9,6 +9,7 @@
  */
 import { NextRequest } from "next/server";
 import type { Payload } from "payload";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { GET } from "../../../app/api/events/histogram/route";
 

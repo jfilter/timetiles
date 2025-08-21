@@ -197,7 +197,9 @@ describe.sequential("Isolated Seed System", () => {
       });
 
       expect(importFiles.docs.length).toBeGreaterThan(0);
-      const airQualityImport = importFiles.docs.find((imp: any) => imp.originalName === "air_quality_2024_01_15.csv");
+      const airQualityImport = importFiles.docs.find(
+        (imp: any) => imp.originalName === "Air Quality Monitoring - January 2024.csv"
+      );
       expect(airQualityImport).toBeDefined();
       expect(airQualityImport.catalog).toBeDefined();
       expect(typeof airQualityImport.catalog).toBe("object"); // Should be populated

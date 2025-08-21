@@ -1,9 +1,13 @@
+// @vitest-environment node
 /**
+ *
  * Integration tests for data integrity verification in the import system.
  *
  * Tests comprehensive data validation including deduplication, schema validation,
  * geocoding integrity, and error recovery scenarios. Verifies that imported data
  * maintains consistency and correctness throughout the processing pipeline.
+ * Uses node environment instead of jsdom to avoid AbortController compatibility issues
+ * with Node 24's native fetch API.
  *
  * @module
  * @category Tests
@@ -12,20 +16,24 @@ import crypto from "crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
-
-// Mock fetch globally
-global.fetch = vi.fn();
+import { TestServer } from "@/tests/setup/test-server";
 
 describe.sequential("Data Integrity Tests", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let testUserId: string;
   let testCatalogId: string;
+  let testServer: TestServer;
+  let testServerUrl: string;
 
   beforeAll(async () => {
     const env = await createIntegrationTestEnvironment();
     payload = env.payload;
     cleanup = env.cleanup;
+
+    // Create and start test server
+    testServer = new TestServer();
+    testServerUrl = await testServer.start();
 
     // Create test user
     const user = await payload.create({
@@ -47,28 +55,24 @@ describe.sequential("Data Integrity Tests", () => {
       },
     });
     testCatalogId = catalog.id;
-
-    // Mock payload.jobs.queue
-    vi.spyOn(payload.jobs, "queue").mockImplementation((params: any) => {
-      const { task, input } = params;
-      return Promise.resolve({
-        id: `mock-job-${Date.now()}-${Math.random()}`,
-        task,
-        input,
-        status: "queued",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as any);
-    });
   }, 60000);
 
   afterAll(async () => {
-    vi.restoreAllMocks();
+    await testServer.stop();
     await cleanup();
   });
 
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeEach(async () => {
+    // Stop current server and create new one with fresh routes
+    const oldServer = testServer;
+    if (oldServer) {
+      await oldServer.stop();
+    }
+    const newServer = new TestServer();
+    const newUrl = await newServer.start();
+    // eslint-disable-next-line require-atomic-updates
+    testServer = newServer;
+    testServerUrl = newUrl;
   });
 
   describe("Hash-based Duplicate Detection", () => {
@@ -80,7 +84,7 @@ describe.sequential("Data Integrity Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "Hash Test Import",
-          sourceUrl: "https://example.com/hash-test.csv",
+          sourceUrl: `${testServerUrl}/hash-test.csv`,
           enabled: true,
           catalog: testCatalogId as any,
           scheduleType: "frequency",
@@ -88,13 +92,8 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      // Mock the endpoint
-      (global.fetch as any).mockResolvedValueOnce(
-        new Response(csvContent, {
-          status: 200,
-          headers: { "content-type": "text/csv" },
-        })
-      );
+      // Set up test server endpoint
+      testServer.respondWithCSV("/hash-test.csv", csvContent);
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
@@ -135,7 +134,7 @@ describe.sequential("Data Integrity Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "Duplicate Detection Import",
-          sourceUrl: "https://example.com/duplicate.csv",
+          sourceUrl: `${testServerUrl}/duplicate.csv`,
           enabled: true,
           catalog: testCatalogId as any,
           scheduleType: "frequency",
@@ -143,20 +142,8 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      // Mock the endpoint to return same content twice
-      (global.fetch as any)
-        .mockResolvedValueOnce(
-          new Response(csvContent, {
-            status: 200,
-            headers: { "content-type": "text/csv" },
-          })
-        )
-        .mockResolvedValueOnce(
-          new Response(csvContent, {
-            status: 200,
-            headers: { "content-type": "text/csv" },
-          })
-        );
+      // Set up test server endpoint to return same content for both requests
+      testServer.respondWithCSV("/duplicate.csv", csvContent);
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
@@ -224,7 +211,7 @@ describe.sequential("Data Integrity Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "Large File Hash Import",
-          sourceUrl: "https://example.com/large-hash.csv",
+          sourceUrl: `${testServerUrl}/large-hash.csv`,
           enabled: true,
           catalog: testCatalogId as any,
           scheduleType: "frequency",
@@ -235,13 +222,8 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      // Mock the endpoint
-      (global.fetch as any).mockResolvedValueOnce(
-        new Response(largeContent, {
-          status: 200,
-          headers: { "content-type": "text/csv" },
-        })
-      );
+      // Set up test server endpoint for large file
+      testServer.respondWithCSV("/large-hash.csv", largeContent);
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
@@ -275,7 +257,7 @@ describe.sequential("Data Integrity Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "History Tracking Import",
-          sourceUrl: "https://example.com/history.csv",
+          sourceUrl: `${testServerUrl}/history.csv`,
           enabled: true,
           catalog: testCatalogId as any,
           scheduleType: "frequency",
@@ -285,16 +267,15 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      // Mock responses for multiple executions
-      (global.fetch as any).mockImplementation(() => {
+      // Set up test server endpoint to return dynamic content
+      testServer.route("/history.csv", (_req, res) => {
         const timestamp = Date.now();
         const csvContent = `timestamp,value\n${timestamp},${Math.random()}`;
-        return Promise.resolve(
-          new Response(csvContent, {
-            status: 200,
-            headers: { "content-type": "text/csv" },
-          })
-        );
+        res.writeHead(200, {
+          "Content-Type": "text/csv",
+          "Content-Length": String(Buffer.byteLength(csvContent)),
+        });
+        res.end(csvContent);
       });
 
       // Use fake timers
@@ -377,7 +358,7 @@ describe.sequential("Data Integrity Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "History Limit Import",
-          sourceUrl: "https://example.com/history-limit.csv",
+          sourceUrl: `${testServerUrl}/history-limit.csv`,
           enabled: true,
           catalog: testCatalogId as any,
           scheduleType: "frequency",
@@ -386,15 +367,8 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      // Mock endpoint
-      (global.fetch as any).mockImplementation(() => {
-        return Promise.resolve(
-          new Response("test,data\n1,2", {
-            status: 200,
-            headers: { "content-type": "text/csv" },
-          })
-        );
-      });
+      // Set up test server endpoint
+      testServer.respondWithCSV("/history-limit.csv", "test,data\n1,2");
 
       // Use fake timers
       vi.useFakeTimers();
@@ -472,7 +446,7 @@ describe.sequential("Data Integrity Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "Statistics Test Import",
-          sourceUrl: "https://example.com/stats.csv",
+          sourceUrl: `${testServerUrl}/stats.csv`,
           enabled: true,
           catalog: testCatalogId as any,
           scheduleType: "frequency",
@@ -480,25 +454,22 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      // Mock mixed success/failure responses
+      // Set up test server endpoint with mixed responses
       let callCount = 0;
-      (global.fetch as any).mockImplementation(() => {
+      testServer.route("/stats.csv", (_req, res) => {
         callCount++;
         // Fail on 2nd and 4th calls
         if (callCount === 2 || callCount === 4) {
-          return Promise.resolve(
-            new Response(null, {
-              status: 500,
-              statusText: "Internal Server Error",
-            })
-          );
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Internal Server Error");
+        } else {
+          const csvContent = "test,data\n1,2";
+          res.writeHead(200, {
+            "Content-Type": "text/csv",
+            "Content-Length": String(Buffer.byteLength(csvContent)),
+          });
+          res.end(csvContent);
         }
-        return Promise.resolve(
-          new Response("test,data\n1,2", {
-            status: 200,
-            headers: { "content-type": "text/csv" },
-          })
-        );
       });
 
       // Use fake timers
@@ -572,7 +543,7 @@ describe.sequential("Data Integrity Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "Duration Test Import",
-          sourceUrl: "https://example.com/duration.csv",
+          sourceUrl: `${testServerUrl}/duration.csv`,
           enabled: true,
           catalog: testCatalogId as any,
           scheduleType: "frequency",
@@ -586,17 +557,18 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      // Mock endpoint with varying delays
+      // Set up test server endpoint with varying delays
       const delays = [100, 200, 150, 300, 250];
       let callIndex = 0;
-
-      (global.fetch as any).mockImplementation(async () => {
+      testServer.route("/duration.csv", async (_req, res) => {
         const delay = delays[callIndex++] ?? 100;
         await new Promise((resolve) => setTimeout(resolve, delay));
-        return new Response("test,data\n1,2", {
-          status: 200,
-          headers: { "content-type": "text/csv" },
+        const csvContent = "test,data\n1,2";
+        res.writeHead(200, {
+          "Content-Type": "text/csv",
+          "Content-Length": String(Buffer.byteLength(csvContent)),
         });
+        res.end(csvContent);
       });
 
       // Use fake timers
@@ -686,7 +658,7 @@ describe.sequential("Data Integrity Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "Special Chars Import",
-          sourceUrl: "https://example.com/special.csv",
+          sourceUrl: `${testServerUrl}/special.csv`,
           enabled: true,
           catalog: testCatalogId as any,
           scheduleType: "frequency",
@@ -694,13 +666,11 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      // Mock the endpoint
-      (global.fetch as any).mockResolvedValueOnce(
-        new Response(specialContent, {
-          status: 200,
-          headers: { "content-type": "text/csv; charset=utf-8" },
-        })
-      );
+      // Set up test server endpoint
+      testServer.respond("/special.csv", {
+        body: specialContent,
+        headers: { "Content-Type": "text/csv; charset=utf-8" },
+      });
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
@@ -733,7 +703,7 @@ describe.sequential("Data Integrity Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "Encoding Test Import",
-          sourceUrl: "https://example.com/encoded.csv",
+          sourceUrl: `${testServerUrl}/encoded.csv`,
           enabled: true,
           catalog: testCatalogId as any,
           scheduleType: "frequency",
@@ -744,13 +714,11 @@ describe.sequential("Data Integrity Tests", () => {
       // Test with Latin-1 encoded content
       const latin1Content = Buffer.from("id,name\n1,Café\n2,Niño", "latin1");
 
-      // Mock the response
-      (global.fetch as any).mockResolvedValueOnce(
-        new Response(latin1Content, {
-          status: 200,
-          headers: { "content-type": "text/csv; charset=iso-8859-1" },
-        })
-      );
+      // Set up test server endpoint
+      testServer.respond("/encoded.csv", {
+        body: latin1Content,
+        headers: { "Content-Type": "text/csv; charset=iso-8859-1" },
+      });
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
@@ -783,7 +751,7 @@ describe.sequential("Data Integrity Tests", () => {
         collection: "scheduled-imports",
         data: {
           name: "Retry Consistency Import",
-          sourceUrl: "https://example.com/retry-consistency.csv",
+          sourceUrl: `${testServerUrl}/retry-consistency.csv`,
           enabled: true,
           catalog: testCatalogId as any,
           scheduleType: "frequency",
@@ -796,26 +764,21 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      // Mock intermittent failures
+      // Set up test server endpoint with intermittent failures
       let attemptCount = 0;
       const consistentData = "id,value,timestamp\n1,100,2024-01-01T12:00:00Z";
-
-      (global.fetch as any).mockImplementation(() => {
+      testServer.route("/retry-consistency.csv", (_req, res) => {
         attemptCount++;
         if (attemptCount === 1) {
-          return Promise.resolve(
-            new Response(null, {
-              status: 503,
-              statusText: "Service Unavailable",
-            })
-          );
+          res.writeHead(503, { "Content-Type": "text/plain" });
+          res.end("Service Unavailable");
+        } else {
+          res.writeHead(200, {
+            "Content-Type": "text/csv",
+            "Content-Length": String(Buffer.byteLength(consistentData)),
+          });
+          res.end(consistentData);
         }
-        return Promise.resolve(
-          new Response(consistentData, {
-            status: 200,
-            headers: { "content-type": "text/csv" },
-          })
-        );
       });
 
       // Import the job handler

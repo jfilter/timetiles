@@ -4,19 +4,24 @@
  * @module
  */
 
-import type { Catalog, Dataset, Payload, ScheduledImport, User } from "@/payload-types";
+import type { Payload } from "payload";
+import type { Where } from "payload";
+
+import type { Catalog, Config, Dataset, PayloadJob, ScheduledImport, User } from "@/payload-types";
 
 export class TestDataBuilder {
-  constructor(private payload: Payload) {}
+  constructor(private readonly payload: Payload) {}
 
   /**
    * Create a test user with default values
    */
-  async createUser(overrides: Partial<{
-    email: string;
-    password: string;
-    role: string;
-  }> = {}): Promise<User> {
+  async createUser(
+    overrides: Partial<{
+      email: string;
+      password: string;
+      role: string;
+    }> = {}
+  ): Promise<User> {
     const timestamp = Date.now();
     const defaults = {
       email: `test-user-${timestamp}@example.com`,
@@ -24,11 +29,12 @@ export class TestDataBuilder {
       role: "admin",
     };
 
-    return await this.payload.create({
+    return this.payload.create({
       collection: "users",
       data: {
         ...defaults,
         ...overrides,
+        role: (overrides.role ?? defaults.role) as "user" | "admin" | "editor",
       },
     });
   }
@@ -36,22 +42,60 @@ export class TestDataBuilder {
   /**
    * Create a test catalog with default values
    */
-  async createCatalog(overrides: Partial<{
-    name: string;
-    slug: string;
-    description: string;
-    isPublic: boolean;
-    createdBy: string | number;
-  }> = {}): Promise<Catalog> {
+  async createCatalog(
+    overrides: Partial<{
+      name: string;
+      slug: string;
+      description?: {
+        root: {
+          type: string;
+          children: {
+            type: string;
+            version: number;
+            [k: string]: unknown;
+          }[];
+          direction: ("ltr" | "rtl") | null;
+          format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
+          indent: number;
+          version: number;
+        };
+        [k: string]: unknown;
+      } | null;
+      isPublic: boolean;
+      createdBy?: number | User | null;
+    }> = {}
+  ): Promise<Catalog> {
     const timestamp = Date.now();
     const defaults = {
       name: `Test Catalog ${timestamp}`,
       slug: `test-catalog-${timestamp}`,
-      description: "Test catalog for integration tests",
+      description: {
+        root: {
+          type: "root",
+          children: [
+            {
+              type: "paragraph",
+              version: 1,
+              children: [
+                {
+                  type: "text",
+                  version: 1,
+                  text: "Test catalog for integration tests",
+                  format: 0,
+                },
+              ],
+            },
+          ],
+          direction: null,
+          format: "" as "left" | "start" | "center" | "right" | "end" | "justify" | "",
+          indent: 0,
+          version: 1,
+        },
+      },
       isPublic: false,
     };
 
-    return await this.payload.create({
+    return this.payload.create({
       collection: "catalogs",
       data: {
         ...defaults,
@@ -63,14 +107,19 @@ export class TestDataBuilder {
   /**
    * Create a test dataset with default values
    */
-  async createDataset(overrides: Partial<{
-    name: string;
-    slug: string;
-    catalog: string | number;
-    language: string;
-    isPublic: boolean;
-    idStrategy: any;
-  }> = {}): Promise<Dataset> {
+  async createDataset(
+    overrides: Partial<{
+      name: string;
+      slug: string;
+      catalog: number | Catalog;
+      language: string;
+      isPublic: boolean;
+      idStrategy: {
+        type: string;
+        duplicateStrategy?: string;
+      };
+    }> = {}
+  ): Promise<Dataset> {
     const timestamp = Date.now();
     const defaults = {
       name: `Test Dataset ${timestamp}`,
@@ -78,56 +127,94 @@ export class TestDataBuilder {
       language: "eng",
       isPublic: false,
       idStrategy: {
-        type: "external",
-        duplicateStrategy: "skip",
+        type: "external" as const,
+        duplicateStrategy: "skip" as const,
       },
     };
 
-    return await this.payload.create({
+    const finalData = {
+      ...defaults,
+      ...overrides,
+      catalog: overrides.catalog as number | Catalog,
+    };
+    // Ensure idStrategy types are correct
+    if (finalData.idStrategy) {
+      finalData.idStrategy = {
+        ...finalData.idStrategy,
+        type: finalData.idStrategy.type as "external" | "computed" | "auto" | "hybrid",
+        duplicateStrategy: finalData.idStrategy.duplicateStrategy as "skip" | "update" | "create" | undefined,
+      };
+    }
+    return this.payload.create({
       collection: "datasets",
-      data: {
-        ...defaults,
-        ...overrides,
-      },
+      data: finalData as Omit<Dataset, "id" | "updatedAt" | "createdAt" | "sizes">,
     });
   }
 
   /**
    * Create a test scheduled import with default values
    */
-  async createScheduledImport(overrides: Partial<{
-    name: string;
-    sourceUrl: string;
-    catalog: string | number;
-    dataset?: string | number;
-    createdBy: string | number;
-    enabled: boolean;
-    webhookEnabled: boolean;
-    webhookToken?: string;
-    scheduleType: string;
-    frequency: string;
-    importNameTemplate: string;
-    authConfig?: any;
-    advancedOptions?: any;
-    multiSheetConfig?: any;
-    retryConfig?: any;
-    lastStatus?: string;
-    lastRun?: Date;
-    lastError?: string;
-    executionHistory?: any[];
-    statistics?: any;
-  }> = {}): Promise<ScheduledImport> {
+  async createScheduledImport(
+    overrides: Partial<{
+      name: string;
+      sourceUrl: string;
+      catalog: string | number;
+      dataset?: number | Dataset | null;
+      createdBy?: number | User | null;
+      enabled: boolean;
+      webhookEnabled: boolean;
+      webhookToken?: string;
+      scheduleType?: "frequency" | "cron";
+      frequency: string;
+      importNameTemplate: string;
+      authConfig?: {
+        type?: string;
+        apiKey?: string;
+        apiKeyHeader?: string;
+        bearerToken?: string;
+        username?: string;
+        password?: string;
+        customHeaders?: Record<string, string>;
+      };
+      advancedOptions?: {
+        autoApproveSchema?: boolean;
+        skipDuplicateChecking?: boolean;
+      };
+      multiSheetConfig?: {
+        enabled?: boolean;
+        sheets?: Array<{ sheetIdentifier: string }>;
+      };
+      retryConfig?: {
+        maxRetries?: number;
+        retryDelayMs?: number;
+      };
+      lastStatus?: string;
+      lastRun?: Date;
+      lastError?: string;
+      executionHistory?: Array<{
+        executedAt?: string;
+        status?: string;
+        duration?: number;
+      }>;
+      statistics?: {
+        totalRuns?: number;
+        successfulRuns?: number;
+        failedRuns?: number;
+        averageDuration?: number;
+      };
+    }> = {}
+  ): Promise<ScheduledImport> {
     const timestamp = Date.now();
     const defaults = {
       name: `Test Scheduled Import ${timestamp}`,
       sourceUrl: "https://example.com/test-data.csv",
       enabled: true,
       webhookEnabled: false,
-      scheduleType: "frequency",
-      frequency: "daily",
+      scheduleType: "frequency" as const,
+      frequency: "daily" as const,
       importNameTemplate: "{{name}} - {{date}}",
       authConfig: {
-        type: "none",
+        type: "none" as const,
       },
       advancedOptions: {
         autoApproveSchema: true,
@@ -135,40 +222,52 @@ export class TestDataBuilder {
       },
     };
 
-    return await this.payload.create({
+    const finalData = {
+      ...defaults,
+      ...overrides,
+      frequency: (overrides.frequency ?? defaults.frequency) as "hourly" | "daily" | "weekly" | "monthly",
+      catalog: overrides.catalog as number | Catalog,
+      createdBy: overrides.createdBy,
+    };
+    // scheduleType is already properly typed from overrides
+    // Ensure authConfig type is correct
+    if (finalData.authConfig?.type) {
+      finalData.authConfig.type = finalData.authConfig.type as "none" | "basic" | "bearer" | "api-key" | "custom";
+    }
+    return this.payload.create({
       collection: "scheduled-imports",
-      data: {
-        ...defaults,
-        ...overrides,
-      },
+      data: finalData as Omit<ScheduledImport, "id" | "updatedAt" | "createdAt" | "sizes">,
     });
   }
 
   /**
    * Create a test import file
    */
-  async createImportFile(overrides: Partial<{
-    originalName: string;
-    catalog: string | number;
-    dataset?: string | number;
-    scheduledImport?: string | number;
-    status: string;
-    fileHash?: string;
-    metadata?: any;
-    file?: any;
-  }> = {}) {
+  async createImportFile(
+    overrides: Partial<{
+      originalName: string;
+      catalog: number | Catalog | null;
+      dataset?: number | Dataset | null;
+      scheduledImport?: string | number;
+      status: string;
+      fileHash?: string;
+      metadata?: Record<string, unknown>;
+      file?: string | number;
+    }> = {}
+  ) {
     const timestamp = Date.now();
     const defaults = {
       originalName: `Test Import File ${timestamp}.csv`,
-      status: "UPLOAD",
+      status: "pending",
       metadata: {},
     };
 
-    return await this.payload.create({
+    return this.payload.create({
       collection: "import-files",
       data: {
         ...defaults,
         ...overrides,
+        status: (overrides.status ?? defaults.status) as "pending" | "parsing" | "processing" | "completed" | "failed",
       },
     });
   }
@@ -176,28 +275,32 @@ export class TestDataBuilder {
   /**
    * Create a test event
    */
-  async createEvent(overrides: Partial<{
-    name: string;
-    slug: string;
-    startDate: string;
-    endDate?: string;
-    location?: any;
-    catalog: string | number;
-    dataset?: string | number;
-    importFile?: string | number;
-  }> = {}) {
+  async createEvent(
+    overrides: Partial<{
+      name: string;
+      slug: string;
+      startDate: string;
+      endDate?: string;
+      catalog: string | number;
+      dataset?: number | Dataset;
+      importFile?: string | number;
+    }> = {}
+  ) {
     const timestamp = Date.now();
     const defaults = {
       name: `Test Event ${timestamp}`,
       slug: `test-event-${timestamp}`,
       startDate: new Date().toISOString(),
+      data: {},
+      uniqueId: `event-${timestamp}`,
     };
 
-    return await this.payload.create({
+    return this.payload.create({
       collection: "events",
       data: {
         ...defaults,
         ...overrides,
+        dataset: overrides.dataset as number | Dataset,
       },
     });
   }
@@ -205,13 +308,15 @@ export class TestDataBuilder {
   /**
    * Create a test job
    */
-  async createJob(overrides: Partial<{
-    task: string;
-    status: string;
-    priority?: number;
-    input?: any;
-    output?: any;
-  }> = {}) {
+  async createJob(
+    overrides: Partial<{
+      task: string;
+      status: string;
+      priority?: number;
+      input?: Record<string, unknown>;
+      output?: Record<string, unknown>;
+    }> = {}
+  ) {
     const defaults = {
       task: "test-task",
       status: "pending",
@@ -219,8 +324,8 @@ export class TestDataBuilder {
       input: {},
     };
 
-    return await this.payload.create({
-      collection: "jobs",
+    return this.payload.create({
+      collection: "payload-jobs",
       data: {
         ...defaults,
         ...overrides,
@@ -231,13 +336,13 @@ export class TestDataBuilder {
   /**
    * Clean up test data by ID
    */
-  async cleanupById(collection: string, id: string | number) {
+  async cleanupById(collection: keyof Config["collections"], id: string | number) {
     try {
       await this.payload.delete({
         collection,
         id,
       });
-    } catch (error) {
+    } catch {
       // Ignore errors if already deleted
     }
   }
@@ -245,7 +350,7 @@ export class TestDataBuilder {
   /**
    * Clean up test data by query
    */
-  async cleanupByQuery(collection: string, where: any) {
+  async cleanupByQuery(collection: keyof Config["collections"], where: Where) {
     try {
       const items = await this.payload.find({
         collection,
@@ -256,7 +361,7 @@ export class TestDataBuilder {
       for (const item of items.docs) {
         await this.cleanupById(collection, item.id);
       }
-    } catch (error) {
+    } catch {
       // Ignore errors
     }
   }
@@ -292,10 +397,7 @@ export class TestDataBuilder {
   /**
    * Create multiple test items
    */
-  async createMany<T>(
-    count: number,
-    createFn: (index: number) => Promise<T>
-  ): Promise<T[]> {
+  async createMany<T>(count: number, createFn: (index: number) => Promise<T>): Promise<T[]> {
     const results: T[] = [];
     for (let i = 0; i < count; i++) {
       results.push(await createFn(i));
@@ -326,13 +428,18 @@ export class TestDataBuilder {
   /**
    * Wait for a job to complete
    */
-  async waitForJob(jobId: string): Promise<any> {
-    return this.waitFor(async () => {
+  async waitForJob(jobId: string): Promise<PayloadJob> {
+    await this.waitFor(async () => {
       const job = await this.payload.findByID({
-        collection: "jobs",
+        collection: "payload-jobs",
         id: jobId,
       });
-      return job.status === "completed" || job.status === "failed";
+      return Boolean(job.completedAt) || Boolean(job.hasError);
+    });
+
+    return this.payload.findByID({
+      collection: "payload-jobs",
+      id: jobId,
     });
   }
 
@@ -369,12 +476,9 @@ export class TestDataBuilder {
         ["content-type", mimeType],
         ["content-length", content.length.toString()],
       ]),
-      arrayBuffer: async () => 
-        typeof content === "string" ? Buffer.from(content) : content,
-      text: async () => 
-        typeof content === "string" ? content : content.toString(),
-      json: async () => 
-        type === "json" ? JSON.parse(content as string) : null,
+      arrayBuffer: () => (typeof content === "string" ? Buffer.from(content) : content),
+      text: () => (typeof content === "string" ? content : content.toString()),
+      json: () => (type === "json" ? JSON.parse(content as string) : null),
     };
   }
 }

@@ -141,5 +141,8 @@ afterAll(() => {
   // The next test run will reuse it
 });
 
-// Import centralized mocks
-import "../mocks/external/next-navigation";
+// Import centralized mocks only for non-E2E tests
+// eslint-disable-next-line turbo/no-undeclared-env-vars
+if (!process.env.PLAYWRIGHT_TEST) {
+  void import("../mocks/external/next-navigation");
+}

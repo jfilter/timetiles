@@ -3,7 +3,7 @@
  */
 import fs from "fs";
 import path from "path";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { analyzeDuplicatesJob } from "@/lib/jobs/handlers/analyze-duplicates-job";
@@ -56,22 +56,6 @@ describe.sequential("Job Processing Flow Integration", () => {
       },
     });
     testCatalogId = catalog.id;
-
-    // Mock jobs queue to capture job calls for verification
-    const queuedJobs: any[] = [];
-    Object.assign(payload, {
-      jobs: {
-        queue: vi.fn().mockImplementation((job) => {
-          queuedJobs.push(job);
-          return Promise.resolve({ id: `job-${Date.now()}` });
-        }),
-        _queuedJobs: queuedJobs, // For test verification
-      },
-    });
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
   });
 
   describe("Full CSV Import Flow", () => {

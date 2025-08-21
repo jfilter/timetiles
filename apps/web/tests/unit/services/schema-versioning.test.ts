@@ -1,13 +1,18 @@
 /**
  * @module
  */
+import type { BasePayload } from "payload";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SchemaVersioningService } from "@/lib/services/schema-versioning";
 import type { Dataset, DatasetSchema } from "@/payload-types";
 
 describe("SchemaVersioningService", () => {
-  let mockPayload: any;
+  let mockPayload: {
+    find: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -23,7 +28,7 @@ describe("SchemaVersioningService", () => {
     it("should return 1 for first schema version when no existing schemas", async () => {
       mockPayload.find.mockResolvedValueOnce({ docs: [] });
 
-      const result = await SchemaVersioningService.getNextSchemaVersion(mockPayload, 123);
+      const result = await SchemaVersioningService.getNextSchemaVersion(mockPayload as unknown as BasePayload, 123);
 
       expect(result).toBe(1);
       expect(mockPayload.find).toHaveBeenCalledWith({
@@ -41,7 +46,7 @@ describe("SchemaVersioningService", () => {
         docs: [{ versionNumber: 3 }],
       });
 
-      const result = await SchemaVersioningService.getNextSchemaVersion(mockPayload, 456);
+      const result = await SchemaVersioningService.getNextSchemaVersion(mockPayload as unknown as BasePayload, 456);
 
       expect(result).toBe(4);
       expect(mockPayload.find).toHaveBeenCalledWith({
@@ -59,7 +64,7 @@ describe("SchemaVersioningService", () => {
         docs: [{ versionNumber: 5 }],
       });
 
-      const result = await SchemaVersioningService.getNextSchemaVersion(mockPayload, "789");
+      const result = await SchemaVersioningService.getNextSchemaVersion(mockPayload as unknown as BasePayload, "789");
 
       expect(result).toBe(6);
       expect(mockPayload.find).toHaveBeenCalledWith({
@@ -77,7 +82,7 @@ describe("SchemaVersioningService", () => {
         docs: [{ versionNumber: undefined }],
       });
 
-      const result = await SchemaVersioningService.getNextSchemaVersion(mockPayload, 123);
+      const result = await SchemaVersioningService.getNextSchemaVersion(mockPayload as unknown as BasePayload, 123);
 
       expect(result).toBe(1);
     });
@@ -110,7 +115,7 @@ describe("SchemaVersioningService", () => {
 
       mockPayload.create.mockResolvedValueOnce(mockCreatedSchema);
 
-      const result = await SchemaVersioningService.createSchemaVersion(mockPayload, {
+      const result = await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
         dataset: mockDataset,
         schema: mockSchema,
         autoApproved: true,
@@ -155,7 +160,7 @@ describe("SchemaVersioningService", () => {
 
       mockPayload.create.mockResolvedValueOnce(mockCreatedSchema);
 
-      const result = await SchemaVersioningService.createSchemaVersion(mockPayload, {
+      const result = await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
         dataset: "456",
         schema: mockSchema,
         fieldMetadata: mockFieldMetadata,
@@ -212,7 +217,7 @@ describe("SchemaVersioningService", () => {
 
       mockPayload.create.mockResolvedValueOnce(mockCreatedSchema);
 
-      const result = await SchemaVersioningService.createSchemaVersion(mockPayload, {
+      const result = await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
         dataset: 789,
         schema: mockSchema,
       });
@@ -253,7 +258,7 @@ describe("SchemaVersioningService", () => {
 
       mockPayload.create.mockResolvedValueOnce(mockCreatedSchema);
 
-      const result = await SchemaVersioningService.createSchemaVersion(mockPayload, {
+      const result = await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
         dataset: 111,
         schema: mockSchema,
         importSources: [
@@ -313,7 +318,7 @@ describe("SchemaVersioningService", () => {
 
       mockPayload.create.mockResolvedValueOnce(mockCreatedSchema);
 
-      const result = await SchemaVersioningService.createSchemaVersion(mockPayload, {
+      const result = await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
         dataset: 999,
         schema: mockSchema,
         approvedBy: null,
@@ -340,7 +345,7 @@ describe("SchemaVersioningService", () => {
     it("should link import job to schema version with string IDs", async () => {
       mockPayload.update.mockResolvedValueOnce({});
 
-      await SchemaVersioningService.linkImportToSchemaVersion(mockPayload, "123", "456");
+      await SchemaVersioningService.linkImportToSchemaVersion(mockPayload as unknown as BasePayload, "123", "456");
 
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
@@ -354,7 +359,7 @@ describe("SchemaVersioningService", () => {
     it("should link import job to schema version with numeric IDs", async () => {
       mockPayload.update.mockResolvedValueOnce({});
 
-      await SchemaVersioningService.linkImportToSchemaVersion(mockPayload, 789, 101112);
+      await SchemaVersioningService.linkImportToSchemaVersion(mockPayload as unknown as BasePayload, 789, 101112);
 
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
@@ -368,7 +373,7 @@ describe("SchemaVersioningService", () => {
     it("should link import job to schema version with mixed ID types", async () => {
       mockPayload.update.mockResolvedValueOnce({});
 
-      await SchemaVersioningService.linkImportToSchemaVersion(mockPayload, "555", 666);
+      await SchemaVersioningService.linkImportToSchemaVersion(mockPayload as unknown as BasePayload, "555", 666);
 
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
@@ -383,9 +388,9 @@ describe("SchemaVersioningService", () => {
       const mockError = new Error("Database update failed");
       mockPayload.update.mockRejectedValueOnce(mockError);
 
-      await expect(SchemaVersioningService.linkImportToSchemaVersion(mockPayload, 123, 456)).rejects.toThrow(
-        "Database update failed"
-      );
+      await expect(
+        SchemaVersioningService.linkImportToSchemaVersion(mockPayload as unknown as BasePayload, 123, 456)
+      ).rejects.toThrow("Database update failed");
 
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
@@ -430,7 +435,7 @@ describe("SchemaVersioningService", () => {
       mockPayload.update.mockResolvedValueOnce({});
 
       // Create schema version
-      const schemaVersion = await SchemaVersioningService.createSchemaVersion(mockPayload, {
+      const schemaVersion = await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
         dataset: 888,
         schema: mockSchema,
         fieldMetadata: {
@@ -450,7 +455,11 @@ describe("SchemaVersioningService", () => {
       });
 
       // Link import to schema version
-      await SchemaVersioningService.linkImportToSchemaVersion(mockPayload, 777, schemaVersion.id);
+      await SchemaVersioningService.linkImportToSchemaVersion(
+        mockPayload as unknown as BasePayload,
+        777,
+        schemaVersion.id
+      );
 
       expect(schemaVersion).toEqual(mockCreatedSchema);
       expect(mockPayload.create).toHaveBeenCalledWith({
