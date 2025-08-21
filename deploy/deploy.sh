@@ -146,9 +146,15 @@ case "$1" in
         
     migrate)
         check_env
-        echo -e "${YELLOW}Running database migrations...${NC}"
-        $DC_CMD exec web pnpm payload:migrate
-        echo -e "${GREEN}Migrations complete!${NC}"
+        echo -e "${YELLOW}Checking migration status...${NC}"
+        # Migrations run automatically on server startup via prodMigrations config
+        # Just check if the web service is healthy
+        if $DC_CMD exec web node -e "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => { process.exit(1); })"; then
+            echo -e "${GREEN}Migrations have been applied automatically on startup!${NC}"
+        else
+            echo -e "${RED}Web service is not healthy. Check logs for migration errors.${NC}"
+            exit 1
+        fi
         ;;
         
     backup)
