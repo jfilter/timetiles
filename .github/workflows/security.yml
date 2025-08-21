@@ -35,6 +35,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Run Trivy vulnerability scanner (dependencies)
         uses: aquasecurity/trivy-action@0.29.0
@@ -122,6 +124,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -231,6 +235,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Run Trivy config scanner
         uses: aquasecurity/trivy-action@0.29.0
@@ -311,6 +317,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Run Trivy secret scanner
         uses: aquasecurity/trivy-action@0.29.0
