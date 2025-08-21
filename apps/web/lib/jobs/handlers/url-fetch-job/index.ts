@@ -35,6 +35,7 @@ export interface UrlFetchJobInput {
   catalogId?: number | string;
   originalName: string;
   userId?: number | string;
+  triggeredBy?: "schedule" | "webhook" | "manual";
 }
 
 interface ImportContext {

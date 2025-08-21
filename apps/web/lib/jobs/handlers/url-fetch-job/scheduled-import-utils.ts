@@ -84,7 +84,8 @@ export const updateScheduledImportSuccess = async (
       id: scheduledImport.id,
       data: {
         lastRun: new Date().toISOString(),
-        lastStatus: "success",
+        lastStatus: "success", // CRITICAL: Reset from "running" to "success"
+        lastError: null,
         currentRetries: 0,
         executionHistory,
         statistics: {
@@ -140,7 +141,7 @@ export const updateScheduledImportFailure = async (
       id: scheduledImport.id,
       data: {
         lastRun: new Date().toISOString(),
-        lastStatus: "failed",
+        lastStatus: "failed", // CRITICAL: Reset from "running" to "failed"
         lastError: error.message,
         currentRetries,
         executionHistory,

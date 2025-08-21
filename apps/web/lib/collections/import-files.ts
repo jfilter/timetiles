@@ -230,24 +230,33 @@ const ImportFiles: CollectionConfig = {
           // Store original filename for later use
           const originalName = req.file.name;
 
-          // Generate unique filename with timestamp and UUID to prevent conflicts
-          const timestamp = Date.now();
-          const uniqueId = uuidv4().substring(0, 8); // Short UUID for readability
-          const fileExtension = originalName.split(".").pop() ?? "csv";
-          const uniqueFilename = `${timestamp}-${uniqueId}.${fileExtension}`;
+          // Check if this is already a URL import file (starts with "url-import-")
+          // If so, keep the original filename to maintain consistency
+          if (originalName.startsWith("url-import-")) {
+            // Keep the URL import filename as-is
+            logger.debug("Preserving URL import filename", {
+              originalName,
+            });
+          } else {
+            // Generate unique filename with timestamp and UUID to prevent conflicts
+            const timestamp = Date.now();
+            const uniqueId = uuidv4().substring(0, 8); // Short UUID for readability
+            const fileExtension = originalName.split(".").pop() ?? "csv";
+            const uniqueFilename = `${timestamp}-${uniqueId}.${fileExtension}`;
 
-          // Update the file name
-          req.file.name = uniqueFilename;
+            // Update the file name
+            req.file.name = uniqueFilename;
+
+            logger.debug("Generated unique filename", {
+              originalName,
+              uniqueFilename,
+              timestamp,
+              uniqueId,
+            });
+          }
 
           // Store original name in request context for use in beforeChange hook
           (req as typeof req & { originalFileName?: string }).originalFileName = originalName;
-
-          logger.debug("Generated unique filename", {
-            originalName,
-            uniqueFilename,
-            timestamp,
-            uniqueId,
-          });
         }
       },
     ],
@@ -304,13 +313,15 @@ const ImportFiles: CollectionConfig = {
         const sessionId = data.sessionId ?? null;
         const userAgent = req.headers?.get?.("user-agent") ?? null;
 
-        // Get original filename from beforeOperation hook
-        const originalName = (req as typeof req & { originalFileName?: string }).originalFileName ?? null;
+        // Get original filename from beforeOperation hook (for file uploads)
+        // OR preserve the originalName if it's already set (for programmatic creation from url-fetch-job)
+        const originalName =
+          data.originalName ?? (req as typeof req & { originalFileName?: string }).originalFileName ?? null;
 
         // Add rate limiting and metadata info
         return {
           ...data,
-          originalName, // Set the original filename
+          originalName, // Set or preserve the original filename
           sessionId: !req.user ? sessionId : undefined,
           rateLimitInfo: {
             clientId,

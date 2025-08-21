@@ -31,17 +31,32 @@ const getNextFrequencyExecution = (frequency: string, fromDate?: Date): Date => 
   next.setUTCMilliseconds(0);
 
   switch (frequency) {
-    case "hourly":
-      // Next hour at :00
+    case "hourly": {
+      // Calculate the next full hour
       next.setUTCMinutes(0);
-      next.setUTCHours(next.getUTCHours() + 1);
+
+      // Move to next hour
+      const currentHour = next.getUTCHours();
+      next.setUTCHours(currentHour + 1);
+
+      // Make sure we're actually in the future (handles edge cases)
+      while (next <= now) {
+        next.setUTCHours(next.getUTCHours() + 1);
+      }
+
       break;
+    }
 
     case "daily":
       // Next day at midnight UTC
       next.setUTCMinutes(0);
       next.setUTCHours(0);
       next.setUTCDate(next.getUTCDate() + 1);
+
+      // Make sure we're actually in the future (in case it's already past midnight)
+      while (next <= now) {
+        next.setUTCDate(next.getUTCDate() + 1);
+      }
       break;
 
     case "weekly": {
@@ -273,8 +288,27 @@ const processScheduledImport = async (
     return false;
   }
 
+  // CRITICAL: Check if already running BEFORE queuing
+  if (scheduledImport.lastStatus === "running") {
+    logger.info("Skipping scheduled import - already running", {
+      scheduledImportId: scheduledImport.id,
+      name: scheduledImport.name,
+    });
+    return false;
+  }
+
   const startTime = Date.now();
   const importName = generateImportName(scheduledImport.importNameTemplate, scheduledImport, currentTime);
+
+  // CRITICAL: Set status to "running" BEFORE queuing job
+  await payload.update({
+    collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
+    id: scheduledImport.id,
+    data: {
+      lastStatus: "running",
+      lastRun: currentTime.toISOString(),
+    },
+  });
 
   // Queue the URL fetch job
   const urlFetchJob = await payload.jobs.queue({
@@ -293,6 +327,7 @@ const processScheduledImport = async (
         typeof scheduledImport.createdBy === "object" && scheduledImport.createdBy !== null
           ? scheduledImport.createdBy.id
           : scheduledImport.createdBy,
+      triggeredBy: "schedule", // Add triggeredBy field
     },
   });
 
@@ -309,7 +344,7 @@ const processScheduledImport = async (
   stats.totalRuns = (stats.totalRuns ?? 0) + 1;
   stats.successfulRuns = (stats.successfulRuns ?? 0) + 1;
 
-  // Update the scheduled import record
+  // Update the scheduled import record with next run and history
   await payload.update({
     collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
     id: scheduledImport.id,

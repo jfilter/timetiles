@@ -110,6 +110,88 @@ export const detectFileTypeFromResponse = (
 };
 
 /**
+ * Setup abort controller for fetch timeout
+ */
+const setupAbortController = (
+  timeout: number
+): {
+  controller?: AbortController;
+  timeoutId?: NodeJS.Timeout;
+} => {
+  let controller: AbortController | undefined;
+  let timeoutId: NodeJS.Timeout | undefined;
+
+  try {
+    // Create AbortController if available (Node 16+ has native support)
+    if (typeof AbortController !== "undefined") {
+      // Always use the standard AbortController
+      controller = new AbortController();
+      timeoutId = setTimeout(() => {
+        logger.debug(`Aborting request after ${timeout}ms timeout`);
+        controller?.abort();
+      }, timeout);
+    }
+  } catch (e) {
+    // AbortController not available or not working properly
+    logger.warn("AbortController not available, timeout will not work", { error: e });
+  }
+
+  return { controller, timeoutId };
+};
+
+/**
+ * Build fetch options with signal support
+ */
+const buildFetchOptions = (method: string, headers: HeadersInit, controller?: AbortController): RequestInit => {
+  const fetchOptions: RequestInit = {
+    method,
+    headers,
+  };
+
+  // Only add signal if controller was successfully created
+  if (controller?.signal) {
+    fetchOptions.signal = controller.signal;
+  }
+
+  return fetchOptions;
+};
+
+/**
+ * Read response body with size limit
+ */
+const readResponseBody = async (
+  response: Response,
+  maxSize: number
+): Promise<{ data: Buffer; contentLength: number }> => {
+  const chunks: Buffer[] = [];
+  let totalSize = 0;
+  const reader = response.body?.getReader();
+
+  if (!reader) {
+    throw new Error("Unable to read response body");
+  }
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const chunk = Buffer.from(value);
+    totalSize += chunk.length;
+
+    if (totalSize > maxSize) {
+      throw new Error(`File too large: ${totalSize} bytes (max: ${maxSize})`);
+    }
+
+    chunks.push(chunk);
+  }
+
+  return {
+    data: Buffer.concat(chunks),
+    contentLength: totalSize,
+  };
+};
+
+/**
  * Fetches data from a URL with built-in error handling
  */
 export const fetchUrlData = async (
@@ -127,17 +209,15 @@ export const fetchUrlData = async (
     maxSize = 100 * 1024 * 1024, // 100MB default
   } = options;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const { controller, timeoutId } = setupAbortController(timeout);
 
   try {
-    const response = await fetch(sourceUrl, {
-      method,
-      headers,
-      signal: controller.signal,
-    });
+    const fetchOptions = buildFetchOptions(method, headers, controller);
+    const response = await fetch(sourceUrl, fetchOptions);
 
-    clearTimeout(timeoutId);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -150,35 +230,17 @@ export const fetchUrlData = async (
       throw new Error(`File too large: ${contentLength} bytes (max: ${maxSize})`);
     }
 
-    const chunks: Buffer[] = [];
-    let totalSize = 0;
-    const reader = response.body?.getReader();
-
-    if (!reader) {
-      throw new Error("Unable to read response body");
-    }
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = Buffer.from(value);
-      totalSize += chunk.length;
-
-      if (totalSize > maxSize) {
-        throw new Error(`File too large: ${totalSize} bytes (max: ${maxSize})`);
-      }
-
-      chunks.push(chunk);
-    }
+    const { data, contentLength: totalSize } = await readResponseBody(response, maxSize);
 
     return {
-      data: Buffer.concat(chunks),
+      data,
       contentType,
       contentLength: totalSize,
     };
   } catch (error) {
-    clearTimeout(timeoutId);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
 
     if ((error as { name?: string }).name === "AbortError") {
       throw new Error(`Request timeout after ${timeout}ms`);
