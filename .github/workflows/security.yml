@@ -22,6 +22,12 @@ on:
           - filesystem
           - config
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: write  # For PR comments
+
 env:
   TRIVY_VERSION: '0.58.0'
   DOCKER_IMAGE: 'timetiles-web:latest'
