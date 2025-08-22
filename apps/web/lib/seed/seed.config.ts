@@ -1,5 +1,5 @@
 /**
- * @module This file defines the centralized configuration for the database seeding system.
+ * This file defines the centralized configuration for the database seeding system.
  *
  * It provides a structured way to manage all aspects of seeding, including:
  * - How many documents to create for each collection, with environment-specific counts.
@@ -10,17 +10,19 @@
  *
  * This configuration-driven approach makes the seeding process flexible, maintainable,
  * and easy to adapt for various scenarios.
+ *
+ * @module
  */
 
 /**
- * Configuration-Driven Seeding System
+ * Configuration-Driven Seeding System.
  *
  * This configuration file centralizes all seeding behavior, making it easy to:
  * - Control collection counts per environment
  * - Define dependencies between collections
  * - Enable/disable collections per environment
  * - Override behavior with environment-specific settings
- * - Configure custom data generators
+ * - Configure custom data generators.
  */
 
 import type { RelationshipConfig } from "./relationship-config";
@@ -404,7 +406,7 @@ export const SEED_CONFIG: SeedConfiguration = {
 };
 
 /**
- * Get configuration for a specific collection and environment
+ * Get configuration for a specific collection and environment.
  */
 export const getCollectionConfig = (collection: string, environment: string): CollectionConfig | null => {
   const baseConfig = Object.hasOwn(SEED_CONFIG.collections, collection)
@@ -438,7 +440,7 @@ export const getCollectionConfig = (collection: string, environment: string): Co
 };
 
 /**
- * Get all enabled collections for an environment in dependency order
+ * Get all enabled collections for an environment in dependency order.
  */
 export const getEnabledCollections = (environment: string): string[] => {
   const envConfig = Object.hasOwn(SEED_CONFIG.environments, environment)
@@ -484,13 +486,13 @@ export const getEnabledCollections = (environment: string): string[] => {
 };
 
 /**
- * Get environment settings
+ * Get environment settings.
  */
 export const getEnvironmentSettings = (environment: string): EnvironmentConfig["settings"] =>
   SEED_CONFIG.environments[environment]?.settings ?? {};
 
 /**
- * Get generator configuration
+ * Get generator configuration.
  */
 export const getGeneratorConfig = (generatorName: string): GeneratorConfig | null =>
   SEED_CONFIG.generators[generatorName] ?? null;

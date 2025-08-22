@@ -1,5 +1,5 @@
 /**
- * @module Defines the job handler for detecting the schema from a batch of imported data.
+ * Defines the job handler for detecting the schema from a batch of imported data.
  *
  * This job processes a batch of rows from the import file to progressively build a schema.
  * It skips rows that were identified as duplicates to ensure the schema is based on unique data.
@@ -10,6 +10,8 @@
  * - Storing the evolving schema and the builder's state in the `import-jobs` document.
  *
  * After processing all batches, the import job transitions to the `SCHEMA_VALIDATION` stage.
+ *
+ * @module
  */
 import path from "path";
 import type { Payload } from "payload";

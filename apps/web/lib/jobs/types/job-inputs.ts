@@ -1,9 +1,11 @@
 /**
- * @module Defines the TypeScript interfaces for the inputs of different jobs in the import pipeline.
+ * Defines the TypeScript interfaces for the inputs of different jobs in the import pipeline.
  *
  * This file provides standardized type definitions for the `input` property of various
  * import-related jobs. Using these types ensures consistency and type safety when
  * queuing and handling jobs throughout the system.
+ *
+ * @module
  */
 
 // Base job input interface

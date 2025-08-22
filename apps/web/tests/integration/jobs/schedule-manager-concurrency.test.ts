@@ -1,5 +1,5 @@
 /**
- * Integration tests for schedule manager concurrency updates
+ * Integration tests for schedule manager concurrency updates.
  * @module
  */
 

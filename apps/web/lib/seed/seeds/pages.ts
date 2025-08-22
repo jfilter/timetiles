@@ -1,10 +1,12 @@
 /**
- * @module This file contains the seed data for the Pages collection.
+ * This file contains the seed data for the Pages collection.
  *
  * It defines a set of predefined pages with titles, slugs, and rich text content.
  * This data is used to populate the database with essential static pages like "Home",
  * "About", and "Contact", ensuring that the application has a baseline of content
  * available immediately after seeding, which is useful for development and testing.
+ *
+ * @module
  */
 import type { Page } from "@/payload-types";
 

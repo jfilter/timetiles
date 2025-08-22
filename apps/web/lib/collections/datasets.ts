@@ -1,5 +1,5 @@
 /**
- * @module Defines the Payload CMS collection configuration for Datasets.
+ * Defines the Payload CMS collection configuration for Datasets.
  *
  * A Dataset represents a specific set of data, such as a collection of events from a particular source.
  * This collection is central to the system, defining not only the basic metadata of a dataset
@@ -9,6 +9,8 @@
  * - **Deduplication:** How to handle duplicate records found during import.
  * - **Type Transformations:** Rules for converting data between different types.
  * - **Geographic Field Detection:** Settings for automatically identifying location data.
+ *
+ * @module
  */
 import type { CollectionConfig } from "payload";
 

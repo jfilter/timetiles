@@ -11,7 +11,7 @@
 import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-detection";
 
 /**
- * Detects potential ID fields based on naming patterns and characteristics
+ * Detects potential ID fields based on naming patterns and characteristics.
  */
 export const detectIdFields = (state: SchemaBuilderState): string[] => {
   const idFields: string[] = [];
@@ -74,7 +74,7 @@ const findCoordinateField = (
 };
 
 /**
- * Detects geographic coordinate fields
+ * Detects geographic coordinate fields.
  */
 export const detectGeoFields = (
   state: SchemaBuilderState
@@ -92,7 +92,7 @@ export const detectGeoFields = (
 };
 
 /**
- * Detects enumeration fields based on unique value ratios
+ * Detects enumeration fields based on unique value ratios.
  */
 export const detectEnums = (
   state: SchemaBuilderState,
@@ -124,7 +124,7 @@ export const detectEnums = (
 };
 
 /**
- * Checks if a value looks like an ID
+ * Checks if a value looks like an ID.
  */
 export const looksLikeId = (value: unknown): boolean => {
   if (typeof value === "string") {
@@ -148,7 +148,7 @@ export const looksLikeId = (value: unknown): boolean => {
 };
 
 /**
- * Checks if a value looks like a geographic coordinate
+ * Checks if a value looks like a geographic coordinate.
  */
 export const looksLikeCoordinate = (value: unknown, type: "lat" | "lng"): boolean => {
   if (typeof value !== "number") return false;

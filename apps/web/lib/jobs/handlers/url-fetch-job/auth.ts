@@ -11,7 +11,7 @@
 import type { ScheduledImport } from "@/payload-types";
 
 /**
- * Builds HTTP headers based on authentication configuration
+ * Builds HTTP headers based on authentication configuration.
  */
 export const buildAuthHeaders = (authConfig: ScheduledImport["authConfig"] | undefined): Record<string, string> => {
   const headers: Record<string, string> = {

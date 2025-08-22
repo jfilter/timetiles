@@ -1,5 +1,5 @@
 /**
- * @module Provides utilities for detecting the format of geographic data within a dataset.
+ * Provides utilities for detecting the format of geographic data within a dataset.
  *
  * This module contains functions and regular expressions designed to identify how location
  * data is represented. It can detect:
@@ -8,10 +8,12 @@
  *
  * The results of this detection are used to guide the parsing and validation process
  * during data import, ensuring that geographic information is correctly interpreted.
+ *
+ * @module
  */
 
 /**
- * Format detection utilities for geolocation data
+ * Format detection utilities for geolocation data.
  */
 
 import { isValidCoordinate } from "./coordinate-validation-utils";
@@ -22,7 +24,7 @@ export interface FormatDetectionResult {
 }
 
 /**
- * Check for comma-separated coordinate format
+ * Check for comma-separated coordinate format.
  */
 export const checkCommaFormat = (samples: unknown[]): FormatDetectionResult | null => {
   const commaFormat = samples.filter((s) => {
@@ -46,7 +48,7 @@ export const checkCommaFormat = (samples: unknown[]): FormatDetectionResult | nu
 };
 
 /**
- * Check for space-separated coordinate format
+ * Check for space-separated coordinate format.
  */
 export const checkSpaceFormat = (samples: unknown[]): FormatDetectionResult | null => {
   const spaceFormat = samples.filter((s) => {
@@ -70,7 +72,7 @@ export const checkSpaceFormat = (samples: unknown[]): FormatDetectionResult | nu
 };
 
 /**
- * Check for GeoJSON Point format
+ * Check for GeoJSON Point format.
  */
 export const checkGeoJsonFormat = (samples: unknown[]): FormatDetectionResult | null => {
   const geoJsonFormat = samples.filter((s) => {
@@ -106,7 +108,7 @@ export const checkGeoJsonFormat = (samples: unknown[]): FormatDetectionResult | 
 };
 
 /**
- * Pattern matching for latitude columns
+ * Pattern matching for latitude columns.
  */
 export const latitudePatterns = [
   /^lat(itude)?$/i,
@@ -120,7 +122,7 @@ export const latitudePatterns = [
 ];
 
 /**
- * Pattern matching for longitude columns
+ * Pattern matching for longitude columns.
  */
 export const longitudePatterns = [
   /^lon(g|gitude)?$/i,
@@ -136,7 +138,7 @@ export const longitudePatterns = [
 ];
 
 /**
- * Combined coordinate patterns
+ * Combined coordinate patterns.
  */
 export const combinedPatterns = [
   /^coord(inate)?s$/i,

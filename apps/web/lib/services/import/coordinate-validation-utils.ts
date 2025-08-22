@@ -1,15 +1,17 @@
 /**
- * @module Provides shared utility functions for validating geographic coordinates.
+ * Provides shared utility functions for validating geographic coordinates.
  *
  * This module contains a collection of helper functions that are used across different parts
  * of the coordinate detection and validation process. These utilities help in determining
  * if a coordinate is within a valid range, categorizing coordinate values to aid in
  * heuristic analysis, and identifying potential latitude or longitude columns based on
  * statistical properties of their data.
+ *
+ * @module
  */
 
 /**
- * Shared coordinate validation utilities
+ * Shared coordinate validation utilities.
  */
 
 export interface CoordinateSample {
@@ -23,7 +25,7 @@ export interface CoordinateSample {
 }
 
 /**
- * Check if coordinates are valid
+ * Check if coordinates are valid.
  */
 export const isValidCoordinate = (lat: number | null, lon: number | null): boolean => {
   if (lat == null || lon == null) {
@@ -35,7 +37,7 @@ export const isValidCoordinate = (lat: number | null, lon: number | null): boole
 };
 
 /**
- * Categorize coordinate value by range
+ * Categorize coordinate value by range.
  */
 export const categorizeCoordinateValue = (
   value: number,
@@ -53,7 +55,7 @@ export const categorizeCoordinateValue = (
 };
 
 /**
- * Check if column is a valid latitude candidate
+ * Check if column is a valid latitude candidate.
  */
 export const isValidLatitudeCandidate = (
   stats: { latOnly: number; total: number; samples: number[] },
@@ -70,7 +72,7 @@ export const isValidLatitudeCandidate = (
 };
 
 /**
- * Check if column is a valid longitude candidate
+ * Check if column is a valid longitude candidate.
  */
 export const isValidLongitudeCandidate = (
   stats: { samples: number[] },
@@ -85,7 +87,7 @@ export const isValidLongitudeCandidate = (
 };
 
 /**
- * Convert value to string safely
+ * Convert value to string safely.
  */
 export const valueToString = (value: unknown): string => {
   if (value == null || value == undefined) {

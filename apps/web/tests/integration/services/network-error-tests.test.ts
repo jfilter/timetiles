@@ -1,19 +1,19 @@
 // @vitest-environment node
 /**
- * Network Error Handling Tests for Scheduled Imports
+ * Network Error Handling Tests for Scheduled Imports.
  *
  * Tests various network failure scenarios including:
  * - Malformed URLs
  * - DNS failures
  * - Connection failures
  * - Partial downloads
- * - Corrupted file handling
+ * - Corrupted file handling.
  *
  * This test uses real HTTP servers instead of mocking to ensure
  * authentic network behavior testing.
  *
  * Uses node environment instead of jsdom to avoid AbortController compatibility issues
- * with Node 24's native fetch API.
+ * with Node 24's native fetch API..
  *
  * @module
  */

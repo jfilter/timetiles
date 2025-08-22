@@ -1,5 +1,5 @@
 /**
- * @module Defines the job handler for analyzing duplicates in an imported file.
+ * Defines the job handler for analyzing duplicates in an imported file.
  *
  * This job performs two types of duplicate detection:
  * 1.  **Internal Duplicates:** Identifies rows within the same import file that are duplicates of each other based on the dataset's unique ID strategy.
@@ -8,6 +8,8 @@
  * The results, including lists of duplicate rows and a summary, are stored in the corresponding `import-jobs` document.
  * If deduplication is disabled for the dataset, the job skips the analysis and proceeds to the next stage.
  * Upon completion, it transitions the import job to the `SCHEMA_DETECTION` stage.
+ *
+ * @module
  */
 import path from "path";
 import type { Payload } from "payload";

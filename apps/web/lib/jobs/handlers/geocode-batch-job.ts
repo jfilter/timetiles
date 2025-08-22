@@ -31,7 +31,7 @@ interface DuplicateInfo {
 }
 
 /**
- * Extract duplicate row numbers from job data
+ * Extract duplicate row numbers from job data.
  */
 const getDuplicateRows = (job: ImportJob): Set<number> => {
   const duplicateRows = new Set<number>();
@@ -58,7 +58,7 @@ const getDuplicateRows = (job: ImportJob): Set<number> => {
 };
 
 /**
- * Process geocoding for a single row
+ * Process geocoding for a single row.
  */
 const processRowGeocoding = async (
   row: Record<string, unknown>,
@@ -113,7 +113,7 @@ const processRowGeocoding = async (
 };
 
 /**
- * Process a batch of rows for geocoding
+ * Process a batch of rows for geocoding.
  */
 const processBatch = async (
   rows: Record<string, unknown>[],
@@ -160,7 +160,7 @@ const processBatch = async (
 };
 
 /**
- * Get job resources and validate them
+ * Get job resources and validate them.
  */
 const getJobResources = async (
   payload: Payload,

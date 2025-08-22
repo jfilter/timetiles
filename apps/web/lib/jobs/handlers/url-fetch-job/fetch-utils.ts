@@ -30,12 +30,12 @@ export interface FetchOptions {
 }
 
 /**
- * Calculates hash of data for duplicate checking
+ * Calculates hash of data for duplicate checking.
  */
 export const calculateDataHash = (data: Buffer): string => crypto.createHash("sha256").update(data).digest("hex");
 
 /**
- * Detects file type from content type header or data inspection
+ * Detects file type from content type header or data inspection.
  */
 export const detectFileTypeFromResponse = (
   contentType: string | undefined,
@@ -110,7 +110,7 @@ export const detectFileTypeFromResponse = (
 };
 
 /**
- * Setup abort controller for fetch timeout
+ * Setup abort controller for fetch timeout.
  */
 const setupAbortController = (
   timeout: number
@@ -140,7 +140,7 @@ const setupAbortController = (
 };
 
 /**
- * Build fetch options with signal support
+ * Build fetch options with signal support.
  */
 const buildFetchOptions = (method: string, headers: HeadersInit, controller?: AbortController): RequestInit => {
   const fetchOptions: RequestInit = {
@@ -157,7 +157,7 @@ const buildFetchOptions = (method: string, headers: HeadersInit, controller?: Ab
 };
 
 /**
- * Read response body with size limit
+ * Read response body with size limit.
  */
 const readResponseBody = async (
   response: Response,
@@ -192,7 +192,7 @@ const readResponseBody = async (
 };
 
 /**
- * Fetches data from a URL with built-in error handling
+ * Fetches data from a URL with built-in error handling.
  */
 export const fetchUrlData = async (
   sourceUrl: string,
@@ -251,7 +251,7 @@ export const fetchUrlData = async (
 };
 
 /**
- * Fetches URL with retry logic
+ * Fetches URL with retry logic.
  */
 export const fetchWithRetry = async (
   sourceUrl: string,

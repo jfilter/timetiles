@@ -1,10 +1,12 @@
 /**
- * @module Defines the TypeScript types and interfaces related to schema detection and validation.
+ * Defines the TypeScript types and interfaces related to schema detection and validation.
  *
  * This file serves as a central repository for the data structures used throughout the schema
  * building and import validation process. It ensures type safety and consistency when dealing
  * with complex objects that represent schema fields, field statistics, schema changes, and
  * duplicate information.
+ *
+ * @module
  */
 export interface SchemaField {
   path: string;
@@ -115,7 +117,7 @@ export interface DuplicateAction {
 }
 
 /**
- * Type guard to check if schema builder state is valid
+ * Type guard to check if schema builder state is valid.
  */
 export const isValidSchemaBuilderState = (state: unknown): state is SchemaBuilderState => {
   if (!state || typeof state !== "object" || Array.isArray(state)) {
@@ -138,7 +140,7 @@ export const isValidSchemaBuilderState = (state: unknown): state is SchemaBuilde
 };
 
 /**
- * Safe getter for schema builder state from import job
+ * Safe getter for schema builder state from import job.
  */
 export const getSchemaBuilderState = (job: { schemaBuilderState?: unknown }): SchemaBuilderState | null => {
   if (isValidSchemaBuilderState(job.schemaBuilderState)) {
@@ -148,7 +150,7 @@ export const getSchemaBuilderState = (job: { schemaBuilderState?: unknown }): Sc
 };
 
 /**
- * Safe getter for field statistics from schema builder state
+ * Safe getter for field statistics from schema builder state.
  */
 export const getFieldStats = (job: { schemaBuilderState?: unknown }): Record<string, FieldStatistics> => {
   const state = getSchemaBuilderState(job);

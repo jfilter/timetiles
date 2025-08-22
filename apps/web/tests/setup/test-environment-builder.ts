@@ -1,5 +1,5 @@
 /**
- * TestEnvironmentBuilder
+ * TestEnvironmentBuilder.
  *
  * Provides a simplified and flexible way to create test environments with
  * different isolation levels and seeding options. This replaces the basic
@@ -61,7 +61,7 @@ export class TestEnvironmentBuilder {
   private static readonly activeEnvironments = new Set<TestEnvironment>();
 
   /**
-   * Create a new test environment with the specified options
+   * Create a new test environment with the specified options.
    */
   async createTestEnvironment(options: TestEnvironmentOptions = {}): Promise<TestEnvironment> {
     const {
@@ -149,7 +149,7 @@ export class TestEnvironmentBuilder {
   }
 
   /**
-   * Create a lightweight test environment for unit tests
+   * Create a lightweight test environment for unit tests.
    */
   async createUnitTestEnvironment(): Promise<TestEnvironment> {
     return this.createTestEnvironment({
@@ -161,7 +161,7 @@ export class TestEnvironmentBuilder {
   }
 
   /**
-   * Create a full integration test environment
+   * Create a full integration test environment.
    */
   async createIntegrationTestEnvironment(customData?: Record<string, any[]>): Promise<TestEnvironment> {
     return this.createTestEnvironment({
@@ -188,7 +188,7 @@ export class TestEnvironmentBuilder {
   }
 
   /**
-   * Clean up all active test environments
+   * Clean up all active test environments.
    */
   static async cleanupAll(): Promise<void> {
     logger.info(`Cleaning up ${TestEnvironmentBuilder.activeEnvironments.size} active test environments`);
@@ -210,7 +210,7 @@ export class TestEnvironmentBuilder {
   }
 
   /**
-   * Generate a unique test database name based on isolation level
+   * Generate a unique test database name based on isolation level.
    */
   private generateTestDbName(isolationLevel: string, workerId: string, testId: string): string {
     // Use UUID prefix for true uniqueness instead of timestamp to prevent collisions
@@ -219,7 +219,7 @@ export class TestEnvironmentBuilder {
   }
 
   /**
-   * Configure SeedManager for the test environment
+   * Configure SeedManager for the test environment.
    */
   private async configureSeedManager(seedManager: SeedManager, payload: any): Promise<void> {
     // Override initialize to use our test payload
@@ -238,7 +238,7 @@ export class TestEnvironmentBuilder {
   }
 
   /**
-   * Seed test data using efficient methods
+   * Seed test data using efficient methods.
    */
   private async seedTestData(
     seedManager: SeedManager,
@@ -289,7 +289,7 @@ export class TestEnvironmentBuilder {
   }
 
   /**
-   * Cleanup test environment
+   * Cleanup test environment.
    */
   private async cleanup(testEnv: TestEnvironment): Promise<void> {
     logger.debug("Cleaning up test environment", { dbName: testEnv.dbName });
@@ -326,7 +326,7 @@ export class TestEnvironmentBuilder {
 }
 
 /**
- * Convenience function for creating test environments
+ * Convenience function for creating test environments.
  */
 export const createTestEnvironment = async (options?: TestEnvironmentOptions): Promise<TestEnvironment> => {
   const builder = new TestEnvironmentBuilder();
@@ -334,7 +334,7 @@ export const createTestEnvironment = async (options?: TestEnvironmentOptions): P
 };
 
 /**
- * Convenience function for creating unit test environments
+ * Convenience function for creating unit test environments.
  */
 export const createUnitTestEnvironment = async (): Promise<TestEnvironment> => {
   const builder = new TestEnvironmentBuilder();
@@ -342,7 +342,7 @@ export const createUnitTestEnvironment = async (): Promise<TestEnvironment> => {
 };
 
 /**
- * Convenience function for creating integration test environments
+ * Convenience function for creating integration test environments.
  */
 export const createIntegrationTestEnvironment = async (
   customData?: Record<string, any[]>

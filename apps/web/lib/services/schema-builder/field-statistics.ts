@@ -2,7 +2,7 @@
  * Field statistics tracking for schema building.
  *
  * Contains functions for tracking and updating field-level statistics
- * during schema analysis including types, ranges, unique values, etc.
+ * during schema analysis including types, ranges, unique values, etc..
  *
  * @module
  * @category Services/SchemaBuilder
@@ -78,7 +78,7 @@ const detectStringFormats = (value: string, stats: FieldStatistics): void => {
 };
 
 /**
- * Updates field statistics with a new value
+ * Updates field statistics with a new value.
  */
 export const updateFieldStats = (stats: FieldStatistics, value: unknown, maxUniqueValues: number): void => {
   stats.occurrences++;
@@ -112,7 +112,7 @@ export const updateFieldStats = (stats: FieldStatistics, value: unknown, maxUniq
 };
 
 /**
- * Creates initial field statistics
+ * Creates initial field statistics.
  */
 export const createFieldStats = (path: string = ""): FieldStatistics => ({
   path,
@@ -130,7 +130,7 @@ export const createFieldStats = (path: string = ""): FieldStatistics => ({
 });
 
 /**
- * Gets the type of a value as a string
+ * Gets the type of a value as a string.
  */
 export const getValueType = (value: unknown): string => {
   if (value === null) return "null";
@@ -156,7 +156,7 @@ export const getValueType = (value: unknown): string => {
 };
 
 /**
- * Checks if a string looks like a date
+ * Checks if a string looks like a date.
  */
 const isDateString = (value: string): boolean => {
   // ISO date pattern
@@ -222,7 +222,7 @@ const mergeEnumValues = (
 };
 
 /**
- * Merges field statistics when combining batches
+ * Merges field statistics when combining batches.
  */
 export const mergeFieldStats = (existing: FieldStatistics, incoming: FieldStatistics): FieldStatistics => {
   const merged: FieldStatistics = {

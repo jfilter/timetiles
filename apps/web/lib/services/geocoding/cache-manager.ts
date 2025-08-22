@@ -1,5 +1,5 @@
 /**
- * @module Manages the caching layer for the geocoding service.
+ * Manages the caching layer for the geocoding service.
  *
  * This class is responsible for all interactions with the geocoding cache. Its primary
  * purpose is to reduce redundant API calls to external geocoding providers by storing
@@ -10,6 +10,8 @@
  * - Storing a new geocoding result in the cache.
  * - Handling cache expiration and cleanup of old entries.
  * - Normalizing addresses to improve cache hit rates.
+ *
+ * @module
  */
 import type { Payload } from "payload";
 

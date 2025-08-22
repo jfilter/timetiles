@@ -4,7 +4,7 @@
  * Integration tests for webhook import service functionality
  * Tests service logic with real database and dependencies
  * Uses node environment instead of jsdom to avoid AbortController compatibility issues
- * with Node 24's native fetch API.
+ * with Node 24's native fetch API..
  *
  * @module
  */

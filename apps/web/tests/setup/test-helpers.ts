@@ -33,17 +33,17 @@ export const createImportFileWithUpload = async (
 };
 
 /**
- * Path to test fixtures directory
+ * Path to test fixtures directory.
  */
 export const FIXTURES_PATH = path.join(__dirname, "../fixtures");
 
 /**
- * Helper to create unique identifiers for tests
+ * Helper to create unique identifiers for tests.
  */
 export const createTestId = (): string => `test-${Date.now()}-${randomUUID().split("-")[0]}`;
 
 /**
- * Helper to create unique file paths
+ * Helper to create unique file paths.
  */
 export const createTempFilePath = (tempDir: string, filename: string): string => {
   const testId = createTestId();
@@ -51,7 +51,7 @@ export const createTempFilePath = (tempDir: string, filename: string): string =>
 };
 
 /**
- * Helper to get fixture file path
+ * Helper to get fixture file path.
  */
 export const getFixturePath = (filename: string): string => {
   return path.join(FIXTURES_PATH, filename);

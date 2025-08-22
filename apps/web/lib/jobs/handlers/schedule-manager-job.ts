@@ -22,7 +22,7 @@ import type { ScheduledImport } from "@/payload-types";
 // }
 
 /**
- * Gets the next execution time based on frequency (UTC)
+ * Gets the next execution time based on frequency (UTC).
  */
 const getNextFrequencyExecution = (frequency: string, fromDate?: Date): Date => {
   const now = fromDate ?? new Date();
@@ -139,8 +139,8 @@ const advanceToNextOccurrence = (
 };
 
 /**
- * Parses a cron expression and returns the next execution time (UTC)
- * Note: This is a basic implementation. For production, consider using a library like 'node-cron' or 'cron-parser'
+ * Parses a cron expression and returns the next execution time (UTC).
+ * Note: This is a basic implementation. For production, consider using a library like 'node-cron' or 'cron-parser'.
  */
 const getNextCronExecution = (cronExpression: string, fromDate?: Date): Date => {
   const now = fromDate ?? new Date();
@@ -154,7 +154,7 @@ const getNextCronExecution = (cronExpression: string, fromDate?: Date): Date => 
 };
 
 /**
- * Gets the next execution time based on schedule type (UTC)
+ * Gets the next execution time based on schedule type (UTC).
  */
 const getNextExecutionTime = (scheduledImport: ScheduledImport, fromDate?: Date): Date => {
   if (scheduledImport.scheduleType === "frequency" && scheduledImport.frequency) {
@@ -167,7 +167,7 @@ const getNextExecutionTime = (scheduledImport: ScheduledImport, fromDate?: Date)
 };
 
 /**
- * Checks if a scheduled import should run now
+ * Checks if a scheduled import should run now.
  */
 const shouldRunNow = (scheduledImport: ScheduledImport, currentTime: Date): boolean => {
   if (!scheduledImport.enabled) {

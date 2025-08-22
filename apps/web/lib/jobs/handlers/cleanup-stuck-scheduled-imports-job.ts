@@ -25,7 +25,7 @@ export interface CleanupStuckScheduledImportsJobInput {
 }
 
 /**
- * Determines if an import is stuck based on last run time
+ * Determines if an import is stuck based on last run time.
  */
 const isImportStuck = (scheduledImport: ScheduledImport, currentTime: Date, thresholdHours: number): boolean => {
   if (scheduledImport.lastStatus !== "running") {
@@ -45,7 +45,7 @@ const isImportStuck = (scheduledImport: ScheduledImport, currentTime: Date, thre
 };
 
 /**
- * Resets a stuck import to failed status
+ * Resets a stuck import to failed status.
  */
 const resetStuckImport = async (
   payload: Payload,
@@ -176,7 +176,7 @@ export const cleanupStuckScheduledImportsJob = {
 };
 
 /**
- * Process all stuck imports
+ * Process all stuck imports.
  */
 const processStuckImports = async (
   imports: ScheduledImport[],

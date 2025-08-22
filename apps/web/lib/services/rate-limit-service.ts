@@ -28,7 +28,7 @@ interface RateLimitEntry {
 }
 
 /**
- * Configuration for a single rate limit window
+ * Configuration for a single rate limit window.
  */
 export interface RateLimitWindow {
   /** Maximum number of requests allowed in this window */
@@ -40,7 +40,7 @@ export interface RateLimitWindow {
 }
 
 /**
- * Result from checking multiple rate limit windows
+ * Result from checking multiple rate limit windows.
  */
 export interface MultiWindowRateLimitResult {
   /** Whether the request is allowed (passes all windows) */
@@ -61,7 +61,7 @@ export interface MultiWindowRateLimitResult {
 }
 
 /**
- * Configuration for multi-window rate limiting
+ * Configuration for multi-window rate limiting.
  */
 export interface RateLimitConfig {
   windows: readonly RateLimitWindow[] | RateLimitWindow[];
@@ -88,7 +88,7 @@ export class RateLimitService {
   }
 
   /**
-   * Cleanup method to clear interval and cache
+   * Cleanup method to clear interval and cache.
    */
   destroy(): void {
     if (this.cleanupInterval) {
@@ -100,9 +100,9 @@ export class RateLimitService {
   }
 
   /**
-   * Check if a request should be rate limited
+   * Check if a request should be rate limited.
    *
-   * @param identifier - IP address or session ID
+   * @param identifier - IP address or session ID.
    * @param limit - Maximum requests allowed
    * @param windowMs - Time window in milliseconds
    * @returns Object containing rate limit status
@@ -201,17 +201,17 @@ export class RateLimitService {
   }
 
   /**
-   * Check multiple rate limit windows for a single identifier
+   * Check multiple rate limit windows for a single identifier.
    *
    * This method checks all configured windows and returns on the first failure.
    * It's useful for implementing complex rate limiting strategies like:
    * - Burst protection (e.g., 1 request per 10 seconds)
    * - Hourly limits (e.g., 5 requests per hour)
-   * - Daily limits (e.g., 100 requests per day)
+   * - Daily limits (e.g., 100 requests per day).
    *
-   * @param baseIdentifier - Base identifier for the request (e.g., "webhook:token123")
-   * @param windows - Array of rate limit windows to check
-   * @returns Result indicating if request is allowed and which window failed (if any)
+   * @param baseIdentifier - Base identifier for the request (e.g., "webhook:token123").
+   * @param windows - Array of rate limit windows to check.
+   * @returns Result indicating if request is allowed and which window failed (if any).
    */
   checkMultiWindowRateLimit(
     baseIdentifier: string,
@@ -255,11 +255,11 @@ export class RateLimitService {
   }
 
   /**
-   * Check rate limits using a configuration object
+   * Check rate limits using a configuration object.
    *
-   * @param baseIdentifier - Base identifier for the request
-   * @param config - Rate limit configuration with windows
-   * @returns Result indicating if request is allowed
+   * @param baseIdentifier - Base identifier for the request.
+   * @param config - Rate limit configuration with windows.
+   * @returns Result indicating if request is allowed.
    */
   checkConfiguredRateLimit(baseIdentifier: string, config: RateLimitConfig): MultiWindowRateLimitResult {
     // Convert readonly array to mutable array for the method call
@@ -268,7 +268,7 @@ export class RateLimitService {
   }
 
   /**
-   * Get current rate limit status without incrementing
+   * Get current rate limit status without incrementing.
    */
   getRateLimitStatus(identifier: string): {
     count: number;
@@ -283,14 +283,14 @@ export class RateLimitService {
   }
 
   /**
-   * Reset rate limit for an identifier
+   * Reset rate limit for an identifier.
    */
   resetRateLimit(identifier: string): void {
     this.cache.delete(identifier);
   }
 
   /**
-   * Block an identifier immediately
+   * Block an identifier immediately.
    */
   blockIdentifier(identifier: string, durationMs: number = 24 * 60 * 60 * 1000): void {
     const entry: RateLimitEntry = {
@@ -303,7 +303,7 @@ export class RateLimitService {
   }
 
   /**
-   * Get rate limit headers for HTTP responses
+   * Get rate limit headers for HTTP responses.
    */
   getRateLimitHeaders(identifier: string, limit: number): Record<string, string> {
     const status = this.getRateLimitStatus(identifier);
@@ -325,7 +325,7 @@ export class RateLimitService {
   }
 
   /**
-   * Clean up expired entries
+   * Clean up expired entries.
    */
   private cleanup(): void {
     const now = Date.now();
@@ -342,7 +342,7 @@ export class RateLimitService {
   }
 
   /**
-   * Log rate limit violations for monitoring
+   * Log rate limit violations for monitoring.
    */
   private logRateLimitViolation(identifier: string, attemptedCount: number, limit: number): void {
     try {
@@ -371,7 +371,7 @@ export class RateLimitService {
   }
 
   /**
-   * Get statistics about current rate limits
+   * Get statistics about current rate limits.
    */
   getStatistics(): {
     totalEntries: number;

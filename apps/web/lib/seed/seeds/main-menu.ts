@@ -1,10 +1,12 @@
 /**
- * @module This file contains the seed data for the Main Menu global.
+ * This file contains the seed data for the Main Menu global.
  *
  * It defines the default set of navigation items that will be populated in the main menu
  * when the database is seeded. This ensures that the application has a consistent and
  * functional navigation structure from the start, which is particularly useful for
  * development and testing environments.
+ *
+ * @module
  */
 import type { MainMenu } from "@/payload-types";
 

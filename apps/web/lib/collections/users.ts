@@ -1,10 +1,12 @@
 /**
- * @module Defines the Payload CMS collection configuration for Users.
+ * Defines the Payload CMS collection configuration for Users.
  *
  * This is a standard user collection for authentication and authorization within the application.
  * It uses Payload's built-in authentication features and includes basic user profile fields
  * like first name, last name, and role. The role field is used to implement role-based
  * access control throughout the system.
+ *
+ * @module
  */
 import type { CollectionConfig } from "payload";
 

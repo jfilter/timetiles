@@ -1,11 +1,13 @@
 /**
- * @module Provides utility functions for validating and normalizing imported data.
+ * Provides utility functions for validating and normalizing imported data.
  *
  * This module contains helpers for various data quality and transformation tasks, such as:
  * - Performing basic structural validation on the parsed data.
  * - Normalizing date strings into a consistent ISO format.
  * - Safely accessing and cleaning string values from row objects.
  * - Extracting and parsing tags from common field names.
+ *
+ * @module
  */
 import type { createJobLogger } from "@/lib/logger";
 

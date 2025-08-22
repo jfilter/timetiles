@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 
 /**
- * Unified Payload Generation Script
+ * Unified Payload Generation Script.
  *
  * This script generates all Payload-related files (types and database schema)
  * and automatically formats them with Prettier to ensure consistent formatting

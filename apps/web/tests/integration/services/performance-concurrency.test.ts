@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
  *
- * Performance and Concurrency Tests for Scheduled Imports
+ * Performance and Concurrency Tests for Scheduled Imports.
  *
  * Tests various performance and concurrency scenarios including:
  * - Large file handling
@@ -10,7 +10,7 @@
  * - Memory usage
  * - Job queue performance
  * Uses node environment instead of jsdom to avoid AbortController compatibility issues
- * with Node 24's native fetch API.
+ * with Node 24's native fetch API..
  *
  * @module
  */

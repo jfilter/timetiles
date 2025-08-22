@@ -1,5 +1,7 @@
 /**
- * @module Integration tests for the job processing flow system.
+ * Integration tests for the job processing flow system.
+ *
+ * @module
  */
 import fs from "fs";
 import path from "path";

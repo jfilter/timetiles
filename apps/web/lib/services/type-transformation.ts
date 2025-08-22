@@ -1,5 +1,5 @@
 /**
- * @module Provides a service for transforming data types within a record.
+ * Provides a service for transforming data types within a record.
  *
  * This service is responsible for applying a set of configurable transformation rules to a
  * data record. It is used to clean and normalize data during the import process, handling
@@ -10,6 +10,8 @@
  * - `cast`: Performs a direct type cast (e.g., `String(value)`).
  * - `custom`: Allows for a user-defined JavaScript function to perform the transformation.
  * - `reject`: Throws an error if a type mismatch is found.
+ *
+ * @module
  */
 import { logger } from "../logger";
 

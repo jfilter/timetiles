@@ -1,6 +1,6 @@
 /**
  * Integration tests for cleanup stuck scheduled imports job
- * Tests with real database and job execution
+ * Tests with real database and job execution.
  * @module
  */
 

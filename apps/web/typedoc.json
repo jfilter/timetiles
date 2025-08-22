@@ -12,7 +12,7 @@
     "./lib/types",
     "./lib/globals"
   ],
-  "out": "../docs/pages/reference/api",
+  "out": "../docs/content/reference/api",
   "plugin": ["typedoc-plugin-markdown"],
   "router": "module",
   "readme": "none",

@@ -1,5 +1,5 @@
 /**
- * @module This file contains custom React hooks for computing statistics from a list of events.
+ * This file contains custom React hooks for computing statistics from a list of events.
  *
  * These hooks are designed to efficiently process and aggregate event data for display in
  * charts and summary components. They use `useMemo` to ensure that calculations are only
@@ -8,6 +8,8 @@
  * The provided hooks can calculate:
  * - Overall event statistics (total counts, date ranges, etc.).
  * - Event counts grouped by dataset or catalog.
+ *
+ * @module
  */
 import type { BarChartDataItem } from "@workspace/ui/components/charts";
 import { useMemo } from "react";

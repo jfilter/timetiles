@@ -1,8 +1,10 @@
 /**
- * @module Type definitions for geocoding operations and results.
+ * Type definitions for geocoding operations and results.
  *
  * Provides structured type definitions for geocoding candidates, results,
  * and related data structures to ensure type safety across the import pipeline.
+ *
+ * @module
  */
 
 export interface GeocodingCandidate {
@@ -37,7 +39,7 @@ export interface GeocodingResultsMap {
 }
 
 /**
- * Type guard to check if geocoding results is a valid map
+ * Type guard to check if geocoding results is a valid map.
  */
 export const isValidGeocodingResultsMap = (results: unknown): results is GeocodingResultsMap => {
   if (!results || typeof results !== "object" || Array.isArray(results)) {
@@ -61,7 +63,7 @@ export const isValidGeocodingResultsMap = (results: unknown): results is Geocodi
 };
 
 /**
- * Type guard to check if geocoding candidates is valid
+ * Type guard to check if geocoding candidates is valid.
  */
 export const isValidGeocodingCandidate = (candidate: unknown): candidate is GeocodingCandidate => {
   if (!candidate || typeof candidate !== "object") {
@@ -78,7 +80,7 @@ export const isValidGeocodingCandidate = (candidate: unknown): candidate is Geoc
 };
 
 /**
- * Safe getter for geocoding results from import job
+ * Safe getter for geocoding results from import job.
  */
 export const getGeocodingResults = (job: { geocodingResults?: unknown }): GeocodingResultsMap => {
   if (isValidGeocodingResultsMap(job.geocodingResults)) {
@@ -88,7 +90,7 @@ export const getGeocodingResults = (job: { geocodingResults?: unknown }): Geocod
 };
 
 /**
- * Safe getter for geocoding candidates from import job
+ * Safe getter for geocoding candidates from import job.
  */
 export const getGeocodingCandidate = (job: { geocodingCandidates?: unknown }): GeocodingCandidate | null => {
   if (isValidGeocodingCandidate(job.geocodingCandidates)) {
@@ -98,7 +100,7 @@ export const getGeocodingCandidate = (job: { geocodingCandidates?: unknown }): G
 };
 
 /**
- * Safely get geocoding result for a specific row
+ * Safely get geocoding result for a specific row.
  */
 export const getGeocodingResultForRow = (
   geocodingResults: GeocodingResultsMap,

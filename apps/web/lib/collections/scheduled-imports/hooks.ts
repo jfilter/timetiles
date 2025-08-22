@@ -13,7 +13,7 @@ import { randomBytes } from "crypto";
 import type { CollectionBeforeChangeHook } from "payload";
 
 /**
- * Calculates the next run time based on frequency
+ * Calculates the next run time based on frequency.
  */
 const calculateNextRunByFrequency = (frequency: string, fromDate?: Date): Date => {
   const now = fromDate ?? new Date();
@@ -50,7 +50,7 @@ const calculateNextRunByFrequency = (frequency: string, fromDate?: Date): Date =
 };
 
 /**
- * Handle webhook token generation and management
+ * Handle webhook token generation and management.
  */
 const handleWebhookToken = (data: Record<string, unknown>, originalDoc?: Record<string, unknown>): void => {
   if (data.webhookEnabled && !data.webhookToken) {
@@ -66,7 +66,7 @@ const handleWebhookToken = (data: Record<string, unknown>, originalDoc?: Record<
 };
 
 /**
- * Handle schedule initialization and statistics
+ * Handle schedule initialization and statistics.
  */
 const handleScheduleInitialization = (data: Record<string, unknown>, operation: string): void => {
   if ((operation === "create" || (operation === "update" && data.enabled)) && (data.cronExpression || data.frequency)) {
@@ -89,7 +89,7 @@ const handleScheduleInitialization = (data: Record<string, unknown>, operation: 
 };
 
 /**
- * Clear fields based on schedule type
+ * Clear fields based on schedule type.
  */
 const clearScheduleTypeFields = (data: Record<string, unknown>): void => {
   if (data.scheduleType === "frequency") {
@@ -100,7 +100,7 @@ const clearScheduleTypeFields = (data: Record<string, unknown>): void => {
 };
 
 /**
- * Hook that handles schedule calculation, webhook token management, and field normalization
+ * Hook that handles schedule calculation, webhook token management, and field normalization.
  */
 export const beforeChangeHook: CollectionBeforeChangeHook = ({ data, operation, req, originalDoc }) => {
   if (!data) return data;

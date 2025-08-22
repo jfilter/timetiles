@@ -1,10 +1,12 @@
 /**
- * @module This file contains the seed data for the Datasets collection.
+ * This file contains the seed data for the Datasets collection.
  *
  * It defines a set of predefined dataset entries that are organized under the catalogs
  * created in `catalogs.ts`. The data is generated programmatically based on templates
  * to ensure a realistic and consistent set of datasets for different environments.
  * This approach allows for easy scaling and variation of the seed data.
+ *
+ * @module
  */
 import type { Dataset } from "@/payload-types";
 

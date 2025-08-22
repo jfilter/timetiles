@@ -1,5 +1,5 @@
 /**
- * @module This file contains the `TruncationOperations` class, which is responsible for
+ * This file contains the `TruncationOperations` class, which is responsible for
  * clearing data from collections before seeding.
  *
  * It provides a robust and safe way to truncate collections by:
@@ -8,6 +8,8 @@
  *   `datasets` will also truncate `events`).
  * - Using efficient database operations (like `TRUNCATE CASCADE`) with fallbacks to ensure
  *   data is cleared effectively.
+ *
+ * @module
  */
 import { createLogger, logError, logPerformance } from "@/lib/logger";
 

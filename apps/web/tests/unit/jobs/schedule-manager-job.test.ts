@@ -1,5 +1,5 @@
 /**
- * Unit tests for Schedule Manager Job Handler
+ * Unit tests for Schedule Manager Job Handler.
  * @module
  */
 

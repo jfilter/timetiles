@@ -1,11 +1,13 @@
 /**
- * @module Defines types and helper functions for managing the context object passed to job handlers.
+ * Defines types and helper functions for managing the context object passed to job handlers.
  *
  * This module provides a standardized structure (`JobHandlerContext`) for the context
  * object that job handlers receive. It includes TypeScript interfaces for various job
  * payloads and helper functions to safely extract necessary information like the
  * Payload instance and job-specific inputs from the context. This ensures
  * consistency and robustness in how jobs are executed.
+ *
+ * @module
  */
 import type { Payload } from "payload";
 

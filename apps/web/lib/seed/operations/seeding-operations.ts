@@ -1,5 +1,5 @@
 /**
- * @module This file contains the `SeedingOperations` class, which orchestrates the core logic
+ * This file contains the `SeedingOperations` class, which orchestrates the core logic
  * for seeding data into the various collections.
  *
  * It is responsible for:
@@ -9,6 +9,8 @@
  * - Creating the documents in the database, with batching and error handling.
  * - Determining the correct dependency order for seeding collections to ensure that
  *   relational data is created before the documents that depend on it.
+ *
+ * @module
  */
 import { createLogger } from "@/lib/logger";
 import { logError } from "@/lib/logger";

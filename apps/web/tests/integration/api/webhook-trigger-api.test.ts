@@ -1,6 +1,6 @@
 /**
  * Integration tests for webhook trigger API endpoint
- * Tests real database interactions and API behavior
+ * Tests real database interactions and API behavior.
  * @module
  */
 

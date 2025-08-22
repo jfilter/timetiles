@@ -1,14 +1,16 @@
 /**
- * @module Comprehensive integration tests for file upload scenarios and approval workflows.
+ * Comprehensive integration tests for file upload scenarios and approval workflows.
  *
  * This test suite covers:
  * - Different file types (CSV, Excel, invalid types)
  * - Schema approval workflows (auto-approval, manual approval, rejection)
  * - Error handling for corrupted/invalid files
  * - Large file processing with batching
- * - Multi-sheet Excel file processing
+ * - Multi-sheet Excel file processing.
  *
  * Tests simulate real-world file upload scenarios with complete pipeline validation.
+ *
+ * @module
  */
 import fs from "fs";
 import path from "path";

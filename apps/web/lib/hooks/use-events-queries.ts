@@ -1,5 +1,5 @@
 /**
- * @module This file centralizes all TanStack Query (React Query) hooks for fetching events-related data.
+ * This file centralizes all TanStack Query (React Query) hooks for fetching events-related data.
  *
  * It defines the data fetching functions, query keys, and custom hooks for various API endpoints,
  * including:
@@ -11,6 +11,8 @@
  *
  * By co-locating these hooks, it provides a consistent and organized way to manage server state
  * related to events and imports throughout the application.
+ *
+ * @module
  */
 "use client";
 

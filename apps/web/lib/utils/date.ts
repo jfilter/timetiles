@@ -1,14 +1,16 @@
 /**
- * @module Provides utility functions for formatting dates.
+ * Provides utility functions for formatting dates.
  *
  * This module contains helpers to convert date strings or Date objects into consistent,
  * human-readable formats for display in the user interface. It handles null or invalid
  * date inputs gracefully and provides options for both long (date and time) and short
  * (date only) formats.
+ *
+ * @module
  */
 
 /**
- * Format a date string or Date object for display
+ * Format a date string or Date object for display.
  */
 export const formatDate = (date: string | Date | null | undefined): string => {
   if (!date) return "N/A";
@@ -36,7 +38,7 @@ export const formatDate = (date: string | Date | null | undefined): string => {
 };
 
 /**
- * Format a date for short display (just the date, no time)
+ * Format a date for short display (just the date, no time).
  */
 export const formatDateShort = (date: string | Date | null | undefined): string => {
   if (!date) return "N/A";

@@ -1,10 +1,12 @@
 /**
- * @module This file serves as the primary entry point for accessing the geocoding functionality.
+ * This file serves as the primary entry point for accessing the geocoding functionality.
  *
  * It exports a simplified `geocodeAddress` function that acts as a wrapper around the more
  * complex `GeocodingService`. This approach abstracts the underlying implementation details,
  * such as service initialization and dependency injection, providing a clean and easy-to-use
  * interface for other parts of the application that need to perform geocoding lookups.
+ *
+ * @module
  */
 import type { Payload } from "payload";
 

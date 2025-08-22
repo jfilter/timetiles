@@ -1,11 +1,13 @@
 /**
- * @module Defines the Payload CMS collection configuration for Dataset Schemas.
+ * Defines the Payload CMS collection configuration for Dataset Schemas.
  *
  * This collection is crucial for data governance and quality. It stores versioned schemas
  * for each dataset, allowing for tracking of schema evolution over time. Each document
  * represents a specific version of a dataset's schema, including the schema itself (in JSON Schema format),
  * metadata about fields, and information about the import jobs that contributed to it.
  * This enables features like automated schema validation and detection of breaking changes.
+ *
+ * @module
  */
 import type { CollectionConfig } from "payload";
 

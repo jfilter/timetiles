@@ -1,5 +1,5 @@
 /**
- * @module Manages the geocoding providers for the application.
+ * Manages the geocoding providers for the application.
  *
  * This class is responsible for loading geocoding provider configurations from the database
  * (or falling back to default environment variable-based configurations). It initializes
@@ -9,6 +9,8 @@
  * It handles the logic for selecting and prioritizing providers based on the system's
  * settings, ensuring that the geocoding operations can be performed in a configured,
  * resilient, and orderly manner.
+ *
+ * @module
  */
 import NodeGeocoder, { type Options } from "node-geocoder";
 import type { Payload } from "payload";

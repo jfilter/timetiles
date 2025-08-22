@@ -1,6 +1,6 @@
 /**
  * Test data builder for integration tests
- * Provides helper methods to create consistent test data
+ * Provides helper methods to create consistent test data.
  * @module
  */
 
@@ -13,7 +13,7 @@ export class TestDataBuilder {
   constructor(private readonly payload: Payload) {}
 
   /**
-   * Create a test user with default values
+   * Create a test user with default values.
    */
   async createUser(
     overrides: Partial<{
@@ -40,7 +40,7 @@ export class TestDataBuilder {
   }
 
   /**
-   * Create a test catalog with default values
+   * Create a test catalog with default values.
    */
   async createCatalog(
     overrides: Partial<{
@@ -105,7 +105,7 @@ export class TestDataBuilder {
   }
 
   /**
-   * Create a test dataset with default values
+   * Create a test dataset with default values.
    */
   async createDataset(
     overrides: Partial<{
@@ -152,7 +152,7 @@ export class TestDataBuilder {
   }
 
   /**
-   * Create a test scheduled import with default values
+   * Create a test scheduled import with default values.
    */
   async createScheduledImport(
     overrides: Partial<{
@@ -241,7 +241,7 @@ export class TestDataBuilder {
   }
 
   /**
-   * Create a test import file
+   * Create a test import file.
    */
   async createImportFile(
     overrides: Partial<{
@@ -273,7 +273,7 @@ export class TestDataBuilder {
   }
 
   /**
-   * Create a test event
+   * Create a test event.
    */
   async createEvent(
     overrides: Partial<{
@@ -306,7 +306,7 @@ export class TestDataBuilder {
   }
 
   /**
-   * Create a test job
+   * Create a test job.
    */
   async createJob(
     overrides: Partial<{
@@ -334,7 +334,7 @@ export class TestDataBuilder {
   }
 
   /**
-   * Clean up test data by ID
+   * Clean up test data by ID.
    */
   async cleanupById(collection: keyof Config["collections"], id: string | number) {
     try {
@@ -348,7 +348,7 @@ export class TestDataBuilder {
   }
 
   /**
-   * Clean up test data by query
+   * Clean up test data by query.
    */
   async cleanupByQuery(collection: keyof Config["collections"], where: Where) {
     try {
@@ -367,7 +367,7 @@ export class TestDataBuilder {
   }
 
   /**
-   * Create a complete test environment with related data
+   * Create a complete test environment with related data.
    */
   async createCompleteTestEnvironment() {
     const user = await this.createUser();
@@ -395,7 +395,7 @@ export class TestDataBuilder {
   }
 
   /**
-   * Create multiple test items
+   * Create multiple test items.
    */
   async createMany<T>(count: number, createFn: (index: number) => Promise<T>): Promise<T[]> {
     const results: T[] = [];
@@ -406,7 +406,7 @@ export class TestDataBuilder {
   }
 
   /**
-   * Wait for a condition to be true
+   * Wait for a condition to be true.
    */
   async waitFor(
     condition: () => Promise<boolean>,
@@ -426,7 +426,7 @@ export class TestDataBuilder {
   }
 
   /**
-   * Wait for a job to complete
+   * Wait for a job to complete.
    */
   async waitForJob(jobId: string): Promise<PayloadJob> {
     await this.waitFor(async () => {
@@ -444,7 +444,7 @@ export class TestDataBuilder {
   }
 
   /**
-   * Mock external data fetch responses
+   * Mock external data fetch responses.
    */
   mockExternalDataResponse(type: "csv" | "excel" | "json" = "csv") {
     const responses = {

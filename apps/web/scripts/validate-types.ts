@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 
 /**
- * Payload Generated Files Validation Script
+ * Payload Generated Files Validation Script.
  *
  * This script validates that Payload-generated types and database schema are in sync
  * with the collection definitions. Run this in CI/CD to ensure generated files are always up-to-date.

@@ -1,8 +1,8 @@
 /**
- * Schedule Edge Case Tests for Scheduled Imports
+ * Schedule Edge Case Tests for Scheduled Imports.
  *
  * Tests various scheduling edge cases including:
- * - Cron expression validation
+ * - Cron expression validation.
  *
  * @module
  * @category Integration Tests

@@ -15,7 +15,7 @@ import { logError } from "@/lib/logger";
 import type { ScheduledImport } from "@/payload-types";
 
 /**
- * Loads scheduled import configuration
+ * Loads scheduled import configuration.
  */
 export const loadScheduledImportConfig = async (
   payload: Payload,
@@ -43,7 +43,7 @@ export const loadScheduledImportConfig = async (
 };
 
 /**
- * Updates scheduled import status on successful execution
+ * Updates scheduled import status on successful execution.
  */
 export const updateScheduledImportSuccess = async (
   payload: Payload,
@@ -104,7 +104,7 @@ export const updateScheduledImportSuccess = async (
 };
 
 /**
- * Updates scheduled import status on failed execution
+ * Updates scheduled import status on failed execution.
  */
 export const updateScheduledImportFailure = async (
   payload: Payload,
@@ -160,7 +160,7 @@ export const updateScheduledImportFailure = async (
 };
 
 /**
- * Checks for duplicate content based on hash
+ * Checks for duplicate content based on hash.
  */
 export const checkForDuplicateContent = async (
   payload: Payload,

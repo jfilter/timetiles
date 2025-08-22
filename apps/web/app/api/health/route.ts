@@ -54,13 +54,13 @@ const createErrorResponse = (error: unknown) => ({
 });
 
 /**
- * Health Check API Endpoint
+ * Health Check API Endpoint.
  *
  * Executes comprehensive health checks on critical system components including
  * environment variables, database connectivity, migrations status, and service
  * availability. Returns JSON response with detailed status of each check.
  *
- * @returns Promise resolving to NextResponse with health check results or error details
+ * @returns Promise resolving to NextResponse with health check results or error details.
  */
 export const GET = async () => {
   logger.info("Health check endpoint called");

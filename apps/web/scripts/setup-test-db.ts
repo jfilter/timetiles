@@ -1,14 +1,14 @@
 #!/usr/bin/env tsx
 
 /**
- * Test Database Setup Script
+ * Test Database Setup Script.
  *
  * This script ensures a clean, consistent test database is available for E2E tests.
  * It handles:
  * - Database creation
  * - PostGIS extension setup
  * - Schema migrations
- * - Basic validation
+ * - Basic validation.
  *
  * @module
  * @category Scripts
@@ -32,6 +32,7 @@ const TEST_DATABASE_URL = `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${D
 const runCommand = (command: string, description: string): string => {
   try {
     logger.info(`${description}...`);
+    // eslint-disable-next-line sonarjs/os-command -- Safe command execution in script
     const result = execSync(command, { stdio: "pipe", encoding: "utf8" });
     logger.info(`✓ ${description} completed`);
     if (result) {

@@ -1,5 +1,5 @@
 /**
- * @module Provides standardized progress tracking utilities for import jobs.
+ * Provides standardized progress tracking utilities for import jobs.
  *
  * This service ensures consistent progress calculation across all job handlers.
  * It defines standard progress tracking patterns and prevents inconsistencies
@@ -8,7 +8,9 @@
  * Key responsibilities:
  * - Standardizing progress calculation based on rows vs unique rows
  * - Providing consistent progress update patterns
- * - Ensuring all handlers use the same base for total calculations
+ * - Ensuring all handlers use the same base for total calculations.
+ *
+ * @module
  */
 import type { Payload } from "payload";
 
@@ -29,12 +31,12 @@ export interface DuplicationSummary {
 }
 
 /**
- * Centralized progress tracking service to ensure consistency across job handlers
+ * Centralized progress tracking service to ensure consistency across job handlers.
  */
 export class ProgressTrackingService {
   /**
    * Get the appropriate total count based on whether deduplication is enabled
-   * This ensures all stages use consistent totals
+   * This ensures all stages use consistent totals.
    */
   static getTotalForStage(job: ImportJob, stage: string): number {
     // For stages after deduplication, use unique rows if available
@@ -56,7 +58,7 @@ export class ProgressTrackingService {
   }
 
   /**
-   * Calculate progress for deduplication stage
+   * Calculate progress for deduplication stage.
    */
   static createDeduplicationProgress(
     totalRows: number,
@@ -73,7 +75,7 @@ export class ProgressTrackingService {
   }
 
   /**
-   * Update job progress with standardized calculation
+   * Update job progress with standardized calculation.
    */
   static async updateJobProgress(
     payload: Payload,
@@ -101,7 +103,7 @@ export class ProgressTrackingService {
   }
 
   /**
-   * Update geocoding progress specifically
+   * Update geocoding progress specifically.
    */
   static async updateGeocodingProgress(
     payload: Payload,
@@ -127,7 +129,7 @@ export class ProgressTrackingService {
   }
 
   /**
-   * Initialize progress for new import job
+   * Initialize progress for new import job.
    */
   static createInitialProgress(totalRows: number): ProgressInfo {
     return {
@@ -138,7 +140,7 @@ export class ProgressTrackingService {
   }
 
   /**
-   * Check if job stage is complete based on progress
+   * Check if job stage is complete based on progress.
    */
   static isStageComplete(job: ImportJob, stage: string): boolean {
     if (stage === PROCESSING_STAGE.GEOCODE_BATCH && job.geocodingProgress) {
@@ -154,7 +156,7 @@ export class ProgressTrackingService {
   }
 
   /**
-   * Calculate percentage completion for display
+   * Calculate percentage completion for display.
    */
   static getCompletionPercentage(job: ImportJob, stage: string): number {
     if (stage === PROCESSING_STAGE.GEOCODE_BATCH && job.geocodingProgress) {

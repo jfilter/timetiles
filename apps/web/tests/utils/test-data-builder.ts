@@ -1,5 +1,5 @@
 /**
- * TestDataBuilder
+ * TestDataBuilder.
  *
  * Enhanced test utilities with builder patterns for creating realistic test data.
  * Provides fluent APIs for constructing events, catalogs, datasets, and other entities
@@ -12,20 +12,20 @@
 import type { Catalog, Dataset, Event, ImportFile, User } from "@/payload-types";
 
 /**
- * Base builder class with common functionality
+ * Base builder class with common functionality.
  */
 abstract class BaseTestBuilder<T> {
   protected data: Partial<T> = {};
 
   /**
-   * Build the object with current data
+   * Build the object with current data.
    */
   build(): Partial<T> {
     return { ...this.data };
   }
 
   /**
-   * Build multiple objects with incremental changes
+   * Build multiple objects with incremental changes.
    */
   buildMany(count: number, modifier?: (item: Partial<T>, index: number) => Partial<T>): Partial<T>[] {
     return Array.from({ length: count }, (_, i) => {
@@ -35,7 +35,7 @@ abstract class BaseTestBuilder<T> {
   }
 
   /**
-   * Reset the builder to initial state
+   * Reset the builder to initial state.
    */
   reset(): this {
     this.data = {};
@@ -44,7 +44,7 @@ abstract class BaseTestBuilder<T> {
 }
 
 /**
- * Event Builder - Fluent API for creating test events
+ * Event Builder - Fluent API for creating test events.
  */
 export class EventBuilder extends BaseTestBuilder<Event> {
   constructor() {
@@ -173,7 +173,7 @@ export class EventBuilder extends BaseTestBuilder<Event> {
 }
 
 /**
- * Catalog Builder - Fluent API for creating test catalogs
+ * Catalog Builder - Fluent API for creating test catalogs.
  */
 export class CatalogBuilder extends BaseTestBuilder<Catalog> {
   constructor() {
@@ -239,7 +239,7 @@ export class CatalogBuilder extends BaseTestBuilder<Catalog> {
 }
 
 /**
- * Dataset Builder - Fluent API for creating test datasets
+ * Dataset Builder - Fluent API for creating test datasets.
  */
 export class DatasetBuilder extends BaseTestBuilder<Dataset> {
   constructor() {
@@ -393,7 +393,7 @@ export class DatasetBuilder extends BaseTestBuilder<Dataset> {
 }
 
 /**
- * User Builder - Fluent API for creating test users
+ * User Builder - Fluent API for creating test users.
  */
 export class UserBuilder extends BaseTestBuilder<User> {
   constructor() {
@@ -446,7 +446,7 @@ export class UserBuilder extends BaseTestBuilder<User> {
 }
 
 /**
- * ImportFile Builder - Fluent API for creating test import files
+ * ImportFile Builder - Fluent API for creating test import files.
  */
 export class ImportFileBuilder extends BaseTestBuilder<ImportFile> {
   constructor() {
@@ -502,7 +502,7 @@ export class ImportFileBuilder extends BaseTestBuilder<ImportFile> {
 // ImportDataset collection was removed
 
 /**
- * Main TestDataBuilder class that provides access to all builders
+ * Main TestDataBuilder class that provides access to all builders.
  */
 export class TestDataBuilder {
   static events(): EventBuilder {
@@ -528,7 +528,7 @@ export class TestDataBuilder {
   // importDatasets method removed - collection no longer exists
 
   /**
-   * Create a realistic test scenario with related data
+   * Create a realistic test scenario with related data.
    */
   static createScenario(name: "conference-events" | "sensor-data" | "economic-indicators"): {
     catalogs: Partial<Catalog>[];

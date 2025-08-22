@@ -10,7 +10,7 @@
 import { Client } from "pg";
 
 /**
- * Verifies that the database schema has been properly set up with all required tables
+ * Verifies that the database schema has been properly set up with all required tables.
  */
 export const verifyDatabaseSchema = async (connectionString: string): Promise<void> => {
   const client = new Client({ connectionString });

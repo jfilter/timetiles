@@ -1,5 +1,5 @@
 /**
- * @module Provides error recovery mechanisms for failed import jobs.
+ * Provides error recovery mechanisms for failed import jobs.
  *
  * This service handles recovery from various failure scenarios in the import pipeline.
  * It provides retry logic, error classification, and automatic recovery strategies
@@ -10,7 +10,9 @@
  * - Classify errors as recoverable vs permanent
  * - Reset job state for recovery attempts
  * - Track retry attempts and failure patterns
- * - Provide manual recovery tools for operators
+ * - Provide manual recovery tools for operators.
+ *
+ * @module
  */
 import type { Payload } from "payload";
 
@@ -68,7 +70,7 @@ export interface RecoveryResult {
 }
 
 /**
- * Service for handling import job error recovery
+ * Service for handling import job error recovery.
  */
 export class ErrorRecoveryService {
   private static readonly DEFAULT_RETRY_CONFIG: RetryConfig = {
@@ -79,7 +81,7 @@ export class ErrorRecoveryService {
   };
 
   /**
-   * Attempt to recover a failed import job
+   * Attempt to recover a failed import job.
    */
   static async recoverFailedJob(
     payload: Payload,
@@ -178,7 +180,7 @@ export class ErrorRecoveryService {
   }
 
   /**
-   * Classify error type to determine recovery strategy
+   * Classify error type to determine recovery strategy.
    */
   private static classifyError(job: ImportJob): ErrorClassification {
     const errorMessage = getErrorLogState(job)?.lastError?.toLowerCase() ?? "";
@@ -251,7 +253,7 @@ export class ErrorRecoveryService {
   }
 
   /**
-   * Determine which stage to restart from based on where failure occurred
+   * Determine which stage to restart from based on where failure occurred.
    */
   private static determineRecoveryStage(job: ImportJob, classification: ErrorClassification): ProcessingStage {
     // For validation errors, restart from schema validation
@@ -282,7 +284,7 @@ export class ErrorRecoveryService {
   }
 
   /**
-   * Process pending retries (should be called periodically)
+   * Process pending retries (should be called periodically).
    */
   static async processPendingRetries(payload: Payload): Promise<void> {
     try {
@@ -339,7 +341,7 @@ export class ErrorRecoveryService {
   }
 
   /**
-   * Get job type for a given stage (now unified with stage names)
+   * Get job type for a given stage (now unified with stage names).
    */
   private static getJobTypeForStage(stage: string): JobType | null {
     // With unified naming, stage names are the same as job types
@@ -360,7 +362,7 @@ export class ErrorRecoveryService {
   }
 
   /**
-   * Manually reset a job to a specific stage (for operator intervention)
+   * Manually reset a job to a specific stage (for operator intervention).
    */
   static async resetJobToStage(
     payload: Payload,
@@ -428,13 +430,13 @@ export class ErrorRecoveryService {
    *
    * slug: "process-pending-retries"
    * handler: async ({ req }) => await ErrorRecoveryService.processPendingRetries(req.payload)
-   * schedule: [{ cron: "* /5 * * * *", queue: "maintenance" }]
+   * schedule: [{ cron: "* /5 * * * *", queue: "maintenance" }].
    *
-   * The cron expression should be "* /5 * * * *" (remove space) to run every 5 minutes
+   * The cron expression should be "* /5 * * * *" (remove space) to run every 5 minutes.
    */
 
   /**
-   * Get recovery recommendations for failed jobs
+   * Get recovery recommendations for failed jobs.
    */
   static async getRecoveryRecommendations(payload: Payload): Promise<
     Array<{

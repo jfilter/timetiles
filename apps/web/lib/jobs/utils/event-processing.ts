@@ -1,11 +1,13 @@
 /**
- * @module Provides utility functions for processing and normalizing raw row data into a structured event format.
+ * Provides utility functions for processing and normalizing raw row data into a structured event format.
  *
  * This module is responsible for the transformation of a single row from an imported file
  * into a clean, structured object that can be used for event creation. Its key functions include:
  * - Extracting and validating geographic coordinates from various possible column formats.
  * - Normalizing and cleaning standard event fields like title, date, and description.
  * - Parsing tags from the row data.
+ *
+ * @module
  */
 import type { CoordinateValidator } from "@/lib/services/import/coordinate-validator";
 

@@ -1,5 +1,5 @@
 /**
- * @module This file contains the main `SeedManager` class, which serves as the primary
+ * This file contains the main `SeedManager` class, which serves as the primary
  * entry point and orchestrator for all database seeding operations.
  *
  * It extends `SeedManagerBase` to inherit core functionalities like Payload initialization
@@ -11,6 +11,8 @@
  *
  * It exposes high-level methods like `seedWithConfig` and `truncate` that can be called
  * from seed scripts or other parts of the application.
+ *
+ * @module
  */
 import { logPerformance } from "../logger";
 import { createLogger } from "../logger";
@@ -37,14 +39,14 @@ export class SeedManager extends SeedManagerBase {
 
   /**
    * Configuration-driven seeding
-   * Uses the seed.config.ts to determine what to seed and how
+   * Uses the seed.config.ts to determine what to seed and how.
    */
   async seedWithConfig(options: SeedOptions = {}) {
     return this.configDrivenSeeding.seedWithConfig(options);
   }
 
   /**
-   * Legacy seeding method (maintains backward compatibility)
+   * Legacy seeding method (maintains backward compatibility).
    */
   async seed(options: SeedOptions = {}) {
     // If useConfig is true, delegate to the new configuration-driven method

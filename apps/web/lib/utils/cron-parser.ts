@@ -18,7 +18,7 @@ interface CronParts {
 }
 
 /**
- * Parse a cron expression into its component parts
+ * Parse a cron expression into its component parts.
  */
 export const parseCronExpression = (cronExpression: string): CronParts => {
   const parts = cronExpression.trim().split(/\s+/);
@@ -49,7 +49,7 @@ const validateNumericField = (value: string, fieldName: string, min: number, max
 };
 
 /**
- * Validate cron expression parts
+ * Validate cron expression parts.
  */
 export const validateCronParts = (parts: CronParts): void => {
   validateNumericField(parts.minute, "minute", 0, 59);
@@ -60,7 +60,7 @@ export const validateCronParts = (parts: CronParts): void => {
 };
 
 /**
- * Detect the pattern type from cron expression
+ * Detect the pattern type from cron expression.
  */
 export type CronPattern = "every-minute" | "hourly" | "daily" | "weekly" | "monthly" | "complex";
 
@@ -94,7 +94,7 @@ export const detectCronPattern = (parts: CronParts): CronPattern => {
 };
 
 /**
- * Get human-readable description of cron expression
+ * Get human-readable description of cron expression.
  */
 export const describeCronExpression = (cronExpression: string): string => {
   try {

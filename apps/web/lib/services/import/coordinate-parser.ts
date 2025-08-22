@@ -5,7 +5,7 @@
  * of coordinate data that might be found in imported files. It supports common formats such as:
  * - Decimal Degrees (e.g., "40.7128")
  * - Degrees Minutes Seconds (DMS) (e.g., "40°26'46\"N")
- * - Coordinates with a directional suffix (e.g., "40.7128 N")
+ * - Coordinates with a directional suffix (e.g., "40.7128 N").
  *
  * The main export, `parseCoordinate`, attempts to parse a value using these different strategies,
  * returning a standardized decimal degree number if successful.
@@ -14,11 +14,11 @@
  */
 
 /**
- * Coordinate parsing utilities
+ * Coordinate parsing utilities.
  */
 
 /**
- * Try to parse as decimal degrees
+ * Try to parse as decimal degrees.
  */
 export const tryParseDecimal = (str: string): number | null => {
   const decimal = parseFloat(str);
@@ -26,7 +26,7 @@ export const tryParseDecimal = (str: string): number | null => {
 };
 
 /**
- * Parse DMS (Degrees Minutes Seconds) format
+ * Parse DMS (Degrees Minutes Seconds) format.
  *
  * @example
  * ```typescript
@@ -64,7 +64,7 @@ export const parseDMSFormat = (str: string): number | null => {
 };
 
 /**
- * Parse coordinate with direction (e.g., "40.7128 N")
+ * Parse coordinate with direction (e.g., "40.7128 N").
  */
 export const parseDirectionalFormat = (str: string): number | null => {
   const directionRegex = /^(-?\d{1,3}\.?\d{0,10})\s{0,2}([NSEW])$/i;
@@ -89,7 +89,7 @@ export const parseDirectionalFormat = (str: string): number | null => {
 };
 
 /**
- * Parse various coordinate formats
+ * Parse various coordinate formats.
  */
 export const parseCoordinate = (value: unknown): number | null => {
   const normalized = validateAndNormalizeInput(value);
@@ -122,7 +122,7 @@ export const parseCoordinate = (value: unknown): number | null => {
 };
 
 /**
- * Validate and normalize input value
+ * Validate and normalize input value.
  */
 const validateAndNormalizeInput = (value: unknown): string | null => {
   if (value == null || value == undefined || value === "") {
@@ -139,7 +139,7 @@ const validateAndNormalizeInput = (value: unknown): string | null => {
 };
 
 /**
- * Convert value to string safely
+ * Convert value to string safely.
  */
 const valueToString = (value: unknown): string => {
   if (value == null || value == undefined) {

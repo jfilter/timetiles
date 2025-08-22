@@ -1,5 +1,5 @@
 /**
- * @module Defines the main GeocodingService class, the public interface for all geocoding operations.
+ * Defines the main GeocodingService class, the public interface for all geocoding operations.
  *
  * This class acts as a facade, orchestrating the various components of the geocoding system,
  * including the provider manager, cache manager, and the core operations logic. It is responsible
@@ -8,6 +8,8 @@
  *
  * The service is designed to be initialized once and then used throughout the application.
  * It handles loading settings and provider configurations from the database and environment variables.
+ *
+ * @module
  */
 import type { Payload } from "payload";
 

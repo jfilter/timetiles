@@ -1,11 +1,13 @@
 /**
- * @module This file contains the seed data for the Events collection.
+ * This file contains the seed data for the Events collection.
  *
  * It programmatically generates a large number of event records with realistic and varied
  * data. The generation logic is designed to create events that are associated with the
  * datasets defined in `datasets.ts`, and it uses utility functions to produce plausible
  * metadata, geographic coordinates, and timestamps. This ensures a rich and diverse
  * dataset for development and testing purposes.
+ *
+ * @module
  */
 import type { Event } from "@/payload-types";
 

@@ -7,7 +7,7 @@
  * geocoding integrity, and error recovery scenarios. Verifies that imported data
  * maintains consistency and correctness throughout the processing pipeline.
  * Uses node environment instead of jsdom to avoid AbortController compatibility issues
- * with Node 24's native fetch API.
+ * with Node 24's native fetch API..
  *
  * @module
  * @category Tests

@@ -1,14 +1,16 @@
 /**
- * @module This file contains the `DatabaseOperations` class, which provides efficient
+ * This file contains the `DatabaseOperations` class, which provides efficient
  * methods for performing bulk database operations during the seeding process.
  *
  * It is designed to maximize performance by using direct SQL commands like `TRUNCATE`
  * when possible, with fallbacks to Payload's API for broader compatibility. This
  * approach is particularly important for clearing collections before seeding new data.
+ *
+ * @module
  */
 
 /**
- * DatabaseOperations
+ * DatabaseOperations.
  *
  * Efficient bulk operations for the seeding system. Implements SQL TRUNCATE
  * with CASCADE fallback and batch operations for maximum performance.
@@ -37,7 +39,7 @@ export class DatabaseOperations {
   constructor(private readonly payload: Payload) {}
 
   /**
-   * Efficiently truncate a collection using SQL TRUNCATE with CASCADE fallback
+   * Efficiently truncate a collection using SQL TRUNCATE with CASCADE fallback.
    */
   async truncateCollectionEfficient(collection: string): Promise<BatchOperationResult> {
     const startTime = performance.now();
@@ -106,7 +108,7 @@ export class DatabaseOperations {
   // getCollectionStats function removed - was not used anywhere in codebase
 
   /**
-   * SQL TRUNCATE with CASCADE - most efficient method
+   * SQL TRUNCATE with CASCADE - most efficient method.
    */
   private async sqlTruncateWithCascade(collection: string): Promise<{
     success: boolean;
@@ -152,7 +154,7 @@ export class DatabaseOperations {
   }
 
   /**
-   * Execute SQL batch delete
+   * Execute SQL batch delete.
    */
   private async executeSqlBatchDelete(
     collection: string,
@@ -172,7 +174,7 @@ export class DatabaseOperations {
   }
 
   /**
-   * Process individual deletes for a batch
+   * Process individual deletes for a batch.
    */
   private async processIndividualDeletes(
     items: Array<{ id: string }>,
@@ -214,7 +216,7 @@ export class DatabaseOperations {
   }
 
   /**
-   * Process a single batch of items for deletion
+   * Process a single batch of items for deletion.
    */
   private async processDeletionBatch(
     items: Array<{ id: string }>,
@@ -251,7 +253,7 @@ export class DatabaseOperations {
   }
 
   /**
-   * Bulk delete fallback method
+   * Bulk delete fallback method.
    */
   private async bulkDeleteCollection(collection: string): Promise<{
     success: boolean;
@@ -304,7 +306,7 @@ export class DatabaseOperations {
   }
 
   /**
-   * Get collection count efficiently
+   * Get collection count efficiently.
    */
   private async getCollectionCount(collection: string): Promise<number> {
     try {
@@ -323,7 +325,7 @@ export class DatabaseOperations {
   }
 
   /**
-   * Fallback individual deletes when SQL batch fails
+   * Fallback individual deletes when SQL batch fails.
    */
   private async fallbackIndividualDeletes(
     items: { id: string | number }[],
@@ -374,6 +376,6 @@ export class DatabaseOperations {
 }
 
 /**
- * Convenience function to create DatabaseOperations instance
+ * Convenience function to create DatabaseOperations instance.
  */
 export const createDatabaseOperations = (payload: Payload): DatabaseOperations => new DatabaseOperations(payload);

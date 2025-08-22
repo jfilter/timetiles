@@ -1,13 +1,15 @@
 /**
- * @module Defines constants used throughout the data import processing system.
+ * Defines constants used throughout the data import processing system.
  *
  * This file centralizes constant values to prevent string duplication and provide a single
  * source of truth for statuses, stages, job types, and collection names related to the
  * import pipeline. This improves maintainability and reduces the risk of typos.
+ *
+ * @module
  */
 
 /**
- * Constants for import processing to avoid string duplication
+ * Constants for import processing to avoid string duplication.
  */
 
 export const IMPORT_STATUS = {

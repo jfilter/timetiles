@@ -1,5 +1,5 @@
 /**
- * @module This file defines the configuration for resolving relationships between collections
+ * This file defines the configuration for resolving relationships between collections
  * during the seeding process.
  *
  * It provides a centralized, declarative way to specify how relationships should be handled,
@@ -9,10 +9,12 @@
  *
  * It also includes a function to determine the correct seeding order of collections based
  * on these defined dependencies, ensuring data integrity.
+ *
+ * @module
  */
 
 /**
- * Relationship Configuration System
+ * Relationship Configuration System.
  *
  * This file defines the configuration for resolving relationships between collections
  * during the seeding process. It replaces the hardcoded relationship mappings
@@ -35,7 +37,7 @@ export interface RelationshipConfig {
 }
 
 /**
- * Configuration for all collection relationships
+ * Configuration for all collection relationships.
  *
  * This replaces the massive hardcoded switch statement in the original code
  * with a clean, maintainable configuration structure.
@@ -145,14 +147,14 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
 };
 
 /**
- * Get relationship configuration for a collection
+ * Get relationship configuration for a collection.
  */
 export const getRelationshipConfig = (collection: string): RelationshipConfig[] =>
   RELATIONSHIP_CONFIG[collection] ?? [];
 
 /**
  * Validate relationship configuration
- * Ensures all required fields are present and configuration is valid
+ * Ensures all required fields are present and configuration is valid.
  */
 export const validateRelationshipConfig = (): void => {
   const errors: string[] = [];
@@ -177,13 +179,13 @@ export const validateRelationshipConfig = (): void => {
 };
 
 /**
- * Get all collections that have relationship dependencies
+ * Get all collections that have relationship dependencies.
  */
 export const getCollectionsWithRelationships = (): string[] => Object.keys(RELATIONSHIP_CONFIG);
 
 /**
  * Get dependency order for collections
- * Returns collections in the order they should be seeded (dependencies first)
+ * Returns collections in the order they should be seeded (dependencies first).
  */
 export const getDependencyOrder = (collections: string[]): string[] => {
   const dependencies = new Map<string, string[]>();

@@ -1,5 +1,5 @@
 /**
- * URL Fetch Job Handler
+ * URL Fetch Job Handler.
  *
  * This job handles fetching data from URLs for URL-based and scheduled imports.
  * It downloads the data, saves it to the file system, and updates the import-files
@@ -48,7 +48,7 @@ interface ImportContext {
 }
 
 /**
- * Handles successful fetch and creates import file
+ * Handles successful fetch and creates import file.
  */
 const handleFetchSuccess = async (
   payload: Payload,

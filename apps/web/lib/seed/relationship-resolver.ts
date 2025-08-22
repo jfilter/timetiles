@@ -1,5 +1,5 @@
 /**
- * @module This file contains the `RelationshipResolver` class, which is responsible for
+ * This file contains the `RelationshipResolver` class, which is responsible for
  * dynamically resolving relationships between different collections during the seeding process.
  *
  * It uses a configuration-driven approach to understand how collections are related.
@@ -9,10 +9,12 @@
  * established in the database.
  *
  * It also includes caching to improve performance by avoiding redundant database queries.
+ *
+ * @module
  */
 
 /**
- * RelationshipResolver
+ * RelationshipResolver.
  *
  * This class handles dynamic resolution of relationships between collections
  * during the seeding process. It replaces the hardcoded relationship mappings
@@ -50,7 +52,7 @@ export class RelationshipResolver {
   }
 
   /**
-   * Resolve relationships for multiple items in a collection
+   * Resolve relationships for multiple items in a collection.
    */
   async resolveCollectionRelationships(items: Record<string, unknown>[], collection: string): Promise<ResolvedItem[]> {
     const startTime = performance.now();
@@ -118,7 +120,7 @@ export class RelationshipResolver {
   }
 
   /**
-   * Resolve relationships for a single item
+   * Resolve relationships for a single item.
    */
   async resolveItemRelationships(
     item: Record<string, unknown>,
@@ -167,7 +169,7 @@ export class RelationshipResolver {
   }
 
   /**
-   * Validate field value and return validation result
+   * Validate field value and return validation result.
    */
   private validateFieldValue(
     value: unknown,
@@ -223,7 +225,7 @@ export class RelationshipResolver {
   }
 
   /**
-   * Process a single relationship field
+   * Process a single relationship field.
    */
   private async processRelationshipField(
     originalValue: string,
@@ -251,7 +253,7 @@ export class RelationshipResolver {
   }
 
   /**
-   * Process an array relationship field (hasMany: true)
+   * Process an array relationship field (hasMany: true).
    */
   private async processArrayRelationshipField(
     originalValues: string[],
@@ -290,7 +292,7 @@ export class RelationshipResolver {
   }
 
   /**
-   * Handle cases where related item is not found
+   * Handle cases where related item is not found.
    */
   private handleMissingRelationship(
     originalValue: string,
@@ -305,7 +307,7 @@ export class RelationshipResolver {
   }
 
   /**
-   * Handle missing required relationship
+   * Handle missing required relationship.
    */
   private handleMissingRequiredRelationship(
     originalValue: string,
@@ -334,7 +336,7 @@ export class RelationshipResolver {
   }
 
   /**
-   * Handle missing optional relationship
+   * Handle missing optional relationship.
    */
   private handleMissingOptionalRelationship(
     originalValue: string,
@@ -353,7 +355,7 @@ export class RelationshipResolver {
   }
 
   /**
-   * Find a related item using the configuration
+   * Find a related item using the configuration.
    */
   private async findRelatedItem(searchValue: string, config: RelationshipConfig): Promise<unknown> {
     // Apply transformation if configured
@@ -398,7 +400,7 @@ export class RelationshipResolver {
   }
 
   /**
-   * Search for an item in a collection
+   * Search for an item in a collection.
    */
   private async searchCollection(collection: string, field: string, value: string) {
     try {
@@ -422,7 +424,7 @@ export class RelationshipResolver {
   }
 
   /**
-   * Preload related items into cache for better performance
+   * Preload related items into cache for better performance.
    */
   async preloadCache(collections: string[]): Promise<void> {
     logger.info("Preloading relationship cache", { collections });
@@ -468,7 +470,7 @@ export class RelationshipResolver {
   }
 
   /**
-   * Clear the cache
+   * Clear the cache.
    */
   clearCache(): void {
     this.cache.clear();
@@ -476,17 +478,17 @@ export class RelationshipResolver {
   }
 
   /**
-   * Get resolution statistics
+   * Get resolution statistics.
    */
   getStats(): Map<string, ResolutionStats> {
     return new Map(this.stats);
   }
 
   /**
-   * Get cache statistics
+   * Get cache statistics.
    */
   /**
-   * Convert a value to string representation for cache keys
+   * Convert a value to string representation for cache keys.
    */
   private convertToStringValue(value: unknown): string {
     if (typeof value === "string") return value;

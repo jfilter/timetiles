@@ -1,8 +1,10 @@
 /**
- * @module This file contains the seed data for the Import Jobs collection.
+ * This file contains the seed data for the Import Jobs collection.
  *
  * It defines a set of predefined import job entries that represent individual processing jobs
  * for imported data files. Each job tracks the processing pipeline from detection to completion.
+ *
+ * @module
  */
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 

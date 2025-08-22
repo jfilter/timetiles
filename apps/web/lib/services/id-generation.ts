@@ -1,5 +1,5 @@
 /**
- * @module Provides a service for generating unique identifiers for events.
+ * Provides a service for generating unique identifiers for events.
  *
  * This service is responsible for creating consistent and unique IDs for event records based on
  * a dataset's configured ID strategy. It supports several strategies:
@@ -9,6 +9,8 @@
  * - `hybrid`: Attempts to use an external ID first and falls back to a computed ID.
  *
  * The service includes helpers for extracting values from nested objects and sanitizing IDs.
+ *
+ * @module
  */
 import { createHash, randomBytes } from "crypto";
 

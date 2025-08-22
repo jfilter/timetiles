@@ -28,7 +28,7 @@ import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
 
 /**
- * Updates import file status based on the status of all associated jobs
+ * Updates import file status based on the status of all associated jobs.
  */
 
 const updateImportFileStatusIfAllJobsComplete = async (

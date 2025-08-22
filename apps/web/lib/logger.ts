@@ -1,5 +1,5 @@
 /**
- * @module Configures the application's logging system using the `pino` library.
+ * Configures the application's logging system using the `pino` library.
  *
  * This module sets up a structured, high-performance logger. It is configured to:
  * - Use pretty-printing for readability in development environments.
@@ -7,6 +7,8 @@
  * - Control log levels based on the environment (e.g., `debug` in dev, `info` in prod).
  * - Provide helper functions to create specialized child loggers for requests, jobs,
  *   performance monitoring, and error reporting.
+ *
+ * @module
  */
 import pino from "pino";
 

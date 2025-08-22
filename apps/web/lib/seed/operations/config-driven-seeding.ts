@@ -1,5 +1,5 @@
 /**
- * @module This file contains the `ConfigDrivenSeeding` class, which implements the logic
+ * This file contains the `ConfigDrivenSeeding` class, which implements the logic
  * for the configuration-driven seeding process.
  *
  * It is responsible for:
@@ -8,6 +8,8 @@
  * - Orchestrating the seeding process by calling the appropriate methods on the `SeedManager`
  *   for each collection, applying any configuration overrides.
  * - Logging the start and completion of the seeding process.
+ *
+ * @module
  */
 import { createLogger } from "@/lib/logger";
 import { logPerformance } from "@/lib/logger";

@@ -1,5 +1,5 @@
 /**
- * @module Defines the Payload CMS collection configuration for the Location Cache.
+ * Defines the Payload CMS collection configuration for the Location Cache.
  *
  * This collection serves as a cache for geocoding results to reduce redundant API calls
  * to external services and improve performance. When an address is successfully geocoded,
@@ -8,6 +8,8 @@
  * Before attempting to geocode a new address, the system first checks this collection
  * for a matching entry. This collection stores the original address, the resulting coordinates,
  * the provider that supplied the data, and other useful metadata like usage statistics.
+ *
+ * @module
  */
 import type { CollectionConfig } from "payload";
 

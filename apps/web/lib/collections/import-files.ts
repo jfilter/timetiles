@@ -1,5 +1,5 @@
 /**
- * @module Defines the Payload CMS collection configuration for Import Files.
+ * Defines the Payload CMS collection configuration for Import Files.
  *
  * This collection acts as a record for every file uploaded to the system for data import.
  * It leverages Payload's `upload` functionality to store the file itself, while also tracking
@@ -12,6 +12,8 @@
  *
  * An `afterChange` hook is used to automatically trigger the `dataset-detection` job
  * as soon as a new file is uploaded and created in this collection.
+ *
+ * @module
  */
 import type { CollectionConfig } from "payload";
 import { v4 as uuidv4 } from "uuid";

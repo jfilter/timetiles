@@ -137,7 +137,7 @@ const addProductionConfig = (
 };
 
 /**
- * Creates a Payload configuration with the specified options
+ * Creates a Payload configuration with the specified options.
  */
 export const createPayloadConfig = async (options: PayloadConfigOptions = {}) => {
   const {
@@ -189,7 +189,7 @@ export const createPayloadConfig = async (options: PayloadConfigOptions = {}) =>
 };
 
 /**
- * Creates a production Payload configuration
+ * Creates a production Payload configuration.
  */
 export const createProductionConfig = async () =>
   createPayloadConfig({
@@ -197,7 +197,7 @@ export const createProductionConfig = async () =>
   });
 
 /**
- * Creates a test Payload configuration with sensible defaults
+ * Creates a test Payload configuration with sensible defaults.
  */
 export const createTestConfig = async (options: Partial<PayloadConfigOptions> = {}) =>
   createPayloadConfig({
@@ -212,7 +212,7 @@ export const createTestConfig = async (options: Partial<PayloadConfigOptions> = 
   });
 
 /**
- * Creates a minimal test configuration for unit tests
+ * Creates a minimal test configuration for unit tests.
  */
 export const createMinimalTestConfig = async (options: Partial<PayloadConfigOptions> = {}) =>
   createPayloadConfig({

@@ -34,7 +34,7 @@ export class ScheduleService {
   }
 
   /**
-   * Starts the schedule service
+   * Starts the schedule service.
    */
   start(): void {
     if (this.intervalId !== null || !this.config.enabled) {
@@ -64,7 +64,7 @@ export class ScheduleService {
   }
 
   /**
-   * Stops the schedule service
+   * Stops the schedule service.
    */
   stop(): void {
     if (!this.intervalId) {
@@ -89,7 +89,7 @@ export class ScheduleService {
   }
 
   /**
-   * Manually trigger the schedule manager
+   * Manually trigger the schedule manager.
    */
   async triggerScheduleManager(): Promise<void> {
     if (this.isRunning) {
@@ -101,7 +101,7 @@ export class ScheduleService {
   }
 
   /**
-   * Gets the current status of the schedule service
+   * Gets the current status of the schedule service.
    */
   getStatus(): {
     isRunning: boolean;
@@ -116,7 +116,7 @@ export class ScheduleService {
   }
 
   /**
-   * Runs the schedule manager job
+   * Runs the schedule manager job.
    */
   private async runScheduleManager(): Promise<void> {
     if (this.isRunning || this.isShuttingDown) {
@@ -147,7 +147,7 @@ export class ScheduleService {
 let scheduleServiceInstance: ScheduleService | null = null;
 
 /**
- * Gets or creates the schedule service instance
+ * Gets or creates the schedule service instance.
  */
 export const getScheduleService = (payload: Payload, config?: ScheduleServiceConfig): ScheduleService => {
   if (!scheduleServiceInstance) {
@@ -157,7 +157,7 @@ export const getScheduleService = (payload: Payload, config?: ScheduleServiceCon
 };
 
 /**
- * Starts the schedule service with the given Payload instance
+ * Starts the schedule service with the given Payload instance.
  */
 export const startScheduleService = (payload: Payload, config?: ScheduleServiceConfig): ScheduleService => {
   const service = getScheduleService(payload, config);
@@ -166,7 +166,7 @@ export const startScheduleService = (payload: Payload, config?: ScheduleServiceC
 };
 
 /**
- * Stops the schedule service
+ * Stops the schedule service.
  */
 export const stopScheduleService = (): void => {
   if (scheduleServiceInstance) {

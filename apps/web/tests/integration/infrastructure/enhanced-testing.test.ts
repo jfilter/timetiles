@@ -1,11 +1,11 @@
 /**
- * Enhanced Testing Infrastructure Integration Test
+ * Enhanced Testing Infrastructure Integration Test.
  *
  * Tests all the testing infrastructure improvements:
  * - TestEnvironmentBuilder
  * - Enhanced test utilities with builder patterns
  * - Geospatial assertion helpers
- * - Efficient database operations
+ * - Efficient database operations.
  *
  * @module
  * @category Integration Tests

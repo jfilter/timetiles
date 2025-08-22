@@ -1,5 +1,5 @@
 /**
- * @module Provides shared, reusable components for defining Payload CMS collections.
+ * Provides shared, reusable components for defining Payload CMS collections.
  *
  * This module contains helper functions and constant definitions to promote consistency
  * and reduce boilerplate code across different collection configurations. It includes:
@@ -8,6 +8,8 @@
  * - A factory function (`createSlugField`) for generating URL-friendly slugs.
  * - A factory function (`createCommonConfig`) to apply standard collection-level settings
  *   like timestamps, versioning, and drafts.
+ *
+ * @module
  */
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import type { Access, Field } from "payload";

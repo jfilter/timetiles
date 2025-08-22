@@ -1,5 +1,5 @@
 /**
- * Test Server Utilities
+ * Test Server Utilities.
  *
  * Provides reusable HTTP server creation and management for integration tests.
  * Supports various response scenarios including auth, delays, errors, and streaming.
@@ -29,7 +29,7 @@ export interface ResponseConfig {
 export type RouteHandler = (req: IncomingMessage, res: ServerResponse) => void | Promise<void>;
 
 /**
- * TestServer class for creating configurable HTTP servers for testing
+ * TestServer class for creating configurable HTTP servers for testing.
  */
 export class TestServer {
   private server: Server | null = null;
@@ -44,14 +44,14 @@ export class TestServer {
   }
 
   /**
-   * Get a random port between 40000 and 50000
+   * Get a random port between 40000 and 50000.
    */
   private getRandomPort(): number {
     return Math.floor(Math.random() * 10000) + 40000;
   }
 
   /**
-   * Add a route handler
+   * Add a route handler.
    */
   route(path: string, handler: RouteHandler): this {
     this.routes.set(path, handler);
@@ -59,7 +59,7 @@ export class TestServer {
   }
 
   /**
-   * Add a route that returns a specific response
+   * Add a route that returns a specific response.
    */
   respond(path: string, config: ResponseConfig): this {
     this.routes.set(path, async (req, res) => {
@@ -95,7 +95,7 @@ export class TestServer {
   }
 
   /**
-   * Add CSV response
+   * Add CSV response.
    */
   respondWithCSV(path: string, csvData: string, options: Partial<ResponseConfig> = {}): this {
     return this.respond(path, {
@@ -110,7 +110,7 @@ export class TestServer {
   }
 
   /**
-   * Add JSON response
+   * Add JSON response.
    */
   respondWithJSON(path: string, jsonData: any, options: Partial<ResponseConfig> = {}): this {
     const jsonString = JSON.stringify(jsonData);
@@ -126,7 +126,7 @@ export class TestServer {
   }
 
   /**
-   * Add file response from fixtures
+   * Add file response from fixtures.
    */
   respondWithFile(routePath: string, fixturePath: string, contentType: string): this {
     const fullPath = path.join(__dirname, "../fixtures", fixturePath);
@@ -141,7 +141,7 @@ export class TestServer {
   }
 
   /**
-   * Add authentication-protected route
+   * Add authentication-protected route.
    */
   respondWithAuth(
     path: string,
@@ -187,7 +187,7 @@ export class TestServer {
   }
 
   /**
-   * Add rate-limited route
+   * Add rate-limited route.
    */
   respondWithRateLimit(path: string, maxRequests: number, windowMs: number, successResponse: ResponseConfig): this {
     const requests = new Map<string, { count: number; resetTime: number }>();
@@ -223,7 +223,7 @@ export class TestServer {
   }
 
   /**
-   * Add streaming response
+   * Add streaming response.
    */
   respondWithStream(path: string, chunks: Array<string | Buffer>, chunkDelayMs: number = 100): this {
     this.routes.set(path, async (_req, res) => {
@@ -242,7 +242,7 @@ export class TestServer {
   }
 
   /**
-   * Set default handler for unmatched routes
+   * Set default handler for unmatched routes.
    */
   setDefaultHandler(handler: RouteHandler): this {
     this.defaultHandler = handler;
@@ -250,7 +250,7 @@ export class TestServer {
   }
 
   /**
-   * Start the server
+   * Start the server.
    */
   async start(): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -302,7 +302,7 @@ export class TestServer {
   }
 
   /**
-   * Stop the server
+   * Stop the server.
    */
   async stop(): Promise<void> {
     return new Promise((resolve) => {
@@ -318,14 +318,14 @@ export class TestServer {
   }
 
   /**
-   * Get the server URL
+   * Get the server URL.
    */
   get url(): string {
     return `http://${this.host}:${this.port}`;
   }
 
   /**
-   * Get URL for a specific path
+   * Get URL for a specific path.
    */
   getUrl(path: string): string {
     return `${this.url}${path}`;
@@ -333,7 +333,7 @@ export class TestServer {
 }
 
 /**
- * Create a simple test server with a single response
+ * Create a simple test server with a single response.
  */
 export const createSimpleTestServer = async (
   response: ResponseConfig
@@ -352,7 +352,7 @@ export const createSimpleTestServer = async (
 };
 
 /**
- * Create a test server that simulates network errors
+ * Create a test server that simulates network errors.
  */
 export const createErrorTestServer = (): TestServer =>
   new TestServer()
@@ -362,7 +362,7 @@ export const createErrorTestServer = (): TestServer =>
     .respond("/404", { status: 404, body: "Not Found" });
 
 /**
- * Create a test server with common CSV endpoints
+ * Create a test server with common CSV endpoints.
  */
 export const createCSVTestServer = (): TestServer => {
   const server = new TestServer();

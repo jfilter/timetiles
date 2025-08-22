@@ -1,5 +1,5 @@
 /**
- * Geospatial Assertion Helpers
+ * Geospatial Assertion Helpers.
  *
  * Custom assertion helpers for geospatial data testing.
  * Extends Vitest's expect with specialized matchers for coordinates,
@@ -24,7 +24,7 @@ export interface BoundingBox {
 }
 
 /**
- * Calculate the distance between two points using the Haversine formula
+ * Calculate the distance between two points using the Haversine formula.
  */
 export const calculateDistance = (point1: Coordinates, point2: Coordinates): number => {
   const R = 6371; // Earth's radius in kilometers
@@ -43,7 +43,7 @@ export const calculateDistance = (point1: Coordinates, point2: Coordinates): num
 };
 
 /**
- * Check if a point is within a bounding box
+ * Check if a point is within a bounding box.
  */
 export const isWithinBounds = (point: Coordinates, bounds: BoundingBox): boolean =>
   point.latitude >= bounds.south &&
@@ -52,7 +52,7 @@ export const isWithinBounds = (point: Coordinates, bounds: BoundingBox): boolean
   point.longitude <= bounds.east;
 
 /**
- * Generate a random point within a radius of a center point
+ * Generate a random point within a radius of a center point.
  */
 export const generateRandomPointWithinRadius = (center: Coordinates, radiusKm: number): Coordinates => {
   const radiusDeg = radiusKm / 111; // Rough conversion: 1 degree ≈ 111 km
@@ -66,7 +66,7 @@ export const generateRandomPointWithinRadius = (center: Coordinates, radiusKm: n
 };
 
 /**
- * Create a bounding box around a center point with given radius
+ * Create a bounding box around a center point with given radius.
  */
 export const createBoundingBox = (center: Coordinates, radiusKm: number): BoundingBox => {
   const radiusDeg = radiusKm / 111; // Rough conversion
@@ -80,7 +80,7 @@ export const createBoundingBox = (center: Coordinates, radiusKm: number): Boundi
 };
 
 /**
- * Calculate the center point of multiple coordinates
+ * Calculate the center point of multiple coordinates.
  */
 export const calculateCentroid = (points: Coordinates[]): Coordinates => {
   if (points.length === 0) {
@@ -102,7 +102,7 @@ export const calculateCentroid = (points: Coordinates[]): Coordinates => {
 };
 
 /**
- * Find the furthest distance between any two points in an array
+ * Find the furthest distance between any two points in an array.
  */
 export const findMaxDistance = (points: Coordinates[]): number => {
   if (points.length < 2) return 0;
@@ -124,7 +124,7 @@ export const findMaxDistance = (points: Coordinates[]): number => {
 };
 
 /**
- * Check if coordinates are valid (within Earth's bounds)
+ * Check if coordinates are valid (within Earth's bounds).
  */
 export const areValidCoordinates = (coords: Coordinates): boolean =>
   coords.latitude >= -90 &&
@@ -290,18 +290,18 @@ expect.extend({
 });
 
 /**
- * Helper class for creating complex geospatial test scenarios
+ * Helper class for creating complex geospatial test scenarios.
  */
 export class GeospatialTestHelper {
   /**
-   * Create a cluster of points around a center
+   * Create a cluster of points around a center.
    */
   static createCluster(center: Coordinates, count: number, radiusKm: number): Coordinates[] {
     return Array.from({ length: count }, () => generateRandomPointWithinRadius(center, radiusKm));
   }
 
   /**
-   * Create multiple clusters in different locations
+   * Create multiple clusters in different locations.
    */
   static createMultipleClusters(
     centers: Coordinates[],
@@ -312,7 +312,7 @@ export class GeospatialTestHelper {
   }
 
   /**
-   * Create a grid of points for testing spatial queries
+   * Create a grid of points for testing spatial queries.
    */
   static createGrid(southWest: Coordinates, northEast: Coordinates, rows: number, cols: number): Coordinates[] {
     const points: Coordinates[] = [];
@@ -332,7 +332,7 @@ export class GeospatialTestHelper {
   }
 
   /**
-   * Create a line of points between two coordinates
+   * Create a line of points between two coordinates.
    */
   static createLine(start: Coordinates, end: Coordinates, pointCount: number): Coordinates[] {
     const points: Coordinates[] = [];
@@ -350,7 +350,7 @@ export class GeospatialTestHelper {
   }
 
   /**
-   * Create random points within a bounding box
+   * Create random points within a bounding box.
    */
   static createRandomPoints(bounds: BoundingBox, count: number): Coordinates[] {
     return Array.from({ length: count }, () => ({
@@ -360,7 +360,7 @@ export class GeospatialTestHelper {
   }
 
   /**
-   * Validate that a set of coordinates form a realistic geographical distribution
+   * Validate that a set of coordinates form a realistic geographical distribution.
    */
   static validateDistribution(points: Coordinates[]): {
     isValid: boolean;

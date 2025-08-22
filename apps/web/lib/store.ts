@@ -1,5 +1,5 @@
 /**
- * @module This file defines the application's global state management using Zustand.
+ * This file defines the application's global state management using Zustand.
  *
  * It sets up a store for UI state that is not managed via URL query parameters, such as
  * the state of drawers, map bounds, and the currently selected theme. The store is configured
@@ -8,6 +8,8 @@
  *
  * Additionally, it includes helper functions for managing the filter state that *is*
  * stored in the URL, providing a centralized place for filter-related logic.
+ *
+ * @module
  */
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";

@@ -1,9 +1,11 @@
 /**
- * @module This file contains the seed data for the Catalogs collection.
+ * This file contains the seed data for the Catalogs collection.
  *
  * It defines a set of predefined catalog entries that can be used to populate the database
  * for different environments (e.g., development, testing). This ensures a consistent and
  * realistic set of high-level data categories is available for organizing datasets.
+ *
+ * @module
  */
 import type { Catalog } from "@/payload-types";
 

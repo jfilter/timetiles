@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
  *
- * Security Validation Tests for Scheduled Imports
+ * Security Validation Tests for Scheduled Imports.
  *
  * Tests various security scenarios including:
  * - Authentication validation
@@ -10,7 +10,7 @@
  * - URL validation and SSRF prevention
  * - Sensitive data handling
  * Uses node environment instead of jsdom to avoid AbortController compatibility issues
- * with Node 24's native fetch API.
+ * with Node 24's native fetch API..
  *
  * @module
  */

@@ -1,9 +1,10 @@
 /**
- * @module schedule-service-api
- * Schedule Service Management API
+ * Schedule Service Management API..
  *
  * Provides endpoints to manage the schedule service for automated imports.
  * Requires admin authentication.
+ *
+ * @module
  */
 
 import config from "@payload-config";
@@ -21,8 +22,8 @@ const AUTH_STATUS = 401;
 const ERROR_STATUS = 500;
 
 /**
- * GET /api/admin/schedule-service
- * Returns the current status of the schedule service
+ * GET /api/admin/schedule-service.
+ * Returns the current status of the schedule service.
  */
 export const GET = async (request: NextRequest): Promise<NextResponse> => {
   try {
@@ -48,8 +49,8 @@ export const GET = async (request: NextRequest): Promise<NextResponse> => {
 };
 
 /**
- * POST /api/admin/schedule-service/start
- * Starts the schedule service
+ * POST /api/admin/schedule-service/start.
+ * Starts the schedule service.
  */
 export const POST = async (request: NextRequest): Promise<NextResponse> => {
   try {
@@ -84,8 +85,8 @@ export const POST = async (request: NextRequest): Promise<NextResponse> => {
 };
 
 /**
- * DELETE /api/admin/schedule-service
- * Stops the schedule service
+ * DELETE /api/admin/schedule-service.
+ * Stops the schedule service.
  */
 export const DELETE = (request: NextRequest): NextResponse => {
   try {

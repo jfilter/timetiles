@@ -1,5 +1,5 @@
 /**
- * @module Defines the Payload CMS collection configuration for Events.
+ * Defines the Payload CMS collection configuration for Events.
  *
  * The Events collection is the core data storage for all time-based and location-based information.
  * Each document in this collection represents a single event or data point. It is designed to be flexible,
@@ -12,6 +12,8 @@
  * - Information about the geocoding process.
  * - Unique identifiers for deduplication and linking to source data.
  * - Relationships to the parent dataset, import job, and schema version.
+ *
+ * @module
  */
 import type { CollectionConfig } from "payload";
 

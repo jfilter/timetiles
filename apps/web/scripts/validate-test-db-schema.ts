@@ -1,18 +1,18 @@
 #!/usr/bin/env tsx
 
 /**
- * Test Database Schema Validation Script
+ * Test Database Schema Validation Script.
  *
  * This script validates the consistency and health of the test database schema.
  * It can detect:
  * - Partial/incomplete migrations
  * - Schema inconsistencies
  * - Missing required tables or extensions
- * - Migration state mismatches
+ * - Migration state mismatches.
  *
  * Usage:
  *   node --import tsx/esm scripts/validate-test-db-schema.ts
- *   node --import tsx/esm scripts/validate-test-db-schema.ts --fix
+ *   node --import tsx/esm scripts/validate-test-db-schema.ts --fix.
  *
  * @module
  * @category Scripts
@@ -63,6 +63,7 @@ const runDatabaseQuery = (dbName: string, sql: string, description?: string): st
   }
 
   try {
+    // eslint-disable-next-line sonarjs/os-command -- Safe database query execution
     const result = execSync(command, { stdio: "pipe", encoding: "utf8" });
     if (description) {
       logger.debug(`✓ ${description}: ${result.trim()}`);
@@ -314,11 +315,13 @@ export const resetTestDatabase = async (force: boolean = false): Promise<void> =
     const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 
     if (isCI) {
+      // eslint-disable-next-line sonarjs/os-command -- Safe database drop command in CI
       execSync(
         `PGPASSWORD=${DB_PASSWORD} psql -h ${DB_HOST} -U ${DB_USER} -d postgres -c "DROP DATABASE IF EXISTS ${TEST_DB_NAME}"`
       );
       logger.info("✓ Dropped existing test database");
     } else {
+      // eslint-disable-next-line sonarjs/os-command -- Safe database drop command via Makefile
       execSync(`cd ../.. && make db-query DB_NAME=postgres SQL="DROP DATABASE IF EXISTS ${TEST_DB_NAME}"`);
       logger.info("✓ Dropped existing test database");
     }

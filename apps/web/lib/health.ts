@@ -1,5 +1,5 @@
 /**
- * @module Provides a comprehensive health check service for the application.
+ * Provides a comprehensive health check service for the application.
  *
  * This module defines a set of functions to check the status of various critical
  * components of the application infrastructure, including:
@@ -12,6 +12,8 @@
  *
  * The main export, `runHealthChecks`, orchestrates these checks and returns a
  * summary of the system's overall health.
+ *
+ * @module
  */
 import { sql } from "@payloadcms/db-postgres";
 import fs from "fs/promises";

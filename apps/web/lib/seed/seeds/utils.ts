@@ -1,5 +1,5 @@
 /**
- * @module This file contains utility functions for generating realistic and varied seed data.
+ * This file contains utility functions for generating realistic and varied seed data.
  *
  * It provides a set of helpers that are used by the individual seed files (e.g., `events.ts`,
  * `datasets.ts`) to create mock data that mimics real-world scenarios. This includes:
@@ -7,14 +7,16 @@
  * - Creating structured metadata based on different schema types.
  * - Determining the number of items to generate for different collections based on their type.
  * - Providing predefined schemas and geographic regions to ensure consistency.
+ *
+ * @module
  */
 
 /**
- * Utility functions for generating realistic seed data
+ * Utility functions for generating realistic seed data.
  */
 
 /**
- * Dataset metadata schemas for different catalog types
+ * Dataset metadata schemas for different catalog types.
  */
 export const DATASET_SCHEMAS = {
   government: {
@@ -104,7 +106,7 @@ export const DATASET_SCHEMAS = {
 };
 
 /**
- * Geographic regions with realistic coordinate bounds
+ * Geographic regions with realistic coordinate bounds.
  */
 export const GEOGRAPHIC_REGIONS = {
   "new-york-metro": {
@@ -174,7 +176,7 @@ export const GEOGRAPHIC_REGIONS = {
 };
 
 /**
- * Generate a random coordinate within bounds with optional clustering
+ * Generate a random coordinate within bounds with optional clustering.
  */
 export const generateCoordinate = (
   region: keyof typeof GEOGRAPHIC_REGIONS,
@@ -211,7 +213,7 @@ export const generateCoordinate = (
 };
 
 /**
- * Determine number of datasets for a catalog based on its type
+ * Determine number of datasets for a catalog based on its type.
  */
 export const getDatasetsPerCatalog = (catalogIndex: number, catalogType: string): number => {
   // Deterministic but varied distribution
@@ -232,7 +234,7 @@ export const getDatasetsPerCatalog = (catalogIndex: number, catalogType: string)
 };
 
 /**
- * Determine number of events for a dataset based on its characteristics
+ * Determine number of events for a dataset based on its characteristics.
  */
 export const getEventsPerDataset = (datasetIndex: number, datasetName: string): number => {
   const name = datasetName.toLowerCase();
@@ -256,7 +258,7 @@ export const getEventsPerDataset = (datasetIndex: number, datasetName: string): 
 };
 
 /**
- * Generate government metadata
+ * Generate government metadata.
  */
 const generateGovernmentMetadata = (index: number): Record<string, unknown> => {
   const agencies = ["EPA", "DOT", "HUD", "CDC", "FEMA"];
@@ -276,7 +278,7 @@ const generateGovernmentMetadata = (index: number): Record<string, unknown> => {
 };
 
 /**
- * Generate environmental metadata
+ * Generate environmental metadata.
  */
 const generateEnvironmentalMetadata = (index: number): Record<string, unknown> => {
   const measurements = ["PM2.5", "PM10", "NO2", "O3", "SO2", "CO"];
@@ -298,7 +300,7 @@ const generateEnvironmentalMetadata = (index: number): Record<string, unknown> =
 };
 
 /**
- * Generate academic metadata
+ * Generate academic metadata.
  */
 const generateAcademicMetadata = (index: number): Record<string, unknown> => {
   const institutions = ["MIT", "Stanford", "Harvard", "Yale", "Princeton"];
@@ -318,7 +320,7 @@ const generateAcademicMetadata = (index: number): Record<string, unknown> => {
 };
 
 /**
- * Generate cultural metadata
+ * Generate cultural metadata.
  */
 const generateCulturalMetadata = (index: number): Record<string, unknown> => {
   const venues = ["City Theater", "Music Hall", "Art Gallery", "Convention Center", "Stadium"];
@@ -337,7 +339,7 @@ const generateCulturalMetadata = (index: number): Record<string, unknown> => {
 };
 
 /**
- * Generate economic metadata
+ * Generate economic metadata.
  */
 const generateEconomicMetadata = (index: number): Record<string, unknown> => {
   const indicators = ["GDP", "Unemployment", "Inflation", "Trade Balance", "Consumer Confidence"];
@@ -358,7 +360,7 @@ const generateEconomicMetadata = (index: number): Record<string, unknown> => {
 };
 
 /**
- * Generate metadata based on schema type
+ * Generate metadata based on schema type.
  */
 export const generateMetadata = (schemaType: keyof typeof DATASET_SCHEMAS, index: number): Record<string, unknown> => {
   switch (schemaType) {
@@ -378,7 +380,7 @@ export const generateMetadata = (schemaType: keyof typeof DATASET_SCHEMAS, index
 };
 
 /**
- * Get the appropriate schema type for a catalog
+ * Get the appropriate schema type for a catalog.
  */
 export const getSchemaTypeForCatalog = (catalogName: string): keyof typeof DATASET_SCHEMAS => {
   const name = catalogName.toLowerCase();
@@ -397,7 +399,7 @@ export const getSchemaTypeForCatalog = (catalogName: string): keyof typeof DATAS
 };
 
 /**
- * Get geographic region for a dataset
+ * Get geographic region for a dataset.
  */
 export const getRegionForDataset = (datasetName: string): keyof typeof GEOGRAPHIC_REGIONS => {
   const name = datasetName.toLowerCase();

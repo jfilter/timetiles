@@ -1,9 +1,11 @@
 /**
- * @module Provides utility functions for parsing data from CSV and Excel files.
+ * Provides utility functions for parsing data from CSV and Excel files.
  *
  * This module contains functions to read and parse different file formats into a
  * consistent JSON-like structure (an array of objects). It also includes safe
  * object property accessors to prevent prototype pollution vulnerabilities.
+ *
+ * @module
  */
 import fs from "fs";
 import Papa from "papaparse";

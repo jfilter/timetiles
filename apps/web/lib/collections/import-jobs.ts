@@ -1,5 +1,5 @@
 /**
- * @module Defines the Payload CMS collection configuration for Import Jobs.
+ * Defines the Payload CMS collection configuration for Import Jobs.
  *
  * This collection is the heart of the data import pipeline. Each document represents a single,
  * discrete import job for a specific dataset (or a sheet within a file). It tracks the entire
@@ -12,6 +12,8 @@
  * - Tracking progress, errors, and final results.
  * - Orchestrating the pipeline by triggering the next job in the sequence via `afterChange` hooks.
  * - Enforcing valid stage transitions to maintain pipeline integrity.
+ *
+ * @module
  */
 import type { CollectionConfig, Payload } from "payload";
 

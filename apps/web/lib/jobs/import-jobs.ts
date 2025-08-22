@@ -1,9 +1,11 @@
 /**
- * @module Centralized export point for all import-related job handlers and types.
+ * Centralized export point for all import-related job handlers and types.
  *
  * This file serves as a barrel, aggregating and re-exporting the various components
  * of the import job system. This simplifies imports in other parts of the application,
  * such as the Payload configuration where jobs are registered.
+ *
+ * @module
  */
 // New simplified job handlers
 export { analyzeDuplicatesJob } from "./handlers/analyze-duplicates-job";

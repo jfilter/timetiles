@@ -1,5 +1,5 @@
 /**
- * @module Provides a centralized service for managing dataset schema versions.
+ * Provides a centralized service for managing dataset schema versions.
  *
  * This service contains a set of static methods to handle the lifecycle of dataset schemas.
  * It ensures that schema versions are created and numbered consistently, whether through an
@@ -10,6 +10,8 @@
  * - Determining the next available version number for a dataset's schema.
  * - Creating a new, versioned schema document in the database.
  * - Linking an import job to the specific schema version it was validated against.
+ *
+ * @module
  */
 import type { Payload } from "payload";
 
@@ -19,11 +21,11 @@ import type { Dataset, DatasetSchema } from "@/payload-types";
 
 /**
  * Consolidated schema versioning service to prevent duplicate creation
- * and ensure consistent version numbering across auto and manual approval flows
+ * and ensure consistent version numbering across auto and manual approval flows.
  */
 export class SchemaVersioningService {
   /**
-   * Get the next schema version number for a dataset
+   * Get the next schema version number for a dataset.
    */
   static async getNextSchemaVersion(payload: Payload, datasetId: string | number): Promise<number> {
     const existingSchemas = await payload.find({
@@ -40,7 +42,7 @@ export class SchemaVersioningService {
   }
 
   /**
-   * Create a new schema version with consistent data structure
+   * Create a new schema version with consistent data structure.
    */
   static async createSchemaVersion(
     payload: Payload,
@@ -122,7 +124,7 @@ export class SchemaVersioningService {
   }
 
   /**
-   * Link an import job to a schema version
+   * Link an import job to a schema version.
    */
   static async linkImportToSchemaVersion(
     payload: Payload,

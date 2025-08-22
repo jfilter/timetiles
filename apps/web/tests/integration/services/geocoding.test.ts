@@ -13,7 +13,7 @@
  * 1. We're testing the GeocodingService's internal logic (provider fallback, caching, error handling)
  *    not the external geocoding APIs themselves
  * 2. Real geocoding APIs have rate limits and costs that would make frequent test runs expensive
- * 3. We need deterministic responses to test specific scenarios (failures, empty results, invalid coords)
+ * 3. We need deterministic responses to test specific scenarios (failures, empty results, invalid coords).
  */
 
 // Create mock geocoder instances with proper typing - must be defined before mocking

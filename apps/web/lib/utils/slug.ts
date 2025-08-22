@@ -21,7 +21,7 @@ import type { Config } from "@/payload-types";
  * Generates a basic slug from a string by:
  * - Converting to lowercase
  * - Replacing non-alphanumeric characters with hyphens
- * - Removing leading/trailing hyphens
+ * - Removing leading/trailing hyphens.
  */
 export const generateSlug = (text: string): string =>
   text
@@ -30,7 +30,7 @@ export const generateSlug = (text: string): string =>
     .replace(/(^-|-$)/g, "");
 
 /**
- * Generates a unique slug by checking for existing slugs and appending random suffixes if needed
+ * Generates a unique slug by checking for existing slugs and appending random suffixes if needed.
  */
 export const generateUniqueSlug = async <T extends keyof Config["collections"]>(
   baseText: string,
@@ -70,7 +70,7 @@ export const generateUniqueSlug = async <T extends keyof Config["collections"]>(
 };
 
 /**
- * Checks if a slug is unique in the given collection
+ * Checks if a slug is unique in the given collection.
  */
 const checkSlugUniqueness = async <T extends keyof Config["collections"]>(
   slug: string,
@@ -94,7 +94,7 @@ const checkSlugUniqueness = async <T extends keyof Config["collections"]>(
 
 /**
  * Generates a cryptographically secure random suffix for slug uniqueness
- * Uses crypto.randomBytes for better randomness
+ * Uses crypto.randomBytes for better randomness.
  */
 const generateRandomSuffix = (): string => {
   // Generate 4 random bytes and convert to hex (8 characters)
@@ -102,10 +102,10 @@ const generateRandomSuffix = (): string => {
 };
 
 /**
- * Hook function to be used in Payload collection field hooks
+ * Hook function to be used in Payload collection field hooks.
  *
- * @param collection - The collection name
- * @param options - Optional object with sourceField (dot notation)
+ * @param collection - The collection name.
+ * @param options - Optional object with sourceField (dot notation).
  */
 export const createSlugHook =
   <T extends keyof Config["collections"]>(collection: T, options?: { sourceField?: string }) =>

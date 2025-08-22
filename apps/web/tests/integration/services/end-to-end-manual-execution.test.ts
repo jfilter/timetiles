@@ -1,14 +1,16 @@
 /**
- * @module End-to-end integration tests for the complete job processing pipeline with manual execution.
+ * End-to-end integration tests for the complete job processing pipeline with manual execution.
  *
  * This test simulates the real-world scenario where:
  * 1. A file is uploaded (creating an import-files record)
  * 2. The afterChange hook automatically queues the first job
  * 3. Jobs are queued automatically via hooks as each stage completes
  * 4. Jobs are manually executed (simulating worker/cron processes)
- * 5. The complete pipeline processes through all stages to completion
+ * 5. The complete pipeline processes through all stages to completion.
  *
  * This approach tests the actual job queueing and execution system as it works in production.
+ *
+ * @module
  */
 import fs from "fs";
 import path from "path";

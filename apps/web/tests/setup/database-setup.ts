@@ -1,5 +1,5 @@
 /**
- * Creates isolated test database for each worker
+ * Creates isolated test database for each worker.
  * @module
  */
 import { Client } from "pg";
@@ -65,7 +65,7 @@ export const createTestDatabase = async (dbName: string): Promise<void> => {
 };
 
 /**
- * Truncates all tables in the test database
+ * Truncates all tables in the test database.
  */
 export const truncateAllTables = async (dbUrl?: string): Promise<void> => {
   const connectionString = dbUrl ?? process.env.DATABASE_URL;
@@ -105,7 +105,7 @@ export const truncateAllTables = async (dbUrl?: string): Promise<void> => {
 };
 
 /**
- * Cleans up test database
+ * Cleans up test database.
  */
 export const dropTestDatabase = async (dbName: string): Promise<void> => {
   const client = new Client({
@@ -143,7 +143,7 @@ export const dropTestDatabase = async (dbName: string): Promise<void> => {
 };
 
 /**
- * Extract database name from connection URL
+ * Extract database name from connection URL.
  */
 export const getDatabaseName = (url: string): string => {
   const match = /\/([^/?]+)(\?|$)/.exec(url);

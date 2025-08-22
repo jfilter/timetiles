@@ -1,5 +1,5 @@
 /**
- * @module Provides atomic stage transition management for import jobs.
+ * Provides atomic stage transition management for import jobs.
  *
  * This service ensures that stage transitions and job queuing happen atomically
  * to prevent race conditions and duplicate job creation. It manages the entire
@@ -9,7 +9,9 @@
  * - Atomic stage transition processing
  * - Prevention of duplicate job queuing
  * - Stage transition validation
- * - Centralized job queuing logic
+ * - Centralized job queuing logic.
+ *
+ * @module
  */
 import type { Payload } from "payload";
 
@@ -38,13 +40,13 @@ export interface StageTransitionResult {
 }
 
 /**
- * Service to handle stage transitions atomically
+ * Service to handle stage transitions atomically.
  */
 export class StageTransitionService {
   private static readonly transitioningJobs = new Set<string>();
 
   /**
-   * Validate stage transition
+   * Validate stage transition.
    */
   static validateStageTransition(fromStage: string, toStage: string): boolean {
     // Allow transitions to failed state from any stage
@@ -59,7 +61,7 @@ export class StageTransitionService {
   }
 
   /**
-   * Process stage transition and queue appropriate jobs atomically
+   * Process stage transition and queue appropriate jobs atomically.
    */
   static async processStageTransition(
     payload: Payload,
@@ -131,7 +133,7 @@ export class StageTransitionService {
   }
 
   /**
-   * Queue appropriate job for the current stage
+   * Queue appropriate job for the current stage.
    */
   private static async queueStageJob(payload: Payload, job: ImportJob): Promise<{ queued: boolean; jobType?: string }> {
     switch (job.stage) {
@@ -194,7 +196,7 @@ export class StageTransitionService {
   }
 
   /**
-   * Check if a transition is currently being processed
+   * Check if a transition is currently being processed.
    */
   static isTransitioning(jobId: string, fromStage?: string, toStage?: string): boolean {
     if (fromStage && toStage) {
@@ -210,14 +212,14 @@ export class StageTransitionService {
   }
 
   /**
-   * Get currently transitioning job count (for monitoring)
+   * Get currently transitioning job count (for monitoring).
    */
   static getTransitioningCount(): number {
     return this.transitioningJobs.size;
   }
 
   /**
-   * Force clear transition locks (for emergency situations)
+   * Force clear transition locks (for emergency situations).
    */
   static clearTransitionLocks(): void {
     logger.warn("Clearing all stage transition locks");
@@ -225,7 +227,7 @@ export class StageTransitionService {
   }
 
   /**
-   * Clean up old transition locks (for transitions completed over 5 minutes ago)
+   * Clean up old transition locks (for transitions completed over 5 minutes ago).
    */
   static cleanupOldLocks(): number {
     // For now, just clear all locks as they should be transient
@@ -237,7 +239,7 @@ export class StageTransitionService {
 
   /**
    * Cleanup task handler for Payload jobs
-   * This should be registered as a Payload task with a schedule
+   * This should be registered as a Payload task with a schedule.
    */
   static cleanupTask(): { output: { cleaned: number } } {
     const cleaned = this.cleanupOldLocks();

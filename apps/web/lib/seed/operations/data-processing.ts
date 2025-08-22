@@ -1,5 +1,5 @@
 /**
- * @module This file contains the `DataProcessing` class, which is responsible for preparing
+ * This file contains the `DataProcessing` class, which is responsible for preparing
  * and transforming seed data before it is inserted into the database.
  *
  * Its key responsibilities include:
@@ -8,6 +8,8 @@
  * - Preparing the final seed dataset by either truncating or generating additional items as needed.
  * - Applying data transformations, such as custom generators or collection-specific options,
  *   to create more realistic and varied seed data.
+ *
+ * @module
  */
 import { createLogger } from "@/lib/logger";
 

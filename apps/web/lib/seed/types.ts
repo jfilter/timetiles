@@ -1,10 +1,12 @@
 /**
- * @module This file defines the core TypeScript types and interfaces used throughout the seeding system.
+ * This file defines the core TypeScript types and interfaces used throughout the seeding system.
  *
  * It provides a centralized location for the data structures that represent seed data for
  * different collections and the options for configuring the seeding process. This ensures
  * type safety and consistency when passing data and options between different modules
  * of the seeding system.
+ *
+ * @module
  */
 import type { Config } from "@/payload-types";
 

@@ -1,5 +1,5 @@
 /**
- * @module Defines the job handler for validating the detected schema against the dataset's existing schema.
+ * Defines the job handler for validating the detected schema against the dataset's existing schema.
  *
  * This job is responsible for schema management and versioning. Its main tasks are:
  * - Finalizing the schema detection for the entire file using the state from the previous stage.
@@ -9,6 +9,8 @@
  *
  * If changes require manual intervention, the job is paused at the `AWAITING_APPROVAL` stage.
  * If auto-approved, a new schema version is created, and the job proceeds to the `GEOCODING` stage.
+ *
+ * @module
  */
 import path from "path";
 import type { Payload } from "payload";

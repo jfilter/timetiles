@@ -1,10 +1,12 @@
 /**
- * @module Provides utility functions for reading data from files in batches.
+ * Provides utility functions for reading data from files in batches.
  *
  * This module is designed to efficiently process large CSV or Excel files without loading
  * the entire file into memory. It offers a `readBatchFromFile` function that can read a
  * specific chunk of rows from a file, which is essential for the background job processing
  * of large data imports. It also provides a helper to get the total row count of a file.
+ *
+ * @module
  */
 import fs from "fs";
 import Papa from "papaparse";
@@ -19,7 +21,7 @@ interface ReadBatchOptions {
 }
 
 /**
- * Read a batch of rows from a file (CSV or Excel)
+ * Read a batch of rows from a file (CSV or Excel).
  */
 export const readBatchFromFile = (filePath: string, options: ReadBatchOptions): Record<string, unknown>[] => {
   const { sheetIndex = 0, startRow, limit } = options;
@@ -45,7 +47,7 @@ export const readBatchFromFile = (filePath: string, options: ReadBatchOptions): 
 };
 
 /**
- * Read a batch of rows from a CSV file
+ * Read a batch of rows from a CSV file.
  */
 const readBatchFromCSV = (filePath: string, startRow: number, limit: number): Record<string, unknown>[] => {
   const fileContent = fs.readFileSync(filePath, "utf-8");
@@ -67,7 +69,7 @@ const readBatchFromCSV = (filePath: string, startRow: number, limit: number): Re
 };
 
 /**
- * Read a batch of rows from an Excel file
+ * Read a batch of rows from an Excel file.
  */
 const readBatchFromExcel = (
   filePath: string,
@@ -125,7 +127,7 @@ const readBatchFromExcel = (
 };
 
 /**
- * Get total row count from a file
+ * Get total row count from a file.
  */
 export const getFileRowCount = (filePath: string, sheetIndex = 0): number => {
   const fileExtension = filePath.toLowerCase().split(".").pop();

@@ -1,8 +1,10 @@
 /**
- * @module Job handler for creating schema versions after approval.
+ * Job handler for creating schema versions after approval.
  *
  * This job is queued after schema approval to create the schema version
  * in a separate transaction, avoiding circular dependencies and deadlocks.
+ *
+ * @module
  */
 import type { Payload } from "payload";
 

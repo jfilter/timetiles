@@ -1,9 +1,11 @@
 /**
- * @module This file defines the page for listing events.
+ * This file defines the page for listing events.
  *
  * It fetches a list of the 50 most recent, published events from the Payload CMS.
  * Each event in the list is displayed with its title, date, dataset, and location,
  * and serves as a link to the detailed event page.
+ *
+ * @module
  */
 import configPromise from "@payload-config";
 import Link from "next/link";

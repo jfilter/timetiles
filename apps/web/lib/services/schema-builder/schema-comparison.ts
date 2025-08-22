@@ -23,7 +23,7 @@ interface ChangeDetectionContext {
 }
 
 /**
- * Detects removed fields from schema
+ * Detects removed fields from schema.
  */
 const detectRemovedFields = (context: ChangeDetectionContext): boolean => {
   let hasBreakingChanges = false;
@@ -49,7 +49,7 @@ const detectRemovedFields = (context: ChangeDetectionContext): boolean => {
 };
 
 /**
- * Detects newly added fields in schema
+ * Detects newly added fields in schema.
  */
 const detectAddedFields = (context: ChangeDetectionContext): boolean => {
   let hasBreakingChanges = false;
@@ -79,7 +79,7 @@ const detectAddedFields = (context: ChangeDetectionContext): boolean => {
 };
 
 /**
- * Detects enum value changes
+ * Detects enum value changes.
  */
 const detectEnumChanges = (
   field: string,
@@ -117,7 +117,7 @@ const detectEnumChanges = (
 };
 
 /**
- * Detects type and enum changes in existing fields
+ * Detects type and enum changes in existing fields.
  */
 const detectFieldModifications = (context: ChangeDetectionContext): boolean => {
   let hasBreakingChanges = false;
@@ -155,7 +155,7 @@ const detectFieldModifications = (context: ChangeDetectionContext): boolean => {
 };
 
 /**
- * Detects changes in required field status
+ * Detects changes in required field status.
  */
 const detectRequiredFieldChanges = (context: ChangeDetectionContext): boolean => {
   let hasBreakingChanges = false;
@@ -201,7 +201,7 @@ const detectRequiredFieldChanges = (context: ChangeDetectionContext): boolean =>
 };
 
 /**
- * Compares two schemas and identifies changes
+ * Compares two schemas and identifies changes.
  */
 export const compareSchemas = (
   oldSchema: Record<string, unknown>,
@@ -243,7 +243,7 @@ export const compareSchemas = (
 };
 
 /**
- * Gets the type of a field from schema property
+ * Gets the type of a field from schema property.
  */
 const getFieldType = (prop: unknown): string => {
   if (!prop || typeof prop !== "object") return "unknown";
@@ -274,7 +274,7 @@ const getFieldType = (prop: unknown): string => {
 };
 
 /**
- * Generates a human-readable summary of schema changes
+ * Generates a human-readable summary of schema changes.
  */
 export const generateChangeSummary = (comparison: SchemaComparison): string => {
   const lines: string[] = [];

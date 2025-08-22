@@ -1,8 +1,10 @@
 /**
- * @module This file contains the seed data for the Import Files collection.
+ * This file contains the seed data for the Import Files collection.
  *
  * It defines a set of predefined import file entries that represent files uploaded to the system
  * for data import. This ensures realistic import scenarios are available for development and testing.
+ *
+ * @module
  */
 import type { Catalog, Dataset, ImportFile } from "@/payload-types";
 

@@ -1,5 +1,5 @@
 /**
- * Unit tests for webhook field management in scheduled imports
+ * Unit tests for webhook field management in scheduled imports.
  * @module
  */
 

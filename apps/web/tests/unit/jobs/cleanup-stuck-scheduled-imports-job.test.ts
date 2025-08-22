@@ -1,5 +1,5 @@
 /**
- * Unit tests for cleanup stuck scheduled imports job
+ * Unit tests for cleanup stuck scheduled imports job.
  * @module
  */
 

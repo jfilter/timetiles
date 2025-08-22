@@ -1,5 +1,5 @@
 /**
- * @module Provides a service for automatically detecting geographic location columns in a dataset.
+ * Provides a service for automatically detecting geographic location columns in a dataset.
  *
  * This class uses a combination of pattern matching and heuristic analysis to identify which
  * columns in an imported dataset are likely to contain latitude, longitude, or combined
@@ -10,6 +10,8 @@
  * 1.  It first looks for columns with names that match common patterns (e.g., "lat", "longitude").
  * 2.  If that fails, it checks for columns with names that suggest combined coordinates (e.g., "location").
  * 3.  Finally, it uses heuristics to analyze the data in all columns to find pairs that look like valid coordinates.
+ *
+ * @module
  */
 import { logger } from "@/lib/logger";
 
@@ -45,7 +47,7 @@ export interface GeoColumnResult {
 
 export class GeoLocationDetector {
   /**
-   * Safely get value from row object
+   * Safely get value from row object.
    */
   private getRowValue(row: Record<string, unknown>, key: string): unknown {
     if (Object.hasOwn(row, key)) {
@@ -57,7 +59,7 @@ export class GeoLocationDetector {
   private readonly log = logger.child({ component: "GeoLocationDetector" });
 
   /**
-   * Detect geolocation columns in the imported data
+   * Detect geolocation columns in the imported data.
    */
   detectGeoColumns(headers: string[], sampleRows: Record<string, unknown>[]): GeoColumnResult {
     this.log.info(`Detecting geo columns from ${headers.length} headers`);
@@ -107,7 +109,7 @@ export class GeoLocationDetector {
   }
 
   /**
-   * Find column by matching patterns
+   * Find column by matching patterns.
    */
   private findColumnByPatterns(headers: string[], patterns: RegExp[]): string | null {
     for (const header of headers) {
@@ -123,7 +125,7 @@ export class GeoLocationDetector {
   }
 
   /**
-   * Validate coordinate pairs from sample rows
+   * Validate coordinate pairs from sample rows.
    */
   private validateCoordinatePairs(
     sampleRows: Record<string, unknown>[],
@@ -172,7 +174,7 @@ export class GeoLocationDetector {
   }
 
   /**
-   * Extract coordinate samples from rows
+   * Extract coordinate samples from rows.
    */
   private extractCoordinateSamples(
     rows: Record<string, unknown>[],
@@ -208,7 +210,7 @@ export class GeoLocationDetector {
   }
 
   /**
-   * Detect combined coordinate format
+   * Detect combined coordinate format.
    */
   private detectCombinedFormat(
     sampleRows: Record<string, unknown>[],
@@ -228,7 +230,7 @@ export class GeoLocationDetector {
   }
 
   /**
-   * Heuristic detection by analyzing column values
+   * Heuristic detection by analyzing column values.
    */
   private detectByHeuristics(headers: string[], sampleRows: Record<string, unknown>[]): GeoColumnResult {
     // Analyze all columns to get their coordinate statistics
@@ -242,7 +244,7 @@ export class GeoLocationDetector {
   }
 
   /**
-   * Analyze each column to gather coordinate statistics
+   * Analyze each column to gather coordinate statistics.
    */
   private analyzeColumnsForCoordinates(
     headers: string[],
@@ -275,7 +277,7 @@ export class GeoLocationDetector {
   }
 
   /**
-   * Analyze values in a specific column
+   * Analyze values in a specific column.
    */
   private analyzeColumnValues(
     header: string,
@@ -307,7 +309,7 @@ export class GeoLocationDetector {
 
     return stats;
   } /**
-   * Find best latitude and longitude column candidates
+   * Find best latitude and longitude column candidates.
    */
   private findBestLatLonCandidates(
     columnStats: Map<
@@ -356,7 +358,7 @@ export class GeoLocationDetector {
     return { bestLat, bestLon, bestLatScore, bestLonScore };
   }
   /**
-   * Validate heuristic candidates and return result
+   * Validate heuristic candidates and return result.
    */
   private validateHeuristicCandidates(
     bestLat: string | null,

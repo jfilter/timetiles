@@ -1,11 +1,13 @@
 /**
- * @module This file contains the `QueryBuilders` class, which is responsible for constructing
+ * This file contains the `QueryBuilders` class, which is responsible for constructing
  * database query conditions (`Where` clauses) for different collections.
  *
  * During the seeding process, it's often necessary to check if an item already exists
  * in the database to avoid creating duplicates. This class provides a centralized and
  * collection-aware way to build the appropriate query for this check. For example, it
  * knows to check for users by email and for most other collections by slug or name.
+ *
+ * @module
  */
 import type { Where } from "payload";
 

@@ -1,9 +1,11 @@
 /**
- * @module Defines the Payload CMS global configuration for the Main Menu.
+ * Defines the Payload CMS global configuration for the Main Menu.
  *
  * Globals in Payload are used for managing site-wide settings that don't belong to a specific
  * collection. This configuration defines the structure of the main navigation menu, allowing
  * administrators to manage the navigation links (label and URL) that appear across the site.
+ *
+ * @module
  */
 import type { GlobalConfig } from "payload";
 

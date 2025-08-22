@@ -10,7 +10,7 @@
  */
 
 /**
- * Validates a URL string
+ * Validates a URL string.
  */
 export const validateUrl = (val: string | null | undefined): string | true => {
   if (!val) return "The following field is invalid: Source URL - URL is required";
@@ -21,7 +21,7 @@ export const validateUrl = (val: string | null | undefined): string | true => {
 };
 
 /**
- * Validates a cron expression field range
+ * Validates a cron expression field range.
  */
 const validateRange = (field: string, min: number, max: number, name: string): string | true => {
   const parts = field.split("-");
@@ -36,7 +36,7 @@ const validateRange = (field: string, min: number, max: number, name: string): s
 };
 
 /**
- * Validates a cron expression step value
+ * Validates a cron expression step value.
  */
 const validateStep = (field: string, name: string): string | true => {
   const step = parseInt(field.substring(2));
@@ -47,7 +47,7 @@ const validateStep = (field: string, name: string): string | true => {
 };
 
 /**
- * Validates a list of cron expression values
+ * Validates a list of cron expression values.
  */
 const validateList = (field: string, min: number, max: number, name: string): string | true => {
   const values = field.split(",");
@@ -61,7 +61,7 @@ const validateList = (field: string, min: number, max: number, name: string): st
 };
 
 /**
- * Validates a single cron expression field
+ * Validates a single cron expression field.
  */
 const validateField = (field: string, min: number, max: number, name: string): string | true => {
   if (field === "*") return true;
@@ -86,7 +86,7 @@ const validateField = (field: string, min: number, max: number, name: string): s
 };
 
 /**
- * Validates a complete cron expression
+ * Validates a complete cron expression.
  */
 export const validateCronExpression = (value: string | null | undefined): string | true => {
   if (!value) return true; // Not required
@@ -118,7 +118,7 @@ export const validateCronExpression = (value: string | null | undefined): string
 };
 
 /**
- * Validates that either frequency or cron expression is provided when enabled
+ * Validates that either frequency or cron expression is provided when enabled.
  */
 export const validateScheduleConfig = (
   _value: unknown,

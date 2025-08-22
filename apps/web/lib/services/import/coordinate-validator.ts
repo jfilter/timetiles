@@ -1,5 +1,5 @@
 /**
- * @module Provides a service for validating and normalizing geographic coordinates.
+ * Provides a service for validating and normalizing geographic coordinates.
  *
  * This class encapsulates the logic for robustly handling coordinate data. It can:
  * - Validate if latitude and longitude values are within their correct ranges.
@@ -7,6 +7,8 @@
  * - Identify suspicious values, like (0,0).
  * - Extract coordinate pairs from a single combined field (e.g., "lat, lon" or GeoJSON).
  * - Parse coordinates from various string formats (e.g., DMS, decimal degrees).
+ *
+ * @module
  */
 import { logger } from "@/lib/logger";
 
@@ -34,7 +36,7 @@ export class CoordinateValidator {
   private readonly log = logger.child({ component: "CoordinateValidator" });
 
   /**
-   * Check for null/invalid coordinate values
+   * Check for null/invalid coordinate values.
    */
   private checkNullInvalidValues(lat: number | null, lon: number | null): ValidatedCoordinates | null {
     if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
@@ -50,7 +52,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Check for suspicious (0,0) coordinates
+   * Check for suspicious (0,0) coordinates.
    */
   private checkSuspiciousZero(lat: number, lon: number): ValidatedCoordinates | null {
     if (lat == 0 && lon == 0) {
@@ -66,7 +68,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Check and handle swapped coordinates
+   * Check and handle swapped coordinates.
    */
   private checkSwappedCoordinates(lat: number, lon: number, autoFix: boolean): ValidatedCoordinates | null {
     if (Math.abs(lat) > 90 && Math.abs(lat) <= 180 && Math.abs(lon) <= 90) {
@@ -92,7 +94,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Validate and potentially fix coordinates
+   * Validate and potentially fix coordinates.
    */
   validateCoordinates(lat: number | null, lon: number | null, autoFix: boolean = true): ValidatedCoordinates {
     // Check for null/invalid values
@@ -133,7 +135,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Extract coordinates from a combined column
+   * Extract coordinates from a combined column.
    */
   extractFromCombined(value: unknown, format: string): CoordinateExtraction {
     if (value == null || value == undefined || value == "") {
@@ -168,7 +170,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Extract from comma-separated format
+   * Extract from comma-separated format.
    */
   private extractCommaFormat(value: string): CoordinateExtraction {
     const regex = /^(-?\d{1,3}\.?\d{0,10}),\s{0,5}(-?\d{1,3}\.?\d{0,10})$/;
@@ -194,7 +196,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Extract from space-separated format
+   * Extract from space-separated format.
    */
   private extractSpaceFormat(value: string): CoordinateExtraction {
     const regex = /^(-?\d{1,3}\.?\d{0,10})\s{1,5}(-?\d{1,3}\.?\d{0,10})$/;
@@ -220,7 +222,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Extract from GeoJSON format
+   * Extract from GeoJSON format.
    */
   private extractGeoJsonFormat(value: unknown): CoordinateExtraction {
     try {
@@ -258,7 +260,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Auto-detect and extract coordinates
+   * Auto-detect and extract coordinates.
    */
   private extractAutoDetect(value: string): CoordinateExtraction {
     // Try comma format first
@@ -297,21 +299,21 @@ export class CoordinateValidator {
   }
 
   /**
-   * Validate latitude range
+   * Validate latitude range.
    */
   isValidLatitude(value: number): boolean {
     return value >= -90 && value <= 90;
   }
 
   /**
-   * Validate longitude range
+   * Validate longitude range.
    */
   isValidLongitude(value: number): boolean {
     return value >= -180 && value <= 180;
   }
 
   /**
-   * Check for common coordinate mistakes in a batch
+   * Check for common coordinate mistakes in a batch.
    */
   detectSwappedCoordinates(samples: Array<{ lat: number; lon: number }>): boolean {
     if (samples.length == 0) return false;
@@ -324,7 +326,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Parse various coordinate formats to decimal degrees
+   * Parse various coordinate formats to decimal degrees.
    */
   parseCoordinate(value: unknown): number | null {
     if (value == null || value == undefined || value === "") {
@@ -349,7 +351,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Convert unknown value to clean string
+   * Convert unknown value to clean string.
    */
   private convertValueToString(value: unknown): string {
     if (typeof value === "string") {
@@ -364,7 +366,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Parse DMS format (e.g., "40°42'46"N" or "40° 42' 46" N")
+   * Parse DMS format (e.g., "40°42'46"N" or "40° 42' 46" N").
    */
   private parseDMSFormat(str: string): number | null {
     const dmsRegex = /^(-?\d{1,3})°\s*(\d{1,2})['′]\s*(\d{1,2}\.?\d{0,6})["″]\s*([NSEW])?$/i;
@@ -384,7 +386,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Parse degrees and decimal minutes format (e.g., "40°42.768'N")
+   * Parse degrees and decimal minutes format (e.g., "40°42.768'N").
    */
   private parseDegreesMinutesFormat(str: string): number | null {
     const dmRegex = /^(-?\d{1,3})[°\s](\d{1,3}\.?\d{0,6})['′\s]?([NSEW])?$/i;
@@ -410,7 +412,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Parse degrees with direction format (e.g., "40.7128 N" or "40.7128N")
+   * Parse degrees with direction format (e.g., "40.7128 N" or "40.7128N").
    */
   private parseDegreesWithDirectionFormat(str: string): number | null {
     const trimmed = str.trim().toUpperCase();
@@ -427,7 +429,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Helper to try parsing a coordinate with a specific direction
+   * Helper to try parsing a coordinate with a specific direction.
    */
   private tryParseWithDirection(trimmed: string, direction: string): number | null {
     // Check direct suffix (e.g., "40.7128N")
@@ -444,7 +446,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Parse and apply directional sign to a numeric value
+   * Parse and apply directional sign to a numeric value.
    */
   private parseDirectionalValue(numStr: string, direction: string): number | null {
     const value = parseFloat(numStr);
@@ -457,7 +459,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Parse simple decimal degrees
+   * Parse simple decimal degrees.
    */
   private parseDecimalDegrees(str: string): number | null {
     const decimal = parseFloat(str);
@@ -465,7 +467,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Apply directional sign to coordinate value
+   * Apply directional sign to coordinate value.
    */
   private applyDirectionalSign(result: number, direction: string | undefined, originalDegrees: number): number {
     if (
@@ -480,7 +482,7 @@ export class CoordinateValidator {
   }
 
   /**
-   * Calculate confidence score based on coordinate characteristics
+   * Calculate confidence score based on coordinate characteristics.
    */
   calculateConfidence(lat: number, lon: number): number {
     let confidence = 1.0;

@@ -9,7 +9,7 @@
  * - Authentication configuration for secure URLs
  * - Automatic retry handling with exponential backoff
  * - Execution history tracking
- * - Integration with existing import pipeline
+ * - Integration with existing import pipeline.
  *
  * @module
  * @category Collections
