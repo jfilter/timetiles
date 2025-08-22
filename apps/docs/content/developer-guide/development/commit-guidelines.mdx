@@ -12,6 +12,24 @@ Each commit message consists of a **title** and an optional **body**:
 <body>
 ```
 
+### Understanding Type vs Scope
+
+Before diving into the format, it's crucial to understand:
+
+- **Type** = **WHAT** kind of change you're making (the nature of the change)
+  - Are you adding features? → `feat`
+  - Fixing bugs? → `fix`
+  - Adding tests? → `test`
+  
+- **Scope** = **WHERE** in the codebase (the area affected)
+  - In which feature? → `(import)`, `(geocoding)`
+  - In which app/package? → `(web)`, `(docs)`
+  - In which layer? → `(api)`, `(db)`
+
+Example: `fix(import): handle empty CSV files`
+- **What**: Fixing a bug (`fix`)
+- **Where**: In the import feature (`import`)
+
 ### Title (Required)
 
 The title is the first line of your commit message and must:
@@ -36,9 +54,9 @@ The type must be one of the following:
 
 - **refactor**: Code changes that neither fix bugs nor add features
   - Example: `refactor(api): extract validation logic into middleware`
-- **style**: Code style changes (formatting, missing semicolons, whitespace)
-  - Example: `style(ui): fix indentation in button component`
-  - Note: NOT for CSS/UI styling - use feat or fix for those
+- **format**: Code formatting changes (whitespace, missing semicolons, indentation)
+  - Example: `format(ui): fix indentation in button component`
+  - Note: This is ONLY for code formatting, not CSS/UI styling changes
 - **perf**: Performance improvements
   - Example: `perf(import): reduce memory usage by streaming CSV files`
 
@@ -53,9 +71,12 @@ The type must be one of the following:
 
 - **build**: Changes affecting build system or external dependencies
   - Example: `build(deps): upgrade to Next.js 15`
-  - Example: `build(docker): optimize production image size`
+  - Example: `build: optimize webpack configuration`
+- **ci**: CI/CD pipeline and workflow changes
+  - Example: `ci: add automated security scanning`
+  - Example: `ci(web): configure E2E tests in pipeline`
 - **chore**: Other changes that don't modify src or test files
-  - Example: `chore(scripts): update seed data generation`
+  - Example: `chore: update seed data generation`
 
 **Special Types:**
 
@@ -75,29 +96,24 @@ The scope provides additional context about what part of the codebase changed. S
 - **web**: Next.js web application
 - **docs**: Documentation site (Nextra)
 - **ui**: Shared UI components package
+- **assets**: Shared assets package (logos, images)
 - **config**: Configuration packages (ESLint, TypeScript, etc.)
 
 **Core Features** (what functionality is affected):
 
-- **import**: File import system (CSV/Excel processing)
+- **import**: File import system (CSV/Excel processing, scheduled imports, webhook triggers)
 - **geocoding**: Address geocoding and location services
-- **events**: Event data management
-- **catalogs**: Catalog organization
-- **datasets**: Dataset operations
-- **auth**: Authentication & authorization
-- **cache**: Caching strategies (location cache, etc.)
+- **events**: Event data management (including catalogs and datasets)
+- **schema**: Schema detection, validation, and versioning
+- **deploy**: User deployment features (self-hosting, Docker setup)
 
 **Technical Areas** (infrastructure & tooling):
 
 - **db**: Database operations, migrations, PostGIS
 - **api**: API endpoints (REST, GraphQL, tRPC)
 - **jobs**: Background job processing and queues
-- **types**: TypeScript type definitions and interfaces
-- **testing**: Test infrastructure and utilities (NOT individual test files)
-- **deps**: External dependencies (typically used with `build` type)
-- **docker**: Docker, containerization, and orchestration
-- **scripts**: Utility and automation scripts
-- **ci**: CI configuration files and scripts
+- **deps**: External dependencies
+- **seed**: Test and development data generation (seeding operations)
 
 #### Subject
 
@@ -120,7 +136,7 @@ The body should use **bullet points** to clearly describe the changes. Use verbo
 - Single-file formatting fixes
 - Minor typos or corrections
 - Dependency updates without breaking changes
-- Examples: `fix(import): prevent duplicate events`, `style(ui): format button component`
+- Examples: `fix(import): prevent duplicate events`, `format(ui): fix code formatting`
 
 **Commits with bodies** (bullet points recommended):
 
@@ -154,14 +170,13 @@ fix(import): handle empty CSV files gracefully
 ### Feature with Description
 
 ```
-feat(geocoding): add support for OpenCage provider
+feat(schema): implement smart field type detection
 
-- Added OpenCage as a third geocoding provider option
-- Provides better coverage for European addresses
-- Returns confidence scores with geocoding results
-- Follows existing provider pattern for consistency
-- Includes automatic fallback when configured
-- Supports all existing cache mechanisms
+- Added pattern recognition for common field types
+- Detects dates, coordinates, URLs automatically
+- Provides confidence scores for type suggestions
+- Reduces manual schema configuration by 80%
+- Supports incremental learning from user corrections
 ```
 
 ### Breaking Change
@@ -297,8 +312,36 @@ When deciding between types, consider:
 - **feat vs fix**: Is this adding new functionality (feat) or correcting existing behavior (fix)?
 - **fix vs refactor**: Does this change user-facing behavior (fix) or just code structure (refactor)?
 - **build vs chore**: Does this affect how the project builds (build) or is it general maintenance (chore)?
-- **style vs refactor**: Is this only formatting (style) or restructuring code logic (refactor)?
+- **build vs ci**: Is this about build tooling (build) or CI/CD pipelines (ci)?
+- **format vs refactor**: Is this only formatting (format) or restructuring code logic (refactor)?
 - **security vs fix**: Is this addressing a security vulnerability (security) or a general bug (fix)?
+
+## Scope Selection Guide
+
+When choosing a scope, follow these guidelines:
+
+**❌ Avoid**: `fix(web): fix import validation`  
+**✅ Prefer**: `fix(import): fix CSV validation`
+
+Use **app/package scopes** (`web`, `docs`, `ui`, `assets`, `config`) when:
+- Changes are app/package-specific configuration
+- Changes don't fit any feature scope
+- Changes span multiple features
+
+Use **feature scopes** (`import`, `geocoding`, `events`, `schema`, `deploy`) when:
+- Working on specific feature logic
+- Fixing feature-specific bugs
+- Adding feature-specific tests
+
+Use **technical scopes** (`db`, `api`, `jobs`, `deps`, `seed`) when:
+- Working on infrastructure
+- Making technical improvements
+- Updating dependencies
+
+**Note**: Avoid overly granular scopes. For example:
+- Docker changes → use `deploy` (if user-facing) or `build` (if internal)
+- Script changes → use the scope of what the script affects
+- Type changes → use the feature scope the types belong to
 
 ## Handling Type/Scope Overlaps
 
@@ -306,22 +349,19 @@ Some combinations need special attention:
 
 - **`docs(docs)`**: Valid when updating documentation app code
   - Example: `docs(docs): fix broken link in navigation`
-- **`test(testing)`**: Use for test infrastructure changes
-  - Example: `test(testing): add custom vitest matchers`
 - **`test(web)`**: Use for adding tests to web app
   - Example: `test(web): add unit tests for import flow`
-- **CI/CD changes with `(ci)` scope**:
-  - `build(ci)`: CI infrastructure and configuration changes
-  - `fix(ci)`: Fix broken CI pipelines or workflows
-  - `feat(ci)`: Add new CI features (e.g., new checks, deployment stages)
-  - `chore(ci)`: Routine CI maintenance (e.g., update action versions)
-- **`build` without scope**: Use for webpack, bundling, compilation changes
+- **`test(import)`**: Use for adding tests to specific features
+  - Example: `test(import): add CSV validation tests`
+- **`ci` type**: Use for CI/CD pipeline changes
+  - Example: `ci: update GitHub Actions workflow`
+  - Example: `ci(web): add E2E tests to deployment`
 - **`build(deps)` vs `chore(deps)`**:
   - Use `build(deps)` for production dependencies
   - Use `chore(deps)` for development-only dependencies
-- **`style` type**: For code formatting only, NOT CSS/visual changes
-  - CSS changes: `feat(ui): update button styles`
-  - Code formatting: `style(api): fix indentation`
+- **`format` type**: For code formatting only, NOT CSS/visual changes
+  - CSS/visual changes: `feat(ui): update button styles`
+  - Code formatting: `format(api): fix indentation`
 
 ## Best Practices
 
@@ -347,60 +387,13 @@ Some combinations need special attention:
 
 ## Commit Message Template
 
-This project includes a commit message template at `.gitmessage` that is automatically configured for use. When you run `git commit` without the `-m` flag, your editor will open with this template:
+This project includes a commit message template at `.gitmessage` that is automatically configured for use. When you run `git commit` without the `-m` flag, your editor will open with a helpful template.
 
-```
-# <type>(<scope>): <subject>
-# Types: feat, fix, docs, style, refactor, perf, test, build, chore, revert, security
-# Scopes (optional but recommended):
-#   Apps/Packages: web, docs, ui, config
-#   Features: import, geocoding, events, catalogs, datasets, auth, cache
-#   Technical: db, api, jobs, types, testing, deps, docker, scripts, ci
-# Subject: imperative mood, max 72 chars (proper nouns allowed: GitHub, API, ES, etc.)
+For setup instructions and additional tooling options, see the [Git Configuration Guide](./git-configuration).
 
-# Body Guidelines:
-# - Use title-only for simple, self-explanatory changes
-# - Add body with bullet points for complex changes
-# - Focus on WHY and business impact, not just WHAT changed
-# - Use plain text formatting (no markdown bold/italic)
+## Enforcement
 
-# List your changes as bullet points (if body needed):
-# -
-# -
-# -
-#
-# Add as many bullets as needed to describe all changes
-
-# BREAKING CHANGE:
-# Describe any breaking changes here
-
-# References: #
-# Include issue or PR numbers if applicable
-```
-
-The template is already configured for this repository. To use a similar template globally for all your projects:
-
-```bash
-git config --global commit.template ~/.gitmessage
-```
-
-## Tools and Automation
-
-### Commitizen
-
-For interactive commit message creation:
-
-```bash
-npm install -g commitizen
-npm install -g cz-conventional-changelog
-echo '{ "path": "cz-conventional-changelog" }' > ~/.czrc
-```
-
-Then use `git cz` instead of `git commit`.
-
-### Commit Linting
-
-The project uses Husky to enforce commit message standards. If your commit doesn't meet the guidelines, it will be rejected with a helpful error message.
+The project uses Husky and commitlint to enforce commit message standards. If your commit doesn't meet the guidelines, it will be rejected with a helpful error message explaining what needs to be fixed.
 
 ## Quick Reference
 
@@ -409,22 +402,22 @@ The project uses Husky to enforce commit message standards. If your commit doesn
 ```
 fix(import): prevent duplicate event creation
 docs(api): update geocoding endpoint examples
-style(ui): format button component
+format(ui): fix button component indentation
 chore(config): update ESLint rules
 test(events): add unit tests for event validation
-fix(cache): resolve memory leak in location cache
-feat(datasets): add bulk export functionality
-refactor(types): consolidate shared type definitions
-build(ci): optimize container build times
+fix(geocoding): resolve memory leak in location cache
+feat(events): add bulk export functionality
+ci: update GitHub Actions to Node 24
+build: optimize webpack configuration
 perf(geocoding): implement request batching
-security(auth): fix JWT token expiration vulnerability
+security(api): fix request validation vulnerability
 security(import): add file type validation to prevent malicious uploads
 ```
 
 ### When to use title-only:
 
 - Single-file changes with obvious intent
-- Formatting or style fixes
+- Formatting fixes
 - Simple dependency updates
 - Minor documentation corrections
 - Clear bug fixes that don't need explanation
@@ -465,28 +458,31 @@ feat(web): add GraphQL API with ES module support
 # App/Package scope - when changes are isolated to one codebase
 fix(ui): correct button hover state in dark mode
 docs(docs): update getting started guide
-style(config): format ESLint configuration
+format(config): fix ESLint configuration formatting
 
 # Feature scope - when changing business logic
 feat(events): add recurring event support
 fix(geocoding): handle postal codes without city names
 perf(import): optimize CSV parsing for large files
+feat(schema): add automatic type detection for date fields
+fix(import): handle scheduled import retry logic
 
 # Technical scope - for infrastructure/tooling
-build(docker): reduce image size by 40%
+build: optimize production bundle size
 test(api): add integration tests for event endpoints
-build(ci): automate release notes generation
-fix(ci): resolve GitHub Actions Node.js version conflicts
-feat(ci): add automated dependency vulnerability scanning
-chore(ci): update actions/checkout to v4
+ci: automate release notes generation
+ci: add automated dependency vulnerability scanning
+chore(seed): update test data with new event types
+feat(deploy): add one-click Docker deployment
+docs(deploy): document self-hosting requirements
 
 # Handling overlaps correctly
 docs(docs): update Nextra to version 3.0          # Docs app code change
-test(testing): implement snapshot testing utility  # Test infrastructure
-build(deps): upgrade PostgreSQL client to v16      # Production dependency
+refactor(web): reorganize test utilities          # Test infrastructure  
+build(deps): upgrade PostgreSQL client to v16     # Production dependency
 chore(deps): update ESLint to latest version      # Dev dependency
-security(import): add virus scanning for uploads   # Security feature
-style(config): format TypeScript config files      # Code formatting
+security(import): add virus scanning for uploads  # Security feature
+format(config): fix TypeScript config formatting  # Code formatting
 ```
 
 ## Common Mistakes to Avoid
