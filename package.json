@@ -48,7 +48,11 @@
       "pino": "9.7.0",
       "@headlessui/react": "^2.2.6",
       "@theguild/remark-mermaid": "^0.0.7",
-      "next-mdx-remote": "^5.0.0"
+      "next-mdx-remote": "^5.0.0",
+      "form-data": "^4.0.4",
+      "cross-spawn": "^7.0.6",
+      "dompurify": "^3.2.3",
+      "esbuild": "^0.25.0"
     }
   }
 }
