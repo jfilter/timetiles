@@ -371,12 +371,14 @@ export const catalogs = db_schema.table(
     isPublic: boolean("is_public").default(false),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     _status: enum_catalogs_status("_status").default("draft"),
   },
   (columns) => ({
     catalogs_slug_idx: uniqueIndex("catalogs_slug_idx").on(columns.slug),
     catalogs_updated_at_idx: index("catalogs_updated_at_idx").on(columns.updatedAt),
     catalogs_created_at_idx: index("catalogs_created_at_idx").on(columns.createdAt),
+    catalogs_deleted_at_idx: index("catalogs_deleted_at_idx").on(columns.deletedAt),
     catalogs__status_idx: index("catalogs__status_idx").on(columns._status),
   })
 );
@@ -394,6 +396,7 @@ export const _catalogs_v = db_schema.table(
     version_isPublic: boolean("version_is_public").default(false),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     version__status: enum__catalogs_v_version_status("version__status").default("draft"),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
@@ -408,6 +411,9 @@ export const _catalogs_v = db_schema.table(
     ),
     _catalogs_v_version_version_created_at_idx: index("_catalogs_v_version_version_created_at_idx").on(
       columns.version_createdAt
+    ),
+    _catalogs_v_version_version_deleted_at_idx: index("_catalogs_v_version_version_deleted_at_idx").on(
+      columns.version_deletedAt
     ),
     _catalogs_v_version_version__status_idx: index("_catalogs_v_version_version__status_idx").on(
       columns.version__status
@@ -501,6 +507,7 @@ export const datasets = db_schema.table(
     geoFieldDetection_longitudePath: varchar("geo_field_detection_longitude_path"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     _status: enum_datasets_status("_status").default("draft"),
   },
   (columns) => ({
@@ -508,6 +515,7 @@ export const datasets = db_schema.table(
     datasets_catalog_idx: index("datasets_catalog_idx").on(columns.catalog),
     datasets_updated_at_idx: index("datasets_updated_at_idx").on(columns.updatedAt),
     datasets_created_at_idx: index("datasets_created_at_idx").on(columns.createdAt),
+    datasets_deleted_at_idx: index("datasets_deleted_at_idx").on(columns.deletedAt),
     datasets__status_idx: index("datasets__status_idx").on(columns._status),
   })
 );
@@ -604,6 +612,7 @@ export const _datasets_v = db_schema.table(
     version_geoFieldDetection_longitudePath: varchar("version_geo_field_detection_longitude_path"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     version__status: enum__datasets_v_version_status("version__status").default("draft"),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
@@ -621,6 +630,9 @@ export const _datasets_v = db_schema.table(
     ),
     _datasets_v_version_version_created_at_idx: index("_datasets_v_version_version_created_at_idx").on(
       columns.version_createdAt
+    ),
+    _datasets_v_version_version_deleted_at_idx: index("_datasets_v_version_version_deleted_at_idx").on(
+      columns.version_deletedAt
     ),
     _datasets_v_version_version__status_idx: index("_datasets_v_version_version__status_idx").on(
       columns.version__status
@@ -757,6 +769,7 @@ export const dataset_schemas = db_schema.table(
     conflicts: jsonb("conflicts"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     _status: enum_dataset_schemas_status("_status").default("draft"),
   },
   (columns) => ({
@@ -764,6 +777,7 @@ export const dataset_schemas = db_schema.table(
     dataset_schemas_approved_by_idx: index("dataset_schemas_approved_by_idx").on(columns.approvedBy),
     dataset_schemas_updated_at_idx: index("dataset_schemas_updated_at_idx").on(columns.updatedAt),
     dataset_schemas_created_at_idx: index("dataset_schemas_created_at_idx").on(columns.createdAt),
+    dataset_schemas_deleted_at_idx: index("dataset_schemas_deleted_at_idx").on(columns.deletedAt),
     dataset_schemas__status_idx: index("dataset_schemas__status_idx").on(columns._status),
   })
 );
@@ -903,6 +917,7 @@ export const _dataset_schemas_v = db_schema.table(
     version_conflicts: jsonb("version_conflicts"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     version__status: enum__dataset_schemas_v_version_status("version__status").default("draft"),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
@@ -922,6 +937,9 @@ export const _dataset_schemas_v = db_schema.table(
     ),
     _dataset_schemas_v_version_version_created_at_idx: index("_dataset_schemas_v_version_version_created_at_idx").on(
       columns.version_createdAt
+    ),
+    _dataset_schemas_v_version_version_deleted_at_idx: index("_dataset_schemas_v_version_version_deleted_at_idx").on(
+      columns.version_deletedAt
     ),
     _dataset_schemas_v_version_version__status_idx: index("_dataset_schemas_v_version_version__status_idx").on(
       columns.version__status
@@ -957,6 +975,7 @@ export const import_files = db_schema.table(
     metadata: jsonb("metadata"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     url: varchar("url"),
     thumbnailURL: varchar("thumbnail_u_r_l"),
     filename: varchar("filename"),
@@ -972,6 +991,7 @@ export const import_files = db_schema.table(
     import_files_user_idx: index("import_files_user_idx").on(columns.user),
     import_files_updated_at_idx: index("import_files_updated_at_idx").on(columns.updatedAt),
     import_files_created_at_idx: index("import_files_created_at_idx").on(columns.createdAt),
+    import_files_deleted_at_idx: index("import_files_deleted_at_idx").on(columns.deletedAt),
     import_files_filename_idx: uniqueIndex("import_files_filename_idx").on(columns.filename),
   })
 );
@@ -1030,6 +1050,7 @@ export const _import_files_v = db_schema.table(
     version_metadata: jsonb("version_metadata"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_url: varchar("version_url"),
     version_thumbnailURL: varchar("version_thumbnail_u_r_l"),
     version_filename: varchar("version_filename"),
@@ -1055,6 +1076,9 @@ export const _import_files_v = db_schema.table(
     ),
     _import_files_v_version_version_created_at_idx: index("_import_files_v_version_version_created_at_idx").on(
       columns.version_createdAt
+    ),
+    _import_files_v_version_version_deleted_at_idx: index("_import_files_v_version_version_deleted_at_idx").on(
+      columns.version_deletedAt
     ),
     _import_files_v_version_version_filename_idx: index("_import_files_v_version_version_filename_idx").on(
       columns.version_filename
@@ -1168,18 +1192,20 @@ export const import_jobs = db_schema.table(
     lastSuccessfulStage: enum_import_jobs_last_successful_stage("last_successful_stage"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
   },
   (columns) => ({
     import_jobs_import_file_idx: index("import_jobs_import_file_idx").on(columns.importFile),
     import_jobs_dataset_idx: index("import_jobs_dataset_idx").on(columns.dataset),
-    import_jobs_schema_validation_schema_validation_approved_by_idx: index(
-      "import_jobs_schema_validation_schema_validation_approved_by_idx"
+    import_jobs_schema_validation_schema_validation_approved_idx: index(
+      "import_jobs_schema_validation_schema_validation_approved_idx"
     ).on(columns.schemaValidation_approvedBy),
     import_jobs_dataset_schema_version_idx: index("import_jobs_dataset_schema_version_idx").on(
       columns.datasetSchemaVersion
     ),
     import_jobs_updated_at_idx: index("import_jobs_updated_at_idx").on(columns.updatedAt),
     import_jobs_created_at_idx: index("import_jobs_created_at_idx").on(columns.createdAt),
+    import_jobs_deleted_at_idx: index("import_jobs_deleted_at_idx").on(columns.deletedAt),
   })
 );
 
@@ -1267,6 +1293,7 @@ export const _import_jobs_v = db_schema.table(
     version_lastSuccessfulStage: enum__import_jobs_v_version_last_successful_stage("version_last_successful_stage"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
   },
@@ -1278,8 +1305,8 @@ export const _import_jobs_v = db_schema.table(
     _import_jobs_v_version_version_dataset_idx: index("_import_jobs_v_version_version_dataset_idx").on(
       columns.version_dataset
     ),
-    _import_jobs_v_version_schema_validation_version_schema_validation_approved_by_idx: index(
-      "_import_jobs_v_version_schema_validation_version_schema_validation_approved_by_idx"
+    _import_jobs_v_version_schema_validation_version_schema__idx: index(
+      "_import_jobs_v_version_schema_validation_version_schema__idx"
     ).on(columns.version_schemaValidation_approvedBy),
     _import_jobs_v_version_version_dataset_schema_version_idx: index(
       "_import_jobs_v_version_version_dataset_schema_version_idx"
@@ -1289,6 +1316,9 @@ export const _import_jobs_v = db_schema.table(
     ),
     _import_jobs_v_version_version_created_at_idx: index("_import_jobs_v_version_version_created_at_idx").on(
       columns.version_createdAt
+    ),
+    _import_jobs_v_version_version_deleted_at_idx: index("_import_jobs_v_version_version_deleted_at_idx").on(
+      columns.version_deletedAt
     ),
     _import_jobs_v_created_at_idx: index("_import_jobs_v_created_at_idx").on(columns.createdAt),
     _import_jobs_v_updated_at_idx: index("_import_jobs_v_updated_at_idx").on(columns.updatedAt),
@@ -1396,6 +1426,7 @@ export const scheduled_imports = db_schema.table(
     statistics_averageDuration: numeric("statistics_average_duration").default("0"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     _status: enum_scheduled_imports_status("_status").default("draft"),
   },
   (columns) => ({
@@ -1404,6 +1435,7 @@ export const scheduled_imports = db_schema.table(
     scheduled_imports_dataset_idx: index("scheduled_imports_dataset_idx").on(columns.dataset),
     scheduled_imports_updated_at_idx: index("scheduled_imports_updated_at_idx").on(columns.updatedAt),
     scheduled_imports_created_at_idx: index("scheduled_imports_created_at_idx").on(columns.createdAt),
+    scheduled_imports_deleted_at_idx: index("scheduled_imports_deleted_at_idx").on(columns.deletedAt),
     scheduled_imports__status_idx: index("scheduled_imports__status_idx").on(columns._status),
   })
 );
@@ -1424,8 +1456,8 @@ export const _scheduled_imports_v_version_multi_sheet_config_sheets = db_schema.
   (columns) => ({
     _orderIdx: index("_scheduled_imports_v_version_multi_sheet_config_sheets_order_idx").on(columns._order),
     _parentIDIdx: index("_scheduled_imports_v_version_multi_sheet_config_sheets_parent_id_idx").on(columns._parentID),
-    _scheduled_imports_v_version_multi_sheet_config_sheets_dataset_idx: index(
-      "_scheduled_imports_v_version_multi_sheet_config_sheets_dataset_idx"
+    _scheduled_imports_v_version_multi_sheet_config_sheets_d_idx: index(
+      "_scheduled_imports_v_version_multi_sheet_config_sheets_d_idx"
     ).on(columns.dataset),
     _parentIDFk: foreignKey({
       columns: [columns["_parentID"]],
@@ -1517,6 +1549,7 @@ export const _scheduled_imports_v = db_schema.table(
     version_statistics_averageDuration: numeric("version_statistics_average_duration").default("0"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     version__status: enum__scheduled_imports_v_version_status("version__status").default("draft"),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
@@ -1540,6 +1573,9 @@ export const _scheduled_imports_v = db_schema.table(
     _scheduled_imports_v_version_version_created_at_idx: index(
       "_scheduled_imports_v_version_version_created_at_idx"
     ).on(columns.version_createdAt),
+    _scheduled_imports_v_version_version_deleted_at_idx: index(
+      "_scheduled_imports_v_version_version_deleted_at_idx"
+    ).on(columns.version_deletedAt),
     _scheduled_imports_v_version_version__status_idx: index("_scheduled_imports_v_version_version__status_idx").on(
       columns.version__status
     ),
@@ -1588,6 +1624,7 @@ export const events = db_schema.table(
     transformations: jsonb("transformations"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     _status: enum_events_status("_status").default("draft"),
   },
   (columns) => ({
@@ -1600,6 +1637,7 @@ export const events = db_schema.table(
     events_validation_status_idx: index("events_validation_status_idx").on(columns.validationStatus),
     events_updated_at_idx: index("events_updated_at_idx").on(columns.updatedAt),
     events_created_at_idx: index("events_created_at_idx").on(columns.createdAt),
+    events_deleted_at_idx: index("events_deleted_at_idx").on(columns.deletedAt),
     events__status_idx: index("events__status_idx").on(columns._status),
     dataset_eventTimestamp_idx: index("dataset_eventTimestamp_idx").on(columns.dataset, columns.eventTimestamp),
     eventTimestamp_idx: index("eventTimestamp_idx").on(columns.eventTimestamp),
@@ -1661,6 +1699,7 @@ export const _events_v = db_schema.table(
     version_transformations: jsonb("version_transformations"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     version__status: enum__events_v_version_status("version__status").default("draft"),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
@@ -1693,6 +1732,9 @@ export const _events_v = db_schema.table(
     ),
     _events_v_version_version_created_at_idx: index("_events_v_version_version_created_at_idx").on(
       columns.version_createdAt
+    ),
+    _events_v_version_version_deleted_at_idx: index("_events_v_version_version_deleted_at_idx").on(
+      columns.version_deletedAt
     ),
     _events_v_version_version__status_idx: index("_events_v_version_version__status_idx").on(columns.version__status),
     _events_v_created_at_idx: index("_events_v_created_at_idx").on(columns.createdAt),
@@ -1748,6 +1790,7 @@ export const users = db_schema.table(
     lastLoginAt: timestamp("last_login_at", { mode: "string", withTimezone: true, precision: 3 }),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     _status: enum_users_status("_status").default("draft"),
     email: varchar("email"),
     resetPasswordToken: varchar("reset_password_token"),
@@ -1764,6 +1807,7 @@ export const users = db_schema.table(
   (columns) => ({
     users_updated_at_idx: index("users_updated_at_idx").on(columns.updatedAt),
     users_created_at_idx: index("users_created_at_idx").on(columns.createdAt),
+    users_deleted_at_idx: index("users_deleted_at_idx").on(columns.deletedAt),
     users__status_idx: index("users__status_idx").on(columns._status),
     users_email_idx: uniqueIndex("users_email_idx").on(columns.email),
   })
@@ -1804,6 +1848,7 @@ export const _users_v = db_schema.table(
     version_lastLoginAt: timestamp("version_last_login_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     version__status: enum__users_v_version_status("version__status").default("draft"),
     version_email: varchar("version_email"),
     version_resetPasswordToken: varchar("version_reset_password_token"),
@@ -1829,6 +1874,9 @@ export const _users_v = db_schema.table(
     _users_v_version_version_created_at_idx: index("_users_v_version_version_created_at_idx").on(
       columns.version_createdAt
     ),
+    _users_v_version_version_deleted_at_idx: index("_users_v_version_version_deleted_at_idx").on(
+      columns.version_deletedAt
+    ),
     _users_v_version_version__status_idx: index("_users_v_version_version__status_idx").on(columns.version__status),
     _users_v_version_version_email_idx: index("_users_v_version_version_email_idx").on(columns.version_email),
     _users_v_created_at_idx: index("_users_v_created_at_idx").on(columns.createdAt),
@@ -1845,6 +1893,7 @@ export const media = db_schema.table(
     alt: varchar("alt"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     _status: enum_media_status("_status").default("draft"),
     url: varchar("url"),
     thumbnailURL: varchar("thumbnail_u_r_l"),
@@ -1877,6 +1926,7 @@ export const media = db_schema.table(
   (columns) => ({
     media_updated_at_idx: index("media_updated_at_idx").on(columns.updatedAt),
     media_created_at_idx: index("media_created_at_idx").on(columns.createdAt),
+    media_deleted_at_idx: index("media_deleted_at_idx").on(columns.deletedAt),
     media__status_idx: index("media__status_idx").on(columns._status),
     media_filename_idx: uniqueIndex("media_filename_idx").on(columns.filename),
     media_sizes_thumbnail_sizes_thumbnail_filename_idx: index("media_sizes_thumbnail_sizes_thumbnail_filename_idx").on(
@@ -1901,6 +1951,7 @@ export const _media_v = db_schema.table(
     version_alt: varchar("version_alt"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     version__status: enum__media_v_version_status("version__status").default("draft"),
     version_url: varchar("version_url"),
     version_thumbnailURL: varchar("version_thumbnail_u_r_l"),
@@ -1942,16 +1993,19 @@ export const _media_v = db_schema.table(
     _media_v_version_version_created_at_idx: index("_media_v_version_version_created_at_idx").on(
       columns.version_createdAt
     ),
+    _media_v_version_version_deleted_at_idx: index("_media_v_version_version_deleted_at_idx").on(
+      columns.version_deletedAt
+    ),
     _media_v_version_version__status_idx: index("_media_v_version_version__status_idx").on(columns.version__status),
     _media_v_version_version_filename_idx: index("_media_v_version_version_filename_idx").on(columns.version_filename),
-    _media_v_version_sizes_thumbnail_version_sizes_thumbnail_filename_idx: index(
-      "_media_v_version_sizes_thumbnail_version_sizes_thumbnail_filename_idx"
+    _media_v_version_sizes_thumbnail_version_sizes_thumbnail_idx: index(
+      "_media_v_version_sizes_thumbnail_version_sizes_thumbnail_idx"
     ).on(columns.version_sizes_thumbnail_filename),
     _media_v_version_sizes_card_version_sizes_card_filename_idx: index(
       "_media_v_version_sizes_card_version_sizes_card_filename_idx"
     ).on(columns.version_sizes_card_filename),
-    _media_v_version_sizes_tablet_version_sizes_tablet_filename_idx: index(
-      "_media_v_version_sizes_tablet_version_sizes_tablet_filename_idx"
+    _media_v_version_sizes_tablet_version_sizes_tablet_filen_idx: index(
+      "_media_v_version_sizes_tablet_version_sizes_tablet_filen_idx"
     ).on(columns.version_sizes_tablet_filename),
     _media_v_created_at_idx: index("_media_v_created_at_idx").on(columns.createdAt),
     _media_v_updated_at_idx: index("_media_v_updated_at_idx").on(columns.updatedAt),
@@ -1981,6 +2035,7 @@ export const location_cache = db_schema.table(
     metadata: jsonb("metadata"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     _status: enum_location_cache_status("_status").default("draft"),
   },
   (columns) => ({
@@ -1988,6 +2043,7 @@ export const location_cache = db_schema.table(
     location_cache_normalized_address_idx: index("location_cache_normalized_address_idx").on(columns.normalizedAddress),
     location_cache_updated_at_idx: index("location_cache_updated_at_idx").on(columns.updatedAt),
     location_cache_created_at_idx: index("location_cache_created_at_idx").on(columns.createdAt),
+    location_cache_deleted_at_idx: index("location_cache_deleted_at_idx").on(columns.deletedAt),
     location_cache__status_idx: index("location_cache__status_idx").on(columns._status),
   })
 );
@@ -2016,6 +2072,7 @@ export const _location_cache_v = db_schema.table(
     version_metadata: jsonb("version_metadata"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     version__status: enum__location_cache_v_version_status("version__status").default("draft"),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
@@ -2035,6 +2092,9 @@ export const _location_cache_v = db_schema.table(
     ),
     _location_cache_v_version_version_created_at_idx: index("_location_cache_v_version_version_created_at_idx").on(
       columns.version_createdAt
+    ),
+    _location_cache_v_version_version_deleted_at_idx: index("_location_cache_v_version_version_deleted_at_idx").on(
+      columns.version_deletedAt
     ),
     _location_cache_v_version_version__status_idx: index("_location_cache_v_version_version__status_idx").on(
       columns.version__status
@@ -2101,12 +2161,14 @@ export const geocoding_providers = db_schema.table(
     notes: varchar("notes"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     _status: enum_geocoding_providers_status("_status").default("draft"),
   },
   (columns) => ({
     geocoding_providers_name_idx: uniqueIndex("geocoding_providers_name_idx").on(columns.name),
     geocoding_providers_updated_at_idx: index("geocoding_providers_updated_at_idx").on(columns.updatedAt),
     geocoding_providers_created_at_idx: index("geocoding_providers_created_at_idx").on(columns.createdAt),
+    geocoding_providers_deleted_at_idx: index("geocoding_providers_deleted_at_idx").on(columns.deletedAt),
     geocoding_providers__status_idx: index("geocoding_providers__status_idx").on(columns._status),
   })
 );
@@ -2175,6 +2237,7 @@ export const _geocoding_providers_v = db_schema.table(
     version_notes: varchar("version_notes"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     version__status: enum__geocoding_providers_v_version_status("version__status").default("draft"),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
@@ -2192,6 +2255,9 @@ export const _geocoding_providers_v = db_schema.table(
     _geocoding_providers_v_version_version_created_at_idx: index(
       "_geocoding_providers_v_version_version_created_at_idx"
     ).on(columns.version_createdAt),
+    _geocoding_providers_v_version_version_deleted_at_idx: index(
+      "_geocoding_providers_v_version_version_deleted_at_idx"
+    ).on(columns.version_deletedAt),
     _geocoding_providers_v_version_version__status_idx: index("_geocoding_providers_v_version_version__status_idx").on(
       columns.version__status
     ),
@@ -2211,12 +2277,14 @@ export const pages = db_schema.table(
     content: jsonb("content"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     _status: enum_pages_status("_status").default("draft"),
   },
   (columns) => ({
     pages_slug_idx: uniqueIndex("pages_slug_idx").on(columns.slug),
     pages_updated_at_idx: index("pages_updated_at_idx").on(columns.updatedAt),
     pages_created_at_idx: index("pages_created_at_idx").on(columns.createdAt),
+    pages_deleted_at_idx: index("pages_deleted_at_idx").on(columns.deletedAt),
     pages__status_idx: index("pages__status_idx").on(columns._status),
   })
 );
@@ -2233,6 +2301,7 @@ export const _pages_v = db_schema.table(
     version_content: jsonb("version_content"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
     version__status: enum__pages_v_version_status("version__status").default("draft"),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
@@ -2247,6 +2316,9 @@ export const _pages_v = db_schema.table(
     ),
     _pages_v_version_version_created_at_idx: index("_pages_v_version_version_created_at_idx").on(
       columns.version_createdAt
+    ),
+    _pages_v_version_version_deleted_at_idx: index("_pages_v_version_version_deleted_at_idx").on(
+      columns.version_deletedAt
     ),
     _pages_v_version_version__status_idx: index("_pages_v_version_version__status_idx").on(columns.version__status),
     _pages_v_created_at_idx: index("_pages_v_created_at_idx").on(columns.createdAt),
@@ -2295,6 +2367,7 @@ export const payload_jobs = db_schema.table(
     queue: varchar("queue").default("default"),
     waitUntil: timestamp("wait_until", { mode: "string", withTimezone: true, precision: 3 }),
     processing: boolean("processing").default(false),
+    meta: jsonb("meta"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
   },
@@ -2591,6 +2664,13 @@ export const _main_menu_v = db_schema.table(
     _main_menu_v_autosave_idx: index("_main_menu_v_autosave_idx").on(columns.autosave),
   })
 );
+
+export const payload_jobs_stats = db_schema.table("payload_jobs_stats", {
+  id: serial("id").primaryKey(),
+  stats: jsonb("stats"),
+  updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }),
+  createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
+});
 
 export const relations_catalogs = relations(catalogs, () => ({}));
 export const relations__catalogs_v = relations(_catalogs_v, ({ one }) => ({
@@ -3305,6 +3385,7 @@ export const relations__main_menu_v = relations(_main_menu_v, ({ many }) => ({
     relationName: "version_navItems",
   }),
 }));
+export const relations_payload_jobs_stats = relations(payload_jobs_stats, () => ({}));
 
 type DatabaseSchema = {
   db_schema: typeof db_schema;
@@ -3442,6 +3523,7 @@ type DatabaseSchema = {
   main_menu: typeof main_menu;
   _main_menu_v_version_nav_items: typeof _main_menu_v_version_nav_items;
   _main_menu_v: typeof _main_menu_v;
+  payload_jobs_stats: typeof payload_jobs_stats;
   relations_catalogs: typeof relations_catalogs;
   relations__catalogs_v: typeof relations__catalogs_v;
   relations_datasets_id_strategy_computed_id_fields: typeof relations_datasets_id_strategy_computed_id_fields;
@@ -3503,6 +3585,7 @@ type DatabaseSchema = {
   relations_main_menu: typeof relations_main_menu;
   relations__main_menu_v_version_nav_items: typeof relations__main_menu_v_version_nav_items;
   relations__main_menu_v: typeof relations__main_menu_v;
+  relations_payload_jobs_stats: typeof relations_payload_jobs_stats;
 };
 
 declare module "@payloadcms/db-postgres" {
