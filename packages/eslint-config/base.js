@@ -326,9 +326,9 @@ export default [
       ],
       "turbo/no-undeclared-env-vars": "error",
 
-      // JSDoc - warn only, not every file needs module documentation
+      // JSDoc - File overview validation
       "jsdoc/require-file-overview": [
-        "warn",
+        "error",
         {
           tags: {
             module: {
@@ -341,18 +341,22 @@ export default [
       ],
       // Ensure @module tag doesn't have inline descriptions (TypeDoc requirement)
       "jsdoc/check-tag-names": [
-        "warn",
+        "error",
         {
           definedTags: ["module", "category"],
         },
       ],
-      // Disabled - causes circular fixes when trying to auto-fix
-      // "jsdoc/empty-tags": [
-      //   "error",
-      //   {
-      //     tags: ["module"], // @module should have no inline content for TypeDoc
-      //   },
-      // ],
+      // @module should be empty for TypeDoc
+      "jsdoc/empty-tags": [
+        "error",
+        {
+          tags: ["module"],
+        },
+      ],
+      // Disable the sentence completion rules - they're too strict for property descriptions
+      "jsdoc/require-description-complete-sentence": "off",
+      // Disable match-description - too strict for inline comments
+      "jsdoc/match-description": "off",
       "jsdoc/no-types": "off", // We use TypeScript for types
       "jsdoc/require-jsdoc": "off", // Don't require JSDoc on everything
     },

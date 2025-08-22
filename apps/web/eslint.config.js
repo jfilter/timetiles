@@ -6,7 +6,7 @@
  * - Generated files (disabling most rules for auto-generated code)
  * - Config files (relaxing strict typing for build configuration)
  * - Script files (allowing OS commands and longer functions)
- * - Test files (allowing console.log and more complex test scenarios)
+ * - Test files (allowing console.log and more complex test scenarios).
  *
  * @module
  */

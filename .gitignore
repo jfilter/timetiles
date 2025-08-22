@@ -58,12 +58,10 @@ uploads/
 
 # Generated API Documentation
 # These files are auto-generated from JSDoc comments via TypeDoc
-# Run 'pnpm docs:api' to regenerate them
-apps/docs/pages/reference/api/**/*.md
-apps/docs/pages/reference/api/**/*.mdx
-# Keep navigation and index files
-!apps/docs/pages/reference/api/_meta.json
-!apps/docs/pages/reference/api/**/_meta.json
-!apps/docs/pages/reference/api/index.mdx
-!apps/docs/pages/reference/api/.gitkeep
+# Run TypeDoc from apps/web, then run conversion scripts in apps/docs/scripts/
+apps/docs/content/reference/api/**/*.md
+apps/docs/content/reference/api/**/*.mdx
+apps/docs/content/reference/api/**/_meta.json
+# Keep only the manual index file
+!apps/docs/content/reference/api/index.mdx
 .playwright-mcp

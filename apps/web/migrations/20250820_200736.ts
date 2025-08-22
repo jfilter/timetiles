@@ -1,4 +1,4 @@
-import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-postgres'
+import { MigrateUpArgs, MigrateDownArgs, sql } from "@payloadcms/db-postgres";
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
@@ -12,7 +12,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   ALTER TABLE "payload"."_scheduled_imports_v_version_execution_history" ADD COLUMN "triggered_by" "payload"."trig_by" DEFAULT 'schedule';
   ALTER TABLE "payload"."_scheduled_imports_v" ADD COLUMN "version_webhook_enabled" boolean DEFAULT false;
   ALTER TABLE "payload"."_scheduled_imports_v" ADD COLUMN "version_webhook_token" varchar;
-  ALTER TABLE "payload"."_scheduled_imports_v" ADD COLUMN "version_webhook_url" varchar;`)
+  ALTER TABLE "payload"."_scheduled_imports_v" ADD COLUMN "version_webhook_url" varchar;`);
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
@@ -33,5 +33,5 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   ALTER TABLE "payload"."_scheduled_imports_v" DROP COLUMN "version_webhook_enabled";
   ALTER TABLE "payload"."_scheduled_imports_v" DROP COLUMN "version_webhook_token";
   ALTER TABLE "payload"."_scheduled_imports_v" DROP COLUMN "version_webhook_url";
-  DROP TYPE "payload"."trig_by";`)
+  DROP TYPE "payload"."trig_by";`);
 }
