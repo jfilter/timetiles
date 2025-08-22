@@ -20,12 +20,24 @@ export default {
           }
           
           return [true];
+        },
+        'no-vague-subjects': (parsed) => {
+          const vague = ['stuff', 'things', 'updates', 'changes', 'fixes'];
+          const subject = parsed.subject?.toLowerCase() || '';
+          for (const word of vague) {
+            if (subject.includes(word)) {
+              return [false, `Avoid vague terms like "${word}" in commit subjects`];
+            }
+          }
+          return [true];
         }
       }
     }
   ],
   rules: {
     'no-claude-coauthor': [2, 'always'],
+    'subject-min-length': [2, 'always', 10],
+    'no-vague-subjects': [2, 'always'],
     // Custom rules based on the TimeTiles commit guidelines
     'type-enum': [
       2,
@@ -34,11 +46,12 @@ export default {
         'feat',     // New feature for users
         'fix',      // Bug fix
         'docs',     // Documentation only changes
-        'style',    // Code style: formatting, missing semicolons, etc
+        'format',   // Code formatting: whitespace, missing semicolons, etc
         'refactor', // Code change that neither fixes a bug nor adds a feature
         'perf',     // Performance improvements
         'test',     // Adding or updating tests
         'build',    // Build system or external dependencies
+        'ci',       // CI/CD configuration and scripts
         'chore',    // Other changes that don't modify src or test files
         'revert',   // Reverts a previous commit
         'security', // Security fixes or improvements
@@ -52,27 +65,22 @@ export default {
         'web',        // Next.js web application
         'docs',       // Documentation site
         'ui',         // Shared UI components package
+        'assets',     // Shared assets package (logos, images)
         'config',     // Configuration packages (ESLint, TypeScript, etc.)
         
         // Core Features
-        'import',     // File import system
+        'import',     // File import system (manual, scheduled, webhook)
         'geocoding',  // Address geocoding
         'events',     // Event data management
-        'catalogs',   // Catalog management
-        'datasets',   // Dataset operations
-        'auth',       // Authentication & authorization
-        'cache',      // Location cache & caching
+        'schema',     // Schema detection and validation
+        'deploy',     // User deployment features (self-hosting, Docker setup)
         
         // Technical Areas
         'db',         // Database, migrations
         'api',        // API endpoints (REST, GraphQL)
         'jobs',       // Background jobs & queues
-        'types',      // TypeScript types & interfaces
-        'testing',    // Test infrastructure & utilities
-        'deps',       // Dependencies (use with build type)
-        'docker',     // Docker & containerization
-        'scripts',    // Utility & automation scripts
-        'ci',         // CI configuration files and scripts
+        'deps',       // Dependencies
+        'seed',       // Test and development data generation
       ],
     ],
     'scope-empty': [1, 'never'],

@@ -1,9 +1,10 @@
 # <type>(<scope>): <subject>
-# Types: feat, fix, docs, style, refactor, perf, test, build, chore, revert, security
+# Type = WHAT you're doing, Scope = WHERE in the codebase
+# Types: feat, fix, docs, format, refactor, perf, test, build, ci, chore, revert, security
 # Scopes (optional but recommended):
-#   Apps/Packages: web, docs, ui, config
-#   Features: import, geocoding, events, catalogs, datasets, auth, cache
-#   Technical: db, api, jobs, types, testing, deps, docker, scripts, ci
+#   Apps/Packages: web, docs, ui, assets, config
+#   Features: import, geocoding, events, schema, deploy
+#   Technical: db, api, jobs, deps, seed
 # Subject: imperative mood, max 72 chars (proper nouns allowed: GitHub, API, ES, etc.)
 
 # List your changes as bullet points:
