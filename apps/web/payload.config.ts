@@ -22,7 +22,7 @@ const connectionString = process.env.DATABASE_URL;
 
 // During build phase, Next.js sets NEXT_PHASE environment variable
 // We can skip strict validation during build
-const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build" || process.env.SKIP_DB_CHECK === "true";
 
 if (!secret && !isBuildPhase) {
   throw new Error("PAYLOAD_SECRET environment variable is required");
@@ -35,6 +35,24 @@ if (!serverURL && !isBuildPhase) {
 if (!connectionString && !isBuildPhase) {
   throw new Error("DATABASE_URL environment variable is required");
 }
+
+// Use a minimal configuration during build to avoid database connection
+const dbConfig = isBuildPhase
+  ? postgresAdapter({
+      ...DEFAULT_DB_CONFIG,
+      pool: {
+        connectionString: "postgresql://localhost:5432/build",
+        // During build, don't actually connect
+        max: 0,
+        min: 0,
+      },
+    })
+  : postgresAdapter({
+      ...DEFAULT_DB_CONFIG,
+      pool: {
+        connectionString: connectionString || "postgresql://build:build@localhost:5432/build",
+      },
+    });
 
 export default buildConfig({
   admin: {
@@ -49,12 +67,7 @@ export default buildConfig({
   secret: secret || "dummy-build-secret",
   serverURL: serverURL || "http://localhost:3000",
   typescript: DEFAULT_TYPESCRIPT_CONFIG,
-  db: postgresAdapter({
-    ...DEFAULT_DB_CONFIG,
-    pool: {
-      connectionString: connectionString || "postgresql://build:build@localhost:5432/build",
-    },
-  }),
+  db: dbConfig,
   cors: [serverURL || "http://localhost:3000"],
   csrf: [serverURL || "http://localhost:3000"],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
