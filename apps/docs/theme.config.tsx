@@ -1,9 +1,8 @@
 import React from "react";
-import { DocsThemeConfig } from "nextra-theme-docs";
 import logoHorizontal from "@timetiles/assets/logos/static/logo-with-text-horizontal-tight.svg";
 import faviconPng from "@timetiles/assets/logos/static/logo-256.png";
 
-const config: DocsThemeConfig = {
+const config = {
   logo: (
     <>
       <img src={logoHorizontal} alt="TimeTiles" style={{ height: "40px" }} />
@@ -15,6 +14,12 @@ const config: DocsThemeConfig = {
   docsRepositoryBase: "https://github.com/jfilter/timetiles/tree/main/apps/docs",
   footer: {
     text: "TimeTiles Documentation",
+  },
+  primaryHue: 212, // Blue hue
+  darkMode: true,
+  navigation: {
+    prev: true,
+    next: true,
   },
   useNextSeoProps() {
     return {
@@ -34,7 +39,7 @@ const config: DocsThemeConfig = {
     </>
   ),
   sidebar: {
-    titleComponent({ title, type }) {
+    titleComponent({ title, type }: { title: string; type: string }) {
       if (type === "separator") {
         return <span className="cursor-default">{title}</span>;
       }

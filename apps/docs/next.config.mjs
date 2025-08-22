@@ -1,8 +1,13 @@
 import nextra from "nextra";
 
 const withNextra = nextra({
-  theme: "nextra-theme-docs",
-  themeConfig: "./theme.config.tsx",
+  // Default content directory is 'content'
+  // Enable search
+  search: {
+    codeblocks: true,
+  },
+  // Enable LaTeX support
+  latex: false,
 });
 
 /** @type {import('next').NextConfig} */

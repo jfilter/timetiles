@@ -2,6 +2,7 @@
   "extends": "@workspace/typescript-config/nextjs.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "moduleResolution": "bundler",
     "paths": {
       "@workspace/ui/*": ["../../packages/ui/src/*"]
     },
@@ -11,11 +12,20 @@
       }
     ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.mdx", ".next/types/**/*.ts"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.jsx",
+    "**/*.mdx",
+    ".next/types/**/*.ts",
+    "app/**/*",
+    "content/**/*"
+  ],
   "exclude": [
     "node_modules",
-    "pages/reference/api/**/*.md",
-    "pages/reference/api/**/*.mdx",
-    "!pages/reference/api/index.mdx"
+    "content/reference/api/**/*.md",
+    "content/reference/api/**/*.mdx",
+    "!content/reference/api/index.mdx"
   ]
 }
