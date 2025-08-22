@@ -3,5 +3,6 @@
   "documentation-guide": "Documentation Guide",
   "testing-guidelines": "Testing Guidelines",
   "testing-debug-guide": "Test Debugging Guide",
-  "commit-guidelines": "Commit Guidelines"
+  "commit-guidelines": "Commit Guidelines",
+  "git-configuration": "Git Configuration"
 }

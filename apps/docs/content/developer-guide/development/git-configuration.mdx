@@ -1,0 +1,75 @@
+# Git Configuration
+
+This guide covers Git setup and tooling for the TimeTiles project.
+
+## Commit Message Template
+
+The project includes a commit message template at `.gitmessage` that helps you write consistent commit messages.
+
+### Local Setup
+
+The template is automatically configured for this repository. When you run `git commit` without the `-m` flag, your editor will open with the template.
+
+### Global Setup
+
+To use a similar template globally for all your projects:
+
+```bash
+git config --global commit.template ~/.gitmessage
+```
+
+Then copy the template to your home directory:
+
+```bash
+cp .gitmessage ~/.gitmessage
+```
+
+## Commit Validation
+
+The project uses commitlint to enforce commit message standards. Configuration is in `commitlint.config.mjs`. This ensures all commits follow our project's specific types, scopes, and quality rules.
+
+## Pre-commit Hooks
+
+The project uses Husky to run checks before commits:
+
+- **commit-msg**: Validates commit messages against our guidelines
+- **pre-commit**: Runs linting and type checking (when configured)
+
+These are automatically installed when you run `pnpm install`.
+
+## Troubleshooting
+
+### Commit Rejected
+
+If your commit is rejected, read the error message carefully. Common issues:
+
+- Subject too short (minimum 10 characters)
+- Invalid type or scope
+- Vague terms like "stuff" or "things"
+- Missing required format `type(scope): subject`
+
+### Editor Not Opening
+
+If `git commit` doesn't open your editor:
+
+```bash
+# Set your preferred editor
+git config --global core.editor "code --wait"  # VS Code
+git config --global core.editor "vim"          # Vim
+git config --global core.editor "nano"         # Nano
+```
+
+### Bypassing Hooks (Emergency Only)
+
+In rare cases where you need to bypass hooks:
+
+```bash
+git commit --no-verify -m "emergency: fix critical issue"
+```
+
+**Note:** This should only be used in emergencies. The hooks exist to maintain code quality.
+
+## Related Documentation
+
+- [Commit Guidelines](./commit-guidelines) - Detailed commit message format and examples
+- [Testing Guidelines](./testing-guidelines) - Pre-commit testing requirements
