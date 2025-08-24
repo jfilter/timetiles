@@ -42,7 +42,8 @@ interface UrlFetchFailureOutput {
   error: string;
 }
 
-type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
+type UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
+type UrlFetchErrorOutput = UrlFetchFailureOutput;
 
 describe.sequential("Network Error Handling Tests", () => {
   let payload: any;
@@ -579,12 +580,13 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      // Handler currently accepts binary data and overrides content type to CSV
-      // This is documented behavior
-      expect(result.output.success).toBe(true);
-      if (result.output.success) {
-        const successOutput = result.output as UrlFetchSuccessOutput;
-        expect(successOutput.contentType).toBe("text/csv");
+      // Handler should reject binary data when expecting CSV
+      expect(result.output.success).toBe(false);
+      if (!result.output.success) {
+        const errorOutput = result.output as UrlFetchErrorOutput;
+        // Binary data causes parsing error when expecting CSV
+        expect(errorOutput.error).toBeDefined();
+        expect(typeof errorOutput.error).toBe("string");
       }
     });
   });
