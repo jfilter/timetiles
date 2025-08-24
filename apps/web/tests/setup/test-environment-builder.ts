@@ -19,7 +19,7 @@ import { createLogger } from "@/lib/logger";
 import { SeedManager } from "@/lib/seed/index";
 import { RelationshipResolver } from "@/lib/seed/relationship-resolver";
 
-import { truncateAllTables } from "./database-setup";
+import { createTestDatabase, truncateAllTables } from "./database-setup";
 
 const logger = createLogger("test-env");
 
@@ -79,10 +79,9 @@ export class TestEnvironmentBuilder {
       seedData,
     });
 
-    // Generate unique identifiers
+    // Generate unique identifiers for temp directories only
     const testId = randomUUID();
     const workerId = process.env.VITEST_WORKER_ID ?? "1";
-    const dbName = this.generateTestDbName(isolationLevel, workerId, testId);
 
     // Create temporary directory if requested
     let tempDir: string | undefined;
@@ -93,25 +92,38 @@ export class TestEnvironmentBuilder {
       }
     }
 
-    // Use shared test database instead of creating unique ones to avoid connection issues
-    const dbUrl =
-      process.env.DATABASE_URL ?? `postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test`;
+    // Use the same database URL that was set up in the global setup
+    const dbName = `timetiles_test_${workerId}`;
+    const dbUrl = process.env.DATABASE_URL ?? `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
 
     logger.debug("Initializing test database", {
-      dbName: "shared",
+      workerId,
+      dbName,
       collections: collections.length,
     });
 
-    // Clean database state
+    // Ensure database exists
+    logger.info("Creating test database", { dbName });
+    await createTestDatabase(dbName);
+    logger.info("Database created", { dbName });
+
+    // Clean database state with truncation
+    logger.info("Truncating tables", { dbName });
     await truncateAllTables(dbUrl);
+    logger.info("Tables truncated", { dbName });
 
     // Create optimized Payload config for testing
+    logger.info("Creating test config", { dbName });
     const testConfig = await createTestConfig({
       databaseUrl: dbUrl,
       collections,
       logLevel: (process.env.LOG_LEVEL as any) || "silent",
     });
+    logger.info("Test config created", { dbName });
+
+    logger.info("Getting Payload instance", { dbName });
     const payload = await getPayload({ config: testConfig });
+    logger.info("Payload instance created", { dbName });
 
     // Payload instances are now created as needed via getPayload({ config })
 
@@ -129,7 +141,7 @@ export class TestEnvironmentBuilder {
       payload,
       seedManager,
       connection: payload.db,
-      dbName,
+      dbName, // Use the dbName variable from above
       tempDir,
       cleanup: () => this.cleanup(testEnv),
       getCollectionCount: (collection: string) => seedManager.getCollectionCount(collection),
@@ -140,7 +152,7 @@ export class TestEnvironmentBuilder {
     TestEnvironmentBuilder.activeEnvironments.add(testEnv);
 
     logger.info("Test environment created successfully", {
-      dbName,
+      workerId,
       tempDir: tempDir ? "created" : "none",
       seeded: seedData || Object.keys(customSeedData).length > 0,
     });
@@ -207,15 +219,6 @@ export class TestEnvironmentBuilder {
     TestEnvironmentBuilder.activeEnvironments.clear();
 
     logger.info("All test environments cleaned up");
-  }
-
-  /**
-   * Generate a unique test database name based on isolation level.
-   */
-  private generateTestDbName(isolationLevel: string, workerId: string, testId: string): string {
-    // Use UUID prefix for true uniqueness instead of timestamp to prevent collisions
-    const uniqueId = testId.substring(0, 8);
-    return `timetiles_test_${isolationLevel}_${workerId}_${uniqueId}`;
   }
 
   /**
@@ -308,9 +311,11 @@ export class TestEnvironmentBuilder {
       // Clean up seed manager
       await testEnv.seedManager.cleanup();
 
-      // Truncate tables for next test
+      // Truncate tables for next test - use the same database URL
+      const workerId = process.env.VITEST_WORKER_ID ?? "1";
       await truncateAllTables(
-        process.env.DATABASE_URL ?? `postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test`
+        process.env.DATABASE_URL ??
+          `postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test_${workerId}`
       );
 
       logger.debug("Test environment cleanup completed", {

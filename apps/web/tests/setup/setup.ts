@@ -26,7 +26,8 @@ process.env.NEXT_PUBLIC_PAYLOAD_URL = "http://localhost:3000";
 
 // Payload logging is now properly controlled via logger and loggingLevels configuration
 
-// Create isolated test database for each worker
+// Use one test database per worker for efficiency
+// Workers will truncate tables between tests instead of creating new databases
 const workerId = process.env.VITEST_WORKER_ID ?? "1";
 const testDbName = `timetiles_test_${workerId}`;
 const dbUrl = `postgresql://timetiles_user:timetiles_password@localhost:5432/${testDbName}`;
@@ -106,15 +107,30 @@ beforeAll(async () => {
   });
 
   // Create test database if it doesn't exist (includes PostGIS setup)
+  // This will now truncate if the database already exists
   await createTestDatabase(testDbName);
 
-  // Run migrations to ensure database schema is up to date
+  // Run migrations only if schema verification fails
+  // This avoids running migrations on every test run
   try {
-    const { execSync } = await import("child_process");
-    execSync("pnpm --filter web payload migrate", { stdio: "inherit" });
-
-    // Verify the schema was created correctly
-    await verifyDatabaseSchema(dbUrl);
+    // Try to verify schema first
+    try {
+      await verifyDatabaseSchema(dbUrl);
+      // Schema is valid, no need to run migrations
+      if (process.env.LOG_LEVEL === "debug") {
+        logger.info(`Using existing schema for worker ${workerId}`);
+      }
+    } catch (schemaError) {
+      // Schema verification failed, run migrations
+      if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
+        logger.info(`Running migrations for worker ${workerId}`);
+      }
+      const { execSync } = await import("child_process");
+      execSync("pnpm --filter web payload migrate", { stdio: "inherit" });
+      
+      // Verify again after migration
+      await verifyDatabaseSchema(dbUrl);
+    }
 
     // Log successful setup for debugging
     if (process.env.LOG_LEVEL === "debug" || process.env.CI) {

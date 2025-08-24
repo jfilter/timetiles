@@ -84,17 +84,18 @@ export const truncateAllTables = async (dbUrl?: string): Promise<void> => {
       FROM information_schema.tables
       WHERE table_schema = 'payload' AND table_type = 'BASE TABLE'
         AND table_name NOT LIKE 'payload_migrations%'
+      ORDER BY table_name
     `);
 
     const tableNames = res.rows.map((row) => row.table_name);
 
     if (tableNames.length > 0) {
-      // Truncate all tables
+      // Truncate all tables with CASCADE to handle foreign keys
       // Safe: table names are fetched from the database and properly escaped
       const tableList = tableNames.map((name) => `payload."${name}"`).join(", ");
       // eslint-disable-next-line sonarjs/sql-queries
       await client.query(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
-      logger.debug("Truncated all tables in the test database");
+      logger.debug(`Truncated ${tableNames.length} tables in test database`);
     }
   } catch (error) {
     logger.error({ err: error }, "Failed to truncate tables");
