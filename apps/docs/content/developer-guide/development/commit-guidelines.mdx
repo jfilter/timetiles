@@ -89,15 +89,15 @@ The type must be one of the following:
 
 #### Scope (Optional but Recommended)
 
-The scope provides additional context about what part of the codebase changed. Scopes are organized into three categories:
+The scope provides additional context about what part of the codebase changed. Scopes are organized into categories:
 
-**Apps & Packages** (where the code lives):
+**Monorepo Packages & Apps** (where the code lives):
 
-- **web**: Next.js web application
-- **docs**: Documentation site (Nextra)
+- **web**: Next.js web application (apps/web)
+- **docs**: Documentation site (apps/docs)
 - **ui**: Shared UI components package
 - **assets**: Shared assets package (logos, images)
-- **config**: Configuration packages (ESLint, TypeScript, etc.)
+- **config**: Configuration packages (ESLint, TypeScript, Prettier) - ONLY for packages/*-config/
 
 **Core Features** (what functionality is affected):
 
@@ -110,10 +110,23 @@ The scope provides additional context about what part of the codebase changed. S
 **Technical Areas** (infrastructure & tooling):
 
 - **db**: Database operations, migrations, PostGIS
-- **api**: API endpoints (REST, GraphQL, tRPC)
+- **api**: API endpoints (REST, GraphQL)
 - **jobs**: Background job processing and queues
-- **deps**: External dependencies
-- **seed**: Test and development data generation (seeding operations)
+- **deps**: Dependencies and package management
+- **seed**: Test and development data generation
+- **test**: Testing infrastructure and test files
+
+**Infrastructure** (build & CI/CD):
+
+- **ci**: GitHub Actions, CI/CD pipelines
+- **build**: Docker, build configuration, Turbo
+- **infra**: Infrastructure and DevOps
+
+⚠️ **Important Scope Rules**:
+- The `config` scope is ONLY for configuration packages (packages/eslint-config, packages/prettier-config, packages/typescript-config)
+- For CI/CD files (.github/), use `ci` scope, not `config`
+- For build configuration (Dockerfile, Makefile), use `build` scope
+- The system will validate your scope matches the files you're changing
 
 #### Subject
 
@@ -391,9 +404,51 @@ This project includes a commit message template at `.gitmessage` that is automat
 
 For setup instructions and additional tooling options, see the [Git Configuration Guide](./git-configuration).
 
-## Enforcement
+## Enforcement and Validation
 
 The project uses Husky and commitlint to enforce commit message standards. If your commit doesn't meet the guidelines, it will be rejected with a helpful error message explaining what needs to be fixed.
+
+### Automatic Scope Validation
+
+The commit linting system includes intelligent scope validation that:
+
+- **Detects the correct scope** based on the files you're changing
+- **Suggests appropriate scopes** if you use the wrong one
+- **Validates type-scope combinations** to prevent common mistakes
+- **Enforces scope rules** (e.g., `config` only for package configurations)
+
+### Testing Commit Messages
+
+You can test your commit messages before committing:
+
+```bash
+# Test a commit message
+pnpm tsx scripts/validate-commit.ts "feat(web): add new feature"
+
+# Test with specific files
+pnpm tsx scripts/validate-commit.ts --files apps/web/app/page.tsx "fix: update homepage"
+
+# Run validation test suite
+pnpm tsx scripts/validate-commit.ts --test
+```
+
+### Common Validation Errors
+
+1. **Wrong scope for CI files**:
+   - ❌ `fix(config): update CI workflow` 
+   - ✅ `fix(ci): update CI workflow`
+
+2. **Using `config` for non-package configs**:
+   - ❌ `chore(config): update .gitignore`
+   - ✅ `chore(build): update .gitignore`
+
+3. **Missing scope when files suggest one**:
+   - ❌ `fix: update import validation` (when changing apps/web/app/api/import/)
+   - ✅ `fix(import): update validation`
+
+4. **Dependencies with wrong scope**:
+   - ❌ `chore(web): update dependencies` (when changing package.json)
+   - ✅ `chore(deps): update dependencies`
 
 ## Quick Reference
 

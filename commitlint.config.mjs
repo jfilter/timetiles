@@ -61,26 +61,32 @@ export default {
       2,
       'always',
       [
-        // Apps & Packages
-        'web',        // Next.js web application
-        'docs',       // Documentation site
+        // Monorepo packages & apps
+        'web',        // Next.js web application (apps/web)
+        'docs',       // Documentation site (apps/docs)
         'ui',         // Shared UI components package
         'assets',     // Shared assets package (logos, images)
-        'config',     // Configuration packages (ESLint, TypeScript, etc.)
+        'config',     // Configuration packages (ESLint, TypeScript, Prettier) - ONLY for packages/*-config/
         
-        // Core Features
+        // Core features
         'import',     // File import system (manual, scheduled, webhook)
-        'geocoding',  // Address geocoding
+        'geocoding',  // Address geocoding services
         'events',     // Event data management
         'schema',     // Schema detection and validation
-        'deploy',     // User deployment features (self-hosting, Docker setup)
+        'deploy',     // Deployment and self-hosting features
         
-        // Technical Areas
-        'db',         // Database, migrations
+        // Technical areas
+        'db',         // Database, migrations, PostGIS functions
         'api',        // API endpoints (REST, GraphQL)
-        'jobs',       // Background jobs & queues
-        'deps',       // Dependencies
+        'jobs',       // Background jobs & queue processing
+        'deps',       // Dependencies and package management
         'seed',       // Test and development data generation
+        'test',       // Testing infrastructure and test files
+        
+        // Infrastructure
+        'ci',         // GitHub Actions, CI/CD pipelines
+        'build',      // Docker, build configuration, Turbo
+        'infra',      // Infrastructure and DevOps
       ],
     ],
     'scope-empty': [1, 'never'],

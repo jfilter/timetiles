@@ -70,6 +70,7 @@ jobs:
       - name: Build
         timeout-minutes: 10
         run: pnpm build:compile
+        working-directory: apps/web
 
       - name: Lint Code
         timeout-minutes: 3
