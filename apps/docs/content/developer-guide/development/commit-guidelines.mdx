@@ -110,7 +110,7 @@ The scope provides additional context about what part of the codebase changed. S
 **Technical Areas** (infrastructure & tooling):
 
 - **db**: Database operations, migrations, PostGIS
-- **api**: API endpoints (REST, GraphQL)
+- **api**: API endpoints (REST)
 - **jobs**: Background job processing and queues
 - **deps**: Dependencies and package management
 - **seed**: Test and development data generation
@@ -360,8 +360,12 @@ Use **technical scopes** (`db`, `api`, `jobs`, `deps`, `seed`) when:
 
 Some combinations need special attention:
 
-- **`docs(docs)`**: Valid when updating documentation app code
-  - Example: `docs(docs): fix broken link in navigation`
+- **`docs(docs)`**: Valid when documenting the docs app itself
+  - Example: `docs(docs): update README with Nextra setup instructions`
+  - Example: `docs(docs): add guide for writing MDX components`
+  - Use `docs:` for general documentation changes
+  - Use `docs(web):` for documenting the web app
+  - Use `docs(docs):` for documentation about the documentation site
 - **`test(web)`**: Use for adding tests to web app
   - Example: `test(web): add unit tests for import flow`
 - **`test(import)`**: Use for adding tests to specific features
@@ -437,16 +441,23 @@ pnpm tsx scripts/validate-commit.ts --test
 1. **Wrong scope for CI files**:
    - ❌ `fix(config): update CI workflow` 
    - ✅ `fix(ci): update CI workflow`
+   - ✅ `ci: update CI workflow` (when type and scope would be the same)
 
-2. **Using `config` for non-package configs**:
+2. **Redundant type(scope) combinations**:
+   - ❌ `ci(ci): update GitHub Actions` → Use `ci:`
+   - ❌ `test(test): add unit tests` → Use `test(web):` or `test(docs):`
+   - ❌ `build(build): update webpack` → Use `build:`
+   - ✅ `docs(docs): update README for docs app` (valid - documenting the docs app)
+
+3. **Using `config` for non-package configs**:
    - ❌ `chore(config): update .gitignore`
    - ✅ `chore(build): update .gitignore`
 
-3. **Missing scope when files suggest one**:
+4. **Missing scope when files suggest one**:
    - ❌ `fix: update import validation` (when changing apps/web/app/api/import/)
    - ✅ `fix(import): update validation`
 
-4. **Dependencies with wrong scope**:
+5. **Dependencies with wrong scope**:
    - ❌ `chore(web): update dependencies` (when changing package.json)
    - ✅ `chore(deps): update dependencies`
 

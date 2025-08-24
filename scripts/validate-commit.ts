@@ -264,48 +264,66 @@ async function validateCommit(message: string, files: string[] = []): Promise<Va
   }
   
   // Check type-scope combinations
-  if (parsed.type && parsed.scope && changedFiles.length > 0) {
-    // CI changes should use 'ci' scope when dealing with CI files
-    if (parsed.type === 'fix' && parsed.scope === 'config' && 
-        changedFiles.some(f => f.includes('.github/') || f.includes('ci/'))) {
+  if (parsed.type && parsed.scope) {
+    // Prevent redundant type(scope) combinations where type === scope
+    // BUT allow docs(docs) which is valid for documentation app changes
+    const redundantCombinations: Record<string, string> = {
+      'ci': 'Use "ci:" for CI/CD changes, not "ci(ci)"',
+      'test': 'Use "test(web):" or "test(docs):" to specify which app\'s tests',
+      'build': 'Use "build:" for build system changes, not "build(build)"',
+    };
+    
+    if (parsed.type === parsed.scope && redundantCombinations[parsed.type]) {
       errors.push({
         rule: 'type-scope-combination',
-        message: 'For CI/build configuration fixes, use "fix(ci)" or "fix(build)" instead of "fix(config)"'
+        message: redundantCombinations[parsed.type]
       });
     }
     
-    if (parsed.type === 'chore' && parsed.scope === 'config' && 
-        changedFiles.some(f => f.includes('.github/') || f.includes('ci/'))) {
-      errors.push({
-        rule: 'type-scope-combination',
-        message: 'For CI/build configuration updates, use "chore(ci)" or "chore(build)" instead of "chore(config)"'
-      });
-    }
-    
-    // Config scope should only be used for package configurations
-    if (parsed.scope === 'config' && 
-        !changedFiles.some(f => f.includes('packages/') && f.includes('config'))) {
-      errors.push({
-        rule: 'type-scope-combination',
-        message: 'Scope "config" should only be used for configuration package changes (packages/*-config/)'
-      });
-    }
-    
-    // Dependencies should use deps scope
-    if (parsed.type === 'chore' && parsed.scope === 'web' && 
-        changedFiles.some(f => f.endsWith('package.json'))) {
-      errors.push({
-        rule: 'type-scope-combination',
-        message: 'For dependency updates, use "chore(deps)" instead of "chore(web)"'
-      });
-    }
-    
-    // Test changes should typically use 'test' type
-    if (parsed.type === 'fix' && parsed.scope === 'test') {
-      errors.push({
-        rule: 'type-scope-combination',
-        message: 'For test fixes, use "test(web)" or "test(docs)" instead of "fix(test)"'
-      });
+    // Only check file-based validations if we have changed files
+    if (changedFiles.length > 0) {
+      // CI changes should use 'ci' scope when dealing with CI files
+      if (parsed.type === 'fix' && parsed.scope === 'config' && 
+          changedFiles.some(f => f.includes('.github/') || f.includes('ci/'))) {
+        errors.push({
+          rule: 'type-scope-combination',
+          message: 'For CI/build configuration fixes, use "fix(ci)" or "fix(build)" instead of "fix(config)"'
+        });
+      }
+      
+      if (parsed.type === 'chore' && parsed.scope === 'config' && 
+          changedFiles.some(f => f.includes('.github/') || f.includes('ci/'))) {
+        errors.push({
+          rule: 'type-scope-combination',
+          message: 'For CI/build configuration updates, use "chore(ci)" or "chore(build)" instead of "chore(config)"'
+        });
+      }
+      
+      // Config scope should only be used for package configurations
+      if (parsed.scope === 'config' && 
+          !changedFiles.some(f => f.includes('packages/') && f.includes('config'))) {
+        errors.push({
+          rule: 'type-scope-combination',
+          message: 'Scope "config" should only be used for configuration package changes (packages/*-config/)'
+        });
+      }
+      
+      // Dependencies should use deps scope
+      if (parsed.type === 'chore' && parsed.scope === 'web' && 
+          changedFiles.some(f => f.endsWith('package.json'))) {
+        errors.push({
+          rule: 'type-scope-combination',
+          message: 'For dependency updates, use "chore(deps)" instead of "chore(web)"'
+        });
+      }
+      
+      // Test changes should typically use 'test' type
+      if (parsed.type === 'fix' && parsed.scope === 'test') {
+        errors.push({
+          rule: 'type-scope-combination',
+          message: 'For test fixes, use "test(web)" or "test(docs)" instead of "fix(test)"'
+        });
+      }
     }
   }
   
