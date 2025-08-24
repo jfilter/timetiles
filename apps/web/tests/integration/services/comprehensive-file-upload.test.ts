@@ -165,29 +165,26 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     it("should process Excel file with multiple sheets", async () => {
       logger.info("Testing Excel file with multiple sheets...");
 
-      // Use existing fixture file
+      // Use existing fixture file  
       const fixturePath = path.join(__dirname, "../../fixtures", "multi-sheet.xlsx");
       const fileBuffer = fs.readFileSync(fixturePath);
       const fileName = "multi-sheet.xlsx";
 
       logger.debug(`✓ Using fixture file: ${fixturePath} (${fileBuffer.length} bytes)`);
 
-      // Create import file record with file upload using the same pattern as upload.test.ts
-      const importFile = await payload.create({
-        collection: "import-files",
-        data: {
+      // Use the helper function that properly handles file uploads
+      const importFile = await createImportFileWithUpload(
+        payload,
+        {
           catalog: parseInt(testCatalogId, 10),
           status: "pending",
           datasetsCount: 0,
           datasetsProcessed: 0,
         },
-        file: {
-          data: fileBuffer,
-          name: fileName,
-          size: fileBuffer.length,
-          mimetype: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        },
-      });
+        fileBuffer,
+        fileName,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
 
       logger.debug(`✓ Created Excel import file: ${importFile.id}`);
 

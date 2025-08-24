@@ -10,7 +10,7 @@
 import { randomUUID } from "crypto";
 import path from "path";
 
-// Helper function to create import file with proper upload
+// Helper function to create import file with upload for testing
 export const createImportFileWithUpload = async (
   payload: any,
   data: any,
@@ -18,18 +18,27 @@ export const createImportFileWithUpload = async (
   fileName: string,
   mimeType: string
 ) => {
-  const fileBuffer = typeof fileContent === "string" ? Buffer.from(fileContent, "utf8") : fileContent;
-
-  return await payload.create({
+  // Convert to Uint8Array which is what Payload's file-type checker expects
+  const fileBuffer = typeof fileContent === "string" 
+    ? new Uint8Array(Buffer.from(fileContent, "utf8"))
+    : new Uint8Array(fileContent);
+  
+  // Create file object with Uint8Array data
+  const file = {
+    data: fileBuffer,
+    mimetype: mimeType,
+    name: fileName,
+    size: fileBuffer.length,
+  };
+  
+  // Use Payload's Local API with file parameter
+  const importFile = await payload.create({
     collection: "import-files",
     data,
-    file: {
-      data: fileBuffer,
-      name: fileName,
-      size: fileBuffer.length,
-      mimetype: mimeType,
-    },
+    file,
   });
+  
+  return importFile;
 };
 
 /**

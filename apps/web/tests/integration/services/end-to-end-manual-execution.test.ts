@@ -86,7 +86,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
 
         // Create import-files record with actual file upload
         // This will trigger the afterChange hook which queues the first job
-        const fileBuffer = Buffer.from(csvContent, "utf8");
+        const fileBuffer = new Uint8Array(Buffer.from(csvContent, "utf8"));
         const importFile = await payload.create({
           collection: "import-files",
           data: {
@@ -252,7 +252,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
 
       try {
         // Create import file record with actual file upload
-        const fileBuffer = Buffer.from(csvContent, "utf8");
+        const fileBuffer = new Uint8Array(Buffer.from(csvContent, "utf8"));
         const importFile = await payload.create({
           collection: "import-files",
           data: {

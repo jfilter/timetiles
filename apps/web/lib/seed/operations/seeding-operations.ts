@@ -290,13 +290,13 @@ export class SeedingOperations {
       // Create dummy file data for upload collections
       const filename = (resolvedItem as { filename?: string }).filename ?? `seed-${Date.now()}.txt`;
       const fileContent = `Dummy seed file for ${collectionName}`;
-      const fileBuffer = Buffer.from(fileContent, "utf8");
+      const fileBuffer = new Uint8Array(Buffer.from(fileContent, "utf8"));
 
       await payload.create({
         collection: collectionName as keyof Config["collections"],
         data: resolvedItem,
         file: {
-          data: fileBuffer,
+          data: fileBuffer as any,
           name: filename,
           size: fileBuffer.length,
           mimetype: (resolvedItem as { mimeType?: string }).mimeType ?? "text/plain",
