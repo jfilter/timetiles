@@ -185,7 +185,7 @@ export const createPayloadConfig = async (options: PayloadConfigOptions = {}) =>
   // Add production-specific configuration
   addProductionConfig(config, environment, serverURL, uploadLimits);
   
-  // Add upload config for all environments
+  // Add upload config for test and development environments
   if (environment === "test" || environment === "development") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     config.sharp = sharp as any;
