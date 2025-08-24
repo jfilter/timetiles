@@ -30,6 +30,9 @@ importers:
       '@workspace/typescript-config':
         specifier: workspace:*
         version: link:packages/typescript-config
+      chalk:
+        specifier: ^5.6.0
+        version: 5.6.0
       glob:
         specifier: ^11.0.3
         version: 11.0.3
@@ -263,6 +266,9 @@ importers:
       '@workspace/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
+      dotenv-cli:
+        specifier: ^10.0.0
+        version: 10.0.0
       echarts:
         specifier: ^5.6.0
         version: 5.6.0
@@ -4172,6 +4178,10 @@ packages:
     resolution: {integrity: sha512-zgVZuo2WcZgfUEmsn6eO3kINexW8RAE4maiQ8QNs8CtpPCSyMiYsULR3HQYkm3w8FIA3SberyMJMSldGsW+U3w==}
     engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
 
+  chalk@5.6.0:
+    resolution: {integrity: sha512-46QrSQFyVSEyYAgQ22hQ+zDa60YHA4fBstHmtSApj1Y5vKtG27fWowW03jCk5KcbXEWPZUIR894aARCA/G1kfQ==}
+    engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
+
   change-case@3.1.0:
     resolution: {integrity: sha512-2AZp7uJZbYEzRPsFoa+ijKdvp9zsrnnt6+yFokfwEpeJm0xuJDVoxiRCAaTzyJND8GJkofo2IcKWaUZ/OECVzw==}
 
@@ -4796,8 +4806,24 @@ packages:
     resolution: {integrity: sha512-QM8q3zDe58hqUqjraQOmzZ1LIH9SWQJTlEKCH4kJ2oQvLZk7RbQXvtDM2XEq3fwkV9CCvvH4LA0AV+ogFsBM2Q==}
     engines: {node: '>=8'}
 
+  dotenv-cli@10.0.0:
+    resolution: {integrity: sha512-lnOnttzfrzkRx2echxJHQRB6vOAMSCzzZg79IxpC00tU42wZPuZkQxNNrrwVAxaQZIIh001l4PxVlCrBxngBzA==}
+    hasBin: true
+
+  dotenv-expand@11.0.7:
+    resolution: {integrity: sha512-zIHwmZPRshsCdpMDyVsqGmgyP0yT8GAgXUnkdAoJisxvf33k7yO6OuoKmcTGuXPWSsm8Oh88nZicRLA9Y0rUeA==}
+    engines: {node: '>=12'}
+
   dotenv@16.0.3:
     resolution: {integrity: sha512-7GO6HghkA5fYG9TYnNxi14/7K9f5occMlp3zXAuSxn7CKCxt9xbNWG7yF8hTCSUchlfWSe3uLmlPfigevRItzQ==}
+    engines: {node: '>=12'}
+
+  dotenv@16.6.1:
+    resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
+    engines: {node: '>=12'}
+
+  dotenv@17.2.1:
+    resolution: {integrity: sha512-kQhDYKZecqnM0fCnzI5eIv5L4cAe/iRI+HqMbO/hbRdTAeXDG+M9FjipUxNfbARuEg4iHIbhnhs78BCHNbSxEQ==}
     engines: {node: '>=12'}
 
   drizzle-kit@0.31.4:
@@ -10270,7 +10296,7 @@ snapshots:
   '@commitlint/format@19.8.1':
     dependencies:
       '@commitlint/types': 19.8.1
-      chalk: 5.4.1
+      chalk: 5.6.0
 
   '@commitlint/is-ignored@19.8.1':
     dependencies:
@@ -10290,7 +10316,7 @@ snapshots:
       '@commitlint/execute-rule': 19.8.1
       '@commitlint/resolve-extends': 19.8.1
       '@commitlint/types': 19.8.1
-      chalk: 5.4.1
+      chalk: 5.6.0
       cosmiconfig: 9.0.0(typescript@5.7.3)
       cosmiconfig-typescript-loader: 6.1.0(@types/node@22.16.5)(cosmiconfig@9.0.0(typescript@5.7.3))(typescript@5.7.3)
       lodash.isplainobject: 4.0.6
@@ -10341,7 +10367,7 @@ snapshots:
   '@commitlint/types@19.8.1':
     dependencies:
       '@types/conventional-commits-parser': 5.0.1
-      chalk: 5.4.1
+      chalk: 5.6.0
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
@@ -13109,6 +13135,7 @@ snapshots:
     optionalDependencies:
       msw: 2.10.4(@types/node@22.16.5)(typescript@5.7.3)
       vite: 5.4.19(@types/node@22.16.5)(lightningcss@1.29.1)(sass@1.77.4)
+    optional: true
 
   '@vitest/pretty-format@2.1.9':
     dependencies:
@@ -13138,7 +13165,7 @@ snapshots:
       sirv: 3.0.1
       tinyglobby: 0.2.14
       tinyrainbow: 1.2.0
-      vitest: 2.1.9(@types/node@22.16.5)(@vitest/ui@2.1.9)(happy-dom@18.0.1)(jsdom@26.1.0)(lightningcss@1.29.1)(msw@2.10.4(@types/node@22.16.5)(typescript@5.7.3))(sass@1.77.4)
+      vitest: 2.1.9(@types/node@20.17.19)(@vitest/ui@2.1.9)(happy-dom@18.0.1)(jsdom@26.1.0)(lightningcss@1.29.1)(msw@2.10.4(@types/node@20.17.19)(typescript@5.7.3))(sass@1.77.4)
 
   '@vitest/utils@2.1.9':
     dependencies:
@@ -13544,6 +13571,8 @@ snapshots:
       supports-color: 7.2.0
 
   chalk@5.4.1: {}
+
+  chalk@5.6.0: {}
 
   change-case@3.1.0:
     dependencies:
@@ -14191,7 +14220,22 @@ snapshots:
     dependencies:
       is-obj: 2.0.0
 
+  dotenv-cli@10.0.0:
+    dependencies:
+      cross-spawn: 7.0.6
+      dotenv: 17.2.1
+      dotenv-expand: 11.0.7
+      minimist: 1.2.8
+
+  dotenv-expand@11.0.7:
+    dependencies:
+      dotenv: 16.6.1
+
   dotenv@16.0.3: {}
+
+  dotenv@16.6.1: {}
+
+  dotenv@17.2.1: {}
 
   drizzle-kit@0.31.4:
     dependencies:
@@ -19738,6 +19782,7 @@ snapshots:
       - sugarss
       - supports-color
       - terser
+    optional: true
 
   vite@5.4.19(@types/node@20.17.19)(lightningcss@1.29.1)(sass@1.77.4):
     dependencies:
@@ -19760,6 +19805,7 @@ snapshots:
       fsevents: 2.3.3
       lightningcss: 1.29.1
       sass: 1.77.4
+    optional: true
 
   vitest@2.1.9(@types/node@20.17.19)(@vitest/ui@2.1.9)(happy-dom@18.0.1)(jsdom@26.1.0)(lightningcss@1.29.1)(msw@2.10.4(@types/node@20.17.19)(typescript@5.7.3))(sass@1.77.4):
     dependencies:
@@ -19836,6 +19882,7 @@ snapshots:
       - sugarss
       - supports-color
       - terser
+    optional: true
 
   vt-pbf@3.1.3:
     dependencies:

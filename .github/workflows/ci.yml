@@ -69,11 +69,7 @@ jobs:
 
       - name: Build
         timeout-minutes: 10
-        run: pnpm build
-        env:
-          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
-          PAYLOAD_SECRET: test-secret-key
-          NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
+        run: pnpm build:compile
 
       - name: Lint Code
         timeout-minutes: 3
