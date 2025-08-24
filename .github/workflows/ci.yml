@@ -71,7 +71,6 @@ jobs:
         timeout-minutes: 10
         run: pnpm build
         env:
-          NODE_ENV: production
           DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
           PAYLOAD_SECRET: test-secret-key
           NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
