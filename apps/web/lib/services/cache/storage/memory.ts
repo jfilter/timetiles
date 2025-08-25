@@ -30,6 +30,7 @@ export class MemoryCacheStorage implements CacheStorage {
   constructor(options: MemoryCacheOptions = {}) {
     this.stats = { hits: 0, misses: 0, evictions: 0 };
 
+    // Create a fresh LRU cache instance
     this.cache = new LRUCache<string, CacheEntry>({
       max: options.maxEntries || 1000,
       maxSize: options.maxSize || 100 * 1024 * 1024, // 100MB default
@@ -157,5 +158,6 @@ export class MemoryCacheStorage implements CacheStorage {
 
   destroy(): void {
     this.cache.clear();
+    this.stats = { hits: 0, misses: 0, evictions: 0 };
   }
 }

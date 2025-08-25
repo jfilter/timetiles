@@ -220,4 +220,8 @@ export interface HttpCacheOptions {
   respectCacheControl?: boolean;
   /** Force revalidation */
   forceRevalidate?: boolean;
+  /** Return stale cache on network error */
+  returnStaleOnError?: boolean;
+  /** Cache mode (similar to fetch cache option) */
+  cache?: "default" | "no-cache" | "force-cache" | "only-if-cached";
 }

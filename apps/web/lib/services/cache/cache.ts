@@ -288,9 +288,9 @@ export class Cache {
   /**
    * Destroy the cache (cleanup resources)
    */
-  destroy(): void {
+  async destroy(): Promise<void> {
     if (this.storage.destroy) {
-      this.storage.destroy();
+      await this.storage.destroy();
     }
   }
 }

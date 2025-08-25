@@ -24,8 +24,8 @@ export class HttpCache {
   private respectCacheControl: boolean;
   private defaultTTL: number;
 
-  constructor(cacheName: string = "http", respectCacheControl: boolean = true) {
-    this.cache = CacheManager.getCache(cacheName);
+  constructor(cache?: Cache, respectCacheControl: boolean = true) {
+    this.cache = cache || CacheManager.getCache("http");
     this.respectCacheControl = respectCacheControl;
     this.defaultTTL = parseInt(process.env.HTTP_CACHE_DEFAULT_TTL || "3600", 10);
   }
@@ -112,14 +112,12 @@ export class HttpCache {
    */
   async get(url: string, method: string = "GET"): Promise<HttpCacheEntry | null> {
     const key = this.generateCacheKey(url, method);
-    const cacheEntry = await this.cache.getEntry<HttpCacheEntry>(key);
+    const httpEntry = await this.cache.get<HttpCacheEntry>(key);
 
-    if (!cacheEntry) {
+    if (!httpEntry) {
       logger.debug("HTTP cache miss", { url, method });
       return null;
     }
-
-    const httpEntry = cacheEntry.value;
 
     // Check if stale
     if (this.isStale(httpEntry)) {
@@ -288,6 +286,178 @@ export class HttpCache {
    */
   async cleanup(): Promise<number> {
     return await this.cache.cleanup();
+  }
+
+  /**
+   * Fetch with caching support
+   * 
+   * This is the main entry point for cached HTTP requests.
+   * It handles cache lookups, conditional requests, and cache updates.
+   */
+  async fetch(url: string, options?: RequestInit & HttpCacheOptions): Promise<Response> {
+    const method = options?.method || "GET";
+    
+    // Only cache GET requests by default
+    if (method !== "GET" && method !== "HEAD") {
+      logger.debug("Bypassing cache for non-GET request", { url, method });
+      return fetch(url, options);
+    }
+
+    // Check if we should bypass cache
+    if (!this.shouldUseCache(options)) {
+      logger.debug("Bypassing cache", { url, method });
+      return fetch(url, options);
+    }
+
+    // Check cache
+    const cachedEntry = await this.get(url, method);
+    
+    if (cachedEntry && !this.shouldRevalidate(cachedEntry, options)) {
+      // Return cached response
+      logger.info("HTTP cache hit", { url, method });
+      return this.createResponseFromCache(cachedEntry, true);
+    }
+
+    // Prepare request headers
+    const headers = new Headers(options?.headers);
+    
+    // Add conditional headers if we have a stale entry
+    if (cachedEntry) {
+      if (cachedEntry.metadata.etag) {
+        headers.set("If-None-Match", cachedEntry.metadata.etag);
+      }
+      if (cachedEntry.metadata.lastModified) {
+        headers.set("If-Modified-Since", cachedEntry.metadata.lastModified);
+      }
+    }
+
+    // Make the request
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      // Handle 304 Not Modified
+      if (response.status === 304 && cachedEntry) {
+        logger.info("HTTP cache revalidated (304)", { url, method });
+        await this.handleNotModified(url, method);
+        return this.createResponseFromCache(cachedEntry, true, true);
+      }
+
+      // Cache successful responses (2xx)
+      if (response.ok) {
+        const responseHeaders = this.headersToObject(response.headers);
+        
+        // Check if response is cacheable
+        if (this.isCacheable(response.status, responseHeaders)) {
+          // Clone response before consuming it
+          const cloned = response.clone();
+          const data = Buffer.from(await cloned.arrayBuffer());
+          
+          await this.set(url, data, responseHeaders, response.status, method);
+          
+          // Return new response with cache headers
+          return this.createResponseWithCacheHeaders(response, false);
+        }
+      }
+
+      // Return response as-is for non-cacheable responses
+      return response;
+    } catch (error) {
+      // On network error, return stale cache if available
+      if (cachedEntry && options?.returnStaleOnError) {
+        logger.warn("Returning stale cache due to network error", { url, error });
+        return this.createResponseFromCache(cachedEntry, true, false, true);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Check if response is cacheable
+   */
+  private isCacheable(status: number, headers: Record<string, string>): boolean {
+    // Don't cache if explicitly told not to
+    const cacheControl = headers["cache-control"];
+    if (cacheControl) {
+      if (cacheControl.includes("no-store")) return false;
+      if (cacheControl.includes("private")) return false;
+    }
+
+    // Only cache successful responses
+    return status >= 200 && status < 300;
+  }
+
+  /**
+   * Convert Headers to plain object
+   */
+  private headersToObject(headers: Headers): Record<string, string> {
+    const obj: Record<string, string> = {};
+    headers.forEach((value, key) => {
+      obj[key.toLowerCase()] = value;
+    });
+    return obj;
+  }
+
+  /**
+   * Create Response from cached entry
+   */
+  private createResponseFromCache(
+    entry: HttpCacheEntry, 
+    isHit: boolean, 
+    isRevalidated: boolean = false,
+    isStale: boolean = false
+  ): Response {
+    const headers = new Headers(entry.headers);
+    
+    // Add cache status headers
+    headers.set("X-Cache", isHit ? "HIT" : "MISS");
+    if (isRevalidated) {
+      headers.set("X-Cache-Revalidated", "true");
+    }
+    if (isStale) {
+      headers.set("X-Cache-Stale", "true");
+    }
+    headers.set("X-Cache-Key", this.generateCacheKey(entry.url, entry.method));
+    
+    return new Response(entry.data, {
+      status: entry.statusCode,
+      statusText: this.getStatusText(entry.statusCode),
+      headers,
+    });
+  }
+
+  /**
+   * Add cache headers to response
+   */
+  private createResponseWithCacheHeaders(response: Response, isHit: boolean): Response {
+    const headers = new Headers(response.headers);
+    headers.set("X-Cache", isHit ? "HIT" : "MISS");
+    
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  }
+
+  /**
+   * Get status text for status code
+   */
+  private getStatusText(status: number): string {
+    const statusTexts: Record<number, string> = {
+      200: "OK",
+      201: "Created",
+      204: "No Content",
+      304: "Not Modified",
+      400: "Bad Request",
+      401: "Unauthorized",
+      403: "Forbidden",
+      404: "Not Found",
+      500: "Internal Server Error",
+    };
+    return statusTexts[status] || "Unknown";
   }
 }
 

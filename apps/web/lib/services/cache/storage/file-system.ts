@@ -429,10 +429,22 @@ export class FileSystemCacheStorage implements CacheStorage {
     await fs.writeFile(this.indexFile, JSON.stringify(indexData, null, 2));
   }
 
-  destroy(): void {
+  async destroy(): Promise<void> {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
+    }
+    
+    // Wait for any pending initialization
+    if (this.initPromise) {
+      await this.initPromise;
+    }
+    
+    // Save final index state
+    try {
+      await this.saveIndex();
+    } catch {
+      // Ignore errors on shutdown
     }
   }
 }
