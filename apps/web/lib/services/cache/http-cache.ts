@@ -14,6 +14,7 @@ import { logger } from "@/lib/logger";
 
 import { Cache } from "./cache";
 import { CacheManager } from "./manager";
+import { FileSystemCacheStorage } from "./storage/file-system";
 import type { HttpCacheEntry, HttpCacheMetadata, HttpCacheOptions, CacheSetOptions } from "./types";
 
 /**
@@ -469,7 +470,23 @@ let httpCacheInstance: HttpCache | null = null;
  */
 export function getHttpCache(): HttpCache {
   if (!httpCacheInstance) {
-    httpCacheInstance = new HttpCache();
+    // Initialize with file system storage for production use
+    const cacheDir = process.env.HTTP_CACHE_DIR || "/tmp/http-cache";
+    const maxSize = parseInt(process.env.HTTP_CACHE_MAX_SIZE || "104857600", 10); // 100MB default
+    const defaultTTL = parseInt(process.env.HTTP_CACHE_TTL || "3600", 10); // 1 hour default
+    
+    const storage = new FileSystemCacheStorage({
+      cacheDir,
+      maxSize,
+      defaultTTL,
+    });
+    
+    const cache = new Cache({
+      storage,
+      keyPrefix: "http:",
+    });
+    
+    httpCacheInstance = new HttpCache(cache);
   }
   return httpCacheInstance;
 }

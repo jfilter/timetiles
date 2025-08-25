@@ -132,6 +132,7 @@ export interface Config {
       'schedule-manager': TaskScheduleManager;
       'cleanup-stuck-scheduled-imports': TaskCleanupStuckScheduledImports;
       'quota-reset': TaskQuotaReset;
+      'cache-cleanup': TaskCacheCleanup;
       inline: {
         input: unknown;
         output: unknown;
@@ -1734,7 +1735,8 @@ export interface PayloadJob {
           | 'url-fetch'
           | 'schedule-manager'
           | 'cleanup-stuck-scheduled-imports'
-          | 'quota-reset';
+          | 'quota-reset'
+          | 'cache-cleanup';
         taskID: string;
         input?:
           | {
@@ -1782,6 +1784,7 @@ export interface PayloadJob {
         | 'schedule-manager'
         | 'cleanup-stuck-scheduled-imports'
         | 'quota-reset'
+        | 'cache-cleanup'
       )
     | null;
   queue?: string | null;
@@ -2738,6 +2741,14 @@ export interface TaskCleanupStuckScheduledImports {
  * via the `definition` "TaskQuota-reset".
  */
 export interface TaskQuotaReset {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskCache-cleanup".
+ */
+export interface TaskCacheCleanup {
   input?: unknown;
   output?: unknown;
 }

@@ -41,6 +41,7 @@ export const JOB_TYPES = {
   CREATE_EVENTS: "create-events",
   URL_FETCH: "url-fetch",
   SCHEDULE_MANAGER: "schedule-manager",
+  CACHE_CLEANUP: "cache-cleanup",
 } as const;
 
 export const COLLECTION_NAMES = {

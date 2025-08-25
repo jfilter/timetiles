@@ -277,70 +277,50 @@ export const fetchWithRetry = async (
   const method = fetchOptions.method || "GET";
   const useCache = cacheOptions?.useCache !== false && !cacheOptions?.bypassCache;
 
-  // Check cache first if enabled
-  if (useCache) {
-    const cached = await httpCache.get(sourceUrl, method);
-    if (cached && !httpCache.shouldRevalidate(cached, cacheOptions)) {
-      logger.info("HTTP cache hit, returning cached response", {
-        url: sourceUrl,
-        size: cached.data.length,
-        age: Math.floor((Date.now() - cached.metadata.fetchedAt.getTime()) / 1000),
-      });
-
-      const detectedType = detectFileTypeFromResponse(cached.headers["content-type"], cached.data, sourceUrl);
-
-      return {
-        data: cached.data,
-        contentType: detectedType.mimeType,
-        contentLength: cached.data.length,
-        attempts: 0, // No fetch attempts needed
-      };
-    }
-  }
-
   let lastError: Error | undefined;
   let currentDelay = retryDelay;
   const attemptCount = maxRetries + 1; // Total attempts = initial + retries
 
   for (let attempt = 1; attempt <= attemptCount; attempt++) {
     try {
-      // Get conditional headers if we have a stale cache entry
-      const conditionalHeaders = useCache ? await httpCache.getConditionalHeaders(sourceUrl, method) : {};
-
       logger.info(`Fetching URL (attempt ${attempt}/${attemptCount})`, {
         url: sourceUrl,
         attempt,
-        conditional: Object.keys(conditionalHeaders).length > 0,
+        useCache,
       });
 
-      // Create a custom fetch wrapper to capture response headers
-      const response = await fetch(sourceUrl, {
-        method,
-        headers: {
-          ...authHeaders,
-          ...conditionalHeaders,
-          ...fetchOptions.headers,
-        },
-        signal: fetchOptions.timeout ? AbortSignal.timeout(fetchOptions.timeout) : undefined,
-      });
+      let response: Response;
+      
+      if (useCache) {
+        // Use HttpCache.fetch() which handles all caching logic internally
+        response = await httpCache.fetch(sourceUrl, {
+          method,
+          headers: {
+            ...authHeaders,
+            ...fetchOptions.headers,
+          },
+          signal: fetchOptions.timeout ? AbortSignal.timeout(fetchOptions.timeout) : undefined,
+          ...cacheOptions,
+        });
+      } else {
+        // Direct fetch without caching
+        response = await fetch(sourceUrl, {
+          method,
+          headers: {
+            ...authHeaders,
+            ...fetchOptions.headers,
+          },
+          signal: fetchOptions.timeout ? AbortSignal.timeout(fetchOptions.timeout) : undefined,
+        });
+      }
 
-      // Handle 304 Not Modified
-      if (response.status === 304 && useCache) {
-        const cached = await httpCache.handleNotModified(sourceUrl, method);
-        if (cached) {
-          logger.info("HTTP cache revalidated (304 Not Modified)", {
-            url: sourceUrl,
-          });
-
-          const detectedType = detectFileTypeFromResponse(cached.headers["content-type"], cached.data, sourceUrl);
-
-          return {
-            data: cached.data,
-            contentType: detectedType.mimeType,
-            contentLength: cached.data.length,
-            attempts: attempt,
-          };
-        }
+      // Check cache status from response headers
+      const cacheStatus = response.headers.get("X-Cache");
+      if (cacheStatus) {
+        logger.info("Cache status", {
+          url: sourceUrl,
+          status: cacheStatus,
+        });
       }
 
       if (!response.ok) {
@@ -355,18 +335,8 @@ export const fetchWithRetry = async (
         throw new Error(`File too large: ${data.length} bytes (max: ${fetchOptions.maxSize})`);
       }
 
-      // Extract headers
-      const headers: Record<string, string> = {};
-      response.headers.forEach((value, key) => {
-        headers[key.toLowerCase()] = value;
-      });
-
-      // Cache successful response if caching is enabled
-      if (useCache && response.ok) {
-        await httpCache.set(sourceUrl, data, headers, response.status, method);
-      }
-
-      const detectedType = detectFileTypeFromResponse(headers["content-type"], data, sourceUrl);
+      const contentType = response.headers.get("content-type") || undefined;
+      const detectedType = detectFileTypeFromResponse(contentType, data, sourceUrl);
 
       return {
         data,
