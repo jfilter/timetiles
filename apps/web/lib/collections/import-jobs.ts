@@ -529,13 +529,13 @@ const ImportJobs: CollectionConfig = {
             id: importFileId,
           });
 
-          if (importFile?.createdBy) {
+          if (importFile?.user) {
             const { getPermissionService } = await import("@/lib/services/permission-service");
             const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
             
-            const userId = typeof importFile.createdBy === "object" 
-              ? importFile.createdBy.id 
-              : importFile.createdBy;
+            const userId = typeof importFile.user === "object" 
+              ? importFile.user.id 
+              : importFile.user;
 
             const permissionService = getPermissionService(req.payload);
             await permissionService.incrementUsage(

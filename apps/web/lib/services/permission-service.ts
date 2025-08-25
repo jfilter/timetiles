@@ -79,7 +79,8 @@ export class PermissionService {
       return DEFAULT_QUOTAS[TRUST_LEVELS.UNTRUSTED];
     }
 
-    const trustLevel = (user.trustLevel ?? TRUST_LEVELS.REGULAR) as TrustLevel;
+    const trustLevelValue = Number(user.trustLevel ?? TRUST_LEVELS.REGULAR);
+    const trustLevel = trustLevelValue as TrustLevel;
     const defaultQuotas = DEFAULT_QUOTAS[trustLevel];
 
     // Check if user has quota fields directly on the user object (from database)

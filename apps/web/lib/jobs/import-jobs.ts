@@ -23,7 +23,7 @@ export { scheduleManagerJob } from "./handlers/schedule-manager-job";
 export { urlFetchJob } from "./handlers/url-fetch-job";
 
 // Quota management job handlers
-export { quotaResetJob, quotaResetJobConfig } from "./handlers/quota-reset-job";
+export { quotaResetJobConfig } from "./handlers/quota-reset-job";
 
 // Re-export utility types
 export type {

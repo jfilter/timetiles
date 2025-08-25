@@ -116,7 +116,6 @@ const Users: CollectionConfig = {
           name: "maxActiveSchedules",
           type: "number",
           min: -1,
-          defaultValue: 5,
           admin: {
             description: "Maximum number of active scheduled imports (-1 for unlimited)",
           },
@@ -125,7 +124,6 @@ const Users: CollectionConfig = {
           name: "maxUrlFetchesPerDay",
           type: "number",
           min: -1,
-          defaultValue: 20,
           admin: {
             description: "Maximum URL fetches per day (-1 for unlimited)",
           },
@@ -134,7 +132,6 @@ const Users: CollectionConfig = {
           name: "maxFileUploadsPerDay",
           type: "number",
           min: -1,
-          defaultValue: 10,
           admin: {
             description: "Maximum file uploads per day (-1 for unlimited)",
           },
@@ -143,7 +140,6 @@ const Users: CollectionConfig = {
           name: "maxEventsPerImport",
           type: "number",
           min: -1,
-          defaultValue: 10000,
           admin: {
             description: "Maximum events per single import (-1 for unlimited)",
           },
@@ -152,7 +148,6 @@ const Users: CollectionConfig = {
           name: "maxTotalEvents",
           type: "number",
           min: -1,
-          defaultValue: 50000,
           admin: {
             description: "Maximum total events allowed (-1 for unlimited)",
           },
@@ -161,7 +156,6 @@ const Users: CollectionConfig = {
           name: "maxImportJobsPerDay",
           type: "number",
           min: -1,
-          defaultValue: 20,
           admin: {
             description: "Maximum import jobs per day (-1 for unlimited)",
           },
@@ -170,7 +164,6 @@ const Users: CollectionConfig = {
           name: "maxFileSizeMB",
           type: "number",
           min: 1,
-          defaultValue: 50,
           admin: {
             description: "Maximum file size in MB for uploads",
           },
@@ -188,7 +181,6 @@ const Users: CollectionConfig = {
         {
           name: "currentActiveSchedules",
           type: "number",
-          defaultValue: 0,
           admin: {
             description: "Currently active scheduled imports",
             readOnly: true,
@@ -197,7 +189,6 @@ const Users: CollectionConfig = {
         {
           name: "urlFetchesToday",
           type: "number",
-          defaultValue: 0,
           admin: {
             description: "URL fetches performed today",
             readOnly: true,
@@ -206,7 +197,6 @@ const Users: CollectionConfig = {
         {
           name: "fileUploadsToday",
           type: "number",
-          defaultValue: 0,
           admin: {
             description: "Files uploaded today",
             readOnly: true,
@@ -215,7 +205,6 @@ const Users: CollectionConfig = {
         {
           name: "importJobsToday",
           type: "number",
-          defaultValue: 0,
           admin: {
             description: "Import jobs created today",
             readOnly: true,
@@ -224,7 +213,6 @@ const Users: CollectionConfig = {
         {
           name: "totalEventsCreated",
           type: "number",
-          defaultValue: 0,
           admin: {
             description: "Total events created by this user",
             readOnly: true,
@@ -233,7 +221,6 @@ const Users: CollectionConfig = {
         {
           name: "lastResetDate",
           type: "date",
-          defaultValue: () => new Date().toISOString(),
           admin: {
             description: "Last time daily counters were reset",
             readOnly: true,
@@ -273,20 +260,28 @@ const Users: CollectionConfig = {
           const trustLevel = Number(data?.trustLevel || TRUST_LEVELS.REGULAR);
           const defaultQuotas = DEFAULT_QUOTAS[trustLevel as keyof typeof DEFAULT_QUOTAS];
           
-          // Use explicitly provided quotas if given, otherwise use trust level defaults
-          if (!data.quotas || Object.keys(data.quotas).length === 0) {
+          // Use trust level defaults if quotas not explicitly provided or contain undefined values
+          // Payload CMS initializes group fields with undefined values
+          const hasValidQuotas = data.quotas && 
+            data.quotas.maxActiveSchedules !== undefined &&
+            data.quotas.maxUrlFetchesPerDay !== undefined &&
+            data.quotas.maxFileUploadsPerDay !== undefined;
+          
+          if (!hasValidQuotas) {
             data.quotas = defaultQuotas;
           }
           
-          // Always initialize usage
-          data.usage = {
-            currentActiveSchedules: 0,
-            urlFetchesToday: 0,
-            fileUploadsToday: 0,
-            importJobsToday: 0,
-            totalEventsCreated: 0,
-            lastResetDate: new Date().toISOString(),
-          };
+          // Initialize usage if not provided
+          if (!data.usage) {
+            data.usage = {
+              currentActiveSchedules: 0,
+              urlFetchesToday: 0,
+              fileUploadsToday: 0,
+              importJobsToday: 0,
+              totalEventsCreated: 0,
+              lastResetDate: new Date().toISOString(),
+            };
+          }
         }
 
         return data;

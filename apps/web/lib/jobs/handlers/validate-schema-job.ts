@@ -194,21 +194,21 @@ export const validateSchemaJob = {
       const { job, dataset, importFile } = await loadResources(payload, jobIdTyped);
 
       // Check event quota against the number of rows to be imported
-      if (importFile.createdBy) {
+      if (importFile.user) {
         const { getPermissionService } = await import("@/lib/services/permission-service");
         const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
         
         // Get the user who created this import
-        const user = typeof importFile.createdBy === "object" 
-          ? importFile.createdBy 
-          : await payload.findByID({ collection: "users", id: importFile.createdBy });
+        const user = typeof importFile.user === "object" 
+          ? importFile.user 
+          : await payload.findByID({ collection: "users", id: importFile.user });
 
         if (user) {
           const permissionService = getPermissionService(payload);
           
           // Calculate total events to be imported (considering duplicates)
-          const totalRows = job.analyzedData?.totalRows || 0;
-          const duplicateCount = job.duplicates?.count || 0;
+          const totalRows = job.progress?.total || 0;
+          const duplicateCount = (job.duplicates as any)?.summary?.total || 0;
           const eventsToImport = totalRows - duplicateCount;
 
           // Check maxEventsPerImport quota

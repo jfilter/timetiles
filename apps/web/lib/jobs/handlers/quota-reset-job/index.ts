@@ -7,6 +7,7 @@
  * @module
  */
 
+import type { JobHandlerContext } from "../../utils/job-context";
 import { getPermissionService } from "@/lib/services/permission-service";
 import { createLogger } from "@/lib/logger";
 
@@ -17,41 +18,44 @@ const logger = createLogger("quota-reset-job");
  */
 export const quotaResetJobConfig = {
   slug: "quota-reset" as const,
-  handler: quotaResetJob,
-  queue: "default",
+  handler: async (context: JobHandlerContext) => {
+    const payload = context.req?.payload ?? context.payload;
+    if (!payload) {
+      throw new Error("Payload instance not found in job context");
+    }
+    
+    try {
+      logger.info("Starting daily quota reset job");
+      
+      const permissionService = getPermissionService(payload);
+      
+      // Reset all daily counters
+      await permissionService.resetAllDailyCounters();
+      
+      logger.info("Daily quota reset completed successfully");
+      
+      return {
+        output: {
+          success: true,
+          message: "Daily quota reset completed successfully",
+          timestamp: new Date().toISOString(),
+        },
+      };
+    } catch (error) {
+      logger.error("Failed to reset daily quotas", { error });
+      throw error; // Re-throw to trigger retry
+    }
+  },
   /**
    * Run daily at midnight UTC
-   * Format: "seconds minutes hours dayOfMonth month dayOfWeek"
+   * Cron format: minute hour day month weekday
    */
-  schedule: "0 0 0 * * *",
+  schedule: [
+    {
+      cron: "0 0 * * *", // Every day at midnight
+      queue: "maintenance",
+    },
+  ],
   retries: 3,
   waitUntil: 120000, // 2 minutes timeout
 };
-
-/**
- * Resets daily quota counters for all users.
- * 
- * This includes:
- * - File uploads per day
- * - URL fetches per day  
- * - Import jobs per day
- * 
- * Does NOT reset:
- * - Total events created (cumulative)
- * - Active schedules (current count)
- */
-export async function quotaResetJob({ payload }: any) {
-  try {
-    logger.info("Starting daily quota reset job");
-    
-    const permissionService = getPermissionService(payload);
-    
-    // Reset all daily counters
-    await permissionService.resetAllDailyCounters();
-    
-    logger.info("Daily quota reset completed successfully");
-  } catch (error) {
-    logger.error("Failed to reset daily quotas", { error });
-    throw error; // Re-throw to trigger retry
-  }
-}

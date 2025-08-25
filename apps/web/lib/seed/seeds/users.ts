@@ -38,6 +38,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
       firstName: "Admin",
       lastName: "User",
       role: "admin",
+      trustLevel: "5", // UNLIMITED
       isActive: true,
     },
     {
@@ -47,6 +48,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
       firstName: "Data",
       lastName: "Editor",
       role: "editor",
+      trustLevel: "3", // TRUSTED
       isActive: true,
     },
   ];
@@ -61,6 +63,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
         firstName: "John",
         lastName: "Doe",
         role: "user",
+        trustLevel: "2", // REGULAR
         isActive: true,
       },
       {
@@ -70,6 +73,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
         firstName: "Jane",
         lastName: "Smith",
         role: "user",
+        trustLevel: "2", // REGULAR
         isActive: true,
       },
       {
@@ -79,6 +83,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
         firstName: "Inactive",
         lastName: "User",
         role: "user",
+        trustLevel: "1", // BASIC
         isActive: false,
       },
     ];

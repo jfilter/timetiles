@@ -280,7 +280,7 @@ export const urlFetchJob = {
             
             // Update scheduled import as failed if applicable
             if (scheduledImport) {
-              await updateScheduledImportFailure(payload, scheduledImport, new Error(errorMessage), 0);
+              await updateScheduledImportFailure(payload, scheduledImport, new Error(errorMessage));
             }
             
             throw new Error(errorMessage);

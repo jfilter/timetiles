@@ -253,14 +253,14 @@ const markJobCompleted = async (
         id: importFileId,
       });
 
-      if (importFile?.createdBy) {
+      if (importFile?.user) {
         const { getPermissionService } = await import("@/lib/services/permission-service");
         const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
         const logger = createJobLogger(String(importJobId), "create-events-batch");
         
-        const userId = typeof importFile.createdBy === "object" 
-          ? importFile.createdBy.id 
-          : importFile.createdBy;
+        const userId = typeof importFile.user === "object" 
+          ? importFile.user.id 
+          : importFile.user;
 
         const permissionService = getPermissionService(payload);
         await permissionService.incrementUsage(
@@ -436,6 +436,41 @@ export const createEventsBatchJob = {
 
     try {
       const { job, dataset, importFile } = await getJobResources(payload, importJobId);
+
+      // Check EVENTS_PER_IMPORT quota before processing
+      if (importFile?.user && batchNumber === 0) {
+        const { getPermissionService } = await import("@/lib/services/permission-service");
+        const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
+        
+        const userId = typeof importFile.user === "object" 
+          ? importFile.user.id 
+          : importFile.user;
+        
+        const user = typeof importFile.user === "object"
+          ? importFile.user
+          : await payload.findByID({ collection: "users", id: userId });
+        
+        if (user) {
+          const permissionService = getPermissionService(payload);
+          
+          // Get the total rows for this import from progress
+          const totalRows = job.progress?.total ?? 0;
+          
+          // Check if this import would exceed the per-import limit
+          const quotaCheck = await permissionService.checkQuota(
+            user,
+            QUOTA_TYPES.EVENTS_PER_IMPORT,
+            totalRows
+          );
+          
+          if (!quotaCheck.allowed) {
+            throw new Error(
+              `Import exceeds maximum events per import (${totalRows} > ${quotaCheck.limit}). ` +
+              `Please split your data into smaller files.`
+            );
+          }
+        }
+      }
 
       const { rows, eventsCreated, eventsSkipped, errors } = await processBatchData(
         payload,

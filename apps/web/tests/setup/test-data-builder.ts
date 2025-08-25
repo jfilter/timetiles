@@ -20,6 +20,7 @@ export class TestDataBuilder {
       email: string;
       password: string;
       role: string;
+      trustLevel?: string;
     }> = {}
   ): Promise<User> {
     const timestamp = Date.now();
@@ -27,6 +28,7 @@ export class TestDataBuilder {
       email: `test-user-${timestamp}@example.com`,
       password: "test123456",
       role: "admin",
+      trustLevel: "5", // UNLIMITED for admin by default
     };
 
     return this.payload.create({
@@ -35,6 +37,7 @@ export class TestDataBuilder {
         ...defaults,
         ...overrides,
         role: (overrides.role ?? defaults.role) as "user" | "admin" | "editor",
+        trustLevel: (overrides.trustLevel ?? defaults.trustLevel) as "0" | "1" | "2" | "3" | "4" | "5",
       },
     });
   }

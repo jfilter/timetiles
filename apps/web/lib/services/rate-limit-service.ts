@@ -418,7 +418,8 @@ export class RateLimitService {
     }
 
     // Get user's trust level or default to REGULAR
-    const trustLevel = (user.trustLevel ?? TRUST_LEVELS.REGULAR) as TrustLevel;
+    const trustLevelValue = Number(user.trustLevel ?? TRUST_LEVELS.REGULAR);
+    const trustLevel = trustLevelValue as TrustLevel;
     
     // Get rate limits for this trust level
     const trustLevelLimits = RATE_LIMITS_BY_TRUST_LEVEL[trustLevel];

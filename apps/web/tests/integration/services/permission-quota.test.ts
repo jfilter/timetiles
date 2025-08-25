@@ -15,7 +15,9 @@ import type { User } from "@/payload-types";
 
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
-describe("Permission and Quota System", () => {
+// Force sequential execution for this test file to avoid database state conflicts
+// All tests in this file share the same database within a worker
+describe.sequential("Permission and Quota System", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let testUser: User;
@@ -61,6 +63,7 @@ describe("Permission and Quota System", () => {
         password: "password123",
         role: "admin",
         trustLevel: String(TRUST_LEVELS.UNLIMITED), // Convert to string
+        // Don't provide quotas - let the hook set them based on trust level
       },
     });
   });
@@ -73,8 +76,14 @@ describe("Permission and Quota System", () => {
     it("should allow operations within quota limits", async () => {
       const permissionService = getPermissionService(payload);
       
+      // Get fresh user after reset
+      const user = await payload.findByID({
+        collection: "users",
+        id: testUser.id,
+      });
+      
       const result = await permissionService.checkQuota(
-        testUser,
+        user,
         QUOTA_TYPES.FILE_UPLOADS_PER_DAY,
         1
       );
@@ -88,9 +97,15 @@ describe("Permission and Quota System", () => {
     it("should block operations that exceed quota limits", async () => {
       const permissionService = getPermissionService(payload);
       
+      // Get fresh user after reset
+      const user = await payload.findByID({
+        collection: "users",
+        id: testUser.id,
+      });
+      
       // Try to use 3 uploads when limit is 2
       const result = await permissionService.checkQuota(
-        testUser,
+        user,
         QUOTA_TYPES.FILE_UPLOADS_PER_DAY,
         3
       );
@@ -102,9 +117,18 @@ describe("Permission and Quota System", () => {
     it("should allow unlimited operations for admin users", async () => {
       const permissionService = getPermissionService(payload);
       
+      // Get fresh admin user to ensure quotas are loaded
+      const admin = await payload.findByID({
+        collection: "users",
+        id: adminUser.id,
+      });
+      
+      console.log("Admin user quotas:", admin.quotas);
+      console.log("Admin user trust level:", admin.trustLevel);
+      
       // Admin user created with trust level 5 should have unlimited quotas
       const result = await permissionService.checkQuota(
-        adminUser,
+        admin,
         QUOTA_TYPES.FILE_UPLOADS_PER_DAY,
         1000000
       );
@@ -117,6 +141,22 @@ describe("Permission and Quota System", () => {
   describe("Usage Tracking", () => {
     it("should increment usage counters", async () => {
       const permissionService = getPermissionService(payload);
+      
+      // Ensure clean state for this test
+      await payload.update({
+        collection: "users",
+        id: testUser.id,
+        data: {
+          usage: {
+            currentActiveSchedules: 0,
+            urlFetchesToday: 0,
+            fileUploadsToday: 0,
+            importJobsToday: 0,
+            totalEventsCreated: 0,
+            lastResetDate: new Date().toISOString(),
+          },
+        },
+      });
       
       // Track a file upload
       await permissionService.incrementUsage(
@@ -136,6 +176,22 @@ describe("Permission and Quota System", () => {
 
     it("should enforce quotas after usage increments", async () => {
       const permissionService = getPermissionService(payload);
+      
+      // Ensure clean state
+      await payload.update({
+        collection: "users",
+        id: testUser.id,
+        data: {
+          usage: {
+            currentActiveSchedules: 0,
+            urlFetchesToday: 0,
+            fileUploadsToday: 0,
+            importJobsToday: 0,
+            totalEventsCreated: 0,
+            lastResetDate: new Date().toISOString(),
+          },
+        },
+      });
       
       // Use up the quota (increment to reach limit of 2)
       await permissionService.incrementUsage(
@@ -166,6 +222,29 @@ describe("Permission and Quota System", () => {
     it("should throw QuotaExceededError when validateQuota fails", async () => {
       const permissionService = getPermissionService(payload);
       
+      // Ensure clean state
+      await payload.update({
+        collection: "users",
+        id: testUser.id,
+        data: {
+          usage: {
+            currentActiveSchedules: 0,
+            urlFetchesToday: 0,
+            fileUploadsToday: 0,
+            importJobsToday: 0,
+            totalEventsCreated: 0,
+            lastResetDate: new Date().toISOString(),
+          },
+        },
+      });
+      
+      // Max out the quota
+      await permissionService.incrementUsage(
+        testUser.id,
+        USAGE_TYPES.FILE_UPLOADS_TODAY,
+        2  // Max out the limit of 2
+      );
+      
       // Get fresh user with updated usage
       const user = await payload.findByID({
         collection: "users",
@@ -182,6 +261,18 @@ describe("Permission and Quota System", () => {
   describe("Daily Reset", () => {
     it("should reset daily counters", async () => {
       const permissionService = getPermissionService(payload);
+      
+      // First add some usage to reset
+      await permissionService.incrementUsage(
+        testUser.id,
+        USAGE_TYPES.FILE_UPLOADS_TODAY,
+        3
+      );
+      await permissionService.incrementUsage(
+        testUser.id,
+        USAGE_TYPES.URL_FETCHES_TODAY,
+        5
+      );
       
       // Reset the daily counters
       await permissionService.resetDailyCounters(testUser.id);
@@ -222,7 +313,7 @@ describe("Permission and Quota System", () => {
 
   describe("File Upload Quota Checking", () => {
     it("should block operations when file upload quota exceeded", async () => {
-      // First, max out the file upload quota for testUser
+      // Max out the file upload quota for testUser
       const permissionService = getPermissionService(payload);
       await permissionService.incrementUsage(testUser.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 2);
 
@@ -269,9 +360,15 @@ describe("Permission and Quota System", () => {
     it("should enforce active schedule limits", async () => {
       const permissionService = getPermissionService(payload);
       
+      // Get fresh user after reset
+      const user = await payload.findByID({
+        collection: "users",
+        id: testUser.id,
+      });
+      
       // Check if user can create a schedule (limit is 1)
       const result = await permissionService.checkQuota(
-        testUser,
+        user,
         QUOTA_TYPES.ACTIVE_SCHEDULES,
         1
       );
@@ -287,13 +384,13 @@ describe("Permission and Quota System", () => {
       );
 
       // Check if another schedule would be blocked
-      const user = await payload.findByID({
+      const updatedUser = await payload.findByID({
         collection: "users",
         id: testUser.id,
       });
 
       const result2 = await permissionService.checkQuota(
-        user,
+        updatedUser,
         QUOTA_TYPES.ACTIVE_SCHEDULES,
         1
       );

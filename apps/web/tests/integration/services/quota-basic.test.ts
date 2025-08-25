@@ -11,7 +11,8 @@ import { getPermissionService } from "@/lib/services/permission-service";
 
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
-describe("Basic Quota Test", () => {
+// Force sequential execution to avoid database state conflicts
+describe.sequential("Basic Quota Test", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
 
