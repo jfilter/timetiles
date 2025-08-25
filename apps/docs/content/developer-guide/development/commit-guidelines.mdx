@@ -87,9 +87,24 @@ The type must be one of the following:
   - Example: `security(auth): fix JWT token expiration issue`
   - Example: `security(import): add file type validation`
 
-#### Scope (Optional but Recommended)
+#### Scope (Intelligently Optional)
 
-The scope provides additional context about what part of the codebase changed. Scopes are organized into categories:
+The scope provides additional context about what part of the codebase changed. 
+
+**When scope can be omitted:**
+- When the type already indicates the scope (avoiding redundancy)
+  - `docs: update README` (when changing documentation files)
+  - `ci: fix GitHub Actions` (when changing CI/CD files)
+  - `build: update Docker config` (when changing build files)
+  - `test: add unit tests` (when changing test files)
+
+**When scope is recommended:**
+- When the type doesn't clearly indicate what area is affected
+  - `fix(import): handle empty CSV files` (not just `fix:`)
+  - `feat(geocoding): add address caching` (not just `feat:`)
+  - `refactor(api): extract middleware` (not just `refactor:`)
+
+Scopes are organized into categories:
 
 **Monorepo Packages & Apps** (where the code lives):
 
@@ -363,14 +378,24 @@ Use **technical scopes** (`db`, `api`, `jobs`, `deps`, `seed`) when:
 
 ## Handling Type/Scope Overlaps
 
-Some combinations need special attention:
+The commitlint rules intelligently handle redundant type/scope combinations:
 
-- **`docs(docs)`**: Valid when documenting the docs app itself
-  - Example: `docs(docs): update README with Nextra setup instructions`
-  - Example: `docs(docs): add guide for writing MDX components`
-  - Use `docs:` for general documentation changes
-  - Use `docs(web):` for documenting the web app
-  - Use `docs(docs):` for documentation about the documentation site
+### When scope can be omitted (type matches expected scope):
+- **`docs:`** - When changing documentation files
+- **`ci:`** - When changing CI/CD configuration files
+- **`build:`** - When changing build configuration files
+- **`test:`** - When changing test files
+
+### When scope is still useful:
+- **`docs(web):`** - Documenting the web app specifically
+- **`docs(api):`** - API documentation updates
+- **`test(import):`** - Tests for the import feature
+- **`ci(deploy):`** - CI changes for deployment workflows
+
+### Special case - docs(docs):
+- **`docs(docs):`** - Valid when documenting the docs app itself
+  - Example: `docs(docs): update Nextra configuration guide`
+  - This is NOT redundant because it's about the documentation site code/config
 - **`test(web)`**: Use for adding tests to web app
   - Example: `test(web): add unit tests for import flow`
 - **`test(import)`**: Use for adding tests to specific features
@@ -471,15 +496,20 @@ pnpm tsx scripts/validate-commit.ts --test
 ### Title-only commits (for simple, self-explanatory changes):
 
 ```
+# Scope omitted when type matches the context:
+docs: update README with installation instructions
+ci: update GitHub Actions to Node 24
+build: optimize webpack configuration
+test: add unit tests for date utilities
+
+# Scope included for clarity:
 fix(import): prevent duplicate event creation
 docs(api): update geocoding endpoint examples
 format(ui): fix button component indentation
-chore(config): update ESLint rules
+chore(deps): update ESLint to latest version
 test(events): add unit tests for event validation
 fix(geocoding): resolve memory leak in location cache
 feat(events): add bulk export functionality
-ci: update GitHub Actions to Node 24
-build: optimize webpack configuration
 perf(geocoding): implement request batching
 security(api): fix request validation vulnerability
 security(import): add file type validation to prevent malicious uploads

@@ -182,11 +182,19 @@ export default {
           // Get expected scopes based on changed files
           const expectedScopes = getExpectedScopes(changedFiles);
           
-          // If no scope is provided but files suggest one, warn
+          // If no scope is provided but files suggest one
           if (!scope && expectedScopes.length > 0) {
+            // Allow omitting scope when type matches the expected scope (avoiding redundancy)
+            // e.g., "docs: update README" when changing docs files
+            // e.g., "ci: fix workflow" when changing CI files
+            if (expectedScopes.includes(type)) {
+              return [true]; // OK - type already indicates the scope
+            }
+            
+            // For other cases, warn that scope would be helpful
             return [
-              false, 
-              `Missing scope. Based on changed files, consider using: ${expectedScopes.join(', ')}`
+              1, // Warning level, not error
+              `Consider adding scope. Based on changed files: ${expectedScopes.join(', ')}`
             ];
           }
           
@@ -355,7 +363,7 @@ export default {
       ],
     ],
     
-    'scope-empty': [1, 'never'],
+    'scope-empty': [0, 'never'], // Disabled - scope-file-match handles this intelligently
     'subject-case': [0, 'always', ['lower-case', 'sentence-case']],
     'subject-empty': [2, 'never'],
     'subject-full-stop': [2, 'never', '.'],
