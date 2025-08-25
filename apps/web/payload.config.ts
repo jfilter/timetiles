@@ -41,7 +41,7 @@ const dbConfig = isBuildPhase
   ? postgresAdapter({
       ...DEFAULT_DB_CONFIG,
       pool: {
-        connectionString: "postgresql://localhost:5432/build",
+        connectionString: connectionString || "",
         // During build, don't actually connect
         max: 0,
         min: 0,
@@ -50,7 +50,7 @@ const dbConfig = isBuildPhase
   : postgresAdapter({
       ...DEFAULT_DB_CONFIG,
       pool: {
-        connectionString: connectionString || "postgresql://build:build@localhost:5432/build",
+        connectionString: connectionString!,
       },
     });
 
