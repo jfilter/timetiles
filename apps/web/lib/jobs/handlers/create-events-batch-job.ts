@@ -221,6 +221,7 @@ const markJobCompleted = async (
   eventsCreated: number
 ) => {
   const currentProgress = job.progress?.current ?? 0;
+  const totalEventsCreated = currentProgress + eventsCreated;
   const duplicatesSkipped =
     (job.duplicates?.summary?.internalDuplicates ?? 0) + (job.duplicates?.summary?.externalDuplicates ?? 0);
 
@@ -230,13 +231,55 @@ const markJobCompleted = async (
     data: {
       stage: PROCESSING_STAGE.COMPLETED,
       results: {
-        totalEvents: currentProgress + eventsCreated,
+        totalEvents: totalEventsCreated,
         duplicatesSkipped,
         geocoded: Object.keys(getGeocodingResults(job)).length,
         errors: job.errors?.length ?? 0,
       },
     },
   });
+
+  // Track total events created for the user's quota
+  try {
+    const importJob = await payload.findByID({
+      collection: COLLECTION_NAMES.IMPORT_JOBS,
+      id: importJobId,
+    });
+
+    if (importJob?.importFile) {
+      const importFileId = typeof importJob.importFile === "object" ? importJob.importFile.id : importJob.importFile;
+      const importFile = await payload.findByID({
+        collection: COLLECTION_NAMES.IMPORT_FILES,
+        id: importFileId,
+      });
+
+      if (importFile?.createdBy) {
+        const { getPermissionService } = await import("@/lib/services/permission-service");
+        const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
+        const logger = createJobLogger(String(importJobId), "create-events-batch");
+        
+        const userId = typeof importFile.createdBy === "object" 
+          ? importFile.createdBy.id 
+          : importFile.createdBy;
+
+        const permissionService = getPermissionService(payload);
+        await permissionService.incrementUsage(
+          userId,
+          USAGE_TYPES.TOTAL_EVENTS_CREATED,
+          totalEventsCreated
+        );
+
+        logger.info("Event creation tracked for quota", {
+          userId,
+          eventsCreated: totalEventsCreated,
+          importJobId,
+        });
+      }
+    }
+  } catch (error) {
+    // Don't fail the job if quota tracking fails
+    logError(error, "Failed to track event creation quota", { importJobId });
+  }
 };
 
 const getJobResources = async (payload: Payload, importJobId: string | number) => {

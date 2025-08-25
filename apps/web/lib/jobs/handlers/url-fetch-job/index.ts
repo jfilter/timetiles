@@ -254,6 +254,52 @@ export const urlFetchJob = {
       // Load scheduled import config if applicable
       scheduledImport = await loadScheduledImportConfig(payload, input.scheduledImportId);
 
+      // Check URL fetch quota for the user
+      const userId = input.userId || scheduledImport?.createdBy;
+      if (userId) {
+        const { getPermissionService } = await import("@/lib/services/permission-service");
+        const { QUOTA_TYPES, USAGE_TYPES } = await import("@/lib/constants/permission-constants");
+        
+        // Get the user
+        const user = typeof userId === "object" 
+          ? userId 
+          : await payload.findByID({ collection: "users", id: userId });
+
+        if (user) {
+          const permissionService = getPermissionService(payload);
+          
+          // Check URL fetch quota
+          const quotaCheck = await permissionService.checkQuota(
+            user,
+            QUOTA_TYPES.URL_FETCHES_PER_DAY,
+            1
+          );
+
+          if (!quotaCheck.allowed) {
+            const errorMessage = `Daily URL fetch limit reached (${quotaCheck.current}/${quotaCheck.limit}). Resets at midnight UTC.`;
+            
+            // Update scheduled import as failed if applicable
+            if (scheduledImport) {
+              await updateScheduledImportFailure(payload, scheduledImport, new Error(errorMessage), 0);
+            }
+            
+            throw new Error(errorMessage);
+          }
+
+          // Track URL fetch usage
+          await permissionService.incrementUsage(
+            user.id,
+            USAGE_TYPES.URL_FETCHES_TODAY,
+            1
+          );
+
+          logger.info("URL fetch quota checked and tracked", {
+            userId: user.id,
+            remaining: quotaCheck.remaining,
+          });
+        }
+      }
+
       // Build authentication headers
       const authHeaders = buildAuthHeaders(input.authConfig ?? scheduledImport?.authConfig);
 

@@ -218,6 +218,59 @@ const ImportFiles: CollectionConfig = {
         description: "Additional import context and metadata",
       },
     },
+    {
+      name: "quotaInfo",
+      type: "json",
+      virtual: true,
+      admin: {
+        hidden: true,
+      },
+      hooks: {
+        afterRead: [
+          async ({ req, data }) => {
+            // Only add quota info for authenticated users
+            if (!req.user) return null;
+
+            try {
+              const { getPermissionService } = await import("@/lib/services/permission-service");
+              const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
+              
+              const permissionService = getPermissionService(req.payload);
+              
+              // Get multiple quota checks for comprehensive info
+              const [fileUploads, importJobs, totalEvents] = await Promise.all([
+                permissionService.checkQuota(req.user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY),
+                permissionService.checkQuota(req.user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY),
+                permissionService.checkQuota(req.user, QUOTA_TYPES.TOTAL_EVENTS),
+              ]);
+              
+              return {
+                fileUploads: {
+                  current: fileUploads.current,
+                  limit: fileUploads.limit,
+                  remaining: fileUploads.remaining,
+                },
+                importJobs: {
+                  current: importJobs.current,
+                  limit: importJobs.limit,
+                  remaining: importJobs.remaining,
+                },
+                totalEvents: {
+                  current: totalEvents.current,
+                  limit: totalEvents.limit,
+                  remaining: totalEvents.remaining,
+                },
+                resetTime: fileUploads.resetTime?.toISOString(),
+                trustLevel: req.user.trustLevel,
+              };
+            } catch (error) {
+              // Don't fail the request if quota info can't be retrieved
+              return null;
+            }
+          },
+        ],
+      },
+    },
   ],
   hooks: {
     beforeOperation: [

@@ -255,9 +255,9 @@ const Users: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      async ({ data, operation, req }) => {
-        // Auto-set quotas based on trust level when trust level changes
-        if (operation === "update" && data?.trustLevel !== undefined) {
+      async ({ data, operation, req, originalDoc }) => {
+        // Auto-set quotas based on trust level ONLY when trust level actually changes
+        if (operation === "update" && data?.trustLevel !== undefined && originalDoc?.trustLevel !== data.trustLevel) {
           const { DEFAULT_QUOTAS } = await import("@/lib/constants/permission-constants");
           const trustLevel = Number(data.trustLevel);
           const defaultQuotas = DEFAULT_QUOTAS[trustLevel as keyof typeof DEFAULT_QUOTAS];
@@ -267,13 +267,18 @@ const Users: CollectionConfig = {
           }
         }
 
-        // Initialize usage on user creation
+        // Initialize quotas and usage on user creation
         if (operation === "create") {
           const { DEFAULT_QUOTAS } = await import("@/lib/constants/permission-constants");
           const trustLevel = Number(data?.trustLevel || TRUST_LEVELS.REGULAR);
           const defaultQuotas = DEFAULT_QUOTAS[trustLevel as keyof typeof DEFAULT_QUOTAS];
           
-          data.quotas = data.quotas || defaultQuotas;
+          // Use explicitly provided quotas if given, otherwise use trust level defaults
+          if (!data.quotas || Object.keys(data.quotas).length === 0) {
+            data.quotas = defaultQuotas;
+          }
+          
+          // Always initialize usage
           data.usage = {
             currentActiveSchedules: 0,
             urlFetchesToday: 0,

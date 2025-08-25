@@ -82,15 +82,29 @@ export class PermissionService {
     const trustLevel = (user.trustLevel ?? TRUST_LEVELS.REGULAR) as TrustLevel;
     const defaultQuotas = DEFAULT_QUOTAS[trustLevel];
 
-    // If user has custom quotas, merge them with defaults
+    // Check if user has quota fields directly on the user object (from database)
+    const userQuotas = user.quotas || {};
+    
+    // Build effective quotas from user fields, falling back to defaults
+    const effectiveQuotas: UserQuotas = {
+      maxActiveSchedules: userQuotas.maxActiveSchedules ?? defaultQuotas.maxActiveSchedules,
+      maxUrlFetchesPerDay: userQuotas.maxUrlFetchesPerDay ?? defaultQuotas.maxUrlFetchesPerDay,
+      maxFileUploadsPerDay: userQuotas.maxFileUploadsPerDay ?? defaultQuotas.maxFileUploadsPerDay,
+      maxEventsPerImport: userQuotas.maxEventsPerImport ?? defaultQuotas.maxEventsPerImport,
+      maxTotalEvents: userQuotas.maxTotalEvents ?? defaultQuotas.maxTotalEvents,
+      maxImportJobsPerDay: userQuotas.maxImportJobsPerDay ?? defaultQuotas.maxImportJobsPerDay,
+      maxFileSizeMB: userQuotas.maxFileSizeMB ?? defaultQuotas.maxFileSizeMB,
+    };
+
+    // If user has custom quotas JSON field, merge those too
     if (user.customQuotas && typeof user.customQuotas === "object") {
       return {
-        ...defaultQuotas,
+        ...effectiveQuotas,
         ...(user.customQuotas as Partial<UserQuotas>),
       };
     }
 
-    return defaultQuotas;
+    return effectiveQuotas;
   }
 
   /**
