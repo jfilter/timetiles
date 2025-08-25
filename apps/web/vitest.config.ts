@@ -2,7 +2,8 @@
  * Vitest configuration file.
  *
  * Configures Vitest for unit and integration testing with jsdom environment,
- * path aliases, and test timeouts.
+ * path aliases, and test timeouts. Automatically optimizes settings based on
+ * which tests are being run.
  *
  * @module
  */
@@ -10,6 +11,9 @@ import path from "path";
 import { defineConfig } from "vitest/config";
 
 import baseConfig from "./vitest.config.base";
+
+// Detect if we're running unit tests based on the command arguments
+const isUnitTest = process.argv.some(arg => arg.includes('tests/unit'));
 
 export default defineConfig({
   ...baseConfig,
@@ -20,8 +24,8 @@ export default defineConfig({
     environment: "jsdom",
     exclude: ["**/node_modules/**"],
     setupFiles: ["tests/setup/setup.ts"],
-    testTimeout: 30000,
-    hookTimeout: 30000,
+    testTimeout: isUnitTest ? 10000 : 30000, // Shorter timeout for unit tests
+    hookTimeout: isUnitTest ? 10000 : 30000,
     reporters: ["verbose"],
     silent: false,
     // Reduce console output noise
@@ -36,7 +40,7 @@ export default defineConfig({
     pool: "forks",
     poolOptions: {
       forks: {
-        isolate: true,
+        isolate: !isUnitTest, // Disable isolation for unit tests, keep for integration
       },
     },
     fileParallelism: true,
@@ -66,8 +70,6 @@ export default defineConfig({
         },
       },
     },
-    // Isolate globals to prevent test pollution but allow caching
-    isolate: true,
     // Watch configuration for better caching during watch mode
     watch: false,
   },
