@@ -166,6 +166,9 @@ importers:
       graphql:
         specifier: ^16.11.0
         version: 16.11.0
+      lru-cache:
+        specifier: ^11.1.0
+        version: 11.1.0
       lucide-react:
         specifier: ^0.475.0
         version: 0.475.0(react@19.0.0)

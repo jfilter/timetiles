@@ -2,7 +2,7 @@
  * Fetch utilities for URL fetch jobs.
  *
  * Contains functions for fetching data from URLs with retry logic,
- * content type detection, and error handling.
+ * content type detection, error handling, and HTTP caching support.
  *
  * @module
  * @category Jobs/UrlFetch
@@ -12,6 +12,8 @@ import crypto from "crypto";
 import path from "path";
 
 import { logger } from "@/lib/logger";
+import { getHttpCache } from "@/lib/services/cache";
+import type { HttpCacheOptions } from "@/lib/services/cache";
 import type { ScheduledImport } from "@/payload-types";
 
 export interface FetchResult {
@@ -251,16 +253,17 @@ export const fetchUrlData = async (
 };
 
 /**
- * Fetches URL with retry logic.
+ * Fetches URL with retry logic and HTTP caching support.
  */
 export const fetchWithRetry = async (
   sourceUrl: string,
   options: FetchOptions & {
     retryConfig?: ScheduledImport["retryConfig"];
     authHeaders?: Record<string, string>;
+    cacheOptions?: HttpCacheOptions;
   } = {}
 ): Promise<FetchResult> => {
-  const { retryConfig, authHeaders = {}, ...fetchOptions } = options;
+  const { retryConfig, authHeaders = {}, cacheOptions, ...fetchOptions } = options;
   const maxRetries = retryConfig?.maxRetries ?? 3;
   const retryDelayMinutes = retryConfig?.retryDelayMinutes ?? 0.1; // Default to 0.1 minutes (6 seconds)
   // Use shorter delay in test environment
@@ -269,28 +272,106 @@ export const fetchWithRetry = async (
   const useExponentialBackoff = retryConfig?.exponentialBackoff ?? true;
   const backoffMultiplier = useExponentialBackoff ? 2 : 1;
 
+  // Get HTTP cache instance
+  const httpCache = getHttpCache();
+  const method = fetchOptions.method || "GET";
+  const useCache = cacheOptions?.useCache !== false && !cacheOptions?.bypassCache;
+
+  // Check cache first if enabled
+  if (useCache) {
+    const cached = await httpCache.get(sourceUrl, method);
+    if (cached && !httpCache.shouldRevalidate(cached, cacheOptions)) {
+      logger.info("HTTP cache hit, returning cached response", {
+        url: sourceUrl,
+        size: cached.data.length,
+        age: Math.floor((Date.now() - cached.metadata.fetchedAt.getTime()) / 1000),
+      });
+
+      const detectedType = detectFileTypeFromResponse(cached.headers["content-type"], cached.data, sourceUrl);
+
+      return {
+        data: cached.data,
+        contentType: detectedType.mimeType,
+        contentLength: cached.data.length,
+        attempts: 0, // No fetch attempts needed
+      };
+    }
+  }
+
   let lastError: Error | undefined;
   let currentDelay = retryDelay;
   const attemptCount = maxRetries + 1; // Total attempts = initial + retries
 
   for (let attempt = 1; attempt <= attemptCount; attempt++) {
     try {
+      // Get conditional headers if we have a stale cache entry
+      const conditionalHeaders = useCache ? await httpCache.getConditionalHeaders(sourceUrl, method) : {};
+
       logger.info(`Fetching URL (attempt ${attempt}/${attemptCount})`, {
         url: sourceUrl,
         attempt,
+        conditional: Object.keys(conditionalHeaders).length > 0,
       });
 
-      const { data, contentType, contentLength } = await fetchUrlData(sourceUrl, {
-        ...fetchOptions,
-        headers: { ...authHeaders, ...fetchOptions.headers },
+      // Create a custom fetch wrapper to capture response headers
+      const response = await fetch(sourceUrl, {
+        method,
+        headers: {
+          ...authHeaders,
+          ...conditionalHeaders,
+          ...fetchOptions.headers,
+        },
+        signal: fetchOptions.timeout ? AbortSignal.timeout(fetchOptions.timeout) : undefined,
       });
 
-      const detectedType = detectFileTypeFromResponse(contentType, data, sourceUrl);
+      // Handle 304 Not Modified
+      if (response.status === 304 && useCache) {
+        const cached = await httpCache.handleNotModified(sourceUrl, method);
+        if (cached) {
+          logger.info("HTTP cache revalidated (304 Not Modified)", {
+            url: sourceUrl,
+          });
+
+          const detectedType = detectFileTypeFromResponse(cached.headers["content-type"], cached.data, sourceUrl);
+
+          return {
+            data: cached.data,
+            contentType: detectedType.mimeType,
+            contentLength: cached.data.length,
+            attempts: attempt,
+          };
+        }
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // Read response body
+      const data = Buffer.from(await response.arrayBuffer());
+
+      // Check size limit
+      if (fetchOptions.maxSize && data.length > fetchOptions.maxSize) {
+        throw new Error(`File too large: ${data.length} bytes (max: ${fetchOptions.maxSize})`);
+      }
+
+      // Extract headers
+      const headers: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        headers[key.toLowerCase()] = value;
+      });
+
+      // Cache successful response if caching is enabled
+      if (useCache && response.ok) {
+        await httpCache.set(sourceUrl, data, headers, response.status, method);
+      }
+
+      const detectedType = detectFileTypeFromResponse(headers["content-type"], data, sourceUrl);
 
       return {
         data,
         contentType: detectedType.mimeType,
-        contentLength,
+        contentLength: data.length,
         attempts: attempt,
       };
     } catch (error) {
@@ -298,7 +379,7 @@ export const fetchWithRetry = async (
       logger.warn(`Fetch attempt ${attempt} failed`, {
         url: sourceUrl,
         error: lastError.message,
-        nextRetryIn: attempt < maxRetries ? currentDelay : null,
+        nextRetryIn: attempt < attemptCount ? currentDelay : null,
       });
 
       if (attempt < attemptCount) {

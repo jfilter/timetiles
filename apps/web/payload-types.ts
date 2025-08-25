@@ -1134,6 +1134,18 @@ export interface ScheduledImport {
      * Maximum file size in MB (leave empty for no limit)
      */
     maxFileSizeMB?: number | null;
+    /**
+     * Enable HTTP caching for URL responses
+     */
+    useHttpCache?: boolean | null;
+    /**
+     * Bypass cache when manually triggering the import
+     */
+    bypassCacheOnManual?: boolean | null;
+    /**
+     * Respect Cache-Control headers from the server
+     */
+    respectCacheControl?: boolean | null;
   };
   /**
    * Last execution time
@@ -2200,6 +2212,9 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
         skipDuplicateChecking?: T;
         autoApproveSchema?: T;
         maxFileSizeMB?: T;
+        useHttpCache?: T;
+        bypassCacheOnManual?: T;
+        respectCacheControl?: T;
       };
   lastRun?: T;
   nextRun?: T;
