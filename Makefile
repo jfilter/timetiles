@@ -1,4 +1,4 @@
-.PHONY: up down logs db-reset db-shell db-query clean setup seed dev build lint typecheck format test test-e2e migrate migrate-create check help
+.PHONY: up down logs db-reset db-shell db-query clean setup seed dev kill-dev build lint typecheck format test test-e2e migrate migrate-create check help
 
 # Start the development environment
 up:
@@ -57,6 +57,23 @@ dev:
 	fi
 	@echo "🚀 Starting development server..."
 	pnpm dev
+
+# Kill all development servers and processes
+kill-dev:
+	@echo "🛑 Stopping all development servers..."
+	@# Kill Next.js dev servers
+	@pkill -f "next dev" 2>/dev/null || true
+	@# Kill Turbo
+	@pkill -f "turbo" 2>/dev/null || true
+	@# Kill any node processes running in the project directory
+	@pkill -f "node.*timetiles" 2>/dev/null || true
+	@# Kill Playwright test server if running
+	@pkill -f "playwright.*test-server" 2>/dev/null || true
+	@# Kill pnpm dev processes
+	@pkill -f "pnpm dev" 2>/dev/null || true
+	@# Clear any turbo daemon
+	@pnpm turbo daemon stop 2>/dev/null || true
+	@echo "✅ All development servers stopped"
 
 # Build the project
 build:
@@ -132,6 +149,7 @@ help:
 	@echo "  setup       - Install dependencies and create .env file"
 	@echo "  dev         - Start development server (auto-starts infrastructure)"
 	@echo "  dev-full    - Start infrastructure and development server"
+	@echo "  kill-dev    - Stop all development servers and processes"
 	@echo "  build       - Build the project"
 	@echo ""
 	@echo "🔍 Code Quality:"
