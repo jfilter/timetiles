@@ -8,18 +8,18 @@ The TimeTiles documentation is divided into two main categories:
 
 ### 1. Manual Documentation
 
-**Location:** Various directories under `/apps/docs/pages/`
+**Location:** Various directories under `/apps/docs/content/`
 
 - **Getting Started** (`/getting-started/`) - Installation, quick start guides
-- **User Guides** (`/users/`) - Features, use cases, tutorials
-- **Developer Docs** (`/developers/`) - Architecture, development guides
-- **Reference** (`/reference/`) - Changelog, roadmap, glossary
+- **User Guide** (`/user-guide/`) - Features, use cases, tutorials
+- **Developer Guide** (`/developer-guide/`) - Architecture, development guides
+- **API Reference** (`/api-reference/`) - Auto-generated API documentation
 
 These are **hand-written MDX files** that you edit directly.
 
 ### 2. Auto-generated API Documentation
 
-**Location:** `/apps/docs/pages/reference/api/`
+**Location:** `/apps/docs/content/api-reference/`
 
 - Generated from JSDoc comments in source code
 - Created using TypeDoc
@@ -32,7 +32,7 @@ These are **hand-written MDX files** that you edit directly.
 1. Create an `.mdx` file in the appropriate directory:
 
 ```bash
-apps/docs/pages/developers/guides/my-new-guide.mdx
+apps/docs/content/developer-guide/guides/my-new-guide.mdx
 ```
 
 2. Write your content using MDX (Markdown + JSX):
@@ -76,7 +76,7 @@ const example = "code here"
    - Located in `apps/web/lib/`, `apps/web/app/api/`
 2. **Generation**: TypeDoc processes JSDoc comments
    - Configuration in `apps/web/typedoc.json`
-3. **Output**: Markdown files in `apps/docs/pages/reference/api/`
+3. **Output**: Markdown files in `apps/docs/content/api-reference/`
    - Automatically organized by module
 
 ### Writing Good JSDoc Comments
@@ -118,17 +118,17 @@ export async function validateImportData(data: unknown[], schema: Schema): Promi
 
 ### JSDoc Tags Reference
 
-| Tag           | Purpose                  | Example                               |
-| ------------- | ------------------------ | ------------------------------------- |
-| `@module`     | File-level documentation | `@module`                             |
-| `@category`   | Group related items      | `@category Services`                  |
-| `@param`      | Document parameters      | `@param name - Description`           |
-| `@returns`    | Document return value    | `@returns Description`                |
-| `@throws`     | Document exceptions      | `@throws {ErrorType} When...`         |
-| `@example`    | Provide usage examples   | `@example` followed by code block     |
-| `@deprecated` | Mark as deprecated       | `@deprecated Use newFunction instead` |
-| `@since`      | Version introduced       | `@since 1.2.0`                        |
-| `@see`        | Reference related items  | `@see {@link OtherFunction}`          |
+| Tag | Purpose | Example |
+| --- | --- | --- |
+| `@module` | File-level documentation | `@module` |
+| `@category` | Group related items | `@category Services` |
+| `@param` | Document parameters | `@param name - Description` |
+| `@returns` | Document return value | `@returns Description` |
+| `@throws` | Document exceptions | `@throws {ErrorType} When...` |
+| `@example` | Provide usage examples | `@example` followed by code block |
+| `@deprecated` | Mark as deprecated | `@deprecated Use newFunction instead` |
+| `@since` | Version introduced | `@since 1.2.0` |
+| `@see` | Reference related items | `@see {@link OtherFunction}` |
 
 ### Generating API Documentation
 
@@ -143,19 +143,12 @@ cd apps/docs
 pnpm docs:api
 ```
 
-#### Watch Mode (Development)
-
-```bash
-# Regenerate on source file changes
-pnpm docs:api:watch
-```
-
 #### What Gets Generated
 
 The TypeDoc configuration (`apps/web/typedoc.json`) specifies:
 
 - **Entry points**: Which directories to process
-- **Output location**: `apps/docs/pages/reference/api/`
+- **Output location**: `apps/docs/content/api-reference/`
 - **Exclusions**: Test files, internal functions
 - **Organization**: Grouped by category
 
@@ -163,8 +156,8 @@ The TypeDoc configuration (`apps/web/typedoc.json`) specifies:
 
 While the content is auto-generated, navigation is manually configured:
 
-1. **Main navigation**: `apps/docs/pages/reference/api/_meta.json`
-2. **Section navigation**: `apps/docs/pages/reference/api/lib/_meta.json`
+1. **Main navigation**: `apps/docs/content/api-reference/_meta.json`
+2. **Section navigation**: `apps/docs/content/api-reference/lib/_meta.json`
 3. **Subsection navigation**: Various `_meta.json` files in subdirectories
 
 Example `_meta.json`:
@@ -188,17 +181,16 @@ The `.gitignore` is configured to:
 **Ignored (Auto-generated)**:
 
 ```gitignore
-apps/docs/pages/reference/api/**/*.md
-apps/docs/pages/reference/api/**/*.mdx
+apps/docs/content/api-reference/**/*.md
+apps/docs/content/api-reference/**/*.mdx
 ```
 
 **Tracked (Manual)**:
 
 ```gitignore
-!apps/docs/pages/reference/api/_meta.json
-!apps/docs/pages/reference/api/**/_meta.json
-!apps/docs/pages/reference/api/index.mdx
-!apps/docs/pages/reference/api/.gitkeep
+!apps/docs/content/api-reference/_meta.json
+!apps/docs/content/api-reference/**/_meta.json
+!apps/docs/content/api-reference/index.mdx
 ```
 
 This means:
@@ -283,14 +275,14 @@ This ensures documentation is always up-to-date with the code.
 
 ```bash
 # Clean generated docs
-rm -rf apps/docs/pages/reference/api/lib
-rm -rf apps/docs/pages/reference/api/app
+rm -rf apps/docs/content/api-reference/lib
+rm -rf apps/docs/content/api-reference/app
 
 # Regenerate fresh
 pnpm docs:api
 
 # Check what's ignored by git
-git check-ignore apps/docs/pages/reference/api/**
+git check-ignore apps/docs/content/api-reference/**
 
 # See TypeDoc configuration
 cat apps/web/typedoc.json
