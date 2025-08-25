@@ -13,6 +13,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
 
+import { TEST_CREDENTIALS } from "../../constants/test-credentials";
+
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
   success: true;
@@ -320,8 +322,8 @@ describe.sequential("urlFetchJob", () => {
           sourceUrl: "https://api.example.com/data",
           authConfig: {
             type: "basic",
-            username: "testuser",
-            password: "testpass",
+            username: TEST_CREDENTIALS.basic.username,
+            password: TEST_CREDENTIALS.basic.password,
           },
           catalogId: "catalog-123",
           originalName: "Basic Import",

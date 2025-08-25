@@ -19,6 +19,8 @@
 // Create mock geocoder instances with proper typing - must be defined before mocking
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TEST_CREDENTIALS } from "../../constants/test-credentials";
+
 // Use vi.hoisted to ensure mocks are set up before imports
 const { mockGoogleGeocode, mockNominatimGeocode, mockNodeGeocoder } = vi.hoisted(() => {
   const mockGoogleGeocode = vi.fn();
@@ -119,7 +121,7 @@ describe("GeocodingService", () => {
 
   describe.sequential("constructor", () => {
     it("should initialize with Google geocoder when API key is available", () => {
-      process.env.GEOCODING_GOOGLE_MAPS_API_KEY = "test-api-key";
+      process.env.GEOCODING_GOOGLE_MAPS_API_KEY = TEST_CREDENTIALS.apiKey.key;
       const service = new GeocodingService(payload);
       expect(service).toBeDefined();
     });
@@ -140,7 +142,7 @@ describe("GeocodingService", () => {
     };
 
     if (withGoogleApi) {
-      process.env.GEOCODING_GOOGLE_MAPS_API_KEY = "test-api-key";
+      process.env.GEOCODING_GOOGLE_MAPS_API_KEY = TEST_CREDENTIALS.apiKey.key;
       const googleName = `Google Maps (Test ${uniqueId})`;
       await payload.create({
         collection: "geocoding-providers",
@@ -152,7 +154,7 @@ describe("GeocodingService", () => {
           rateLimit: 50,
           config: {
             google: {
-              apiKey: "test-api-key",
+              apiKey: TEST_CREDENTIALS.apiKey.key,
               language: "en",
             },
           },

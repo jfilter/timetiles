@@ -25,6 +25,8 @@ import { verifyDatabaseSchema } from "./verify-schema";
 if (!process.env.NODE_ENV) {
   (process.env as any).NODE_ENV = "test";
 }
+// Note: These are test-only values, not real credentials
+// Using hardcoded values for test consistency and isolation
 process.env.PAYLOAD_SECRET = "test-secret-key";
 process.env.NEXT_PUBLIC_PAYLOAD_URL = "http://localhost:3000";
 

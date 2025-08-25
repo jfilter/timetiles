@@ -14,6 +14,7 @@ import * as RateLimitModule from "@/lib/services/rate-limit-service";
 import { RateLimitService } from "@/lib/services/rate-limit-service";
 import type { Catalog, ScheduledImport, User } from "@/payload-types";
 
+import { TEST_CREDENTIALS, TEST_TOKENS } from "../../constants/test-credentials";
 import { TestDataBuilder } from "../../setup/test-data-builder";
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
@@ -200,7 +201,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
   describe("Error Cases", () => {
     it("should return 404 for invalid token", async () => {
-      const response = await callWebhook("invalid_token_123456");
+      const response = await callWebhook(TEST_TOKENS.invalid);
 
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -382,7 +383,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
         data: {
           authConfig: {
             type: "bearer",
-            bearerToken: "test-api-token-123",
+            bearerToken: TEST_CREDENTIALS.bearer.token,
           },
         },
       });
@@ -404,8 +405,8 @@ describe.sequential("Webhook Trigger API Integration", () => {
         data: {
           authConfig: {
             type: "basic",
-            username: "testuser",
-            password: "testpass",
+            username: TEST_CREDENTIALS.basic.username,
+            password: TEST_CREDENTIALS.basic.password,
           },
         },
       });

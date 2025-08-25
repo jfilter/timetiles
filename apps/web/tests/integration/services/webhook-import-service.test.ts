@@ -20,6 +20,7 @@ import { JOB_TYPES } from "@/lib/constants/import-constants";
 import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
 import type { Catalog, Dataset, ScheduledImport, User } from "@/payload-types";
 
+import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import { TestDataBuilder } from "../../setup/test-data-builder";
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
@@ -38,13 +39,15 @@ const startTestServer = async (): Promise<void> => {
         const authHeader = req.headers.authorization;
 
         if (req.url === "/auth/bearer.csv") {
-          if (authHeader !== "Bearer test-bearer-token") {
+          if (authHeader !== `Bearer ${TEST_CREDENTIALS.bearer.alternateToken}`) {
             res.writeHead(401, { "Content-Type": "text/plain" });
             res.end("Unauthorized: Invalid bearer token");
             return;
           }
         } else if (req.url === "/auth/basic.csv") {
-          const expectedAuth = "Basic " + Buffer.from("testuser:testpass").toString("base64");
+          const expectedAuth =
+            "Basic " +
+            Buffer.from(`${TEST_CREDENTIALS.basic.username}:${TEST_CREDENTIALS.basic.password}`).toString("base64");
           if (authHeader !== expectedAuth) {
             res.writeHead(401, { "Content-Type": "text/plain" });
             res.end("Unauthorized: Invalid basic auth");
@@ -52,7 +55,8 @@ const startTestServer = async (): Promise<void> => {
           }
         } else if (
           req.url === "/auth/custom.csv" &&
-          (req.headers["x-api-key"] !== "test-api-key" || req.headers["x-custom-header"] !== "custom-value")
+          (req.headers["x-api-key"] !== TEST_CREDENTIALS.apiKey.key ||
+            req.headers["x-custom-header"] !== "custom-value")
         ) {
           res.writeHead(401, { "Content-Type": "text/plain" });
           res.end("Unauthorized: Missing custom headers");
@@ -531,7 +535,7 @@ describe.sequential("Webhook Import Service Integration", () => {
           sourceUrl: `http://localhost:${testServerPort}/auth/bearer.csv`,
           authConfig: {
             type: "bearer",
-            bearerToken: "test-bearer-token",
+            bearerToken: TEST_CREDENTIALS.bearer.alternateToken,
           },
         },
       });
@@ -547,7 +551,7 @@ describe.sequential("Webhook Import Service Integration", () => {
             sourceUrl: `http://localhost:${testServerPort}/auth/bearer.csv`,
             authConfig: {
               type: "bearer",
-              bearerToken: "test-bearer-token",
+              bearerToken: TEST_CREDENTIALS.bearer.alternateToken,
             },
             catalogId: testCatalog.id,
             originalName: "Bearer Auth Test",
@@ -568,8 +572,8 @@ describe.sequential("Webhook Import Service Integration", () => {
           sourceUrl: `http://localhost:${testServerPort}/auth/basic.csv`,
           authConfig: {
             type: "basic",
-            username: "testuser",
-            password: "testpass",
+            username: TEST_CREDENTIALS.basic.username,
+            password: TEST_CREDENTIALS.basic.password,
           },
         },
       });
@@ -607,7 +611,7 @@ describe.sequential("Webhook Import Service Integration", () => {
           authConfig: {
             type: "none",
             customHeaders: {
-              "X-API-Key": "test-api-key",
+              "X-API-Key": TEST_CREDENTIALS.apiKey.key,
               "X-Custom-Header": "custom-value",
             },
           },
@@ -625,7 +629,7 @@ describe.sequential("Webhook Import Service Integration", () => {
             authConfig: {
               type: "custom",
               customHeaders: {
-                "X-API-Key": "test-api-key",
+                "X-API-Key": TEST_CREDENTIALS.apiKey.key,
                 "X-Custom-Header": "custom-value",
               },
             },

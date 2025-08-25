@@ -19,6 +19,8 @@ const TEST_DATABASE_URL = deriveTestDatabaseUrl(DATABASE_URL);
 // Common environment variables for all E2E tests
 const TEST_ENV = {
   DATABASE_URL: TEST_DATABASE_URL,
+  // Note: This is a test-only secret, not a real credential.
+  // Kept inline as Playwright config needs to be self-contained and loads before test setup
   PAYLOAD_SECRET: process.env.PAYLOAD_SECRET || "test-secret-key",
   NEXT_PUBLIC_PAYLOAD_URL: process.env.NEXT_PUBLIC_PAYLOAD_URL || "http://localhost:3002",
   NODE_ENV: "test",
