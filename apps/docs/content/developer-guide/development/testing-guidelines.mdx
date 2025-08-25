@@ -1,48 +1,264 @@
 # Testing Guidelines
 
-This document outlines the conventions and practices for writing tests within the project. Adhering to these guidelines ensures consistency, maintainability, and effective testing across the codebase.
+Comprehensive testing guidelines for the TimeTiles project, covering test types, mocking strategies, and debugging techniques.
 
-## 1. Unit and Integration Tests
+## Testing Philosophy
 
-Unit and integration tests focus on individual components or small groups of components, ensuring their correct functionality in isolation or with minimal dependencies.
+**Use real implementations, not mocks.** Tests should verify actual behavior with real data and functions.
 
-- **Naming Convention:** Test files for unit and integration tests should follow the `*.test.ts` naming convention.
-  - **Examples:** `my-component.test.ts`, `user-service.integration.test.ts`
+## Test Types
 
-- **Location:** These test files are primarily located within the `apps/web/__tests__/` directory. They should generally mirror the directory structure of the code they are testing to make them easy to find and manage.
-  - **Example:** If you are testing `apps/web/src/services/UserService.ts`, its tests would be in `apps/web/__tests__/services/UserService.test.ts`.
+### Unit Tests
 
-- **Framework:** [Vitest](https://vitest.dev/) is the testing framework used for unit and integration tests.
+Test individual functions and components in isolation.
 
-- **Running Tests:**
-  - To run all unit/integration tests: `make test` (from project root) or `pnpm test` (from `apps/web` directory)
-  - To run tests with debug output: `pnpm test:debug` (from `apps/web` directory)
-  - To generate coverage reports: `make test-coverage` or `pnpm test:coverage`
+- **Location:** `apps/web/tests/unit/`
+- **Naming:** `*.test.ts` or `*.test.tsx`
+- **Framework:** Vitest
+- **Speed:** < 100ms per test
 
-## 2. End-to-End (E2E) Tests
+Mocking is acceptable for:
+- External dependencies
+- Database operations (when testing pure logic)
+- Time-sensitive operations (`vi.setSystemTime`)
 
-End-to-end tests simulate real user scenarios to ensure that the entire application flow works as expected, from the user interface down to the database.
+### Integration Tests
 
-- **Naming Convention:** E2E test files should follow the `*.spec.ts` naming convention.
-  - **Examples:** `login.spec.ts`, `explore-map.spec.ts`
+Test multiple components working together.
 
-- **Location:** E2E test files are located in the `apps/web/e2e/specs/` directory.
+- **Location:** `apps/web/tests/integration/`
+- **Naming:** `*.test.ts`
+- **Framework:** Vitest
+- **Database:** Each test file gets isolated database
 
-- **Framework:** [Playwright](https://playwright.dev/) is the framework used for end-to-end testing.
+#### Never Mock
+- Database operations → use test database
+- Payload operations → use real Payload
+- Internal services → use actual implementations
+- File system → use temp directories
 
-- **Running Tests:**
-  - To run all E2E tests: `pnpm test:e2e` (from `apps/web` directory)
-  - To run E2E tests with the UI mode: `pnpm test:e2e:ui`
-  - To run E2E tests in headed mode (browser visible): `pnpm test:e2e:headed`
-  - To debug E2E tests: `pnpm test:e2e:debug`
-  - To show the Playwright test report: `pnpm test:e2e:report`
+#### Can Mock (with documentation)
+- **External paid APIs** (Google Maps geocoding)
+- **Rate-limited services** (avoid CI/CD quota issues)
+- **Network failures** (for error testing)
 
-## 3. General Testing Practices
+When mocking external services:
+```typescript
+/**
+ * Mocking is acceptable here because:
+ * 1. Testing our service logic, not the external API
+ * 2. Real API has costs and rate limits
+ * 3. Need deterministic responses for test scenarios
+ */
+vi.mock("node-geocoder", () => ({
+  default: mockGeocoder
+}));
+```
 
-- **Test Coverage:** Strive for good test coverage, especially for critical business logic and complex components.
-- **Clear Test Names:** Write descriptive test names that clearly indicate what the test is verifying.
-- **Arrange-Act-Assert (AAA):** Structure your tests using the AAA pattern:
-  - **Arrange:** Set up the test data and environment.
-  - **Act:** Perform the action being tested.
-  - **Assert:** Verify the expected outcome.
-- **Mocking and Stubbing:** Use mocking and stubbing appropriately to isolate units under test and control external dependencies.
+### End-to-End Tests
+
+Test complete user workflows through the UI.
+
+- **Location:** `apps/web/tests/e2e/`
+- **Naming:** `*.spec.ts` or `*.test.ts`
+- **Framework:** Playwright
+- **Environment:** Full application with real database
+
+## Key Testing Patterns
+
+### Database Testing
+
+```typescript
+const env = await createIntegrationTestEnvironment();
+const { payload, cleanup } = env;
+// Tests run in isolated database
+await cleanup(); // In afterAll
+```
+
+### Job Queue Testing
+
+```typescript
+// ✅ Use real job handler
+const result = await someJob.handler({
+  job: { id: "test-1" },
+  req: { payload },
+  input: { /* real input */ },
+});
+
+// ❌ Never mock payload.jobs.queue
+```
+
+### External HTTP Services
+
+Use TestServer instead of mocking fetch:
+
+```typescript
+import { TestServer } from "../../setup/test-server";
+
+const testServer = new TestServer();
+const testUrl = await testServer.start();
+
+testServer.respondWithCSV("/data.csv", "id,name\n1,test");
+testServer.respondWithJSON("/api/geocode", {
+  results: [{ lat: 37.7749, lng: -122.4194 }]
+});
+
+// Cleanup
+await testServer.stop();
+```
+
+## Running Tests
+
+### Basic Commands
+
+```bash
+# All tests
+make test
+
+# Specific test file
+pnpm test tests/unit/services/schema-builder.test.ts
+
+# Pattern matching
+pnpm test --grep "geocoding"
+
+# Coverage report
+make test-coverage
+```
+
+### E2E Tests
+
+```bash
+pnpm test:e2e          # Run all E2E tests
+pnpm test:e2e:ui       # Interactive UI mode
+pnpm test:e2e:headed   # Browser visible
+pnpm test:e2e:debug    # Debug mode
+```
+
+## Debugging Tests
+
+Tests run silently by default. Use `LOG_LEVEL` for debugging:
+
+```bash
+# Quick debugging
+pnpm test:debug
+
+# Manual control
+LOG_LEVEL=debug pnpm test tests/path/to/test.ts
+
+# Watch mode with debugging
+LOG_LEVEL=debug pnpm test:watch
+```
+
+### Log Levels
+
+| Environment | Default | Override | Effect |
+| --- | --- | --- | --- |
+| Development | `debug` | `LOG_LEVEL=info` | All logs visible |
+| Production | `info` | `LOG_LEVEL=error` | Info+ visible |
+| Tests | `silent` | `LOG_LEVEL=debug` | No logs unless enabled |
+
+Available levels: `silent`, `error`, `warn`, `info`, `debug`, `trace`
+
+### Common Debugging Scenarios
+
+```bash
+# Database issues
+LOG_LEVEL=debug pnpm test tests/integration/services/seed-config.test.ts
+
+# Import processing
+LOG_LEVEL=debug pnpm test tests/integration/import/
+
+# Payload configuration
+LOG_LEVEL=debug pnpm test tests/integration/
+```
+
+## AI-Friendly Testing
+
+For cleaner AI analysis output:
+
+```bash
+make test-ai    # Minimal output, JSON results
+make check-ai   # Code quality summary
+```
+
+Results saved to:
+- `.test-results.json`
+- `.lint-results.json`
+- `.typecheck-results.json`
+
+## Common Mistakes
+
+### ❌ Mocking Internal Services
+
+```typescript
+// WRONG - Never mock your own services
+vi.mock("@/lib/services/import-service")
+```
+
+### ❌ Mocking Database
+
+```typescript
+// WRONG - Use real database
+payload.find = vi.fn().mockResolvedValue({ docs: [] })
+```
+
+### ✅ Mocking External APIs
+
+```typescript
+// CORRECT - Mock external paid service
+vi.mock("node-geocoder", () => ({
+  default: mockGeocoder
+}))
+```
+
+### ✅ Using Real Database
+
+```typescript
+// CORRECT - Real database operations
+const result = await payload.find({
+  collection: "events",
+  where: { /* conditions */ }
+})
+```
+
+## Best Practices
+
+1. **Test Coverage**: Focus on critical business logic
+2. **Clear Names**: Describe what's being tested
+3. **AAA Pattern**: Arrange → Act → Assert
+4. **Isolation**: Each test should be independent
+5. **Fast Tests**: Keep unit tests under 100ms
+
+## Mocking Summary
+
+**Never Mock:**
+- Payload operations
+- Database queries
+- Internal services
+- File system
+- Your own modules
+
+**Can Mock:**
+- External paid APIs (with documentation)
+- Rate-limited services
+- Network failures (for error testing)
+- Time (`vi.setSystemTime`)
+
+**When Mocking:**
+- Document WHY
+- Mock at the boundary
+- Test YOUR logic
+- Keep responses realistic
+
+## Test Organization
+
+```
+apps/web/tests/
+├── unit/           # Isolated function tests
+├── integration/    # Component interaction tests
+├── e2e/           # User workflow tests
+└── setup/         # Test utilities
+    ├── test-server.ts
+    ├── test-environment-builder.ts
+    └── test-helpers.ts
+```
