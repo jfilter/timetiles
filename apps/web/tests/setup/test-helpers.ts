@@ -19,10 +19,9 @@ export const createImportFileWithUpload = async (
   mimeType: string
 ) => {
   // Convert to Uint8Array which is what Payload's file-type checker expects
-  const fileBuffer = typeof fileContent === "string" 
-    ? new Uint8Array(Buffer.from(fileContent, "utf8"))
-    : new Uint8Array(fileContent);
-  
+  const fileBuffer =
+    typeof fileContent === "string" ? new Uint8Array(Buffer.from(fileContent, "utf8")) : new Uint8Array(fileContent);
+
   // Create file object with Uint8Array data
   const file = {
     data: fileBuffer,
@@ -30,15 +29,13 @@ export const createImportFileWithUpload = async (
     name: fileName,
     size: fileBuffer.length,
   };
-  
+
   // Use Payload's Local API with file parameter
-  const importFile = await payload.create({
+  return await payload.create({
     collection: "import-files",
     data,
     file,
   });
-  
-  return importFile;
 };
 
 /**

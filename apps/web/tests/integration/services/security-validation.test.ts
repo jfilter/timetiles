@@ -191,11 +191,6 @@ describe.sequential("Security Validation Tests", () => {
         },
       });
 
-      // Mock a redirect to private IP
-      // nock('https://example.com')
-      // .get('/redirect-to-private.csv')
-      // .reply(301, '', { Location: 'http://192.168.1.1/internal.csv' });
-
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 

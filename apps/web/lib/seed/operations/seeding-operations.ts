@@ -296,7 +296,7 @@ export class SeedingOperations {
         collection: collectionName as keyof Config["collections"],
         data: resolvedItem,
         file: {
-          data: fileBuffer as any,
+          data: fileBuffer as Buffer,
           name: filename,
           size: fileBuffer.length,
           mimetype: (resolvedItem as { mimeType?: string }).mimeType ?? "text/plain",

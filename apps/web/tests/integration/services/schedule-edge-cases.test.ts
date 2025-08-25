@@ -247,17 +247,6 @@ describe.sequential("Schedule Edge Case Tests", () => {
         }),
       ]);
 
-      // Mock responses for all URLs
-      // nock('https://example.com')
-      // .get('/data1.csv')
-      // .reply(200, 'test,data\n1,2', { 'Content-Type': 'text/csv' });
-      // nock('https://example.com')
-      // .get('/data2.csv')
-      // .reply(200, 'test,data\n3,4', { 'Content-Type': 'text/csv' });
-      // nock('https://example.com')
-      // .get('/data3.csv')
-      // .reply(200, 'test,data\n5,6', { 'Content-Type': 'text/csv' });
-
       // Move to midnight when all schedules should trigger
       vi.setSystemTime(new Date("2024-01-02T00:00:00.000Z"));
 
@@ -368,11 +357,6 @@ describe.sequential("Schedule Edge Case Tests", () => {
         },
       });
 
-      // Mock response
-      // nock('https://example.com')
-      // .get('/hourly.csv')
-      // .reply(200, 'test,data\n1,2', { 'Content-Type': 'text/csv' });
-
       // Move to next hour
       vi.setSystemTime(new Date("2024-01-01T13:00:00.000Z"));
 
@@ -408,11 +392,6 @@ describe.sequential("Schedule Edge Case Tests", () => {
         },
       });
 
-      // Mock response
-      // nock('https://example.com')
-      // .get('/weekly.csv')
-      // .reply(200, 'test,data\n1,2', { 'Content-Type': 'text/csv' });
-
       // Move to Sunday
       vi.setSystemTime(new Date("2024-01-07T00:00:00.000Z"));
 
@@ -447,11 +426,6 @@ describe.sequential("Schedule Edge Case Tests", () => {
           frequency: "monthly",
         },
       });
-
-      // Mock response
-      // nock('https://example.com')
-      // .get('/monthly.csv')
-      // .reply(200, 'test,data\n1,2', { 'Content-Type': 'text/csv' });
 
       // Move to first of next month
       vi.setSystemTime(new Date("2024-02-01T00:00:00.000Z"));
@@ -566,11 +540,6 @@ describe.sequential("Schedule Edge Case Tests", () => {
         },
       });
 
-      // Mock response
-      // nock('https://example.com')
-      // .get('/first.csv')
-      // .reply(200, 'test,data\n1,2', { 'Content-Type': 'text/csv' });
-
       // Move to next hour (first execution)
       vi.setSystemTime(new Date("2024-01-01T13:00:00.000Z"));
 
@@ -612,11 +581,6 @@ describe.sequential("Schedule Edge Case Tests", () => {
           importNameTemplate: "{{name}} - {{date}} {{time}} from {{url}}",
         },
       });
-
-      // Mock response
-      // nock('https://example.com')
-      // .get('/template.csv')
-      // .reply(200, 'test,data\n1,2', { 'Content-Type': 'text/csv' });
 
       // Move to next hour
       vi.setSystemTime(new Date("2024-01-01T13:00:00.000Z"));

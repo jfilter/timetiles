@@ -13,7 +13,7 @@ import { defineConfig } from "vitest/config";
 import baseConfig from "./vitest.config.base";
 
 // Detect if we're running unit tests based on the command arguments
-const isUnitTest = process.argv.some(arg => arg.includes('tests/unit'));
+const isUnitTest = process.argv.some((arg) => arg.includes("tests/unit"));
 
 export default defineConfig({
   ...baseConfig,

@@ -123,11 +123,13 @@ beforeAll(async () => {
     } catch (schemaError) {
       // Schema verification failed, run migrations
       if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
-        logger.info(`Running migrations for worker ${workerId}`);
+        logger.info(`Running migrations for worker ${workerId}`, {
+          reason: schemaError instanceof Error ? schemaError.message : "Schema verification failed",
+        });
       }
       const { execSync } = await import("child_process");
       execSync("pnpm --filter web payload migrate", { stdio: "inherit" });
-      
+
       // Verify again after migration
       await verifyDatabaseSchema(dbUrl);
     }

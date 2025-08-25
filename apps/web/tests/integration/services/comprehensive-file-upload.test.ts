@@ -165,7 +165,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     it("should process Excel file with multiple sheets", async () => {
       logger.info("Testing Excel file with multiple sheets...");
 
-      // Use existing fixture file  
+      // Use existing fixture file
       const fixturePath = path.join(__dirname, "../../fixtures", "multi-sheet.xlsx");
       const fileBuffer = fs.readFileSync(fixturePath);
       const fileName = "multi-sheet.xlsx";

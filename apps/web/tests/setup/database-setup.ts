@@ -64,7 +64,6 @@ export const createTestDatabase = async (dbName: string): Promise<void> => {
   }
 };
 
-
 /**
  * Truncates all tables in the test database.
  */

@@ -42,7 +42,7 @@ interface UrlFetchFailureOutput {
   error: string;
 }
 
-type UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
+type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
 type UrlFetchErrorOutput = UrlFetchFailureOutput;
 
 describe.sequential("Network Error Handling Tests", () => {
