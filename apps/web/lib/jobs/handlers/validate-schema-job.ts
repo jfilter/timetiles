@@ -197,15 +197,16 @@ export const validateSchemaJob = {
       if (importFile.user) {
         const { getPermissionService } = await import("@/lib/services/permission-service");
         const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
-        
+
         // Get the user who created this import
-        const user = typeof importFile.user === "object" 
-          ? importFile.user 
-          : await payload.findByID({ collection: "users", id: importFile.user });
+        const user =
+          typeof importFile.user === "object"
+            ? importFile.user
+            : await payload.findByID({ collection: "users", id: importFile.user });
 
         if (user) {
           const permissionService = getPermissionService(payload);
-          
+
           // Calculate total events to be imported (considering duplicates)
           const totalRows = job.progress?.total || 0;
           const duplicateCount = (job.duplicates as any)?.summary?.total || 0;
@@ -220,7 +221,7 @@ export const validateSchemaJob = {
 
           if (!eventQuotaCheck.allowed) {
             const errorMessage = `This import would create ${eventsToImport} events, exceeding your limit of ${eventQuotaCheck.limit} events per import.`;
-            
+
             // Update job to failed state
             await payload.update({
               collection: COLLECTION_NAMES.IMPORT_JOBS,
@@ -235,15 +236,11 @@ export const validateSchemaJob = {
           }
 
           // Check total events quota
-          const totalEventsCheck = await permissionService.checkQuota(
-            user,
-            QUOTA_TYPES.TOTAL_EVENTS,
-            eventsToImport
-          );
+          const totalEventsCheck = await permissionService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS, eventsToImport);
 
           if (!totalEventsCheck.allowed) {
             const errorMessage = `Creating ${eventsToImport} events would exceed your total events limit (${totalEventsCheck.current}/${totalEventsCheck.limit}).`;
-            
+
             // Update job to failed state
             await payload.update({
               collection: COLLECTION_NAMES.IMPORT_JOBS,

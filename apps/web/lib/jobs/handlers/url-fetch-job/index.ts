@@ -259,39 +259,29 @@ export const urlFetchJob = {
       if (userId) {
         const { getPermissionService } = await import("@/lib/services/permission-service");
         const { QUOTA_TYPES, USAGE_TYPES } = await import("@/lib/constants/permission-constants");
-        
+
         // Get the user
-        const user = typeof userId === "object" 
-          ? userId 
-          : await payload.findByID({ collection: "users", id: userId });
+        const user = typeof userId === "object" ? userId : await payload.findByID({ collection: "users", id: userId });
 
         if (user) {
           const permissionService = getPermissionService(payload);
-          
+
           // Check URL fetch quota
-          const quotaCheck = await permissionService.checkQuota(
-            user,
-            QUOTA_TYPES.URL_FETCHES_PER_DAY,
-            1
-          );
+          const quotaCheck = await permissionService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY, 1);
 
           if (!quotaCheck.allowed) {
             const errorMessage = `Daily URL fetch limit reached (${quotaCheck.current}/${quotaCheck.limit}). Resets at midnight UTC.`;
-            
+
             // Update scheduled import as failed if applicable
             if (scheduledImport) {
               await updateScheduledImportFailure(payload, scheduledImport, new Error(errorMessage));
             }
-            
+
             throw new Error(errorMessage);
           }
 
           // Track URL fetch usage
-          await permissionService.incrementUsage(
-            user.id,
-            USAGE_TYPES.URL_FETCHES_TODAY,
-            1
-          );
+          await permissionService.incrementUsage(user.id, USAGE_TYPES.URL_FETCHES_TODAY, 1);
 
           logger.info("URL fetch quota checked and tracked", {
             userId: user.id,

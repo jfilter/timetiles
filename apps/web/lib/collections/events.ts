@@ -332,25 +332,21 @@ const Events: CollectionConfig = {
         // Only check quotas on creation
         if (operation === "create") {
           const { getPermissionService } = await import("@/lib/services/permission-service");
-          const { QUOTA_TYPES, USAGE_TYPES } = await import("@/lib/constants/permission-constants");
-          
+          const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
+
           const permissionService = getPermissionService(req.payload);
-          
+
           // Check total events quota
-          const totalEventsCheck = await permissionService.checkQuota(
-            req.user,
-            QUOTA_TYPES.TOTAL_EVENTS,
-            1
-          );
-          
+          const totalEventsCheck = await permissionService.checkQuota(req.user, QUOTA_TYPES.TOTAL_EVENTS, 1);
+
           if (!totalEventsCheck.allowed) {
             throw new Error(
               `Total events limit reached (${totalEventsCheck.current}/${totalEventsCheck.limit}). ` +
-              `Please upgrade your account or remove old events.`
+                `Please upgrade your account or remove old events.`
             );
           }
         }
-        
+
         return data;
       },
     ],
@@ -360,17 +356,13 @@ const Events: CollectionConfig = {
         if (operation === "create" && req.user && req.user.role !== "admin") {
           const { getPermissionService } = await import("@/lib/services/permission-service");
           const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
-          
+
           const permissionService = getPermissionService(req.payload);
-          
+
           // Increment total events counter
-          await permissionService.incrementUsage(
-            req.user.id,
-            USAGE_TYPES.TOTAL_EVENTS_CREATED,
-            1
-          );
+          await permissionService.incrementUsage(req.user.id, USAGE_TYPES.TOTAL_EVENTS_CREATED, 1);
         }
-        
+
         return doc;
       },
     ],

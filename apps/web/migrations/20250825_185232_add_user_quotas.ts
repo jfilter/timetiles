@@ -1,4 +1,5 @@
-import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-postgres'
+import type { MigrateUpArgs, MigrateDownArgs } from "@payloadcms/db-postgres";
+import { sql } from "@payloadcms/db-postgres";
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   // Create ENUMs if they don't exist
@@ -8,7 +9,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
     EXCEPTION WHEN duplicate_object THEN null;
     END $$;
   `);
-  
+
   await db.execute(sql`
     DO $$ BEGIN
       CREATE TYPE "payload"."enum__users_v_version_trust_level" AS ENUM('0', '1', '2', '3', '4', '5');
@@ -23,7 +24,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
     EXCEPTION WHEN undefined_object THEN null;
     END $$;
   `);
-  
+
   await db.execute(sql`
     DO $$ BEGIN
       ALTER TYPE "payload"."enum_payload_jobs_task_slug" ADD VALUE IF NOT EXISTS 'quota-reset';
@@ -62,7 +63,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   ALTER TABLE "payload"."_users_v" ADD COLUMN "version_usage_import_jobs_today" numeric DEFAULT 0;
   ALTER TABLE "payload"."_users_v" ADD COLUMN "version_usage_total_events_created" numeric DEFAULT 0;
   ALTER TABLE "payload"."_users_v" ADD COLUMN "version_usage_last_reset_date" timestamp(3) with time zone;
-  ALTER TABLE "payload"."_users_v" ADD COLUMN "version_custom_quotas" jsonb;`)
+  ALTER TABLE "payload"."_users_v" ADD COLUMN "version_custom_quotas" jsonb;`);
 
   // Update existing users with default values based on their role
   await db.execute(sql`
@@ -145,7 +146,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
     }
   }
 
-  console.log('✅ User permission and quota fields added successfully')
+  // User permission and quota fields added successfully
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
@@ -189,5 +190,5 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   ALTER TABLE "payload"."_users_v" DROP COLUMN "version_usage_last_reset_date";
   ALTER TABLE "payload"."_users_v" DROP COLUMN "version_custom_quotas";
   DROP TYPE "payload"."enum_users_trust_level";
-  DROP TYPE "payload"."enum__users_v_version_trust_level";`)
+  DROP TYPE "payload"."enum__users_v_version_trust_level";`);
 }

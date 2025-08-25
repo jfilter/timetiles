@@ -14,10 +14,10 @@ import {
   DEFAULT_QUOTAS,
   QUOTA_ERROR_MESSAGES,
   QUOTA_TYPES,
-  TRUST_LEVELS,
-  USAGE_TYPES,
   type QuotaType,
+  TRUST_LEVELS,
   type TrustLevel,
+  USAGE_TYPES,
   type UsageType,
   type UserQuotas,
   type UserUsage,
@@ -73,7 +73,7 @@ export class PermissionService {
   /**
    * Get effective quotas for a user, considering trust level and custom overrides.
    */
-  async getEffectiveQuotas(user: User | null | undefined): Promise<UserQuotas> {
+  getEffectiveQuotas(user: User | null | undefined): UserQuotas {
     if (!user) {
       // Return most restrictive quotas for unauthenticated users
       return DEFAULT_QUOTAS[TRUST_LEVELS.UNTRUSTED];
@@ -85,7 +85,7 @@ export class PermissionService {
 
     // Check if user has quota fields directly on the user object (from database)
     const userQuotas = user.quotas || {};
-    
+
     // Build effective quotas from user fields, falling back to defaults
     const effectiveQuotas: UserQuotas = {
       maxActiveSchedules: userQuotas.maxActiveSchedules ?? defaultQuotas.maxActiveSchedules,
@@ -118,7 +118,7 @@ export class PermissionService {
         id: userId,
       });
 
-      if (!user || !user.usage) {
+      if (!user?.usage) {
         return null;
       }
 
@@ -132,13 +132,9 @@ export class PermissionService {
   /**
    * Check if a user can perform an action based on quota limits.
    */
-  async checkQuota(
-    user: User | null | undefined,
-    quotaType: QuotaType,
-    amount: number = 1
-  ): Promise<QuotaCheckResult> {
+  async checkQuota(user: User | null | undefined, quotaType: QuotaType, amount: number = 1): Promise<QuotaCheckResult> {
     // Get effective quotas
-    const quotas = await this.getEffectiveQuotas(user);
+    const quotas = this.getEffectiveQuotas(user);
     const limit = quotas[quotaType];
 
     // Check if unlimited (-1)
@@ -191,14 +187,14 @@ export class PermissionService {
       };
     }
 
-    const current = (usage[usageKey] as number) || 0;
+    const current = usage[usageKey] || 0;
     const wouldExceed = current + amount > limit;
 
     // Check if daily limit and needs reset
     let resetTime: Date | undefined;
     if (this.isDailyQuota(quotaType)) {
       resetTime = this.getNextResetTime();
-      
+
       // Check if usage should be reset
       if (this.shouldResetDailyUsage(usage.lastResetDate)) {
         await this.resetDailyCounters(user.id);
@@ -226,11 +222,7 @@ export class PermissionService {
   /**
    * Increment usage counter for a user.
    */
-  async incrementUsage(
-    userId: number,
-    usageType: UsageType,
-    amount: number = 1
-  ): Promise<void> {
+  async incrementUsage(userId: number, usageType: UsageType, amount: number = 1): Promise<void> {
     try {
       const user = await this.payload.findByID({
         collection: "users",
@@ -243,7 +235,7 @@ export class PermissionService {
       }
 
       const currentUsage = (user.usage as UserUsage) || this.getEmptyUsage();
-      
+
       // Check if daily reset is needed
       if (this.isDailyUsageType(usageType) && this.shouldResetDailyUsage(currentUsage.lastResetDate)) {
         await this.resetDailyCounters(userId);
@@ -260,7 +252,7 @@ export class PermissionService {
       // Increment the counter
       const newUsage = {
         ...currentUsage,
-        [usageType]: ((currentUsage[usageType] as number) || 0) + amount,
+        [usageType]: (currentUsage[usageType] || 0) + amount,
       };
 
       await this.payload.update({
@@ -290,11 +282,7 @@ export class PermissionService {
   /**
    * Decrement usage counter for a user (e.g., when a schedule is disabled).
    */
-  async decrementUsage(
-    userId: number,
-    usageType: UsageType,
-    amount: number = 1
-  ): Promise<void> {
+  async decrementUsage(userId: number, usageType: UsageType, amount: number = 1): Promise<void> {
     try {
       const user = await this.payload.findByID({
         collection: "users",
@@ -307,8 +295,8 @@ export class PermissionService {
       }
 
       const currentUsage = (user.usage as UserUsage) || this.getEmptyUsage();
-      const currentValue = (currentUsage[usageType] as number) || 0;
-      
+      const currentValue = currentUsage[usageType] || 0;
+
       // Don't go below 0
       const newValue = Math.max(0, currentValue - amount);
 
@@ -473,7 +461,7 @@ export class PermissionService {
   private shouldResetDailyUsage(lastResetDate: string): boolean {
     const lastReset = new Date(lastResetDate);
     const now = new Date();
-    
+
     // Reset if it's a new UTC day
     return (
       lastReset.getUTCFullYear() !== now.getUTCFullYear() ||
@@ -496,37 +484,25 @@ export class PermissionService {
   /**
    * Validate a quota check and throw if exceeded.
    */
-  async validateQuota(
-    user: User | null | undefined,
-    quotaType: QuotaType,
-    amount: number = 1
-  ): Promise<void> {
+  async validateQuota(user: User | null | undefined, quotaType: QuotaType, amount: number = 1): Promise<void> {
     const result = await this.checkQuota(user, quotaType, amount);
-    
+
     if (!result.allowed) {
-      throw new QuotaExceededError(
-        quotaType,
-        result.current,
-        result.limit,
-        result.resetTime
-      );
+      throw new QuotaExceededError(quotaType, result.current, result.limit, result.resetTime);
     }
   }
 
   /**
    * Get quota headers for HTTP responses.
    */
-  async getQuotaHeaders(
-    user: User | null | undefined,
-    quotaType?: QuotaType
-  ): Promise<Record<string, string>> {
+  async getQuotaHeaders(user: User | null | undefined, quotaType?: QuotaType): Promise<Record<string, string>> {
     const headers: Record<string, string> = {};
 
     if (!user) {
       return headers;
     }
 
-    const quotas = await this.getEffectiveQuotas(user);
+    const quotas = this.getEffectiveQuotas(user);
     const usage = await this.getCurrentUsage(user.id);
 
     if (usage) {
@@ -535,7 +511,7 @@ export class PermissionService {
       headers["X-Quota-FileUploads"] = `${usage.fileUploadsToday}/${quotas.maxFileUploadsPerDay}`;
       headers["X-Quota-ImportJobs"] = `${usage.importJobsToday}/${quotas.maxImportJobsPerDay}`;
       headers["X-Quota-ActiveSchedules"] = `${usage.currentActiveSchedules}/${quotas.maxActiveSchedules}`;
-      
+
       // Add reset time for daily quotas
       if (this.shouldResetDailyUsage(usage.lastResetDate)) {
         headers["X-Quota-Reset"] = this.getNextResetTime().toISOString();

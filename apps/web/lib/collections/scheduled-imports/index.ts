@@ -46,7 +46,7 @@ const ScheduledImports: CollectionConfig = {
       const { getPermissionService } = await import("@/lib/services/permission-service");
       const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
       const permissionService = getPermissionService(req.payload);
-      
+
       const quotaCheck = await permissionService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES);
       if (!quotaCheck.allowed) {
         // Payload doesn't allow throwing errors in access control, just return false
@@ -73,41 +73,29 @@ const ScheduledImports: CollectionConfig = {
           if (operation === "update" && originalDoc.enabled !== data?.enabled) {
             if (data?.enabled === true) {
               // Check quota before enabling
-              const quotaCheck = await permissionService.checkQuota(
-                req.user,
-                QUOTA_TYPES.ACTIVE_SCHEDULES,
-                1
-              );
+              const quotaCheck = await permissionService.checkQuota(req.user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
               if (!quotaCheck.allowed) {
-                throw new Error(quotaCheck.remaining === 0 
-                  ? `Maximum active schedules reached (${quotaCheck.limit}). Disable another schedule first.`
-                  : `Cannot enable schedule: quota exceeded`);
+                throw new Error(
+                  quotaCheck.remaining === 0
+                    ? `Maximum active schedules reached (${quotaCheck.limit}). Disable another schedule first.`
+                    : `Cannot enable schedule: quota exceeded`
+                );
               }
               // Increment usage
-              await permissionService.incrementUsage(
-                req.user.id,
-                USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES,
-                1
-              );
+              await permissionService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
             } else if (data?.enabled === false) {
               // Decrement usage when disabling
-              await permissionService.decrementUsage(
-                req.user.id,
-                USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES,
-                1
-              );
+              await permissionService.decrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
             }
           }
 
           // Handle new schedule creation
           if (operation === "create" && data?.enabled !== false) {
-            const quotaCheck = await permissionService.checkQuota(
-              req.user,
-              QUOTA_TYPES.ACTIVE_SCHEDULES,
-              1
-            );
+            const quotaCheck = await permissionService.checkQuota(req.user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
             if (!quotaCheck.allowed) {
-              throw new Error(`Maximum active schedules reached (${quotaCheck.limit}). Disable another schedule or create this one as disabled.`);
+              throw new Error(
+                `Maximum active schedules reached (${quotaCheck.limit}). Disable another schedule or create this one as disabled.`
+              );
             }
           }
         }
@@ -116,18 +104,14 @@ const ScheduledImports: CollectionConfig = {
       },
     ],
     afterChange: [
-      async ({ doc, operation, req, previousDoc }) => {
+      async ({ doc, operation, req, previousDoc: _previousDoc }) => {
         // Track usage after successful creation
         if (req.user && operation === "create" && doc.enabled !== false) {
           const { getPermissionService } = await import("@/lib/services/permission-service");
           const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
           const permissionService = getPermissionService(req.payload);
-          
-          await permissionService.incrementUsage(
-            req.user.id,
-            USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES,
-            1
-          );
+
+          await permissionService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
         }
 
         return doc;
@@ -140,12 +124,8 @@ const ScheduledImports: CollectionConfig = {
           const { getPermissionService } = await import("@/lib/services/permission-service");
           const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
           const permissionService = getPermissionService(req.payload);
-          
-          await permissionService.decrementUsage(
-            req.user.id,
-            USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES,
-            1
-          );
+
+          await permissionService.decrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
         }
 
         return doc;

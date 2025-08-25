@@ -1,6 +1,6 @@
 /**
  * Basic test to verify quota system is working.
- * 
+ *
  * @module
  */
 
@@ -72,23 +72,15 @@ describe.sequential("Basic Quota Test", () => {
     const permissionService = getPermissionService(payload);
 
     // First check - should be allowed
-    const check1 = await permissionService.checkQuota(
-      updatedUser,
-      QUOTA_TYPES.FILE_UPLOADS_PER_DAY,
-      1
-    );
-    
+    const check1 = await permissionService.checkQuota(updatedUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+
     console.log("First check:", check1);
     expect(check1.allowed).toBe(true);
     expect(check1.limit).toBe(1);
     expect(check1.current).toBe(0);
 
     // Track usage
-    await permissionService.incrementUsage(
-      user.id,
-      USAGE_TYPES.FILE_UPLOADS_TODAY,
-      1
-    );
+    await permissionService.incrementUsage(user.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
 
     // Get fresh user
     const freshUser = await payload.findByID({
@@ -100,12 +92,8 @@ describe.sequential("Basic Quota Test", () => {
     console.log("User usage:", freshUser.usage);
 
     // Second check - should be blocked
-    const check2 = await permissionService.checkQuota(
-      freshUser,
-      QUOTA_TYPES.FILE_UPLOADS_PER_DAY,
-      1
-    );
-    
+    const check2 = await permissionService.checkQuota(freshUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+
     console.log("Second check:", check2);
     expect(check2.allowed).toBe(false);
     expect(check2.current).toBe(1);

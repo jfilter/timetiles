@@ -532,17 +532,11 @@ const ImportJobs: CollectionConfig = {
           if (importFile?.user) {
             const { getPermissionService } = await import("@/lib/services/permission-service");
             const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
-            
-            const userId = typeof importFile.user === "object" 
-              ? importFile.user.id 
-              : importFile.user;
+
+            const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
 
             const permissionService = getPermissionService(req.payload);
-            await permissionService.incrementUsage(
-              userId,
-              USAGE_TYPES.IMPORT_JOBS_TODAY,
-              1
-            );
+            await permissionService.incrementUsage(userId, USAGE_TYPES.IMPORT_JOBS_TODAY, 1);
 
             logger.info("Import job creation tracked for quota", {
               userId,

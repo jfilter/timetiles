@@ -265,12 +265,12 @@ export const QUOTA_ERROR_MESSAGES: Record<QuotaType, (current: number, limit: nu
     `Daily URL fetch limit reached (${current}/${limit}). Resets at midnight UTC.`,
   [QUOTA_TYPES.FILE_UPLOADS_PER_DAY]: (current, limit) =>
     `Daily file upload limit reached (${current}/${limit}). Resets at midnight UTC.`,
-  [QUOTA_TYPES.EVENTS_PER_IMPORT]: (current, limit) =>
+  [QUOTA_TYPES.EVENTS_PER_IMPORT]: (_current, limit) =>
     `This import would exceed the maximum events per import (${limit}). Please reduce the import size.`,
   [QUOTA_TYPES.TOTAL_EVENTS]: (current, limit) =>
     `Total events limit reached (${current}/${limit}). Contact admin for increased quota.`,
   [QUOTA_TYPES.IMPORT_JOBS_PER_DAY]: (current, limit) =>
     `Daily import job limit reached (${current}/${limit}). Resets at midnight UTC.`,
-  [QUOTA_TYPES.FILE_SIZE_MB]: (current, limit) =>
+  [QUOTA_TYPES.FILE_SIZE_MB]: (_current, limit) =>
     `File size exceeds your limit (${limit}MB). Contact admin for increased quota.`,
 };

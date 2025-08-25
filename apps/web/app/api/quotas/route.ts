@@ -1,53 +1,44 @@
 /**
  * API endpoint for checking user quotas and usage.
- * 
+ *
  * GET /api/quotas - Returns current user's quota status
- * 
+ *
  * @module
  */
 
-import { NextRequest, NextResponse } from "next/server";
 import { getPayloadHMR } from "@payloadcms/next/utilities";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-import { getPermissionService } from "@/lib/services/permission-service";
 import { QUOTA_TYPES } from "@/lib/constants/permission-constants";
 import { createLogger } from "@/lib/logger";
+import { getPermissionService } from "@/lib/services/permission-service";
 
 const logger = createLogger("api-quotas");
 
 /**
  * Get current user's quota status.
- * 
+ *
  * Returns comprehensive quota information including:
  * - Current usage for all quota types
  * - Limits based on trust level
  * - Remaining allowances
  * - Reset times for daily quotas
  */
-export async function GET(req: NextRequest) {
+export const GET = async (req: NextRequest) => {
   try {
     const payload = await getPayloadHMR({ config: (await import("@/payload.config")).default });
-    
+
     // Get user from session
     const { user } = await payload.auth({ headers: req.headers });
-    
+
     if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const permissionService = getPermissionService(payload);
 
     // Get all quota statuses in parallel
-    const [
-      fileUploads,
-      urlFetches,
-      importJobs,
-      activeSchedules,
-      totalEvents,
-      eventsPerImport,
-    ] = await Promise.all([
+    const [fileUploads, urlFetches, importJobs, activeSchedules, totalEvents, eventsPerImport] = await Promise.all([
       permissionService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY),
       permissionService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY),
       permissionService.checkQuota(user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY),
@@ -57,7 +48,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     // Get effective quotas for additional info
-    const effectiveQuotas = await permissionService.getEffectiveQuotas(user);
+    const effectiveQuotas = permissionService.getEffectiveQuotas(user);
 
     const response = {
       user: {
@@ -104,16 +95,13 @@ export async function GET(req: NextRequest) {
 
     // Add quota headers
     const headers = await permissionService.getQuotaHeaders(user);
-    
+
     return NextResponse.json(response, {
       status: 200,
       headers,
     });
   } catch (error) {
     logger.error("Failed to get quota status", { error });
-    return NextResponse.json(
-      { error: "Failed to retrieve quota information" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to retrieve quota information" }, { status: 500 });
   }
-}
+};

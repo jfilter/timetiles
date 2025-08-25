@@ -257,17 +257,11 @@ const markJobCompleted = async (
         const { getPermissionService } = await import("@/lib/services/permission-service");
         const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
         const logger = createJobLogger(String(importJobId), "create-events-batch");
-        
-        const userId = typeof importFile.user === "object" 
-          ? importFile.user.id 
-          : importFile.user;
+
+        const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
 
         const permissionService = getPermissionService(payload);
-        await permissionService.incrementUsage(
-          userId,
-          USAGE_TYPES.TOTAL_EVENTS_CREATED,
-          totalEventsCreated
-        );
+        await permissionService.incrementUsage(userId, USAGE_TYPES.TOTAL_EVENTS_CREATED, totalEventsCreated);
 
         logger.info("Event creation tracked for quota", {
           userId,
@@ -441,32 +435,27 @@ export const createEventsBatchJob = {
       if (importFile?.user && batchNumber === 0) {
         const { getPermissionService } = await import("@/lib/services/permission-service");
         const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
-        
-        const userId = typeof importFile.user === "object" 
-          ? importFile.user.id 
-          : importFile.user;
-        
-        const user = typeof importFile.user === "object"
-          ? importFile.user
-          : await payload.findByID({ collection: "users", id: userId });
-        
+
+        const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
+
+        const user =
+          typeof importFile.user === "object"
+            ? importFile.user
+            : await payload.findByID({ collection: "users", id: userId });
+
         if (user) {
           const permissionService = getPermissionService(payload);
-          
+
           // Get the total rows for this import from progress
           const totalRows = job.progress?.total ?? 0;
-          
+
           // Check if this import would exceed the per-import limit
-          const quotaCheck = await permissionService.checkQuota(
-            user,
-            QUOTA_TYPES.EVENTS_PER_IMPORT,
-            totalRows
-          );
-          
+          const quotaCheck = await permissionService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, totalRows);
+
           if (!quotaCheck.allowed) {
             throw new Error(
               `Import exceeds maximum events per import (${totalRows} > ${quotaCheck.limit}). ` +
-              `Please split your data into smaller files.`
+                `Please split your data into smaller files.`
             );
           }
         }

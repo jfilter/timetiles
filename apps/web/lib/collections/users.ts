@@ -14,7 +14,7 @@
  */
 import type { CollectionConfig } from "payload";
 
-import { TRUST_LEVELS, TRUST_LEVEL_LABELS, TRUST_LEVEL_DESCRIPTIONS } from "@/lib/constants/permission-constants";
+import { TRUST_LEVEL_DESCRIPTIONS, TRUST_LEVEL_LABELS, TRUST_LEVELS } from "@/lib/constants/permission-constants";
 
 import { createCommonConfig } from "./shared-fields";
 
@@ -242,13 +242,13 @@ const Users: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      async ({ data, operation, req, originalDoc }) => {
+      async ({ data, operation, req: _req, originalDoc }) => {
         // Auto-set quotas based on trust level ONLY when trust level actually changes
         if (operation === "update" && data?.trustLevel !== undefined && originalDoc?.trustLevel !== data.trustLevel) {
           const { DEFAULT_QUOTAS } = await import("@/lib/constants/permission-constants");
           const trustLevel = Number(data.trustLevel);
           const defaultQuotas = DEFAULT_QUOTAS[trustLevel as keyof typeof DEFAULT_QUOTAS];
-          
+
           if (defaultQuotas && !data.customQuotas) {
             data.quotas = defaultQuotas;
           }
@@ -259,18 +259,19 @@ const Users: CollectionConfig = {
           const { DEFAULT_QUOTAS } = await import("@/lib/constants/permission-constants");
           const trustLevel = Number(data?.trustLevel || TRUST_LEVELS.REGULAR);
           const defaultQuotas = DEFAULT_QUOTAS[trustLevel as keyof typeof DEFAULT_QUOTAS];
-          
+
           // Use trust level defaults if quotas not explicitly provided or contain undefined values
           // Payload CMS initializes group fields with undefined values
-          const hasValidQuotas = data.quotas && 
+          const hasValidQuotas =
+            data.quotas &&
             data.quotas.maxActiveSchedules !== undefined &&
             data.quotas.maxUrlFetchesPerDay !== undefined &&
             data.quotas.maxFileUploadsPerDay !== undefined;
-          
+
           if (!hasValidQuotas) {
             data.quotas = defaultQuotas;
           }
-          
+
           // Initialize usage if not provided
           if (!data.usage) {
             data.usage = {

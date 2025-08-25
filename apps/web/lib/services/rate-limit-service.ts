@@ -420,11 +420,11 @@ export class RateLimitService {
     // Get user's trust level or default to REGULAR
     const trustLevelValue = Number(user.trustLevel ?? TRUST_LEVELS.REGULAR);
     const trustLevel = trustLevelValue as TrustLevel;
-    
+
     // Get rate limits for this trust level
     const trustLevelLimits = RATE_LIMITS_BY_TRUST_LEVEL[trustLevel];
-    
-    if (!trustLevelLimits || !trustLevelLimits[endpointType]) {
+
+    if (!trustLevelLimits?.[endpointType]) {
       // Fallback to default rate limits if trust level config not found
       logger.warn("Rate limit config not found for trust level", { trustLevel, endpointType });
       return RATE_LIMITS[endpointType] || RATE_LIMITS.API_GENERAL;
@@ -447,10 +447,10 @@ export class RateLimitService {
     endpointType: "FILE_UPLOAD" | "API_GENERAL"
   ): MultiWindowRateLimitResult {
     const rateLimitConfig = this.getRateLimitsByTrustLevel(user, endpointType);
-    
+
     // Add user info to identifier for user-specific rate limiting
     const userIdentifier = user ? `${identifier}:user:${user.id}` : identifier;
-    
+
     return this.checkConfiguredRateLimit(userIdentifier, rateLimitConfig);
   }
 }

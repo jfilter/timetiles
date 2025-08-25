@@ -19,7 +19,7 @@ import type { CollectionConfig } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
 import { createRequestLogger } from "../logger";
-import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "../services/rate-limit-service";
+import { getClientIdentifier, getRateLimitService } from "../services/rate-limit-service";
 
 const logger = createRequestLogger("import-files");
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
@@ -227,23 +227,23 @@ const ImportFiles: CollectionConfig = {
       },
       hooks: {
         afterRead: [
-          async ({ req, data }) => {
+          async ({ req, data: _data }) => {
             // Only add quota info for authenticated users
             if (!req.user) return null;
 
             try {
               const { getPermissionService } = await import("@/lib/services/permission-service");
               const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
-              
+
               const permissionService = getPermissionService(req.payload);
-              
+
               // Get multiple quota checks for comprehensive info
               const [fileUploads, importJobs, totalEvents] = await Promise.all([
                 permissionService.checkQuota(req.user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY),
                 permissionService.checkQuota(req.user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY),
                 permissionService.checkQuota(req.user, QUOTA_TYPES.TOTAL_EVENTS),
               ]);
-              
+
               return {
                 fileUploads: {
                   current: fileUploads.current,
@@ -263,7 +263,7 @@ const ImportFiles: CollectionConfig = {
                 resetTime: fileUploads.resetTime?.toISOString(),
                 trustLevel: req.user.trustLevel,
               };
-            } catch (error) {
+            } catch {
               // Don't fail the request if quota info can't be retrieved
               return null;
             }
@@ -328,31 +328,27 @@ const ImportFiles: CollectionConfig = {
           const { getPermissionService } = await import("@/lib/services/permission-service");
           const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
           const permissionService = getPermissionService(req.payload);
-          
+
           // Check daily file upload quota
-          const uploadQuotaCheck = await permissionService.checkQuota(
-            user,
-            QUOTA_TYPES.FILE_UPLOADS_PER_DAY,
-            1
-          );
-          
+          const uploadQuotaCheck = await permissionService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+
           if (!uploadQuotaCheck.allowed) {
             throw new Error(
               `Daily file upload limit reached (${uploadQuotaCheck.current}/${uploadQuotaCheck.limit}). ` +
-              `Resets at midnight UTC.`
+                `Resets at midnight UTC.`
             );
           }
 
           // Check file size quota based on trust level
           if (req.file) {
-            const quotas = await permissionService.getEffectiveQuotas(user);
+            const quotas = permissionService.getEffectiveQuotas(user);
             const maxSizeMB = quotas.maxFileSizeMB;
             const maxSizeBytes = maxSizeMB * 1024 * 1024;
-            
+
             if (req.file.size > maxSizeBytes) {
               throw new Error(`File too large. Maximum size for your trust level: ${maxSizeMB}MB`);
             }
-            
+
             logger.debug("File size validation passed", {
               filesize: req.file.size,
               maxSizeMB,
@@ -388,13 +384,9 @@ const ImportFiles: CollectionConfig = {
         // Trust-level-aware rate limiting check
         const rateLimitService = getRateLimitService(req.payload);
         const clientId = getClientIdentifier(req as unknown as Request);
-        
+
         // Use trust-level-aware rate limiting
-        const result = rateLimitService.checkTrustLevelRateLimit(
-          clientId,
-          req.user,
-          "FILE_UPLOAD"
-        );
+        const result = rateLimitService.checkTrustLevelRateLimit(clientId, req.user, "FILE_UPLOAD");
 
         if (!result.allowed) {
           logger.warn("Rate limit exceeded", {
@@ -448,12 +440,8 @@ const ImportFiles: CollectionConfig = {
           const { getPermissionService } = await import("@/lib/services/permission-service");
           const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
           const permissionService = getPermissionService(req.payload);
-          
-          await permissionService.incrementUsage(
-            req.user.id,
-            USAGE_TYPES.FILE_UPLOADS_TODAY,
-            1
-          );
+
+          await permissionService.incrementUsage(req.user.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
         }
 
         // Skip processing for duplicate imports (they're already marked as completed)

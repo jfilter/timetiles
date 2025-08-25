@@ -1,15 +1,16 @@
 /**
  * Job handler for resetting daily quota counters.
- * 
+ *
  * This job runs daily at midnight UTC to reset user usage counters
  * for quotas that operate on a daily basis (file uploads, URL fetches, etc).
- * 
+ *
  * @module
  */
 
-import type { JobHandlerContext } from "../../utils/job-context";
-import { getPermissionService } from "@/lib/services/permission-service";
 import { createLogger } from "@/lib/logger";
+import { getPermissionService } from "@/lib/services/permission-service";
+
+import type { JobHandlerContext } from "../../utils/job-context";
 
 const logger = createLogger("quota-reset-job");
 
@@ -23,17 +24,17 @@ export const quotaResetJobConfig = {
     if (!payload) {
       throw new Error("Payload instance not found in job context");
     }
-    
+
     try {
       logger.info("Starting daily quota reset job");
-      
+
       const permissionService = getPermissionService(payload);
-      
+
       // Reset all daily counters
       await permissionService.resetAllDailyCounters();
-      
+
       logger.info("Daily quota reset completed successfully");
-      
+
       return {
         output: {
           success: true,
