@@ -5,7 +5,7 @@
 import "nextra-theme-docs/style.css";
 
 import logoHorizontal from "@timetiles/assets/logos/static/logo-with-text-horizontal-tight.svg";
-import { Head } from "nextra/components";
+import { Banner, Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import { Footer, Layout, Navbar } from "nextra-theme-docs";
 
@@ -31,6 +31,18 @@ const footer = (
       <p>© {new Date().getFullYear()} TimeTiles. All rights reserved.</p>
     </div>
   </Footer>
+);
+
+const banner = (
+  <Banner storageKey="development-disclaimer" dismissible>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+      <span style={{ fontSize: "1.2em" }}>⚠️</span>
+      <span>
+        <strong>Active Development Notice:</strong> TimeTiles is under active development. Information may be
+        placeholder content or not up-to-date.
+      </span>
+    </div>
+  </Banner>
 );
 
 // Function to filter out dynamic routes from the page map
@@ -76,6 +88,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           pageMap={pageMap}
           navbar={navbar}
           footer={footer}
+          banner={banner}
           docsRepositoryBase="https://github.com/jfilter/timetiles/tree/main/apps/docs"
           editLink="Edit this page on GitHub"
           sidebar={{
