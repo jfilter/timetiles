@@ -7,11 +7,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "dev:debug": "LOG_LEVEL=debug next dev --turbopack",
-    "dev:full": "concurrently \"pnpm dev\" \"pnpm payload:watch\"",
     "build": "payload generate:types --silent && next build",
     "build:compile": "payload generate:types --silent && next build --experimental-build-mode compile",
-    "build:generate": "next build --experimental-build-mode generate",
-    "build:local": "dotenv -e .env.local -- pnpm run build",
     "start": "next start",
     "lint": "eslint app lib components tests scripts . --ext .ts,.tsx,.js,.jsx --cache",
     "format": "eslint app lib components tests scripts . --ext .ts,.tsx,.js,.jsx --cache --fix --quiet && prettier --write . --log-level error",
@@ -31,13 +28,8 @@
     "test:coverage:summary": "tsx ../../scripts/coverage-summary.ts",
     "test:e2e": "playwright test",
     "test:e2e:debug": "playwright test --debug --headed",
-    "test:unit": "NODE_OPTIONS=\"--no-warnings\" vitest run",
-    "test:all": "pnpm test:unit && pnpm test:e2e",
-    "test:db:validate": "node --import tsx/esm scripts/validate-test-db-schema.ts",
-    "test:db:fix": "node --import tsx/esm scripts/validate-test-db-schema.ts --fix",
-    "test:db:reset": "node --import tsx/esm scripts/validate-test-db-schema.ts --fix",
-    "test:db:setup": "node --import tsx/esm scripts/setup-test-db.ts",
-    "test:db:setup:force": "node --import tsx/esm scripts/setup-test-db.ts --force-reset"
+    "test:unit": "NODE_OPTIONS=\"--no-warnings\" vitest run tests/unit",
+    "test:integration": "NODE_OPTIONS=\"--no-warnings\" vitest run tests/integration"
   },
   "dependencies": {
     "@cfworker/json-schema": "^4.1.1",
