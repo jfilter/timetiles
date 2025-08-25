@@ -6,13 +6,14 @@
  * @module
  */
 
-import { getPayloadHMR } from "@payloadcms/next/utilities";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { getPayload } from "payload";
 
 import { QUOTA_TYPES } from "@/lib/constants/permission-constants";
 import { createLogger } from "@/lib/logger";
 import { getPermissionService } from "@/lib/services/permission-service";
+import configPromise from "@/payload.config";
 
 const logger = createLogger("api-quotas");
 
@@ -27,7 +28,7 @@ const logger = createLogger("api-quotas");
  */
 export const GET = async (req: NextRequest) => {
   try {
-    const payload = await getPayloadHMR({ config: (await import("@/payload.config")).default });
+    const payload = await getPayload({ config: configPromise });
 
     // Get user from session
     const { user } = await payload.auth({ headers: req.headers });

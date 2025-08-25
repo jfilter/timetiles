@@ -84,7 +84,7 @@ export class PermissionService {
     const defaultQuotas = DEFAULT_QUOTAS[trustLevel];
 
     // Check if user has quota fields directly on the user object (from database)
-    const userQuotas = user.quotas || {};
+    const userQuotas = user.quotas ?? {};
 
     // Build effective quotas from user fields, falling back to defaults
     const effectiveQuotas: UserQuotas = {
@@ -438,7 +438,7 @@ export class PermissionService {
       [QUOTA_TYPES.TOTAL_EVENTS]: USAGE_TYPES.TOTAL_EVENTS_CREATED,
     };
 
-    return mapping[quotaType] || null;
+    return mapping[quotaType] ?? null;
   }
 
   /**

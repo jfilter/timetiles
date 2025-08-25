@@ -255,7 +255,7 @@ export const urlFetchJob = {
       scheduledImport = await loadScheduledImportConfig(payload, input.scheduledImportId);
 
       // Check URL fetch quota for the user
-      const userId = input.userId || scheduledImport?.createdBy;
+      const userId = input.userId ?? scheduledImport?.createdBy;
       if (userId) {
         const { getPermissionService } = await import("@/lib/services/permission-service");
         const { QUOTA_TYPES, USAGE_TYPES } = await import("@/lib/constants/permission-constants");

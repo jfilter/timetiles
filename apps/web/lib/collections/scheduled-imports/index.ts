@@ -48,12 +48,8 @@ const ScheduledImports: CollectionConfig = {
       const permissionService = getPermissionService(req.payload);
 
       const quotaCheck = await permissionService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES);
-      if (!quotaCheck.allowed) {
-        // Payload doesn't allow throwing errors in access control, just return false
-        return false;
-      }
-
-      return true;
+      // Payload doesn't allow throwing errors in access control, just return boolean
+      return quotaCheck.allowed;
     },
     update: ({ req: { user } }) => Boolean(user),
     delete: ({ req: { user } }) => user?.role === "admin" || false,

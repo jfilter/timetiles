@@ -208,8 +208,8 @@ export const validateSchemaJob = {
           const permissionService = getPermissionService(payload);
 
           // Calculate total events to be imported (considering duplicates)
-          const totalRows = job.progress?.total || 0;
-          const duplicateCount = (job.duplicates as any)?.summary?.total || 0;
+          const totalRows = job.progress?.total ?? 0;
+          const duplicateCount = (job.duplicates as any)?.summary?.total ?? 0;
           const eventsToImport = totalRows - duplicateCount;
 
           // Check maxEventsPerImport quota
