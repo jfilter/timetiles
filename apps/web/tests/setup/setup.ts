@@ -9,8 +9,12 @@
  * @category Test Setup
  */
 import { randomUUID } from "crypto";
+import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
+
+// Load environment variables from .env.local
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
 import { logger } from "@/lib/logger";
 
@@ -26,11 +30,15 @@ process.env.NEXT_PUBLIC_PAYLOAD_URL = "http://localhost:3000";
 
 // Payload logging is now properly controlled via logger and loggingLevels configuration
 
+import { getTestDatabaseUrl, parseDatabaseUrl } from "../../lib/utils/database-url";
+
 // Use one test database per worker for efficiency
 // Workers will truncate tables between tests instead of creating new databases
 const workerId = process.env.VITEST_WORKER_ID ?? "1";
-const testDbName = `timetiles_test_${workerId}`;
-const dbUrl = `postgresql://timetiles_user:timetiles_password@localhost:5432/${testDbName}`;
+
+// Get test database URL for this worker
+const dbUrl = getTestDatabaseUrl();
+const testDbName = parseDatabaseUrl(dbUrl).database;
 process.env.DATABASE_URL = dbUrl;
 
 // Create unique temp directory for each test worker

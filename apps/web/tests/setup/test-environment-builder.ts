@@ -93,8 +93,10 @@ export class TestEnvironmentBuilder {
     }
 
     // Use the same database URL that was set up in the global setup
-    const dbName = `timetiles_test_${workerId}`;
-    const dbUrl = process.env.DATABASE_URL ?? `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
+    // Or get test database URL for this worker
+    const { getTestDatabaseUrl, parseDatabaseUrl } = await import("../../lib/utils/database-url");
+    const dbUrl = process.env.DATABASE_URL ?? getTestDatabaseUrl();
+    const dbName = parseDatabaseUrl(dbUrl).database;
 
     logger.debug("Initializing test database", {
       workerId,
@@ -312,11 +314,11 @@ export class TestEnvironmentBuilder {
       await testEnv.seedManager.cleanup();
 
       // Truncate tables for next test - use the same database URL
-      const workerId = process.env.VITEST_WORKER_ID ?? "1";
-      await truncateAllTables(
-        process.env.DATABASE_URL ??
-          `postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test_${workerId}`
-      );
+      const databaseUrl = process.env.DATABASE_URL;
+      if (!databaseUrl) {
+        throw new Error("DATABASE_URL not set during cleanup");
+      }
+      await truncateAllTables(databaseUrl);
 
       logger.debug("Test environment cleanup completed", {
         dbName: testEnv.dbName,

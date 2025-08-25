@@ -8,14 +8,19 @@
  */
 import { defineConfig, devices } from "@playwright/test";
 
-// Use dedicated test database for E2E tests
-const TEST_DATABASE_URL = "postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test";
+import { deriveTestDatabaseUrl, getDatabaseUrl } from "./lib/utils/database-url";
+
+// Get DATABASE_URL from environment - required
+const DATABASE_URL = getDatabaseUrl(true)!;
+
+// Derive test database URL from base URL (no worker ID for E2E tests)
+const TEST_DATABASE_URL = deriveTestDatabaseUrl(DATABASE_URL);
 
 // Common environment variables for all E2E tests
 const TEST_ENV = {
   DATABASE_URL: TEST_DATABASE_URL,
-  PAYLOAD_SECRET: "test-secret-key",
-  NEXT_PUBLIC_PAYLOAD_URL: "http://localhost:3002",
+  PAYLOAD_SECRET: process.env.PAYLOAD_SECRET || "test-secret-key",
+  NEXT_PUBLIC_PAYLOAD_URL: process.env.NEXT_PUBLIC_PAYLOAD_URL || "http://localhost:3002",
   NODE_ENV: "test",
 };
 

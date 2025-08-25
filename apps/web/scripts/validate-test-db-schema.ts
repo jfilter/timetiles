@@ -23,14 +23,22 @@ import fs from "fs";
 import path from "path";
 
 import { createLogger } from "../lib/logger";
+import { deriveTestDatabaseUrl, getDatabaseUrl, parseDatabaseUrl } from "../lib/utils/database-url";
 
 const logger = createLogger("schema-validator");
 
-const TEST_DB_NAME = "timetiles_test";
-const DB_USER = "timetiles_user";
-const DB_PASSWORD = "timetiles_password";
-const DB_HOST = "localhost";
-const _DB_PORT = "5432";
+// Get DATABASE_URL from environment - required
+const DATABASE_URL = getDatabaseUrl(true)!;
+
+// Derive test database URL
+const TEST_DATABASE_URL = deriveTestDatabaseUrl(DATABASE_URL);
+const {
+  username: DB_USER,
+  password: DB_PASSWORD,
+  host: DB_HOST,
+  port: _DB_PORT,
+  database: TEST_DB_NAME,
+} = parseDatabaseUrl(TEST_DATABASE_URL);
 
 export interface SchemaValidationResult {
   isValid: boolean;

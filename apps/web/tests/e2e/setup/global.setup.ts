@@ -62,11 +62,12 @@ setup("create test database and seed data", async () => {
     // Use the seed script directly to avoid module resolution issues
     const { execSync } = await import("child_process");
     try {
+      // DATABASE_URL should already be set to test database by playwright.config.ts
       execSync("pnpm seed test", {
         stdio: "inherit",
         env: {
           ...process.env,
-          DATABASE_URL: "postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test",
+          // DATABASE_URL is already set by playwright.config.ts to the test database
         },
       });
       console.log("✅ Test database seeded successfully");
