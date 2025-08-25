@@ -193,6 +193,78 @@ export const validateSchemaJob = {
       // Load all required resources
       const { job, dataset, importFile } = await loadResources(payload, jobIdTyped);
 
+      // Check event quota against the number of rows to be imported
+      if (importFile.createdBy) {
+        const { getPermissionService } = await import("@/lib/services/permission-service");
+        const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
+        
+        // Get the user who created this import
+        const user = typeof importFile.createdBy === "object" 
+          ? importFile.createdBy 
+          : await payload.findByID({ collection: "users", id: importFile.createdBy });
+
+        if (user) {
+          const permissionService = getPermissionService(payload);
+          
+          // Calculate total events to be imported (considering duplicates)
+          const totalRows = job.analyzedData?.totalRows || 0;
+          const duplicateCount = job.duplicates?.count || 0;
+          const eventsToImport = totalRows - duplicateCount;
+
+          // Check maxEventsPerImport quota
+          const eventQuotaCheck = await permissionService.checkQuota(
+            user,
+            QUOTA_TYPES.EVENTS_PER_IMPORT,
+            eventsToImport
+          );
+
+          if (!eventQuotaCheck.allowed) {
+            const errorMessage = `This import would create ${eventsToImport} events, exceeding your limit of ${eventQuotaCheck.limit} events per import.`;
+            
+            // Update job to failed state
+            await payload.update({
+              collection: COLLECTION_NAMES.IMPORT_JOBS,
+              id: jobIdTyped,
+              data: {
+                stage: PROCESSING_STAGE.FAILED,
+                errors: [{ row: 0, error: errorMessage }],
+              },
+            });
+
+            throw new Error(errorMessage);
+          }
+
+          // Check total events quota
+          const totalEventsCheck = await permissionService.checkQuota(
+            user,
+            QUOTA_TYPES.TOTAL_EVENTS,
+            eventsToImport
+          );
+
+          if (!totalEventsCheck.allowed) {
+            const errorMessage = `Creating ${eventsToImport} events would exceed your total events limit (${totalEventsCheck.current}/${totalEventsCheck.limit}).`;
+            
+            // Update job to failed state
+            await payload.update({
+              collection: COLLECTION_NAMES.IMPORT_JOBS,
+              id: jobIdTyped,
+              data: {
+                stage: PROCESSING_STAGE.FAILED,
+                errors: [{ row: 0, error: errorMessage }],
+              },
+            });
+
+            throw new Error(errorMessage);
+          }
+
+          logger.info("Event quotas validated", {
+            eventsToImport,
+            maxEventsPerImport: eventQuotaCheck.limit,
+            totalEventsRemaining: totalEventsCheck.remaining,
+          });
+        }
+      }
+
       // Setup file path
       const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
       const filePath = path.join(uploadDir, importFile.filename ?? "");

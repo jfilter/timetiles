@@ -263,25 +263,63 @@ const ImportFiles: CollectionConfig = {
       },
     ],
     beforeValidate: [
-      ({ data, req, operation }) => {
+      async ({ data, req, operation }) => {
         // Only run on create operations
         if (operation !== "create") return data;
 
         const logger = createRequestLogger("import-files-validate");
         const user = req.user;
 
-        // Validate user-specific file size limits (only for file uploads)
-        if (req.file) {
-          const maxSize = user ? MAX_FILE_SIZE.authenticated : MAX_FILE_SIZE.unauthenticated;
-          if (req.file.size > maxSize) {
-            const sizeMB = Math.round(maxSize / 1024 / 1024);
-            throw new Error(`File too large. Maximum size: ${sizeMB}MB`);
+        // Check file upload quota
+        if (user) {
+          const { getPermissionService } = await import("@/lib/services/permission-service");
+          const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
+          const permissionService = getPermissionService(req.payload);
+          
+          // Check daily file upload quota
+          const uploadQuotaCheck = await permissionService.checkQuota(
+            user,
+            QUOTA_TYPES.FILE_UPLOADS_PER_DAY,
+            1
+          );
+          
+          if (!uploadQuotaCheck.allowed) {
+            throw new Error(
+              `Daily file upload limit reached (${uploadQuotaCheck.current}/${uploadQuotaCheck.limit}). ` +
+              `Resets at midnight UTC.`
+            );
           }
-          logger.debug("File size validation passed", {
-            filesize: req.file.size,
-            maxSize,
-            isAuthenticated: !!user,
-          });
+
+          // Check file size quota based on trust level
+          if (req.file) {
+            const quotas = await permissionService.getEffectiveQuotas(user);
+            const maxSizeMB = quotas.maxFileSizeMB;
+            const maxSizeBytes = maxSizeMB * 1024 * 1024;
+            
+            if (req.file.size > maxSizeBytes) {
+              throw new Error(`File too large. Maximum size for your trust level: ${maxSizeMB}MB`);
+            }
+            
+            logger.debug("File size validation passed", {
+              filesize: req.file.size,
+              maxSizeMB,
+              trustLevel: user.trustLevel,
+            });
+          }
+        } else {
+          // Validate unauthenticated user file size limits
+          if (req.file) {
+            const maxSize = MAX_FILE_SIZE.unauthenticated;
+            if (req.file.size > maxSize) {
+              const sizeMB = Math.round(maxSize / 1024 / 1024);
+              throw new Error(`File too large. Maximum size: ${sizeMB}MB`);
+            }
+            logger.debug("File size validation passed", {
+              filesize: req.file.size,
+              maxSize,
+              isAuthenticated: false,
+            });
+          }
         }
 
         return data;
@@ -294,15 +332,22 @@ const ImportFiles: CollectionConfig = {
 
         const logger = createRequestLogger("import-files-beforechange");
 
-        // Rate limiting check
+        // Trust-level-aware rate limiting check
         const rateLimitService = getRateLimitService(req.payload);
         const clientId = getClientIdentifier(req as unknown as Request);
-        const result = rateLimitService.checkConfiguredRateLimit(clientId, RATE_LIMITS.FILE_UPLOAD);
+        
+        // Use trust-level-aware rate limiting
+        const result = rateLimitService.checkTrustLevelRateLimit(
+          clientId,
+          req.user,
+          "FILE_UPLOAD"
+        );
 
         if (!result.allowed) {
           logger.warn("Rate limit exceeded", {
             clientId,
             isAuthenticated: !!req.user,
+            trustLevel: req.user?.trustLevel,
             failedWindow: result.failedWindow,
           });
           throw new Error(
@@ -344,6 +389,19 @@ const ImportFiles: CollectionConfig = {
         // Only run on create
         if (operation !== "create") return doc;
         const { payload } = req;
+
+        // Track file upload usage for authenticated users
+        if (req.user) {
+          const { getPermissionService } = await import("@/lib/services/permission-service");
+          const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
+          const permissionService = getPermissionService(req.payload);
+          
+          await permissionService.incrementUsage(
+            req.user.id,
+            USAGE_TYPES.FILE_UPLOADS_TODAY,
+            1
+          );
+        }
 
         // Skip processing for duplicate imports (they're already marked as completed)
         if (doc.metadata?.urlFetch?.isDuplicate === true) {

@@ -17,6 +17,9 @@
  */
 import type { Payload } from "payload";
 
+import { RATE_LIMITS_BY_TRUST_LEVEL, TRUST_LEVELS, type TrustLevel } from "@/lib/constants/permission-constants";
+import type { User } from "@/payload-types";
+
 import { createLogger } from "../logger";
 
 const logger = createLogger("rate-limit-service");
@@ -396,6 +399,58 @@ export class RateLimitService {
       blockedEntries: blocked,
       activeEntries: active,
     };
+  }
+
+  /**
+   * Get rate limit configuration based on user trust level.
+   *
+   * @param user - The user object containing trust level
+   * @param endpointType - The type of endpoint (FILE_UPLOAD, API_GENERAL, etc.)
+   * @returns Rate limit configuration for the user's trust level
+   */
+  getRateLimitsByTrustLevel(
+    user: User | null | undefined,
+    endpointType: "FILE_UPLOAD" | "API_GENERAL"
+  ): RateLimitConfig {
+    // Default to most restrictive for unauthenticated users
+    if (!user) {
+      return RATE_LIMITS_BY_TRUST_LEVEL[TRUST_LEVELS.UNTRUSTED][endpointType];
+    }
+
+    // Get user's trust level or default to REGULAR
+    const trustLevel = (user.trustLevel ?? TRUST_LEVELS.REGULAR) as TrustLevel;
+    
+    // Get rate limits for this trust level
+    const trustLevelLimits = RATE_LIMITS_BY_TRUST_LEVEL[trustLevel];
+    
+    if (!trustLevelLimits || !trustLevelLimits[endpointType]) {
+      // Fallback to default rate limits if trust level config not found
+      logger.warn("Rate limit config not found for trust level", { trustLevel, endpointType });
+      return RATE_LIMITS[endpointType] || RATE_LIMITS.API_GENERAL;
+    }
+
+    return trustLevelLimits[endpointType];
+  }
+
+  /**
+   * Check rate limits with trust level awareness.
+   *
+   * @param identifier - IP address or session ID
+   * @param user - User object to determine trust level
+   * @param endpointType - The type of endpoint
+   * @returns Multi-window rate limit result
+   */
+  checkTrustLevelRateLimit(
+    identifier: string,
+    user: User | null | undefined,
+    endpointType: "FILE_UPLOAD" | "API_GENERAL"
+  ): MultiWindowRateLimitResult {
+    const rateLimitConfig = this.getRateLimitsByTrustLevel(user, endpointType);
+    
+    // Add user info to identifier for user-specific rate limiting
+    const userIdentifier = user ? `${identifier}:user:${user.id}` : identifier;
+    
+    return this.checkConfiguredRateLimit(userIdentifier, rateLimitConfig);
   }
 }
 
