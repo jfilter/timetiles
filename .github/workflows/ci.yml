@@ -112,6 +112,13 @@ jobs:
       - name: Report coverage
         if: always()
         run: npx tsx scripts/coverage-summary.ts --details >> $GITHUB_STEP_SUMMARY
+      
+      - name: SonarCloud Scan
+        if: always()
+        uses: SonarSource/sonarqube-scan-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Setup E2E environment
         timeout-minutes: 10
