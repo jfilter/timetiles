@@ -18,6 +18,7 @@ Test individual functions and components in isolation.
 - **Speed:** < 100ms per test
 
 Mocking is acceptable for:
+
 - External dependencies
 - Database operations (when testing pure logic)
 - Time-sensitive operations (`vi.setSystemTime`)
@@ -32,17 +33,20 @@ Test multiple components working together.
 - **Database:** Each test file gets isolated database
 
 #### Never Mock
+
 - Database operations → use test database
 - Payload operations → use real Payload
 - Internal services → use actual implementations
 - File system → use temp directories
 
 #### Can Mock (with documentation)
+
 - **External paid APIs** (Google Maps geocoding)
 - **Rate-limited services** (avoid CI/CD quota issues)
 - **Network failures** (for error testing)
 
 When mocking external services:
+
 ```typescript
 /**
  * Mocking is acceptable here because:
@@ -51,7 +55,7 @@ When mocking external services:
  * 3. Need deterministic responses for test scenarios
  */
 vi.mock("node-geocoder", () => ({
-  default: mockGeocoder
+  default: mockGeocoder,
 }));
 ```
 
@@ -82,7 +86,9 @@ await cleanup(); // In afterAll
 const result = await someJob.handler({
   job: { id: "test-1" },
   req: { payload },
-  input: { /* real input */ },
+  input: {
+    /* real input */
+  },
 });
 
 // ❌ Never mock payload.jobs.queue
@@ -100,7 +106,7 @@ const testUrl = await testServer.start();
 
 testServer.respondWithCSV("/data.csv", "id,name\n1,test");
 testServer.respondWithJSON("/api/geocode", {
-  results: [{ lat: 37.7749, lng: -122.4194 }]
+  results: [{ lat: 37.7749, lng: -122.4194 }],
 });
 
 // Cleanup
@@ -151,11 +157,11 @@ LOG_LEVEL=debug pnpm test:watch
 
 ### Log Levels
 
-| Environment | Default | Override | Effect |
-| --- | --- | --- | --- |
-| Development | `debug` | `LOG_LEVEL=info` | All logs visible |
-| Production | `info` | `LOG_LEVEL=error` | Info+ visible |
-| Tests | `silent` | `LOG_LEVEL=debug` | No logs unless enabled |
+| Environment | Default  | Override          | Effect                 |
+| ----------- | -------- | ----------------- | ---------------------- |
+| Development | `debug`  | `LOG_LEVEL=info`  | All logs visible       |
+| Production  | `info`   | `LOG_LEVEL=error` | Info+ visible          |
+| Tests       | `silent` | `LOG_LEVEL=debug` | No logs unless enabled |
 
 Available levels: `silent`, `error`, `warn`, `info`, `debug`, `trace`
 
@@ -182,6 +188,7 @@ make check-ai   # Code quality summary
 ```
 
 Results saved to:
+
 - `.test-results.json`
 - `.lint-results.json`
 - `.typecheck-results.json`
@@ -192,14 +199,14 @@ Results saved to:
 
 ```typescript
 // WRONG - Never mock your own services
-vi.mock("@/lib/services/import-service")
+vi.mock("@/lib/services/import-service");
 ```
 
 ### ❌ Mocking Database
 
 ```typescript
 // WRONG - Use real database
-payload.find = vi.fn().mockResolvedValue({ docs: [] })
+payload.find = vi.fn().mockResolvedValue({ docs: [] });
 ```
 
 ### ✅ Mocking External APIs
@@ -207,8 +214,8 @@ payload.find = vi.fn().mockResolvedValue({ docs: [] })
 ```typescript
 // CORRECT - Mock external paid service
 vi.mock("node-geocoder", () => ({
-  default: mockGeocoder
-}))
+  default: mockGeocoder,
+}));
 ```
 
 ### ✅ Using Real Database
@@ -217,8 +224,10 @@ vi.mock("node-geocoder", () => ({
 // CORRECT - Real database operations
 const result = await payload.find({
   collection: "events",
-  where: { /* conditions */ }
-})
+  where: {
+    /* conditions */
+  },
+});
 ```
 
 ## Best Practices
@@ -232,6 +241,7 @@ const result = await payload.find({
 ## Mocking Summary
 
 **Never Mock:**
+
 - Payload operations
 - Database queries
 - Internal services
@@ -239,12 +249,14 @@ const result = await payload.find({
 - Your own modules
 
 **Can Mock:**
+
 - External paid APIs (with documentation)
 - Rate-limited services
 - Network failures (for error testing)
 - Time (`vi.setSystemTime`)
 
 **When Mocking:**
+
 - Document WHY
 - Mock at the boundary
 - Test YOUR logic

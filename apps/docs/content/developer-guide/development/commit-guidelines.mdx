@@ -20,13 +20,13 @@ Before diving into the format, it's crucial to understand:
   - Are you adding features? → `feat`
   - Fixing bugs? → `fix`
   - Adding tests? → `test`
-  
 - **Scope** = **WHERE** in the codebase (the area affected)
   - In which feature? → `(import)`, `(geocoding)`
   - In which app/package? → `(web)`, `(docs)`
   - In which layer? → `(api)`, `(db)`
 
 Example: `fix(import): handle empty CSV files`
+
 - **What**: Fixing a bug (`fix`)
 - **Where**: In the import feature (`import`)
 
@@ -97,7 +97,7 @@ The scope provides additional context about what part of the codebase changed. S
 - **docs**: Documentation site (apps/docs)
 - **ui**: Shared UI components package
 - **assets**: Shared assets package (logos, images)
-- **config**: Configuration packages (ESLint, TypeScript, Prettier) - ONLY for packages/*-config/
+- **config**: Configuration packages (ESLint, TypeScript, Prettier) - ONLY for packages/\*-config/
 
 **Core Features** (what functionality is affected):
 
@@ -123,6 +123,7 @@ The scope provides additional context about what part of the codebase changed. S
 - **infra**: Infrastructure and DevOps
 
 ⚠️ **Important Scope Rules**:
+
 - The `config` scope is ONLY for configuration packages (packages/eslint-config, packages/prettier-config, packages/typescript-config)
 - For CI/CD files (.github/), use `ci` scope, not `config`
 - For build configuration (Dockerfile, Makefile), use `build` scope
@@ -337,21 +338,25 @@ When choosing a scope, follow these guidelines:
 **✅ Prefer**: `fix(import): fix CSV validation`
 
 Use **app/package scopes** (`web`, `docs`, `ui`, `assets`, `config`) when:
+
 - Changes are app/package-specific configuration
 - Changes don't fit any feature scope
 - Changes span multiple features
 
 Use **feature scopes** (`import`, `geocoding`, `events`, `schema`, `deploy`) when:
+
 - Working on specific feature logic
 - Fixing feature-specific bugs
 - Adding feature-specific tests
 
 Use **technical scopes** (`db`, `api`, `jobs`, `deps`, `seed`) when:
+
 - Working on infrastructure
 - Making technical improvements
 - Updating dependencies
 
 **Note**: Avoid overly granular scopes. For example:
+
 - Docker changes → use `deploy` (if user-facing) or `build` (if internal)
 - Script changes → use the scope of what the script affects
 - Type changes → use the feature scope the types belong to
@@ -439,7 +444,7 @@ pnpm tsx scripts/validate-commit.ts --test
 ### Common Validation Errors
 
 1. **Wrong scope for CI files**:
-   - ❌ `fix(config): update CI workflow` 
+   - ❌ `fix(config): update CI workflow`
    - ✅ `fix(ci): update CI workflow`
    - ✅ `ci: update CI workflow` (when type and scope would be the same)
 
@@ -544,7 +549,7 @@ docs(deploy): document self-hosting requirements
 
 # Handling overlaps correctly
 docs(docs): update Nextra to version 3.0          # Docs app code change
-refactor(web): reorganize test utilities          # Test infrastructure  
+refactor(web): reorganize test utilities          # Test infrastructure
 build(deps): upgrade PostgreSQL client to v16     # Production dependency
 chore(deps): update ESLint to latest version      # Dev dependency
 security(import): add virus scanning for uploads  # Security feature

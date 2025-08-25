@@ -99,6 +99,7 @@ Currently, we primarily use file-level documentation to describe modules:
 ```
 
 Key tags we use:
+
 - `@module` - Marks file-level documentation
 - `@category` - Groups related modules (Services, Collections, Jobs, etc.)
 
@@ -127,6 +128,7 @@ The TypeDoc configuration (`apps/web/typedoc.json`) specifies:
 ### Processing Steps
 
 The `pnpm docs:api` command:
+
 1. Runs TypeDoc to generate markdown files
 2. Converts `.md` files to `.mdx`
 3. Cleans up problematic references
@@ -148,6 +150,7 @@ apps/docs/content/reference/api/**/_meta.json
 Everything in the API reference directory is regenerated from source code on each build.
 
 This means:
+
 - ✅ Generated docs don't clutter git history
 - ✅ Can regenerate anytime from source
 - ✅ Navigation is auto-generated from file structure
