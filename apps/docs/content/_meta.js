@@ -1,3 +1,8 @@
+/**
+ * Navigation configuration for documentation root.
+ *
+ * @module
+ */
 export default {
   index: "Home",
   overview: "Overview",

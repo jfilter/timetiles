@@ -24,7 +24,8 @@
     "UPLOAD_TEMP_DIR",
     "TEST_ALL_BROWSERS",
     "E2E_DEBUG",
-    "PGPASSWORD"
+    "PGPASSWORD",
+    "SKIP_EXTERNAL"
   ],
   "tasks": {
     "build": {

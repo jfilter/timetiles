@@ -8,13 +8,13 @@
     "dev": "pnpm docs:api && next dev --port 3001",
     "build": "pnpm docs:api && next build",
     "docs:build": "pnpm docs:api && next build",
-    "docs:api": "cd ../web && pnpm exec typedoc && node ../docs/scripts/clean-typedoc-output.js",
+    "docs:api": "cd ../web && pnpm exec typedoc && tsx ../docs/scripts/clean-typedoc-output.ts",
     "docs:api:watch": "nodemon --watch ../web/lib --ext ts --exec \"pnpm docs:api\"",
     "start": "next start --port 3001",
-    "lint": "next lint",
+    "lint": "next lint --dir app --dir content --dir scripts",
     "typecheck": "tsc --noEmit",
     "export": "pnpm docs:api && next build",
-    "format": "next lint --fix --quiet && prettier --write . --ignore-path ../../.prettierignore --log-level error"
+    "format": "next lint --dir app --dir content --dir scripts --fix --quiet && prettier --write . --ignore-path ../../.prettierignore --log-level error"
   },
   "dependencies": {
     "@timetiles/assets": "workspace:*",
@@ -35,6 +35,7 @@
     "eslint": "^9.20.1",
     "glob": "^11.0.3",
     "nodemon": "^3.1.10",
+    "tsx": "^4.20.5",
     "typedoc": "^0.28.8",
     "typedoc-plugin-markdown": "^4.8.0",
     "typescript": "^5.7.3"
