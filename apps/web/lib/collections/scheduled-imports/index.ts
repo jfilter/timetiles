@@ -15,7 +15,9 @@
  * @category Collections
  */
 
-import type { CollectionConfig } from "payload";
+import type { CollectionConfig, Payload } from "payload";
+
+import type { User } from "@/payload-types";
 
 import { createCommonConfig } from "../shared-fields";
 import { authFields } from "./fields/auth-fields";
@@ -26,6 +28,62 @@ import { targetFields } from "./fields/target-fields";
 import { webhookFields } from "./fields/webhook-fields";
 import { beforeChangeHook } from "./hooks";
 import { validateCronExpression, validateUrl } from "./validation";
+
+// Helper function to handle schedule quota tracking
+const handleScheduleQuotaTracking = async ({
+  data,
+  operation,
+  req,
+  originalDoc,
+}: {
+  data: Record<string, unknown>;
+  operation: "create" | "update";
+  req: { user?: User | null; payload: Payload };
+  originalDoc?: Record<string, unknown>;
+}) => {
+  if (!req.user) return data;
+
+  const isCreate = operation === "create";
+  const isUpdate = operation === "update" && originalDoc;
+
+  if (!isCreate && !isUpdate) return data;
+
+  const { getPermissionService } = await import("@/lib/services/permission-service");
+  const { QUOTA_TYPES, USAGE_TYPES } = await import("@/lib/constants/permission-constants");
+  const permissionService = getPermissionService(req.payload);
+
+  // Handle update operations (enabling/disabling)
+  if (isUpdate && originalDoc.enabled !== data?.enabled) {
+    if (data?.enabled === true) {
+      // Check quota before enabling
+      const quotaCheck = await permissionService.checkQuota(req.user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
+      if (!quotaCheck.allowed) {
+        const message =
+          quotaCheck.remaining === 0
+            ? `Maximum active schedules reached (${quotaCheck.limit}). Disable another schedule first.`
+            : `Cannot enable schedule: quota exceeded`;
+        throw new Error(message);
+      }
+      // Increment usage
+      await permissionService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
+    } else if (data?.enabled === false) {
+      // Decrement usage when disabling
+      await permissionService.decrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
+    }
+  }
+
+  // Handle new schedule creation
+  if (isCreate && data?.enabled !== false) {
+    const quotaCheck = await permissionService.checkQuota(req.user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
+    if (!quotaCheck.allowed) {
+      throw new Error(
+        `Maximum active schedules reached (${quotaCheck.limit}). Disable another schedule or create this one as disabled.`
+      );
+    }
+  }
+
+  return data;
+};
 
 const ScheduledImports: CollectionConfig = {
   slug: "scheduled-imports",
@@ -38,13 +96,53 @@ const ScheduledImports: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => Boolean(user),
-    create: ({ req: { user } }) => Boolean(user),
+    create: async ({ req }) => {
+      const { user } = req;
+      if (!user) return false;
+
+      // Check quota for active schedules
+      const { getPermissionService } = await import("@/lib/services/permission-service");
+      const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
+      const permissionService = getPermissionService(req.payload);
+
+      const quotaCheck = await permissionService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES);
+      // Payload doesn't allow throwing errors in access control, just return boolean
+      return quotaCheck.allowed;
+    },
     update: ({ req: { user } }) => Boolean(user),
     delete: ({ req: { user } }) => user?.role === "admin" || false,
   },
   fields: [...basicFields, ...authFields, ...targetFields, ...scheduleFields, ...webhookFields, ...executionFields],
   hooks: {
-    beforeChange: [beforeChangeHook],
+    beforeChange: [beforeChangeHook, handleScheduleQuotaTracking],
+    afterChange: [
+      async ({ doc, operation, req, previousDoc: _previousDoc }) => {
+        // Track usage after successful creation
+        if (req.user && operation === "create" && doc.enabled !== false) {
+          const { getPermissionService } = await import("@/lib/services/permission-service");
+          const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
+          const permissionService = getPermissionService(req.payload);
+
+          await permissionService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
+        }
+
+        return doc;
+      },
+    ],
+    afterDelete: [
+      async ({ doc, req }) => {
+        // Decrement usage when schedule is deleted
+        if (req.user && doc.enabled) {
+          const { getPermissionService } = await import("@/lib/services/permission-service");
+          const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
+          const permissionService = getPermissionService(req.payload);
+
+          await permissionService.decrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
+        }
+
+        return doc;
+      },
+    ],
     beforeValidate: [
       ({ data }) => {
         // Validate URL

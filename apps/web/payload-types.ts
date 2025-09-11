@@ -131,6 +131,7 @@ export interface Config {
       'url-fetch': TaskUrlFetch;
       'schedule-manager': TaskScheduleManager;
       'cleanup-stuck-scheduled-imports': TaskCleanupStuckScheduledImports;
+      'quota-reset': TaskQuotaReset;
       inline: {
         input: unknown;
         output: unknown;
@@ -837,6 +838,15 @@ export interface ImportFile {
     | number
     | boolean
     | null;
+  quotaInfo?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -861,6 +871,84 @@ export interface User {
   role?: ('user' | 'admin' | 'editor') | null;
   isActive?: boolean | null;
   lastLoginAt?: string | null;
+  /**
+   * User trust level determines resource quotas and rate limits
+   */
+  trustLevel: '0' | '1' | '2' | '3' | '4' | '5';
+  /**
+   * Resource quotas for this user (automatically set based on trust level)
+   */
+  quotas?: {
+    /**
+     * Maximum number of active scheduled imports (-1 for unlimited)
+     */
+    maxActiveSchedules?: number | null;
+    /**
+     * Maximum URL fetches per day (-1 for unlimited)
+     */
+    maxUrlFetchesPerDay?: number | null;
+    /**
+     * Maximum file uploads per day (-1 for unlimited)
+     */
+    maxFileUploadsPerDay?: number | null;
+    /**
+     * Maximum events per single import (-1 for unlimited)
+     */
+    maxEventsPerImport?: number | null;
+    /**
+     * Maximum total events allowed (-1 for unlimited)
+     */
+    maxTotalEvents?: number | null;
+    /**
+     * Maximum import jobs per day (-1 for unlimited)
+     */
+    maxImportJobsPerDay?: number | null;
+    /**
+     * Maximum file size in MB for uploads
+     */
+    maxFileSizeMB?: number | null;
+  };
+  /**
+   * Current resource usage tracking
+   */
+  usage?: {
+    /**
+     * Currently active scheduled imports
+     */
+    currentActiveSchedules?: number | null;
+    /**
+     * URL fetches performed today
+     */
+    urlFetchesToday?: number | null;
+    /**
+     * Files uploaded today
+     */
+    fileUploadsToday?: number | null;
+    /**
+     * Import jobs created today
+     */
+    importJobsToday?: number | null;
+    /**
+     * Total events created by this user
+     */
+    totalEventsCreated?: number | null;
+    /**
+     * Last time daily counters were reset
+     */
+    lastResetDate?: string | null;
+  };
+  /**
+   * Custom quota overrides (JSON format) - overrides trust level defaults
+   */
+  customQuotas?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -1633,7 +1721,8 @@ export interface PayloadJob {
           | 'cleanup-approval-locks'
           | 'url-fetch'
           | 'schedule-manager'
-          | 'cleanup-stuck-scheduled-imports';
+          | 'cleanup-stuck-scheduled-imports'
+          | 'quota-reset';
         taskID: string;
         input?:
           | {
@@ -1680,6 +1769,7 @@ export interface PayloadJob {
         | 'url-fetch'
         | 'schedule-manager'
         | 'cleanup-stuck-scheduled-imports'
+        | 'quota-reset'
       )
     | null;
   queue?: string | null;
@@ -1967,6 +2057,7 @@ export interface ImportFilesSelect<T extends boolean = true> {
   errorLog?: T;
   rateLimitInfo?: T;
   metadata?: T;
+  quotaInfo?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
@@ -2202,6 +2293,29 @@ export interface UsersSelect<T extends boolean = true> {
   role?: T;
   isActive?: T;
   lastLoginAt?: T;
+  trustLevel?: T;
+  quotas?:
+    | T
+    | {
+        maxActiveSchedules?: T;
+        maxUrlFetchesPerDay?: T;
+        maxFileUploadsPerDay?: T;
+        maxEventsPerImport?: T;
+        maxTotalEvents?: T;
+        maxImportJobsPerDay?: T;
+        maxFileSizeMB?: T;
+      };
+  usage?:
+    | T
+    | {
+        currentActiveSchedules?: T;
+        urlFetchesToday?: T;
+        fileUploadsToday?: T;
+        importJobsToday?: T;
+        totalEventsCreated?: T;
+        lastResetDate?: T;
+      };
+  customQuotas?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
@@ -2601,6 +2715,14 @@ export interface TaskScheduleManager {
  * via the `definition` "TaskCleanup-stuck-scheduled-imports".
  */
 export interface TaskCleanupStuckScheduledImports {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskQuota-reset".
+ */
+export interface TaskQuotaReset {
   input?: unknown;
   output?: unknown;
 }

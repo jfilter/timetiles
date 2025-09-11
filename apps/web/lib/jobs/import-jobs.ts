@@ -22,6 +22,9 @@ export { cleanupStuckScheduledImportsJob } from "./handlers/cleanup-stuck-schedu
 export { scheduleManagerJob } from "./handlers/schedule-manager-job";
 export { urlFetchJob } from "./handlers/url-fetch-job";
 
+// Quota management job handlers
+export { quotaResetJobConfig } from "./handlers/quota-reset-job";
+
 // Re-export utility types
 export type {
   AnalyzeDuplicatesJobInput,

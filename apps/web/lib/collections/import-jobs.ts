@@ -518,8 +518,31 @@ const ImportJobs: CollectionConfig = {
       },
     ],
     afterChange: [
-      // eslint-disable-next-line sonarjs/no-invariant-returns -- afterChange hooks must return the document
       async ({ doc, previousDoc, req, operation }) => {
+        // Track import job creation for quota
+        if (operation === "create") {
+          // Get the user who created this import job (from the import file)
+          const importFileId = typeof doc.importFile === "object" ? doc.importFile.id : doc.importFile;
+          const importFile = await req.payload.findByID({
+            collection: COLLECTION_NAMES.IMPORT_FILES,
+            id: importFileId,
+          });
+
+          if (importFile?.user) {
+            const { getPermissionService } = await import("@/lib/services/permission-service");
+            const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
+
+            const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
+
+            const permissionService = getPermissionService(req.payload);
+            await permissionService.incrementUsage(userId, USAGE_TYPES.IMPORT_JOBS_TODAY, 1);
+
+            logger.info("Import job creation tracked for quota", {
+              userId,
+              importJobId: doc.id,
+            });
+          }
+        }
         // Handle initial job creation
         if (operation === "create") {
           await req.payload.jobs.queue({

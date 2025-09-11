@@ -33,6 +33,7 @@ import {
   createSchemaVersionJob,
   datasetDetectionJob,
   geocodeBatchJob,
+  quotaResetJobConfig,
   scheduleManagerJob,
   schemaDetectionJob,
   urlFetchJob,
@@ -91,6 +92,7 @@ export const ALL_JOBS = [
   urlFetchJob,
   scheduleManagerJob,
   cleanupStuckScheduledImportsJob,
+  quotaResetJobConfig,
 ];
 
 // Default collections for different environments

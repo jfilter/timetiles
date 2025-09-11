@@ -21,6 +21,7 @@ import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { SchemaVersioningService } from "@/lib/services/schema-versioning";
 import { getSchemaBuilderState } from "@/lib/types/schema-detection";
 import { readBatchFromFile } from "@/lib/utils/file-readers";
+import type { User } from "@/payload-types";
 import type { ImportJob } from "@/payload-types";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
@@ -176,6 +177,57 @@ const handleSchemaApproval = async (
   }
 };
 
+/**
+ * Check quota limits for the import
+ */
+const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, jobIdTyped: number): Promise<void> => {
+  const { getPermissionService } = await import("@/lib/services/permission-service");
+  const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
+
+  const permissionService = getPermissionService(payload);
+
+  // Calculate total events to be imported (considering duplicates)
+  const totalRows = job.progress?.total ?? 0;
+  const duplicateCount = (job.duplicates as { summary?: { total?: number } })?.summary?.total ?? 0;
+  const eventsToImport = totalRows - duplicateCount;
+
+  // Check maxEventsPerImport quota
+  const eventQuotaCheck = await permissionService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, eventsToImport);
+
+  if (!eventQuotaCheck.allowed) {
+    const errorMessage = `This import would create ${eventsToImport} events, exceeding your limit of ${eventQuotaCheck.limit} events per import.`;
+
+    await payload.update({
+      collection: COLLECTION_NAMES.IMPORT_JOBS,
+      id: jobIdTyped,
+      data: {
+        stage: PROCESSING_STAGE.FAILED,
+        errors: [{ row: 0, error: errorMessage }],
+      },
+    });
+
+    throw new Error(errorMessage);
+  }
+
+  // Check total events quota
+  const totalEventsCheck = await permissionService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS, eventsToImport);
+
+  if (!totalEventsCheck.allowed) {
+    const errorMessage = `Creating ${eventsToImport} events would exceed your total events limit (${totalEventsCheck.current}/${totalEventsCheck.limit}).`;
+
+    await payload.update({
+      collection: COLLECTION_NAMES.IMPORT_JOBS,
+      id: jobIdTyped,
+      data: {
+        stage: PROCESSING_STAGE.FAILED,
+        errors: [{ row: 0, error: errorMessage }],
+      },
+    });
+
+    throw new Error(errorMessage);
+  }
+};
+
 export const validateSchemaJob = {
   slug: JOB_TYPES.VALIDATE_SCHEMA,
   handler: async (context: JobHandlerContext) => {
@@ -192,6 +244,20 @@ export const validateSchemaJob = {
     try {
       // Load all required resources
       const { job, dataset, importFile } = await loadResources(payload, jobIdTyped);
+
+      // Check event quota against the number of rows to be imported
+      if (importFile.user) {
+        // Get the user who created this import
+        const user =
+          typeof importFile.user === "object"
+            ? importFile.user
+            : await payload.findByID({ collection: "users", id: importFile.user });
+
+        if (user) {
+          await checkImportQuotas(payload, user, job, jobIdTyped);
+          logger.info("Event quotas validated");
+        }
+      }
 
       // Setup file path
       const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);

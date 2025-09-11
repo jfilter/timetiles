@@ -8,6 +8,7 @@ import * as migration_20250819_110649 from "./20250819_110649";
 import * as migration_20250819_135707 from "./20250819_135707";
 import * as migration_20250820_200736 from "./20250820_200736";
 import * as migration_20250821_150506_add_soft_delete_fields from "./20250821_150506_add_soft_delete_fields";
+import * as migration_20250825_185232_add_user_quotas from "./20250825_185232_add_user_quotas";
 
 export const migrations = [
   {
@@ -59,5 +60,10 @@ export const migrations = [
     up: migration_20250821_150506_add_soft_delete_fields.up,
     down: migration_20250821_150506_add_soft_delete_fields.down,
     name: "20250821_150506_add_soft_delete_fields",
+  },
+  {
+    up: migration_20250825_185232_add_user_quotas.up,
+    down: migration_20250825_185232_add_user_quotas.down,
+    name: "20250825_185232_add_user_quotas",
   },
 ];
