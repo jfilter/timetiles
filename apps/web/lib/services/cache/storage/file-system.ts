@@ -13,13 +13,9 @@ import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
 
-import type {
-  CacheStorage,
-  CacheEntry,
-  CacheSetOptions,
-  CacheStats,
-  FileSystemCacheOptions,
-} from "../types";
+import { logger } from "@/lib/logger";
+
+import type { CacheEntry, CacheSetOptions, CacheStats, CacheStorage, FileSystemCacheOptions } from "../types";
 
 interface IndexEntry {
   file: string;
@@ -35,21 +31,21 @@ interface IndexData {
 }
 
 export class FileSystemCacheStorage implements CacheStorage {
-  private cacheDir: string;
-  private indexFile: string;
+  private readonly cacheDir: string;
+  private readonly indexFile: string;
   private index: Map<string, IndexEntry>;
   private stats: CacheStats;
-  private maxSize: number;
-  private defaultTTL: number;
+  private readonly maxSize: number;
+  private readonly defaultTTL: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
   private initPromise: Promise<void> | null = null;
 
   constructor(options: FileSystemCacheOptions = {}) {
-    this.cacheDir = options.cacheDir || path.join(process.cwd(), ".cache", "general");
+    this.cacheDir = options.cacheDir ?? path.join(process.cwd(), ".cache", "general");
     this.indexFile = path.join(this.cacheDir, "index.json");
     this.index = new Map();
-    this.maxSize = options.maxSize || 500 * 1024 * 1024; // 500MB default
-    this.defaultTTL = options.defaultTTL || 3600; // 1 hour default
+    this.maxSize = options.maxSize ?? 500 * 1024 * 1024; // 500MB default
+    this.defaultTTL = options.defaultTTL ?? 3600; // 1 hour default
     this.stats = {
       entries: 0,
       totalSize: 0,
@@ -58,13 +54,16 @@ export class FileSystemCacheStorage implements CacheStorage {
       evictions: 0,
     };
 
-    // Initialize cache directory and index
-    this.initPromise = this.initialize();
+    // Initialize cache directory and index lazily
+    // Initialization will happen on first use via ensureInitialized()
+    this.initPromise = null;
 
     // Setup periodic cleanup
     if (options.cleanupIntervalMs) {
       this.cleanupInterval = setInterval(() => {
-        this.cleanup().catch((err) => console.error("Cache cleanup error:", err));
+        void this.cleanup().catch((err) => {
+          logger.error("Cache cleanup error", { error: err });
+        });
       }, options.cleanupIntervalMs);
     }
   }
@@ -75,10 +74,10 @@ export class FileSystemCacheStorage implements CacheStorage {
   }
 
   private async ensureInitialized(): Promise<void> {
-    if (this.initPromise) {
-      await this.initPromise;
-      this.initPromise = null;
+    if (!this.initPromise) {
+      this.initPromise = this.initialize();
     }
+    await this.initPromise;
   }
 
   private getCacheFilePath(key: string): string {
@@ -119,6 +118,7 @@ export class FileSystemCacheStorage implements CacheStorage {
       return entry;
     } catch (error) {
       // File might be corrupted or deleted
+      logger.debug("Failed to read cache file", { key, error });
       this.index.delete(key);
       await this.saveIndex();
       this.stats.misses++;
@@ -136,7 +136,7 @@ export class FileSystemCacheStorage implements CacheStorage {
     await fs.mkdir(fileDir, { recursive: true });
 
     const now = new Date();
-    const ttl = options?.ttl || this.defaultTTL;
+    const ttl = options?.ttl ?? this.defaultTTL;
     const entry: CacheEntry<T> = {
       key,
       value,
@@ -238,10 +238,8 @@ export class FileSystemCacheStorage implements CacheStorage {
       const regex = new RegExp(pattern);
       const keys = Array.from(this.index.keys());
       for (const key of keys) {
-        if (regex.test(key)) {
-          if (await this.delete(key)) {
-            cleared++;
-          }
+        if (regex.test(key) && (await this.delete(key))) {
+          cleared++;
         }
       }
     }
@@ -291,7 +289,7 @@ export class FileSystemCacheStorage implements CacheStorage {
     let newestDate: Date | undefined;
 
     // Get creation dates from index
-    for (const [_, indexEntry] of this.index) {
+    for (const [, indexEntry] of this.index) {
       try {
         const stats = await fs.stat(indexEntry.file);
         const created = stats.birthtime;
@@ -317,11 +315,25 @@ export class FileSystemCacheStorage implements CacheStorage {
   async cleanup(): Promise<number> {
     await this.ensureInitialized();
 
-    const now = Date.now();
     let cleaned = 0;
 
     // Remove expired entries
+    cleaned += await this.cleanupExpiredEntries();
+
+    // If still over size limit, remove least recently used
+    if (this.stats.totalSize > this.maxSize) {
+      cleaned += await this.cleanupLRU();
+    }
+
+    await this.saveIndex();
+    return cleaned;
+  }
+
+  private async cleanupExpiredEntries(): Promise<number> {
+    const now = Date.now();
+    let cleaned = 0;
     const expiredKeys: string[] = [];
+
     for (const [key, indexEntry] of this.index) {
       if (indexEntry.expires && indexEntry.expires < now) {
         expiredKeys.push(key);
@@ -334,50 +346,51 @@ export class FileSystemCacheStorage implements CacheStorage {
       }
     }
 
-    // If still over size limit, remove least recently used
-    if (this.stats.totalSize > this.maxSize) {
-      const entries: Array<{
-        key: string;
-        lastAccessed: number;
-        size: number;
-      }> = [];
+    return cleaned;
+  }
 
-      // Collect all entries with their last access time
-      for (const [key, indexEntry] of this.index) {
-        try {
-          const data = await fs.readFile(indexEntry.file, "utf-8");
-          const entry = JSON.parse(data);
-          entries.push({
-            key,
-            lastAccessed: new Date(entry.metadata.lastAccessedAt || entry.metadata.createdAt).getTime(),
-            size: indexEntry.size,
-          });
-        } catch {
-          // Skip corrupted entries
-          await this.delete(key);
-          cleaned++;
-        }
-      }
+  private async cleanupLRU(): Promise<number> {
+    let cleaned = 0;
+    const entries: Array<{
+      key: string;
+      lastAccessed: number;
+      size: number;
+    }> = [];
 
-      // Sort by last accessed (oldest first)
-      entries.sort((a, b) => a.lastAccessed - b.lastAccessed);
-
-      // Remove until under 80% of max size
-      let currentSize = this.stats.totalSize;
-      const targetSize = this.maxSize * 0.8;
-
-      for (const entry of entries) {
-        if (currentSize <= targetSize) break;
-
-        if (await this.delete(entry.key)) {
-          currentSize -= entry.size;
-          cleaned++;
-          this.stats.evictions++;
-        }
+    // Collect all entries with their last access time
+    for (const [key, indexEntry] of this.index) {
+      try {
+        const data = await fs.readFile(indexEntry.file, "utf-8");
+        const entry = JSON.parse(data);
+        entries.push({
+          key,
+          lastAccessed: new Date(entry.metadata.lastAccessedAt || entry.metadata.createdAt).getTime(),
+          size: indexEntry.size,
+        });
+      } catch {
+        // Skip corrupted entries
+        await this.delete(key);
+        cleaned++;
       }
     }
 
-    await this.saveIndex();
+    // Sort by last accessed (oldest first)
+    entries.sort((a, b) => a.lastAccessed - b.lastAccessed);
+
+    // Remove until under 80% of max size
+    let currentSize = this.stats.totalSize;
+    const targetSize = this.maxSize * 0.8;
+
+    for (const entry of entries) {
+      if (currentSize <= targetSize) break;
+
+      if (await this.delete(entry.key)) {
+        currentSize -= entry.size;
+        cleaned++;
+        this.stats.evictions++;
+      }
+    }
+
     return cleaned;
   }
 
@@ -429,22 +442,23 @@ export class FileSystemCacheStorage implements CacheStorage {
     await fs.writeFile(this.indexFile, JSON.stringify(indexData, null, 2));
   }
 
-  async destroy(): Promise<void> {
+  destroy(): void {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
-    
-    // Wait for any pending initialization
+
+    // Schedule cleanup operations (async operations not allowed in destroy)
     if (this.initPromise) {
-      await this.initPromise;
-    }
-    
-    // Save final index state
-    try {
-      await this.saveIndex();
-    } catch {
-      // Ignore errors on shutdown
+      // eslint-disable-next-line promise/prefer-await-to-then
+      void this.initPromise
+        .then(() => {
+          return this.saveIndex();
+        })
+        // eslint-disable-next-line promise/prefer-await-to-then
+        .catch(() => {
+          // Ignore errors on shutdown
+        });
     }
   }
 }

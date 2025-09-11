@@ -5,22 +5,21 @@
  * @category Services/Cache/Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "fs/promises";
-import path from "path";
 import os from "os";
+import path from "path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { FileSystemCacheStorage } from "@/lib/services/cache/storage/file-system";
-import type { CacheEntry } from "@/lib/services/cache/types";
 
-describe("FileSystemCacheStorage", () => {
+describe.sequential("FileSystemCacheStorage", () => {
   let storage: FileSystemCacheStorage;
   let tempDir: string;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // Create a unique temp directory for each test
     tempDir = path.join(os.tmpdir(), `cache-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    
+
     storage = new FileSystemCacheStorage({
       cacheDir: tempDir,
       maxSize: 1024 * 1024, // 1MB
@@ -32,9 +31,9 @@ describe("FileSystemCacheStorage", () => {
   afterEach(async () => {
     // Clean up
     if (storage) {
-      await storage.destroy();
+      storage.destroy();
     }
-    
+
     // Remove temp directory
     try {
       await fs.rm(tempDir, { recursive: true, force: true });
@@ -79,7 +78,7 @@ describe("FileSystemCacheStorage", () => {
 
       const hasKey = await storage.has(key);
       expect(hasKey).toBe(true);
-      
+
       const hasNonExistent = await storage.has("non-existent");
       expect(hasNonExistent).toBe(false);
     });
@@ -103,7 +102,7 @@ describe("FileSystemCacheStorage", () => {
       const entry = await newStorage.get(key);
       expect(entry?.value).toEqual(value);
 
-      await newStorage.destroy();
+      newStorage.destroy();
     });
 
     it("should handle cache directory creation", async () => {
@@ -113,12 +112,12 @@ describe("FileSystemCacheStorage", () => {
       });
 
       await tempStorage.set("test", "value");
-      
+
       // Check directory was created
       const stats = await fs.stat(nestedDir);
       expect(stats.isDirectory()).toBe(true);
 
-      await tempStorage.destroy();
+      tempStorage.destroy();
     });
   });
 
@@ -305,7 +304,7 @@ describe("FileSystemCacheStorage", () => {
       const keyHash = crypto.createHash("sha256").update(key).digest("hex");
       const subDir = keyHash.substring(0, 2);
       const cacheFile = path.join(tempDir, subDir, `${keyHash}.cache`);
-      
+
       await fs.writeFile(cacheFile, "{ invalid json", "utf-8");
 
       // Should return null for corrupted entry
@@ -339,7 +338,7 @@ describe("FileSystemCacheStorage", () => {
       expect(stats.hits).toBe(1);
       expect(stats.misses).toBe(2);
 
-      await statsStorage.destroy();
+      statsStorage.destroy();
     });
 
     it("should track total size", async () => {

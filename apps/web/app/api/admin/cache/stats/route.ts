@@ -5,19 +5,20 @@
  * @category API/Admin
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-import { CacheManager } from "@/lib/services/cache/manager";
 import { logger } from "@/lib/logger";
+import { CacheManager } from "@/lib/services/cache/manager";
 
 /**
  * GET /api/admin/cache/stats
- * 
+ *
  * Returns cache statistics for all cache instances.
- * 
+ *
  * @requires Admin authentication
  */
-export async function GET(request: NextRequest) {
+export const GET = async (request: NextRequest) => {
   try {
     // TODO: Add authentication check
     // const user = await authenticateAdmin(request);
@@ -33,10 +34,7 @@ export async function GET(request: NextRequest) {
     if (cacheName) {
       const cache = CacheManager.getInstance(cacheName);
       if (!cache) {
-        return NextResponse.json(
-          { error: `Cache instance '${cacheName}' not found` },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: `Cache instance '${cacheName}' not found` }, { status: 404 });
       }
 
       const stats = await cache.getStats();
@@ -70,9 +68,9 @@ export async function GET(request: NextRequest) {
       aggregate.hitRate = (aggregate.totalHits / totalRequests) * 100;
     }
 
-    logger.info("Cache stats retrieved", { 
+    logger.info("Cache stats retrieved", {
       caches: Object.keys(allStats).length,
-      totalEntries: aggregate.totalEntries 
+      totalEntries: aggregate.totalEntries,
     });
 
     return NextResponse.json({
@@ -82,9 +80,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     logger.error("Failed to get cache stats", { error });
-    return NextResponse.json(
-      { error: "Failed to retrieve cache statistics" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to retrieve cache statistics" }, { status: 500 });
   }
-}
+};

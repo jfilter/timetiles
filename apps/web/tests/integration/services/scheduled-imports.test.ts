@@ -589,7 +589,7 @@ describe.sequential("Scheduled Imports Integration", () => {
 
       expect(result.output.success).toBe(false);
       const failureOutput = result.output as UrlFetchFailureOutput;
-      expect(failureOutput.error).toBe("HTTP 404: Not Found");
+      expect(failureOutput.error).toBe("HTTP 404");
     });
   });
 

@@ -9,12 +9,10 @@
  * @category Jobs
  */
 
-import type { Payload } from "payload";
-
+import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logger } from "@/lib/logger";
 import { getHttpCache } from "@/lib/services/cache";
 import { CacheManager } from "@/lib/services/cache/manager";
-import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 
 export interface CacheCleanupJobInput {
   // Optional: specific cache instances to clean
@@ -29,7 +27,6 @@ export interface CacheCleanupJobInput {
 export const cacheCleanupJob = {
   slug: "cache-cleanup",
   handler: async (context: JobHandlerContext) => {
-    const payload = (context.req?.payload ?? context.payload) as Payload;
     const input = (context.input ?? context.job?.input) as CacheCleanupJobInput;
 
     const startTime = Date.now();
@@ -40,12 +37,12 @@ export const cacheCleanupJob = {
 
     try {
       let totalCleaned = 0;
-      let totalEvicted = 0;
-      const results: Record<string, any> = {};
+      const totalEvicted = 0;
+      const results: Record<string, unknown> = {};
 
       // Clean HTTP cache
       const httpCache = getHttpCache();
-      const httpCleaned = await httpCache.cleanup();
+      const httpCleaned = await httpCache.clear();
       totalCleaned += httpCleaned;
       results.httpCache = {
         cleaned: httpCleaned,
@@ -70,7 +67,7 @@ export const cacheCleanupJob = {
       } else {
         // Clean all cache instances
         const allStats = await CacheManager.getAllStats();
-        for (const [cacheName, stats] of Object.entries(allStats)) {
+        for (const [cacheName] of Object.entries(allStats)) {
           const cache = CacheManager.getInstance(cacheName);
           if (cache) {
             const cleaned = await cache.cleanup();
@@ -116,22 +113,4 @@ export const cacheCleanupJob = {
       };
     }
   },
-};
-
-/**
- * Schedule cache cleanup job to run periodically
- */
-export const scheduleCacheCleanup = async (payload: Payload) => {
-  const intervalMs = parseInt(process.env.CACHE_CLEANUP_INTERVAL_MS || "3600000", 10); // 1 hour default
-  
-  // Schedule the job to run periodically
-  await payload.jobs.queue({
-    task: "cache-cleanup",
-    input: {},
-    waitUntil: new Date(Date.now() + intervalMs),
-  });
-  
-  logger.info("Cache cleanup job scheduled", {
-    nextRun: new Date(Date.now() + intervalMs).toISOString(),
-  });
 };

@@ -1,8 +1,7 @@
 /**
- * HTTP-specific cache wrapper for caching HTTP responses.
- *
- * This module provides specialized caching for HTTP responses with support for
- * ETags, Last-Modified headers, conditional requests, and Cache-Control directives.
+ * HTTP cache that works directly with buffers instead of Response objects.
+ * Provides advanced features like ETags, conditional requests, and Cache-Control directives
+ * while avoiding the complexity of Response body handling in Node.js.
  *
  * @module
  * @category Services/Cache
@@ -13,29 +12,50 @@ import crypto from "crypto";
 import { logger } from "@/lib/logger";
 
 import { Cache } from "./cache";
-import { CacheManager } from "./manager";
 import { FileSystemCacheStorage } from "./storage/file-system";
-import type { HttpCacheEntry, HttpCacheMetadata, HttpCacheOptions, CacheSetOptions } from "./types";
 
-/**
- * HTTP cache service for caching external HTTP responses
- */
+interface CachedResponse {
+  data: Buffer;
+  headers: Record<string, string>;
+  status: number;
+}
+
+interface CachedEntry {
+  data: Buffer;
+  headers: Record<string, string>;
+  status: number;
+  metadata: {
+    etag?: string;
+    lastModified?: string;
+    expires?: Date;
+    maxAge?: number;
+    fetchedAt: Date;
+    contentHash: string;
+  };
+}
+
 export class HttpCache {
-  private cache: Cache;
-  private respectCacheControl: boolean;
-  private defaultTTL: number;
+  private readonly cache: Cache;
+  private readonly defaultTTL: number;
+  private readonly respectCacheControl: boolean;
 
-  constructor(cache?: Cache, respectCacheControl: boolean = true) {
-    this.cache = cache || CacheManager.getCache("http");
-    this.respectCacheControl = respectCacheControl;
-    this.defaultTTL = parseInt(process.env.HTTP_CACHE_DEFAULT_TTL || "3600", 10);
-  }
+  constructor() {
+    // eslint-disable-next-line sonarjs/publicly-writable-directories
+    const cacheDir = process.env.HTTP_CACHE_DIR ?? "/tmp/http-cache";
+    const maxSize = parseInt(process.env.HTTP_CACHE_MAX_SIZE ?? "104857600", 10);
+    this.defaultTTL = parseInt(process.env.HTTP_CACHE_TTL ?? "3600", 10);
+    this.respectCacheControl = process.env.HTTP_CACHE_RESPECT_CACHE_CONTROL !== "false";
 
-  /**
-   * Generate cache key for HTTP request
-   */
-  private generateCacheKey(url: string, method: string = "GET"): string {
-    return `${method}:${url}`;
+    const storage = new FileSystemCacheStorage({
+      cacheDir,
+      maxSize,
+      defaultTTL: this.defaultTTL,
+    });
+
+    this.cache = new Cache({
+      storage,
+      keyPrefix: "http:",
+    });
   }
 
   /**
@@ -43,8 +63,8 @@ export class HttpCache {
    */
   private parseMaxAge(cacheControl?: string): number | undefined {
     if (!cacheControl) return undefined;
-    const match = cacheControl.match(/max-age=(\d+)/);
-    return match && match[1] ? parseInt(match[1], 10) : undefined;
+    const match = /max-age=(\d+)/.exec(cacheControl);
+    return match?.[1] ? parseInt(match[1], 10) : undefined;
   }
 
   /**
@@ -57,13 +77,8 @@ export class HttpCache {
 
     const cacheControl = headers["cache-control"];
     if (cacheControl) {
-      // Check for no-store
-      if (cacheControl.includes("no-store")) {
-        return 0; // Don't cache
-      }
-
-      // Check for no-cache
-      if (cacheControl.includes("no-cache")) {
+      // Check for no-store or no-cache
+      if (cacheControl.includes("no-store") || cacheControl.includes("no-cache")) {
         return 0; // Don't cache
       }
 
@@ -87,7 +102,7 @@ export class HttpCache {
   /**
    * Check if cached entry is stale
    */
-  private isStale(entry: HttpCacheEntry): boolean {
+  private isStale(entry: CachedEntry): boolean {
     if (!this.respectCacheControl) return false;
 
     const metadata = entry.metadata;
@@ -109,55 +124,215 @@ export class HttpCache {
   }
 
   /**
-   * Get cached response
+   * Helper to fetch without caching
    */
-  async get(url: string, method: string = "GET"): Promise<HttpCacheEntry | null> {
-    const key = this.generateCacheKey(url, method);
-    const httpEntry = await this.cache.get<HttpCacheEntry>(key);
-
-    if (!httpEntry) {
-      logger.debug("HTTP cache miss", { url, method });
-      return null;
-    }
-
-    // Check if stale
-    if (this.isStale(httpEntry)) {
-      logger.debug("HTTP cache entry is stale", { url, method });
-      // Don't delete - it can be revalidated
-      return httpEntry; // Return stale entry for revalidation
-    }
-
-    logger.debug("HTTP cache hit", { url, method });
-    return httpEntry;
+  private async fetchWithoutCache(url: string, options?: RequestInit): Promise<CachedResponse> {
+    const response = await fetch(url, options);
+    const data = Buffer.from(await response.arrayBuffer());
+    const headers: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      headers[key.toLowerCase()] = value;
+    });
+    return { data, headers, status: response.status };
   }
 
   /**
-   * Store response in cache
+   * Helper to normalize cached data
    */
-  async set(
+  private normalizeCachedEntry(cached: CachedEntry): CachedEntry {
+    // Ensure dates are Date objects (deserialization might return strings)
+    if (cached.metadata.fetchedAt && typeof cached.metadata.fetchedAt === "string") {
+      cached.metadata.fetchedAt = new Date(cached.metadata.fetchedAt);
+    }
+    if (cached.metadata.expires && typeof cached.metadata.expires === "string") {
+      cached.metadata.expires = new Date(cached.metadata.expires);
+    }
+    return cached;
+  }
+
+  /**
+   * Helper to build cache response
+   */
+  private buildCacheResponse(cached: CachedEntry, cacheStatus: string): CachedResponse {
+    let status = cached.status;
+    if (cacheStatus === "REVALIDATED") {
+      status = 200;
+    }
+
+    return {
+      data: Buffer.isBuffer(cached.data) ? cached.data : Buffer.from(cached.data),
+      headers: { ...cached.headers, "X-Cache": cacheStatus },
+      status,
+    };
+  }
+
+  /**
+   * Helper to handle cached entry
+   */
+  private async handleCachedEntry(
     url: string,
+    cacheKey: string,
+    cached: CachedEntry,
+    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean }
+  ): Promise<CachedResponse> {
+    const normalizedCached = this.normalizeCachedEntry(cached);
+    const isStale = this.isStale(normalizedCached);
+
+    // If not stale and not forced revalidation, return cached
+    if (!isStale && !options?.forceRevalidate) {
+      logger.debug("HTTP cache hit", { url });
+      return this.buildCacheResponse(normalizedCached, "HIT");
+    }
+
+    // Try revalidation with conditional request
+    if (normalizedCached.metadata.etag ?? normalizedCached.metadata.lastModified) {
+      return this.revalidateCachedEntry(url, cacheKey, normalizedCached, options);
+    }
+
+    // Stale without revalidation headers - fetch fresh
+    return this.fetchFresh(url, cacheKey, options);
+  }
+
+  /**
+   * Helper to revalidate cached entry
+   */
+  private async revalidateCachedEntry(
+    url: string,
+    cacheKey: string,
+    cached: CachedEntry,
+    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean }
+  ): Promise<CachedResponse> {
+    logger.debug("HTTP cache stale, attempting revalidation", { url });
+    const headers = new Headers(options?.headers);
+
+    if (cached.metadata.etag) {
+      headers.set("If-None-Match", cached.metadata.etag);
+    }
+    if (cached.metadata.lastModified) {
+      headers.set("If-Modified-Since", cached.metadata.lastModified);
+    }
+
+    try {
+      const { bypassCache, forceRevalidate, ...fetchOptions } = options ?? {};
+      const response = await fetch(url, { ...fetchOptions, headers });
+
+      // Handle 304 Not Modified
+      if (response.status === 304) {
+        logger.info("HTTP cache revalidated (304)", { url });
+        // Update metadata and re-cache
+        const updatedCached = { ...cached, metadata: { ...cached.metadata, fetchedAt: new Date() } };
+        await this.cache.set(cacheKey, updatedCached, { ttl: this.calculateTTL(updatedCached.headers) });
+        return this.buildCacheResponse(updatedCached, "REVALIDATED");
+      }
+
+      // Got new content, cache and return it
+      return await this.fetchAndCache(url, cacheKey, response);
+    } catch (error) {
+      // On error during revalidation, return stale cache
+      logger.warn("Revalidation failed, returning stale cache", { url, error });
+      return this.buildCacheResponse(cached, "STALE");
+    }
+  }
+
+  /**
+   * Helper to fetch and cache response
+   */
+  private async fetchAndCache(_url: string, cacheKey: string, response: Response): Promise<CachedResponse> {
+    const data = Buffer.from(await response.arrayBuffer());
+    const respHeaders: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      respHeaders[key.toLowerCase()] = value;
+    });
+
+    await this.cacheResponse(cacheKey, data, respHeaders, response.status);
+
+    return {
+      data,
+      headers: { ...respHeaders, "X-Cache": "MISS" },
+      status: response.status,
+    };
+  }
+
+  /**
+   * Helper to fetch fresh content
+   */
+  private async fetchFresh(
+    url: string,
+    cacheKey: string,
+    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean }
+  ): Promise<CachedResponse> {
+    const { bypassCache, forceRevalidate, ...fetchOptions } = options ?? {};
+    const response = await fetch(url, fetchOptions);
+
+    const data = Buffer.from(await response.arrayBuffer());
+    const headers: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      headers[key.toLowerCase()] = value;
+    });
+
+    // Cache successful GET responses
+    if (response.ok && this.isCacheable(response.status, headers)) {
+      await this.cacheResponse(cacheKey, data, headers, response.status);
+    }
+
+    return {
+      data,
+      headers: { ...headers, "X-Cache": "MISS" },
+      status: response.status,
+    };
+  }
+
+  /**
+   * Fetch with caching support including ETags and conditional requests
+   */
+  async fetch(
+    url: string,
+    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean }
+  ): Promise<CachedResponse> {
+    const method = options?.method ?? "GET";
+    const cacheKey = this.getCacheKey(url, method);
+
+    // Only cache GET requests
+    if (method !== "GET") {
+      logger.debug("Bypassing cache for non-GET request", { url, method });
+      const { bypassCache, forceRevalidate, ...fetchOptions } = options ?? {};
+      return this.fetchWithoutCache(url, fetchOptions);
+    }
+
+    // Check cache first (unless bypassed)
+    if (!options?.bypassCache) {
+      const cached = await this.cache.get<CachedEntry>(cacheKey);
+      if (cached) {
+        return this.handleCachedEntry(url, cacheKey, cached, options);
+      }
+    }
+
+    logger.debug("HTTP cache miss", { url });
+    return this.fetchFresh(url, cacheKey, options);
+  }
+
+  /**
+   * Cache a response with metadata
+   */
+  private async cacheResponse(
+    cacheKey: string,
     data: Buffer,
     headers: Record<string, string>,
-    statusCode: number = 200,
-    method: string = "GET"
+    status: number
   ): Promise<void> {
     const ttl = this.calculateTTL(headers);
 
     // Don't cache if TTL is 0
     if (ttl === 0) {
-      logger.debug("HTTP response not cacheable", { url, method });
+      logger.debug("Response not cacheable", { cacheKey });
       return;
     }
 
-    const key = this.generateCacheKey(url, method);
     const now = new Date();
-
-    const entry: HttpCacheEntry = {
-      url,
-      method,
+    const entry: CachedEntry = {
       data,
       headers,
-      statusCode,
+      status,
       metadata: {
         etag: headers["etag"],
         lastModified: headers["last-modified"],
@@ -165,328 +340,47 @@ export class HttpCache {
         maxAge: this.parseMaxAge(headers["cache-control"]),
         fetchedAt: now,
         contentHash: crypto.createHash("sha256").update(data).digest("hex"),
-        size: data.length,
       },
     };
 
-    const cacheOptions: CacheSetOptions = {
-      ttl,
-      tags: ["http", method.toLowerCase()],
-      metadata: {
-        url,
-        method,
-        statusCode,
-      },
-    };
-
-    await this.cache.set(key, entry, cacheOptions);
+    await this.cache.set(cacheKey, entry, { ttl });
     logger.info("HTTP response cached", {
-      url,
-      method,
-      ttl,
+      url: cacheKey.replace(/^GET:/, ""),
       size: data.length,
-    });
-  }
-
-  /**
-   * Get conditional request headers for revalidation
-   */
-  async getConditionalHeaders(url: string, method: string = "GET"): Promise<Record<string, string>> {
-    const entry = await this.get(url, method);
-    if (!entry) return {};
-
-    const headers: Record<string, string> = {};
-
-    if (entry.metadata.etag) {
-      headers["If-None-Match"] = entry.metadata.etag;
-    }
-
-    if (entry.metadata.lastModified) {
-      headers["If-Modified-Since"] = entry.metadata.lastModified;
-    }
-
-    return headers;
-  }
-
-  /**
-   * Handle 304 Not Modified response
-   */
-  async handleNotModified(url: string, method: string = "GET"): Promise<HttpCacheEntry | null> {
-    const entry = await this.get(url, method);
-    if (!entry) return null;
-
-    // Update the fetchedAt timestamp
-    entry.metadata.fetchedAt = new Date();
-
-    // Re-cache with updated metadata
-    const key = this.generateCacheKey(url, method);
-    const ttl = this.calculateTTL(entry.headers);
-
-    await this.cache.set(key, entry, {
       ttl,
-      tags: ["http", method.toLowerCase(), "revalidated"],
+      hasEtag: !!entry.metadata.etag,
+      hasLastModified: !!entry.metadata.lastModified,
     });
-
-    logger.debug("HTTP cache entry revalidated", { url, method });
-    return entry;
   }
 
-  /**
-   * Check if we should use cache for this request
-   */
-  shouldUseCache(options?: HttpCacheOptions): boolean {
-    if (!options) return true;
-
-    if (options.bypassCache) return false;
-    if (options.useCache === false) return false;
-
-    return true;
+  private getCacheKey(url: string, method: string): string {
+    return `${method}:${url}`;
   }
 
-  /**
-   * Check if we should revalidate
-   */
-  shouldRevalidate(entry: HttpCacheEntry, options?: HttpCacheOptions): boolean {
-    if (options?.forceRevalidate) return true;
-    if (this.isStale(entry)) return true;
-
-    return false;
-  }
-
-  /**
-   * Invalidate cached responses by URL pattern
-   */
-  async invalidateByUrl(urlPattern: string): Promise<number> {
-    const pattern = `.*:${urlPattern}`;
-    return await this.cache.clear(pattern);
-  }
-
-  /**
-   * Invalidate cached responses by method
-   */
-  async invalidateByMethod(method: string): Promise<number> {
-    return await this.cache.invalidateByTags([method.toLowerCase()]);
-  }
-
-  /**
-   * Get cache statistics
-   */
-  async getStats() {
-    return await this.cache.getStats();
-  }
-
-  /**
-   * Clear all HTTP cache entries
-   */
-  async clear(): Promise<number> {
-    return await this.cache.clear();
-  }
-
-  /**
-   * Cleanup expired entries
-   */
-  async cleanup(): Promise<number> {
-    return await this.cache.cleanup();
-  }
-
-  /**
-   * Fetch with caching support
-   * 
-   * This is the main entry point for cached HTTP requests.
-   * It handles cache lookups, conditional requests, and cache updates.
-   */
-  async fetch(url: string, options?: RequestInit & HttpCacheOptions): Promise<Response> {
-    const method = options?.method || "GET";
-    
-    // Only cache GET requests by default
-    if (method !== "GET" && method !== "HEAD") {
-      logger.debug("Bypassing cache for non-GET request", { url, method });
-      return fetch(url, options);
-    }
-
-    // Check if we should bypass cache
-    if (!this.shouldUseCache(options)) {
-      logger.debug("Bypassing cache", { url, method });
-      return fetch(url, options);
-    }
-
-    // Check cache
-    const cachedEntry = await this.get(url, method);
-    
-    if (cachedEntry && !this.shouldRevalidate(cachedEntry, options)) {
-      // Return cached response
-      logger.info("HTTP cache hit", { url, method });
-      return this.createResponseFromCache(cachedEntry, true);
-    }
-
-    // Prepare request headers
-    const headers = new Headers(options?.headers);
-    
-    // Add conditional headers if we have a stale entry
-    if (cachedEntry) {
-      if (cachedEntry.metadata.etag) {
-        headers.set("If-None-Match", cachedEntry.metadata.etag);
-      }
-      if (cachedEntry.metadata.lastModified) {
-        headers.set("If-Modified-Since", cachedEntry.metadata.lastModified);
-      }
-    }
-
-    // Make the request
-    try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
-
-      // Handle 304 Not Modified
-      if (response.status === 304 && cachedEntry) {
-        logger.info("HTTP cache revalidated (304)", { url, method });
-        await this.handleNotModified(url, method);
-        return this.createResponseFromCache(cachedEntry, true, true);
-      }
-
-      // Cache successful responses (2xx)
-      if (response.ok) {
-        const responseHeaders = this.headersToObject(response.headers);
-        
-        // Check if response is cacheable
-        if (this.isCacheable(response.status, responseHeaders)) {
-          // Clone response before consuming it
-          const cloned = response.clone();
-          const data = Buffer.from(await cloned.arrayBuffer());
-          
-          await this.set(url, data, responseHeaders, response.status, method);
-          
-          // Return new response with cache headers
-          return this.createResponseWithCacheHeaders(response, false);
-        }
-      }
-
-      // Return response as-is for non-cacheable responses
-      return response;
-    } catch (error) {
-      // On network error, return stale cache if available
-      if (cachedEntry && options?.returnStaleOnError) {
-        logger.warn("Returning stale cache due to network error", { url, error });
-        return this.createResponseFromCache(cachedEntry, true, false, true);
-      }
-      throw error;
-    }
-  }
-
-  /**
-   * Check if response is cacheable
-   */
   private isCacheable(status: number, headers: Record<string, string>): boolean {
-    // Don't cache if explicitly told not to
     const cacheControl = headers["cache-control"];
     if (cacheControl) {
       if (cacheControl.includes("no-store")) return false;
       if (cacheControl.includes("private")) return false;
     }
-
-    // Only cache successful responses
     return status >= 200 && status < 300;
   }
 
-  /**
-   * Convert Headers to plain object
-   */
-  private headersToObject(headers: Headers): Record<string, string> {
-    const obj: Record<string, string> = {};
-    headers.forEach((value, key) => {
-      obj[key.toLowerCase()] = value;
-    });
-    return obj;
+  async clear(): Promise<number> {
+    return this.cache.clear();
   }
 
-  /**
-   * Create Response from cached entry
-   */
-  private createResponseFromCache(
-    entry: HttpCacheEntry, 
-    isHit: boolean, 
-    isRevalidated: boolean = false,
-    isStale: boolean = false
-  ): Response {
-    const headers = new Headers(entry.headers);
-    
-    // Add cache status headers
-    headers.set("X-Cache", isHit ? "HIT" : "MISS");
-    if (isRevalidated) {
-      headers.set("X-Cache-Revalidated", "true");
-    }
-    if (isStale) {
-      headers.set("X-Cache-Stale", "true");
-    }
-    headers.set("X-Cache-Key", this.generateCacheKey(entry.url, entry.method));
-    
-    return new Response(entry.data, {
-      status: entry.statusCode,
-      statusText: this.getStatusText(entry.statusCode),
-      headers,
-    });
-  }
-
-  /**
-   * Add cache headers to response
-   */
-  private createResponseWithCacheHeaders(response: Response, isHit: boolean): Response {
-    const headers = new Headers(response.headers);
-    headers.set("X-Cache", isHit ? "HIT" : "MISS");
-    
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers,
-    });
-  }
-
-  /**
-   * Get status text for status code
-   */
-  private getStatusText(status: number): string {
-    const statusTexts: Record<number, string> = {
-      200: "OK",
-      201: "Created",
-      204: "No Content",
-      304: "Not Modified",
-      400: "Bad Request",
-      401: "Unauthorized",
-      403: "Forbidden",
-      404: "Not Found",
-      500: "Internal Server Error",
-    };
-    return statusTexts[status] || "Unknown";
+  async getStats() {
+    return this.cache.getStats();
   }
 }
 
 // Singleton instance
-let httpCacheInstance: HttpCache | null = null;
+let instance: HttpCache | null = null;
 
-/**
- * Get the default HTTP cache instance
- */
-export function getHttpCache(): HttpCache {
-  if (!httpCacheInstance) {
-    // Initialize with file system storage for production use
-    const cacheDir = process.env.HTTP_CACHE_DIR || "/tmp/http-cache";
-    const maxSize = parseInt(process.env.HTTP_CACHE_MAX_SIZE || "104857600", 10); // 100MB default
-    const defaultTTL = parseInt(process.env.HTTP_CACHE_TTL || "3600", 10); // 1 hour default
-    
-    const storage = new FileSystemCacheStorage({
-      cacheDir,
-      maxSize,
-      defaultTTL,
-    });
-    
-    const cache = new Cache({
-      storage,
-      keyPrefix: "http:",
-    });
-    
-    httpCacheInstance = new HttpCache(cache);
+export const getHttpCache = (): HttpCache => {
+  if (!instance) {
+    instance = new HttpCache();
   }
-  return httpCacheInstance;
-}
+  return instance;
+};

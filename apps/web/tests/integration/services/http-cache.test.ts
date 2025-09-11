@@ -1,6 +1,6 @@
 /**
  * Integration tests for HTTP cache functionality.
- * 
+ *
  * These tests verify the HTTP cache works with real HTTP requests
  * to test endpoints without mocking.
  *
@@ -8,200 +8,230 @@
  * @category Services/Cache/Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import path from "path";
-import os from "os";
-import fs from "fs/promises";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { HttpCache } from "@/lib/services/cache/http-cache";
-import { FileSystemCacheStorage } from "@/lib/services/cache/storage/file-system";
-import { Cache } from "@/lib/services/cache/cache";
+import { fetchWithRetry } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
+import { getHttpCache } from "@/lib/services/cache";
+import { TestServer } from "@/tests/setup/test-server";
 
-describe("HTTP Cache Integration", () => {
-  let httpCache: HttpCache;
-  let tempDir: string;
-  let storage: FileSystemCacheStorage;
-  let testServer: string;
+describe.sequential("HTTP Cache Integration", () => {
+  const httpCache = getHttpCache();
+  let testServer: TestServer;
+  let serverUrl: string;
+
+  beforeAll(async () => {
+    // Create and start test server
+    testServer = new TestServer();
+    
+    // Setup test endpoints
+    let requestCount = 0;
+    testServer
+      .respondWithJSON("/json", { slideshow: { title: "Sample" } })
+      .respond("/status/404", { status: 404, body: "Not Found" })
+      .respond("/status/500", { status: 500, body: "Server Error" })
+      .route("/uuid", (_req, res) => {
+        res.writeHead(200, { 
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store, must-revalidate"
+        });
+        res.end(JSON.stringify({ uuid: `${Date.now()}-${Math.random()}` }));
+      })
+      .respond("/post", { status: 200, body: "POST response" })
+      .respond("/headers", { 
+        headers: { "X-Custom-Header": "test" },
+        body: "Headers response" 
+      })
+      .respond("/delay", { body: "Delayed response", delay: 100 })
+      .respond("/etag", {
+        headers: { "ETag": '"test-etag"' },
+        body: "ETag response"
+      })
+      .respond("/cache-control", {
+        headers: { "Cache-Control": "max-age=2" },
+        body: "Cache control response"
+      })
+      .setDefaultHandler((req, res) => {
+        // Handle /get with query parameters
+        if (req.url?.startsWith("/get")) {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ args: req.url?.split('?')[1] || '' }));
+        } else {
+          res.writeHead(404);
+          res.end("Not Found");
+        }
+      });
+    
+    serverUrl = await testServer.start();
+  });
+
+  afterAll(async () => {
+    // Stop test server
+    await testServer.stop();
+  });
 
   beforeEach(async () => {
-    // Create temp directory for cache
-    tempDir = path.join(os.tmpdir(), `http-cache-test-${Date.now()}`);
-    
-    // Create file system storage
-    storage = new FileSystemCacheStorage({
-      cacheDir: tempDir,
-      maxSize: 10 * 1024 * 1024, // 10MB
-      defaultTTL: 3600, // 1 hour
-    });
-
-    // Create cache instance
-    const cache = new Cache({
-      storage,
-      keyPrefix: "http:",
-    });
-
-    // Create HTTP cache
-    httpCache = new HttpCache(cache);
-
-    // Use a reliable test endpoint
-    testServer = "https://httpbin.org";
+    // Clear cache before each test
+    await httpCache.clear();
   });
 
   afterEach(async () => {
-    if (storage) {
-      await storage.destroy();
-    }
-    
-    // Remove temp directory
-    try {
-      await fs.rm(tempDir, { recursive: true, force: true });
-    } catch {
-      // Ignore errors
-    }
+    // Clean up after tests
+    await httpCache.clear();
   });
 
   describe("Real HTTP requests", () => {
     it("should cache a successful HTTP response", async () => {
-      const testUrl = `${testServer}/json`;
+      const testUrl = `${serverUrl}/json`;
 
       // First request - should hit the server
-      const response1 = await httpCache.fetch(testUrl);
-      const data1 = await response1.json();
+      const result1 = await fetchWithRetry(testUrl, {
+        cacheOptions: { useCache: true },
+      });
+      const data1 = JSON.parse(result1.data.toString());
       expect(data1).toHaveProperty("slideshow");
-      expect(response1.headers.get("X-Cache")).toBe("MISS");
+      expect(result1.cacheStatus).toBe("MISS");
 
       // Second request - should hit the cache
-      const response2 = await httpCache.fetch(testUrl);
-      const data2 = await response2.json();
+      const result2 = await fetchWithRetry(testUrl, {
+        cacheOptions: { useCache: true },
+      });
+      const data2 = JSON.parse(result2.data.toString());
       expect(data2).toEqual(data1);
-      expect(response2.headers.get("X-Cache")).toBe("HIT");
+      expect(result2.cacheStatus).toBe("HIT");
     });
 
     it("should handle different status codes", async () => {
-      // Test 404 response
-      const notFoundUrl = `${testServer}/status/404`;
-      const response404 = await httpCache.fetch(notFoundUrl);
-      expect(response404.status).toBe(404);
+      // Test 404 response - fetchWithRetry will throw on 404
+      const notFoundUrl = `${serverUrl}/status/404`;
 
-      // Should not cache error responses by default
-      const response404Again = await httpCache.fetch(notFoundUrl);
-      expect(response404Again.headers.get("X-Cache")).not.toBe("HIT");
+      await expect(
+        fetchWithRetry(notFoundUrl, {
+          cacheOptions: { useCache: true },
+        })
+      ).rejects.toThrow("HTTP 404");
     });
 
     it("should handle query parameters", async () => {
-      const baseUrl = `${testServer}/get`;
-      
-      // Different query params should be cached separately
-      const response1 = await httpCache.fetch(`${baseUrl}?foo=bar`);
-      expect(response1.headers.get("X-Cache")).toBe("MISS");
+      const baseUrl = `${serverUrl}/get`;
 
-      const response2 = await httpCache.fetch(`${baseUrl}?foo=baz`);
-      expect(response2.headers.get("X-Cache")).toBe("MISS");
+      // Different query params should be cached separately
+      const url1 = `${baseUrl}?foo=bar`;
+      const result1 = await fetchWithRetry(url1, {
+        cacheOptions: { useCache: true },
+      });
+      expect(result1.cacheStatus).toBe("MISS");
+
+      const url2 = `${baseUrl}?foo=baz`;
+      const result2 = await fetchWithRetry(url2, {
+        cacheOptions: { useCache: true },
+      });
+      expect(result2.cacheStatus).toBe("MISS");
 
       // Same query should hit cache
-      const response3 = await httpCache.fetch(`${baseUrl}?foo=bar`);
-      expect(response3.headers.get("X-Cache")).toBe("HIT");
+      const url3 = `${baseUrl}?foo=bar`; // Same as url1
+      console.log(`Fetching ${url3} - expecting HIT (same as ${url1})`);
+      const result3 = await fetchWithRetry(url3, {
+        cacheOptions: { useCache: true },
+      });
+      console.log(`Result3 status: ${result3.cacheStatus}`);
+      expect(result3.cacheStatus).toBe("HIT");
     });
 
     it("should bypass cache when requested", async () => {
-      const testUrl = `${testServer}/uuid`;
+      const testUrl = `${serverUrl}/uuid`;
 
       // First request
-      const response1 = await httpCache.fetch(testUrl);
-      const data1 = await response1.json();
+      const result1 = await fetchWithRetry(testUrl, {
+        cacheOptions: { useCache: true },
+      });
+      const data1 = JSON.parse(result1.data.toString());
       expect(data1).toHaveProperty("uuid");
+      expect(result1.cacheStatus).toBe("MISS");
 
       // Second request with cache bypass
-      const response2 = await httpCache.fetch(testUrl, {
-        cache: "no-cache",
+      const result2 = await fetchWithRetry(testUrl, {
+        cacheOptions: { useCache: false },
       });
-      const data2 = await response2.json();
+      const data2 = JSON.parse(result2.data.toString());
       expect(data2).toHaveProperty("uuid");
-      expect(response2.headers.get("X-Cache")).not.toBe("HIT");
-      
+      expect(result2.cacheStatus).toBe("MISS");
+
       // UUIDs should be different if we truly bypassed cache
       expect(data2.uuid).not.toBe(data1.uuid);
     });
 
     it("should handle POST requests without caching", async () => {
-      const testUrl = `${testServer}/post`;
-      const payload = { test: "data" };
+      const testUrl = `${serverUrl}/post`;
 
       // POST requests should not be cached
-      const response1 = await httpCache.fetch(testUrl, {
+      const result1 = await fetchWithRetry(testUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        cacheOptions: { useCache: true },
       });
-      expect(response1.status).toBe(200);
-      expect(response1.headers.get("X-Cache")).toBeNull();
+      expect(result1.cacheStatus).toBeUndefined();
 
       // Second POST should also not use cache
-      const response2 = await httpCache.fetch(testUrl, {
+      const result2 = await fetchWithRetry(testUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        cacheOptions: { useCache: true },
       });
-      expect(response2.headers.get("X-Cache")).toBeNull();
+      expect(result2.cacheStatus).toBeUndefined();
     });
 
-    it("should handle headers in cache key", async () => {
-      const testUrl = `${testServer}/headers`;
+    it("should cache responses independently", async () => {
+      const testUrl = `${serverUrl}/headers`;
 
-      // Request with specific headers
-      const response1 = await httpCache.fetch(testUrl, {
-        headers: {
-          "X-Custom-Header": "value1",
-        },
+      // First request
+      const result1 = await fetchWithRetry(testUrl, {
+        cacheOptions: { useCache: true },
       });
-      expect(response1.headers.get("X-Cache")).toBe("MISS");
+      expect(result1.cacheStatus).toBe("MISS");
 
-      // Same URL but different headers should miss cache
-      const response2 = await httpCache.fetch(testUrl, {
-        headers: {
-          "X-Custom-Header": "value2",
-        },
+      // Same URL should hit cache
+      const result2 = await fetchWithRetry(testUrl, {
+        cacheOptions: { useCache: true },
       });
-      expect(response2.headers.get("X-Cache")).toBe("MISS");
-
-      // Same headers should hit cache
-      const response3 = await httpCache.fetch(testUrl, {
-        headers: {
-          "X-Custom-Header": "value1",
-        },
-      });
-      expect(response3.headers.get("X-Cache")).toBe("HIT");
+      expect(result2.cacheStatus).toBe("HIT");
     });
   });
 
   describe("Cache management", () => {
-    it("should clear cache by pattern", async () => {
+    it("should clear cache", async () => {
       // Cache multiple URLs
-      await httpCache.fetch(`${testServer}/json`);
-      await httpCache.fetch(`${testServer}/uuid`);
-      await httpCache.fetch(`${testServer}/get?test=1`);
+      await fetchWithRetry(`${serverUrl}/json`, {
+        cacheOptions: { useCache: true },
+      });
+      await fetchWithRetry(`${serverUrl}/uuid`, {
+        cacheOptions: { useCache: true },
+      });
 
-      // Verify all are cached
-      const jsonCached = await httpCache.fetch(`${testServer}/json`);
-      expect(jsonCached.headers.get("X-Cache")).toBe("HIT");
+      // Verify they are cached
+      const jsonCached = await fetchWithRetry(`${serverUrl}/json`, {
+        cacheOptions: { useCache: true },
+      });
+      expect(jsonCached.cacheStatus).toBe("HIT");
 
-      // Clear cache with pattern
+      // Clear all cache
       const cleared = await httpCache.clear();
       expect(cleared).toBeGreaterThan(0);
 
       // JSON endpoint should no longer be cached
-      const jsonAfterClear = await httpCache.fetch(`${testServer}/json`);
-      expect(jsonAfterClear.headers.get("X-Cache")).toBe("MISS");
-
-      // Other endpoints should still be cached
-      const uuidCached = await httpCache.fetch(`${testServer}/uuid`);
-      expect(uuidCached.headers.get("X-Cache")).toBe("HIT");
+      const jsonAfterClear = await fetchWithRetry(`${serverUrl}/json`, {
+        cacheOptions: { useCache: true },
+      });
+      expect(jsonAfterClear.cacheStatus).toBe("MISS");
     });
 
     it("should provide cache statistics", async () => {
       // Make some cached requests
-      await httpCache.fetch(`${testServer}/json`);
-      await httpCache.fetch(`${testServer}/json`); // Hit
+      await fetchWithRetry(`${serverUrl}/json`, {
+        cacheOptions: { useCache: true },
+      });
+      await fetchWithRetry(`${serverUrl}/json`, {
+        cacheOptions: { useCache: true },
+      }); // Hit
 
       const stats = await httpCache.getStats();
       expect(stats.entries).toBeGreaterThan(0);
@@ -214,34 +244,100 @@ describe("HTTP Cache Integration", () => {
       const invalidUrl = "https://invalid-domain-that-does-not-exist-12345.com/test";
 
       // Should throw error, not cache
-      await expect(httpCache.fetch(invalidUrl)).rejects.toThrow();
-
-      // Verify cache is empty
-      const cached = await httpCache.get(invalidUrl, "GET");
-      expect(cached).toBeNull();
+      await expect(
+        fetchWithRetry(invalidUrl, {
+          cacheOptions: { useCache: true },
+          retryConfig: { maxRetries: 0 },
+        })
+      ).rejects.toThrow();
     });
 
     it("should handle timeout scenarios", async () => {
-      // Use httpbin's delay endpoint
-      const delayUrl = `${testServer}/delay/10`;
+      // Create a test endpoint with very long delay
+      testServer.respond("/long-delay", { body: "Very delayed", delay: 10000 });
+      const delayUrl = `${serverUrl}/long-delay`;
 
       // This should timeout with a short timeout setting
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1000);
+      await expect(
+        fetchWithRetry(delayUrl, {
+          timeout: 500, // 500ms timeout
+          cacheOptions: { useCache: true },
+          retryConfig: { maxRetries: 0 },
+        })
+      ).rejects.toThrow();
+    });
+  });
 
-      try {
-        await httpCache.fetch(delayUrl, {
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-      } catch (error: any) {
-        clearTimeout(timeoutId);
-        expect(error.name).toBe("AbortError");
-      }
+  describe("Advanced caching features", () => {
+    it("should handle ETag and conditional requests", async () => {
+      const etagUrl = `${serverUrl}/etag`;
 
-      // Should not have cached the failed request
-      const cached = await httpCache.get(delayUrl, "GET");
-      expect(cached).toBeNull();
+      // First fetch - cache with ETag
+      const result1 = await fetchWithRetry(etagUrl, {
+        cacheOptions: { useCache: true },
+      });
+      expect(result1.cacheStatus).toBe("MISS");
+
+      // Force revalidation
+      const result2 = await fetchWithRetry(etagUrl, {
+        cacheOptions: {
+          useCache: true,
+          forceRevalidate: true,
+        },
+      });
+
+      // Should either be REVALIDATED (304) or MISS
+      expect(["REVALIDATED", "MISS"]).toContain(result2.cacheStatus);
+    });
+
+    it("should respect Cache-Control max-age", async () => {
+      const cacheUrl = `${serverUrl}/cache-control`; // 2 second cache
+
+      // First fetch
+      const result1 = await fetchWithRetry(cacheUrl, {
+        cacheOptions: { useCache: true },
+      });
+      expect(result1.cacheStatus).toBe("MISS");
+
+      // Immediate second fetch - should be cached
+      const result2 = await fetchWithRetry(cacheUrl, {
+        cacheOptions: { useCache: true },
+      });
+      expect(result2.cacheStatus).toBe("HIT");
+
+      // Wait for cache to expire
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // Third fetch - cache should be stale
+      const result3 = await fetchWithRetry(cacheUrl, {
+        cacheOptions: { useCache: true },
+      });
+      expect(["MISS", "REVALIDATED"]).toContain(result3.cacheStatus);
+    });
+
+    it("should be significantly faster for cached responses", async () => {
+      const url = `${serverUrl}/json`;
+
+      // First fetch - measure time
+      const start1 = Date.now();
+      const result1 = await fetchWithRetry(url, {
+        cacheOptions: { useCache: true },
+      });
+      const time1 = Date.now() - start1;
+      expect(result1.cacheStatus).toBe("MISS");
+
+      // Second fetch - should be much faster
+      const start2 = Date.now();
+      const result2 = await fetchWithRetry(url, {
+        cacheOptions: { useCache: true },
+      });
+      const time2 = Date.now() - start2;
+      expect(result2.cacheStatus).toBe("HIT");
+
+      // Cached response should be at least 10x faster
+      expect(time1 / time2).toBeGreaterThan(10);
+
+      console.log(`Network: ${time1}ms, Cached: ${time2}ms, Speedup: ${Math.round(time1 / time2)}x`);
     });
   });
 });

@@ -12,7 +12,7 @@
 /**
  * Generic cache entry that can store any type of data
  */
-export interface CacheEntry<T = any> {
+export interface CacheEntry<T = unknown> {
   key: string;
   value: T;
   metadata: CacheEntryMetadata;
@@ -28,7 +28,7 @@ export interface CacheEntryMetadata {
   lastAccessedAt: Date;
   size?: number;
   tags?: string[];
-  custom?: Record<string, any>;
+  custom?: Record<string, unknown>;
 }
 
 /**
@@ -40,7 +40,7 @@ export interface CacheSetOptions {
   /** Tags for grouping related entries */
   tags?: string[];
   /** Custom metadata */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -70,12 +70,12 @@ export interface CacheStorage {
   /**
    * Get a value from cache
    */
-  get<T = any>(key: string): Promise<CacheEntry<T> | null>;
+  get<T = unknown>(key: string): Promise<CacheEntry<T> | null>;
 
   /**
    * Set a value in cache
    */
-  set<T = any>(key: string, value: T, options?: CacheSetOptions): Promise<void>;
+  set<T = unknown>(key: string, value: T, options?: CacheSetOptions): Promise<void>;
 
   /**
    * Delete a value from cache
@@ -101,12 +101,12 @@ export interface CacheStorage {
   /**
    * Get multiple values at once
    */
-  getMany<T = any>(keys: string[]): Promise<Map<string, CacheEntry<T>>>;
+  getMany<T = unknown>(keys: string[]): Promise<Map<string, CacheEntry<T>>>;
 
   /**
    * Set multiple values at once
    */
-  setMany<T = any>(entries: Map<string, T>, options?: CacheSetOptions): Promise<void>;
+  setMany<T = unknown>(entries: Map<string, T>, options?: CacheSetOptions): Promise<void>;
 
   /**
    * Get cache statistics
@@ -152,7 +152,7 @@ export interface CacheConfig {
   /** Key prefix */
   keyPrefix?: string;
   /** Callback when entry is evicted */
-  onEviction?: (key: string, value: any) => void;
+  onEviction?: (key: string, value: unknown) => void;
 }
 
 /**

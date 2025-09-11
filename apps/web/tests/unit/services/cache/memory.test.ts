@@ -5,10 +5,9 @@
  * @category Services/Cache/Tests
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { MemoryCacheStorage } from "@/lib/services/cache/storage/memory";
-import type { CacheEntry } from "@/lib/services/cache/types";
 
 describe("MemoryCacheStorage", () => {
   let storage: MemoryCacheStorage;
@@ -21,7 +20,7 @@ describe("MemoryCacheStorage", () => {
       defaultTTL: 60, // 1 minute
     });
   });
-  
+
   afterEach(() => {
     // Ensure complete cleanup
     if (storage) {
@@ -65,7 +64,7 @@ describe("MemoryCacheStorage", () => {
 
       const hasKey = await storage.has(key);
       expect(hasKey).toBe(true);
-      
+
       const hasNonExistent = await storage.has("non-existent");
       expect(hasNonExistent).toBe(false);
     });
@@ -140,7 +139,7 @@ describe("MemoryCacheStorage", () => {
         expect(entry?.value).toBe(value);
         expect(entry?.metadata.tags).toEqual(["batch"]);
       }
-      
+
       testStorage.destroy();
     });
   });
@@ -164,7 +163,7 @@ describe("MemoryCacheStorage", () => {
       expect(await testStorage.has("user:1")).toBe(false);
       expect(await testStorage.has("user:2")).toBe(false);
       expect(await testStorage.has("post:1")).toBe(true);
-      
+
       testStorage.destroy();
     });
 
@@ -186,7 +185,7 @@ describe("MemoryCacheStorage", () => {
       expect(keys).toContain("user:1");
       expect(keys).toContain("user:2");
       expect(keys).not.toContain("post:1");
-      
+
       testStorage.destroy();
     });
   });
@@ -249,7 +248,7 @@ describe("MemoryCacheStorage", () => {
       const stats = await testStorage.getStats();
       expect(stats.hits).toBe(1);
       expect(stats.misses).toBe(2);
-      
+
       testStorage.destroy();
     });
 
@@ -296,7 +295,7 @@ describe("MemoryCacheStorage", () => {
       expect(cleaned).toBe(1);
       expect(await testStorage.has("stale-1")).toBe(false);
       expect(await testStorage.has("stale-2")).toBe(true);
-      
+
       testStorage.destroy();
     });
 
@@ -317,7 +316,7 @@ describe("MemoryCacheStorage", () => {
 
       const stats = await testStorage.getStats();
       expect(stats.entries).toBe(0);
-      
+
       testStorage.destroy();
     });
   });

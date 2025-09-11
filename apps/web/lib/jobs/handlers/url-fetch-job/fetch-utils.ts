@@ -12,8 +12,8 @@ import crypto from "crypto";
 import path from "path";
 
 import { logger } from "@/lib/logger";
-import { getHttpCache } from "@/lib/services/cache";
 import type { HttpCacheOptions } from "@/lib/services/cache";
+import { getHttpCache, type HttpCache } from "@/lib/services/cache";
 import type { ScheduledImport } from "@/payload-types";
 
 export interface FetchResult {
@@ -21,6 +21,7 @@ export interface FetchResult {
   contentType: string;
   contentLength?: number;
   attempts: number;
+  cacheStatus?: string;
 }
 
 export interface FetchOptions {
@@ -253,8 +254,108 @@ export const fetchUrlData = async (
 };
 
 /**
+ * Helper to perform a single fetch attempt with timeout
+ */
+const performFetchWithTimeout = async (
+  httpCache: HttpCache,
+  sourceUrl: string,
+  fetchOpts: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean },
+  timeout?: number
+) => {
+  let timeoutId: NodeJS.Timeout | undefined;
+
+  if (timeout) {
+    const controller = new AbortController();
+    timeoutId = setTimeout(() => controller.abort(), timeout);
+    fetchOpts.signal = controller.signal;
+  }
+
+  try {
+    const response = await httpCache.fetch(sourceUrl, fetchOpts);
+    if (timeoutId) clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    if (timeoutId) clearTimeout(timeoutId);
+    if ((error as Error).name === "AbortError") {
+      throw new Error(`Request timeout after ${timeout}ms`);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Helper to validate response and check size limits
+ */
+const validateResponse = (
+  cachedResponse: { status: number; data: Buffer; headers: Record<string, string> },
+  maxSize?: number
+) => {
+  if (cachedResponse.status < 200 || cachedResponse.status >= 300) {
+    throw new Error(`HTTP ${cachedResponse.status}`);
+  }
+
+  if (maxSize && cachedResponse.data.length > maxSize) {
+    throw new Error(`File too large: ${cachedResponse.data.length} bytes (max: ${maxSize})`);
+  }
+};
+
+/**
+ * Helper to extract cache status from response headers
+ */
+const getCacheStatus = (headers: Record<string, string>): string | undefined =>
+  headers["x-cache"] ?? headers["X-Cache"];
+
+/**
  * Fetches URL with retry logic and HTTP caching support.
  */
+const getRetryDelay = (retryConfig?: ScheduledImport["retryConfig"]) => {
+  const retryDelayMinutes = retryConfig?.retryDelayMinutes ?? 0.1;
+  const isTestEnv = process.env.NODE_ENV === "test";
+  return isTestEnv ? 100 : retryDelayMinutes * 60 * 1000;
+};
+
+const buildCacheOptions = (
+  authHeaders: Record<string, string>,
+  fetchOptions: FetchOptions,
+  useCache: boolean,
+  cacheOptions?: HttpCacheOptions
+): RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean } => {
+  return {
+    method: fetchOptions.method ?? "GET",
+    headers: { ...authHeaders, ...fetchOptions.headers },
+    bypassCache: !useCache,
+    forceRevalidate: cacheOptions?.forceRevalidate,
+  };
+};
+
+const processFetchResponse = async (
+  httpCache: HttpCache,
+  sourceUrl: string,
+  fetchOpts: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean },
+  fetchOptions: FetchOptions,
+  attempt: number
+): Promise<FetchResult> => {
+  const cachedResponse = await performFetchWithTimeout(httpCache, sourceUrl, fetchOpts, fetchOptions.timeout);
+
+  const cacheStatus = getCacheStatus(cachedResponse.headers);
+  if (cacheStatus) {
+    logger.info("Cache status", { url: sourceUrl, status: cacheStatus });
+  }
+
+  validateResponse(cachedResponse, fetchOptions.maxSize);
+
+  const contentType = cachedResponse.headers["content-type"] ?? undefined;
+  const detectedType = detectFileTypeFromResponse(contentType, cachedResponse.data, sourceUrl);
+
+  return {
+    data: cachedResponse.data,
+    contentType: detectedType.mimeType,
+    contentLength: cachedResponse.data.length,
+    attempts: attempt,
+    cacheStatus: cacheStatus,
+  };
+};
+
 export const fetchWithRetry = async (
   sourceUrl: string,
   options: FetchOptions & {
@@ -265,21 +366,16 @@ export const fetchWithRetry = async (
 ): Promise<FetchResult> => {
   const { retryConfig, authHeaders = {}, cacheOptions, ...fetchOptions } = options;
   const maxRetries = retryConfig?.maxRetries ?? 3;
-  const retryDelayMinutes = retryConfig?.retryDelayMinutes ?? 0.1; // Default to 0.1 minutes (6 seconds)
-  // Use shorter delay in test environment
-  const isTestEnv = process.env.NODE_ENV === "test";
-  const retryDelay = isTestEnv ? 100 : retryDelayMinutes * 60 * 1000;
+  const retryDelay = getRetryDelay(retryConfig);
   const useExponentialBackoff = retryConfig?.exponentialBackoff ?? true;
   const backoffMultiplier = useExponentialBackoff ? 2 : 1;
 
-  // Get HTTP cache instance
   const httpCache = getHttpCache();
-  const method = fetchOptions.method || "GET";
   const useCache = cacheOptions?.useCache !== false && !cacheOptions?.bypassCache;
 
   let lastError: Error | undefined;
   let currentDelay = retryDelay;
-  const attemptCount = maxRetries + 1; // Total attempts = initial + retries
+  const attemptCount = maxRetries + 1;
 
   for (let attempt = 1; attempt <= attemptCount; attempt++) {
     try {
@@ -289,61 +385,8 @@ export const fetchWithRetry = async (
         useCache,
       });
 
-      let response: Response;
-      
-      if (useCache) {
-        // Use HttpCache.fetch() which handles all caching logic internally
-        response = await httpCache.fetch(sourceUrl, {
-          method,
-          headers: {
-            ...authHeaders,
-            ...fetchOptions.headers,
-          },
-          signal: fetchOptions.timeout ? AbortSignal.timeout(fetchOptions.timeout) : undefined,
-          ...cacheOptions,
-        });
-      } else {
-        // Direct fetch without caching
-        response = await fetch(sourceUrl, {
-          method,
-          headers: {
-            ...authHeaders,
-            ...fetchOptions.headers,
-          },
-          signal: fetchOptions.timeout ? AbortSignal.timeout(fetchOptions.timeout) : undefined,
-        });
-      }
-
-      // Check cache status from response headers
-      const cacheStatus = response.headers.get("X-Cache");
-      if (cacheStatus) {
-        logger.info("Cache status", {
-          url: sourceUrl,
-          status: cacheStatus,
-        });
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      // Read response body
-      const data = Buffer.from(await response.arrayBuffer());
-
-      // Check size limit
-      if (fetchOptions.maxSize && data.length > fetchOptions.maxSize) {
-        throw new Error(`File too large: ${data.length} bytes (max: ${fetchOptions.maxSize})`);
-      }
-
-      const contentType = response.headers.get("content-type") || undefined;
-      const detectedType = detectFileTypeFromResponse(contentType, data, sourceUrl);
-
-      return {
-        data,
-        contentType: detectedType.mimeType,
-        contentLength: data.length,
-        attempts: attempt,
-      };
+      const fetchOpts = buildCacheOptions(authHeaders, fetchOptions, useCache, cacheOptions);
+      return await processFetchResponse(httpCache, sourceUrl, fetchOpts, fetchOptions, attempt);
     } catch (error) {
       lastError = error as Error;
       logger.warn(`Fetch attempt ${attempt} failed`, {

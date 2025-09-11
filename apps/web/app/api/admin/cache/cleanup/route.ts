@@ -5,19 +5,20 @@
  * @category API/Admin
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-import { CacheManager } from "@/lib/services/cache/manager";
 import { logger } from "@/lib/logger";
+import { CacheManager } from "@/lib/services/cache/manager";
 
 /**
  * POST /api/admin/cache/cleanup
- * 
+ *
  * Triggers cleanup of expired cache entries.
- * 
+ *
  * @requires Admin authentication
  */
-export async function POST(request: NextRequest) {
+export const POST = async (request: NextRequest) => {
   try {
     // TODO: Add authentication check
     // const user = await authenticateAdmin(request);
@@ -27,15 +28,12 @@ export async function POST(request: NextRequest) {
 
     // Get specific cache name from query params
     const cacheName = request.nextUrl.searchParams.get("cache");
-    
+
     if (cacheName) {
       // Clean specific cache
       const cache = CacheManager.getInstance(cacheName);
       if (!cache) {
-        return NextResponse.json(
-          { error: `Cache instance '${cacheName}' not found` },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: `Cache instance '${cacheName}' not found` }, { status: 404 });
       }
 
       const cleaned = await cache.cleanup();
@@ -61,9 +59,6 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     logger.error("Cache cleanup failed", { error });
-    return NextResponse.json(
-      { error: "Cache cleanup failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Cache cleanup failed" }, { status: 500 });
   }
-}
+};

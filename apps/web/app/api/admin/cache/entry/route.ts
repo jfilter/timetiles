@@ -5,23 +5,24 @@
  * @category API/Admin
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-import { CacheManager } from "@/lib/services/cache/manager";
 import { logger } from "@/lib/logger";
+import { CacheManager } from "@/lib/services/cache/manager";
 
 /**
  * GET /api/admin/cache/entry
- * 
+ *
  * Retrieves a specific cache entry for inspection.
- * 
+ *
  * Query parameters:
  * - cache: Name of cache instance (required)
  * - key: Cache key to retrieve (required)
- * 
+ *
  * @requires Admin authentication
  */
-export async function GET(request: NextRequest) {
+export const GET = async (request: NextRequest) => {
   try {
     // TODO: Add authentication check
     // const user = await authenticateAdmin(request);
@@ -34,45 +35,45 @@ export async function GET(request: NextRequest) {
     const key = searchParams.get("key");
 
     if (!cacheName || !key) {
-      return NextResponse.json(
-        { error: "Both 'cache' and 'key' parameters are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Both 'cache' and 'key' parameters are required" }, { status: 400 });
     }
 
     const cache = CacheManager.getInstance(cacheName);
     if (!cache) {
-      return NextResponse.json(
-        { error: `Cache instance '${cacheName}' not found` },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: `Cache instance '${cacheName}' not found` }, { status: 404 });
     }
 
     const value = await cache.get(key);
     if (value === null || value === undefined) {
-      return NextResponse.json(
-        { error: `Key '${key}' not found in cache '${cacheName}'` },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: `Key '${key}' not found in cache '${cacheName}'` }, { status: 404 });
     }
 
     // Try to get cache entry metadata if available
-    const metadata = (value as any)?.metadata;
-    
+    const metadata = (
+      value as {
+        metadata?: {
+          createdAt?: Date | string;
+          expiresAt?: Date | string;
+          accessCount?: number;
+          size?: number;
+        };
+      }
+    )?.metadata;
+
     // Calculate useful metrics
     const now = new Date();
-    const age = metadata?.createdAt 
+    const age = metadata?.createdAt
       ? Math.floor((now.getTime() - new Date(metadata.createdAt).getTime()) / 1000)
       : null;
-    
+
     const ttlRemaining = metadata?.expiresAt
       ? Math.max(0, Math.floor((new Date(metadata.expiresAt).getTime() - now.getTime()) / 1000))
       : null;
 
-    logger.info("Cache entry retrieved", { 
-      cache: cacheName, 
+    logger.info("Cache entry retrieved", {
+      cache: cacheName,
       key,
-      size: metadata?.size 
+      size: metadata?.size,
     });
 
     return NextResponse.json({
@@ -83,35 +84,32 @@ export async function GET(request: NextRequest) {
       metrics: {
         age,
         ttlRemaining,
-        accessCount: metadata?.accessCount || 0,
-        size: metadata?.size || 0,
+        accessCount: metadata?.accessCount ?? 0,
+        size: metadata?.size ?? 0,
       },
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
     logger.error("Failed to get cache entry", { error });
-    return NextResponse.json(
-      { error: "Failed to retrieve cache entry" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to retrieve cache entry" }, { status: 500 });
   }
-}
+};
 
 /**
  * PUT /api/admin/cache/entry
- * 
+ *
  * Updates or creates a cache entry.
- * 
+ *
  * Request body:
  * - cache: Name of cache instance (required)
  * - key: Cache key (required)
  * - value: Value to cache (required)
  * - ttl: Time to live in seconds (optional)
  * - tags: Array of tags (optional)
- * 
+ *
  * @requires Admin authentication
  */
-export async function PUT(request: NextRequest) {
+export const PUT = async (request: NextRequest) => {
   try {
     // TODO: Add authentication check
     // const user = await authenticateAdmin(request);
@@ -123,27 +121,21 @@ export async function PUT(request: NextRequest) {
     const { cache: cacheName, key, value, ttl, tags } = body;
 
     if (!cacheName || !key || value === undefined) {
-      return NextResponse.json(
-        { error: "'cache', 'key', and 'value' are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "'cache', 'key', and 'value' are required" }, { status: 400 });
     }
 
     const cache = CacheManager.getInstance(cacheName);
     if (!cache) {
-      return NextResponse.json(
-        { error: `Cache instance '${cacheName}' not found` },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: `Cache instance '${cacheName}' not found` }, { status: 404 });
     }
 
     await cache.set(key, value, { ttl, tags });
 
-    logger.info("Cache entry updated", { 
-      cache: cacheName, 
+    logger.info("Cache entry updated", {
+      cache: cacheName,
       key,
       ttl,
-      tags 
+      tags,
     });
 
     return NextResponse.json({
@@ -155,25 +147,22 @@ export async function PUT(request: NextRequest) {
     });
   } catch (error) {
     logger.error("Failed to update cache entry", { error });
-    return NextResponse.json(
-      { error: "Failed to update cache entry" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update cache entry" }, { status: 500 });
   }
-}
+};
 
 /**
  * DELETE /api/admin/cache/entry
- * 
+ *
  * Deletes a specific cache entry.
- * 
+ *
  * Query parameters:
  * - cache: Name of cache instance (required)
  * - key: Cache key to delete (required)
- * 
+ *
  * @requires Admin authentication
  */
-export async function DELETE(request: NextRequest) {
+export const DELETE = async (request: NextRequest) => {
   try {
     // TODO: Add authentication check
     // const user = await authenticateAdmin(request);
@@ -186,26 +175,20 @@ export async function DELETE(request: NextRequest) {
     const key = searchParams.get("key");
 
     if (!cacheName || !key) {
-      return NextResponse.json(
-        { error: "Both 'cache' and 'key' parameters are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Both 'cache' and 'key' parameters are required" }, { status: 400 });
     }
 
     const cache = CacheManager.getInstance(cacheName);
     if (!cache) {
-      return NextResponse.json(
-        { error: `Cache instance '${cacheName}' not found` },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: `Cache instance '${cacheName}' not found` }, { status: 404 });
     }
 
     const deleted = await cache.delete(key);
 
-    logger.info("Cache entry deletion attempted", { 
-      cache: cacheName, 
+    logger.info("Cache entry deletion attempted", {
+      cache: cacheName,
       key,
-      deleted 
+      deleted,
     });
 
     return NextResponse.json({
@@ -217,9 +200,6 @@ export async function DELETE(request: NextRequest) {
     });
   } catch (error) {
     logger.error("Failed to delete cache entry", { error });
-    return NextResponse.json(
-      { error: "Failed to delete cache entry" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to delete cache entry" }, { status: 500 });
   }
-}
+};

@@ -6,22 +6,21 @@
  */
 
 export { Cache } from "./cache";
-export { CacheManager, CacheBackend } from "./manager";
-export { HttpCache, getHttpCache } from "./http-cache";
-export { MemoryCacheStorage } from "./storage/memory";
+export { getHttpCache, HttpCache } from "./http-cache";
+export { CacheBackend, CacheManager } from "./manager";
 export { FileSystemCacheStorage } from "./storage/file-system";
-
+export { MemoryCacheStorage } from "./storage/memory";
 export type {
+  CacheConfig,
   CacheEntry,
   CacheEntryMetadata,
   CacheSetOptions,
   CacheStats,
   CacheStorage,
-  CacheConfig,
-  Serializer,
-  MemoryCacheOptions,
   FileSystemCacheOptions,
   HttpCacheEntry,
   HttpCacheMetadata,
   HttpCacheOptions,
+  MemoryCacheOptions,
+  Serializer,
 } from "./types";

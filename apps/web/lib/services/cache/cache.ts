@@ -10,7 +10,7 @@
 
 import { logger } from "@/lib/logger";
 
-import type { CacheStorage, CacheConfig, CacheSetOptions, CacheEntry, Serializer } from "./types";
+import type { CacheConfig, CacheEntry, CacheSetOptions, CacheStorage, Serializer } from "./types";
 
 /**
  * JSON serializer (default)
@@ -29,16 +29,16 @@ export class JsonSerializer implements Serializer {
  * Main cache service that provides high-level caching operations
  */
 export class Cache {
-  private storage: CacheStorage;
-  private config: CacheConfig;
-  private serializer: Serializer;
-  private keyPrefix: string;
+  private readonly storage: CacheStorage;
+  private readonly config: CacheConfig;
+  private readonly serializer: Serializer;
+  private readonly keyPrefix: string;
 
   constructor(config: CacheConfig) {
     this.storage = config.storage;
     this.config = config;
-    this.serializer = config.serializer || new JsonSerializer();
-    this.keyPrefix = config.keyPrefix || "";
+    this.serializer = config.serializer ?? new JsonSerializer();
+    this.keyPrefix = config.keyPrefix ?? "";
   }
 
   private makeKey(key: string): string {
@@ -52,7 +52,7 @@ export class Cache {
     const fullKey = this.makeKey(key);
     try {
       const entry = await this.storage.get<T>(fullKey);
-      return entry?.value || null;
+      return entry?.value ?? null;
     } catch (error) {
       logger.error("Cache get error", { key: fullKey, error });
       return null;
@@ -88,11 +88,7 @@ export class Cache {
   /**
    * Get or compute a value (cache-aside pattern)
    */
-  async getOrSet<T>(
-    key: string,
-    factory: () => Promise<T> | T,
-    options?: CacheSetOptions
-  ): Promise<T> {
+  async getOrSet<T>(key: string, factory: () => Promise<T> | T, options?: CacheSetOptions): Promise<T> {
     // Try to get from cache
     const cached = await this.get<T>(key);
     if (cached !== null) {
@@ -184,7 +180,7 @@ export class Cache {
       const prefixLength = this.keyPrefix.length;
       for (const [fullKey, entry] of entries) {
         const key = fullKey.substring(prefixLength);
-        if (entry?.value !== undefined) {
+        if (entry?.value != null) {
           result.set(key, entry.value);
         }
       }
@@ -198,10 +194,7 @@ export class Cache {
   /**
    * Set multiple values at once
    */
-  async setMany<T>(
-    entries: Map<string, T> | Record<string, T>,
-    options?: CacheSetOptions
-  ): Promise<void> {
+  async setMany<T>(entries: Map<string, T> | Record<string, T>, options?: CacheSetOptions): Promise<void> {
     const map = entries instanceof Map ? entries : new Map(Object.entries(entries));
     const fullEntries = new Map<string, T>();
 
@@ -226,10 +219,8 @@ export class Cache {
 
       for (const key of keys) {
         const entry = await this.storage.get(key);
-        if (entry?.metadata.tags?.some((tag) => tags.includes(tag))) {
-          if (await this.storage.delete(key)) {
-            invalidated++;
-          }
+        if (entry?.metadata.tags?.some((tag) => tags.includes(tag)) && (await this.storage.delete(key))) {
+          invalidated++;
         }
       }
 
@@ -288,9 +279,9 @@ export class Cache {
   /**
    * Destroy the cache (cleanup resources)
    */
-  async destroy(): Promise<void> {
+  destroy(): void {
     if (this.storage.destroy) {
-      await this.storage.destroy();
+      this.storage.destroy();
     }
   }
 }

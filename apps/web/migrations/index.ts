@@ -9,6 +9,7 @@ import * as migration_20250819_135707 from "./20250819_135707";
 import * as migration_20250820_200736 from "./20250820_200736";
 import * as migration_20250821_150506_add_soft_delete_fields from "./20250821_150506_add_soft_delete_fields";
 import * as migration_20250825_185232_add_user_quotas from "./20250825_185232_add_user_quotas";
+import * as migration_20250826_085916_add_http_cache_field from "./20250826_085916_add_http_cache_field";
 
 export const migrations = [
   {
@@ -65,5 +66,10 @@ export const migrations = [
     up: migration_20250825_185232_add_user_quotas.up,
     down: migration_20250825_185232_add_user_quotas.down,
     name: "20250825_185232_add_user_quotas",
+  },
+  {
+    up: migration_20250826_085916_add_http_cache_field.up,
+    down: migration_20250826_085916_add_http_cache_field.down,
+    name: "20250826_085916_add_http_cache_field",
   },
 ];
