@@ -64,6 +64,23 @@ vi.mock("@/lib/logger", () => ({
   }),
 }));
 
+// Mock permission service for unit tests
+vi.mock("@/lib/services/permission-service", () => ({
+  getPermissionService: () => ({
+    checkQuota: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 100, remaining: 100 }),
+    incrementUsage: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
+
+vi.mock("@/lib/constants/permission-constants", () => ({
+  QUOTA_TYPES: {
+    URL_FETCHES_PER_DAY: "urlFetchesPerDay",
+  },
+  USAGE_TYPES: {
+    URL_FETCHES_TODAY: "urlFetchesToday",
+  },
+}));
+
 // Mock fetch globally
 global.fetch = vi.fn();
 
@@ -85,7 +102,7 @@ describe.sequential("urlFetchJob", () => {
     // Setup mock payload with fresh mocks
     mockPayload = {
       find: vi.fn(),
-      findByID: vi.fn(),
+      findByID: vi.fn().mockResolvedValue(null), // Default to no user found
       create: vi.fn(),
       update: vi.fn(),
       jobs: {
