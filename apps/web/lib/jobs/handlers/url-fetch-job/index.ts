@@ -296,12 +296,20 @@ export const urlFetchJob = {
       // Prepare fetch options
       const { timeout, maxSize } = prepareFetchOptions(scheduledImport);
 
+      // Determine cache options - enable caching by default for scheduled imports
+      const cacheOptions = {
+        useCache: scheduledImport?.advancedOptions?.useHttpCache !== false,
+        bypassCache: input.triggeredBy === "manual" && scheduledImport?.advancedOptions?.bypassCacheOnManual === true,
+        respectCacheControl: scheduledImport?.advancedOptions?.respectCacheControl !== false,
+      };
+
       // Fetch data with retry
       const fetchResult = await fetchWithRetry(input.sourceUrl, {
         authHeaders,
         timeout,
         maxSize,
         retryConfig: scheduledImport?.retryConfig,
+        cacheOptions,
       });
 
       logger.info("URL fetch successful", {

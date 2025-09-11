@@ -27,6 +27,7 @@ import { MainMenu } from "@/lib/globals/main-menu";
 // Import jobs
 import {
   analyzeDuplicatesJob,
+  cacheCleanupJob,
   cleanupApprovalLocksJob,
   cleanupStuckScheduledImportsJob,
   createEventsBatchJob,
@@ -93,6 +94,7 @@ export const ALL_JOBS = [
   scheduleManagerJob,
   cleanupStuckScheduledImportsJob,
   quotaResetJobConfig,
+  cacheCleanupJob,
 ];
 
 // Default collections for different environments

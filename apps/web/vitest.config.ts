@@ -14,6 +14,7 @@ import baseConfig from "./vitest.config.base";
 
 // Detect if we're running unit tests based on the command arguments
 const isUnitTest = process.argv.some((arg) => arg.includes("tests/unit"));
+const isIntegrationTest = process.argv.some((arg) => arg.includes("tests/integration"));
 
 export default defineConfig({
   ...baseConfig,
@@ -21,7 +22,7 @@ export default defineConfig({
   cacheDir: "node_modules/.vite",
   test: {
     globals: true,
-    environment: "jsdom",
+    environment: isIntegrationTest ? "node" : "jsdom",
     exclude: ["**/node_modules/**"],
     setupFiles: ["tests/setup/setup.ts"],
     testTimeout: isUnitTest ? 10000 : 30000, // Shorter timeout for unit tests

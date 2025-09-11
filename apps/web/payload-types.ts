@@ -132,6 +132,7 @@ export interface Config {
       'schedule-manager': TaskScheduleManager;
       'cleanup-stuck-scheduled-imports': TaskCleanupStuckScheduledImports;
       'quota-reset': TaskQuotaReset;
+      'cache-cleanup': TaskCacheCleanup;
       inline: {
         input: unknown;
         output: unknown;
@@ -1134,6 +1135,18 @@ export interface ScheduledImport {
      * Maximum file size in MB (leave empty for no limit)
      */
     maxFileSizeMB?: number | null;
+    /**
+     * Enable HTTP caching for URL responses
+     */
+    useHttpCache?: boolean | null;
+    /**
+     * Bypass cache when manually triggering the import
+     */
+    bypassCacheOnManual?: boolean | null;
+    /**
+     * Respect Cache-Control headers from the server
+     */
+    respectCacheControl?: boolean | null;
   };
   /**
    * Last execution time
@@ -1722,7 +1735,8 @@ export interface PayloadJob {
           | 'url-fetch'
           | 'schedule-manager'
           | 'cleanup-stuck-scheduled-imports'
-          | 'quota-reset';
+          | 'quota-reset'
+          | 'cache-cleanup';
         taskID: string;
         input?:
           | {
@@ -1770,6 +1784,7 @@ export interface PayloadJob {
         | 'schedule-manager'
         | 'cleanup-stuck-scheduled-imports'
         | 'quota-reset'
+        | 'cache-cleanup'
       )
     | null;
   queue?: string | null;
@@ -2200,6 +2215,9 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
         skipDuplicateChecking?: T;
         autoApproveSchema?: T;
         maxFileSizeMB?: T;
+        useHttpCache?: T;
+        bypassCacheOnManual?: T;
+        respectCacheControl?: T;
       };
   lastRun?: T;
   nextRun?: T;
@@ -2723,6 +2741,14 @@ export interface TaskCleanupStuckScheduledImports {
  * via the `definition` "TaskQuota-reset".
  */
 export interface TaskQuotaReset {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskCache-cleanup".
+ */
+export interface TaskCacheCleanup {
   input?: unknown;
   output?: unknown;
 }

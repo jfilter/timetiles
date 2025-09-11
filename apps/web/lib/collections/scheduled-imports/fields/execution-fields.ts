@@ -90,6 +90,30 @@ export const executionFields: Field[] = [
           description: "Maximum file size in MB (leave empty for no limit)",
         },
       },
+      {
+        name: "useHttpCache",
+        type: "checkbox",
+        defaultValue: true,
+        admin: {
+          description: "Enable HTTP caching for URL responses",
+        },
+      },
+      {
+        name: "bypassCacheOnManual",
+        type: "checkbox",
+        defaultValue: false,
+        admin: {
+          description: "Bypass cache when manually triggering the import",
+        },
+      },
+      {
+        name: "respectCacheControl",
+        type: "checkbox",
+        defaultValue: true,
+        admin: {
+          description: "Respect Cache-Control headers from the server",
+        },
+      },
     ],
   },
 
