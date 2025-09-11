@@ -264,8 +264,17 @@ export const enum__events_v_version_validation_status = db_schema.enum("enum__ev
 ]);
 export const enum__events_v_version_status = db_schema.enum("enum__events_v_version_status", ["draft", "published"]);
 export const enum_users_role = db_schema.enum("enum_users_role", ["user", "admin", "editor"]);
+export const enum_users_trust_level = db_schema.enum("enum_users_trust_level", ["0", "1", "2", "3", "4", "5"]);
 export const enum_users_status = db_schema.enum("enum_users_status", ["draft", "published"]);
 export const enum__users_v_version_role = db_schema.enum("enum__users_v_version_role", ["user", "admin", "editor"]);
+export const enum__users_v_version_trust_level = db_schema.enum("enum__users_v_version_trust_level", [
+  "0",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+]);
 export const enum__users_v_version_status = db_schema.enum("enum__users_v_version_status", ["draft", "published"]);
 export const enum_media_status = db_schema.enum("enum_media_status", ["draft", "published"]);
 export const enum__media_v_version_status = db_schema.enum("enum__media_v_version_status", ["draft", "published"]);
@@ -339,6 +348,8 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum("enum_payload_jobs
   "url-fetch",
   "schedule-manager",
   "cleanup-stuck-scheduled-imports",
+  "quota-reset",
+  "cache-cleanup",
 ]);
 export const enum_payload_jobs_log_state = db_schema.enum("enum_payload_jobs_log_state", ["failed", "succeeded"]);
 export const enum_payload_jobs_task_slug = db_schema.enum("enum_payload_jobs_task_slug", [
@@ -354,6 +365,8 @@ export const enum_payload_jobs_task_slug = db_schema.enum("enum_payload_jobs_tas
   "url-fetch",
   "schedule-manager",
   "cleanup-stuck-scheduled-imports",
+  "quota-reset",
+  "cache-cleanup",
 ]);
 export const enum_main_menu_status = db_schema.enum("enum_main_menu_status", ["draft", "published"]);
 export const enum__main_menu_v_version_status = db_schema.enum("enum__main_menu_v_version_status", [
@@ -1415,6 +1428,9 @@ export const scheduled_imports = db_schema.table(
     advancedOptions_skipDuplicateChecking: boolean("advanced_options_skip_duplicate_checking").default(false),
     advancedOptions_autoApproveSchema: boolean("advanced_options_auto_approve_schema").default(false),
     advancedOptions_maxFileSizeMB: numeric("advanced_options_max_file_size_m_b"),
+    advancedOptions_useHttpCache: boolean("advanced_options_use_http_cache").default(true),
+    advancedOptions_bypassCacheOnManual: boolean("advanced_options_bypass_cache_on_manual").default(false),
+    advancedOptions_respectCacheControl: boolean("advanced_options_respect_cache_control").default(true),
     lastRun: timestamp("last_run", { mode: "string", withTimezone: true, precision: 3 }),
     nextRun: timestamp("next_run", { mode: "string", withTimezone: true, precision: 3 }),
     lastStatus: enum_scheduled_imports_last_status("last_status"),
@@ -1538,6 +1554,13 @@ export const _scheduled_imports_v = db_schema.table(
     ),
     version_advancedOptions_autoApproveSchema: boolean("version_advanced_options_auto_approve_schema").default(false),
     version_advancedOptions_maxFileSizeMB: numeric("version_advanced_options_max_file_size_m_b"),
+    version_advancedOptions_useHttpCache: boolean("version_advanced_options_use_http_cache").default(true),
+    version_advancedOptions_bypassCacheOnManual: boolean("version_advanced_options_bypass_cache_on_manual").default(
+      false
+    ),
+    version_advancedOptions_respectCacheControl: boolean("version_advanced_options_respect_cache_control").default(
+      true
+    ),
     version_lastRun: timestamp("version_last_run", { mode: "string", withTimezone: true, precision: 3 }),
     version_nextRun: timestamp("version_next_run", { mode: "string", withTimezone: true, precision: 3 }),
     version_lastStatus: enum__scheduled_imports_v_version_last_status("version_last_status"),
@@ -1788,6 +1811,21 @@ export const users = db_schema.table(
     role: enum_users_role("role").default("user"),
     isActive: boolean("is_active").default(true),
     lastLoginAt: timestamp("last_login_at", { mode: "string", withTimezone: true, precision: 3 }),
+    trustLevel: enum_users_trust_level("trust_level").default("2"),
+    quotas_maxActiveSchedules: numeric("quotas_max_active_schedules"),
+    quotas_maxUrlFetchesPerDay: numeric("quotas_max_url_fetches_per_day"),
+    quotas_maxFileUploadsPerDay: numeric("quotas_max_file_uploads_per_day"),
+    quotas_maxEventsPerImport: numeric("quotas_max_events_per_import"),
+    quotas_maxTotalEvents: numeric("quotas_max_total_events"),
+    quotas_maxImportJobsPerDay: numeric("quotas_max_import_jobs_per_day"),
+    quotas_maxFileSizeMB: numeric("quotas_max_file_size_m_b"),
+    usage_currentActiveSchedules: numeric("usage_current_active_schedules"),
+    usage_urlFetchesToday: numeric("usage_url_fetches_today"),
+    usage_fileUploadsToday: numeric("usage_file_uploads_today"),
+    usage_importJobsToday: numeric("usage_import_jobs_today"),
+    usage_totalEventsCreated: numeric("usage_total_events_created"),
+    usage_lastResetDate: timestamp("usage_last_reset_date", { mode: "string", withTimezone: true, precision: 3 }),
+    customQuotas: jsonb("custom_quotas"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
@@ -1846,6 +1884,25 @@ export const _users_v = db_schema.table(
     version_role: enum__users_v_version_role("version_role").default("user"),
     version_isActive: boolean("version_is_active").default(true),
     version_lastLoginAt: timestamp("version_last_login_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_trustLevel: enum__users_v_version_trust_level("version_trust_level").default("2"),
+    version_quotas_maxActiveSchedules: numeric("version_quotas_max_active_schedules"),
+    version_quotas_maxUrlFetchesPerDay: numeric("version_quotas_max_url_fetches_per_day"),
+    version_quotas_maxFileUploadsPerDay: numeric("version_quotas_max_file_uploads_per_day"),
+    version_quotas_maxEventsPerImport: numeric("version_quotas_max_events_per_import"),
+    version_quotas_maxTotalEvents: numeric("version_quotas_max_total_events"),
+    version_quotas_maxImportJobsPerDay: numeric("version_quotas_max_import_jobs_per_day"),
+    version_quotas_maxFileSizeMB: numeric("version_quotas_max_file_size_m_b"),
+    version_usage_currentActiveSchedules: numeric("version_usage_current_active_schedules"),
+    version_usage_urlFetchesToday: numeric("version_usage_url_fetches_today"),
+    version_usage_fileUploadsToday: numeric("version_usage_file_uploads_today"),
+    version_usage_importJobsToday: numeric("version_usage_import_jobs_today"),
+    version_usage_totalEventsCreated: numeric("version_usage_total_events_created"),
+    version_usage_lastResetDate: timestamp("version_usage_last_reset_date", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    }),
+    version_customQuotas: jsonb("version_custom_quotas"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
@@ -3442,8 +3499,10 @@ type DatabaseSchema = {
   enum__events_v_version_validation_status: typeof enum__events_v_version_validation_status;
   enum__events_v_version_status: typeof enum__events_v_version_status;
   enum_users_role: typeof enum_users_role;
+  enum_users_trust_level: typeof enum_users_trust_level;
   enum_users_status: typeof enum_users_status;
   enum__users_v_version_role: typeof enum__users_v_version_role;
+  enum__users_v_version_trust_level: typeof enum__users_v_version_trust_level;
   enum__users_v_version_status: typeof enum__users_v_version_status;
   enum_media_status: typeof enum_media_status;
   enum__media_v_version_status: typeof enum__media_v_version_status;
