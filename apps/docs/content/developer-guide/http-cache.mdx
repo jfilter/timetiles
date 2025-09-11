@@ -1,0 +1,95 @@
+# HTTP Cache
+
+The HTTP cache system optimizes URL fetch operations by storing responses to reduce redundant network requests and improve performance.
+
+## Overview
+
+The cache system intercepts URL fetch requests from scheduled imports and caches successful responses. This significantly reduces API rate limit consumption and improves import performance.
+
+## Cache Backends
+
+### File System Cache (Default)
+- Stores responses on disk at `.cache/http/`
+- Persistent across server restarts
+- Configurable size limits and TTL
+- Automatic cleanup of expired entries
+
+### Memory Cache
+- LRU (Least Recently Used) eviction policy
+- Fast access times
+- Lost on server restart
+- Best for development/testing
+
+## Configuration
+
+Environment variables:
+
+```bash
+# Cache backend type
+HTTP_CACHE_BACKEND=file  # or 'memory'
+
+# File cache settings
+HTTP_CACHE_DIR=.cache/http
+HTTP_CACHE_MAX_SIZE=1073741824  # 1GB in bytes
+HTTP_CACHE_MAX_AGE=86400        # 24 hours in seconds
+
+# Memory cache settings
+HTTP_CACHE_MAX_ENTRIES=1000
+HTTP_CACHE_MEMORY_SIZE=104857600  # 100MB in bytes
+```
+
+## Cache Headers
+
+The cache respects standard HTTP cache headers:
+
+- `Cache-Control: no-cache` - Bypasses cache
+- `Cache-Control: max-age=N` - Sets TTL in seconds
+- `ETag` - Validates cached responses
+- `Last-Modified` - Checks for updates
+
+## Cache Keys
+
+Cache keys are generated from:
+- URL (normalized)
+- HTTP method
+- Request headers (if specified)
+
+## Statistics
+
+Monitor cache performance via logs:
+
+```
+[HTTP_CACHE] Cache hit for https://api.example.com/data
+[HTTP_CACHE] Cache miss for https://api.example.com/live
+[HTTP_CACHE] Cache stats: 245 hits, 12 misses, 95.3% hit rate
+```
+
+## API Integration
+
+The cache is automatically integrated with:
+- Scheduled imports (`/api/import/scheduled`)
+- URL fetch jobs
+- External data source imports
+
+## Cache Management
+
+### Clear Cache
+
+Remove all cached entries:
+
+```bash
+rm -rf .cache/http/*
+```
+
+### Cache Inspection
+
+View cached files:
+
+```bash
+ls -la .cache/http/
+```
+
+Each cached entry includes:
+- Response body
+- Headers
+- Metadata (timestamp, TTL, size)
