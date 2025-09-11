@@ -518,7 +518,6 @@ const ImportJobs: CollectionConfig = {
       },
     ],
     afterChange: [
-      // eslint-disable-next-line sonarjs/no-invariant-returns -- afterChange hooks must return the document
       async ({ doc, previousDoc, req, operation }) => {
         // Track import job creation for quota
         if (operation === "create") {

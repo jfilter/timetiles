@@ -205,19 +205,7 @@ const processEventBatch = async (
 const markJobCompleted = async (
   payload: Payload,
   importJobId: string | number,
-  job: {
-    progress?: { current?: number | null };
-    duplicates?: {
-      summary?: {
-        internalDuplicates?: number | null;
-        externalDuplicates?: number | null;
-        totalRows?: number | null;
-        uniqueRows?: number | null;
-      };
-    };
-    errors?: unknown[];
-    geocodingResults?: unknown;
-  },
+  job: ImportJob,
   eventsCreated: number
 ) => {
   const currentProgress = job.progress?.current ?? 0;
@@ -376,17 +364,7 @@ const handleBatchCompletion = async (
   hasMore: boolean
 ) => {
   if (!hasMore) {
-    await markJobCompleted(
-      payload,
-      importJobId,
-      {
-        progress: job.progress,
-        duplicates: job.duplicates,
-        errors: job.errors ?? undefined,
-        geocodingResults: job.geocodingResults,
-      },
-      eventsCreated
-    );
+    await markJobCompleted(payload, importJobId, job, eventsCreated);
     const importFileId = typeof job.importFile === "object" ? job.importFile.id : job.importFile;
     await updateImportFileStatusIfAllJobsComplete(payload, importFileId);
     return;
@@ -416,6 +394,42 @@ const handleJobError = async (payload: Payload, importJobId: string | number, ba
   });
 };
 
+const checkEventQuotaForFirstBatch = async (
+  payload: Payload,
+  importFile: ImportFile,
+  job: ImportJob,
+  batchNumber: number
+): Promise<void> => {
+  // Only check quota on first batch
+  if (batchNumber !== 0 || !importFile?.user) {
+    return;
+  }
+
+  const { getPermissionService } = await import("@/lib/services/permission-service");
+  const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
+
+  const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
+  const user =
+    typeof importFile.user === "object" ? importFile.user : await payload.findByID({ collection: "users", id: userId });
+
+  if (!user) {
+    return;
+  }
+
+  const permissionService = getPermissionService(payload);
+  const totalRows = job.progress?.total ?? 0;
+
+  // Check if this import would exceed the per-import limit
+  const quotaCheck = await permissionService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, totalRows);
+
+  if (!quotaCheck.allowed) {
+    throw new Error(
+      `Import exceeds maximum events per import (${totalRows} > ${quotaCheck.limit}). ` +
+        `Please split your data into smaller files.`
+    );
+  }
+};
+
 export const createEventsBatchJob = {
   slug: JOB_TYPES.CREATE_EVENTS,
   handler: async (context: JobHandlerContext) => {
@@ -432,34 +446,7 @@ export const createEventsBatchJob = {
       const { job, dataset, importFile } = await getJobResources(payload, importJobId);
 
       // Check EVENTS_PER_IMPORT quota before processing
-      if (importFile?.user && batchNumber === 0) {
-        const { getPermissionService } = await import("@/lib/services/permission-service");
-        const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
-
-        const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
-
-        const user =
-          typeof importFile.user === "object"
-            ? importFile.user
-            : await payload.findByID({ collection: "users", id: userId });
-
-        if (user) {
-          const permissionService = getPermissionService(payload);
-
-          // Get the total rows for this import from progress
-          const totalRows = job.progress?.total ?? 0;
-
-          // Check if this import would exceed the per-import limit
-          const quotaCheck = await permissionService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, totalRows);
-
-          if (!quotaCheck.allowed) {
-            throw new Error(
-              `Import exceeds maximum events per import (${totalRows} > ${quotaCheck.limit}). ` +
-                `Please split your data into smaller files.`
-            );
-          }
-        }
-      }
+      await checkEventQuotaForFirstBatch(payload, importFile, job, batchNumber);
 
       const { rows, eventsCreated, eventsSkipped, errors } = await processBatchData(
         payload,
@@ -470,23 +457,14 @@ export const createEventsBatchJob = {
         logger
       );
 
+      // Handle empty batch (end of file)
       if (rows.length === 0) {
-        await markJobCompleted(
-          payload,
-          importJobId,
-          {
-            progress: job.progress,
-            duplicates: job.duplicates,
-            errors: job.errors ?? undefined,
-            geocodingResults: job.geocodingResults,
-          },
-          0
-        );
+        await markJobCompleted(payload, importJobId, job, 0);
         return { output: { completed: true } };
       }
 
+      // Update progress and continue
       await updateJobProgress(payload, importJobId, job, eventsCreated, errors);
-
       const hasMore = rows.length === BATCH_SIZES.EVENT_CREATION;
       await handleBatchCompletion(payload, job, importJobId, batchNumber, eventsCreated, hasMore);
 
