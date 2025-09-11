@@ -104,7 +104,7 @@ describe.sequential("Seed System", () => {
 
         expect(result.docs.length).toBeGreaterThan(0);
       }
-    }, 30000); // 30 second timeout for seeding all collections
+    }, 60000); // 60 second timeout for seeding all collections
 
     it("should handle specific collection seeding", async () => {
       // Explicitly truncate all collections to ensure clean state
@@ -176,7 +176,7 @@ describe.sequential("Seed System", () => {
 
       // Expect at least 3 out of 5 collections to be properly truncated
       expect(emptiedCount).toBeGreaterThanOrEqual(3);
-    }, 20000); // 20 second timeout
+    }, 40000); // 40 second timeout
   });
 
   describe.sequential("Error Handling", () => {

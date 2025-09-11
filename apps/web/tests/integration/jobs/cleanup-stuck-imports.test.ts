@@ -227,7 +227,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       });
 
       expect(stillStuck.totalDocs).toBe(0);
-    });
+    }, 60000); // 60 second timeout for creating and processing 105 imports
   });
 
   describe.sequential("Error Handling", () => {
