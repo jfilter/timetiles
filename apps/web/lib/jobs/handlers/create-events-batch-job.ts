@@ -18,8 +18,10 @@ import path from "path";
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/permission-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
+import { getPermissionService } from "@/lib/services/permission-service";
 import { getGeocodingResultForRow, getGeocodingResults } from "@/lib/types/geocoding";
 import { readBatchFromFile } from "@/lib/utils/file-readers";
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
@@ -242,8 +244,6 @@ const markJobCompleted = async (
       });
 
       if (importFile?.user) {
-        const { getPermissionService } = await import("@/lib/services/permission-service");
-        const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
         const logger = createJobLogger(String(importJobId), "create-events-batch");
 
         const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
@@ -404,9 +404,6 @@ const checkEventQuotaForFirstBatch = async (
   if (batchNumber !== 0 || !importFile?.user) {
     return;
   }
-
-  const { getPermissionService } = await import("@/lib/services/permission-service");
-  const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
 
   const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
   const user =

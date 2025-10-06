@@ -13,8 +13,10 @@ import type { Payload } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
 import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/import-constants";
+import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/permission-constants";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
+import { getPermissionService } from "@/lib/services/permission-service";
 import type { ScheduledImport } from "@/payload-types";
 
 import { buildAuthHeaders } from "./auth";
@@ -257,9 +259,6 @@ export const urlFetchJob = {
       // Check URL fetch quota for the user
       const userId = input.userId ?? scheduledImport?.createdBy;
       if (userId) {
-        const { getPermissionService } = await import("@/lib/services/permission-service");
-        const { QUOTA_TYPES, USAGE_TYPES } = await import("@/lib/constants/permission-constants");
-
         // Get the user
         const user = typeof userId === "object" ? userId : await payload.findByID({ collection: "users", id: userId });
 

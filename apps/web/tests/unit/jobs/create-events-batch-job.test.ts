@@ -18,6 +18,11 @@ const mocks = vi.hoisted(() => {
 
 // Mock external dependencies
 vi.mock("@/lib/logger", () => ({
+  createLogger: vi.fn(() => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  })),
   createJobLogger: vi.fn(() => ({
     info: vi.fn(),
     warn: vi.fn(),

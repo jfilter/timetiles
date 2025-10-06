@@ -16,13 +16,14 @@ import path from "path";
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { QUOTA_TYPES } from "@/lib/constants/permission-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
+import { getPermissionService } from "@/lib/services/permission-service";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { SchemaVersioningService } from "@/lib/services/schema-versioning";
 import { getSchemaBuilderState } from "@/lib/types/schema-detection";
 import { readBatchFromFile } from "@/lib/utils/file-readers";
-import type { User } from "@/payload-types";
-import type { ImportJob } from "@/payload-types";
+import type { ImportJob, User } from "@/payload-types";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
@@ -181,9 +182,6 @@ const handleSchemaApproval = async (
  * Check quota limits for the import
  */
 const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, jobIdTyped: number): Promise<void> => {
-  const { getPermissionService } = await import("@/lib/services/permission-service");
-  const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
-
   const permissionService = getPermissionService(payload);
 
   // Calculate total events to be imported (considering duplicates)
