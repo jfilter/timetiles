@@ -6,7 +6,7 @@
  */
 
 export { Cache } from "./cache";
-export { getHttpCache, HttpCache } from "./http-cache";
+export { getUrlFetchCache, UrlFetchCache } from "./url-fetch-cache";
 export { CacheBackend, CacheManager } from "./manager";
 export { FileSystemCacheStorage } from "./storage/file-system";
 export { MemoryCacheStorage } from "./storage/memory";
@@ -18,9 +18,9 @@ export type {
   CacheStats,
   CacheStorage,
   FileSystemCacheOptions,
-  HttpCacheEntry,
-  HttpCacheMetadata,
-  HttpCacheOptions,
+  UrlFetchCacheEntry,
+  UrlFetchCacheMetadata,
+  UrlFetchCacheOptions,
   MemoryCacheOptions,
   Serializer,
 } from "./types";

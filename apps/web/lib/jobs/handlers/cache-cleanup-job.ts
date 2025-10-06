@@ -11,7 +11,7 @@
 
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logger } from "@/lib/logger";
-import { getHttpCache } from "@/lib/services/cache";
+import { getUrlFetchCache } from "@/lib/services/cache";
 import { CacheManager } from "@/lib/services/cache/manager";
 
 export interface CacheCleanupJobInput {
@@ -26,6 +26,18 @@ export interface CacheCleanupJobInput {
  */
 export const cacheCleanupJob = {
   slug: "cache-cleanup",
+  /**
+   * Run every 6 hours to clean up expired cache entries
+   * Cron format: minute hour day month weekday
+   */
+  schedule: [
+    {
+      cron: "0 */6 * * *", // Every 6 hours at minute 0
+      queue: "maintenance",
+    },
+  ],
+  retries: 2,
+  waitUntil: 300000, // 5 minutes timeout
   handler: async (context: JobHandlerContext) => {
     const input = (context.input ?? context.job?.input) as CacheCleanupJobInput;
 
@@ -40,13 +52,13 @@ export const cacheCleanupJob = {
       const totalEvicted = 0;
       const results: Record<string, unknown> = {};
 
-      // Clean HTTP cache
-      const httpCache = getHttpCache();
-      const httpCleaned = await httpCache.clear();
-      totalCleaned += httpCleaned;
-      results.httpCache = {
-        cleaned: httpCleaned,
-        stats: await httpCache.getStats(),
+      // Clean URL fetch cache (for scheduled imports)
+      const urlFetchCache = getUrlFetchCache();
+      const urlFetchCleaned = await urlFetchCache.cleanup();
+      totalCleaned += urlFetchCleaned;
+      results.urlFetchCache = {
+        cleaned: urlFetchCleaned,
+        stats: await urlFetchCache.getStats(),
       };
 
       // Clean other cache instances if specified

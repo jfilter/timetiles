@@ -3,7 +3,7 @@
   "development": "Development Setup",
   "packages": "Packages",
   "rest-api": "REST API",
-  "http-cache": "HTTP Caching",
+  "url-fetch-cache": "URL Fetch Cache",
   "quotas": "Quotas & Resource Limits",
   "rate-limiting": "Rate Limiting"
 }

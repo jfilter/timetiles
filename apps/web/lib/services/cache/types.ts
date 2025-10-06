@@ -184,21 +184,21 @@ export interface FileSystemCacheOptions {
 }
 
 /**
- * HTTP-specific cache entry
+ * URL fetch cache entry (for scheduled URL imports)
  */
-export interface HttpCacheEntry {
+export interface UrlFetchCacheEntry {
   url: string;
   method: string;
   data: Buffer;
   headers: Record<string, string>;
   statusCode: number;
-  metadata: HttpCacheMetadata;
+  metadata: UrlFetchCacheMetadata;
 }
 
 /**
- * HTTP cache metadata
+ * URL fetch cache metadata
  */
-export interface HttpCacheMetadata {
+export interface UrlFetchCacheMetadata {
   etag?: string;
   lastModified?: string;
   expires?: Date;
@@ -209,9 +209,9 @@ export interface HttpCacheMetadata {
 }
 
 /**
- * Options for HTTP cache
+ * Options for URL fetch cache
  */
-export interface HttpCacheOptions {
+export interface UrlFetchCacheOptions {
   /** Use cache for this request */
   useCache?: boolean;
   /** Bypass cache and fetch fresh data */

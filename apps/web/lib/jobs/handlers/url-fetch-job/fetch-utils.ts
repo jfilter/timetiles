@@ -12,8 +12,8 @@ import crypto from "crypto";
 import path from "path";
 
 import { logger } from "@/lib/logger";
-import type { HttpCacheOptions } from "@/lib/services/cache";
-import { getHttpCache, type HttpCache } from "@/lib/services/cache";
+import type { UrlFetchCacheOptions } from "@/lib/services/cache";
+import { getUrlFetchCache, type UrlFetchCache } from "@/lib/services/cache";
 import type { ScheduledImport } from "@/payload-types";
 
 export interface FetchResult {
@@ -257,7 +257,7 @@ export const fetchUrlData = async (
  * Helper to perform a single fetch attempt with timeout
  */
 const performFetchWithTimeout = async (
-  httpCache: HttpCache,
+  urlFetchCache: UrlFetchCache,
   sourceUrl: string,
   fetchOpts: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean },
   timeout?: number
@@ -271,7 +271,7 @@ const performFetchWithTimeout = async (
   }
 
   try {
-    const response = await httpCache.fetch(sourceUrl, fetchOpts);
+    const response = await urlFetchCache.fetch(sourceUrl, fetchOpts);
     if (timeoutId) clearTimeout(timeoutId);
     return response;
   } catch (error) {
@@ -318,7 +318,7 @@ const buildCacheOptions = (
   authHeaders: Record<string, string>,
   fetchOptions: FetchOptions,
   useCache: boolean,
-  cacheOptions?: HttpCacheOptions
+  cacheOptions?: UrlFetchCacheOptions
 ): RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean } => {
   return {
     method: fetchOptions.method ?? "GET",
@@ -329,13 +329,13 @@ const buildCacheOptions = (
 };
 
 const processFetchResponse = async (
-  httpCache: HttpCache,
+  urlFetchCache: UrlFetchCache,
   sourceUrl: string,
   fetchOpts: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean },
   fetchOptions: FetchOptions,
   attempt: number
 ): Promise<FetchResult> => {
-  const cachedResponse = await performFetchWithTimeout(httpCache, sourceUrl, fetchOpts, fetchOptions.timeout);
+  const cachedResponse = await performFetchWithTimeout(urlFetchCache, sourceUrl, fetchOpts, fetchOptions.timeout);
 
   const cacheStatus = getCacheStatus(cachedResponse.headers);
   if (cacheStatus) {
@@ -361,7 +361,7 @@ export const fetchWithRetry = async (
   options: FetchOptions & {
     retryConfig?: ScheduledImport["retryConfig"];
     authHeaders?: Record<string, string>;
-    cacheOptions?: HttpCacheOptions;
+    cacheOptions?: UrlFetchCacheOptions;
   } = {}
 ): Promise<FetchResult> => {
   const { retryConfig, authHeaders = {}, cacheOptions, ...fetchOptions } = options;
@@ -370,7 +370,7 @@ export const fetchWithRetry = async (
   const useExponentialBackoff = retryConfig?.exponentialBackoff ?? true;
   const backoffMultiplier = useExponentialBackoff ? 2 : 1;
 
-  const httpCache = getHttpCache();
+  const urlFetchCache = getUrlFetchCache();
   const useCache = cacheOptions?.useCache !== false && !cacheOptions?.bypassCache;
 
   let lastError: Error | undefined;
@@ -386,7 +386,7 @@ export const fetchWithRetry = async (
       });
 
       const fetchOpts = buildCacheOptions(authHeaders, fetchOptions, useCache, cacheOptions);
-      return await processFetchResponse(httpCache, sourceUrl, fetchOpts, fetchOptions, attempt);
+      return await processFetchResponse(urlFetchCache, sourceUrl, fetchOpts, fetchOptions, attempt);
     } catch (error) {
       lastError = error as Error;
       logger.warn(`Fetch attempt ${attempt} failed`, {

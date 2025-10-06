@@ -1,7 +1,9 @@
 /**
- * HTTP cache that works directly with buffers instead of Response objects.
- * Provides advanced features like ETags, conditional requests, and Cache-Control directives
- * while avoiding the complexity of Response body handling in Node.js.
+ * URL fetch cache for scheduled imports.
+ *
+ * Caches HTTP responses from external URLs with support for ETags, conditional requests,
+ * and Cache-Control directives. Works directly with buffers instead of Response objects
+ * to avoid complexity of Response body handling in Node.js.
  *
  * @module
  * @category Services/Cache
@@ -34,17 +36,17 @@ interface CachedEntry {
   };
 }
 
-export class HttpCache {
+export class UrlFetchCache {
   private readonly cache: Cache;
   private readonly defaultTTL: number;
   private readonly respectCacheControl: boolean;
 
   constructor() {
     // eslint-disable-next-line sonarjs/publicly-writable-directories
-    const cacheDir = process.env.HTTP_CACHE_DIR ?? "/tmp/http-cache";
-    const maxSize = parseInt(process.env.HTTP_CACHE_MAX_SIZE ?? "104857600", 10);
-    this.defaultTTL = parseInt(process.env.HTTP_CACHE_TTL ?? "3600", 10);
-    this.respectCacheControl = process.env.HTTP_CACHE_RESPECT_CACHE_CONTROL !== "false";
+    const cacheDir = process.env.URL_FETCH_CACHE_DIR ?? "/tmp/url-fetch-cache";
+    const maxSize = parseInt(process.env.URL_FETCH_CACHE_MAX_SIZE ?? "104857600", 10);
+    this.defaultTTL = parseInt(process.env.URL_FETCH_CACHE_TTL ?? "3600", 10);
+    this.respectCacheControl = process.env.URL_FETCH_CACHE_RESPECT_CACHE_CONTROL !== "false";
 
     const storage = new FileSystemCacheStorage({
       cacheDir,
@@ -353,8 +355,50 @@ export class HttpCache {
     });
   }
 
+  /**
+   * Normalize URL for consistent cache keys
+   */
+  private normalizeUrl(url: string): string {
+    try {
+      const parsed = new URL(url);
+
+      // Lowercase hostname
+      parsed.hostname = parsed.hostname.toLowerCase();
+
+      // Remove default ports
+      if ((parsed.protocol === "http:" && parsed.port === "80") ||
+          (parsed.protocol === "https:" && parsed.port === "443")) {
+        parsed.port = "";
+      }
+
+      // Remove trailing slash from pathname (but keep "/" for root)
+      if (parsed.pathname !== "/" && parsed.pathname.endsWith("/")) {
+        parsed.pathname = parsed.pathname.slice(0, -1);
+      }
+
+      // Sort query parameters alphabetically
+      if (parsed.search) {
+        const params = new URLSearchParams(parsed.search);
+        const sortedParams = new URLSearchParams(
+          Array.from(params.entries()).sort(([a], [b]) => a.localeCompare(b))
+        );
+        parsed.search = sortedParams.toString();
+      }
+
+      // Remove fragment (hash)
+      parsed.hash = "";
+
+      return parsed.toString();
+    } catch (error) {
+      // If URL parsing fails, return original URL
+      logger.warn("Failed to normalize URL, using original", { url, error });
+      return url;
+    }
+  }
+
   private getCacheKey(url: string, method: string): string {
-    return `${method}:${url}`;
+    const normalizedUrl = this.normalizeUrl(url);
+    return `${method}:${normalizedUrl}`;
   }
 
   private isCacheable(status: number, headers: Record<string, string>): boolean {
@@ -370,17 +414,21 @@ export class HttpCache {
     return this.cache.clear();
   }
 
+  async cleanup(): Promise<number> {
+    return this.cache.cleanup();
+  }
+
   async getStats() {
     return this.cache.getStats();
   }
 }
 
 // Singleton instance
-let instance: HttpCache | null = null;
+let instance: UrlFetchCache | null = null;
 
-export const getHttpCache = (): HttpCache => {
+export const getUrlFetchCache = (): UrlFetchCache => {
   if (!instance) {
-    instance = new HttpCache();
+    instance = new UrlFetchCache();
   }
   return instance;
 };

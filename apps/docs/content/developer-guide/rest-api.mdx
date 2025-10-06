@@ -537,7 +537,7 @@ Paginated endpoints support standard pagination parameters:
 
 ### Caching
 
-The API uses HTTP caching for performance. See [HTTP Cache](/developer-guide/http-cache) for details.
+The API uses URL fetch caching for scheduled imports. See [URL Fetch Cache](/developer-guide/url-fetch-cache) for details.
 
 ### Geospatial Queries
 
@@ -647,5 +647,5 @@ console.log(`Total events: ${metadata.total}`);
 
 - [Rate Limiting](/developer-guide/rate-limiting) - Burst protection and request limits
 - [Quotas](/developer-guide/quotas) - Long-term resource limits and trust levels
-- [HTTP Cache](/developer-guide/http-cache) - Caching strategy and performance
+- [URL Fetch Cache](/developer-guide/url-fetch-cache) - Caching for scheduled URL imports
 - [API Reference](/reference/api) - Auto-generated TypeScript documentation

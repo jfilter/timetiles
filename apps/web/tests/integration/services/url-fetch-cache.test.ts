@@ -1,8 +1,9 @@
 /**
- * Integration tests for HTTP cache functionality.
+ * Integration tests for URL fetch cache functionality.
  *
- * These tests verify the HTTP cache works with real HTTP requests
- * to test endpoints without mocking.
+ * These tests verify the URL fetch cache works with real HTTP requests
+ * to test endpoints without mocking. Tests URL normalization, caching behavior,
+ * ETags, Cache-Control headers, and conditional requests.
  *
  * @module
  * @category Services/Cache/Tests
@@ -11,11 +12,11 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { fetchWithRetry } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
-import { getHttpCache } from "@/lib/services/cache";
+import { getUrlFetchCache } from "@/lib/services/cache";
 import { TestServer } from "@/tests/setup/test-server";
 
 describe.sequential("HTTP Cache Integration", () => {
-  const httpCache = getHttpCache();
+  const urlFetchCache = getUrlFetchCache();
   let testServer: TestServer;
   let serverUrl: string;
 
@@ -71,12 +72,12 @@ describe.sequential("HTTP Cache Integration", () => {
 
   beforeEach(async () => {
     // Clear cache before each test
-    await httpCache.clear();
+    await urlFetchCache.clear();
   });
 
   afterEach(async () => {
     // Clean up after tests
-    await httpCache.clear();
+    await urlFetchCache.clear();
   });
 
   describe("Real HTTP requests", () => {
@@ -214,7 +215,7 @@ describe.sequential("HTTP Cache Integration", () => {
       expect(jsonCached.cacheStatus).toBe("HIT");
 
       // Clear all cache
-      const cleared = await httpCache.clear();
+      const cleared = await urlFetchCache.clear();
       expect(cleared).toBeGreaterThan(0);
 
       // JSON endpoint should no longer be cached
@@ -233,7 +234,7 @@ describe.sequential("HTTP Cache Integration", () => {
         cacheOptions: { useCache: true },
       }); // Hit
 
-      const stats = await httpCache.getStats();
+      const stats = await urlFetchCache.getStats();
       expect(stats.entries).toBeGreaterThan(0);
       expect(stats.hits).toBeGreaterThan(0);
     });
@@ -338,6 +339,73 @@ describe.sequential("HTTP Cache Integration", () => {
       expect(time1 / time2).toBeGreaterThan(10);
 
       console.log(`Network: ${time1}ms, Cached: ${time2}ms, Speedup: ${Math.round(time1 / time2)}x`);
+    });
+  });
+
+  describe("URL Normalization", () => {
+    it("should normalize URLs with different casing", async () => {
+      const url1 = `${serverUrl.toUpperCase()}/json`;
+      const url2 = `${serverUrl.toLowerCase()}/json`;
+
+      // Fetch with uppercase hostname
+      const result1 = await fetchWithRetry(url1, {
+        cacheOptions: { useCache: true },
+      });
+      expect(result1.cacheStatus).toBe("MISS");
+
+      // Fetch with lowercase hostname - should hit cache
+      const result2 = await fetchWithRetry(url2, {
+        cacheOptions: { useCache: true },
+      });
+      expect(result2.cacheStatus).toBe("HIT");
+    });
+
+    it("should normalize URLs with trailing slashes", async () => {
+      const url1 = `${serverUrl}/json`;
+      const url2 = `${serverUrl}/json/`;
+
+      const result1 = await fetchWithRetry(url1, {
+        cacheOptions: { useCache: true },
+      });
+      expect(result1.cacheStatus).toBe("MISS");
+
+      // URL with trailing slash should hit same cache entry
+      const result2 = await fetchWithRetry(url2, {
+        cacheOptions: { useCache: true },
+      });
+      expect(result2.cacheStatus).toBe("HIT");
+    });
+
+    it("should normalize query parameters in different order", async () => {
+      const url1 = `${serverUrl}/get?b=2&a=1`;
+      const url2 = `${serverUrl}/get?a=1&b=2`;
+
+      const result1 = await fetchWithRetry(url1, {
+        cacheOptions: { useCache: true },
+      });
+      expect(result1.cacheStatus).toBe("MISS");
+
+      // Different param order should hit same cache entry
+      const result2 = await fetchWithRetry(url2, {
+        cacheOptions: { useCache: true },
+      });
+      expect(result2.cacheStatus).toBe("HIT");
+    });
+
+    it("should ignore URL fragments", async () => {
+      const url1 = `${serverUrl}/json`;
+      const url2 = `${serverUrl}/json#section`;
+
+      const result1 = await fetchWithRetry(url1, {
+        cacheOptions: { useCache: true },
+      });
+      expect(result1.cacheStatus).toBe("MISS");
+
+      // URL with fragment should hit same cache entry
+      const result2 = await fetchWithRetry(url2, {
+        cacheOptions: { useCache: true },
+      });
+      expect(result2.cacheStatus).toBe("HIT");
     });
   });
 });
