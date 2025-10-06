@@ -15,7 +15,7 @@
  * @module
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
 import { TestServer } from "@/tests/setup/test-server";
@@ -93,19 +93,6 @@ describe.sequential("Security Validation Tests", () => {
   afterAll(async () => {
     await testServer.stop();
     await cleanup();
-  });
-
-  beforeEach(async () => {
-    // Stop current server and create new one with fresh routes
-    const oldServer = testServer;
-    if (oldServer) {
-      await oldServer.stop();
-    }
-    const newServer = new TestServer();
-    const newUrl = await newServer.start();
-    // eslint-disable-next-line require-atomic-updates
-    testServer = newServer;
-    testServerUrl = newUrl;
   });
 
   describe("URL Validation and SSRF Prevention", () => {
@@ -466,32 +453,49 @@ describe.sequential("Security Validation Tests", () => {
       testServer.respondWithCSV("/admin.csv", "test,data\n1,2");
       testServer.respondWithCSV("/private-catalog.csv", "test,data\n1,2");
 
-      // Create a private catalog
+      // Create another user (admin2) who owns the private catalog
+      const admin2 = await payload.create({
+        collection: "users",
+        data: {
+          email: "admin2@test.com",
+          password: "password123",
+          role: "user",
+        },
+      });
+
+      // Create a private catalog owned by admin2
       const privateCatalog = await payload.create({
         collection: "catalogs",
         data: {
           name: "Private Catalog",
-          description: "Should not be accessible",
+          description: "Should not be accessible to regularUser",
+          isPublic: false,
         },
+        user: admin2,
+      });
+
+      // Fetch the full regular user object (needed for quota checks in access control)
+      const regularUser = await payload.findByID({
+        collection: "users",
+        id: regularUserId,
       });
 
       // Try to create scheduled import for private catalog as regular user
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Unauthorized Catalog Import",
-          sourceUrl: `${testServerUrl}/malicious-template.csv`,
-          enabled: true,
-          catalog: privateCatalog.id,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
-        user: { id: regularUserId, role: "user" } as any,
-      });
-
-      // Currently allows - in production should validate catalog access
-      // Catalog is returned as object, not just ID
-      expect(scheduledImport.catalog.id || scheduledImport.catalog).toBe(privateCatalog.id);
+      // This should fail because regularUser doesn't own the catalog
+      await expect(
+        payload.create({
+          collection: "scheduled-imports",
+          data: {
+            name: "Unauthorized Catalog Import",
+            sourceUrl: `${testServerUrl}/private-catalog.csv`,
+            enabled: true,
+            catalog: privateCatalog.id,
+            scheduleType: "frequency",
+            frequency: "daily",
+          },
+          user: regularUser,
+        })
+      ).rejects.toThrow();
     });
   });
 

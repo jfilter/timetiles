@@ -14,7 +14,12 @@
  */
 import type { CollectionConfig } from "payload";
 
-import { TRUST_LEVEL_DESCRIPTIONS, TRUST_LEVEL_LABELS, TRUST_LEVELS } from "@/lib/constants/permission-constants";
+import {
+  DEFAULT_QUOTAS,
+  TRUST_LEVEL_DESCRIPTIONS,
+  TRUST_LEVEL_LABELS,
+  TRUST_LEVELS,
+} from "@/lib/constants/permission-constants";
 
 import { createCommonConfig } from "./shared-fields";
 
@@ -242,10 +247,9 @@ const Users: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      async ({ data, operation, req: _req, originalDoc }) => {
+      ({ data, operation, req: _req, originalDoc }) => {
         // Auto-set quotas based on trust level ONLY when trust level actually changes
         if (operation === "update" && data?.trustLevel !== undefined && originalDoc?.trustLevel !== data.trustLevel) {
-          const { DEFAULT_QUOTAS } = await import("@/lib/constants/permission-constants");
           const trustLevel = Number(data.trustLevel);
           const defaultQuotas = DEFAULT_QUOTAS[trustLevel as keyof typeof DEFAULT_QUOTAS];
 
@@ -256,7 +260,6 @@ const Users: CollectionConfig = {
 
         // Initialize quotas and usage on user creation
         if (operation === "create") {
-          const { DEFAULT_QUOTAS } = await import("@/lib/constants/permission-constants");
           const trustLevel = Number(data?.trustLevel || TRUST_LEVELS.REGULAR);
           const defaultQuotas = DEFAULT_QUOTAS[trustLevel as keyof typeof DEFAULT_QUOTAS];
 

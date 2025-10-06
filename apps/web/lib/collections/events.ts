@@ -18,6 +18,8 @@
 import type { CollectionConfig } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
+import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/permission-constants";
+import { getPermissionService } from "@/lib/services/permission-service";
 
 import { createCommonConfig } from "./shared-fields";
 
@@ -42,11 +44,104 @@ const Events: CollectionConfig = {
     },
   },
   access: {
-    read: () => true,
-    create: () => true,
-    update: () => true,
-    delete: () => true,
-    readVersions: () => true,
+    // Events inherit access from their dataset and catalog
+    read: async ({ req, data }) => {
+      const { user } = req;
+      if (user?.role === "admin") return true;
+
+      if (data?.dataset) {
+        const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
+        const dataset = await req.payload.findByID({
+          collection: "datasets",
+          id: datasetId,
+        });
+
+        // Public dataset
+        if (dataset?.isPublic) return true;
+
+        // Check catalog
+        if (dataset?.catalog) {
+          const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
+          const catalog = await req.payload.findByID({
+            collection: "catalogs",
+            id: catalogId,
+          });
+
+          if (catalog?.isPublic) return true;
+
+          if (user && catalog?.createdBy) {
+            const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+            return user.id === createdById;
+          }
+        }
+      }
+
+      return false;
+    },
+
+    // Only authenticated users can create events (enforced via quota checks too)
+    create: ({ req: { user } }) => Boolean(user),
+
+    // Only catalog owner or admins can update
+    update: async ({ req, data }) => {
+      const { user } = req;
+      if (user?.role === "admin") return true;
+
+      if (user && data?.dataset) {
+        const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
+        const dataset = await req.payload.findByID({
+          collection: "datasets",
+          id: datasetId,
+        });
+
+        if (dataset?.catalog) {
+          const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
+          const catalog = await req.payload.findByID({
+            collection: "catalogs",
+            id: catalogId,
+          });
+
+          if (catalog?.createdBy) {
+            const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+            return user.id === createdById;
+          }
+        }
+      }
+
+      return false;
+    },
+
+    // Only catalog owner or admins can delete
+    delete: async ({ req, data }) => {
+      const { user } = req;
+      if (user?.role === "admin") return true;
+
+      if (user && data?.dataset) {
+        const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
+        const dataset = await req.payload.findByID({
+          collection: "datasets",
+          id: datasetId,
+        });
+
+        if (dataset?.catalog) {
+          const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
+          const catalog = await req.payload.findByID({
+            collection: "catalogs",
+            id: catalogId,
+          });
+
+          if (catalog?.createdBy) {
+            const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+            return user.id === createdById;
+          }
+        }
+      }
+
+      return false;
+    },
+
+    // Only admins can read version history
+    readVersions: ({ req: { user } }) => user?.role === "admin",
   },
   fields: [
     {
@@ -331,9 +426,6 @@ const Events: CollectionConfig = {
 
         // Only check quotas on creation
         if (operation === "create") {
-          const { getPermissionService } = await import("@/lib/services/permission-service");
-          const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
-
           const permissionService = getPermissionService(req.payload);
 
           // Check total events quota
@@ -354,9 +446,6 @@ const Events: CollectionConfig = {
       async ({ doc, operation, req }) => {
         // Track event creation
         if (operation === "create" && req.user && req.user.role !== "admin") {
-          const { getPermissionService } = await import("@/lib/services/permission-service");
-          const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
-
           const permissionService = getPermissionService(req.payload);
 
           // Increment total events counter

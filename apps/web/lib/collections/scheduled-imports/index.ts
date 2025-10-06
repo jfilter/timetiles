@@ -17,6 +17,8 @@
 
 import type { CollectionConfig, Payload } from "payload";
 
+import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/permission-constants";
+import { getPermissionService } from "@/lib/services/permission-service";
 import type { User } from "@/payload-types";
 
 import { createCommonConfig } from "../shared-fields";
@@ -48,8 +50,6 @@ const handleScheduleQuotaTracking = async ({
 
   if (!isCreate && !isUpdate) return data;
 
-  const { getPermissionService } = await import("@/lib/services/permission-service");
-  const { QUOTA_TYPES, USAGE_TYPES } = await import("@/lib/constants/permission-constants");
   const permissionService = getPermissionService(req.payload);
 
   // Handle update operations (enabling/disabling)
@@ -101,8 +101,6 @@ const ScheduledImports: CollectionConfig = {
       if (!user) return false;
 
       // Check quota for active schedules
-      const { getPermissionService } = await import("@/lib/services/permission-service");
-      const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
       const permissionService = getPermissionService(req.payload);
 
       const quotaCheck = await permissionService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES);
@@ -119,8 +117,6 @@ const ScheduledImports: CollectionConfig = {
       async ({ doc, operation, req, previousDoc: _previousDoc }) => {
         // Track usage after successful creation
         if (req.user && operation === "create" && doc.enabled !== false) {
-          const { getPermissionService } = await import("@/lib/services/permission-service");
-          const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
           const permissionService = getPermissionService(req.payload);
 
           await permissionService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
@@ -133,8 +129,6 @@ const ScheduledImports: CollectionConfig = {
       async ({ doc, req }) => {
         // Decrement usage when schedule is deleted
         if (req.user && doc.enabled) {
-          const { getPermissionService } = await import("@/lib/services/permission-service");
-          const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
           const permissionService = getPermissionService(req.payload);
 
           await permissionService.decrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
@@ -144,7 +138,27 @@ const ScheduledImports: CollectionConfig = {
       },
     ],
     beforeValidate: [
-      ({ data }) => {
+      // eslint-disable-next-line complexity
+      async ({ data, req }) => {
+        // Validate catalog access
+        if (data?.catalog && req.user) {
+          const catalogId = typeof data.catalog === "object" ? data.catalog.id : data.catalog;
+
+          try {
+            // Try to read the catalog with access control enforced
+            await req.payload.findByID({
+              collection: "catalogs",
+              id: catalogId,
+              user: req.user,
+              overrideAccess: false, // Enforce access control
+            });
+            // eslint-disable-next-line sonarjs/no-ignored-exceptions
+          } catch (_error) {
+            // Payload throws NotFound error when access is denied
+            throw new Error("You do not have permission to access this catalog");
+          }
+        }
+
         // Validate URL
         if (data?.sourceUrl) {
           const urlValidation = validateUrl(data.sourceUrl);

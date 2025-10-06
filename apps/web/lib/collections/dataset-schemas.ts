@@ -22,10 +22,52 @@ const DatasetSchemas: CollectionConfig = {
     description: "Schema versions for datasets with full change tracking",
   },
   access: {
-    read: () => true,
-    create: () => false, // Auto-generated during imports
+    // Schema access inherits from dataset access
+    read: async ({ req, data }) => {
+      const { user } = req;
+      if (user?.role === "admin") return true;
+
+      if (data?.dataset) {
+        const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
+        const dataset = await req.payload.findByID({
+          collection: "datasets",
+          id: datasetId,
+        });
+
+        // Public dataset
+        if (dataset?.isPublic) return true;
+
+        // Check catalog
+        if (dataset?.catalog) {
+          const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
+          const catalog = await req.payload.findByID({
+            collection: "catalogs",
+            id: catalogId,
+          });
+
+          if (catalog?.isPublic) return true;
+
+          if (user && catalog?.createdBy) {
+            const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+            return user.id === createdById;
+          }
+        }
+      }
+
+      return false;
+    },
+
+    // Auto-generated during imports - no manual creation
+    create: () => false,
+
+    // Only editors and admins can manually update schemas
     update: isEditorOrAdmin,
+
+    // Only editors and admins can delete schemas
     delete: isEditorOrAdmin,
+
+    // Only admins can read version history
+    readVersions: ({ req: { user } }) => user?.role === "admin",
   },
   fields: [
     {

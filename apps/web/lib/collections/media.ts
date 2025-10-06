@@ -42,15 +42,57 @@ const Media: CollectionConfig = {
   },
   admin: {
     useAsTitle: "filename",
-    defaultColumns: ["filename", "alt", "mimeType", "filesize", "createdAt"],
+    defaultColumns: ["filename", "alt", "mimeType", "filesize", "createdAt", "createdBy"],
   },
   access: {
-    read: () => true,
-    create: () => true,
-    update: () => true,
-    delete: () => true,
+    // Public media is readable by all, private media only by owner/admins
+    read: () => {
+      // For now, all media is readable (images used in public pages)
+      // Can be made stricter if private media uploads are needed
+      return true;
+    },
+
+    // Only authenticated users can upload media
+    create: ({ req: { user } }) => Boolean(user),
+
+    // Only owner or admins can update
+    update: ({ req: { user }, data }) => {
+      if (user?.role === "admin") return true;
+
+      if (user && data?.createdBy) {
+        const createdById = typeof data.createdBy === "object" ? data.createdBy.id : data.createdBy;
+        return user.id === createdById;
+      }
+
+      return false;
+    },
+
+    // Only owner or admins can delete
+    delete: ({ req: { user }, data }) => {
+      if (user?.role === "admin") return true;
+
+      if (user && data?.createdBy) {
+        const createdById = typeof data.createdBy === "object" ? data.createdBy.id : data.createdBy;
+        return user.id === createdById;
+      }
+
+      return false;
+    },
+
+    // Only admins can read version history
+    readVersions: ({ req: { user } }) => user?.role === "admin",
   },
   fields: [
+    {
+      name: "createdBy",
+      type: "relationship",
+      relationTo: "users",
+      admin: {
+        position: "sidebar",
+        readOnly: true,
+        description: "User who uploaded this media",
+      },
+    },
     {
       name: "alt",
       type: "text",
@@ -59,6 +101,17 @@ const Media: CollectionConfig = {
       },
     },
   ],
+  hooks: {
+    beforeChange: [
+      ({ data, req, operation }) => {
+        // Auto-set createdBy on creation
+        if (operation === "create" && req.user) {
+          data.createdBy = req.user.id;
+        }
+        return data;
+      },
+    ],
+  },
 };
 
 export default Media;

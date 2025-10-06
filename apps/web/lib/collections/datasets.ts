@@ -24,10 +24,83 @@ const Datasets: CollectionConfig = {
     defaultColumns: ["name", "catalog", "language", "isPublic"],
   },
   access: {
-    read: () => true,
-    create: () => true,
-    update: () => true,
-    delete: () => true,
+    // Public datasets or datasets in public catalogs can be read by anyone
+    // Private datasets require catalog ownership or admin
+    read: async ({ req, data }) => {
+      const { user } = req;
+
+      // Allow reading public datasets
+      if (data?.isPublic) return true;
+
+      // Allow admins to read all
+      if (user?.role === "admin") return true;
+
+      // Check catalog ownership for private datasets
+      if (data?.catalog) {
+        const catalogId = typeof data.catalog === "object" ? data.catalog.id : data.catalog;
+        const catalog = await req.payload.findByID({
+          collection: "catalogs",
+          id: catalogId,
+        });
+
+        if (catalog?.isPublic) return true;
+
+        if (user && catalog?.createdBy) {
+          const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+          return user.id === createdById;
+        }
+      }
+
+      return false;
+    },
+
+    // Only authenticated users can create datasets
+    create: ({ req: { user } }) => Boolean(user),
+
+    // Only catalog owner or admins can update
+    update: async ({ req, data }) => {
+      const { user } = req;
+      if (user?.role === "admin") return true;
+
+      if (user && data?.catalog) {
+        const catalogId = typeof data.catalog === "object" ? data.catalog.id : data.catalog;
+        const catalog = await req.payload.findByID({
+          collection: "catalogs",
+          id: catalogId,
+        });
+
+        if (catalog?.createdBy) {
+          const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+          return user.id === createdById;
+        }
+      }
+
+      return false;
+    },
+
+    // Only catalog owner or admins can delete
+    delete: async ({ req, data }) => {
+      const { user } = req;
+      if (user?.role === "admin") return true;
+
+      if (user && data?.catalog) {
+        const catalogId = typeof data.catalog === "object" ? data.catalog.id : data.catalog;
+        const catalog = await req.payload.findByID({
+          collection: "catalogs",
+          id: catalogId,
+        });
+
+        if (catalog?.createdBy) {
+          const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+          return user.id === createdById;
+        }
+      }
+
+      return false;
+    },
+
+    // Only admins can read version history
+    readVersions: ({ req: { user } }) => user?.role === "admin",
   },
   fields: [
     ...basicMetadataFields,

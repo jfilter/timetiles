@@ -18,13 +18,15 @@
 import type { CollectionConfig } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
+import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
+import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/permission-constants";
+
 import { createRequestLogger } from "../logger";
+import { getPermissionService } from "../services/permission-service";
 import { getClientIdentifier, getRateLimitService } from "../services/rate-limit-service";
+import { createCommonConfig } from "./shared-fields";
 
 const logger = createRequestLogger("import-files");
-import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
-
-import { createCommonConfig } from "./shared-fields";
 
 const ALLOWED_MIME_TYPES = [
   "text/csv",
@@ -61,13 +63,46 @@ const ImportFiles: CollectionConfig = {
   },
   admin: {
     useAsTitle: "originalName", // Use original user-friendly filename
-    defaultColumns: ["originalName", "catalog", "status", "datasetsCount", "createdAt"],
+    defaultColumns: ["originalName", "catalog", "status", "datasetsCount", "createdAt", "user"],
   },
   access: {
-    read: () => true,
-    create: () => true, // Enable creation for uploads
-    update: ({ req: { user } }) => Boolean(user),
-    delete: ({ req: { user } }) => Boolean(user?.role === "admin"),
+    // Import files can be read by their owner or admins
+    // Unauthenticated users can only read their own session files
+    read: ({ req: { user }, data }) => {
+      // Admins can read all
+      if (user?.role === "admin") return true;
+
+      // Authenticated users can read their own files
+      if (user && data?.user) {
+        const userId = typeof data.user === "object" ? data.user.id : data.user;
+        return user.id === userId;
+      }
+
+      // Unauthenticated users need sessionId match (handled in API layer)
+      // For now, deny unauthenticated admin panel access
+      return false;
+    },
+
+    // Anyone can create (upload) files (quota-checked in hooks)
+    create: () => true,
+
+    // Only file owner or admins can update
+    update: ({ req: { user }, data }) => {
+      if (user?.role === "admin") return true;
+
+      if (user && data?.user) {
+        const userId = typeof data.user === "object" ? data.user.id : data.user;
+        return user.id === userId;
+      }
+
+      return false;
+    },
+
+    // Only admins can delete
+    delete: ({ req: { user } }) => user?.role === "admin",
+
+    // Only admins can read version history
+    readVersions: ({ req: { user } }) => user?.role === "admin",
   },
   fields: [
     // Payload automatically adds filename, mimeType, filesize fields when upload is enabled
@@ -232,9 +267,6 @@ const ImportFiles: CollectionConfig = {
             if (!req.user) return null;
 
             try {
-              const { getPermissionService } = await import("@/lib/services/permission-service");
-              const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
-
               const permissionService = getPermissionService(req.payload);
 
               // Get multiple quota checks for comprehensive info
@@ -325,8 +357,6 @@ const ImportFiles: CollectionConfig = {
 
         // Check file upload quota
         if (user) {
-          const { getPermissionService } = await import("@/lib/services/permission-service");
-          const { QUOTA_TYPES } = await import("@/lib/constants/permission-constants");
           const permissionService = getPermissionService(req.payload);
 
           // Check daily file upload quota
@@ -437,8 +467,6 @@ const ImportFiles: CollectionConfig = {
 
         // Track file upload usage for authenticated users
         if (req.user) {
-          const { getPermissionService } = await import("@/lib/services/permission-service");
-          const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
           const permissionService = getPermissionService(req.payload);
 
           await permissionService.incrementUsage(req.user.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);

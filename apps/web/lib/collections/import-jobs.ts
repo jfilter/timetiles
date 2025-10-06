@@ -18,7 +18,9 @@
 import type { CollectionConfig, Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { USAGE_TYPES } from "@/lib/constants/permission-constants";
 import { logger } from "@/lib/logger";
+import { getPermissionService } from "@/lib/services/permission-service";
 import { StageTransitionService } from "@/lib/services/stage-transition";
 import type { ImportJob } from "@/payload-types";
 
@@ -78,10 +80,56 @@ const ImportJobs: CollectionConfig = {
     description: "Unified import processing pipeline",
   },
   access: {
-    read: () => true,
+    // Import jobs can be read by the import file owner or admins
+    read: async ({ req, data }) => {
+      const { user } = req;
+      if (user?.role === "admin") return true;
+
+      if (data?.importFile) {
+        const importFileId = typeof data.importFile === "object" ? data.importFile.id : data.importFile;
+        const importFile = await req.payload.findByID({
+          collection: "import-files",
+          id: importFileId,
+        });
+
+        if (user && importFile?.user) {
+          const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
+          return user.id === userId;
+        }
+      }
+
+      return false;
+    },
+
+    // Only authenticated users can create import jobs
     create: ({ req: { user } }) => Boolean(user),
-    update: ({ req: { user } }) => Boolean(user),
-    delete: ({ req: { user } }) => Boolean(user?.role === "admin"),
+
+    // Only import file owner or admins can update
+    update: async ({ req, data }) => {
+      const { user } = req;
+      if (user?.role === "admin") return true;
+
+      if (user && data?.importFile) {
+        const importFileId = typeof data.importFile === "object" ? data.importFile.id : data.importFile;
+        const importFile = await req.payload.findByID({
+          collection: "import-files",
+          id: importFileId,
+        });
+
+        if (importFile?.user) {
+          const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
+          return user.id === userId;
+        }
+      }
+
+      return false;
+    },
+
+    // Only admins can delete
+    delete: ({ req: { user } }) => user?.role === "admin",
+
+    // Only admins can read version history
+    readVersions: ({ req: { user } }) => user?.role === "admin",
   },
   fields: [
     // Basic Information
@@ -529,9 +577,6 @@ const ImportJobs: CollectionConfig = {
           });
 
           if (importFile?.user) {
-            const { getPermissionService } = await import("@/lib/services/permission-service");
-            const { USAGE_TYPES } = await import("@/lib/constants/permission-constants");
-
             const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
 
             const permissionService = getPermissionService(req.payload);

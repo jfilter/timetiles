@@ -185,11 +185,124 @@ export interface Catalog {
    * URL-friendly identifier (auto-generated from name if not provided)
    */
   slug?: string | null;
+  /**
+   * User who created this catalog
+   */
+  createdBy?: (number | null) | User;
   isPublic?: boolean | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "users".
+ */
+export interface User {
+  id: number;
+  firstName?: string | null;
+  lastName?: string | null;
+  role?: ('user' | 'admin' | 'editor') | null;
+  isActive?: boolean | null;
+  lastLoginAt?: string | null;
+  /**
+   * User trust level determines resource quotas and rate limits
+   */
+  trustLevel: '0' | '1' | '2' | '3' | '4' | '5';
+  /**
+   * Resource quotas for this user (automatically set based on trust level)
+   */
+  quotas?: {
+    /**
+     * Maximum number of active scheduled imports (-1 for unlimited)
+     */
+    maxActiveSchedules?: number | null;
+    /**
+     * Maximum URL fetches per day (-1 for unlimited)
+     */
+    maxUrlFetchesPerDay?: number | null;
+    /**
+     * Maximum file uploads per day (-1 for unlimited)
+     */
+    maxFileUploadsPerDay?: number | null;
+    /**
+     * Maximum events per single import (-1 for unlimited)
+     */
+    maxEventsPerImport?: number | null;
+    /**
+     * Maximum total events allowed (-1 for unlimited)
+     */
+    maxTotalEvents?: number | null;
+    /**
+     * Maximum import jobs per day (-1 for unlimited)
+     */
+    maxImportJobsPerDay?: number | null;
+    /**
+     * Maximum file size in MB for uploads
+     */
+    maxFileSizeMB?: number | null;
+  };
+  /**
+   * Current resource usage tracking
+   */
+  usage?: {
+    /**
+     * Currently active scheduled imports
+     */
+    currentActiveSchedules?: number | null;
+    /**
+     * URL fetches performed today
+     */
+    urlFetchesToday?: number | null;
+    /**
+     * Files uploaded today
+     */
+    fileUploadsToday?: number | null;
+    /**
+     * Import jobs created today
+     */
+    importJobsToday?: number | null;
+    /**
+     * Total events created by this user
+     */
+    totalEventsCreated?: number | null;
+    /**
+     * Last time daily counters were reset
+     */
+    lastResetDate?: string | null;
+  };
+  /**
+   * Custom quota overrides (JSON format) - overrides trust level defaults
+   */
+  customQuotas?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -862,115 +975,6 @@ export interface ImportFile {
   focalY?: number | null;
 }
 /**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "users".
- */
-export interface User {
-  id: number;
-  firstName?: string | null;
-  lastName?: string | null;
-  role?: ('user' | 'admin' | 'editor') | null;
-  isActive?: boolean | null;
-  lastLoginAt?: string | null;
-  /**
-   * User trust level determines resource quotas and rate limits
-   */
-  trustLevel: '0' | '1' | '2' | '3' | '4' | '5';
-  /**
-   * Resource quotas for this user (automatically set based on trust level)
-   */
-  quotas?: {
-    /**
-     * Maximum number of active scheduled imports (-1 for unlimited)
-     */
-    maxActiveSchedules?: number | null;
-    /**
-     * Maximum URL fetches per day (-1 for unlimited)
-     */
-    maxUrlFetchesPerDay?: number | null;
-    /**
-     * Maximum file uploads per day (-1 for unlimited)
-     */
-    maxFileUploadsPerDay?: number | null;
-    /**
-     * Maximum events per single import (-1 for unlimited)
-     */
-    maxEventsPerImport?: number | null;
-    /**
-     * Maximum total events allowed (-1 for unlimited)
-     */
-    maxTotalEvents?: number | null;
-    /**
-     * Maximum import jobs per day (-1 for unlimited)
-     */
-    maxImportJobsPerDay?: number | null;
-    /**
-     * Maximum file size in MB for uploads
-     */
-    maxFileSizeMB?: number | null;
-  };
-  /**
-   * Current resource usage tracking
-   */
-  usage?: {
-    /**
-     * Currently active scheduled imports
-     */
-    currentActiveSchedules?: number | null;
-    /**
-     * URL fetches performed today
-     */
-    urlFetchesToday?: number | null;
-    /**
-     * Files uploaded today
-     */
-    fileUploadsToday?: number | null;
-    /**
-     * Import jobs created today
-     */
-    importJobsToday?: number | null;
-    /**
-     * Total events created by this user
-     */
-    totalEventsCreated?: number | null;
-    /**
-     * Last time daily counters were reset
-     */
-    lastResetDate?: string | null;
-  };
-  /**
-   * Custom quota overrides (JSON format) - overrides trust level defaults
-   */
-  customQuotas?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  updatedAt: string;
-  createdAt: string;
-  deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
-  email: string;
-  resetPasswordToken?: string | null;
-  resetPasswordExpiration?: string | null;
-  salt?: string | null;
-  hash?: string | null;
-  loginAttempts?: number | null;
-  lockUntil?: string | null;
-  sessions?:
-    | {
-        id: string;
-        createdAt?: string | null;
-        expiresAt: string;
-      }[]
-    | null;
-  password?: string | null;
-}
-/**
  * Manage scheduled URL imports that run automatically
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1362,6 +1366,10 @@ export interface Event {
  */
 export interface Media {
   id: number;
+  /**
+   * User who uploaded this media
+   */
+  createdBy?: (number | null) | User;
   /**
    * Alternative text for accessibility
    */
@@ -1911,6 +1919,7 @@ export interface CatalogsSelect<T extends boolean = true> {
   name?: T;
   description?: T;
   slug?: T;
+  createdBy?: T;
   isPublic?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -2358,6 +2367,7 @@ export interface UsersSelect<T extends boolean = true> {
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
+  createdBy?: T;
   alt?: T;
   updatedAt?: T;
   createdAt?: T;
