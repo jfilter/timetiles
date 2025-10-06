@@ -3,8 +3,9 @@
 # Types: feat, fix, docs, format, refactor, perf, test, build, ci, chore, revert, security
 # Scopes (optional but recommended):
 #   Apps/Packages: web, docs, ui, assets, config
-#   Features: import, geocoding, events, schema, deploy
-#   Technical: db, api, jobs, deps, seed
+#   Features: import, geocoding, events, schema, deploy, quota, access, cache, webhooks, admin, auth, media
+#   Technical: db, api, jobs, deps, seed, test
+#   Infrastructure: ci, build, infra
 # Subject: imperative mood, max 72 chars (proper nouns allowed: GitHub, API, ES, etc.)
 
 # List your changes as bullet points:

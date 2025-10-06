@@ -347,6 +347,13 @@ export default {
         'events',     // Event data management
         'schema',     // Schema detection and validation
         'deploy',     // Deployment and self-hosting features
+        'quota',      // Quota management and rate limiting
+        'access',     // Access control and permissions
+        'cache',      // Caching systems (HTTP, URL fetch, etc.)
+        'webhooks',   // Webhook functionality
+        'admin',      // Admin panel features
+        'auth',       // Authentication and user sessions
+        'media',      // Media and file management
         
         // Technical areas
         'db',         // Database, migrations, PostGIS functions
@@ -463,6 +470,13 @@ export default {
           events: 'Event management',
           schema: 'Schema detection/validation',
           deploy: 'Deployment features',
+          quota: 'Quota management and rate limiting',
+          access: 'Access control and permissions',
+          cache: 'Caching systems',
+          webhooks: 'Webhook functionality',
+          admin: 'Admin panel features',
+          auth: 'Authentication and sessions',
+          media: 'Media and file management',
           
           // Technical
           db: 'Database and migrations',

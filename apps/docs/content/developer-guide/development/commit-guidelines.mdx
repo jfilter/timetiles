@@ -121,6 +121,13 @@ Scopes are organized into categories:
 - **events**: Event data management (including catalogs and datasets)
 - **schema**: Schema detection, validation, and versioning
 - **deploy**: User deployment features (self-hosting, Docker setup)
+- **quota**: Quota management and rate limiting
+- **access**: Access control and permissions
+- **cache**: Caching systems (HTTP, URL fetch, etc.)
+- **webhooks**: Webhook functionality
+- **admin**: Admin panel features
+- **auth**: Authentication and user sessions
+- **media**: Media and file management
 
 **Technical Areas** (infrastructure & tooling):
 
@@ -567,6 +574,13 @@ fix(geocoding): handle postal codes without city names
 perf(import): optimize CSV parsing for large files
 feat(schema): add automatic type detection for date fields
 fix(import): handle scheduled import retry logic
+feat(quota): add per-user rate limiting
+feat(access): implement role-based permissions
+refactor(cache): optimize URL fetch cache eviction
+feat(webhooks): add retry logic for failed webhook deliveries
+feat(admin): add user quota management interface
+fix(auth): resolve session timeout edge case
+feat(media): add image compression on upload
 
 # Technical scope - for infrastructure/tooling
 build: optimize production bundle size
