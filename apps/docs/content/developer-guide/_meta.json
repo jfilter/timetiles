@@ -2,7 +2,8 @@
   "architecture": "Architecture & Tech Stack",
   "development": "Development Setup",
   "packages": "Packages",
-  "api-guide": "API Guide",
+  "rest-api": "REST API",
+  "http-cache": "HTTP Caching",
   "quotas": "Quotas & Resource Limits",
   "rate-limiting": "Rate Limiting"
 }

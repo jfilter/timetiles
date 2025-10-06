@@ -1,0 +1,651 @@
+# REST API
+
+The TimeTiles REST API provides programmatic access to event data, geospatial clustering, temporal histograms, and import progress tracking. All endpoints return JSON responses and support filtering by catalog, dataset, date range, and geographic bounds.
+
+## Base URL
+
+```
+https://your-instance.com/api
+```
+
+## Authentication
+
+TimeTiles uses **Payload CMS session-based authentication**. To access protected resources:
+
+1. **Login** through the `/admin/login` interface or Payload's authentication endpoints
+2. **Session cookie** is automatically included in subsequent requests
+3. **User permissions** are enforced based on your account's trust level and role
+
+There is currently no standalone API key system. All API access requires an authenticated session through the Payload CMS authentication system.
+
+## Common Query Parameters
+
+Many endpoints share common filtering parameters:
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| `catalog` | string | Filter by catalog slug | `catalog=my-catalog` |
+| `datasets` | string[] | Filter by dataset slugs (multiple) | `datasets=dataset-1&datasets=dataset-2` |
+| `bounds` | JSON string | Geographic bounding box | `bounds={"north":37.8,"south":37.7,"east":-122.3,"west":-122.5}` |
+| `startDate` | ISO 8601 | Filter events after this date | `startDate=2024-01-01` |
+| `endDate` | ISO 8601 | Filter events before this date | `endDate=2024-12-31` |
+
+## Rate Limiting & Quotas
+
+API requests are protected by both **rate limiting** (burst protection) and **quotas** (long-term limits):
+
+- **Rate Limits**: Based on trust level (0-5), with multiple time windows (burst, hourly, daily)
+- **Quotas**: Daily and lifetime limits on operations and resource consumption
+- **Headers**: Responses include `X-RateLimit-*` headers with limit information
+
+See [Rate Limiting](/developer-guide/rate-limiting) and [Quotas](/developer-guide/quotas) for details.
+
+## Endpoints
+
+### Events
+
+#### List Events
+
+Retrieve a paginated list of events with optional filters.
+
+```http
+GET /api/events/list
+```
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `catalog` | string | No | Filter by catalog slug |
+| `datasets` | string[] | No | Filter by dataset slugs |
+| `bounds` | JSON | No | Geographic bounding box `{north, south, east, west}` |
+| `startDate` | ISO 8601 | No | Filter events after this date |
+| `endDate` | ISO 8601 | No | Filter events before this date |
+| `page` | integer | No | Page number (default: 1) |
+| `limit` | integer | No | Results per page (default: 100, max: 1000) |
+| `sort` | string | No | Sort field (default: `-eventTimestamp`) |
+
+**Response:**
+
+```typescript
+{
+  events: [
+    {
+      id: number,
+      dataset: {
+        id: number,
+        title: string,
+        catalog: string
+      },
+      data: Record<string, unknown>,  // Event-specific data
+      location: {
+        longitude: number,
+        latitude: number
+      } | null,
+      eventTimestamp: string,
+      isValid: boolean
+    }
+  ],
+  pagination: {
+    page: number,
+    limit: number,
+    totalDocs: number,
+    totalPages: number,
+    hasNextPage: boolean,
+    hasPrevPage: boolean,
+    nextPage: number | null,
+    prevPage: number | null
+  }
+}
+```
+
+**Example:**
+
+```bash
+curl "https://your-instance.com/api/events/list?\
+catalog=tech-events&\
+startDate=2024-01-01&\
+endDate=2024-12-31&\
+page=1&\
+limit=100"
+```
+
+**Implementation:** `apps/web/app/api/events/list/route.ts:120-133`
+
+---
+
+#### Get Map Clusters
+
+Retrieve clustered or individual event points for map visualization. Uses PostGIS server-side clustering for performance with large datasets.
+
+```http
+GET /api/events/map-clusters
+```
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `bounds` | JSON | **Yes** | Geographic bounding box `{north, south, east, west}` |
+| `zoom` | integer | No | Map zoom level (default: 10, affects clustering) |
+| `catalog` | string | No | Filter by catalog slug |
+| `datasets` | string[] | No | Filter by dataset slugs |
+| `startDate` | ISO 8601 | No | Filter events after this date |
+| `endDate` | ISO 8601 | No | Filter events before this date |
+
+**Response:**
+
+Returns a GeoJSON `FeatureCollection` with cluster and point features:
+
+```typescript
+{
+  type: "FeatureCollection",
+  features: [
+    {
+      type: "Feature",
+      geometry: {
+        type: "Point",
+        coordinates: [longitude, latitude]
+      },
+      properties: {
+        id: number | string,
+        type: "event-cluster" | "event-point",
+        count?: number,              // For clusters only
+        title?: string,              // For individual events
+        eventIds?: number[]          // For small clusters (≤10 events)
+      }
+    }
+  ]
+}
+```
+
+**Clustering Behavior:**
+
+- **High zoom (≥16)**: Individual events returned (no clustering)
+- **Medium zoom (10-15)**: Events clustered within ~100-1000m radius
+- **Low zoom (<10)**: Aggressive clustering for performance
+- **Cluster threshold**: 2+ events at same location
+
+**Example:**
+
+```bash
+curl "https://your-instance.com/api/events/map-clusters?\
+bounds=%7B%22north%22%3A37.8%2C%22south%22%3A37.7%2C%22east%22%3A-122.3%2C%22west%22%3A-122.5%7D&\
+zoom=12&\
+catalog=sf-events"
+```
+
+**Implementation:** `apps/web/app/api/events/map-clusters/route.ts:34-61`
+
+---
+
+#### Get Histogram
+
+Retrieve temporal histogram data showing event distribution over time. Uses custom PostgreSQL function for efficient aggregation.
+
+```http
+GET /api/events/histogram
+```
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `catalog` | string | No | Filter by catalog slug |
+| `datasets` | string[] | No | Filter by dataset slugs |
+| `bounds` | JSON | No | Geographic bounding box `{north, south, east, west}` |
+| `startDate` | ISO 8601 | No | Filter events after this date |
+| `endDate` | ISO 8601 | No | Filter events before this date |
+| `granularity` | string | No | Time bucket size: `day`, `week`, `month`, `auto` (default: `auto`) |
+
+**Response:**
+
+```typescript
+{
+  histogram: [
+    {
+      date: string,        // ISO 8601 date
+      count: number        // Events in this bucket
+    }
+  ],
+  metadata: {
+    total: number,
+    dateRange: {
+      min: string | null,
+      max: string | null
+    },
+    counts: {
+      datasets: number,
+      catalogs: number
+    },
+    topDatasets: string[],
+    topCatalogs: string[]
+  }
+}
+```
+
+**Granularity Selection:**
+
+- `auto` - Automatically selects appropriate granularity based on date range
+- `day` - Daily buckets
+- `week` - Weekly buckets
+- `month` - Monthly buckets
+
+**Example:**
+
+```bash
+curl "https://your-instance.com/api/events/histogram?\
+catalog=tech-events&\
+startDate=2024-01-01&\
+endDate=2024-12-31&\
+granularity=month"
+```
+
+**Implementation:** `apps/web/app/api/events/histogram/route.ts:80-103`
+
+---
+
+### Import Progress
+
+#### Get Import Progress
+
+Retrieve real-time progress information for a file import operation.
+
+```http
+GET /api/import/:importId/progress
+```
+
+**Path Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `importId` | string | **Yes** | Import file ID |
+
+**Response:**
+
+```typescript
+{
+  type: "import-file",
+  id: string | number,
+  status: string,
+  originalName: string,
+  datasetsCount: number,
+  datasetsProcessed: number,
+  overallProgress: number,    // 0-100
+  jobs: [
+    {
+      id: string | number,
+      datasetId: string | number,
+      datasetName?: string,
+      stage: string,
+      progress: number,         // 0-100
+      rowsTotal: number,
+      rowsProcessed: number,
+      batchNumber: number,
+      errors: number,
+      duplicates: {
+        internal: number,
+        external: number
+      },
+      schemaValidation?: {...},
+      geocodingProgress?: {...},
+      results?: {...}
+    }
+  ],
+  errorLog?: string[],
+  completedAt?: string,
+  createdAt: string
+}
+```
+
+**Import Stages:**
+
+1. `UPLOAD` - File uploaded successfully
+2. `SCHEMA_DETECTION` - Analyzing file structure
+3. `AWAITING_APPROVAL` - User must approve detected schema
+4. `VALIDATION` - Validating data against schema
+5. `GEOCODING` - Geocoding location fields
+6. `PROCESSING` - Creating events in database
+7. `COMPLETED` - Import finished successfully
+8. `FAILED` - Import failed with errors
+
+**Example:**
+
+```bash
+curl "https://your-instance.com/api/import/123/progress"
+```
+
+**Implementation:** `apps/web/app/api/import/[importId]/progress/route.ts:72-139`
+
+---
+
+### User Quotas
+
+#### Get Quota Status
+
+Retrieve current user's quota status including usage and limits.
+
+```http
+GET /api/quotas
+```
+
+**Authentication:** Required (user must be logged in)
+
+**Response:**
+
+```typescript
+{
+  user: {
+    id: string | number,
+    email: string,
+    role: "admin" | "user",
+    trustLevel: "0" | "1" | "2" | "3" | "4" | "5"
+  },
+  quotas: {
+    fileUploadsPerDay: {
+      used: number,
+      limit: number,
+      remaining: number,
+      allowed: boolean,
+      resetTime: string,
+      description: "Maximum file uploads allowed per day"
+    },
+    urlFetchesPerDay: {...},
+    importJobsPerDay: {...},
+    activeSchedules: {...},
+    totalEvents: {...},
+    eventsPerImport: {...},
+    maxFileSizeMB: {
+      limit: number,
+      description: "Maximum file size in megabytes"
+    }
+  },
+  summary: {
+    hasUnlimitedAccess: boolean,
+    nextResetTime: string
+  }
+}
+```
+
+**Quota Types:**
+
+- `fileUploadsPerDay` - Daily file upload limit
+- `urlFetchesPerDay` - Daily URL fetch limit for scheduled imports
+- `importJobsPerDay` - Daily import job creation limit
+- `activeSchedules` - Concurrent scheduled imports limit
+- `totalEvents` - Lifetime event creation limit
+- `eventsPerImport` - Single import size limit
+- `maxFileSizeMB` - File size limit
+
+**Response Headers:**
+
+```
+X-RateLimit-Limit: <limit>
+X-RateLimit-Remaining: <remaining>
+X-RateLimit-Reset: <ISO 8601 timestamp>
+```
+
+**Example:**
+
+```bash
+curl -H "Cookie: payload-token=..." \
+  "https://your-instance.com/api/quotas"
+```
+
+**Implementation:** `apps/web/app/api/quotas/route.ts:29-108`
+
+---
+
+### Health Check
+
+#### System Health
+
+Check system health and readiness.
+
+```http
+GET /api/health
+```
+
+**Response:**
+
+```typescript
+{
+  database: {
+    status: "ok" | "error",
+    message?: string
+  },
+  migrations: {
+    status: "ok" | "pending" | "error",
+    pending?: string[]
+  },
+  postgis: {
+    status: "ok" | "not found" | "error",
+    version?: string
+  },
+  environment: {
+    status: "ok" | "error",
+    missing?: string[]
+  }
+}
+```
+
+**Status Codes:**
+
+- `200` - System healthy (may have warnings)
+- `503` - System has critical errors
+
+**Example:**
+
+```bash
+curl "https://your-instance.com/api/health"
+```
+
+**Implementation:** `apps/web/app/api/health/route.ts:65-83`
+
+---
+
+## Error Responses
+
+All endpoints return consistent error responses:
+
+```typescript
+{
+  error: string,           // Error type
+  message?: string,        // Human-readable message
+  details?: string,        // Additional error details
+  code?: string           // Error code (e.g., "MISSING_DB_FUNCTION")
+}
+```
+
+**Common HTTP Status Codes:**
+
+- `400` - Bad Request (invalid parameters)
+- `401` - Unauthorized (authentication required)
+- `403` - Forbidden (insufficient permissions)
+- `404` - Not Found
+- `429` - Too Many Requests (rate limit exceeded)
+- `500` - Internal Server Error
+
+**Rate Limit Errors:**
+
+```typescript
+{
+  success: false,
+  error: "Rate limit exceeded",
+  message: "Too many requests. Please wait 10 seconds.",
+  limitType: "burst" | "hourly" | "daily",
+  retryAfter: string  // ISO 8601 timestamp
+}
+```
+
+**Headers:**
+
+```
+Retry-After: <seconds>
+X-RateLimit-Limit: <limit>
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: <timestamp>
+```
+
+## Data Model
+
+TimeTiles uses a hierarchical data model:
+
+```
+Catalogs (top-level organization)
+  └── Datasets (groupings within catalogs)
+        └── Events (individual time-based data points)
+```
+
+### Access Control
+
+The system implements **hierarchical access control**:
+
+- **Catalog-level**: Controls access to all datasets and events within
+- **Dataset-level**: Inherits catalog permissions, can add additional restrictions
+- **Event-level**: Inherits dataset permissions
+
+See the access control documentation for details.
+
+## Pagination
+
+Paginated endpoints support standard pagination parameters:
+
+| Parameter | Type | Default | Max | Description |
+|-----------|------|---------|-----|-------------|
+| `page` | integer | 1 | - | Page number (1-indexed) |
+| `limit` | integer | 100 | 1000 | Results per page |
+
+**Response includes:**
+
+```typescript
+{
+  pagination: {
+    page: number,
+    limit: number,
+    totalDocs: number,
+    totalPages: number,
+    hasNextPage: boolean,
+    hasPrevPage: boolean,
+    nextPage: number | null,
+    prevPage: number | null
+  }
+}
+```
+
+## Performance Considerations
+
+### Caching
+
+The API uses HTTP caching for performance. See [HTTP Cache](/developer-guide/http-cache) for details.
+
+### Geospatial Queries
+
+- **Map clustering** uses PostGIS functions for server-side aggregation
+- **Bounds filtering** uses spatial indexes for fast queries
+- **Zoom-based clustering** automatically adjusts cluster resolution
+
+### Temporal Queries
+
+- **Histogram** uses custom PostgreSQL function for efficient time-based aggregation
+- **Date filtering** supports both `eventTimestamp` field and custom date fields in event data
+
+## TypeScript Types
+
+The API routes have comprehensive TypeScript documentation. See the [API Reference](/reference/api) for auto-generated documentation from source code.
+
+Key type definitions:
+
+- `apps/web/app/api/events/list/route.ts` - Event listing types
+- `apps/web/app/api/events/map-clusters/route.ts` - GeoJSON cluster types
+- `apps/web/app/api/events/histogram/route.ts` - Histogram types
+- `apps/web/payload-types.ts` - Payload collection types
+
+## Examples
+
+### Fetch Events in San Francisco
+
+```typescript
+const response = await fetch(
+  "https://your-instance.com/api/events/list?" +
+  new URLSearchParams({
+    bounds: JSON.stringify({
+      north: 37.8,
+      south: 37.7,
+      east: -122.3,
+      west: -122.5
+    }),
+    startDate: "2024-01-01",
+    endDate: "2024-12-31",
+    limit: "100"
+  })
+);
+
+const { events, pagination } = await response.json();
+```
+
+### Get Map Clusters with Filter
+
+```typescript
+const response = await fetch(
+  "https://your-instance.com/api/events/map-clusters?" +
+  new URLSearchParams({
+    bounds: JSON.stringify({
+      north: 37.8,
+      south: 37.7,
+      east: -122.3,
+      west: -122.5
+    }),
+    zoom: "12",
+    catalog: "tech-events"
+  })
+);
+
+const geojson = await response.json();
+// Use with Mapbox, Leaflet, etc.
+```
+
+### Check Import Progress
+
+```typescript
+async function pollImportProgress(importId: string) {
+  const response = await fetch(
+    `https://your-instance.com/api/import/${importId}/progress`
+  );
+
+  const progress = await response.json();
+
+  console.log(`Overall: ${progress.overallProgress}%`);
+  progress.jobs.forEach(job => {
+    console.log(`${job.datasetName}: ${job.stage} (${job.progress}%)`);
+  });
+
+  return progress;
+}
+```
+
+### Get Monthly Event Histogram
+
+```typescript
+const response = await fetch(
+  "https://your-instance.com/api/events/histogram?" +
+  new URLSearchParams({
+    catalog: "my-catalog",
+    startDate: "2024-01-01",
+    endDate: "2024-12-31",
+    granularity: "month"
+  })
+);
+
+const { histogram, metadata } = await response.json();
+
+// histogram = [{ date: "2024-01", count: 150 }, ...]
+console.log(`Total events: ${metadata.total}`);
+```
+
+## See Also
+
+- [Rate Limiting](/developer-guide/rate-limiting) - Burst protection and request limits
+- [Quotas](/developer-guide/quotas) - Long-term resource limits and trust levels
+- [HTTP Cache](/developer-guide/http-cache) - Caching strategy and performance
+- [API Reference](/reference/api) - Auto-generated TypeScript documentation
