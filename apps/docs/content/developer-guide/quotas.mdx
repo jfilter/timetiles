@@ -1,0 +1,338 @@
+# Quotas and Resource Limits
+
+The quota system manages user resource limits and tracks usage across various operations. It prevents resource exhaustion and ensures fair usage through trust-based limits.
+
+## Trust Levels
+
+Users are assigned trust levels that determine their resource quotas. Higher trust levels get more generous limits.
+
+| Level | Name       | Description                                           |
+| ----- | ---------- | ----------------------------------------------------- |
+| 0     | Untrusted  | New or unverified accounts with minimal access        |
+| 1     | Basic      | Basic users with conservative limits                  |
+| 2     | Regular    | Standard users with normal operational limits         |
+| 3     | Trusted    | Trusted users with enhanced access and relaxed limits |
+| 4     | Power User | Advanced users with generous resource allowances      |
+| 5     | Unlimited  | Administrators with no restrictions (-1 = unlimited)  |
+
+## Default Quotas by Trust Level
+
+### Untrusted (Level 0)
+
+Minimal access for new or suspicious accounts:
+
+| Quota Type        | Limit |
+| ----------------- | ----- |
+| Active Schedules  | 0     |
+| URL Fetches/Day   | 0     |
+| File Uploads/Day  | 1     |
+| Events per Import | 100   |
+| Total Events      | 100   |
+| Import Jobs/Day   | 1     |
+| Max File Size     | 1 MB  |
+
+### Basic (Level 1)
+
+Basic access with conservative limits:
+
+| Quota Type        | Limit |
+| ----------------- | ----- |
+| Active Schedules  | 1     |
+| URL Fetches/Day   | 5     |
+| File Uploads/Day  | 3     |
+| Events per Import | 1,000 |
+| Total Events      | 5,000 |
+| Import Jobs/Day   | 5     |
+| Max File Size     | 10 MB |
+
+### Regular (Level 2)
+
+Standard operational limits for normal users:
+
+| Quota Type        | Limit  |
+| ----------------- | ------ |
+| Active Schedules  | 5      |
+| URL Fetches/Day   | 20     |
+| File Uploads/Day  | 10     |
+| Events per Import | 10,000 |
+| Total Events      | 50,000 |
+| Import Jobs/Day   | 20     |
+| Max File Size     | 50 MB  |
+
+### Trusted (Level 3)
+
+Enhanced limits for trusted users:
+
+| Quota Type        | Limit   |
+| ----------------- | ------- |
+| Active Schedules  | 20      |
+| URL Fetches/Day   | 100     |
+| File Uploads/Day  | 50      |
+| Events per Import | 50,000  |
+| Total Events      | 500,000 |
+| Import Jobs/Day   | 100     |
+| Max File Size     | 100 MB  |
+
+### Power User (Level 4)
+
+Generous allowances for advanced users:
+
+| Quota Type        | Limit     |
+| ----------------- | --------- |
+| Active Schedules  | 100       |
+| URL Fetches/Day   | 500       |
+| File Uploads/Day  | 200       |
+| Events per Import | 200,000   |
+| Total Events      | 2,000,000 |
+| Import Jobs/Day   | 500       |
+| Max File Size     | 500 MB    |
+
+### Unlimited (Level 5)
+
+No restrictions for administrators:
+
+| Quota Type        | Limit          |
+| ----------------- | -------------- |
+| Active Schedules  | Unlimited (-1) |
+| URL Fetches/Day   | Unlimited (-1) |
+| File Uploads/Day  | Unlimited (-1) |
+| Events per Import | Unlimited (-1) |
+| Total Events      | Unlimited (-1) |
+| Import Jobs/Day   | Unlimited (-1) |
+| Max File Size     | 1000 MB        |
+
+## Quota Types
+
+### Active Schedules
+
+Maximum number of simultaneously active scheduled imports. Allows users to automate data fetching from URLs on a schedule.
+
+### URL Fetches per Day
+
+Daily limit on URL fetch operations for scheduled imports. Resets at midnight UTC.
+
+### File Uploads per Day
+
+Daily limit on manual file uploads (CSV/Excel). Resets at midnight UTC.
+
+### Events per Import
+
+Maximum number of events that can be created in a single import operation. Prevents oversized imports from consuming excessive resources.
+
+### Total Events
+
+Cumulative limit on all events created by the user across all time. This is the user's overall event quota.
+
+### Import Jobs per Day
+
+Daily limit on import job executions (both manual and scheduled). Resets at midnight UTC.
+
+### Max File Size
+
+Maximum size in megabytes for uploaded files. Larger files require higher trust levels.
+
+## Quota Enforcement
+
+The QuotaService enforces limits at multiple stages:
+
+### Pre-Operation Checks
+
+Before starting operations, the system checks:
+
+```typescript
+const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+
+if (!quotaCheck.allowed) {
+  throw new QuotaExceededError(quotaCheck.quotaType, quotaCheck.current, quotaCheck.limit, quotaCheck.resetTime);
+}
+```
+
+### Usage Tracking
+
+After successful operations, usage is incremented:
+
+```typescript
+await quotaService.incrementUsage(userId, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
+```
+
+### Daily Resets
+
+Daily quotas automatically reset at midnight UTC via a background job:
+
+- File uploads counter
+- URL fetches counter
+- Import jobs counter
+
+Non-daily quotas (active schedules, total events) persist indefinitely.
+
+## API Integration
+
+### Checking Quotas
+
+The `/api/quotas` endpoint returns comprehensive quota information:
+
+```typescript
+GET / api / quotas;
+```
+
+Response:
+
+```json
+{
+  "user": {
+    "id": 123,
+    "email": "user@example.com",
+    "role": "user",
+    "trustLevel": 2
+  },
+  "quotas": {
+    "fileUploadsPerDay": {
+      "allowed": true,
+      "current": 3,
+      "limit": 10,
+      "remaining": 7,
+      "quotaType": "maxFileUploadsPerDay",
+      "resetTime": "2025-10-07T00:00:00.000Z"
+    },
+    "totalEvents": {
+      "allowed": true,
+      "current": 12500,
+      "limit": 50000,
+      "remaining": 37500,
+      "quotaType": "maxTotalEvents"
+    }
+    // ... other quotas
+  }
+}
+```
+
+### Quota Headers
+
+API responses include quota information in headers:
+
+- `X-User-Trust-Level`: User's current trust level
+- `X-Quota-FileUploads`: Current/limit for file uploads (e.g., "3/10")
+- `X-Quota-ImportJobs`: Current/limit for import jobs
+- `X-Quota-ActiveSchedules`: Current/limit for active schedules
+- `X-Quota-Reset`: ISO timestamp for next daily reset
+
+### Quota Exceeded Errors
+
+When quotas are exceeded, operations fail with a 429 status:
+
+```json
+{
+  "error": "Daily file upload limit reached (10/10). Resets at midnight UTC.",
+  "statusCode": 429,
+  "quotaType": "maxFileUploadsPerDay",
+  "current": 10,
+  "limit": 10,
+  "resetTime": "2025-10-07T00:00:00.000Z"
+}
+```
+
+## Custom Quotas
+
+Administrators can override default quotas for individual users:
+
+### User-Specific Overrides
+
+Set custom limits in the user's `quotas` field:
+
+```json
+{
+  "quotas": {
+    "maxActiveSchedules": 50,
+    "maxFileUploadsPerDay": 100,
+    "maxTotalEvents": 1000000
+  }
+}
+```
+
+Custom quotas take precedence over trust level defaults.
+
+### Custom Quotas JSON
+
+For additional flexibility, use the `customQuotas` JSON field to override any quota:
+
+```json
+{
+  "customQuotas": {
+    "maxEventsPerImport": 500000,
+    "maxFileSizeMB": 2000
+  }
+}
+```
+
+## Usage Tracking
+
+The system tracks the following usage metrics per user:
+
+| Metric                   | Description                        | Reset Frequency                  |
+| ------------------------ | ---------------------------------- | -------------------------------- |
+| `currentActiveSchedules` | Number of active scheduled imports | Never (decrements when disabled) |
+| `urlFetchesToday`        | URL fetches executed today         | Daily (midnight UTC)             |
+| `fileUploadsToday`       | Files uploaded today               | Daily (midnight UTC)             |
+| `importJobsToday`        | Import jobs run today              | Daily (midnight UTC)             |
+| `totalEventsCreated`     | All events ever created            | Never                            |
+| `lastResetDate`          | Last daily counter reset           | Updated daily                    |
+
+View usage in:
+
+- User profile in admin panel (`/admin/users`)
+- GET `/api/quotas` endpoint
+- Response headers on quota-enforced operations
+
+## Rate Limiting
+
+In addition to quotas, the system implements rate limiting based on trust levels. This prevents burst abuse while quotas control overall usage.
+
+See the Rate Limiting documentation for details on request-per-second limits and time windows.
+
+## Implementation Details
+
+### QuotaService Location
+
+`apps/web/lib/services/quota-service.ts`
+
+### Key Methods
+
+- `getEffectiveQuotas(user)` - Get user's quota limits
+- `getCurrentUsage(userId)` - Get current usage counters
+- `checkQuota(user, quotaType, amount)` - Check if operation is allowed
+- `validateQuota(user, quotaType, amount)` - Check and throw if exceeded
+- `incrementUsage(userId, usageType, amount)` - Track usage
+- `decrementUsage(userId, usageType, amount)` - Reduce usage (e.g., disabled schedules)
+- `resetDailyCounters(userId)` - Reset daily counters for a user
+- `resetAllDailyCounters()` - Reset for all users (background job)
+
+### Collections Using Quotas
+
+Quota enforcement is integrated into:
+
+- `import-files` - File upload and size limits
+- `import-jobs` - Import job creation limits
+- `events` - Event creation and total limits
+- `scheduled-imports` - Active schedule limits
+
+### Background Jobs
+
+- `quota-reset-job` - Runs daily at midnight UTC to reset all daily counters
+
+## Best Practices
+
+1. **Always check quotas before operations** - Prevent wasted work
+2. **Provide clear error messages** - Include current usage, limits, and reset times
+3. **Track usage immediately** - Don't wait for operation completion
+4. **Handle admin users specially** - Skip checks or use unlimited quotas
+5. **Use quota headers** - Help clients track their usage proactively
+6. **Design for quota-aware UIs** - Show limits before users hit them
+
+## Future Enhancements
+
+Planned improvements to the quota system:
+
+- Make it configurable
+- Quota usage analytics and trends
+- Automatic trust level progression based on behavior
+- Quota warning notifications (e.g., at 80% usage)
