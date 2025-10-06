@@ -40,7 +40,7 @@ make test-e2e        # E2E tests
 
 - Check [GitHub Issues](https://github.com/jfilter/timetiles/issues)
 - Read package-specific `CLAUDE.md` files
-- See full [documentation](https://timetiles.org/docs)
+- See full [documentation](https://docs.timetiles.io)
 
 ## License
 

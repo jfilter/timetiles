@@ -18,8 +18,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  basePath: process.env.NODE_ENV === "production" ? "/timetiles" : "",
-  assetPrefix: process.env.NODE_ENV === "production" ? "/timetiles/" : "",
   webpack: (config) => {
     // Handle SVG and PNG imports as URLs
     config.module.rules.push({

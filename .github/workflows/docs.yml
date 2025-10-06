@@ -67,7 +67,7 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
         with:
-          # Automatically inject basePath in your Next.js configuration file
+          # Configure GitHub Pages for Next.js static site deployment
           static_site_generator: next
 
       - name: Build documentation
