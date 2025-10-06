@@ -13,10 +13,10 @@ import type { Payload } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
 import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/import-constants";
-import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/permission-constants";
+import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
-import { getPermissionService } from "@/lib/services/permission-service";
+import { getQuotaService } from "@/lib/services/quota-service";
 import type { ScheduledImport } from "@/payload-types";
 
 import { buildAuthHeaders } from "./auth";
@@ -263,10 +263,10 @@ export const urlFetchJob = {
         const user = typeof userId === "object" ? userId : await payload.findByID({ collection: "users", id: userId });
 
         if (user) {
-          const permissionService = getPermissionService(payload);
+          const quotaService = getQuotaService(payload);
 
           // Check URL fetch quota
-          const quotaCheck = await permissionService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY, 1);
+          const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY, 1);
 
           if (!quotaCheck.allowed) {
             const errorMessage = `Daily URL fetch limit reached (${quotaCheck.current}/${quotaCheck.limit}). Resets at midnight UTC.`;
@@ -280,7 +280,7 @@ export const urlFetchJob = {
           }
 
           // Track URL fetch usage
-          await permissionService.incrementUsage(user.id, USAGE_TYPES.URL_FETCHES_TODAY, 1);
+          await quotaService.incrementUsage(user.id, USAGE_TYPES.URL_FETCHES_TODAY, 1);
 
           logger.info("URL fetch quota checked and tracked", {
             userId: user.id,

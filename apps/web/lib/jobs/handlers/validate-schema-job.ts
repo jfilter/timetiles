@@ -16,9 +16,9 @@ import path from "path";
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { QUOTA_TYPES } from "@/lib/constants/permission-constants";
+import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
-import { getPermissionService } from "@/lib/services/permission-service";
+import { getQuotaService } from "@/lib/services/quota-service";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { SchemaVersioningService } from "@/lib/services/schema-versioning";
 import { getSchemaBuilderState } from "@/lib/types/schema-detection";
@@ -182,7 +182,7 @@ const handleSchemaApproval = async (
  * Check quota limits for the import
  */
 const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, jobIdTyped: number): Promise<void> => {
-  const permissionService = getPermissionService(payload);
+  const quotaService = getQuotaService(payload);
 
   // Calculate total events to be imported (considering duplicates)
   const totalRows = job.progress?.total ?? 0;
@@ -190,7 +190,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   const eventsToImport = totalRows - duplicateCount;
 
   // Check maxEventsPerImport quota
-  const eventQuotaCheck = await permissionService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, eventsToImport);
+  const eventQuotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, eventsToImport);
 
   if (!eventQuotaCheck.allowed) {
     const errorMessage = `This import would create ${eventsToImport} events, exceeding your limit of ${eventQuotaCheck.limit} events per import.`;
@@ -208,7 +208,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   }
 
   // Check total events quota
-  const totalEventsCheck = await permissionService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS, eventsToImport);
+  const totalEventsCheck = await quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS, eventsToImport);
 
   if (!totalEventsCheck.allowed) {
     const errorMessage = `Creating ${eventsToImport} events would exceed your total events limit (${totalEventsCheck.current}/${totalEventsCheck.limit}).`;

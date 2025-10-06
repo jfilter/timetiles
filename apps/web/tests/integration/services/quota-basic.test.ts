@@ -6,8 +6,8 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/permission-constants";
-import { getPermissionService } from "@/lib/services/permission-service";
+import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
+import { getQuotaService } from "@/lib/services/quota-service";
 
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
@@ -69,10 +69,10 @@ describe.sequential("Basic Quota Test", () => {
 
     console.log("Updated user quotas field:", updatedUser.quotas);
 
-    const permissionService = getPermissionService(payload);
+    const quotaService = getQuotaService(payload);
 
     // First check - should be allowed
-    const check1 = await permissionService.checkQuota(updatedUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+    const check1 = await quotaService.checkQuota(updatedUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
 
     console.log("First check:", check1);
     expect(check1.allowed).toBe(true);
@@ -80,7 +80,7 @@ describe.sequential("Basic Quota Test", () => {
     expect(check1.current).toBe(0);
 
     // Track usage
-    await permissionService.incrementUsage(user.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
+    await quotaService.incrementUsage(user.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
 
     // Get fresh user
     const freshUser = await payload.findByID({
@@ -92,7 +92,7 @@ describe.sequential("Basic Quota Test", () => {
     console.log("User usage:", freshUser.usage);
 
     // Second check - should be blocked
-    const check2 = await permissionService.checkQuota(freshUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+    const check2 = await quotaService.checkQuota(freshUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
 
     console.log("Second check:", check2);
     expect(check2.allowed).toBe(false);

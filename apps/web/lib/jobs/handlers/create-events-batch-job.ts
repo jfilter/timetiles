@@ -18,10 +18,10 @@ import path from "path";
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/permission-constants";
+import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
-import { getPermissionService } from "@/lib/services/permission-service";
+import { getQuotaService } from "@/lib/services/quota-service";
 import { getGeocodingResultForRow, getGeocodingResults } from "@/lib/types/geocoding";
 import { readBatchFromFile } from "@/lib/utils/file-readers";
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
@@ -248,8 +248,8 @@ const markJobCompleted = async (
 
         const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
 
-        const permissionService = getPermissionService(payload);
-        await permissionService.incrementUsage(userId, USAGE_TYPES.TOTAL_EVENTS_CREATED, totalEventsCreated);
+        const quotaService = getQuotaService(payload);
+        await quotaService.incrementUsage(userId, USAGE_TYPES.TOTAL_EVENTS_CREATED, totalEventsCreated);
 
         logger.info("Event creation tracked for quota", {
           userId,
@@ -413,11 +413,11 @@ const checkEventQuotaForFirstBatch = async (
     return;
   }
 
-  const permissionService = getPermissionService(payload);
+  const quotaService = getQuotaService(payload);
   const totalRows = job.progress?.total ?? 0;
 
   // Check if this import would exceed the per-import limit
-  const quotaCheck = await permissionService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, totalRows);
+  const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, totalRows);
 
   if (!quotaCheck.allowed) {
     throw new Error(

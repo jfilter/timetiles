@@ -64,15 +64,15 @@ vi.mock("@/lib/logger", () => ({
   }),
 }));
 
-// Mock permission service for unit tests
-vi.mock("@/lib/services/permission-service", () => ({
-  getPermissionService: () => ({
+// Mock quota service for unit tests
+vi.mock("@/lib/services/quota-service", () => ({
+  getQuotaService: () => ({
     checkQuota: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 100, remaining: 100 }),
     incrementUsage: vi.fn().mockResolvedValue(undefined),
   }),
 }));
 
-vi.mock("@/lib/constants/permission-constants", () => ({
+vi.mock("@/lib/constants/quota-constants", () => ({
   QUOTA_TYPES: {
     URL_FETCHES_PER_DAY: "urlFetchesPerDay",
   },

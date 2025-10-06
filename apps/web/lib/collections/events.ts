@@ -18,8 +18,8 @@
 import type { CollectionConfig } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
-import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/permission-constants";
-import { getPermissionService } from "@/lib/services/permission-service";
+import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
+import { getQuotaService } from "@/lib/services/quota-service";
 
 import { createCommonConfig } from "./shared-fields";
 
@@ -426,10 +426,10 @@ const Events: CollectionConfig = {
 
         // Only check quotas on creation
         if (operation === "create") {
-          const permissionService = getPermissionService(req.payload);
+          const quotaService = getQuotaService(req.payload);
 
           // Check total events quota
-          const totalEventsCheck = await permissionService.checkQuota(req.user, QUOTA_TYPES.TOTAL_EVENTS, 1);
+          const totalEventsCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.TOTAL_EVENTS, 1);
 
           if (!totalEventsCheck.allowed) {
             throw new Error(
@@ -446,10 +446,10 @@ const Events: CollectionConfig = {
       async ({ doc, operation, req }) => {
         // Track event creation
         if (operation === "create" && req.user && req.user.role !== "admin") {
-          const permissionService = getPermissionService(req.payload);
+          const quotaService = getQuotaService(req.payload);
 
           // Increment total events counter
-          await permissionService.incrementUsage(req.user.id, USAGE_TYPES.TOTAL_EVENTS_CREATED, 1);
+          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.TOTAL_EVENTS_CREATED, 1);
         }
 
         return doc;

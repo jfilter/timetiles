@@ -19,7 +19,7 @@ import {
   TRUST_LEVEL_DESCRIPTIONS,
   TRUST_LEVEL_LABELS,
   TRUST_LEVELS,
-} from "@/lib/constants/permission-constants";
+} from "@/lib/constants/quota-constants";
 
 import { createCommonConfig } from "./shared-fields";
 

@@ -10,9 +10,9 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
-import { QUOTA_TYPES } from "@/lib/constants/permission-constants";
+import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
-import { getPermissionService } from "@/lib/services/permission-service";
+import { getQuotaService } from "@/lib/services/quota-service";
 import configPromise from "@/payload.config";
 
 const logger = createLogger("api-quotas");
@@ -36,20 +36,20 @@ export const GET = async (req: NextRequest) => {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const permissionService = getPermissionService(payload);
+    const quotaService = getQuotaService(payload);
 
     // Get all quota statuses in parallel
     const [fileUploads, urlFetches, importJobs, activeSchedules, totalEvents, eventsPerImport] = await Promise.all([
-      permissionService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY),
-      permissionService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY),
-      permissionService.checkQuota(user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY),
-      permissionService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES),
-      permissionService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS),
-      permissionService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT),
+      quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY),
+      quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY),
+      quotaService.checkQuota(user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY),
+      quotaService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES),
+      quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS),
+      quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT),
     ]);
 
     // Get effective quotas for additional info
-    const effectiveQuotas = permissionService.getEffectiveQuotas(user);
+    const effectiveQuotas = quotaService.getEffectiveQuotas(user);
 
     const response = {
       user: {
@@ -95,7 +95,7 @@ export const GET = async (req: NextRequest) => {
     };
 
     // Add quota headers
-    const headers = await permissionService.getQuotaHeaders(user);
+    const headers = await quotaService.getQuotaHeaders(user);
 
     return NextResponse.json(response, {
       status: 200,

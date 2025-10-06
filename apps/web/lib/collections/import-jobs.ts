@@ -18,9 +18,9 @@
 import type { CollectionConfig, Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { USAGE_TYPES } from "@/lib/constants/permission-constants";
+import { USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { logger } from "@/lib/logger";
-import { getPermissionService } from "@/lib/services/permission-service";
+import { getQuotaService } from "@/lib/services/quota-service";
 import { StageTransitionService } from "@/lib/services/stage-transition";
 import type { ImportJob } from "@/payload-types";
 
@@ -579,8 +579,8 @@ const ImportJobs: CollectionConfig = {
           if (importFile?.user) {
             const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
 
-            const permissionService = getPermissionService(req.payload);
-            await permissionService.incrementUsage(userId, USAGE_TYPES.IMPORT_JOBS_TODAY, 1);
+            const quotaService = getQuotaService(req.payload);
+            await quotaService.incrementUsage(userId, USAGE_TYPES.IMPORT_JOBS_TODAY, 1);
 
             logger.info("Import job creation tracked for quota", {
               userId,

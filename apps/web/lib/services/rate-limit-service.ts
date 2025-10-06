@@ -17,7 +17,7 @@
  */
 import type { Payload } from "payload";
 
-import { RATE_LIMITS_BY_TRUST_LEVEL, TRUST_LEVELS, type TrustLevel } from "@/lib/constants/permission-constants";
+import { RATE_LIMITS_BY_TRUST_LEVEL, TRUST_LEVELS, type TrustLevel } from "@/lib/constants/quota-constants";
 import type { User } from "@/payload-types";
 
 import { createLogger } from "../logger";

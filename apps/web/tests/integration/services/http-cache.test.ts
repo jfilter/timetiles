@@ -22,45 +22,45 @@ describe.sequential("HTTP Cache Integration", () => {
   beforeAll(async () => {
     // Create and start test server
     testServer = new TestServer();
-    
+
     // Setup test endpoints
-    let requestCount = 0;
+    const requestCount = 0;
     testServer
       .respondWithJSON("/json", { slideshow: { title: "Sample" } })
       .respond("/status/404", { status: 404, body: "Not Found" })
       .respond("/status/500", { status: 500, body: "Server Error" })
       .route("/uuid", (_req, res) => {
-        res.writeHead(200, { 
+        res.writeHead(200, {
           "Content-Type": "application/json",
-          "Cache-Control": "no-cache, no-store, must-revalidate"
+          "Cache-Control": "no-cache, no-store, must-revalidate",
         });
         res.end(JSON.stringify({ uuid: `${Date.now()}-${Math.random()}` }));
       })
       .respond("/post", { status: 200, body: "POST response" })
-      .respond("/headers", { 
+      .respond("/headers", {
         headers: { "X-Custom-Header": "test" },
-        body: "Headers response" 
+        body: "Headers response",
       })
       .respond("/delay", { body: "Delayed response", delay: 100 })
       .respond("/etag", {
-        headers: { "ETag": '"test-etag"' },
-        body: "ETag response"
+        headers: { ETag: '"test-etag"' },
+        body: "ETag response",
       })
       .respond("/cache-control", {
         headers: { "Cache-Control": "max-age=2" },
-        body: "Cache control response"
+        body: "Cache control response",
       })
       .setDefaultHandler((req, res) => {
         // Handle /get with query parameters
         if (req.url?.startsWith("/get")) {
           res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ args: req.url?.split('?')[1] || '' }));
+          res.end(JSON.stringify({ args: req.url?.split("?")[1] || "" }));
         } else {
           res.writeHead(404);
           res.end("Not Found");
         }
       });
-    
+
     serverUrl = await testServer.start();
   });
 

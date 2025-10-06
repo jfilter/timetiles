@@ -1,8 +1,8 @@
 /**
- * Constants for the permission and quota system.
+ * Constants for the quota system.
  *
- * This file defines trust levels, default quotas, and permission-related constants
- * used throughout the application to control resource usage and access levels.
+ * This file defines trust levels, default quotas, and quota-related constants
+ * used throughout the application to control resource usage and enforce limits.
  *
  * @module
  */

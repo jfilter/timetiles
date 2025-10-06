@@ -19,10 +19,10 @@ import type { CollectionConfig } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
-import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/permission-constants";
+import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 
 import { createRequestLogger } from "../logger";
-import { getPermissionService } from "../services/permission-service";
+import { getQuotaService } from "../services/quota-service";
 import { getClientIdentifier, getRateLimitService } from "../services/rate-limit-service";
 import { createCommonConfig } from "./shared-fields";
 
@@ -267,13 +267,13 @@ const ImportFiles: CollectionConfig = {
             if (!req.user) return null;
 
             try {
-              const permissionService = getPermissionService(req.payload);
+              const quotaService = getQuotaService(req.payload);
 
               // Get multiple quota checks for comprehensive info
               const [fileUploads, importJobs, totalEvents] = await Promise.all([
-                permissionService.checkQuota(req.user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY),
-                permissionService.checkQuota(req.user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY),
-                permissionService.checkQuota(req.user, QUOTA_TYPES.TOTAL_EVENTS),
+                quotaService.checkQuota(req.user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY),
+                quotaService.checkQuota(req.user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY),
+                quotaService.checkQuota(req.user, QUOTA_TYPES.TOTAL_EVENTS),
               ]);
 
               return {
@@ -357,10 +357,10 @@ const ImportFiles: CollectionConfig = {
 
         // Check file upload quota
         if (user) {
-          const permissionService = getPermissionService(req.payload);
+          const quotaService = getQuotaService(req.payload);
 
           // Check daily file upload quota
-          const uploadQuotaCheck = await permissionService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+          const uploadQuotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
 
           if (!uploadQuotaCheck.allowed) {
             throw new Error(
@@ -371,7 +371,7 @@ const ImportFiles: CollectionConfig = {
 
           // Check file size quota based on trust level
           if (req.file) {
-            const quotas = permissionService.getEffectiveQuotas(user);
+            const quotas = quotaService.getEffectiveQuotas(user);
             const maxSizeMB = quotas.maxFileSizeMB;
             const maxSizeBytes = maxSizeMB * 1024 * 1024;
 
@@ -467,9 +467,9 @@ const ImportFiles: CollectionConfig = {
 
         // Track file upload usage for authenticated users
         if (req.user) {
-          const permissionService = getPermissionService(req.payload);
+          const quotaService = getQuotaService(req.payload);
 
-          await permissionService.incrementUsage(req.user.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
+          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
         }
 
         // Skip processing for duplicate imports (they're already marked as completed)

@@ -1,8 +1,8 @@
 /**
- * Service for managing user permissions and quotas.
+ * Service for managing user quotas and resource limits.
  *
  * This service provides centralized control over user resource limits, usage tracking,
- * and permission checks. It integrates with Payload CMS to enforce quotas and track
+ * and quota enforcement. It integrates with Payload CMS to enforce quotas and track
  * usage across various operations like file uploads, scheduled imports, and event creation.
  *
  * @module
@@ -21,11 +21,11 @@ import {
   type UsageType,
   type UserQuotas,
   type UserUsage,
-} from "@/lib/constants/permission-constants";
+} from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
 import type { User } from "@/payload-types";
 
-const logger = createLogger("permission-service");
+const logger = createLogger("quota-service");
 
 /**
  * Custom error class for quota exceeded scenarios.
@@ -61,9 +61,9 @@ export interface QuotaCheckResult {
 }
 
 /**
- * Service for managing user permissions and quotas.
+ * Service for managing user quotas and resource limits.
  */
-export class PermissionService {
+export class QuotaService {
   private readonly payload: Payload;
 
   constructor(payload: Payload) {
@@ -531,19 +531,19 @@ export class PermissionService {
 }
 
 // Singleton instance management
-let permissionService: PermissionService | null = null;
+let quotaService: QuotaService | null = null;
 
 /**
- * Get or create the permission service instance.
+ * Get or create the quota service instance.
  */
-export const getPermissionService = (payload: Payload): PermissionService => {
+export const getQuotaService = (payload: Payload): QuotaService => {
   // In test environment, always create a new instance for isolation
   if (process.env.NODE_ENV === "test") {
-    return new PermissionService(payload);
+    return new QuotaService(payload);
   }
 
-  if (!permissionService) {
-    permissionService = new PermissionService(payload);
+  if (!quotaService) {
+    quotaService = new QuotaService(payload);
   }
-  return permissionService;
+  return quotaService;
 };

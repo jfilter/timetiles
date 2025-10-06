@@ -8,7 +8,7 @@
  */
 
 import { createLogger } from "@/lib/logger";
-import { getPermissionService } from "@/lib/services/permission-service";
+import { getQuotaService } from "@/lib/services/quota-service";
 
 import type { JobHandlerContext } from "../../utils/job-context";
 
@@ -28,10 +28,10 @@ export const quotaResetJobConfig = {
     try {
       logger.info("Starting daily quota reset job");
 
-      const permissionService = getPermissionService(payload);
+      const quotaService = getQuotaService(payload);
 
       // Reset all daily counters
-      await permissionService.resetAllDailyCounters();
+      await quotaService.resetAllDailyCounters();
 
       logger.info("Daily quota reset completed successfully");
 
