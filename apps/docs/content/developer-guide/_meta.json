@@ -3,5 +3,6 @@
   "development": "Development Setup",
   "packages": "Packages",
   "api-guide": "API Guide",
-  "quotas": "Quotas & Resource Limits"
+  "quotas": "Quotas & Resource Limits",
+  "rate-limiting": "Rate Limiting"
 }

@@ -6,11 +6,68 @@
  * or session IDs) and enforces limits based on a specified number of requests within a
  * given time window.
  *
+ * ## Rate Limiting vs Quotas
+ *
+ * This service works alongside {@link QuotaService} but serves a different purpose:
+ *
+ * **RateLimitService (this service)**:
+ * - Purpose: Short-term abuse prevention (DDoS, spam, burst attacks)
+ * - Storage: In-memory (fast, ephemeral)
+ * - Scope: Per IP address or identifier
+ * - Time windows: Seconds to hours
+ * - Reset: Sliding windows
+ *
+ * **QuotaService**:
+ * - Purpose: Long-term resource management (fair usage, capacity planning)
+ * - Storage: Database (persistent, accurate)
+ * - Scope: Per user ID
+ * - Time windows: Hours to lifetime
+ * - Reset: Fixed times (midnight UTC)
+ *
+ * Both checks typically run together - rate limits first (fast fail), then quotas (accurate tracking).
+ *
+ * @example
+ * ```typescript
+ * // Typical usage pattern: check both rate limits and quotas
+ * import { getRateLimitService } from '@/lib/services/rate-limit-service';
+ * import { getQuotaService } from '@/lib/services/quota-service';
+ *
+ * // 1. Rate limit check (fast, prevents abuse)
+ * const rateLimitService = getRateLimitService(payload);
+ * const rateCheck = rateLimitService.checkTrustLevelRateLimit(
+ *   clientIp,
+ *   user,
+ *   "FILE_UPLOAD"
+ * );
+ * if (!rateCheck.allowed) {
+ *   return res.status(429).json({ error: "Too many requests" });
+ * }
+ *
+ * // 2. Quota check (accurate, tracks long-term usage)
+ * const quotaService = getQuotaService(payload);
+ * const quotaCheck = await quotaService.checkQuota(
+ *   user,
+ *   QUOTA_TYPES.FILE_UPLOADS_PER_DAY
+ * );
+ * if (!quotaCheck.allowed) {
+ *   throw new QuotaExceededError(...);
+ * }
+ *
+ * // 3. Process the request
+ * await processFileUpload();
+ * ```
+ *
  * Key features include:
- * - Checking if a request is allowed.
- * - Blocking identifiers that exceed the limit.
- * - Providing standard rate-limit headers for HTTP responses.
- * - Automatic cleanup of expired entries.
+ * - Multi-window rate limiting (burst, hourly, daily)
+ * - Trust-level-aware rate limits
+ * - Checking if a request is allowed
+ * - Blocking identifiers that exceed the limit
+ * - Providing standard rate-limit headers for HTTP responses
+ * - Automatic cleanup of expired entries
+ *
+ * @see {@link QuotaService} for long-term resource management
+ * @see [Rate Limiting Documentation](https://docs.timetiles.io/developer-guide/rate-limiting)
+ * @see [Quotas Documentation](https://docs.timetiles.io/developer-guide/quotas)
  *
  * @category Services
  * @module

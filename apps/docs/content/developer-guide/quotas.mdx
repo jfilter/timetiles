@@ -283,11 +283,120 @@ View usage in:
 - GET `/api/quotas` endpoint
 - Response headers on quota-enforced operations
 
-## Rate Limiting
+## Quotas vs Rate Limiting
 
-In addition to quotas, the system implements rate limiting based on trust levels. This prevents burst abuse while quotas control overall usage.
+The system uses **two complementary protection mechanisms** that work together:
 
-See the Rate Limiting documentation for details on request-per-second limits and time windows.
+### Quotas (This System)
+
+**Purpose**: Long-term resource management and fair allocation
+
+- **Storage**: Database (persistent across restarts)
+- **Scope**: Per user ID (requires authentication)
+- **Time Scale**: Hours to lifetime (e.g., "10 uploads per day", "50,000 total events")
+- **Reset**: Fixed times (midnight UTC for daily quotas)
+- **Use Cases**: Prevent resource exhaustion, ensure fair usage
+
+**Example**: A user can upload 10 files per day. After 10 uploads, they must wait until midnight UTC.
+
+### Rate Limiting
+
+**Purpose**: Short-term abuse prevention and burst protection
+
+- **Storage**: In-memory cache (fast, ephemeral)
+- **Scope**: Per IP address or identifier (works for unauthenticated users)
+- **Time Scale**: Seconds to hours (e.g., "1 per 5 seconds", "5 per hour")
+- **Reset**: Sliding windows
+- **Use Cases**: Prevent DDoS attacks, spam, race conditions
+
+**Example**: A user can only upload 1 file per 5 seconds. Attempting 2 uploads in rapid succession will fail.
+
+### How They Work Together
+
+Both checks run on every operation:
+
+```typescript
+// 1. Rate Limit Check (fast, in-memory)
+const rateLimitCheck = rateLimitService.checkTrustLevelRateLimit(
+  clientIp,
+  user,
+  "FILE_UPLOAD"
+);
+if (!rateLimitCheck.allowed) {
+  throw new Error("Too many requests. Please wait before retrying.");
+}
+
+// 2. Quota Check (accurate, database)
+const quotaCheck = await quotaService.checkQuota(
+  user,
+  QUOTA_TYPES.FILE_UPLOADS_PER_DAY,
+  1
+);
+if (!quotaCheck.allowed) {
+  throw new QuotaExceededError(
+    quotaCheck.quotaType,
+    quotaCheck.current,
+    quotaCheck.limit,
+    quotaCheck.resetTime
+  );
+}
+
+// 3. Process the operation
+await processFileUpload();
+```
+
+**Rate limiting runs first** (instant, in-memory) to quickly reject abusive traffic patterns. **Quotas verify second** (database query) to enforce long-term resource limits.
+
+### Comparison Table
+
+| Aspect                 | Quotas                         | Rate Limiting                |
+| ---------------------- | ------------------------------ | ---------------------------- |
+| **Primary Purpose**    | Resource management            | Abuse prevention             |
+| **Storage**            | Database (persistent)          | In-memory (ephemeral)        |
+| **Identifier**         | User ID                        | IP address/identifier        |
+| **Time Windows**       | Daily, lifetime                | Seconds, minutes, hours      |
+| **Reset Logic**        | Fixed time (midnight UTC)      | Sliding windows              |
+| **Works for Unauth**   | No (requires user ID)          | Yes (uses IP)                |
+| **Trust Level Aware**  | Yes                            | Yes                          |
+| **Example**            | 10 uploads/day                 | 1 upload per 5 seconds       |
+| **Error Message**      | "Daily limit reached (10/10)"  | "Too many requests"          |
+| **HTTP Status**        | 429 Too Many Requests          | 429 Too Many Requests        |
+
+### When Each System Triggers
+
+**Rate Limiting Triggers**:
+
+- Rapid repeated requests (burst protection)
+- Multiple requests within seconds (spam detection)
+- Webhook race conditions (prevents concurrent runs)
+
+**Quota Triggers**:
+
+- Daily usage limits exceeded (e.g., 10 uploads today)
+- Lifetime limits exceeded (e.g., 50,000 total events)
+- Resource capacity limits (e.g., 5 active schedules)
+
+### Real Example: File Upload
+
+When a user uploads a file in `import-files` collection:
+
+**Step 1: Rate Limit Check** (import-files.ts:419)
+
+```typescript
+const result = rateLimitService.checkTrustLevelRateLimit(clientId, req.user, "FILE_UPLOAD");
+// Regular user: 1 per 5 seconds, 5 per hour, 20 per day
+```
+
+**Step 2: Quota Check** (import-files.ts:363)
+
+```typescript
+const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+// Regular user: 10 uploads per day (persistent counter)
+```
+
+Both must pass for the upload to proceed.
+
+For detailed information about rate limiting, see the [Rate Limiting documentation](/developer-guide/rate-limiting).
 
 ## Implementation Details
 

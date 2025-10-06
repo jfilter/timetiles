@@ -5,6 +5,78 @@
  * and quota enforcement. It integrates with Payload CMS to enforce quotas and track
  * usage across various operations like file uploads, scheduled imports, and event creation.
  *
+ * ## Quotas vs Rate Limiting
+ *
+ * This service works alongside {@link RateLimitService} but serves a different purpose:
+ *
+ * **QuotaService (this service)**:
+ * - Purpose: Long-term resource management (fair usage, capacity planning)
+ * - Storage: Database (persistent, accurate)
+ * - Scope: Per user ID
+ * - Time windows: Hours to lifetime (e.g., daily, total)
+ * - Reset: Fixed times (midnight UTC for daily quotas)
+ * - Examples: 10 uploads per day, 50,000 total events
+ *
+ * **RateLimitService**:
+ * - Purpose: Short-term abuse prevention (DDoS, spam, burst attacks)
+ * - Storage: In-memory (fast, ephemeral)
+ * - Scope: Per IP address or identifier
+ * - Time windows: Seconds to hours
+ * - Reset: Sliding windows
+ * - Examples: 1 upload per 5 seconds, 5 per hour
+ *
+ * Both checks typically run together - rate limits first (fast fail), then quotas (accurate tracking).
+ *
+ * @example
+ * ```typescript
+ * // Typical usage pattern: check both rate limits and quotas
+ * import { getRateLimitService } from '@/lib/services/rate-limit-service';
+ * import { getQuotaService } from '@/lib/services/quota-service';
+ *
+ * // 1. Rate limit check (fast, prevents abuse)
+ * const rateLimitService = getRateLimitService(payload);
+ * const rateCheck = rateLimitService.checkTrustLevelRateLimit(
+ *   clientIp,
+ *   user,
+ *   "FILE_UPLOAD"
+ * );
+ * if (!rateCheck.allowed) {
+ *   return res.status(429).json({ error: "Too many requests" });
+ * }
+ *
+ * // 2. Quota check (accurate, tracks long-term usage)
+ * const quotaService = getQuotaService(payload);
+ * const quotaCheck = await quotaService.checkQuota(
+ *   user,
+ *   QUOTA_TYPES.FILE_UPLOADS_PER_DAY
+ * );
+ * if (!quotaCheck.allowed) {
+ *   throw new QuotaExceededError(
+ *     quotaCheck.quotaType,
+ *     quotaCheck.current,
+ *     quotaCheck.limit,
+ *     quotaCheck.resetTime
+ *   );
+ * }
+ *
+ * // 3. Process the request and track usage
+ * await processFileUpload();
+ * await quotaService.incrementUsage(user.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
+ * ```
+ *
+ * ## Key Features
+ *
+ * - Trust-level-based quota configuration
+ * - Persistent usage tracking in database
+ * - Daily counter automatic resets (midnight UTC)
+ * - Custom quota overrides per user
+ * - Comprehensive quota checking and validation
+ * - Usage increment/decrement tracking
+ *
+ * @see {@link RateLimitService} for short-term abuse prevention
+ * @see [Quotas Documentation](https://docs.timetiles.io/developer-guide/quotas)
+ * @see [Rate Limiting Documentation](https://docs.timetiles.io/developer-guide/rate-limiting)
+ *
  * @module
  * @category Services
  */
