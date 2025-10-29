@@ -44,27 +44,55 @@ const Catalogs: CollectionConfig = {
     create: ({ req: { user } }) => Boolean(user),
 
     // Only creator or admins can update
-    update: ({ req: { user }, data }) => {
+    update: async ({ req: { user, payload }, id }) => {
       if (user?.role === "admin") return true;
 
-      if (user && data?.createdBy) {
-        const createdById = typeof data.createdBy === "object" ? data.createdBy.id : data.createdBy;
-        return user.id === createdById;
-      }
+      if (!user || !id) return false;
 
-      return false;
+      try {
+        // Always fetch the existing document to check ownership
+        const existingDoc = await payload.findByID({
+          collection: "catalogs",
+          id,
+          overrideAccess: true,
+        });
+
+        if (existingDoc?.createdBy) {
+          const createdById =
+            typeof existingDoc.createdBy === "object" ? existingDoc.createdBy.id : existingDoc.createdBy;
+          return user.id === createdById;
+        }
+
+        return false;
+      } catch {
+        return false;
+      }
     },
 
     // Only creator or admins can delete
-    delete: ({ req: { user }, data }) => {
+    delete: async ({ req: { user, payload }, id }) => {
       if (user?.role === "admin") return true;
 
-      if (user && data?.createdBy) {
-        const createdById = typeof data.createdBy === "object" ? data.createdBy.id : data.createdBy;
-        return user.id === createdById;
-      }
+      if (!user || !id) return false;
 
-      return false;
+      try {
+        // Always fetch the existing document to check ownership
+        const existingDoc = await payload.findByID({
+          collection: "catalogs",
+          id,
+          overrideAccess: true,
+        });
+
+        if (existingDoc?.createdBy) {
+          const createdById =
+            typeof existingDoc.createdBy === "object" ? existingDoc.createdBy.id : existingDoc.createdBy;
+          return user.id === createdById;
+        }
+
+        return false;
+      } catch {
+        return false;
+      }
     },
 
     // Only admins can read version history

@@ -68,14 +68,40 @@ const ImportFiles: CollectionConfig = {
   access: {
     // Import files can be read by their owner or admins
     // Unauthenticated users can only read their own session files
-    read: ({ req: { user }, data }) => {
+    read: async ({ req, id }) => {
+      const { user, payload } = req;
+
       // Admins can read all
       if (user?.role === "admin") return true;
 
-      // Authenticated users can read their own files
-      if (user && data?.user) {
-        const userId = typeof data.user === "object" ? data.user.id : data.user;
-        return user.id === userId;
+      // For findByID operations (id is provided)
+      if (id) {
+        if (!user) return false;
+
+        try {
+          // Fetch the file to check ownership
+          const file = await payload.findByID({
+            collection: "import-files",
+            id,
+            overrideAccess: true,
+          });
+
+          if (file?.user) {
+            const userId = typeof file.user === "object" ? file.user.id : file.user;
+            return user.id === userId;
+          }
+
+          return false;
+        } catch {
+          return false;
+        }
+      }
+
+      // For find operations (query-based filtering)
+      if (user) {
+        return {
+          user: { equals: user.id },
+        };
       }
 
       // Unauthenticated users need sessionId match (handled in API layer)
@@ -87,15 +113,29 @@ const ImportFiles: CollectionConfig = {
     create: () => true,
 
     // Only file owner or admins can update
-    update: ({ req: { user }, data }) => {
+    update: async ({ req, id }) => {
+      const { user, payload } = req;
       if (user?.role === "admin") return true;
 
-      if (user && data?.user) {
-        const userId = typeof data.user === "object" ? data.user.id : data.user;
-        return user.id === userId;
-      }
+      if (!user || !id) return false;
 
-      return false;
+      try {
+        // Fetch the existing import file with override to check ownership
+        const existingFile = await payload.findByID({
+          collection: "import-files",
+          id,
+          overrideAccess: true,
+        });
+
+        if (existingFile?.user) {
+          const userId = typeof existingFile.user === "object" ? existingFile.user.id : existingFile.user;
+          return user.id === userId;
+        }
+
+        return false;
+      } catch {
+        return false;
+      }
     },
 
     // Only admins can delete

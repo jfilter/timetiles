@@ -81,24 +81,31 @@ const ImportJobs: CollectionConfig = {
   },
   access: {
     // Import jobs can be read by the import file owner or admins
-    read: async ({ req, data }) => {
-      const { user } = req;
+    read: async ({ req }) => {
+      const { user, payload } = req;
       if (user?.role === "admin") return true;
 
-      if (data?.importFile) {
-        const importFileId = typeof data.importFile === "object" ? data.importFile.id : data.importFile;
-        const importFile = await req.payload.findByID({
-          collection: "import-files",
-          id: importFileId,
-        });
+      if (!user) return false;
 
-        if (user && importFile?.user) {
-          const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
-          return user.id === userId;
-        }
+      // Get all import files owned by this user
+      const userImportFiles = await payload.find({
+        collection: "import-files",
+        where: { user: { equals: user.id } },
+        limit: 100,
+        pagination: false,
+        overrideAccess: true,
+      });
+
+      const importFileIds = userImportFiles.docs.map((file) => file.id);
+
+      if (importFileIds.length === 0) {
+        return false;
       }
 
-      return false;
+      // Return import jobs linked to user's import files
+      return {
+        importFile: { in: importFileIds },
+      };
     },
 
     // Only authenticated users can create import jobs
@@ -114,6 +121,7 @@ const ImportJobs: CollectionConfig = {
         const importFile = await req.payload.findByID({
           collection: "import-files",
           id: importFileId,
+          overrideAccess: true,
         });
 
         if (importFile?.user) {

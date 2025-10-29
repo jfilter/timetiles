@@ -15,7 +15,7 @@
  *
  * @module
  */
-import type { CollectionConfig } from "payload";
+import type { CollectionConfig, Where } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
@@ -45,99 +45,167 @@ const Events: CollectionConfig = {
   },
   access: {
     // Events inherit access from their dataset and catalog
-    read: async ({ req, data }) => {
-      const { user } = req;
+    read: async ({ req }) => {
+      const { user, payload } = req;
       if (user?.role === "admin") return true;
 
-      if (data?.dataset) {
-        const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
-        const dataset = await req.payload.findByID({
-          collection: "datasets",
-          id: datasetId,
+      // Get public catalogs
+      const publicCatalogs = await payload.find({
+        collection: "catalogs",
+        where: { isPublic: { equals: true } },
+        limit: 100,
+        pagination: false,
+        overrideAccess: true,
+      });
+      const publicCatalogIds = publicCatalogs.docs.map((cat) => cat.id);
+
+      // Get owned catalogs (if authenticated)
+      let ownedCatalogIds: number[] = [];
+      if (user) {
+        const ownedCatalogs = await payload.find({
+          collection: "catalogs",
+          where: { createdBy: { equals: user.id } },
+          limit: 100,
+          pagination: false,
+          overrideAccess: true,
         });
-
-        // Public dataset
-        if (dataset?.isPublic) return true;
-
-        // Check catalog
-        if (dataset?.catalog) {
-          const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
-          const catalog = await req.payload.findByID({
-            collection: "catalogs",
-            id: catalogId,
-          });
-
-          if (catalog?.isPublic) return true;
-
-          if (user && catalog?.createdBy) {
-            const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
-            return user.id === createdById;
-          }
-        }
+        ownedCatalogIds = ownedCatalogs.docs.map((cat) => cat.id);
       }
 
-      return false;
+      // Get accessible datasets:
+      // - Public datasets in public catalogs
+      // - Any dataset in owned catalogs
+      const datasetConditions: Array<string | number> = [];
+
+      if (publicCatalogIds.length > 0) {
+        const publicDatasets = await payload.find({
+          collection: "datasets",
+          where: {
+            and: [{ catalog: { in: publicCatalogIds } }, { isPublic: { equals: true } }],
+          },
+          limit: 500,
+          pagination: false,
+          overrideAccess: true,
+        });
+        datasetConditions.push(...publicDatasets.docs.map((ds) => ds.id));
+      }
+
+      if (ownedCatalogIds.length > 0) {
+        const ownedDatasets = await payload.find({
+          collection: "datasets",
+          where: {
+            catalog: { in: ownedCatalogIds },
+          },
+          limit: 500,
+          pagination: false,
+          overrideAccess: true,
+        });
+        datasetConditions.push(...ownedDatasets.docs.map((ds) => ds.id));
+      }
+
+      if (datasetConditions.length === 0) {
+        // Return impossible condition instead of false to allow 200 with empty results
+        // This provides graceful degradation when there's no public data
+        return { dataset: { equals: -1 } } as Where; // No event has dataset ID -1
+      }
+
+      // Return events in accessible datasets
+      return {
+        dataset: { in: datasetConditions },
+      };
     },
 
     // Only authenticated users can create events (enforced via quota checks too)
     create: ({ req: { user } }) => Boolean(user),
 
     // Only catalog owner or admins can update
-    update: async ({ req, data }) => {
-      const { user } = req;
+    update: async ({ req, id }) => {
+      const { user, payload } = req;
       if (user?.role === "admin") return true;
 
-      if (user && data?.dataset) {
-        const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
-        const dataset = await req.payload.findByID({
-          collection: "datasets",
-          id: datasetId,
+      if (!user || !id) return false;
+
+      try {
+        // Fetch the existing event with override to get dataset info
+        const existingEvent = await payload.findByID({
+          collection: "events",
+          id,
+          overrideAccess: true,
         });
 
-        if (dataset?.catalog) {
-          const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
-          const catalog = await req.payload.findByID({
-            collection: "catalogs",
-            id: catalogId,
+        if (existingEvent?.dataset) {
+          const datasetId =
+            typeof existingEvent.dataset === "object" ? existingEvent.dataset.id : existingEvent.dataset;
+          const dataset = await payload.findByID({
+            collection: "datasets",
+            id: datasetId,
+            overrideAccess: true,
           });
 
-          if (catalog?.createdBy) {
-            const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
-            return user.id === createdById;
+          if (dataset?.catalog) {
+            const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
+            const catalog = await payload.findByID({
+              collection: "catalogs",
+              id: catalogId,
+              overrideAccess: true,
+            });
+
+            if (catalog?.createdBy) {
+              const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+              return user.id === createdById;
+            }
           }
         }
-      }
 
-      return false;
+        return false;
+      } catch {
+        return false;
+      }
     },
 
     // Only catalog owner or admins can delete
-    delete: async ({ req, data }) => {
-      const { user } = req;
+    delete: async ({ req, id }) => {
+      const { user, payload } = req;
       if (user?.role === "admin") return true;
 
-      if (user && data?.dataset) {
-        const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
-        const dataset = await req.payload.findByID({
-          collection: "datasets",
-          id: datasetId,
+      if (!user || !id) return false;
+
+      try {
+        // Fetch the existing event with override to get dataset info
+        const existingEvent = await payload.findByID({
+          collection: "events",
+          id,
+          overrideAccess: true,
         });
 
-        if (dataset?.catalog) {
-          const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
-          const catalog = await req.payload.findByID({
-            collection: "catalogs",
-            id: catalogId,
+        if (existingEvent?.dataset) {
+          const datasetId =
+            typeof existingEvent.dataset === "object" ? existingEvent.dataset.id : existingEvent.dataset;
+          const dataset = await payload.findByID({
+            collection: "datasets",
+            id: datasetId,
+            overrideAccess: true,
           });
 
-          if (catalog?.createdBy) {
-            const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
-            return user.id === createdById;
+          if (dataset?.catalog) {
+            const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
+            const catalog = await payload.findByID({
+              collection: "catalogs",
+              id: catalogId,
+              overrideAccess: true,
+            });
+
+            if (catalog?.createdBy) {
+              const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+              return user.id === createdById;
+            }
           }
         }
-      }
 
-      return false;
+        return false;
+      } catch {
+        return false;
+      }
     },
 
     // Only admins can read version history
