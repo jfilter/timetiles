@@ -26,6 +26,7 @@
     "test:debug": "LOG_LEVEL=debug vitest run --reporter=verbose",
     "test:coverage": "NODE_OPTIONS=\"--no-warnings\" vitest run --coverage --coverage.reportOnFailure=true",
     "test:coverage:summary": "tsx ../../scripts/coverage-summary.ts",
+    "test:coverage:check": "tsx ../../scripts/coverage-summary.ts --threshold 80",
     "test:e2e": "playwright test",
     "test:e2e:debug": "playwright test --debug --headed",
     "test:unit": "NODE_OPTIONS=\"--no-warnings\" vitest run tests/unit",

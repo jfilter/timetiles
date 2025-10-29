@@ -111,6 +111,10 @@ test-coverage:
 coverage:
 	pnpm test:coverage:summary
 
+# Check coverage threshold (files below 80%)
+coverage-check:
+	pnpm --filter web test:coverage:check
+
 # Seed database
 seed:
 	pnpm seed
@@ -160,10 +164,11 @@ help:
 	@echo "  format      - Format code with Prettier"
 	@echo ""
 	@echo "🧪 Testing:"
-	@echo "  test        - Run tests"
+	@echo "  test          - Run tests"
 	@echo "  test-coverage - Run tests and generate coverage"
-	@echo "  coverage    - Show last coverage summary (quick)"
-	@echo "  test-e2e    - Run E2E tests with automatic database setup"
+	@echo "  coverage      - Show last coverage summary (quick)"
+	@echo "  coverage-check - Show files below 80% coverage threshold"
+	@echo "  test-e2e      - Run E2E tests with automatic database setup"
 	@echo ""
 	@echo "🌱 Database:"
 	@echo "  seed        - Seed database with sample data"

@@ -1,10 +1,16 @@
 #!/usr/bin/env tsx
 /**
- * Script to display a simple coverage summary number.
- * 
+ * Script to display coverage summaries and check coverage thresholds.
+ *
  * Reads the coverage summary from the last test run and displays
- * a single overall coverage percentage.
- * 
+ * overall coverage or files below a specified threshold.
+ *
+ * Usage:
+ *   tsx coverage-summary.ts                 # Overall coverage
+ *   tsx coverage-summary.ts --simple        # Just the number
+ *   tsx coverage-summary.ts --details       # Breakdown by metric
+ *   tsx coverage-summary.ts --threshold 80  # Files below 80%
+ *
  * @module
  */
 import { existsSync, readFileSync } from "fs";
@@ -35,6 +41,18 @@ function findMonorepoRoot(startPath: string = process.cwd()): string {
 
 const ROOT_DIR = findMonorepoRoot();
 const CURRENT_DIR = process.cwd();
+
+// Parse command line arguments
+const args = process.argv.slice(2);
+const getArgValue = (flag: string, defaultValue: string): string => {
+  const index = args.indexOf(flag);
+  return index !== -1 && args[index + 1] ? args[index + 1] : defaultValue;
+};
+
+const showSimple = args.includes("--simple");
+const showDetails = args.includes("--details");
+const showThreshold = args.includes("--threshold");
+const threshold = parseFloat(getArgValue("--threshold", "80"));
 
 // Try multiple locations for coverage files
 const possiblePaths = [
@@ -77,7 +95,7 @@ if (!summaryPath) {
 try {
   const summary = JSON.parse(readFileSync(summaryPath, "utf8"));
   const total = summary.total;
-  
+
   // Calculate overall coverage (average of all metrics)
   const overall = (
     total.lines.pct +
@@ -85,14 +103,58 @@ try {
     total.functions.pct +
     total.branches.pct
   ) / 4;
-  
+
+  // Helper to format file path
+  const formatPath = (fullPath: string): string => {
+    return fullPath.replace(ROOT_DIR + "/apps/web/", "");
+  };
+
+  // Helper to format coverage percentage
+  const formatCoverage = (pct: number): string => {
+    return `${pct.toFixed(1).padStart(5)}%`;
+  };
+
+  // Threshold mode: show files below threshold
+  if (showThreshold) {
+    interface FileData {
+      path: string;
+      coverage: number;
+      lines: { total: number; covered: number };
+    }
+
+    const files: FileData[] = Object.entries(summary)
+      .filter(([key]) => key !== "total")
+      .map(([path, data]: [string, any]) => ({
+        path,
+        coverage: data.lines.pct,
+        lines: { total: data.lines.total, covered: data.lines.covered },
+      }))
+      .filter(file => file.coverage < threshold)
+      .sort((a, b) => a.coverage - b.coverage);
+
+    console.log(`\n⚠️  Files Below ${threshold}% Coverage Threshold:`);
+    console.log("━".repeat(60));
+
+    if (files.length === 0) {
+      console.log(`✅ All files meet or exceed ${threshold}% coverage!`);
+    } else {
+      files.forEach(file => {
+        const lineInfo = `(${file.lines.covered}/${file.lines.total} lines)`;
+        console.log(`${formatCoverage(file.coverage)} ${formatPath(file.path)} ${lineInfo}`);
+      });
+      console.log(`\nFound ${files.length} file${files.length === 1 ? "" : "s"} below ${threshold}% threshold`);
+    }
+    console.log("");
+  }
   // Simple one-line output
-  if (process.argv.includes("--simple")) {
+  else if (showSimple) {
     console.log(overall.toFixed(2));
-  } else {
+  }
+  // Default: overall summary
+  else {
     console.log(`\n🎯 Coverage (${source}): ${overall.toFixed(2)}%\n`);
-    
-    if (process.argv.includes("--details")) {
+
+    if (showDetails) {
       console.log("📊 Breakdown:");
       console.log(`   Lines:      ${total.lines.pct}%`);
       console.log(`   Statements: ${total.statements.pct}%`);
