@@ -6,9 +6,13 @@
  *
  * @module
  */
+import { config as loadEnv } from "dotenv";
 import { defineConfig, devices } from "@playwright/test";
 
 import { deriveTestDatabaseUrl, getDatabaseUrl } from "./lib/utils/database-url";
+
+// Load environment variables from .env.local before accessing DATABASE_URL
+loadEnv({ path: ".env.local" });
 
 // Get DATABASE_URL from environment - required
 const DATABASE_URL = getDatabaseUrl(true)!;
