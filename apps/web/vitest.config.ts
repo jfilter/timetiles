@@ -33,6 +33,7 @@ export default defineConfig({
     logHeapUsage: false,
     coverage: {
       provider: "v8",
+      reportOnFailure: true, // Generate coverage even when tests fail
       include: [
         "lib/**/*.ts",
         "lib/**/*.tsx",

@@ -24,7 +24,7 @@
     "test:ai": "NODE_OPTIONS=\"--no-warnings\" DOTENV_CONFIG_SILENT=true vitest run --reporter=json --outputFile.json=.test-results.json --silent 2>/dev/null; tsx scripts/test-summary.ts",
     "test:silent": "NODE_OPTIONS=\"--no-warnings\" vitest run --reporter=basic --silent",
     "test:debug": "LOG_LEVEL=debug vitest run --reporter=verbose",
-    "test:coverage": "NODE_OPTIONS=\"--no-warnings\" vitest run --coverage",
+    "test:coverage": "NODE_OPTIONS=\"--no-warnings\" vitest run --coverage --coverage.reportOnFailure=true",
     "test:coverage:summary": "tsx ../../scripts/coverage-summary.ts",
     "test:e2e": "playwright test",
     "test:e2e:debug": "playwright test --debug --headed",
