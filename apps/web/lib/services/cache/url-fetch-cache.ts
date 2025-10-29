@@ -366,8 +366,10 @@ export class UrlFetchCache {
       parsed.hostname = parsed.hostname.toLowerCase();
 
       // Remove default ports
-      if ((parsed.protocol === "http:" && parsed.port === "80") ||
-          (parsed.protocol === "https:" && parsed.port === "443")) {
+      if (
+        (parsed.protocol === "http:" && parsed.port === "80") ||
+        (parsed.protocol === "https:" && parsed.port === "443")
+      ) {
         parsed.port = "";
       }
 
@@ -379,9 +381,7 @@ export class UrlFetchCache {
       // Sort query parameters alphabetically
       if (parsed.search) {
         const params = new URLSearchParams(parsed.search);
-        const sortedParams = new URLSearchParams(
-          Array.from(params.entries()).sort(([a], [b]) => a.localeCompare(b))
-        );
+        const sortedParams = new URLSearchParams(Array.from(params.entries()).sort(([a], [b]) => a.localeCompare(b)));
         parsed.search = sortedParams.toString();
       }
 
