@@ -96,8 +96,15 @@ test:
 	pnpm test
 
 # Run tests with AI-friendly output
+# Usage: make test-ai [FILTER=pattern]
+# Examples:
+#   make test-ai                                    # Run all tests
+#   make test-ai FILTER=tests/unit                  # Run unit tests directory
+#   make test-ai FILTER=date.test                   # Run tests matching pattern (faster)
+#   make test-ai FILTER=store.test                  # Run store tests
+#   make test-ai FILTER=tests/unit/lib              # Run specific directory
 test-ai:
-	cd apps/web && pnpm test:ai
+	cd apps/web && pnpm test:ai $(FILTER)
 
 # Run combined code quality checks with AI-friendly output (lint + typecheck)
 check-ai:
