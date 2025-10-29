@@ -5,5 +5,8 @@
   "description": "Shared assets for TimeTiles",
   "exports": {
     "./logos/*": "./logos/*"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.12.0"
   }
 }
