@@ -15,7 +15,7 @@
  *
  * @module
  */
-import type { CollectionConfig } from "payload";
+import type { CollectionConfig, Where } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
@@ -68,7 +68,7 @@ const ImportFiles: CollectionConfig = {
   access: {
     // Import files can be read by their owner or admins
     // Unauthenticated users can only read their own session files
-    read: async ({ req, id }) => {
+    read: async ({ req, id }): Promise<boolean | Where> => {
       const { user, payload } = req;
 
       // Admins can read all
@@ -104,8 +104,19 @@ const ImportFiles: CollectionConfig = {
         };
       }
 
-      // Unauthenticated users need sessionId match (handled in API layer)
-      // For now, deny unauthenticated admin panel access
+      // Unauthenticated users can access files with matching sessionId
+      // Get sessionId from request headers or cookies
+      const sessionId =
+        req.headers?.get?.("x-session-id") ?? req.headers?.get?.("cookie")?.match(/sessionId=([^;]+)/)?.[1];
+
+      if (sessionId) {
+        return {
+          sessionId: { equals: sessionId },
+          user: { equals: null }, // Ensure file belongs to no authenticated user
+        };
+      }
+
+      // No session ID available - deny access
       return false;
     },
 

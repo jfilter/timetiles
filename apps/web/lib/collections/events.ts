@@ -115,8 +115,46 @@ const Events: CollectionConfig = {
       };
     },
 
-    // Only authenticated users can create events (enforced via quota checks too)
-    create: ({ req: { user } }) => Boolean(user),
+    // Only authenticated users can create events in datasets they have access to
+    create: async ({ req: { user, payload }, data }) => {
+      if (!user) return false;
+      if (user.role === "admin") return true;
+
+      // Validate user has access to the dataset
+      if (data?.dataset) {
+        const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
+        try {
+          const dataset = await payload.findByID({
+            collection: "datasets",
+            id: datasetId,
+            overrideAccess: true,
+          });
+
+          if (dataset) {
+            const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
+            const catalog = await payload.findByID({
+              collection: "catalogs",
+              id: catalogId,
+              overrideAccess: true,
+            });
+
+            // Can create events if:
+            // 1. Dataset and catalog are both public, OR
+            // 2. User owns the catalog
+            if (dataset.isPublic && catalog?.isPublic) return true;
+
+            if (catalog?.createdBy) {
+              const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+              return user.id === createdById;
+            }
+          }
+        } catch {
+          return false;
+        }
+      }
+
+      return false;
+    },
 
     // Only catalog owner or admins can update
     update: async ({ req, id }) => {
