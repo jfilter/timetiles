@@ -259,7 +259,6 @@ const ScheduledImports: CollectionConfig = {
                 throw new Error("You do not have permission to access this catalog");
               }
             }
-            // eslint-disable-next-line sonarjs/no-ignored-exceptions
           } catch (error: any) {
             // Catalog doesn't exist or access denied
             throw new Error(error.message || "You do not have permission to access this catalog");
