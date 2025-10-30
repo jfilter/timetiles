@@ -63,6 +63,11 @@ const Users: CollectionConfig = {
     delete: ({ req: { user } }) => {
       return user?.role === "admin";
     },
+
+    // Only admins can read version history
+    readVersions: ({ req: { user } }) => {
+      return user?.role === "admin";
+    },
   },
   fields: [
     {

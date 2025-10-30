@@ -166,6 +166,29 @@ const ScheduledImports: CollectionConfig = {
         return false;
       }
     },
+
+    // Only owners or admins can read version history
+    readVersions: async ({ req: { user, payload }, id }) => {
+      if (!user) return false;
+      if (user.role === "admin") return true;
+
+      if (!id) return false;
+
+      try {
+        const existing = await payload.findByID({
+          collection: "scheduled-imports",
+          id,
+          overrideAccess: true,
+        });
+
+        if (!existing.createdBy) return false;
+        const createdById = typeof existing.createdBy === "object" ? existing.createdBy.id : existing.createdBy;
+
+        return createdById === user.id;
+      } catch {
+        return false;
+      }
+    },
   },
   fields: [...basicFields, ...authFields, ...targetFields, ...scheduleFields, ...webhookFields, ...executionFields],
   hooks: {

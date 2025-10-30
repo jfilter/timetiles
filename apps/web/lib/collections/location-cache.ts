@@ -30,6 +30,7 @@ const LocationCache: CollectionConfig = {
     create: () => false,
     update: () => false,
     delete: isEditorOrAdmin,
+    readVersions: isEditorOrAdmin,
   },
   fields: [
     {

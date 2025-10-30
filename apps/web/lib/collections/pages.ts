@@ -19,6 +19,10 @@ export const Pages: CollectionConfig = {
   },
   access: {
     read: () => true,
+    create: ({ req: { user } }) => user?.role === "admin",
+    update: ({ req: { user } }) => user?.role === "admin",
+    delete: ({ req: { user } }) => user?.role === "admin",
+    readVersions: ({ req: { user } }) => user?.role === "admin",
   },
   fields: [
     {
