@@ -188,6 +188,7 @@ export class QuotaService {
       const user = await this.payload.findByID({
         collection: "users",
         id: userId,
+        overrideAccess: true, // Skip access control to avoid nested operations
       });
 
       if (!user?.usage) {
@@ -204,7 +205,12 @@ export class QuotaService {
   /**
    * Check if a user can perform an action based on quota limits.
    */
-  async checkQuota(user: User | null | undefined, quotaType: QuotaType, amount: number = 1): Promise<QuotaCheckResult> {
+  async checkQuota(
+    user: User | null | undefined,
+    quotaType: QuotaType,
+    amount: number = 1,
+    req?: any
+  ): Promise<QuotaCheckResult> {
     // Get effective quotas
     const quotas = this.getEffectiveQuotas(user);
     const limit = quotas[quotaType];
@@ -232,11 +238,15 @@ export class QuotaService {
       };
     }
 
-    // Get current usage for authenticated users
-    const usage = await this.getCurrentUsage(user.id);
+    // Get current usage from user object (avoid nested Payload operations)
+    // The user object should already have usage populated
+    const usage = (user as any).usage as UserUsage | undefined;
+
     if (!usage) {
-      // Initialize usage if not exists
-      await this.initializeUsage(user.id);
+      // Return default empty usage as fallback
+      // (usage should be initialized during user creation)
+      // Avoid calling payload operations here as it causes deadlock in hooks
+      logger.warn("User has no usage data, using defaults", { userId: user.id });
       return {
         allowed: amount <= limit,
         current: 0,
@@ -248,6 +258,7 @@ export class QuotaService {
 
     // Map quota type to usage type
     const usageKey = this.getUsageKeyForQuota(quotaType);
+
     if (!usageKey) {
       // For quotas without usage tracking (like file size)
       return {
@@ -269,7 +280,10 @@ export class QuotaService {
 
       // Check if usage should be reset
       if (this.shouldResetDailyUsage(usage.lastResetDate)) {
-        await this.resetDailyCounters(user.id);
+        // DON'T call resetDailyCounters during transaction - causes deadlock
+        // Instead, assume reset and return current=0
+        // The actual reset will happen on next non-transaction read
+        logger.debug("Daily quota needs reset, assuming current=0 for check", { userId: user.id, quotaType });
         return {
           allowed: amount <= limit,
           current: 0,
@@ -281,6 +295,7 @@ export class QuotaService {
       }
     }
 
+    console.log("[checkQuota] Returning final result", { wouldExceed, current, limit });
     return {
       allowed: !wouldExceed,
       current,
@@ -294,12 +309,15 @@ export class QuotaService {
   /**
    * Increment usage counter for a user.
    */
-  async incrementUsage(userId: number, usageType: UsageType, amount: number = 1): Promise<void> {
+  async incrementUsage(userId: number, usageType: UsageType, amount: number = 1, req?: any): Promise<void> {
     try {
+      console.log("[incrementUsage] 1. Entry", { userId, usageType, amount });
       const user = await this.payload.findByID({
         collection: "users",
         id: userId,
+        overrideAccess: true, // Skip access control to avoid nested operations
       });
+      console.log("[incrementUsage] 2. Got user");
 
       if (!user) {
         logger.error("User not found for usage increment", { userId });
@@ -307,33 +325,47 @@ export class QuotaService {
       }
 
       const currentUsage = (user.usage as UserUsage) || this.getEmptyUsage();
+      console.log("[incrementUsage] 3. Got current usage");
 
       // Check if daily reset is needed
       if (this.isDailyUsageType(usageType) && this.shouldResetDailyUsage(currentUsage.lastResetDate)) {
-        await this.resetDailyCounters(userId);
+        console.log("[incrementUsage] 4. Daily reset needed, calling resetDailyCounters");
+        await this.resetDailyCounters(userId, req);
+        console.log("[incrementUsage] 5. Daily reset completed");
         // Refetch to get updated usage
         const updatedUser = await this.payload.findByID({
           collection: "users",
           id: userId,
+          overrideAccess: true, // Skip access control to avoid nested operations
         });
+        console.log("[incrementUsage] 6. Refetched user");
         if (updatedUser?.usage) {
           Object.assign(currentUsage, updatedUser.usage);
         }
       }
 
+      console.log("[incrementUsage] 7. Incrementing counter");
       // Increment the counter
       const newUsage = {
         ...currentUsage,
         [usageType]: (currentUsage[usageType] || 0) + amount,
       };
 
+      console.log("[incrementUsage] 8. Calling payload.update");
       await this.payload.update({
         collection: "users",
         id: userId,
+        req, // Pass req to stay in same transaction
         data: {
           usage: newUsage,
         },
+        context: {
+          ...(req?.context || {}),
+          skipUsageHooks: true, // Prevent infinite loops
+        },
+        overrideAccess: true, // Skip access control to avoid nested operations
       });
+      console.log("[incrementUsage] 9. Update completed");
 
       logger.debug("Usage incremented", {
         userId,
@@ -354,11 +386,12 @@ export class QuotaService {
   /**
    * Decrement usage counter for a user (e.g., when a schedule is disabled).
    */
-  async decrementUsage(userId: number, usageType: UsageType, amount: number = 1): Promise<void> {
+  async decrementUsage(userId: number, usageType: UsageType, amount: number = 1, req?: any): Promise<void> {
     try {
       const user = await this.payload.findByID({
         collection: "users",
         id: userId,
+        overrideAccess: true, // Skip access control to avoid nested operations
       });
 
       if (!user) {
@@ -380,9 +413,15 @@ export class QuotaService {
       await this.payload.update({
         collection: "users",
         id: userId,
+        req, // Pass req to stay in same transaction
         data: {
           usage: newUsage,
         },
+        context: {
+          ...(req?.context || {}),
+          skipUsageHooks: true, // Prevent infinite loops
+        },
+        overrideAccess: true, // Skip access control to avoid nested operations
       });
 
       logger.debug("Usage decremented", {
@@ -404,11 +443,15 @@ export class QuotaService {
   /**
    * Reset daily counters for a user.
    */
-  async resetDailyCounters(userId: number): Promise<void> {
+  async resetDailyCounters(userId: number, req?: any): Promise<void> {
     try {
-      const user = await this.payload.findByID({
+      // Use req.payload if provided to stay in same transaction
+      const payloadInstance = req?.payload || this.payload;
+
+      const user = await payloadInstance.findByID({
         collection: "users",
         id: userId,
+        overrideAccess: true, // Skip access control to avoid nested operations
       });
 
       if (!user) {
@@ -426,12 +469,18 @@ export class QuotaService {
         lastResetDate: new Date().toISOString(),
       };
 
-      await this.payload.update({
+      await payloadInstance.update({
         collection: "users",
         id: userId,
+        req, // Pass req to stay in transaction
         data: {
           usage: newUsage,
         },
+        context: {
+          ...(req?.context || {}),
+          skipQuotaChecks: true, // Prevent infinite loops
+        },
+        overrideAccess: true, // Skip access control to avoid nested operations
       });
 
       logger.info("Daily counters reset", { userId });
@@ -565,7 +614,12 @@ export class QuotaService {
   }
 
   /**
-   * Get quota headers for HTTP responses.
+   * Get minimal quota headers for HTTP responses.
+   *
+   * Security: Only returns operation-specific rate limit info, does not expose:
+   * - Trust levels (internal scoring system)
+   * - Detailed quotas across all types (system architecture)
+   * - Exact reset times (rate limiting strategy)
    */
   async getQuotaHeaders(user: User | null | undefined, quotaType?: QuotaType): Promise<Record<string, string>> {
     const headers: Record<string, string> = {};
@@ -574,27 +628,20 @@ export class QuotaService {
       return headers;
     }
 
-    const quotas = this.getEffectiveQuotas(user);
-    const usage = await this.getCurrentUsage(user.id);
+    // Only add specific quota information if requested for a specific operation
+    if (quotaType) {
+      const result = await this.checkQuota(user, quotaType);
 
-    if (usage) {
-      // Add general quota information
-      headers["X-User-Trust-Level"] = String(user.trustLevel ?? TRUST_LEVELS.REGULAR);
-      headers["X-Quota-FileUploads"] = `${usage.fileUploadsToday}/${quotas.maxFileUploadsPerDay}`;
-      headers["X-Quota-ImportJobs"] = `${usage.importJobsToday}/${quotas.maxImportJobsPerDay}`;
-      headers["X-Quota-ActiveSchedules"] = `${usage.currentActiveSchedules}/${quotas.maxActiveSchedules}`;
+      // Return only minimal rate-limit information for the current operation
+      // Do not expose exact limits for admin users (would reveal privileged status)
+      headers["X-RateLimit-Remaining"] = String(result.remaining);
 
-      // Add reset time for daily quotas
-      if (this.shouldResetDailyUsage(usage.lastResetDate)) {
-        headers["X-Quota-Reset"] = this.getNextResetTime().toISOString();
-      }
-
-      // Add specific quota information if requested
-      if (quotaType) {
-        const result = await this.checkQuota(user, quotaType);
-        headers["X-Quota-Limit"] = String(result.limit);
-        headers["X-Quota-Remaining"] = String(result.remaining);
-        headers["X-Quota-Current"] = String(result.current);
+      // Indicate if quotas reset daily (but not exact time to prevent attack timing)
+      const isDailyQuota = quotaType === QUOTA_TYPES.FILE_UPLOADS_PER_DAY ||
+                           quotaType === QUOTA_TYPES.URL_FETCHES_PER_DAY ||
+                           quotaType === QUOTA_TYPES.IMPORT_JOBS_PER_DAY;
+      if (isDailyQuota) {
+        headers["X-RateLimit-Reset-Period"] = "daily";
       }
     }
 

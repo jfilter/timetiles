@@ -309,6 +309,7 @@ export const urlFetchJob = {
         maxSize,
         retryConfig: scheduledImport?.retryConfig,
         cacheOptions,
+        userId: input.userId ? String(input.userId) : undefined,
       });
 
       logger.info("URL fetch successful", {

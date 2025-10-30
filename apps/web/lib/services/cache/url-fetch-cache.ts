@@ -289,10 +289,11 @@ export class UrlFetchCache {
    */
   async fetch(
     url: string,
-    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean }
+    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; userId?: string }
   ): Promise<CachedResponse> {
     const method = options?.method ?? "GET";
-    const cacheKey = this.getCacheKey(url, method);
+    const userId = options?.userId;
+    const cacheKey = this.getCacheKey(url, method, userId);
 
     // Only cache GET requests
     if (method !== "GET") {
@@ -396,9 +397,10 @@ export class UrlFetchCache {
     }
   }
 
-  private getCacheKey(url: string, method: string): string {
+  private getCacheKey(url: string, method: string, userId?: string): string {
     const normalizedUrl = this.normalizeUrl(url);
-    return `${method}:${normalizedUrl}`;
+    const userSegment = userId ? `:user:${userId}` : ":anonymous";
+    return `${method}:${normalizedUrl}${userSegment}`;
   }
 
   private isCacheable(status: number, headers: Record<string, string>): boolean {
@@ -420,6 +422,24 @@ export class UrlFetchCache {
 
   async getStats() {
     return this.cache.getStats();
+  }
+
+  /**
+   * Invalidate all cached entries for a specific user
+   */
+  async invalidateForUser(userId: string): Promise<void> {
+    // Get all cache keys and filter for this user
+    const allKeys = await this.cache.keys();
+    const userKeys = allKeys.filter((k) => k.includes(`:user:${userId}`));
+
+    for (const key of userKeys) {
+      await this.cache.delete(key);
+    }
+
+    logger.info("Invalidated user cache", {
+      userId,
+      count: userKeys.length,
+    });
   }
 }
 

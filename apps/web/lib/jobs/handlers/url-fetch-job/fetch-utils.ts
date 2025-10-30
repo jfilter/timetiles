@@ -318,13 +318,15 @@ const buildCacheOptions = (
   authHeaders: Record<string, string>,
   fetchOptions: FetchOptions,
   useCache: boolean,
-  cacheOptions?: UrlFetchCacheOptions
-): RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean } => {
+  cacheOptions?: UrlFetchCacheOptions,
+  userId?: string
+): RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; userId?: string } => {
   return {
     method: fetchOptions.method ?? "GET",
     headers: { ...authHeaders, ...fetchOptions.headers },
     bypassCache: !useCache,
     forceRevalidate: cacheOptions?.forceRevalidate,
+    userId,
   };
 };
 
@@ -362,9 +364,10 @@ export const fetchWithRetry = async (
     retryConfig?: ScheduledImport["retryConfig"];
     authHeaders?: Record<string, string>;
     cacheOptions?: UrlFetchCacheOptions;
+    userId?: string;
   } = {}
 ): Promise<FetchResult> => {
-  const { retryConfig, authHeaders = {}, cacheOptions, ...fetchOptions } = options;
+  const { retryConfig, authHeaders = {}, cacheOptions, userId, ...fetchOptions } = options;
   const maxRetries = retryConfig?.maxRetries ?? 3;
   const retryDelay = getRetryDelay(retryConfig);
   const useExponentialBackoff = retryConfig?.exponentialBackoff ?? true;
@@ -385,7 +388,7 @@ export const fetchWithRetry = async (
         useCache,
       });
 
-      const fetchOpts = buildCacheOptions(authHeaders, fetchOptions, useCache, cacheOptions);
+      const fetchOpts = buildCacheOptions(authHeaders, fetchOptions, useCache, cacheOptions, userId);
       return await processFetchResponse(urlFetchCache, sourceUrl, fetchOpts, fetchOptions, attempt);
     } catch (error) {
       lastError = error as Error;

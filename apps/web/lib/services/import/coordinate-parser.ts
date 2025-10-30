@@ -19,9 +19,19 @@
 
 /**
  * Try to parse as decimal degrees.
+ * Only accepts strings that are purely numeric (no trailing characters).
  */
 export const tryParseDecimal = (str: string): number | null => {
-  const decimal = parseFloat(str);
+  const trimmed = str.trim();
+
+  // Quick validation: must match numeric pattern
+  // Allows: 123, -123, 123.456, -123.456, .5, -.5, 1.5e2, 1.5e-2
+  const numericRegex = /^-?\d*\.?\d+([eE][+-]?\d+)?$/;
+  if (!numericRegex.test(trimmed)) {
+    return null;
+  }
+
+  const decimal = parseFloat(trimmed);
   return !isNaN(decimal) ? decimal : null;
 };
 
