@@ -509,7 +509,7 @@ const ImportFiles: CollectionConfig = {
         if (req.user) {
           const quotaService = getQuotaService(req.payload);
 
-          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
+          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1, req);
         }
 
         // Skip processing for duplicate imports (they're already marked as completed)
@@ -524,10 +524,15 @@ const ImportFiles: CollectionConfig = {
             await payload.update({
               collection: COLLECTION_NAMES.IMPORT_FILES,
               id: doc.id,
+              req, // Pass req to stay in same transaction
               data: {
                 status: "failed",
                 errorLog: "JSON file import not yet implemented",
                 metadata: { error: "JSON not yet implemented" },
+              },
+              context: {
+                ...(req.context || {}),
+                skipImportFileHooks: true, // Prevent infinite loops
               },
             });
           } catch (error) {
@@ -560,10 +565,15 @@ const ImportFiles: CollectionConfig = {
             await payload.update({
               collection: COLLECTION_NAMES.IMPORT_FILES,
               id: String(doc.id),
+              req, // Pass req to stay in same transaction
               data: {
                 status: "parsing",
                 jobId: String(job.id),
                 importedAt: new Date().toISOString(),
+              },
+              context: {
+                ...(req.context || {}),
+                skipImportFileHooks: true, // Prevent infinite loops
               },
             });
           } catch (error) {

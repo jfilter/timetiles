@@ -517,7 +517,7 @@ const Events: CollectionConfig = {
           const quotaService = getQuotaService(req.payload);
 
           // Increment total events counter
-          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.TOTAL_EVENTS_CREATED, 1);
+          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.TOTAL_EVENTS_CREATED, 1, req);
         }
 
         return doc;

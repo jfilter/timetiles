@@ -110,6 +110,11 @@ export const beforeChangeHook: CollectionBeforeChangeHook = ({ data, operation, 
     data.createdBy = req.user.id;
   }
 
+  // Prevent changing createdBy on update
+  if (operation === "update") {
+    delete data.createdBy;
+  }
+
   // Handle webhook token generation
   handleWebhookToken(data, originalDoc);
 

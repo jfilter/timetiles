@@ -32,10 +32,37 @@ const Users: CollectionConfig = {
     defaultColumns: ["email", "firstName", "lastName", "role", "trustLevel", "isActive"],
   },
   access: {
-    read: () => true,
-    create: () => true,
-    update: () => true,
-    delete: () => true,
+    // Users can read their own profile, admins can read all
+    read: ({ req: { user } }) => {
+      if (!user) return false;
+      if (user.role === "admin") return true;
+      return { id: { equals: user.id } };
+    },
+
+    // Only admins can create users
+    // Note: For public registration, modify this to allow unauthenticated
+    // creation but force role to 'user' via beforeChange hook
+    create: ({ req: { user } }) => {
+      return user?.role === "admin";
+    },
+
+    // Users can update their own profile (except role), admins can update anyone
+    update: ({ req: { user }, data }) => {
+      if (!user) return false;
+      if (user.role === "admin") return true;
+
+      // Prevent non-admins from changing roles
+      if (data?.role && data.role !== user.role) {
+        return false;
+      }
+
+      return { id: { equals: user.id } };
+    },
+
+    // Only admins can delete users
+    delete: ({ req: { user } }) => {
+      return user?.role === "admin";
+    },
   },
   fields: [
     {

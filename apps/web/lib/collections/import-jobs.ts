@@ -32,7 +32,7 @@ const isJobCompleted = (doc: ImportJob): boolean => {
   return doc.stage === PROCESSING_STAGE.COMPLETED || doc.stage === PROCESSING_STAGE.FAILED;
 };
 
-const handleJobCompletion = async (payload: Payload, doc: ImportJob): Promise<void> => {
+const handleJobCompletion = async (payload: Payload, doc: ImportJob, req?: any): Promise<void> => {
   // Extract import file ID, handling both relationship object and direct ID cases
   const importFileId = typeof doc.importFile === "object" ? doc.importFile.id : doc.importFile;
 
@@ -54,7 +54,12 @@ const handleJobCompletion = async (payload: Payload, doc: ImportJob): Promise<vo
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_FILES,
       id: importFileId,
+      req, // Pass req to stay in same transaction
       data: { status: hasFailures ? "failed" : "completed" },
+      context: {
+        ...(req?.context || {}),
+        skipImportFileHooks: true, // Prevent infinite loops
+      },
     });
 
     logger.info("Updated import file status", {
@@ -588,7 +593,7 @@ const ImportJobs: CollectionConfig = {
             const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
 
             const quotaService = getQuotaService(req.payload);
-            await quotaService.incrementUsage(userId, USAGE_TYPES.IMPORT_JOBS_TODAY, 1);
+            await quotaService.incrementUsage(userId, USAGE_TYPES.IMPORT_JOBS_TODAY, 1, req);
 
             logger.info("Import job creation tracked for quota", {
               userId,
@@ -610,7 +615,7 @@ const ImportJobs: CollectionConfig = {
 
         // Handle job completion status updates
         if (isJobCompleted(doc)) {
-          await handleJobCompletion(req.payload, doc);
+          await handleJobCompletion(req.payload, doc, req);
         }
 
         return doc;
