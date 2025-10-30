@@ -37,11 +37,10 @@ const Events: CollectionConfig = {
       defaultLimit: 50,
     },
     preview: (doc) => {
-      // Generate preview URL with authentication
+      // Generate preview URL (uses JWT authentication via HTTP-only cookies)
       const params = new URLSearchParams({
         collection: COLLECTION_NAMES.EVENTS,
         slug: String(doc.id),
-        secret: process.env.PAYLOAD_PREVIEW_SECRET ?? "",
       });
 
       return `/api/preview?${params.toString()}`;
