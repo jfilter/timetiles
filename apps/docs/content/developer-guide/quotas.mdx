@@ -317,28 +317,15 @@ Both checks run on every operation:
 
 ```typescript
 // 1. Rate Limit Check (fast, in-memory)
-const rateLimitCheck = rateLimitService.checkTrustLevelRateLimit(
-  clientIp,
-  user,
-  "FILE_UPLOAD"
-);
+const rateLimitCheck = rateLimitService.checkTrustLevelRateLimit(clientIp, user, "FILE_UPLOAD");
 if (!rateLimitCheck.allowed) {
   throw new Error("Too many requests. Please wait before retrying.");
 }
 
 // 2. Quota Check (accurate, database)
-const quotaCheck = await quotaService.checkQuota(
-  user,
-  QUOTA_TYPES.FILE_UPLOADS_PER_DAY,
-  1
-);
+const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
 if (!quotaCheck.allowed) {
-  throw new QuotaExceededError(
-    quotaCheck.quotaType,
-    quotaCheck.current,
-    quotaCheck.limit,
-    quotaCheck.resetTime
-  );
+  throw new QuotaExceededError(quotaCheck.quotaType, quotaCheck.current, quotaCheck.limit, quotaCheck.resetTime);
 }
 
 // 3. Process the operation
@@ -349,18 +336,18 @@ await processFileUpload();
 
 ### Comparison Table
 
-| Aspect                 | Quotas                         | Rate Limiting                |
-| ---------------------- | ------------------------------ | ---------------------------- |
-| **Primary Purpose**    | Resource management            | Abuse prevention             |
-| **Storage**            | Database (persistent)          | In-memory (ephemeral)        |
-| **Identifier**         | User ID                        | IP address/identifier        |
-| **Time Windows**       | Daily, lifetime                | Seconds, minutes, hours      |
-| **Reset Logic**        | Fixed time (midnight UTC)      | Sliding windows              |
-| **Works for Unauth**   | No (requires user ID)          | Yes (uses IP)                |
-| **Trust Level Aware**  | Yes                            | Yes                          |
-| **Example**            | 10 uploads/day                 | 1 upload per 5 seconds       |
-| **Error Message**      | "Daily limit reached (10/10)"  | "Too many requests"          |
-| **HTTP Status**        | 429 Too Many Requests          | 429 Too Many Requests        |
+| Aspect                | Quotas                        | Rate Limiting           |
+| --------------------- | ----------------------------- | ----------------------- |
+| **Primary Purpose**   | Resource management           | Abuse prevention        |
+| **Storage**           | Database (persistent)         | In-memory (ephemeral)   |
+| **Identifier**        | User ID                       | IP address/identifier   |
+| **Time Windows**      | Daily, lifetime               | Seconds, minutes, hours |
+| **Reset Logic**       | Fixed time (midnight UTC)     | Sliding windows         |
+| **Works for Unauth**  | No (requires user ID)         | Yes (uses IP)           |
+| **Trust Level Aware** | Yes                           | Yes                     |
+| **Example**           | 10 uploads/day                | 1 upload per 5 seconds  |
+| **Error Message**     | "Daily limit reached (10/10)" | "Too many requests"     |
+| **HTTP Status**       | 429 Too Many Requests         | 429 Too Many Requests   |
 
 ### When Each System Triggers
 

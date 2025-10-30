@@ -89,9 +89,10 @@ The type must be one of the following:
 
 #### Scope (Intelligently Optional)
 
-The scope provides additional context about what part of the codebase changed. 
+The scope provides additional context about what part of the codebase changed.
 
 **When scope can be omitted:**
+
 - When the type already indicates the scope (avoiding redundancy)
   - `docs: update README` (when changing documentation files)
   - `ci: fix GitHub Actions` (when changing CI/CD files)
@@ -99,6 +100,7 @@ The scope provides additional context about what part of the codebase changed.
   - `test: add unit tests` (when changing test files)
 
 **When scope is recommended:**
+
 - When the type doesn't clearly indicate what area is affected
   - `fix(import): handle empty CSV files` (not just `fix:`)
   - `feat(geocoding): add address caching` (not just `feat:`)
@@ -388,18 +390,21 @@ Use **technical scopes** (`db`, `api`, `jobs`, `deps`, `seed`) when:
 The commitlint rules intelligently handle redundant type/scope combinations:
 
 ### When scope can be omitted (type matches expected scope):
+
 - **`docs:`** - When changing documentation files
 - **`ci:`** - When changing CI/CD configuration files
 - **`build:`** - When changing build configuration files
 - **`test:`** - When changing test files
 
 ### When scope is still useful:
+
 - **`docs(web):`** - Documenting the web app specifically
 - **`docs(api):`** - API documentation updates
 - **`test(import):`** - Tests for the import feature
 - **`ci(deploy):`** - CI changes for deployment workflows
 
 ### Special case - docs(docs):
+
 - **`docs(docs):`** - Valid when documenting the docs app itself
   - Example: `docs(docs): update Nextra configuration guide`
   - This is NOT redundant because it's about the documentation site code/config

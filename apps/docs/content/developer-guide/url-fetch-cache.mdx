@@ -26,6 +26,7 @@ The URL fetch cache automatically stores responses from external APIs and data s
 **When It's Used:**
 
 The cache is automatically integrated with:
+
 - Scheduled imports that fetch data from URLs
 - Manual import triggers (configurable)
 - Webhook-triggered imports (configurable)
@@ -35,16 +36,19 @@ The cache operates transparently through the `url-fetch-job` handler - no progra
 ### How Caching Works
 
 **Cache Hit Flow:**
+
 ```
 Request → Check cache → Found & valid → Return cached response ✓
 ```
 
 **Cache Miss Flow:**
+
 ```
 Request → Check cache → Not found → Fetch from URL → Store → Return response
 ```
 
 **Revalidation Flow:**
+
 ```
 Request → Check cache → Found but stale → Send conditional request with ETag
 → 304 Not Modified → Update cache metadata → Return cached response ✓
@@ -55,10 +59,10 @@ Request → Check cache → Found but stale → Send conditional request with ET
 
 ### Quick Reference: Which Variables to Use?
 
-| What you want to configure | Use these variables | NOT these |
-|---------------------------|---------------------|-----------|
-| **URL fetch cache for scheduled imports** | `URL_FETCH_CACHE_*` | ~~`CACHE_*`~~ |
-| **Other caching in TimeTiles** | `CACHE_*` | ~~`URL_FETCH_CACHE_*`~~ |
+| What you want to configure                | Use these variables | NOT these               |
+| ----------------------------------------- | ------------------- | ----------------------- |
+| **URL fetch cache for scheduled imports** | `URL_FETCH_CACHE_*` | ~~`CACHE_*`~~           |
+| **Other caching in TimeTiles**            | `CACHE_*`           | ~~`URL_FETCH_CACHE_*`~~ |
 
 ⚠️ **Important:** Don't mix them up! URL fetch cache and generic cache are completely separate systems.
 
@@ -100,6 +104,7 @@ CACHE_CLEANUP_INTERVAL_MS=3600000  # URL fetch cache ignores this
 The URL fetch cache is a standalone system specifically designed for scheduled URL imports with HTTP-specific features (ETags, 304 responses, Cache-Control headers). It doesn't use `CacheManager` and has its own dedicated configuration.
 
 **What you need to know:**
+
 - Setting `CACHE_BACKEND=memory` will NOT make URL fetch cache use memory storage
 - URL fetch cache always uses filesystem at `URL_FETCH_CACHE_DIR` location
 - Only `URL_FETCH_CACHE_*` variables control URL fetch caching behavior
@@ -109,18 +114,21 @@ The URL fetch cache is a standalone system specifically designed for scheduled U
 Configure caching behavior per scheduled import in the Payload admin:
 
 **`advancedOptions.useHttpCache`**
+
 - **Type:** Boolean
 - **Default:** `true`
 - **Description:** Enable HTTP caching for this import
 - **Use case:** Disable for real-time data sources that change frequently
 
 **`advancedOptions.bypassCacheOnManual`**
+
 - **Type:** Boolean
 - **Default:** `false`
 - **Description:** Skip cache when manually triggering this import
 - **Use case:** Force fresh data fetch during testing or debugging
 
 **`advancedOptions.respectCacheControl`**
+
 - **Type:** Boolean
 - **Default:** `true`
 - **Description:** Honor server `Cache-Control` headers
@@ -131,18 +139,21 @@ Configure caching behavior per scheduled import in the Payload admin:
 The URL fetch cache uses **file system storage only** (persistent disk-based caching):
 
 **Characteristics:**
+
 - Persistent across server restarts and deployments
 - Configurable size limits and TTL
 - Expired entries removed on next access (lazy cleanup)
 - Hierarchical file organization
 
 **Configuration:**
+
 ```bash
 URL_FETCH_CACHE_DIR=/tmp/url-fetch-cache  # Cache directory (default)
 URL_FETCH_CACHE_MAX_SIZE=104857600   # Max size in bytes (default 100MB)
 ```
 
 **Storage structure:**
+
 ```
 /tmp/url-fetch-cache/
 ├── index.json          # Cache metadata and key index
@@ -177,6 +188,7 @@ URLs are automatically normalized to maximize cache hits:
 5. **Fragments removed** - `#section` is stripped
 
 **Example:**
+
 ```
 Original: https://API.Example.com:443/events/?limit=100&format=json#top
 Method:   GET
@@ -185,6 +197,7 @@ Method:   GET
 ```
 
 **These URLs now cache as the same entry:**
+
 - `https://api.example.com/data`
 - `https://API.Example.com/data/`
 - `https://api.example.com:443/data`
@@ -204,6 +217,7 @@ Response Headers:
 ```
 
 On next request, cache sends:
+
 ```http
 Request Headers:
   If-None-Match: "abc123xyz"
@@ -221,6 +235,7 @@ Response Headers:
 ```
 
 On next request, cache sends:
+
 ```http
 Request Headers:
   If-Modified-Since: Wed, 21 Oct 2025 07:28:00 GMT
@@ -233,16 +248,19 @@ If unchanged, server responds `304 Not Modified`.
 Server specifies caching directives:
 
 **`max-age=N`** - Cache for N seconds
+
 ```http
 Cache-Control: max-age=3600  # Cache for 1 hour
 ```
 
 **`no-cache`** - Revalidate before using cached response
+
 ```http
 Cache-Control: no-cache  # Always check with server
 ```
 
 **`no-store`** - Never cache
+
 ```http
 Cache-Control: no-store  # Don't cache at all
 ```
@@ -260,6 +278,7 @@ The cache determines Time-To-Live (TTL) using this priority order:
 5. **Default TTL** → Use `URL_FETCH_CACHE_TTL` environment variable
 
 **Example:**
+
 ```typescript
 // Server response
 Cache-Control: max-age=7200
@@ -273,12 +292,14 @@ Cache-Control: max-age=7200
 The URL fetch cache adds a custom header to responses for debugging:
 
 **`X-Cache`** - Cache status
+
 - `HIT` - Served from cache
 - `MISS` - Fetched from origin server
 - `STALE` - Cached but expired, fallback used after revalidation failure
 - `REVALIDATED` - 304 response received, cache metadata updated
 
 **Example response:**
+
 ```http
 HTTP/1.1 200 OK
 X-Cache: HIT
@@ -327,12 +348,14 @@ rm -rf /tmp/url-fetch-cache/*
 **Possible Causes:**
 
 1. **TTL too short** - Entries expire before next fetch
+
    ```bash
    # Increase default TTL to 24 hours
    URL_FETCH_CACHE_TTL=86400
    ```
 
 2. **Server sends `Cache-Control: no-cache`** - Server prevents caching
+
    ```bash
    # Override server directives (use with caution)
    URL_FETCH_CACHE_RESPECT_CACHE_CONTROL=false
@@ -384,6 +407,7 @@ rm -rf /tmp/url-fetch-cache/*
 **Symptoms:** Cache directory growing too large, disk space warnings
 
 **Diagnosis:**
+
 ```bash
 # Check cache size
 du -sh /tmp/url-fetch-cache/
@@ -395,11 +419,13 @@ find /tmp/url-fetch-cache -name "*.cache" | wc -l
 **Solutions:**
 
 1. **Reduce max cache size**
+
    ```bash
    URL_FETCH_CACHE_MAX_SIZE=52428800  # 50MB
    ```
 
 2. **Reduce TTL** - Entries expire faster
+
    ```bash
    URL_FETCH_CACHE_TTL=1800  # 30 minutes
    ```
@@ -462,6 +488,7 @@ find /tmp/url-fetch-cache -name "*.cache" | wc -l
 ### When to Enable Caching
 
 **Good candidates:**
+
 - ✅ Reference data that changes infrequently (country codes, categories)
 - ✅ Historical data that never changes (past event records)
 - ✅ Data with proper ETags or Last-Modified headers
@@ -469,6 +496,7 @@ find /tmp/url-fetch-cache -name "*.cache" | wc -l
 - ✅ Large datasets (reduces bandwidth and processing time)
 
 **Poor candidates:**
+
 - ❌ Real-time data (stock prices, live scores)
 - ❌ User-specific data with authentication tokens
 - ❌ APIs that explicitly disable caching (`Cache-Control: no-store`)
@@ -508,6 +536,7 @@ URL fetch cache is used in tests when testing scheduled imports. The cache direc
 For developers working on the cache system itself:
 
 **Source Code:**
+
 - `lib/services/cache/` - Generic cache system
   - `cache.ts` - Core cache service with key prefixing
   - `manager.ts` - Cache instance factory and lifecycle
@@ -527,10 +556,12 @@ For developers working on the cache system itself:
 **Potential improvement:** Refactor to use `CacheManager.getCache("http")` and respect generic cache settings where appropriate, while maintaining HTTP-specific features (ETags, Cache-Control).
 
 **Auto-Generated API Documentation:**
+
 - See `/reference/api/lib/services/cache/` for complete API reference
 - TypeDoc comments in source code provide detailed documentation
 
 **Related Systems:**
+
 - [Data Processing Pipeline](/developer-guide/architecture/data-processing-pipeline) - How imports flow through the system
 - [Scheduled Imports](/reference/api/lib/collections/scheduled-imports) - Configuration and fields
 - [Quota System](/developer-guide/quotas) - How caching affects quota usage

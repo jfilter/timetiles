@@ -6,14 +6,14 @@ The rate limiting system protects API endpoints from abuse by limiting the frequ
 
 While both systems control resource usage, they serve different purposes:
 
-| Aspect | Rate Limiting | Quotas |
-|--------|--------------|--------|
-| **Purpose** | Prevent burst attacks/abuse | Manage long-term resource allocation |
-| **Storage** | In-memory (ephemeral) | Database (persistent) |
-| **Scope** | Per IP address or identifier | Per user ID |
-| **Time Windows** | Seconds to hours | Hours to lifetime |
-| **Reset** | Sliding windows | Fixed time (midnight UTC) |
-| **Use Case** | DDoS protection, spam prevention | Fair resource distribution |
+| Aspect           | Rate Limiting                    | Quotas                               |
+| ---------------- | -------------------------------- | ------------------------------------ |
+| **Purpose**      | Prevent burst attacks/abuse      | Manage long-term resource allocation |
+| **Storage**      | In-memory (ephemeral)            | Database (persistent)                |
+| **Scope**        | Per IP address or identifier     | Per user ID                          |
+| **Time Windows** | Seconds to hours                 | Hours to lifetime                    |
+| **Reset**        | Sliding windows                  | Fixed time (midnight UTC)            |
+| **Use Case**     | DDoS protection, spam prevention | Fair resource distribution           |
 
 ### Example: File Upload Protection
 
@@ -21,18 +21,11 @@ When a user uploads a file, both systems check:
 
 ```typescript
 // 1. Rate Limiting (fast fail, prevents abuse)
-const rateLimitCheck = rateLimitService.checkTrustLevelRateLimit(
-  clientIp,
-  user,
-  "FILE_UPLOAD"
-);
+const rateLimitCheck = rateLimitService.checkTrustLevelRateLimit(clientIp, user, "FILE_UPLOAD");
 // Checks: 1 per 5 seconds, 5 per hour, 20 per day
 
 // 2. Quotas (accurate, prevents resource exhaustion)
-const quotaCheck = await quotaService.checkQuota(
-  user,
-  QUOTA_TYPES.FILE_UPLOADS_PER_DAY
-);
+const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY);
 // Checks: Total uploads today vs limit (e.g., 10/day)
 ```
 
@@ -45,14 +38,17 @@ The rate limit service supports multiple time windows to catch different abuse p
 ### Window Types
 
 **Burst Protection** (seconds to minutes)
+
 - Prevents rapid-fire requests
 - Example: 1 request per 5 seconds
 
 **Hourly Limits**
+
 - Prevents sustained abuse
 - Example: 5 requests per hour
 
 **Daily Limits**
+
 - Prevents long-term abuse patterns
 - Example: 20 requests per day
 
@@ -62,14 +58,14 @@ The rate limit service supports multiple time windows to catch different abuse p
 export const RATE_LIMITS = {
   FILE_UPLOAD: {
     windows: [
-      { limit: 1, windowMs: 5 * 1000, name: "burst" },      // 1 per 5 sec
-      { limit: 5, windowMs: 60 * 60 * 1000, name: "hourly" },  // 5 per hour
+      { limit: 1, windowMs: 5 * 1000, name: "burst" }, // 1 per 5 sec
+      { limit: 5, windowMs: 60 * 60 * 1000, name: "hourly" }, // 5 per hour
       { limit: 20, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 20 per day
     ],
   },
   API_GENERAL: {
     windows: [
-      { limit: 5, windowMs: 1000, name: "burst" },         // 5 per second
+      { limit: 5, windowMs: 1000, name: "burst" }, // 5 per second
       { limit: 50, windowMs: 60 * 60 * 1000, name: "hourly" }, // 50 per hour
     ],
   },
@@ -84,25 +80,25 @@ Rate limits automatically adjust based on user trust level (see [Quotas - Trust 
 
 ### File Upload Rate Limits by Trust Level
 
-| Trust Level | Burst | Hourly | Daily |
-|-------------|-------|--------|-------|
-| **Untrusted (0)** | 1 per min | 1/hour | 1/day |
-| **Basic (1)** | 1 per 10s | 3/hour | 3/day |
-| **Regular (2)** | 1 per 5s | 5/hour | 20/day |
-| **Trusted (3)** | 2 per 5s | 20/hour | 50/day |
-| **Power User (4)** | 5 per 5s | 100/hour | 200/day |
-| **Unlimited (5)** | 10 per sec | 1000/hour | No daily limit |
+| Trust Level        | Burst      | Hourly    | Daily          |
+| ------------------ | ---------- | --------- | -------------- |
+| **Untrusted (0)**  | 1 per min  | 1/hour    | 1/day          |
+| **Basic (1)**      | 1 per 10s  | 3/hour    | 3/day          |
+| **Regular (2)**    | 1 per 5s   | 5/hour    | 20/day         |
+| **Trusted (3)**    | 2 per 5s   | 20/hour   | 50/day         |
+| **Power User (4)** | 5 per 5s   | 100/hour  | 200/day        |
+| **Unlimited (5)**  | 10 per sec | 1000/hour | No daily limit |
 
 ### API General Rate Limits by Trust Level
 
-| Trust Level | Burst | Hourly |
-|-------------|-------|--------|
-| **Untrusted (0)** | 1 per sec | 10/hour |
-| **Basic (1)** | 2 per sec | 30/hour |
-| **Regular (2)** | 5 per sec | 50/hour |
-| **Trusted (3)** | 10 per sec | 200/hour |
-| **Power User (4)** | 20 per sec | 1000/hour |
-| **Unlimited (5)** | 100 per sec | 10000/hour |
+| Trust Level        | Burst       | Hourly     |
+| ------------------ | ----------- | ---------- |
+| **Untrusted (0)**  | 1 per sec   | 10/hour    |
+| **Basic (1)**      | 2 per sec   | 30/hour    |
+| **Regular (2)**    | 5 per sec   | 50/hour    |
+| **Trusted (3)**    | 10 per sec  | 200/hour   |
+| **Power User (4)** | 20 per sec  | 1000/hour  |
+| **Unlimited (5)**  | 100 per sec | 10000/hour |
 
 Higher trust levels automatically receive more generous rate limits, allowing trusted users to work efficiently without hitting limits.
 
@@ -118,15 +114,12 @@ const rateLimitService = getRateLimitService(payload);
 // Simple single-window check
 const result = rateLimitService.checkRateLimit(
   "user-identifier",
-  10,    // limit: 10 requests
-  60000  // window: 60 seconds
+  10, // limit: 10 requests
+  60000 // window: 60 seconds
 );
 
 if (!result.allowed) {
-  return NextResponse.json(
-    { error: "Rate limit exceeded" },
-    { status: 429 }
-  );
+  return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
 }
 ```
 
@@ -135,19 +128,16 @@ if (!result.allowed) {
 ```typescript
 const rateLimitService = getRateLimitService(payload);
 
-const result = rateLimitService.checkMultiWindowRateLimit(
-  "webhook:token123",
-  [
-    { limit: 1, windowMs: 10 * 1000, name: "burst" },
-    { limit: 5, windowMs: 60 * 60 * 1000, name: "hourly" },
-  ]
-);
+const result = rateLimitService.checkMultiWindowRateLimit("webhook:token123", [
+  { limit: 1, windowMs: 10 * 1000, name: "burst" },
+  { limit: 5, windowMs: 60 * 60 * 1000, name: "hourly" },
+]);
 
 if (!result.allowed) {
   return NextResponse.json(
     {
       error: "Rate limit exceeded",
-      window: result.failedWindow,  // "burst" or "hourly"
+      window: result.failedWindow, // "burst" or "hourly"
       resetTime: result.resetTime,
     },
     { status: 429 }
@@ -158,10 +148,7 @@ if (!result.allowed) {
 ### Trust-Level-Aware Rate Limiting
 
 ```typescript
-import {
-  getRateLimitService,
-  getClientIdentifier
-} from "@/lib/services/rate-limit-service";
+import { getRateLimitService, getClientIdentifier } from "@/lib/services/rate-limit-service";
 
 const rateLimitService = getRateLimitService(payload);
 const clientIp = getClientIdentifier(request);
@@ -169,14 +156,12 @@ const clientIp = getClientIdentifier(request);
 // Automatically uses trust-level-based limits
 const result = rateLimitService.checkTrustLevelRateLimit(
   clientIp,
-  user,           // User object (or null for unauthenticated)
-  "FILE_UPLOAD"   // Endpoint type
+  user, // User object (or null for unauthenticated)
+  "FILE_UPLOAD" // Endpoint type
 );
 
 if (!result.allowed) {
-  throw new Error(
-    `Rate limit exceeded. Limited by ${result.failedWindow} window.`
-  );
+  throw new Error(`Rate limit exceeded. Limited by ${result.failedWindow} window.`);
 }
 ```
 
@@ -222,15 +207,13 @@ The webhook trigger endpoint uses dual-window rate limiting to prevent race cond
 
 ```typescript
 // apps/web/app/api/webhooks/trigger/[token]/route.ts
-const rateLimitCheck = rateLimitService.checkConfiguredRateLimit(
-  `webhook:${token}`,
-  RATE_LIMITS.WEBHOOK_TRIGGER
-);
+const rateLimitCheck = rateLimitService.checkConfiguredRateLimit(`webhook:${token}`, RATE_LIMITS.WEBHOOK_TRIGGER);
 
 if (!rateLimitCheck.allowed) {
-  const message = rateLimitCheck.failedWindow === "burst"
-    ? "Too many requests. Please wait 10 seconds between webhook calls."
-    : "Hourly rate limit exceeded. Maximum 5 requests per hour.";
+  const message =
+    rateLimitCheck.failedWindow === "burst"
+      ? "Too many requests. Please wait 10 seconds between webhook calls."
+      : "Hourly rate limit exceeded. Maximum 5 requests per hour.";
 
   return NextResponse.json(
     {
@@ -243,9 +226,7 @@ if (!rateLimitCheck.allowed) {
     {
       status: 429,
       headers: {
-        "Retry-After": Math.ceil(
-          (rateLimitCheck.resetTime - Date.now()) / 1000
-        ).toString(),
+        "Retry-After": Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000).toString(),
       },
     }
   );
@@ -253,6 +234,7 @@ if (!rateLimitCheck.allowed) {
 ```
 
 **Configuration**:
+
 ```typescript
 WEBHOOK_TRIGGER: {
   windows: [
@@ -263,6 +245,7 @@ WEBHOOK_TRIGGER: {
 ```
 
 This prevents:
+
 - **Race conditions**: 10-second window ensures previous import finishes
 - **Abuse**: Hourly limit caps total automated triggers
 
@@ -278,25 +261,21 @@ beforeChange: [
     const clientId = getClientIdentifier(req);
 
     // Trust level automatically determines limits
-    const result = rateLimitService.checkTrustLevelRateLimit(
-      clientId,
-      req.user,
-      "FILE_UPLOAD"
-    );
+    const result = rateLimitService.checkTrustLevelRateLimit(clientId, req.user, "FILE_UPLOAD");
 
     if (!result.allowed) {
       throw new Error(
-        `Too many import requests. Please try again later. ` +
-        `(Limited by ${result.failedWindow} window)`
+        `Too many import requests. Please try again later. ` + `(Limited by ${result.failedWindow} window)`
       );
     }
 
     return { ...data, rateLimitInfo: { clientId, timestamp: new Date() } };
-  }
-]
+  },
+];
 ```
 
 This protects against:
+
 - **Burst uploads**: Prevents rapid file spam
 - **Hourly abuse**: Limits sustained upload attacks
 - **Daily flooding**: Caps total daily upload attempts
@@ -308,6 +287,7 @@ This protects against:
 Located in `apps/web/lib/services/rate-limit-service.ts`
 
 **Key Methods**:
+
 - `checkRateLimit(identifier, limit, windowMs)` - Single window check
 - `checkMultiWindowRateLimit(identifier, windows)` - Multiple windows
 - `checkConfiguredRateLimit(identifier, config)` - Using config object
@@ -320,16 +300,19 @@ Located in `apps/web/lib/services/rate-limit-service.ts`
 ### Storage and Cleanup
 
 **In-Memory Storage**:
+
 - Uses JavaScript Map for fast lookups
 - No database overhead
 - Data doesn't persist across restarts
 
 **Automatic Cleanup**:
+
 - Expired entries removed every 5 minutes
 - Configurable cleanup interval
 - Prevents memory leaks
 
 **Test Isolation**:
+
 - Creates new instance per test
 - No shared state between tests
 - Cleanup interval disabled in tests
@@ -337,6 +320,7 @@ Located in `apps/web/lib/services/rate-limit-service.ts`
 ## Best Practices
 
 ### 1. Check Rate Limits Early
+
 ```typescript
 // ✅ Check before expensive operations
 const rateCheck = rateLimitService.checkRateLimit(clientId, limit, window);
@@ -347,20 +331,22 @@ await processLargeFile();
 ```
 
 ### 2. Use Appropriate Windows
+
 ```typescript
 // ✅ Multiple windows for comprehensive protection
 windows: [
-  { limit: 1, windowMs: 5000, name: "burst" },     // Prevent spam
+  { limit: 1, windowMs: 5000, name: "burst" }, // Prevent spam
   { limit: 10, windowMs: 3600000, name: "hourly" }, // Prevent abuse
-]
+];
 
 // ❌ Single window may miss abuse patterns
 windows: [
   { limit: 100, windowMs: 3600000, name: "hourly" }, // Allows 100 rapid requests
-]
+];
 ```
 
 ### 3. Provide Clear Error Messages
+
 ```typescript
 // ✅ Tell users what limit they hit and when it resets
 if (!result.allowed) {
@@ -378,6 +364,7 @@ if (!result.allowed) {
 ```
 
 ### 4. Use Trust-Level Checks When Possible
+
 ```typescript
 // ✅ Automatically adjusts limits based on trust
 rateLimitService.checkTrustLevelRateLimit(clientId, user, "FILE_UPLOAD");
@@ -387,6 +374,7 @@ rateLimitService.checkRateLimit(clientId, 5, 60000);
 ```
 
 ### 5. Combine with Quotas
+
 ```typescript
 // ✅ Rate limit first (fast), then quota check (accurate)
 const rateCheck = rateLimitService.checkTrustLevelRateLimit(...);
@@ -403,6 +391,7 @@ const quotaCheck = await quotaService.checkQuota(...);
 ## When to Use Rate Limiting
 
 ### Use Rate Limiting For:
+
 - ✅ Public API endpoints
 - ✅ Webhook endpoints (prevent race conditions)
 - ✅ Authentication endpoints (prevent brute force)
@@ -410,6 +399,7 @@ const quotaCheck = await quotaService.checkQuota(...);
 - ✅ Any endpoint vulnerable to abuse
 
 ### Don't Use Rate Limiting For:
+
 - ❌ Internal service calls
 - ❌ Admin-only operations (use quotas instead)
 - ❌ Read-heavy endpoints with caching
@@ -451,10 +441,7 @@ rateLimitService.resetRateLimit("user-123");
 
 ```typescript
 // Block for 24 hours
-rateLimitService.blockIdentifier(
-  "abusive-ip",
-  24 * 60 * 60 * 1000
-);
+rateLimitService.blockIdentifier("abusive-ip", 24 * 60 * 60 * 1000);
 ```
 
 ## Configuration Reference
@@ -466,6 +453,7 @@ Rate limit configurations are defined in `lib/constants/quota-constants.ts` unde
 To add rate limiting for a new endpoint:
 
 1. **Define the configuration**:
+
 ```typescript
 // lib/constants/quota-constants.ts
 export const RATE_LIMITS_BY_TRUST_LEVEL = {
@@ -483,12 +471,9 @@ export const RATE_LIMITS_BY_TRUST_LEVEL = {
 ```
 
 2. **Apply in your endpoint**:
+
 ```typescript
-const result = rateLimitService.checkTrustLevelRateLimit(
-  clientId,
-  user,
-  "MY_NEW_ENDPOINT"
-);
+const result = rateLimitService.checkTrustLevelRateLimit(clientId, user, "MY_NEW_ENDPOINT");
 ```
 
 ## Relationship to Quotas
@@ -496,6 +481,7 @@ const result = rateLimitService.checkTrustLevelRateLimit(
 Rate limiting and [quotas](/developer-guide/quotas) work together but serve different purposes:
 
 **Both systems check on every operation**:
+
 1. **Rate Limit** checks first (in-memory, instant)
    - Rejects if too many requests in time window
    - Returns 429 with Retry-After header
@@ -505,6 +491,7 @@ Rate limiting and [quotas](/developer-guide/quotas) work together but serve diff
    - Returns 429 with reset time and current usage
 
 **Example Flow**:
+
 ```
 Request → Rate Limit Check → Quota Check → Process Request
             ↓ Fail              ↓ Fail         ↓ Success

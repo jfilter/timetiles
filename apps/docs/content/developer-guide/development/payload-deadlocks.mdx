@@ -7,7 +7,9 @@ import { Callout } from "nextra/components";
 When working with Payload CMS hooks that perform nested database operations, you may encounter **deadlocks** or **timeout errors**. This guide explains the root causes and provides proven patterns to prevent them.
 
 <Callout type="error">
-**Critical Issue**: Calling `payload.update()`, `payload.create()`, or `payload.findByID()` inside hooks without proper configuration can cause database transactions to hang indefinitely, resulting in 60-second timeouts in tests and production failures.
+  **Critical Issue**: Calling `payload.update()`, `payload.create()`, or `payload.findByID()` inside hooks without
+  proper configuration can cause database transactions to hang indefinitely, resulting in 60-second timeouts in tests
+  and production failures.
 </Callout>
 
 ## The Problem
@@ -32,10 +34,10 @@ hooks: {
       await req.payload.update({
         collection: "users",
         id: doc.userId,
-        data: { lastUpdated: new Date() }
+        data: { lastUpdated: new Date() },
       });
-    }
-  ]
+    },
+  ];
 }
 ```
 
@@ -57,12 +59,12 @@ hooks: {
         data: { lastUpdated: new Date() },
         context: {
           ...(req.context || {}),
-          skipCustomHooks: true // Prevent infinite recursion
+          skipCustomHooks: true, // Prevent infinite recursion
         },
-        overrideAccess: true // Skip access control if needed
+        overrideAccess: true, // Skip access control if needed
       });
-    }
-  ]
+    },
+  ];
 }
 ```
 
@@ -86,10 +88,10 @@ hooks: {
       if (req.user) {
         const quotaService = getQuotaService(req.payload);
         // Missing req parameter causes deadlock
-        await quotaService.incrementUsage(req.user.id, 'FILE_UPLOADS', 1);
+        await quotaService.incrementUsage(req.user.id, "FILE_UPLOADS", 1);
       }
-    }
-  ]
+    },
+  ];
 }
 ```
 
@@ -136,10 +138,10 @@ access: {
     // This query starts a new transaction during access check
     const doc = await req.payload.findByID({
       collection: "documents",
-      id
+      id,
     });
     return doc.createdBy === req.user.id;
-  }
+  };
 }
 ```
 
@@ -152,13 +154,13 @@ access: {
     const doc = await req.payload.findByID({
       collection: "documents",
       id,
-      overrideAccess: true // Skip nested access control
+      overrideAccess: true, // Skip nested access control
     });
 
     // Manual authorization check
     if (req.user?.role === "admin") return true;
     return doc.createdBy === req.user?.id;
-  }
+  };
 }
 ```
 
@@ -174,11 +176,11 @@ hooks: {
       if (operation === "create" && req.user) {
         const quotaService = getQuotaService(req.payload);
         // Reading user during transaction without overrideAccess
-        const check = await quotaService.checkQuota(req.user, 'FILE_UPLOADS', 1);
+        const check = await quotaService.checkQuota(req.user, "FILE_UPLOADS", 1);
         if (!check.allowed) throw new Error("Quota exceeded");
       }
-    }
-  ]
+    },
+  ];
 }
 ```
 
@@ -215,10 +217,10 @@ hooks: {
       await req.payload.update({
         collection: "import-files",
         id: doc.importFileId,
-        data: { status: "completed" }
+        data: { status: "completed" },
       });
-    }
-  ]
+    },
+  ];
 }
 ```
 
@@ -236,12 +238,12 @@ hooks: {
         data: { status: "completed" },
         context: {
           ...(req.context || {}),
-          skipImportFileHooks: true // Prevent cascading hooks
+          skipImportFileHooks: true, // Prevent cascading hooks
         },
-        overrideAccess: true
+        overrideAccess: true,
       });
-    }
-  ]
+    },
+  ];
 }
 ```
 
@@ -257,7 +259,7 @@ test("should create schedule without hanging", async () => {
   const result = await payload.create({
     collection: "scheduled-imports",
     data: { name: "Test", enabled: true },
-    user: testUser
+    user: testUser,
   });
 
   expect(result).toBeDefined();
@@ -279,20 +281,18 @@ hooks: {
 
       // Production quota logic
       const quotaService = getQuotaService(req.payload);
-      const check = await quotaService.checkQuota(req.user, 'SCHEDULES', 1, req);
+      const check = await quotaService.checkQuota(req.user, "SCHEDULES", 1, req);
       if (!check.allowed) throw new Error("Quota exceeded");
 
       return data;
-    }
-  ]
+    },
+  ];
 }
 ```
 
 ## Best Practices Checklist
 
-<Callout type="info">
-Use this checklist when writing Payload hooks to prevent deadlocks:
-</Callout>
+<Callout type="info">Use this checklist when writing Payload hooks to prevent deadlocks:</Callout>
 
 - [ ] **Pass `req` parameter** to all nested `payload.update()`, `payload.create()`, `payload.findByID()` calls
 - [ ] **Use `context` flags** to prevent infinite hook recursion
@@ -345,7 +345,7 @@ export class QuotaService {
       req, // ← Pass it through
       data: { usage: newUsage },
       context: { skipUsageHooks: true },
-      overrideAccess: true
+      overrideAccess: true,
     });
   }
 }
@@ -371,17 +371,18 @@ hooks: {
         req,
         data: { updated: true },
         context: { skipCustomHooks: true },
-        overrideAccess: true
+        overrideAccess: true,
       });
 
       logger.debug("Nested update completed", { docId: doc.id });
-    }
-  ]
+    },
+  ];
 }
 ```
 
 <Callout type="warning">
-**Remove verbose logging** after debugging. Use `logger.debug()` for development logging and ensure logs are at appropriate levels for production.
+  **Remove verbose logging** after debugging. Use `logger.debug()` for development logging and ensure logs are at
+  appropriate levels for production.
 </Callout>
 
 ## Real-World Examples
@@ -389,6 +390,7 @@ hooks: {
 ### Example 1: Scheduled Imports Collection
 
 See [`lib/collections/scheduled-imports/index.ts`](pathname:///Users/user/code/jf/timetiles/apps/web/lib/collections/scheduled-imports/index.ts) for a complete example of:
+
 - Quota checking in `beforeChange`
 - Usage tracking in `afterChange`
 - Decrement tracking in `afterDelete`
@@ -397,6 +399,7 @@ See [`lib/collections/scheduled-imports/index.ts`](pathname:///Users/user/code/j
 ### Example 2: Quota Service
 
 See [`lib/services/quota-service.ts`](pathname:///Users/user/code/jf/timetiles/apps/web/lib/services/quota-service.ts) for:
+
 - `incrementUsage()` with `req` parameter
 - `decrementUsage()` with `req` parameter
 - `checkQuota()` reading from memory instead of database
@@ -404,6 +407,7 @@ See [`lib/services/quota-service.ts`](pathname:///Users/user/code/jf/timetiles/a
 ### Example 3: Import Files Collection
 
 See [`lib/collections/import-files.ts`](pathname:///Users/user/code/jf/timetiles/apps/web/lib/collections/import-files.ts) for:
+
 - Multiple nested `payload.update()` calls in `afterChange`
 - Context flags preventing hook recursion
 - Error handling with transaction consistency
@@ -422,13 +426,13 @@ See [`lib/collections/import-files.ts`](pathname:///Users/user/code/jf/timetiles
 await req.payload.update({
   collection: "your-collection",
   id: docId,
-  req,                              // ← Stay in same transaction
+  req, // ← Stay in same transaction
   data: { your: "data" },
   context: {
     ...(req.context || {}),
-    skipYourHooks: true             // ← Prevent recursion
+    skipYourHooks: true, // ← Prevent recursion
   },
-  overrideAccess: true              // ← Skip nested access control
+  overrideAccess: true, // ← Skip nested access control
 });
 ```
 

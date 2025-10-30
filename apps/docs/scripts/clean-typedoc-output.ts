@@ -198,10 +198,12 @@ const fixFunctionSignatures = (dir: string): void => {
             i = j - 1; // Skip the lines we've already processed
             modified = true;
           } else {
-            fixedLines.push(line!);
+            fixedLines.push(line);
           }
         } else {
-          fixedLines.push(line!);
+          if (line !== undefined) {
+            fixedLines.push(line);
+          }
         }
       }
 
