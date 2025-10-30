@@ -89,21 +89,7 @@ export class DatabaseOperations {
 
   // createMany function removed - was not used anywhere in codebase
 
-  // TODO: Implement updateMany when needed - currently causing TypeScript issues
-  // with Payload's complex type system. Function is not used anywhere in codebase.
-  /*
-  async updateMany<C extends keyof Config["collections"]>(
-    collection: C,
-    updates: Array<{
-      id: string | number;
-      data: Record<string, unknown>;
-    }>,
-    batchSize: number = 50,
-  ): Promise<BatchOperationResult> {
-    // Implementation commented out due to complex Payload type requirements
-    throw new Error("updateMany not implemented - use individual update calls");
-  }
-  */
+  // updateMany function removed - was not used anywhere in codebase
 
   // getCollectionStats function removed - was not used anywhere in codebase
 

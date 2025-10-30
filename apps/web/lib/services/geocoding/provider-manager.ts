@@ -266,26 +266,24 @@ export class ProviderManager {
       formatter: null,
     };
 
-    // Add bounds if configured - commented out due to type conflicts
-    // TODO: Fix bounds configuration type definitions
-    /*
-    const bounds = (doc.config as any)?.bounds;
+    // Add bounds if configured
+    const bounds = openCageConfig.bounds as
+      | {
+          enabled?: boolean | null;
+          southwest?: { lat?: number | null; lng?: number | null };
+          northeast?: { lat?: number | null; lng?: number | null };
+        }
+      | undefined;
+
     if (
-      bounds != null &&
-      Boolean(bounds.enabled) &&
-      bounds.northEast != null &&
-      bounds.southWest != null
+      bounds?.enabled &&
+      bounds.northeast?.lat != null &&
+      bounds.northeast?.lng != null &&
+      bounds.southwest?.lat != null &&
+      bounds.southwest?.lng != null
     ) {
-      if (
-        typeof bounds.northEast.lat == "number" &&
-        typeof bounds.northEast.lng == "number" &&
-        typeof bounds.southWest.lat == "number" &&
-        typeof bounds.southWest.lng == "number"
-      ) {
-        config.bounds = `${bounds.southWest.lat},${bounds.southWest.lng},${bounds.northEast.lat},${bounds.northEast.lng}`;
-      }
+      config.bounds = `${bounds.southwest.lat},${bounds.southwest.lng},${bounds.northeast.lat},${bounds.northeast.lng}`;
     }
-    */
 
     return NodeGeocoder(config as unknown as Options);
   }
