@@ -242,6 +242,10 @@ export interface User {
      * Maximum file size in MB for uploads
      */
     maxFileSizeMB?: number | null;
+    /**
+     * Maximum number of catalogs per user (-1 for unlimited)
+     */
+    maxCatalogsPerUser?: number | null;
   };
   /**
    * Current resource usage tracking
@@ -267,6 +271,10 @@ export interface User {
      * Total events created by this user
      */
     totalEventsCreated?: number | null;
+    /**
+     * Current number of catalogs owned by this user
+     */
+    currentCatalogs?: number | null;
     /**
      * Last time daily counters were reset
      */
@@ -2331,6 +2339,7 @@ export interface UsersSelect<T extends boolean = true> {
         maxTotalEvents?: T;
         maxImportJobsPerDay?: T;
         maxFileSizeMB?: T;
+        maxCatalogsPerUser?: T;
       };
   usage?:
     | T
@@ -2340,6 +2349,7 @@ export interface UsersSelect<T extends boolean = true> {
         fileUploadsToday?: T;
         importJobsToday?: T;
         totalEventsCreated?: T;
+        currentCatalogs?: T;
         lastResetDate?: T;
       };
   customQuotas?: T;

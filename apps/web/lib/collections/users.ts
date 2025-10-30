@@ -205,6 +205,14 @@ const Users: CollectionConfig = {
             description: "Maximum file size in MB for uploads",
           },
         },
+        {
+          name: "maxCatalogsPerUser",
+          type: "number",
+          min: -1,
+          admin: {
+            description: "Maximum number of catalogs per user (-1 for unlimited)",
+          },
+        },
       ],
     },
     {
@@ -256,6 +264,14 @@ const Users: CollectionConfig = {
           },
         },
         {
+          name: "currentCatalogs",
+          type: "number",
+          admin: {
+            description: "Current number of catalogs owned by this user",
+            readOnly: true,
+          },
+        },
+        {
           name: "lastResetDate",
           type: "date",
           admin: {
@@ -301,7 +317,8 @@ const Users: CollectionConfig = {
             data.quotas &&
             data.quotas.maxActiveSchedules !== undefined &&
             data.quotas.maxUrlFetchesPerDay !== undefined &&
-            data.quotas.maxFileUploadsPerDay !== undefined;
+            data.quotas.maxFileUploadsPerDay !== undefined &&
+            data.quotas.maxCatalogsPerUser !== undefined;
 
           if (!hasValidQuotas) {
             data.quotas = defaultQuotas;
@@ -315,6 +332,7 @@ const Users: CollectionConfig = {
               fileUploadsToday: 0,
               importJobsToday: 0,
               totalEventsCreated: 0,
+              currentCatalogs: 0,
               lastResetDate: new Date().toISOString(),
             };
           }

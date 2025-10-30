@@ -32,6 +32,7 @@ export interface UserQuotas {
   maxTotalEvents: number;
   maxImportJobsPerDay: number;
   maxFileSizeMB: number;
+  maxCatalogsPerUser: number;
 }
 
 /**
@@ -43,6 +44,7 @@ export interface UserUsage {
   fileUploadsToday: number;
   importJobsToday: number;
   totalEventsCreated: number;
+  currentCatalogs: number;
   lastResetDate: string;
 }
 
@@ -59,6 +61,7 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxTotalEvents: 100,
     maxImportJobsPerDay: 1,
     maxFileSizeMB: 1,
+    maxCatalogsPerUser: 1,
   },
   [TRUST_LEVELS.BASIC]: {
     maxActiveSchedules: 1,
@@ -68,6 +71,7 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxTotalEvents: 5000,
     maxImportJobsPerDay: 5,
     maxFileSizeMB: 10,
+    maxCatalogsPerUser: 2,
   },
   [TRUST_LEVELS.REGULAR]: {
     maxActiveSchedules: 5,
@@ -77,6 +81,7 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxTotalEvents: 50000,
     maxImportJobsPerDay: 20,
     maxFileSizeMB: 50,
+    maxCatalogsPerUser: 5,
   },
   [TRUST_LEVELS.TRUSTED]: {
     maxActiveSchedules: 20,
@@ -86,6 +91,7 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxTotalEvents: 500000,
     maxImportJobsPerDay: 100,
     maxFileSizeMB: 100,
+    maxCatalogsPerUser: 20,
   },
   [TRUST_LEVELS.POWER_USER]: {
     maxActiveSchedules: 100,
@@ -95,6 +101,7 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxTotalEvents: 2000000,
     maxImportJobsPerDay: 500,
     maxFileSizeMB: 500,
+    maxCatalogsPerUser: 100,
   },
   [TRUST_LEVELS.UNLIMITED]: {
     maxActiveSchedules: -1,
@@ -104,6 +111,7 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxTotalEvents: -1,
     maxImportJobsPerDay: -1,
     maxFileSizeMB: 1000,
+    maxCatalogsPerUser: -1,
   },
 };
 
@@ -142,6 +150,7 @@ export const QUOTA_TYPES = {
   TOTAL_EVENTS: "maxTotalEvents",
   IMPORT_JOBS_PER_DAY: "maxImportJobsPerDay",
   FILE_SIZE_MB: "maxFileSizeMB",
+  CATALOGS_PER_USER: "maxCatalogsPerUser",
 } as const;
 
 export type QuotaType = (typeof QUOTA_TYPES)[keyof typeof QUOTA_TYPES];
@@ -155,6 +164,7 @@ export const USAGE_TYPES = {
   FILE_UPLOADS_TODAY: "fileUploadsToday",
   IMPORT_JOBS_TODAY: "importJobsToday",
   TOTAL_EVENTS_CREATED: "totalEventsCreated",
+  CURRENT_CATALOGS: "currentCatalogs",
 } as const;
 
 export type UsageType = (typeof USAGE_TYPES)[keyof typeof USAGE_TYPES];
@@ -273,4 +283,6 @@ export const QUOTA_ERROR_MESSAGES: Record<QuotaType, (current: number, limit: nu
     `Daily import job limit reached (${current}/${limit}). Resets at midnight UTC.`,
   [QUOTA_TYPES.FILE_SIZE_MB]: (_current, limit) =>
     `File size exceeds your limit (${limit}MB). Contact admin for increased quota.`,
+  [QUOTA_TYPES.CATALOGS_PER_USER]: (current, limit) =>
+    `Maximum catalogs reached (${current}/${limit}). Delete an existing catalog to create more.`,
 };

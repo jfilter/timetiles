@@ -10,6 +10,9 @@
  */
 import type { CollectionConfig } from "payload";
 
+import { QUOTA_ERROR_MESSAGES, QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
+import { getQuotaService } from "@/lib/services/quota-service";
+
 import { basicMetadataFields, createCommonConfig, createSlugField } from "./shared-fields";
 
 const Catalogs: CollectionConfig = {
@@ -127,7 +130,20 @@ const Catalogs: CollectionConfig = {
         if (operation === "create" && req.user) {
           data.createdBy = req.user.id;
 
-          // TODO: Add catalog quota check when CATALOGS_PER_USER quota type is implemented
+          // Check catalog quota
+          const quotaService = getQuotaService(req.payload);
+          const quotaCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.CATALOGS_PER_USER, 1);
+
+          if (!quotaCheck.allowed) {
+            const errorMessage = QUOTA_ERROR_MESSAGES[QUOTA_TYPES.CATALOGS_PER_USER](
+              quotaCheck.current,
+              quotaCheck.limit
+            );
+            throw new Error(errorMessage);
+          }
+
+          // Increment catalog count
+          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_CATALOGS, 1);
         }
 
         // Validate slug uniqueness on create and update
@@ -160,6 +176,15 @@ const Catalogs: CollectionConfig = {
         }
 
         return data;
+      },
+    ],
+    afterDelete: [
+      async ({ doc, req }) => {
+        // Decrement catalog count when catalog is deleted
+        if (doc.createdBy && req.payload) {
+          const quotaService = getQuotaService(req.payload);
+          await quotaService.decrementUsage(doc.createdBy, USAGE_TYPES.CURRENT_CATALOGS, 1);
+        }
       },
     ],
   },

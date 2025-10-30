@@ -167,6 +167,7 @@ export class QuotaService {
       maxTotalEvents: userQuotas.maxTotalEvents ?? defaultQuotas.maxTotalEvents,
       maxImportJobsPerDay: userQuotas.maxImportJobsPerDay ?? defaultQuotas.maxImportJobsPerDay,
       maxFileSizeMB: userQuotas.maxFileSizeMB ?? defaultQuotas.maxFileSizeMB,
+      maxCatalogsPerUser: userQuotas.maxCatalogsPerUser ?? defaultQuotas.maxCatalogsPerUser,
     };
 
     // If user has custom quotas JSON field, merge those too
@@ -543,6 +544,7 @@ export class QuotaService {
       fileUploadsToday: 0,
       importJobsToday: 0,
       totalEventsCreated: 0,
+      currentCatalogs: 0,
       lastResetDate: new Date().toISOString(),
     };
   }
@@ -557,6 +559,7 @@ export class QuotaService {
       [QUOTA_TYPES.FILE_UPLOADS_PER_DAY]: USAGE_TYPES.FILE_UPLOADS_TODAY,
       [QUOTA_TYPES.IMPORT_JOBS_PER_DAY]: USAGE_TYPES.IMPORT_JOBS_TODAY,
       [QUOTA_TYPES.TOTAL_EVENTS]: USAGE_TYPES.TOTAL_EVENTS_CREATED,
+      [QUOTA_TYPES.CATALOGS_PER_USER]: USAGE_TYPES.CURRENT_CATALOGS,
     };
 
     return mapping[quotaType] ?? null;
