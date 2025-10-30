@@ -252,7 +252,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       expect(catalogId).toBe(testCatalog.id);
       // scheduledImport field may not be set on import-files
       // The relationship is tracked in metadata instead
-      expect(importFile.status).toBe("pending");
+      expect(importFile.status).toBe("parsing");
 
       // Verify metadata
       expect(importFile.metadata).toMatchObject({

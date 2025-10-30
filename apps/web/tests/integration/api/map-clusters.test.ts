@@ -46,6 +46,7 @@ describe("/api/events/map-clusters", () => {
       data: {
         name: "Test Catalog for Clustering",
         slug: `test-clustering-catalog-${uniqueSuffix}`,
+        isPublic: true,
         description: {
           root: {
             type: "root",

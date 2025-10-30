@@ -779,11 +779,11 @@ describe.sequential("Network Error Handling Tests", () => {
           id: successOutput.importFileId,
         });
         expect(importFile).toBeDefined();
-        // Status should be either pending (job queued) or SCHEMA_DETECTION (job started)
-        expect(["pending", "SCHEMA_DETECTION"]).toContain(importFile.status);
+        // Status should be "parsing" because afterChange hook queues dataset-detection job immediately
+        expect(importFile.status).toBe("parsing");
 
-        // The real job queue should have been called to queue schema detection
-        // The status will be "pending" initially until the job processor picks it up
+        // The real job queue was called to queue schema detection
+        // The status is "parsing" after the afterChange hook completes
       }
     });
   });

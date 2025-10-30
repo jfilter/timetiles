@@ -516,7 +516,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         filename: expect.stringMatching(/^url-import-.*\.csv$/),
         mimeType: "text/csv",
         filesize: mockCsvData.length,
-        status: "pending",
+        status: "parsing",
         // originalName should be what we passed in
         originalName: "test-import.csv",
       });
@@ -1042,7 +1042,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       });
 
       expect(importFile).toMatchObject({
-        status: "pending",
+        status: "parsing",
         // The attempts are not tracked in metadata, only in the job handler
       });
     });
@@ -1176,7 +1176,7 @@ describe.sequential("Scheduled Imports Integration", () => {
 
       expect(importFiles.docs).toHaveLength(1);
       expect(importFiles.docs[0]).toMatchObject({
-        status: "pending",
+        status: "parsing",
         filename: expect.stringMatching(/^url-import-.*\.csv$/),
         mimeType: "text/csv",
         filesize: mockCsvData.length,
