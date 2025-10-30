@@ -637,9 +637,10 @@ export class QuotaService {
       headers["X-RateLimit-Remaining"] = String(result.remaining);
 
       // Indicate if quotas reset daily (but not exact time to prevent attack timing)
-      const isDailyQuota = quotaType === QUOTA_TYPES.FILE_UPLOADS_PER_DAY ||
-                           quotaType === QUOTA_TYPES.URL_FETCHES_PER_DAY ||
-                           quotaType === QUOTA_TYPES.IMPORT_JOBS_PER_DAY;
+      const isDailyQuota =
+        quotaType === QUOTA_TYPES.FILE_UPLOADS_PER_DAY ||
+        quotaType === QUOTA_TYPES.URL_FETCHES_PER_DAY ||
+        quotaType === QUOTA_TYPES.IMPORT_JOBS_PER_DAY;
       if (isDailyQuota) {
         headers["X-RateLimit-Reset-Period"] = "daily";
       }

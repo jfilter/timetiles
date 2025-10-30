@@ -9,7 +9,6 @@
  * @category Middleware
  */
 import config from "@payload-config";
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
@@ -57,10 +56,7 @@ interface RateLimitOptions {
  * ```
  */
 export const withRateLimit =
-  (
-    handler: (req: AuthenticatedRequest, context?: any) => Promise<Response> | Response,
-    options?: RateLimitOptions
-  ) =>
+  (handler: (req: AuthenticatedRequest, context?: any) => Promise<Response> | Response, options?: RateLimitOptions) =>
   async (request: AuthenticatedRequest, context?: any) => {
     const payload = await getPayload({ config });
     const rateLimitService = getRateLimitService(payload);

@@ -12,7 +12,7 @@
 
 import type { User } from "payload";
 
-import { logger, logError as logErrorToLogger } from "@/lib/logger";
+import { logError as logErrorToLogger, logger } from "@/lib/logger";
 
 /**
  * Sanitize error for external display.
@@ -25,7 +25,7 @@ import { logger, logError as logErrorToLogger } from "@/lib/logger";
  * @param user - Optional user who encountered the error
  * @returns Generic error message safe for external display
  */
-export function sanitizeError(error: Error | unknown, context?: string, user?: User | null): string {
+export const sanitizeError = (error: Error | unknown, context?: string, user?: User | null): string => {
   // Extract error message
   const errorMessage = error instanceof Error ? error.message : String(error);
   const errorStack = error instanceof Error ? error.stack : undefined;
@@ -47,7 +47,7 @@ export function sanitizeError(error: Error | unknown, context?: string, user?: U
 
   // In development, show actual error for debugging
   return errorMessage;
-}
+};
 
 /**
  * Sanitize error for API response.
@@ -59,14 +59,14 @@ export function sanitizeError(error: Error | unknown, context?: string, user?: U
  * @param user - Optional user who encountered the error
  * @returns Error object safe for API responses
  */
-export function sanitizeErrorForAPI(
+export const sanitizeErrorForAPI = (
   error: Error | unknown,
   context?: string,
   user?: User | null
 ): {
   error: string;
   code?: string;
-} {
+} => {
   const errorMessage = error instanceof Error ? error.message : String(error);
   const errorStack = error instanceof Error ? error.stack : undefined;
 
@@ -94,7 +94,7 @@ export function sanitizeErrorForAPI(
     error: errorMessage,
     code: "INTERNAL_ERROR",
   };
-}
+};
 
 /**
  * Check if an error is a known user-facing error that's safe to expose.
@@ -105,7 +105,7 @@ export function sanitizeErrorForAPI(
  * @param error - The error to check
  * @returns True if the error is safe to show to users
  */
-export function isSafeUserError(error: Error | unknown): boolean {
+export const isSafeUserError = (error: Error | unknown): boolean => {
   if (!(error instanceof Error)) return false;
 
   const safeErrorPatterns = [
@@ -120,7 +120,7 @@ export function isSafeUserError(error: Error | unknown): boolean {
   ];
 
   return safeErrorPatterns.some((pattern) => pattern.test(error.message));
-}
+};
 
 /**
  * Get user-facing error message.
@@ -133,11 +133,7 @@ export function isSafeUserError(error: Error | unknown): boolean {
  * @param user - Optional user who encountered the error
  * @returns User-facing error message
  */
-export function getUserFacingError(
-  error: Error | unknown,
-  context?: string,
-  user?: User | null
-): string {
+export const getUserFacingError = (error: Error | unknown, context?: string, user?: User | null): string => {
   // Log the error internally regardless
   const errorMessage = error instanceof Error ? error.message : String(error);
   const errorStack = error instanceof Error ? error.stack : undefined;
@@ -161,4 +157,4 @@ export function getUserFacingError(
   }
 
   return errorMessage;
-}
+};

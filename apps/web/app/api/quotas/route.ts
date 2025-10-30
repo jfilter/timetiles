@@ -41,80 +41,80 @@ export const GET = withRateLimit(
 
       const quotaService = getQuotaService(payload);
 
-    // Get all quota statuses in parallel
-    const [fileUploads, urlFetches, importJobs, activeSchedules, totalEvents, eventsPerImport] = await Promise.all([
-      quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY),
-      quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY),
-      quotaService.checkQuota(user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY),
-      quotaService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES),
-      quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS),
-      quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT),
-    ]);
+      // Get all quota statuses in parallel
+      const [fileUploads, urlFetches, importJobs, activeSchedules, totalEvents, eventsPerImport] = await Promise.all([
+        quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY),
+        quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY),
+        quotaService.checkQuota(user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY),
+        quotaService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES),
+        quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS),
+        quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT),
+      ]);
 
-    // Get effective quotas for additional info
-    const effectiveQuotas = quotaService.getEffectiveQuotas(user);
+      // Get effective quotas for additional info
+      const effectiveQuotas = quotaService.getEffectiveQuotas(user);
 
-    // Helper to normalize quotas - cap very high limits to prevent admin identification
-    // Security: Admins have unlimited/very high quotas, which makes them identifiable
-    // By capping displayed limits, we prevent enumeration of privileged accounts
-    const MAX_DISPLAYED_LIMIT = 10000; // Cap shown to normal users
-    const normalizeLimit = (limit: number | null): number => {
-      if (limit === null || limit > MAX_DISPLAYED_LIMIT) {
-        return MAX_DISPLAYED_LIMIT;
-      }
-      return limit;
-    };
+      // Helper to normalize quotas - cap very high limits to prevent admin identification
+      // Security: Admins have unlimited/very high quotas, which makes them identifiable
+      // By capping displayed limits, we prevent enumeration of privileged accounts
+      const MAX_DISPLAYED_LIMIT = 10000; // Cap shown to normal users
+      const normalizeLimit = (limit: number | null): number => {
+        if (limit === null || limit > MAX_DISPLAYED_LIMIT) {
+          return MAX_DISPLAYED_LIMIT;
+        }
+        return limit;
+      };
 
-    // Return only necessary information - don't expose role, trustLevel, or system architecture details
-    const response = {
-      quotas: {
-        fileUploadsPerDay: {
-          used: fileUploads.current,
-          limit: normalizeLimit(fileUploads.limit),
-          remaining: fileUploads.remaining,
+      // Return only necessary information - don't expose role, trustLevel, or system architecture details
+      const response = {
+        quotas: {
+          fileUploadsPerDay: {
+            used: fileUploads.current,
+            limit: normalizeLimit(fileUploads.limit),
+            remaining: fileUploads.remaining,
+          },
+          urlFetchesPerDay: {
+            used: urlFetches.current,
+            limit: normalizeLimit(urlFetches.limit),
+            remaining: urlFetches.remaining,
+          },
+          importJobsPerDay: {
+            used: importJobs.current,
+            limit: normalizeLimit(importJobs.limit),
+            remaining: importJobs.remaining,
+          },
+          activeSchedules: {
+            used: activeSchedules.current,
+            limit: normalizeLimit(activeSchedules.limit),
+            remaining: activeSchedules.remaining,
+          },
+          totalEvents: {
+            used: totalEvents.current,
+            limit: normalizeLimit(totalEvents.limit),
+            remaining: totalEvents.remaining,
+          },
+          eventsPerImport: {
+            used: eventsPerImport.current,
+            limit: normalizeLimit(eventsPerImport.limit),
+            remaining: eventsPerImport.remaining,
+          },
+          maxFileSizeMB: {
+            limit: Math.min(effectiveQuotas.maxFileSizeMB, 100), // Cap at 100MB displayed
+          },
         },
-        urlFetchesPerDay: {
-          used: urlFetches.current,
-          limit: normalizeLimit(urlFetches.limit),
-          remaining: urlFetches.remaining,
-        },
-        importJobsPerDay: {
-          used: importJobs.current,
-          limit: normalizeLimit(importJobs.limit),
-          remaining: importJobs.remaining,
-        },
-        activeSchedules: {
-          used: activeSchedules.current,
-          limit: normalizeLimit(activeSchedules.limit),
-          remaining: activeSchedules.remaining,
-        },
-        totalEvents: {
-          used: totalEvents.current,
-          limit: normalizeLimit(totalEvents.limit),
-          remaining: totalEvents.remaining,
-        },
-        eventsPerImport: {
-          used: eventsPerImport.current,
-          limit: normalizeLimit(eventsPerImport.limit),
-          remaining: eventsPerImport.remaining,
-        },
-        maxFileSizeMB: {
-          limit: Math.min(effectiveQuotas.maxFileSizeMB, 100), // Cap at 100MB displayed
-        },
-      },
-    };
+      };
 
-    // Add quota headers
-    const headers = await quotaService.getQuotaHeaders(user);
+      // Add quota headers
+      const headers = await quotaService.getQuotaHeaders(user);
 
-    return NextResponse.json(response, {
-      status: 200,
-      headers,
-    });
-  } catch (error) {
-    logger.error("Failed to get quota status", { error });
-    return NextResponse.json({ error: "Failed to retrieve quota information" }, { status: 500 });
-  }
+      return NextResponse.json(response, {
+        status: 200,
+        headers,
+      });
+    } catch (error) {
+      logger.error("Failed to get quota status", { error });
+      return NextResponse.json({ error: "Failed to retrieve quota information" }, { status: 500 });
+    }
   },
   { type: "API_GENERAL" }
 );

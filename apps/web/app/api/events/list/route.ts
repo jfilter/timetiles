@@ -124,15 +124,15 @@ export const GET = withRateLimit(
       const payload = await getPayload({ config });
 
       const parameters = extractListParameters(request.nextUrl.searchParams);
-    const where = buildWhereClause(parameters);
-    const result = await executeEventsQuery(payload, where, parameters, request.user);
-    const response = buildListResponse(result);
+      const where = buildWhereClause(parameters);
+      const result = await executeEventsQuery(payload, where, parameters, request.user);
+      const response = buildListResponse(result);
 
-    return NextResponse.json(response);
-  } catch (error) {
-    logger.error("Error fetching events list:", error);
-    return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
-  }
+      return NextResponse.json(response);
+    } catch (error) {
+      logger.error("Error fetching events list:", error);
+      return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
+    }
   }),
   { type: "API_GENERAL" }
 );

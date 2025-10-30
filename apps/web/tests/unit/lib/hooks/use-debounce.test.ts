@@ -8,8 +8,8 @@
  * @category Tests
  * @vitest-environment jsdom
  */
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useDebounce, useDebounceWithComparison } from "../../../../lib/hooks/use-debounce";
 
@@ -379,12 +379,9 @@ describe("useDebounceWithComparison", () => {
   });
 
   it("should work without comparison function (default behavior)", () => {
-    const { result, rerender } = renderHook(
-      ({ value, delay }) => useDebounceWithComparison(value, delay, undefined),
-      {
-        initialProps: { value: 10, delay: 300 },
-      }
-    );
+    const { result, rerender } = renderHook(({ value, delay }) => useDebounceWithComparison(value, delay, undefined), {
+      initialProps: { value: 10, delay: 300 },
+    });
 
     rerender({ value: 20, delay: 300 });
 

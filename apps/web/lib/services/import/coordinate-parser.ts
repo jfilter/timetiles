@@ -26,7 +26,7 @@ export const tryParseDecimal = (str: string): number | null => {
 
   // Quick validation: must match numeric pattern
   // Allows: 123, -123, 123.456, -123.456, .5, -.5, 1.5e2, 1.5e-2
-  const numericRegex = /^-?\d*\.?\d+([eE][+-]?\d+)?$/;
+  const numericRegex = /^-?(?:\d+(?:\.\d+)?|\.\d+)([eE][+-]?\d+)?$/;
   if (!numericRegex.test(trimmed)) {
     return null;
   }

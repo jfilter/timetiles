@@ -130,28 +130,28 @@ export const GET = withRateLimit(
       const payload = await getPayload({ config });
 
       const parameters = extractHistogramParameters(request.nextUrl.searchParams);
-    const boundsResult = parseBoundsParameter(parameters.boundsParam);
-    if ("error" in boundsResult) {
-      return boundsResult.error;
+      const boundsResult = parseBoundsParameter(parameters.boundsParam);
+      if ("error" in boundsResult) {
+        return boundsResult.error;
+      }
+      const bounds = boundsResult.bounds;
+
+      // Get accessible catalog IDs for this user
+      const accessibleCatalogIds = await getAccessibleCatalogIds(payload, request.user);
+
+      const functionExists = await checkHistogramFunction(payload);
+      if (!functionExists) {
+        return createFunctionNotFoundResponse();
+      }
+
+      const histogramResult = await executeHistogramQuery(payload, parameters, bounds, accessibleCatalogIds);
+      const response = buildHistogramResponse(histogramResult.rows);
+
+      return NextResponse.json(response);
+    } catch (_error) {
+      logError(_error, "Failed to calculate histogram", { parameters: _error });
+      return NextResponse.json({ error: "Failed to calculate histogram" }, { status: 500 });
     }
-    const bounds = boundsResult.bounds;
-
-    // Get accessible catalog IDs for this user
-    const accessibleCatalogIds = await getAccessibleCatalogIds(payload, request.user);
-
-    const functionExists = await checkHistogramFunction(payload);
-    if (!functionExists) {
-      return createFunctionNotFoundResponse();
-    }
-
-    const histogramResult = await executeHistogramQuery(payload, parameters, bounds, accessibleCatalogIds);
-    const response = buildHistogramResponse(histogramResult.rows);
-
-    return NextResponse.json(response);
-  } catch (_error) {
-    logError(_error, "Failed to calculate histogram", { parameters: _error });
-    return NextResponse.json({ error: "Failed to calculate histogram" }, { status: 500 });
-  }
   }),
   { type: "API_GENERAL" }
 );

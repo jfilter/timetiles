@@ -81,63 +81,63 @@ export const GET = withRateLimit(
 
         const { importId } = await context.params;
 
-      // Get the import file with access control enforced
-      const importFile = await payload
-        .findByID({
-          collection: "import-files",
-          id: importId,
-          depth: 0,
+        // Get the import file with access control enforced
+        const importFile = await payload
+          .findByID({
+            collection: "import-files",
+            id: importId,
+            depth: 0,
+            user: request.user,
+            overrideAccess: false,
+          })
+          .catch(() => null);
+
+        if (!importFile) {
+          return NextResponse.json({ error: "Import not found or access denied" }, { status: 404 });
+        }
+
+        // Get all related import jobs with dataset details
+        const importJobs = await payload.find({
+          collection: "import-jobs",
+          where: {
+            importFile: {
+              equals: importId,
+            },
+          },
+          limit: 100,
+          depth: 1, // Include dataset details
           user: request.user,
           overrideAccess: false,
-        })
-        .catch(() => null);
+        });
 
-      if (!importFile) {
-        return NextResponse.json({ error: "Import not found or access denied" }, { status: 404 });
-      }
+        const jobs = importJobs.docs;
 
-      // Get all related import jobs with dataset details
-      const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: {
-          importFile: {
-            equals: importId,
-          },
-        },
-        limit: 100,
-        depth: 1, // Include dataset details
-        user: request.user,
-        overrideAccess: false,
-      });
+        // Calculate overall progress
+        const overallProgress =
+          jobs.length > 0
+            ? jobs.reduce((sum, job) => {
+                const progress = job.progress?.current ?? 0;
+                const total = job.progress?.total ?? 1;
+                return sum + (progress / total) * 100;
+              }, 0) / jobs.length
+            : 0;
 
-      const jobs = importJobs.docs;
+        // Build comprehensive response
+        const response = {
+          type: "import-file",
+          id: importFile.id,
+          status: importFile.status,
+          originalName: importFile.originalName,
+          datasetsCount: importFile.datasetsCount,
+          datasetsProcessed: importFile.datasetsProcessed,
+          overallProgress: Math.round(overallProgress),
+          jobs: jobs.map(formatJobProgress),
+          errorLog: importFile.errorLog,
+          completedAt: importFile.completedAt,
+          createdAt: importFile.createdAt,
+        };
 
-      // Calculate overall progress
-      const overallProgress =
-        jobs.length > 0
-          ? jobs.reduce((sum, job) => {
-              const progress = job.progress?.current ?? 0;
-              const total = job.progress?.total ?? 1;
-              return sum + (progress / total) * 100;
-            }, 0) / jobs.length
-          : 0;
-
-      // Build comprehensive response
-      const response = {
-        type: "import-file",
-        id: importFile.id,
-        status: importFile.status,
-        originalName: importFile.originalName,
-        datasetsCount: importFile.datasetsCount,
-        datasetsProcessed: importFile.datasetsProcessed,
-        overallProgress: Math.round(overallProgress),
-        jobs: jobs.map(formatJobProgress),
-        errorLog: importFile.errorLog,
-        completedAt: importFile.completedAt,
-        createdAt: importFile.createdAt,
-      };
-
-      return NextResponse.json(response);
+        return NextResponse.json(response);
       } catch (error) {
         const { importId } = await context.params;
         logError(error, "Failed to get import progress", { importId });

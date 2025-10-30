@@ -6,14 +6,14 @@
  * @module
  * @category Tests
  */
-import { describe, expect, it, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import {
-  validateRequiredFields,
-  parseDate,
-  safeStringValue,
   hasValidProperty,
+  parseDate,
   parseTagsFromRow,
+  safeStringValue,
+  validateRequiredFields,
 } from "../../../../lib/jobs/utils/data-validation";
 import { createJobLogger } from "../../../../lib/logger";
 

@@ -66,39 +66,39 @@ export const GET = withRateLimit(
 
       const parameters = extractRequestParameters(request.nextUrl.searchParams);
 
-    const boundsResult = parseBounds(parameters.boundsParam);
-    if ("error" in boundsResult) {
-      return boundsResult.error;
-    }
+      const boundsResult = parseBounds(parameters.boundsParam);
+      if ("error" in boundsResult) {
+        return boundsResult.error;
+      }
 
-    // Get accessible catalog IDs for this user
-    const accessibleCatalogIds = await getAccessibleCatalogIds(payload, request.user);
+      // Get accessible catalog IDs for this user
+      const accessibleCatalogIds = await getAccessibleCatalogIds(payload, request.user);
 
-    // If no accessible catalogs and no catalog filter specified, return empty result
-    if (accessibleCatalogIds.length === 0 && !parameters.catalog) {
+      // If no accessible catalogs and no catalog filter specified, return empty result
+      if (accessibleCatalogIds.length === 0 && !parameters.catalog) {
+        return NextResponse.json({
+          type: "FeatureCollection",
+          features: [],
+        });
+      }
+
+      const filters = buildFilters(parameters, accessibleCatalogIds);
+      const functionExists = await checkClusteringFunction(payload);
+
+      if (!functionExists) {
+        return createFunctionNotFoundResponse();
+      }
+
+      const result = await executeClusteringQuery(payload, boundsResult.bounds, parameters.zoom, filters);
+      const clusters = transformResultToClusters(result.rows);
+
       return NextResponse.json({
         type: "FeatureCollection",
-        features: [],
+        features: clusters,
       });
+    } catch (error) {
+      return handleError(error);
     }
-
-    const filters = buildFilters(parameters, accessibleCatalogIds);
-    const functionExists = await checkClusteringFunction(payload);
-
-    if (!functionExists) {
-      return createFunctionNotFoundResponse();
-    }
-
-    const result = await executeClusteringQuery(payload, boundsResult.bounds, parameters.zoom, filters);
-    const clusters = transformResultToClusters(result.rows);
-
-    return NextResponse.json({
-      type: "FeatureCollection",
-      features: clusters,
-    });
-  } catch (error) {
-    return handleError(error);
-  }
   }),
   { type: "API_GENERAL" }
 );

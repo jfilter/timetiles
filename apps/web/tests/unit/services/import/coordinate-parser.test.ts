@@ -81,7 +81,7 @@ describe("Coordinate Parser Utilities", () => {
 
     it("should parse DMS with decimal seconds", () => {
       const result = parseDMSFormat("40°26'46.5\"N");
-      expect(result).toBeCloseTo(40.446250, 5);
+      expect(result).toBeCloseTo(40.44625, 5);
     });
 
     it("should handle zero values", () => {

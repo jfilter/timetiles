@@ -9,7 +9,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { getActiveFilterCount, hasActiveFilters, removeFilter, clearAllFilters, FilterState } from "../../../lib/store";
+import type { FilterState } from "../../../lib/store";
+import { clearAllFilters, getActiveFilterCount, hasActiveFilters, removeFilter } from "../../../lib/store";
 
 describe("Store Helper Functions", () => {
   describe("getActiveFilterCount", () => {

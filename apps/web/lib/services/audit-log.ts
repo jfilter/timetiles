@@ -13,8 +13,6 @@
  * @category Services
  */
 
-import type { Payload } from "payload";
-
 import type { User } from "@/payload-types";
 
 import { logger } from "../logger";
@@ -73,7 +71,7 @@ export interface SecurityEvent {
 /**
  * Get severity level for a security event type
  */
-function getSeverity(eventType: SecurityEventType): SecurityEventSeverity {
+const getSeverity = (eventType: SecurityEventType): SecurityEventSeverity => {
   const severityMap: Record<SecurityEventType, SecurityEventSeverity> = {
     auth_failure: "warning",
     auth_success: "info",
@@ -91,7 +89,7 @@ function getSeverity(eventType: SecurityEventType): SecurityEventSeverity {
   };
 
   return severityMap[eventType] ?? "info";
-}
+};
 
 /**
  * Log a security event.
@@ -114,7 +112,7 @@ function getSeverity(eventType: SecurityEventType): SecurityEventSeverity {
  * });
  * ```
  */
-export async function logSecurityEvent(event: SecurityEvent): Promise<void> {
+export const logSecurityEvent = async (event: SecurityEvent): Promise<void> => {
   const severity = getSeverity(event.type);
   const timestamp = event.timestamp ?? new Date();
 
@@ -150,35 +148,17 @@ export async function logSecurityEvent(event: SecurityEvent): Promise<void> {
       logger.info(logEntry, `[SECURITY] ${event.type}: ${event.message ?? ""}`);
       break;
   }
-
-  // TODO: Optionally persist to database for long-term analysis
-  // In production, you may want to store these in an audit_logs collection
-  // for compliance and forensic purposes:
-  //
-  // if (process.env.NODE_ENV === 'production' && severity in ['critical', 'error', 'warning']) {
-  //   try {
-  //     await payload.create({
-  //       collection: 'audit-logs',
-  //       data: {
-  //         ...logEntry,
-  //         timestamp,
-  //       },
-  //     });
-  //   } catch (error) {
-  //     logger.error({ error }, 'Failed to persist audit log to database');
-  //   }
-  // }
-}
+};
 
 /**
  * Log authentication failure event
  */
-export async function logAuthFailure(params: {
+export const logAuthFailure = async (params: {
   email?: string;
   ipAddress?: string;
   userAgent?: string;
   reason?: string;
-}): Promise<void> {
+}): Promise<void> => {
   await logSecurityEvent({
     type: "auth_failure",
     userEmail: params.email,
@@ -187,18 +167,18 @@ export async function logAuthFailure(params: {
     message: `Authentication failed: ${params.reason ?? "Invalid credentials"}`,
     metadata: { reason: params.reason },
   });
-}
+};
 
 /**
  * Log authentication success event
  */
-export async function logAuthSuccess(params: {
+export const logAuthSuccess = async (params: {
   userId: string;
   email: string;
   role?: string;
   ipAddress?: string;
   userAgent?: string;
-}): Promise<void> {
+}): Promise<void> => {
   await logSecurityEvent({
     type: "auth_success",
     userId: params.userId,
@@ -208,18 +188,18 @@ export async function logAuthSuccess(params: {
     userAgent: params.userAgent,
     message: "User authenticated successfully",
   });
-}
+};
 
 /**
  * Log access denial event
  */
-export async function logAccessDenied(params: {
+export const logAccessDenied = async (params: {
   user?: User | null;
   resource: string;
   action: string;
   ipAddress?: string;
   reason?: string;
-}): Promise<void> {
+}): Promise<void> => {
   await logSecurityEvent({
     type: "access_denied",
     userId: params.user?.id ? String(params.user.id) : undefined,
@@ -231,19 +211,19 @@ export async function logAccessDenied(params: {
     message: `Access denied to ${params.resource}.${params.action}: ${params.reason ?? "Insufficient permissions"}`,
     metadata: { reason: params.reason },
   });
-}
+};
 
 /**
  * Log privilege change event
  */
-export async function logPrivilegeChange(params: {
+export const logPrivilegeChange = async (params: {
   targetUserId: string;
   targetUserEmail?: string;
   changedBy?: User | null;
   oldRole: string;
   newRole: string;
   ipAddress?: string;
-}): Promise<void> {
+}): Promise<void> => {
   await logSecurityEvent({
     type: "privilege_change",
     userId: params.changedBy?.id ? String(params.changedBy.id) : undefined,
@@ -258,18 +238,18 @@ export async function logPrivilegeChange(params: {
       newRole: params.newRole,
     },
   });
-}
+};
 
 /**
  * Log suspicious activity event
  */
-export async function logSuspiciousActivity(params: {
+export const logSuspiciousActivity = async (params: {
   user?: User | null;
   activityType: string;
   description: string;
   ipAddress?: string;
   metadata?: Record<string, any>;
-}): Promise<void> {
+}): Promise<void> => {
   await logSecurityEvent({
     type: "suspicious_activity",
     userId: params.user?.id ? String(params.user.id) : undefined,
@@ -282,17 +262,17 @@ export async function logSuspiciousActivity(params: {
       ...params.metadata,
     },
   });
-}
+};
 
 /**
  * Log rate limit exceeded event
  */
-export async function logRateLimitExceeded(params: {
+export const logRateLimitExceeded = async (params: {
   identifier: string;
   resource: string;
   limit: number;
   ipAddress?: string;
-}): Promise<void> {
+}): Promise<void> => {
   await logSecurityEvent({
     type: "rate_limit_exceeded",
     resource: params.resource,
@@ -303,17 +283,17 @@ export async function logRateLimitExceeded(params: {
       limit: params.limit,
     },
   });
-}
+};
 
 /**
  * Log quota exceeded event
  */
-export async function logQuotaExceeded(params: {
+export const logQuotaExceeded = async (params: {
   user: User;
   quotaType: string;
   limit: number;
   current: number;
-}): Promise<void> {
+}): Promise<void> => {
   await logSecurityEvent({
     type: "quota_exceeded",
     userId: String(params.user.id),
@@ -326,17 +306,17 @@ export async function logQuotaExceeded(params: {
       current: params.current,
     },
   });
-}
+};
 
 /**
  * Log token enumeration attempt
  */
-export async function logTokenEnumeration(params: {
+export const logTokenEnumeration = async (params: {
   tokenType: string;
   resource: string;
   ipAddress?: string;
   attemptCount?: number;
-}): Promise<void> {
+}): Promise<void> => {
   await logSecurityEvent({
     type: "token_enumeration",
     resource: params.resource,
@@ -347,17 +327,17 @@ export async function logTokenEnumeration(params: {
       attemptCount: params.attemptCount,
     },
   });
-}
+};
 
 /**
  * Log privilege escalation attempt
  */
-export async function logPrivilegeEscalationAttempt(params: {
+export const logPrivilegeEscalationAttempt = async (params: {
   user: User;
   attemptedRole: string;
   ipAddress?: string;
   method?: string;
-}): Promise<void> {
+}): Promise<void> => {
   await logSecurityEvent({
     type: "privilege_escalation_attempt",
     userId: String(params.user.id),
@@ -371,18 +351,18 @@ export async function logPrivilegeEscalationAttempt(params: {
       method: params.method,
     },
   });
-}
+};
 
 /**
  * Log configuration change event
  */
-export async function logConfigurationChange(params: {
+export const logConfigurationChange = async (params: {
   user: User;
   component: string;
   action: string;
   ipAddress?: string;
   metadata?: Record<string, any>;
-}): Promise<void> {
+}): Promise<void> => {
   await logSecurityEvent({
     type: "configuration_change",
     userId: String(params.user.id),
@@ -394,15 +374,17 @@ export async function logConfigurationChange(params: {
     message: `Configuration changed: ${params.component}.${params.action}`,
     metadata: params.metadata,
   });
-}
+};
 
 /**
  * Helper to extract IP address and user agent from Next.js request
  */
-export function getRequestContext(request: Request): {
+export const getRequestContext = (
+  request: Request
+): {
   ipAddress: string;
   userAgent: string;
-} {
+} => {
   const forwarded = request.headers.get("x-forwarded-for");
   const realIp = request.headers.get("x-real-ip");
   const userAgent = request.headers.get("user-agent") ?? "unknown";
@@ -410,4 +392,4 @@ export function getRequestContext(request: Request): {
   const ipAddress = forwarded?.split(",")[0]?.trim() ?? realIp ?? "unknown";
 
   return { ipAddress, userAgent };
-}
+};
