@@ -39,6 +39,7 @@ interface CachedEntry {
 export class UrlFetchCache {
   private readonly cache: Cache;
   private readonly defaultTTL: number;
+  private readonly maxTTL: number;
   private readonly respectCacheControl: boolean;
 
   constructor() {
@@ -46,6 +47,7 @@ export class UrlFetchCache {
     const cacheDir = process.env.URL_FETCH_CACHE_DIR ?? "/tmp/url-fetch-cache";
     const maxSize = parseInt(process.env.URL_FETCH_CACHE_MAX_SIZE ?? "104857600", 10);
     this.defaultTTL = parseInt(process.env.URL_FETCH_CACHE_TTL ?? "3600", 10);
+    this.maxTTL = parseInt(process.env.URL_FETCH_CACHE_MAX_TTL ?? "2592000", 10); // 30 days default
     this.respectCacheControl = process.env.URL_FETCH_CACHE_RESPECT_CACHE_CONTROL !== "false";
 
     const storage = new FileSystemCacheStorage({
@@ -74,7 +76,7 @@ export class UrlFetchCache {
    */
   private calculateTTL(headers: Record<string, string>): number {
     if (!this.respectCacheControl) {
-      return this.defaultTTL;
+      return Math.min(this.defaultTTL, this.maxTTL);
     }
 
     const cacheControl = headers["cache-control"];
@@ -87,7 +89,8 @@ export class UrlFetchCache {
       // Parse max-age
       const maxAge = this.parseMaxAge(cacheControl);
       if (maxAge !== undefined) {
-        return maxAge;
+        // Enforce maximum TTL to prevent indefinite caching
+        return Math.min(maxAge, this.maxTTL);
       }
     }
 
@@ -95,10 +98,10 @@ export class UrlFetchCache {
     if (headers["expires"]) {
       const expires = new Date(headers["expires"]);
       const ttl = Math.floor((expires.getTime() - Date.now()) / 1000);
-      if (ttl > 0) return ttl;
+      if (ttl > 0) return Math.min(ttl, this.maxTTL);
     }
 
-    return this.defaultTTL;
+    return Math.min(this.defaultTTL, this.maxTTL);
   }
 
   /**
