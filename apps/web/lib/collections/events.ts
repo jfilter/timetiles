@@ -13,6 +13,10 @@
  * - Unique identifiers for deduplication and linking to source data.
  * - Relationships to the parent dataset, import job, and schema version.
  *
+ * ⚠️ Payload CMS Deadlock Prevention
+ * This file uses complex hooks with nested Payload operations.
+ * See: apps/docs/content/developer-guide/development/payload-deadlocks.mdx
+ *
  * @module
  */
 import type { CollectionConfig, Where } from "payload";

@@ -11,6 +11,10 @@
  * - Creating a new, versioned schema document in the database.
  * - Linking an import job to the specific schema version it was validated against.
  *
+ * ⚠️ Payload CMS Deadlock Prevention
+ * This service uses nested Payload operations and must receive the `req` parameter.
+ * See: apps/docs/content/developer-guide/development/payload-deadlocks.mdx
+ *
  * @module
  */
 import type { Payload } from "payload";
@@ -27,7 +31,7 @@ export class SchemaVersioningService {
   /**
    * Get the next schema version number for a dataset.
    */
-  static async getNextSchemaVersion(payload: Payload, datasetId: string | number): Promise<number> {
+  static async getNextSchemaVersion(payload: Payload, datasetId: string | number, req?: any): Promise<number> {
     const existingSchemas = await payload.find({
       collection: COLLECTION_NAMES.DATASET_SCHEMAS,
       where: {
@@ -35,6 +39,8 @@ export class SchemaVersioningService {
       },
       sort: "-versionNumber",
       limit: 1,
+      req,
+      overrideAccess: true,
     });
 
     const lastVersion = existingSchemas.docs[0]?.versionNumber ?? 0;
@@ -53,6 +59,7 @@ export class SchemaVersioningService {
       autoApproved = false,
       approvedBy,
       importSources = [],
+      req,
     }: {
       dataset: Dataset | string | number;
       schema: unknown;
@@ -64,12 +71,13 @@ export class SchemaVersioningService {
         recordCount?: number;
         batchCount?: number;
       }>;
+      req?: any;
     }
   ): Promise<DatasetSchema> {
     const datasetId = typeof dataset === "object" ? dataset.id : dataset;
 
     logger.info("Getting next schema version", { datasetId });
-    const nextVersion = await this.getNextSchemaVersion(payload, datasetId);
+    const nextVersion = await this.getNextSchemaVersion(payload, datasetId, req);
 
     try {
       logger.info("Preparing to create dataset-schema record", {
@@ -102,6 +110,8 @@ export class SchemaVersioningService {
       const schemaVersion = await payload.create({
         collection: COLLECTION_NAMES.DATASET_SCHEMAS,
         data: createData,
+        req,
+        overrideAccess: true,
       });
 
       logger.info("Schema version created successfully", {
@@ -129,7 +139,8 @@ export class SchemaVersioningService {
   static async linkImportToSchemaVersion(
     payload: Payload,
     importJobId: string | number,
-    schemaVersionId: string | number
+    schemaVersionId: string | number,
+    req?: any
   ): Promise<void> {
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
@@ -137,6 +148,8 @@ export class SchemaVersioningService {
       data: {
         datasetSchemaVersion: typeof schemaVersionId === "string" ? parseInt(schemaVersionId, 10) : schemaVersionId,
       },
+      req,
+      overrideAccess: true,
     });
   }
 }

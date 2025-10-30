@@ -38,6 +38,8 @@ describe("SchemaVersioningService", () => {
         },
         sort: "-versionNumber",
         limit: 1,
+        req: undefined,
+        overrideAccess: true,
       });
     });
 
@@ -56,6 +58,8 @@ describe("SchemaVersioningService", () => {
         },
         sort: "-versionNumber",
         limit: 1,
+        req: undefined,
+        overrideAccess: true,
       });
     });
 
@@ -74,6 +78,8 @@ describe("SchemaVersioningService", () => {
         },
         sort: "-versionNumber",
         limit: 1,
+        req: undefined,
+        overrideAccess: true,
       });
     });
 
@@ -135,6 +141,8 @@ describe("SchemaVersioningService", () => {
           importSources: [],
           _status: "published",
         },
+        req: undefined,
+        overrideAccess: true,
       });
     });
 
@@ -194,6 +202,8 @@ describe("SchemaVersioningService", () => {
           ],
           _status: "published",
         },
+        req: undefined,
+        overrideAccess: true,
       });
     });
 
@@ -235,6 +245,8 @@ describe("SchemaVersioningService", () => {
           importSources: [],
           _status: "published",
         },
+        req: undefined,
+        overrideAccess: true,
       });
     });
 
@@ -295,6 +307,8 @@ describe("SchemaVersioningService", () => {
           ],
           _status: "published",
         },
+        req: undefined,
+        overrideAccess: true,
       });
     });
 
@@ -337,6 +351,8 @@ describe("SchemaVersioningService", () => {
           importSources: [],
           _status: "published",
         },
+        req: undefined,
+        overrideAccess: true,
       });
     });
   });
@@ -353,6 +369,8 @@ describe("SchemaVersioningService", () => {
         data: {
           datasetSchemaVersion: 456,
         },
+        req: undefined,
+        overrideAccess: true,
       });
     });
 
@@ -367,6 +385,8 @@ describe("SchemaVersioningService", () => {
         data: {
           datasetSchemaVersion: 101112,
         },
+        req: undefined,
+        overrideAccess: true,
       });
     });
 
@@ -381,6 +401,8 @@ describe("SchemaVersioningService", () => {
         data: {
           datasetSchemaVersion: 666,
         },
+        req: undefined,
+        overrideAccess: true,
       });
     });
 
@@ -398,6 +420,8 @@ describe("SchemaVersioningService", () => {
         data: {
           datasetSchemaVersion: 456,
         },
+        req: undefined,
+        overrideAccess: true,
       });
     });
   });
@@ -484,6 +508,8 @@ describe("SchemaVersioningService", () => {
           ],
           _status: "published",
         },
+        req: undefined,
+        overrideAccess: true,
       });
 
       expect(mockPayload.update).toHaveBeenCalledWith({
@@ -492,6 +518,8 @@ describe("SchemaVersioningService", () => {
         data: {
           datasetSchemaVersion: 999,
         },
+        req: undefined,
+        overrideAccess: true,
       });
     });
   });

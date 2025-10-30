@@ -13,6 +13,10 @@
  * An `afterChange` hook is used to automatically trigger the `dataset-detection` job
  * as soon as a new file is uploaded and created in this collection.
  *
+ * ⚠️ Payload CMS Deadlock Prevention
+ * This file uses complex hooks with nested Payload operations.
+ * See: apps/docs/content/developer-guide/development/payload-deadlocks.mdx
+ *
  * @module
  */
 import type { CollectionConfig, Where } from "payload";

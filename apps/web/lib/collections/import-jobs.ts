@@ -13,6 +13,10 @@
  * - Orchestrating the pipeline by triggering the next job in the sequence via `afterChange` hooks.
  * - Enforcing valid stage transitions to maintain pipeline integrity.
  *
+ * ⚠️ Payload CMS Deadlock Prevention
+ * This file uses complex hooks with nested Payload operations.
+ * See: apps/docs/content/developer-guide/development/payload-deadlocks.mdx
+ *
  * @module
  */
 import type { CollectionConfig, Payload } from "payload";

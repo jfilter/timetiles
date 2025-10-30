@@ -27,6 +27,10 @@
  *
  * Both checks typically run together - rate limits first (fast fail), then quotas (accurate tracking).
  *
+ * ⚠️ Payload CMS Deadlock Prevention
+ * This service uses nested Payload operations and correctly implements the deadlock prevention pattern.
+ * See: apps/docs/content/developer-guide/development/payload-deadlocks.mdx
+ *
  * @example
  * ```typescript
  * // Typical usage pattern: check both rate limits and quotas

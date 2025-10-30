@@ -11,6 +11,10 @@
  * - Execution history tracking
  * - Integration with existing import pipeline.
  *
+ * ⚠️ Payload CMS Deadlock Prevention
+ * This file uses complex hooks with nested Payload operations.
+ * See: apps/docs/content/developer-guide/development/payload-deadlocks.mdx
+ *
  * @module
  * @category Collections
  */

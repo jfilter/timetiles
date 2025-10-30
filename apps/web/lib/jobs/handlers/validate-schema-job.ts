@@ -162,7 +162,8 @@ const handleSchemaApproval = async (
     id: string | number;
     schemaConfig?: { locked?: boolean | null; autoApproveNonBreaking?: boolean | null } | null;
   },
-  importJobId: number | string
+  importJobId: number | string,
+  req?: any
 ) => {
   if (!requiresApproval && comparison.hasChanges) {
     const schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
@@ -172,9 +173,10 @@ const handleSchemaApproval = async (
       autoApproved: true,
       approvedBy: null, // No user for auto-approval
       importSources: [],
+      req,
     });
 
-    await SchemaVersioningService.linkImportToSchemaVersion(payload, importJobId, schemaVersion.id);
+    await SchemaVersioningService.linkImportToSchemaVersion(payload, importJobId, schemaVersion.id, req);
   }
 };
 
@@ -310,7 +312,8 @@ export const validateSchemaJob = {
         detectedSchema,
         schemaBuilder,
         dataset,
-        importJobId
+        importJobId,
+        context.req
       );
 
       logPerformance("Schema validation", Date.now() - startTime, {

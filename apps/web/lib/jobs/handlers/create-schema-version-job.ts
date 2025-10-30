@@ -82,6 +82,7 @@ export const createSchemaVersionJob = {
         autoApproved: false,
         approvedBy: approvedById,
         importSources: [],
+        req: context.req,
       });
 
       // Update job with schema version
