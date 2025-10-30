@@ -122,11 +122,43 @@ const Catalogs: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      ({ data, req, operation }) => {
+      async ({ data, req, operation }) => {
         // Auto-set createdBy on creation
         if (operation === "create" && req.user) {
           data.createdBy = req.user.id;
+
+          // TODO: Add catalog quota check when CATALOGS_PER_USER quota type is implemented
         }
+
+        // Validate slug uniqueness on create and update
+        if (data.slug && (operation === "create" || operation === "update")) {
+          const existing = await req.payload.find({
+            collection: "catalogs",
+            where: {
+              slug: { equals: data.slug },
+            },
+            limit: 1,
+            overrideAccess: true,
+          });
+
+          // Check if slug exists and belongs to a different document
+          if (existing.docs.length > 0) {
+            // For updates, ensure it's not the same document
+            if (operation === "update") {
+              const currentDocId = req.context?.id;
+              const existingDocId = existing.docs[0]?.id;
+
+              // If both IDs exist and are different, reject the slug
+              if (currentDocId && existingDocId && currentDocId !== existingDocId) {
+                throw new Error(`Slug "${data.slug}" is already in use by another catalog.`);
+              }
+            } else {
+              // For creates, slug must be unique
+              throw new Error(`Slug "${data.slug}" is already in use.`);
+            }
+          }
+        }
+
         return data;
       },
     ],
