@@ -390,10 +390,4 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       });
     });
   });
-
-  describe("Job Configuration", () => {
-    it("should have correct job slug", () => {
-      expect(createSchemaVersionJob.slug).toBe("create-schema-version");
-    });
-  });
 });

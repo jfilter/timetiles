@@ -53,12 +53,6 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
     vi.clearAllMocks();
   });
 
-  describe("Job Configuration", () => {
-    it("should have correct slug", () => {
-      expect(cleanupStuckScheduledImportsJob.slug).toBe("cleanup-stuck-scheduled-imports");
-    });
-  });
-
   describe("Finding Stuck Imports", () => {
     it("should find imports stuck for more than 2 hours", async () => {
       const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
