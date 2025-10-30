@@ -143,7 +143,7 @@ const Catalogs: CollectionConfig = {
           }
 
           // Increment catalog count
-          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_CATALOGS, 1);
+          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_CATALOGS, 1, req);
         }
 
         // Validate slug uniqueness on create and update

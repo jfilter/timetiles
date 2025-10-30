@@ -127,44 +127,7 @@ async incrementUsage(userId: number, usageType: string, amount: number, req?: an
 }
 ```
 
-### Scenario 2: Access Control Checks
-
-**Problem**: Access control functions performing Payload queries during transaction.
-
-```typescript
-// ❌ WRONG
-access: {
-  update: async ({ req, id }) => {
-    // This query starts a new transaction during access check
-    const doc = await req.payload.findByID({
-      collection: "documents",
-      id,
-    });
-    return doc.createdBy === req.user.id;
-  };
-}
-```
-
-**Solution**: Use `overrideAccess: true` and perform manual authorization checks.
-
-```typescript
-// ✅ CORRECT
-access: {
-  update: async ({ req, id }) => {
-    const doc = await req.payload.findByID({
-      collection: "documents",
-      id,
-      overrideAccess: true, // Skip nested access control
-    });
-
-    // Manual authorization check
-    if (req.user?.role === "admin") return true;
-    return doc.createdBy === req.user?.id;
-  };
-}
-```
-
-### Scenario 3: Quota Checks in `beforeChange`
+### Scenario 2: Quota Checks in `beforeChange`
 
 **Problem**: Checking quotas before creating records requires reading user data.
 
@@ -204,90 +167,19 @@ async checkQuota(user: User, quotaType: string, amount: number, req?: any) {
 }
 ```
 
-### Scenario 4: Cascading Updates
+## Testing for Deadlocks
 
-**Problem**: Updating related records in `afterChange` hook.
-
-```typescript
-// ❌ WRONG
-hooks: {
-  afterChange: [
-    async ({ doc, req }) => {
-      // Updating related records without req/context
-      await req.payload.update({
-        collection: "import-files",
-        id: doc.importFileId,
-        data: { status: "completed" },
-      });
-    },
-  ];
-}
-```
-
-**Solution**: Pass `req` and use context flags.
+Tests will timeout (60+ seconds) if deadlocks occur. Use short timeouts (10-15s) to detect issues quickly:
 
 ```typescript
-// ✅ CORRECT
-hooks: {
-  afterChange: [
-    async ({ doc, req }) => {
-      await req.payload.update({
-        collection: "import-files",
-        id: doc.importFileId,
-        req, // Stay in same transaction
-        data: { status: "completed" },
-        context: {
-          ...(req.context || {}),
-          skipImportFileHooks: true, // Prevent cascading hooks
-        },
-        overrideAccess: true,
-      });
-    },
-  ];
-}
-```
-
-## Testing Considerations
-
-### Detecting Deadlocks in Tests
-
-Tests will timeout if deadlocks occur:
-
-```typescript
-// Test will hang for 60+ seconds if deadlock occurs
 test("should create schedule without hanging", async () => {
   const result = await payload.create({
     collection: "scheduled-imports",
     data: { name: "Test", enabled: true },
     user: testUser,
   });
-
   expect(result).toBeDefined();
-}, 10000); // 10 second timeout - should complete quickly
-```
-
-### Test Environment Optimization
-
-Skip quota checks in test environment to avoid unnecessary complexity:
-
-```typescript
-hooks: {
-  beforeChange: [
-    async ({ data, req }) => {
-      // Skip quota checks in test environment
-      if (process.env.NODE_ENV === "test" || process.env.VITEST === "true") {
-        return data;
-      }
-
-      // Production quota logic
-      const quotaService = getQuotaService(req.payload);
-      const check = await quotaService.checkQuota(req.user, "SCHEDULES", 1, req);
-      if (!check.allowed) throw new Error("Quota exceeded");
-
-      return data;
-    },
-  ];
-}
+}, 10000); // Should complete quickly
 ```
 
 ## Best Practices Checklist
@@ -304,86 +196,15 @@ hooks: {
 - [ ] **Use structured logging** (`logger.debug()`) instead of `console.log()`
 - [ ] **Test with short timeouts** (10-15 seconds) to detect deadlocks quickly
 
-## Context Flag Naming Convention
+## Debugging Tips
 
-Use descriptive context flags that indicate which hooks to skip:
+If you suspect a deadlock:
 
-```typescript
-context: {
-  skipUsageHooks: true,      // Skip usage tracking hooks
-  skipQuotaChecks: true,     // Skip quota validation
-  skipImportFileHooks: true, // Skip import file hooks
-  skipScheduleHooks: true,   // Skip schedule hooks
-}
-```
-
-## Service Method Signatures
-
-When creating service methods that might be called from hooks, **always** accept an optional `req` parameter:
-
-```typescript
-export class QuotaService {
-  // Accept req as last parameter (optional for backward compatibility)
-  async checkQuota(
-    user: User,
-    quotaType: string,
-    amount: number = 1,
-    req?: any // ← Add this
-  ): Promise<QuotaCheckResult> {
-    // Use req if performing nested operations
-  }
-
-  async incrementUsage(
-    userId: number,
-    usageType: string,
-    amount: number = 1,
-    req?: any // ← Add this
-  ): Promise<void> {
-    await this.payload.update({
-      collection: "users",
-      id: userId,
-      req, // ← Pass it through
-      data: { usage: newUsage },
-      context: { skipUsageHooks: true },
-      overrideAccess: true,
-    });
-  }
-}
-```
-
-## Debugging Deadlocks
-
-If you suspect a deadlock, add strategic logging:
-
-```typescript
-import { createRequestLogger } from "@/lib/logger";
-
-const logger = createRequestLogger("my-collection");
-
-hooks: {
-  afterChange: [
-    async ({ doc, req }) => {
-      logger.debug("Starting nested update", { docId: doc.id });
-
-      await req.payload.update({
-        collection: "users",
-        id: doc.userId,
-        req,
-        data: { updated: true },
-        context: { skipCustomHooks: true },
-        overrideAccess: true,
-      });
-
-      logger.debug("Nested update completed", { docId: doc.id });
-    },
-  ];
-}
-```
-
-<Callout type="warning">
-  **Remove verbose logging** after debugging. Use `logger.debug()` for development logging and ensure logs are at
-  appropriate levels for production.
-</Callout>
+1. Add `logger.debug()` before and after nested Payload operations
+2. Check that `req` is being passed to all nested operations
+3. Verify `context` flags are present and prevent hook recursion
+4. Ensure `overrideAccess: true` is used
+5. Test with short timeouts (10-15s) to detect hangs quickly
 
 ## Real-World Examples
 
