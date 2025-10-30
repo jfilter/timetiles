@@ -13,6 +13,7 @@ import { getPayload } from "payload";
 import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
 import { getQuotaService } from "@/lib/services/quota-service";
+import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 import configPromise from "@/payload.config";
 
 const logger = createLogger("api-quotas");
@@ -36,6 +37,23 @@ export const GET = async (req: NextRequest) => {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Rate limiting check
+    const rateLimitService = getRateLimitService(payload);
+    const clientId = getClientIdentifier(req);
+    const rateLimitCheck = rateLimitService.checkTrustLevelRateLimit(clientId, user, "API_GENERAL");
+
+    if (!rateLimitCheck.allowed) {
+      const retryAfter = rateLimitCheck.resetTime
+        ? Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000)
+        : 60;
+
+      return NextResponse.json(
+        { error: "Too many requests", retryAfter },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      );
+    }
+
     const quotaService = getQuotaService(payload);
 
     // Get all quota statuses in parallel

@@ -14,6 +14,7 @@ import { getPayload } from "payload";
 
 import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
+import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 import config from "@/payload.config";
 import type { Event } from "@/payload-types";
 
@@ -120,6 +121,44 @@ const transformEvent = (event: Event) => ({
 export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
+
+    // Rate limiting check
+    const rateLimitService = getRateLimitService(payload);
+    const clientId = getClientIdentifier(request);
+    const rateLimitCheck = rateLimitService.checkTrustLevelRateLimit(
+      clientId,
+      request.user as any,
+      "API_GENERAL"
+    );
+
+    if (!rateLimitCheck.allowed) {
+      const retryAfter = rateLimitCheck.resetTime
+        ? Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000)
+        : 60;
+
+      logger.warn("Rate limit exceeded for events list", {
+        clientId,
+        userId: request.user?.id,
+        failedWindow: rateLimitCheck.failedWindow,
+      });
+
+      return NextResponse.json(
+        {
+          error: "Too many requests",
+          message: `Rate limit exceeded. Please try again after ${retryAfter} seconds.`,
+          retryAfter,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(retryAfter),
+            "X-RateLimit-Limit": String(rateLimitCheck.details?.limit ?? "unknown"),
+            "X-RateLimit-Remaining": "0",
+          },
+        }
+      );
+    }
+
     const parameters = extractListParameters(request.nextUrl.searchParams);
     const where = buildWhereClause(parameters);
     const result = await executeEventsQuery(payload, where, parameters, request.user);

@@ -13,6 +13,7 @@ import { getPayload } from "payload";
 
 import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
+import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
 import type { ImportJob } from "@/payload-types";
 
 interface JobProgress {
@@ -73,6 +74,23 @@ export const GET = withAuth(
   async (request: AuthenticatedRequest, context: { params: Promise<{ importId: string }> }): Promise<NextResponse> => {
     try {
       const payload = await getPayload({ config });
+
+      // Rate limiting check (using PROGRESS_CHECK for frequently polled endpoints)
+      const rateLimitService = getRateLimitService(payload);
+      const clientId = getClientIdentifier(request);
+      const rateLimitCheck = rateLimitService.checkConfiguredRateLimit(clientId, RATE_LIMITS.PROGRESS_CHECK);
+
+      if (!rateLimitCheck.allowed) {
+        const retryAfter = rateLimitCheck.resetTime
+          ? Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000)
+          : 1;
+
+        return NextResponse.json(
+          { error: "Too many requests", retryAfter },
+          { status: 429, headers: { "Retry-After": String(retryAfter) } }
+        );
+      }
+
       const { importId } = await context.params;
 
       // Get the import file with access control enforced

@@ -14,6 +14,7 @@ import { getPayload, type Payload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
+import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 import config from "@/payload.config";
 
 interface MapBounds {
@@ -125,8 +126,29 @@ const buildFiltersWithBounds = (params: {
 
 export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
   try {
-    const parameters = extractHistogramParameters(request.nextUrl.searchParams);
     const payload = await getPayload({ config });
+
+    // Rate limiting check
+    const rateLimitService = getRateLimitService(payload);
+    const clientId = getClientIdentifier(request);
+    const rateLimitCheck = rateLimitService.checkTrustLevelRateLimit(
+      clientId,
+      request.user as any,
+      "API_GENERAL"
+    );
+
+    if (!rateLimitCheck.allowed) {
+      const retryAfter = rateLimitCheck.resetTime
+        ? Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000)
+        : 60;
+
+      return NextResponse.json(
+        { error: "Too many requests", retryAfter },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      );
+    }
+
+    const parameters = extractHistogramParameters(request.nextUrl.searchParams);
     const boundsResult = parseBoundsParameter(parameters.boundsParam);
     if ("error" in boundsResult) {
       return boundsResult.error;
