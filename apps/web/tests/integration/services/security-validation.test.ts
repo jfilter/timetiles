@@ -443,7 +443,7 @@ describe.sequential("Security Validation Tests", () => {
           user: { id: regularUserId, role: "user" } as any,
         });
         // Should have thrown but didn't - access control not enforced
-        expect(true).toBe(true); // Currently allows
+        // Reaching this point documents that the security vulnerability still exists
       } catch (error) {
         // Expected behavior when access control is enforced
         expect(error).toBeDefined();
@@ -671,8 +671,7 @@ describe.sequential("Security Validation Tests", () => {
           user: anotherUser,
         });
         // If this succeeds, ownership is not being checked
-        // This might be current behavior - document it
-        expect(true).toBe(true);
+        // Reaching this point documents that ownership validation is not enforced
       } catch (error) {
         // Expected behavior with proper access control
         expect(error).toBeDefined();

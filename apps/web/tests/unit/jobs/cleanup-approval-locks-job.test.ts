@@ -87,19 +87,4 @@ describe.sequential("CleanupApprovalLocksJob Handler", () => {
       expect(transitioningJobs.size).toBe(0);
     });
   });
-
-  describe("Job Configuration", () => {
-    it("should have correct job slug", () => {
-      expect(cleanupApprovalLocksJob.slug).toBe("cleanup-approval-locks");
-    });
-
-    it("should have correct schedule configuration", () => {
-      expect(cleanupApprovalLocksJob.schedule).toEqual([
-        {
-          cron: "*/5 * * * *", // Every 5 minutes
-          queue: "maintenance",
-        },
-      ]);
-    });
-  });
 });

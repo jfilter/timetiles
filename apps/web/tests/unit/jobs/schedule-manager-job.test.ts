@@ -488,14 +488,12 @@ describe.sequential("scheduleManagerJob", () => {
         }),
       });
 
-      // Check that history is limited to 10 items
+      // Check that history is limited to 10 items (if present)
       const updateCall = mockPayload.update.mock.calls[0];
       if (updateCall?.[0]?.data?.executionHistory) {
         expect(updateCall?.[0]?.data?.executionHistory).toHaveLength(10);
-      } else {
-        // If no execution history in update, that's fine - it might be handled differently
-        expect(true).toBe(true);
       }
+      // If no execution history in update, that's acceptable - it might be handled differently
     });
   });
 });

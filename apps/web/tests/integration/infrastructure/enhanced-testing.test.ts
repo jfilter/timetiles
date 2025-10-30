@@ -272,7 +272,6 @@ describe("Enhanced Testing Infrastructure", () => {
       expect(result).toHaveProperty("docs");
       expect(result).toHaveProperty("totalDocs");
       expect(typeof result.totalDocs).toBe("number");
-      expect(result.totalDocs).toBeGreaterThanOrEqual(0);
       expect(Array.isArray(result.docs)).toBe(true);
     });
 

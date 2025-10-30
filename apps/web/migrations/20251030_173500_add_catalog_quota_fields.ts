@@ -1,4 +1,5 @@
-import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-postgres'
+import type { MigrateUpArgs, MigrateDownArgs} from '@payloadcms/db-postgres';
+import { sql } from '@payloadcms/db-postgres'
 
 /**
  * Migration to add catalog quota fields to users collection.

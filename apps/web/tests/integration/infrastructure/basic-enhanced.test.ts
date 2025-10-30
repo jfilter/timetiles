@@ -97,7 +97,6 @@ describe("Basic Enhanced Testing Infrastructure", () => {
     it("should handle collection counts", async () => {
       const result = await testEnv.payload.find({ collection: "users", limit: 1 });
       expect(typeof result.totalDocs).toBe("number");
-      expect(result.totalDocs).toBeGreaterThanOrEqual(0);
     });
 
     it("should truncate collections", async () => {

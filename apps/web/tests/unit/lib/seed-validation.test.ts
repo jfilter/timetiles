@@ -23,7 +23,7 @@ describe("Seed Data Validation", () => {
       expect(users.every((user) => user.email && user.password)).toBe(true);
 
       // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
       users.forEach((user) => {
         expect(emailRegex.test(user.email)).toBe(true);
       });
@@ -54,7 +54,7 @@ describe("Seed Data Validation", () => {
       });
 
       // Validate email format in production too
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
       users.forEach((user) => {
         expect(emailRegex.test(user.email)).toBe(true);
       });

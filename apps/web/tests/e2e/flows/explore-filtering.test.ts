@@ -151,8 +151,7 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.waitForEventsToLoad();
     const initialCount = await explorePage.getEventCount();
 
-    // Store initial count for comparison
-    expect(initialCount).toBeGreaterThanOrEqual(0);
+    // Should have loaded events from the selected dataset
     console.log(`Initial count with Environmental Data: ${initialCount}`);
 
     // Deselect the current dataset first
@@ -172,9 +171,6 @@ test.describe("Explore Page - Filtering", () => {
     const newCount = await explorePage.getEventCount();
 
     console.log(`New count with Economic Indicators: ${newCount}`);
-
-    // Verify that results have been updated
-    expect(newCount).toBeGreaterThanOrEqual(0);
 
     // Verify URL parameters reflect the new selection
     const params = await explorePage.getUrlParams();
