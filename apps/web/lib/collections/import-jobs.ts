@@ -117,21 +117,35 @@ const ImportJobs: CollectionConfig = {
     create: ({ req: { user } }) => Boolean(user),
 
     // Only import file owner or admins can update
-    update: async ({ req, data }) => {
+    update: async ({ req, id }) => {
       const { user } = req;
       if (user?.role === "admin") return true;
 
-      if (user && data?.importFile) {
-        const importFileId = typeof data.importFile === "object" ? data.importFile.id : data.importFile;
-        const importFile = await req.payload.findByID({
-          collection: "import-files",
-          id: importFileId,
-          overrideAccess: true,
-        });
+      // Security: Check ownership of EXISTING job, not the new data being set
+      if (user && id) {
+        try {
+          const existingJob = await req.payload.findByID({
+            collection: "import-jobs",
+            id,
+            overrideAccess: true,
+          });
 
-        if (importFile?.user) {
-          const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
-          return user.id === userId;
+          if (existingJob?.importFile) {
+            const importFileId =
+              typeof existingJob.importFile === "object" ? existingJob.importFile.id : existingJob.importFile;
+            const importFile = await req.payload.findByID({
+              collection: "import-files",
+              id: importFileId,
+              overrideAccess: true,
+            });
+
+            if (importFile?.user) {
+              const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
+              return user.id === userId;
+            }
+          }
+        } catch {
+          return false;
         }
       }
 

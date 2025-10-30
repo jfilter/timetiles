@@ -196,6 +196,38 @@ const Datasets: CollectionConfig = {
     // Only admins can read version history
     readVersions: ({ req: { user } }) => user?.role === "admin",
   },
+  hooks: {
+    beforeChange: [
+      async ({ data, req, operation }) => {
+        // Validate: Datasets in public catalogs must be public
+        if (operation === "create" || operation === "update") {
+          if (data?.catalog) {
+            const catalogId = typeof data.catalog === "object" ? data.catalog.id : data.catalog;
+            try {
+              const catalog = await req.payload.findByID({
+                collection: "catalogs",
+                id: catalogId,
+                overrideAccess: true,
+              });
+
+              // If catalog is public, dataset must also be public
+              if (catalog?.isPublic && data.isPublic === false) {
+                throw new Error("Datasets in public catalogs must be public");
+              }
+            } catch (error) {
+              // Re-throw validation errors
+              if (error instanceof Error && error.message.includes("must be public")) {
+                throw error;
+              }
+              // Catalog not found - will be caught by required validation
+            }
+          }
+        }
+
+        return data;
+      },
+    ],
+  },
   fields: [
     ...basicMetadataFields,
     createSlugField("datasets"),
