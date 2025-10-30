@@ -20,6 +20,7 @@ export default [
     rules: {
       "@typescript-eslint/no-unused-vars": "off", // MDX imports are used in JSX
       "no-unused-vars": "off", // MDX imports are used in JSX
+      "sonarjs/max-lines": ["error", { maximum: 1000 }], // Documentation files can be longer
     },
   },
   // Scripts configuration - Node.js environment with relaxed rules (TypeScript only)

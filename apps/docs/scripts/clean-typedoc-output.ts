@@ -151,6 +151,7 @@ const cleanupAllFiles = (dir: string): void => {
 /**
  * Fix function signatures that span multiple lines
  */
+// eslint-disable-next-line complexity
 const fixFunctionSignatures = (dir: string): void => {
   if (!fs.existsSync(dir)) return;
 
@@ -176,7 +177,7 @@ const fixFunctionSignatures = (dir: string): void => {
         const line = lines[i];
 
         // Track code blocks to avoid modifying code
-        if (line && line.startsWith("```")) {
+        if (line?.startsWith("```")) {
           inCodeBlock = !inCodeBlock;
         }
 
@@ -201,7 +202,7 @@ const fixFunctionSignatures = (dir: string): void => {
             fixedLines.push(line);
           }
         } else {
-          if (line !== undefined) {
+          if (line != null) {
             fixedLines.push(line);
           }
         }
