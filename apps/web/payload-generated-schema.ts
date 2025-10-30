@@ -15,9 +15,9 @@ import {
   serial,
   varchar,
   jsonb,
+  integer,
   boolean,
   timestamp,
-  integer,
   numeric,
 } from "@payloadcms/db-postgres/drizzle/pg-core";
 import { sql, relations } from "@payloadcms/db-postgres/drizzle";
@@ -381,6 +381,9 @@ export const catalogs = db_schema.table(
     name: varchar("name"),
     description: jsonb("description"),
     slug: varchar("slug"),
+    createdBy: integer("created_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     isPublic: boolean("is_public").default(false),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
@@ -389,6 +392,7 @@ export const catalogs = db_schema.table(
   },
   (columns) => ({
     catalogs_slug_idx: uniqueIndex("catalogs_slug_idx").on(columns.slug),
+    catalogs_created_by_idx: index("catalogs_created_by_idx").on(columns.createdBy),
     catalogs_updated_at_idx: index("catalogs_updated_at_idx").on(columns.updatedAt),
     catalogs_created_at_idx: index("catalogs_created_at_idx").on(columns.createdAt),
     catalogs_deleted_at_idx: index("catalogs_deleted_at_idx").on(columns.deletedAt),
@@ -406,6 +410,9 @@ export const _catalogs_v = db_schema.table(
     version_name: varchar("version_name"),
     version_description: jsonb("version_description"),
     version_slug: varchar("version_slug"),
+    version_createdBy: integer("version_created_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     version_isPublic: boolean("version_is_public").default(false),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
@@ -419,6 +426,9 @@ export const _catalogs_v = db_schema.table(
   (columns) => ({
     _catalogs_v_parent_idx: index("_catalogs_v_parent_idx").on(columns.parent),
     _catalogs_v_version_version_slug_idx: index("_catalogs_v_version_version_slug_idx").on(columns.version_slug),
+    _catalogs_v_version_version_created_by_idx: index("_catalogs_v_version_version_created_by_idx").on(
+      columns.version_createdBy
+    ),
     _catalogs_v_version_version_updated_at_idx: index("_catalogs_v_version_version_updated_at_idx").on(
       columns.version_updatedAt
     ),
@@ -1819,11 +1829,13 @@ export const users = db_schema.table(
     quotas_maxTotalEvents: numeric("quotas_max_total_events"),
     quotas_maxImportJobsPerDay: numeric("quotas_max_import_jobs_per_day"),
     quotas_maxFileSizeMB: numeric("quotas_max_file_size_m_b"),
+    quotas_maxCatalogsPerUser: numeric("quotas_max_catalogs_per_user"),
     usage_currentActiveSchedules: numeric("usage_current_active_schedules"),
     usage_urlFetchesToday: numeric("usage_url_fetches_today"),
     usage_fileUploadsToday: numeric("usage_file_uploads_today"),
     usage_importJobsToday: numeric("usage_import_jobs_today"),
     usage_totalEventsCreated: numeric("usage_total_events_created"),
+    usage_currentCatalogs: numeric("usage_current_catalogs"),
     usage_lastResetDate: timestamp("usage_last_reset_date", { mode: "string", withTimezone: true, precision: 3 }),
     customQuotas: jsonb("custom_quotas"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
@@ -1892,11 +1904,13 @@ export const _users_v = db_schema.table(
     version_quotas_maxTotalEvents: numeric("version_quotas_max_total_events"),
     version_quotas_maxImportJobsPerDay: numeric("version_quotas_max_import_jobs_per_day"),
     version_quotas_maxFileSizeMB: numeric("version_quotas_max_file_size_m_b"),
+    version_quotas_maxCatalogsPerUser: numeric("version_quotas_max_catalogs_per_user"),
     version_usage_currentActiveSchedules: numeric("version_usage_current_active_schedules"),
     version_usage_urlFetchesToday: numeric("version_usage_url_fetches_today"),
     version_usage_fileUploadsToday: numeric("version_usage_file_uploads_today"),
     version_usage_importJobsToday: numeric("version_usage_import_jobs_today"),
     version_usage_totalEventsCreated: numeric("version_usage_total_events_created"),
+    version_usage_currentCatalogs: numeric("version_usage_current_catalogs"),
     version_usage_lastResetDate: timestamp("version_usage_last_reset_date", {
       mode: "string",
       withTimezone: true,
@@ -1947,6 +1961,9 @@ export const media = db_schema.table(
   "media",
   {
     id: serial("id").primaryKey(),
+    createdBy: integer("created_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     alt: varchar("alt"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
@@ -1981,6 +1998,7 @@ export const media = db_schema.table(
     sizes_tablet_filename: varchar("sizes_tablet_filename"),
   },
   (columns) => ({
+    media_created_by_idx: index("media_created_by_idx").on(columns.createdBy),
     media_updated_at_idx: index("media_updated_at_idx").on(columns.updatedAt),
     media_created_at_idx: index("media_created_at_idx").on(columns.createdAt),
     media_deleted_at_idx: index("media_deleted_at_idx").on(columns.deletedAt),
@@ -2003,6 +2021,9 @@ export const _media_v = db_schema.table(
   {
     id: serial("id").primaryKey(),
     parent: integer("parent_id").references(() => media.id, {
+      onDelete: "set null",
+    }),
+    version_createdBy: integer("version_created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     version_alt: varchar("version_alt"),
@@ -2044,6 +2065,9 @@ export const _media_v = db_schema.table(
   },
   (columns) => ({
     _media_v_parent_idx: index("_media_v_parent_idx").on(columns.parent),
+    _media_v_version_version_created_by_idx: index("_media_v_version_version_created_by_idx").on(
+      columns.version_createdBy
+    ),
     _media_v_version_version_updated_at_idx: index("_media_v_version_version_updated_at_idx").on(
       columns.version_updatedAt
     ),
@@ -2729,12 +2753,23 @@ export const payload_jobs_stats = db_schema.table("payload_jobs_stats", {
   createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
 });
 
-export const relations_catalogs = relations(catalogs, () => ({}));
+export const relations_catalogs = relations(catalogs, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [catalogs.createdBy],
+    references: [users.id],
+    relationName: "createdBy",
+  }),
+}));
 export const relations__catalogs_v = relations(_catalogs_v, ({ one }) => ({
   parent: one(catalogs, {
     fields: [_catalogs_v.parent],
     references: [catalogs.id],
     relationName: "parent",
+  }),
+  version_createdBy: one(users, {
+    fields: [_catalogs_v.version_createdBy],
+    references: [users.id],
+    relationName: "version_createdBy",
   }),
 }));
 export const relations_datasets_id_strategy_computed_id_fields = relations(
@@ -3255,12 +3290,23 @@ export const relations__users_v = relations(_users_v, ({ one, many }) => ({
     relationName: "version_sessions",
   }),
 }));
-export const relations_media = relations(media, () => ({}));
+export const relations_media = relations(media, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [media.createdBy],
+    references: [users.id],
+    relationName: "createdBy",
+  }),
+}));
 export const relations__media_v = relations(_media_v, ({ one }) => ({
   parent: one(media, {
     fields: [_media_v.parent],
     references: [media.id],
     relationName: "parent",
+  }),
+  version_createdBy: one(users, {
+    fields: [_media_v.version_createdBy],
+    references: [users.id],
+    relationName: "version_createdBy",
   }),
 }));
 export const relations_location_cache = relations(location_cache, () => ({}));
