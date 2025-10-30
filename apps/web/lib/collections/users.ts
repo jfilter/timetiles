@@ -302,7 +302,20 @@ const Users: CollectionConfig = {
           const defaultQuotas = DEFAULT_QUOTAS[trustLevel as keyof typeof DEFAULT_QUOTAS];
 
           if (defaultQuotas && !data.customQuotas) {
-            data.quotas = defaultQuotas;
+            // Merge with defaults, filtering out undefined values from Payload's group initialization
+            const providedQuotas = data.quotas || {};
+            const filteredProvidedQuotas: Record<string, any> = {};
+
+            for (const key in providedQuotas) {
+              if (providedQuotas[key] !== undefined) {
+                filteredProvidedQuotas[key] = providedQuotas[key];
+              }
+            }
+
+            data.quotas = {
+              ...defaultQuotas,
+              ...filteredProvidedQuotas,
+            };
           }
         }
 
@@ -311,18 +324,21 @@ const Users: CollectionConfig = {
           const trustLevel = Number(data?.trustLevel || TRUST_LEVELS.REGULAR);
           const defaultQuotas = DEFAULT_QUOTAS[trustLevel as keyof typeof DEFAULT_QUOTAS];
 
-          // Use trust level defaults if quotas not explicitly provided or contain undefined values
-          // Payload CMS initializes group fields with undefined values
-          const hasValidQuotas =
-            data.quotas &&
-            data.quotas.maxActiveSchedules !== undefined &&
-            data.quotas.maxUrlFetchesPerDay !== undefined &&
-            data.quotas.maxFileUploadsPerDay !== undefined &&
-            data.quotas.maxCatalogsPerUser !== undefined;
+          // Merge with defaults, filtering out undefined values from Payload's group initialization
+          // Payload initializes group fields with all fields set to undefined
+          const providedQuotas = data.quotas || {};
+          const filteredProvidedQuotas: Record<string, any> = {};
 
-          if (!hasValidQuotas) {
-            data.quotas = defaultQuotas;
+          for (const key in providedQuotas) {
+            if (providedQuotas[key] !== undefined) {
+              filteredProvidedQuotas[key] = providedQuotas[key];
+            }
           }
+
+          data.quotas = {
+            ...defaultQuotas,
+            ...filteredProvidedQuotas,
+          };
 
           // Initialize usage if not provided
           if (!data.usage) {
