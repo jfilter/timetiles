@@ -51,46 +51,53 @@ export const GET = async (req: NextRequest) => {
     // Get effective quotas for additional info
     const effectiveQuotas = quotaService.getEffectiveQuotas(user);
 
+    // Helper to normalize quotas - cap very high limits to prevent admin identification
+    // Security: Admins have unlimited/very high quotas, which makes them identifiable
+    // By capping displayed limits, we prevent enumeration of privileged accounts
+    const MAX_DISPLAYED_LIMIT = 10000; // Cap shown to normal users
+    const normalizeLimit = (limit: number | null): number => {
+      if (limit === null || limit > MAX_DISPLAYED_LIMIT) {
+        return MAX_DISPLAYED_LIMIT;
+      }
+      return limit;
+    };
+
+    // Return only necessary information - don't expose role, trustLevel, or system architecture details
     const response = {
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        trustLevel: user.trustLevel,
-      },
       quotas: {
         fileUploadsPerDay: {
-          ...fileUploads,
-          description: "Maximum file uploads allowed per day",
+          used: fileUploads.current,
+          limit: normalizeLimit(fileUploads.limit),
+          remaining: fileUploads.remaining,
         },
         urlFetchesPerDay: {
-          ...urlFetches,
-          description: "Maximum URL fetches allowed per day",
+          used: urlFetches.current,
+          limit: normalizeLimit(urlFetches.limit),
+          remaining: urlFetches.remaining,
         },
         importJobsPerDay: {
-          ...importJobs,
-          description: "Maximum import jobs allowed per day",
+          used: importJobs.current,
+          limit: normalizeLimit(importJobs.limit),
+          remaining: importJobs.remaining,
         },
         activeSchedules: {
-          ...activeSchedules,
-          description: "Maximum active scheduled imports",
+          used: activeSchedules.current,
+          limit: normalizeLimit(activeSchedules.limit),
+          remaining: activeSchedules.remaining,
         },
         totalEvents: {
-          ...totalEvents,
-          description: "Maximum total events across all time",
+          used: totalEvents.current,
+          limit: normalizeLimit(totalEvents.limit),
+          remaining: totalEvents.remaining,
         },
         eventsPerImport: {
-          ...eventsPerImport,
-          description: "Maximum events per single import",
+          used: eventsPerImport.current,
+          limit: normalizeLimit(eventsPerImport.limit),
+          remaining: eventsPerImport.remaining,
         },
         maxFileSizeMB: {
-          limit: effectiveQuotas.maxFileSizeMB,
-          description: "Maximum file size in megabytes",
+          limit: Math.min(effectiveQuotas.maxFileSizeMB, 100), // Cap at 100MB displayed
         },
-      },
-      summary: {
-        hasUnlimitedAccess: user.role === "admin" || user.trustLevel === "5",
-        nextResetTime: fileUploads.resetTime,
       },
     };
 

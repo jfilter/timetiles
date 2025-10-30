@@ -8,12 +8,12 @@
  * for the client.
  * @module
  */
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import type { Where } from "payload";
 import { getPayload } from "payload";
 
 import { logger } from "@/lib/logger";
+import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import config from "@/payload.config";
 import type { Event } from "@/payload-types";
 
@@ -117,12 +117,12 @@ const transformEvent = (event: Event) => ({
   isValid: event.validationStatus === "valid",
 });
 
-export const GET = async (request: NextRequest) => {
+export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
     const parameters = extractListParameters(request.nextUrl.searchParams);
     const where = buildWhereClause(parameters);
-    const result = await executeEventsQuery(payload, where, parameters);
+    const result = await executeEventsQuery(payload, where, parameters, request.user);
     const response = buildListResponse(result);
 
     return NextResponse.json(response);
@@ -130,7 +130,7 @@ export const GET = async (request: NextRequest) => {
     logger.error("Error fetching events list:", error);
     return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
   }
-};
+});
 
 const extractListParameters = (searchParams: URLSearchParams) => ({
   boundsParam: searchParams.get("bounds"),
@@ -187,7 +187,8 @@ const addDateFiltersToWhere = (where: Where, startDate: string | null, endDate: 
 const executeEventsQuery = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   where: Where,
-  parameters: ReturnType<typeof extractListParameters>
+  parameters: ReturnType<typeof extractListParameters>,
+  user?: { id: string; email: string; role: string }
 ) =>
   payload.find({
     collection: "events",
@@ -196,6 +197,8 @@ const executeEventsQuery = async (
     limit: parameters.limit,
     sort: parameters.sort,
     depth: 2,
+    user,
+    overrideAccess: false,
   });
 
 const buildListResponse = (result: Awaited<ReturnType<typeof executeEventsQuery>>) => ({

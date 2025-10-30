@@ -38,28 +38,22 @@ export const GET = async (request: NextRequest): Promise<Response> => {
   try {
     // Verify the user is authenticated with Payload
     const payload = await getPayload({ config: configPromise });
-    // Get session from cookies instead of using auth with NextRequest
+
+    // Properly validate JWT token using Payload's auth system
     const authCookie = request.cookies.get("payload-token");
 
-    let user = null;
-    if (authCookie) {
-      try {
-        const result = await payload.find({
-          collection: "users",
-          where: {
-            id: {
-              equals: authCookie.value,
-            },
-          },
-          limit: 1,
-        });
-        user = result.docs[0];
-      } catch (error) {
-        logger.error("Failed to verify user", { error });
-      }
+    if (!authCookie) {
+      return new Response("Authentication required", { status: 401 });
     }
 
-    if (user == null) {
+    // Use Payload's auth method to validate JWT and get user
+    const { user } = await payload.auth({
+      headers: new Headers({
+        Authorization: `Bearer ${authCookie.value}`,
+      }),
+    });
+
+    if (!user) {
       return new Response("Authentication required", { status: 401 });
     }
 

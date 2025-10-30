@@ -9,11 +9,11 @@
  * @module
  */
 import { sql } from "@payloadcms/db-postgres";
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload, type Payload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
+import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import config from "@/payload.config";
 
 interface MapBounds {
@@ -39,6 +39,33 @@ const parseBounds = (boundsParam: string): MapBounds => {
   return parsedBounds;
 };
 
+/**
+ * Get catalog IDs that the user has access to
+ */
+const getAccessibleCatalogIds = async (
+  payload: Payload,
+  user?: { id: string; email: string; role: string }
+): Promise<number[]> => {
+  try {
+    const catalogs = await payload.find({
+      collection: "catalogs",
+      where: user
+        ? {
+            or: [{ isPublic: { equals: true } }, { createdBy: { equals: user.id } }],
+          }
+        : { isPublic: { equals: true } },
+      limit: 1000,
+      user,
+      overrideAccess: false,
+    });
+
+    return catalogs.docs.map((c) => (typeof c.id === "number" ? c.id : parseInt(String(c.id))));
+  } catch (error) {
+    logger.warn("Error fetching accessible catalogs", { error });
+    return [];
+  }
+};
+
 const checkHistogramFunction = async (payload: Payload): Promise<boolean> => {
   try {
     const functionCheck = (await payload.db.drizzle.execute(sql`
@@ -62,22 +89,41 @@ const buildFiltersWithBounds = (params: {
   startDate: string | null;
   endDate: string | null;
   bounds: MapBounds | null;
-}) => ({
-  catalogId: params.catalog != null && params.catalog !== "" ? parseInt(params.catalog) : undefined,
-  datasets: params.datasets.length > 0 ? params.datasets.map((d) => parseInt(d)) : undefined,
-  startDate: params.startDate,
-  endDate: params.endDate,
-  ...(params.bounds != null && {
-    bounds: {
-      minLng: params.bounds.west,
-      maxLng: params.bounds.east,
-      minLat: params.bounds.south,
-      maxLat: params.bounds.north,
-    },
-  }),
-});
+  accessibleCatalogIds: number[];
+}) => {
+  const filters: Record<string, unknown> = {
+    datasets: params.datasets.length > 0 ? params.datasets.map((d) => parseInt(d)) : undefined,
+    startDate: params.startDate,
+    endDate: params.endDate,
+    ...(params.bounds != null && {
+      bounds: {
+        minLng: params.bounds.west,
+        maxLng: params.bounds.east,
+        minLat: params.bounds.south,
+        maxLat: params.bounds.north,
+      },
+    }),
+  };
 
-export const GET = async (request: NextRequest) => {
+  // Apply catalog access control
+  if (params.catalog != null && params.catalog !== "") {
+    const catalogId = parseInt(params.catalog);
+    // Only include if user has access to this catalog
+    if (params.accessibleCatalogIds.includes(catalogId)) {
+      filters.catalogId = catalogId;
+    } else {
+      // User trying to access catalog they don't have permission for
+      filters.catalogIds = params.accessibleCatalogIds;
+    }
+  } else {
+    // No specific catalog requested, filter by all accessible catalogs
+    filters.catalogIds = params.accessibleCatalogIds;
+  }
+
+  return filters;
+};
+
+export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
   try {
     const parameters = extractHistogramParameters(request.nextUrl.searchParams);
     const payload = await getPayload({ config });
@@ -87,12 +133,15 @@ export const GET = async (request: NextRequest) => {
     }
     const bounds = boundsResult.bounds;
 
+    // Get accessible catalog IDs for this user
+    const accessibleCatalogIds = await getAccessibleCatalogIds(payload, request.user);
+
     const functionExists = await checkHistogramFunction(payload);
     if (!functionExists) {
       return createFunctionNotFoundResponse();
     }
 
-    const histogramResult = await executeHistogramQuery(payload, parameters, bounds);
+    const histogramResult = await executeHistogramQuery(payload, parameters, bounds, accessibleCatalogIds);
     const response = buildHistogramResponse(histogramResult.rows);
 
     return NextResponse.json(response);
@@ -100,7 +149,7 @@ export const GET = async (request: NextRequest) => {
     logError(_error, "Failed to calculate histogram", { parameters: _error });
     return NextResponse.json({ error: "Failed to calculate histogram" }, { status: 500 });
   }
-};
+});
 
 const extractHistogramParameters = (searchParams: URLSearchParams) => ({
   boundsParam: searchParams.get("bounds"),
@@ -142,7 +191,8 @@ const createFunctionNotFoundResponse = (): NextResponse => {
 const executeHistogramQuery = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   parameters: ReturnType<typeof extractHistogramParameters>,
-  bounds: MapBounds | null
+  bounds: MapBounds | null,
+  accessibleCatalogIds: number[]
 ) => {
   const filtersWithBounds = buildFiltersWithBounds({
     catalog: parameters.catalog,
@@ -150,6 +200,7 @@ const executeHistogramQuery = async (
     startDate: parameters.startDate,
     endDate: parameters.endDate,
     bounds,
+    accessibleCatalogIds,
   });
 
   const interval = parameters.granularity === "auto" ? "day" : parameters.granularity;

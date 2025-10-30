@@ -9,11 +9,11 @@
  * @module
  */
 import { sql } from "@payloadcms/db-postgres";
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { logger } from "@/lib/logger";
+import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import config from "@/payload.config";
 
 interface MapBounds {
@@ -31,7 +31,34 @@ const isValidBounds = (value: unknown): value is MapBounds =>
   typeof (value as Record<string, unknown>).east === "number" &&
   typeof (value as Record<string, unknown>).west === "number";
 
-export const GET = async (request: NextRequest) => {
+/**
+ * Get catalog IDs that the user has access to
+ */
+const getAccessibleCatalogIds = async (
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  user?: { id: string; email: string; role: string }
+): Promise<number[]> => {
+  try {
+    const catalogs = await payload.find({
+      collection: "catalogs",
+      where: user
+        ? {
+            or: [{ isPublic: { equals: true } }, { createdBy: { equals: user.id } }],
+          }
+        : { isPublic: { equals: true } },
+      limit: 1000,
+      user,
+      overrideAccess: false,
+    });
+
+    return catalogs.docs.map((c) => (typeof c.id === "number" ? c.id : parseInt(String(c.id))));
+  } catch (error) {
+    logger.warn("Error fetching accessible catalogs", { error });
+    return [];
+  }
+};
+
+export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
     const parameters = extractRequestParameters(request.nextUrl.searchParams);
@@ -41,7 +68,18 @@ export const GET = async (request: NextRequest) => {
       return boundsResult.error;
     }
 
-    const filters = buildFilters(parameters);
+    // Get accessible catalog IDs for this user
+    const accessibleCatalogIds = await getAccessibleCatalogIds(payload, request.user);
+
+    // If no accessible catalogs and no catalog filter specified, return empty result
+    if (accessibleCatalogIds.length === 0 && !parameters.catalog) {
+      return NextResponse.json({
+        type: "FeatureCollection",
+        features: [],
+      });
+    }
+
+    const filters = buildFilters(parameters, accessibleCatalogIds);
     const functionExists = await checkClusteringFunction(payload);
 
     if (!functionExists) {
@@ -58,7 +96,7 @@ export const GET = async (request: NextRequest) => {
   } catch (error) {
     return handleError(error);
   }
-};
+});
 
 const extractRequestParameters = (searchParams: URLSearchParams) => ({
   boundsParam: searchParams.get("bounds"),
@@ -94,9 +132,27 @@ const parseBounds = (boundsParam: string | null): { bounds: MapBounds } | { erro
   }
 };
 
-const buildFilters = (parameters: ReturnType<typeof extractRequestParameters>): Record<string, unknown> => {
+const buildFilters = (
+  parameters: ReturnType<typeof extractRequestParameters>,
+  accessibleCatalogIds: number[]
+): Record<string, unknown> => {
   const filters: Record<string, unknown> = {};
-  if (parameters.catalog != null) filters.catalog = parameters.catalog;
+
+  // Apply catalog access control
+  if (parameters.catalog != null) {
+    const catalogId = parseInt(parameters.catalog);
+    // Only include if user has access to this catalog
+    if (accessibleCatalogIds.includes(catalogId)) {
+      filters.catalog = parameters.catalog;
+    } else {
+      // User trying to access catalog they don't have permission for
+      filters.accessibleCatalogIds = accessibleCatalogIds;
+    }
+  } else {
+    // No specific catalog requested, filter by all accessible catalogs
+    filters.accessibleCatalogIds = accessibleCatalogIds;
+  }
+
   if (parameters.datasets.length > 0 && parameters.datasets[0] !== "") filters.datasets = parameters.datasets;
   if (parameters.startDate != null) filters.startDate = parameters.startDate;
   if (parameters.endDate != null) filters.endDate = parameters.endDate;
@@ -139,7 +195,7 @@ const executeClusteringQuery = async (
   zoom: number,
   filters: Record<string, unknown>
 ) => {
-  const { catalog, datasets, startDate, endDate } = filters;
+  const { catalog, datasets, startDate, endDate, accessibleCatalogIds } = filters;
 
   return (await payload.db.drizzle.execute(sql`
     SELECT * FROM cluster_events(
@@ -150,6 +206,7 @@ const executeClusteringQuery = async (
       ${zoom}::integer,
       ${JSON.stringify({
         catalogId: catalog != null ? parseInt(catalog as string) : undefined,
+        catalogIds: Array.isArray(accessibleCatalogIds) ? accessibleCatalogIds : undefined,
         datasetId:
           Array.isArray(datasets) && datasets.length === 1 && datasets[0] != undefined
             ? parseInt(datasets[0] as string)

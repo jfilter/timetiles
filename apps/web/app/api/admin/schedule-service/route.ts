@@ -17,8 +17,6 @@ import { getScheduleService, startScheduleService, stopScheduleService } from "@
 
 const logger = createRequestLogger("schedule-service-api");
 
-const AUTH_ERROR = "Authentication required";
-const AUTH_STATUS = 401;
 const ERROR_STATUS = 500;
 
 /**
@@ -29,10 +27,10 @@ export const GET = async (request: NextRequest): Promise<NextResponse> => {
   try {
     const payload = await getPayload({ config });
 
-    // Simple auth check - in production you might want more sophisticated auth
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: AUTH_ERROR }, { status: AUTH_STATUS });
+    // Validate JWT and check admin role
+    const { user } = await payload.auth({ headers: request.headers });
+    if (!user || user.role !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
 
     const service = getScheduleService(payload);
@@ -56,10 +54,10 @@ export const POST = async (request: NextRequest): Promise<NextResponse> => {
   try {
     const payload = await getPayload({ config });
 
-    // Simple auth check - in production you might want more sophisticated auth
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: AUTH_ERROR }, { status: AUTH_STATUS });
+    // Validate JWT and check admin role
+    const { user } = await payload.auth({ headers: request.headers });
+    if (!user || user.role !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
 
     const body = (await request.json().catch(() => ({}) as Record<string, unknown>)) as Record<string, unknown>;
@@ -88,12 +86,14 @@ export const POST = async (request: NextRequest): Promise<NextResponse> => {
  * DELETE /api/admin/schedule-service.
  * Stops the schedule service.
  */
-export const DELETE = (request: NextRequest): NextResponse => {
+export const DELETE = async (request: NextRequest): Promise<NextResponse> => {
   try {
-    // Simple auth check - in production you might want more sophisticated auth
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: AUTH_ERROR }, { status: AUTH_STATUS });
+    const payload = await getPayload({ config });
+
+    // Validate JWT and check admin role
+    const { user } = await payload.auth({ headers: request.headers });
+    if (!user || user.role !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
 
     stopScheduleService();
