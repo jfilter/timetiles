@@ -200,18 +200,18 @@ describe.sequential("Webhook Trigger API Integration", () => {
   });
 
   describe("Error Cases", () => {
-    it("should return 404 for invalid token", async () => {
+    it("should return 401 for invalid token", async () => {
       const response = await callWebhook(TEST_TOKENS.invalid);
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(401);
       const data = await response.json();
       expect(data).toMatchObject({
         success: false,
-        error: "Invalid webhook token",
+        error: "Invalid or disabled webhook",
       });
     });
 
-    it("should return 404 when webhook is disabled (token cleared)", async () => {
+    it("should return 401 when webhook is disabled (token cleared)", async () => {
       // When webhook is disabled, the token is cleared for security
       await payload.update({
         collection: "scheduled-imports",
@@ -230,14 +230,14 @@ describe.sequential("Webhook Trigger API Integration", () => {
       // Token should be null after disabling webhook
       expect(updatedImport.webhookToken).toBeNull();
 
-      // Using the old token should return 404
+      // Using the old token should return 401 (no distinction from invalid token for security)
       const response = await callWebhook(testScheduledImport.webhookToken!);
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(401);
       const data = await response.json();
       expect(data).toMatchObject({
         success: false,
-        error: "Invalid webhook token",
+        error: "Invalid or disabled webhook",
       });
     });
 
@@ -291,9 +291,9 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
       const response = await callWebhook(webhookToken!);
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(401);
       const data = await response.json();
-      expect(data.error).toBe("Invalid webhook token");
+      expect(data.error).toBe("Invalid or disabled webhook");
     });
   });
 

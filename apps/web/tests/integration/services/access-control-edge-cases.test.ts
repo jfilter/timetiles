@@ -445,8 +445,8 @@ describe.sequential("Access Control Edge Cases", () => {
       expect(datasetAfter.id).toBe(dataset.id);
     });
 
-    it("should handle dataset visibility change independently of catalog", async () => {
-      // Create public catalog with private dataset
+    it("should prevent private dataset in public catalog", async () => {
+      // Create public catalog
       const catalog = await payload.create({
         collection: "catalogs",
         data: {
@@ -456,44 +456,41 @@ describe.sequential("Access Control Edge Cases", () => {
         user: ownerUser,
       });
 
-      const dataset = await payload.create({
+      // Attempting to create a private dataset in a public catalog should fail
+      // This is a security measure to prevent privacy cascade violations
+      await expect(
+        payload.create({
+          collection: "datasets",
+          data: {
+            name: "Cannot Be Private Dataset",
+            catalog: catalog.id,
+            language: "eng",
+            isPublic: false,
+          },
+          user: ownerUser,
+        })
+      ).rejects.toThrow("Datasets in public catalogs must be public");
+
+      // Creating a public dataset in a public catalog should succeed
+      const publicDataset = await payload.create({
         collection: "datasets",
         data: {
-          name: "Initially Private Dataset",
+          name: "Public Dataset",
           catalog: catalog.id,
           language: "eng",
-          isPublic: false,
+          isPublic: true,
         },
         user: ownerUser,
       });
 
-      // otherUser cannot access private dataset
-      await expect(
-        payload.findByID({
-          collection: "datasets",
-          id: dataset.id,
-          user: otherUser,
-          overrideAccess: false,
-        })
-      ).rejects.toThrow();
-
-      // Make dataset public
-      await payload.update({
-        collection: "datasets",
-        id: dataset.id,
-        data: { isPublic: true },
-        user: ownerUser,
-        overrideAccess: false,
-      });
-
-      // Now otherUser should be able to access (public dataset in public catalog)
+      // otherUser should be able to access public dataset in public catalog
       const datasetAfter = await payload.findByID({
         collection: "datasets",
-        id: dataset.id,
+        id: publicDataset.id,
         user: otherUser,
         overrideAccess: false,
       });
-      expect(datasetAfter.id).toBe(dataset.id);
+      expect(datasetAfter.id).toBe(publicDataset.id);
     });
   });
 

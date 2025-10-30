@@ -13,7 +13,7 @@ import { getPayload } from "payload";
 
 import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
-import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import { withRateLimit } from "@/lib/middleware/rate-limit";
 import type { ImportJob } from "@/payload-types";
 
 interface JobProgress {
@@ -70,28 +70,16 @@ const formatJobProgress = (job: ImportJob): JobProgress => {
   };
 };
 
-export const GET = withAuth(
-  async (request: AuthenticatedRequest, context: { params: Promise<{ importId: string }> }): Promise<NextResponse> => {
-    try {
-      const payload = await getPayload({ config });
+export const GET = withRateLimit(
+  withAuth(
+    async (
+      request: AuthenticatedRequest,
+      context: { params: Promise<{ importId: string }> }
+    ): Promise<NextResponse> => {
+      try {
+        const payload = await getPayload({ config });
 
-      // Rate limiting check (using PROGRESS_CHECK for frequently polled endpoints)
-      const rateLimitService = getRateLimitService(payload);
-      const clientId = getClientIdentifier(request);
-      const rateLimitCheck = rateLimitService.checkConfiguredRateLimit(clientId, RATE_LIMITS.PROGRESS_CHECK);
-
-      if (!rateLimitCheck.allowed) {
-        const retryAfter = rateLimitCheck.resetTime
-          ? Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000)
-          : 1;
-
-        return NextResponse.json(
-          { error: "Too many requests", retryAfter },
-          { status: 429, headers: { "Retry-After": String(retryAfter) } }
-        );
-      }
-
-      const { importId } = await context.params;
+        const { importId } = await context.params;
 
       // Get the import file with access control enforced
       const importFile = await payload
@@ -150,11 +138,13 @@ export const GET = withAuth(
       };
 
       return NextResponse.json(response);
-    } catch (error) {
-      const { importId } = await context.params;
-      logError(error, "Failed to get import progress", { importId });
+      } catch (error) {
+        const { importId } = await context.params;
+        logError(error, "Failed to get import progress", { importId });
 
-      return NextResponse.json({ error: "Failed to get import progress" }, { status: 500 });
+        return NextResponse.json({ error: "Failed to get import progress" }, { status: 500 });
+      }
     }
-  }
+  ),
+  { configName: "PROGRESS_CHECK" }
 );

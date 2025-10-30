@@ -12,8 +12,8 @@ import { getPayload } from "payload";
 
 import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
+import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { getQuotaService } from "@/lib/services/quota-service";
-import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 import configPromise from "@/payload.config";
 
 const logger = createLogger("api-quotas");
@@ -27,34 +27,19 @@ const logger = createLogger("api-quotas");
  * - Remaining allowances
  * - Reset times for daily quotas
  */
-export const GET = async (req: NextRequest) => {
-  try {
-    const payload = await getPayload({ config: configPromise });
+export const GET = withRateLimit(
+  async (req: NextRequest) => {
+    try {
+      const payload = await getPayload({ config: configPromise });
 
-    // Get user from session
-    const { user } = await payload.auth({ headers: req.headers });
+      // Get user from session
+      const { user } = await payload.auth({ headers: req.headers });
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+      if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
 
-    // Rate limiting check
-    const rateLimitService = getRateLimitService(payload);
-    const clientId = getClientIdentifier(req);
-    const rateLimitCheck = rateLimitService.checkTrustLevelRateLimit(clientId, user, "API_GENERAL");
-
-    if (!rateLimitCheck.allowed) {
-      const retryAfter = rateLimitCheck.resetTime
-        ? Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000)
-        : 60;
-
-      return NextResponse.json(
-        { error: "Too many requests", retryAfter },
-        { status: 429, headers: { "Retry-After": String(retryAfter) } }
-      );
-    }
-
-    const quotaService = getQuotaService(payload);
+      const quotaService = getQuotaService(payload);
 
     // Get all quota statuses in parallel
     const [fileUploads, urlFetches, importJobs, activeSchedules, totalEvents, eventsPerImport] = await Promise.all([
@@ -130,4 +115,6 @@ export const GET = async (req: NextRequest) => {
     logger.error("Failed to get quota status", { error });
     return NextResponse.json({ error: "Failed to retrieve quota information" }, { status: 500 });
   }
-};
+  },
+  { type: "API_GENERAL" }
+);

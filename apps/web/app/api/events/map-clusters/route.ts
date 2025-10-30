@@ -14,7 +14,7 @@ import { getPayload } from "payload";
 
 import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
-import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
+import { withRateLimit } from "@/lib/middleware/rate-limit";
 import config from "@/payload.config";
 
 interface MapBounds {
@@ -59,39 +59,12 @@ const getAccessibleCatalogIds = async (
   }
 };
 
-export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
-  try {
-    const payload = await getPayload({ config });
+export const GET = withRateLimit(
+  withOptionalAuth(async (request: AuthenticatedRequest) => {
+    try {
+      const payload = await getPayload({ config });
 
-    // Rate limiting check
-    const rateLimitService = getRateLimitService(payload);
-    const clientId = getClientIdentifier(request);
-    const rateLimitCheck = rateLimitService.checkTrustLevelRateLimit(
-      clientId,
-      request.user as any,
-      "API_GENERAL"
-    );
-
-    if (!rateLimitCheck.allowed) {
-      const retryAfter = rateLimitCheck.resetTime
-        ? Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000)
-        : 60;
-
-      return NextResponse.json(
-        {
-          error: "Too many requests",
-          retryAfter,
-        },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(retryAfter),
-          },
-        }
-      );
-    }
-
-    const parameters = extractRequestParameters(request.nextUrl.searchParams);
+      const parameters = extractRequestParameters(request.nextUrl.searchParams);
 
     const boundsResult = parseBounds(parameters.boundsParam);
     if ("error" in boundsResult) {
@@ -126,7 +99,9 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
   } catch (error) {
     return handleError(error);
   }
-});
+  }),
+  { type: "API_GENERAL" }
+);
 
 const extractRequestParameters = (searchParams: URLSearchParams) => ({
   boundsParam: searchParams.get("bounds"),
