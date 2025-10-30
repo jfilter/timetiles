@@ -121,11 +121,13 @@ export const POST = async (_request: NextRequest, { params }: { params: Promise<
       limit: 1,
     });
 
+    // Security: Return same error message for invalid token and disabled webhook
+    // to prevent token enumeration attacks
     if (scheduledImports.docs.length === 0) {
       logger.warn("Webhook trigger failed - invalid token", {
         token: token.substring(0, 8) + "...",
       });
-      return NextResponse.json({ success: false, error: "Invalid webhook token" }, { status: 404 });
+      return NextResponse.json({ success: false, error: "Invalid or disabled webhook" }, { status: 401 });
     }
 
     const scheduledImport = scheduledImports.docs[0] as ScheduledImport;
@@ -135,7 +137,7 @@ export const POST = async (_request: NextRequest, { params }: { params: Promise<
         scheduledImportId: scheduledImport.id,
         name: scheduledImport.name,
       });
-      return NextResponse.json({ success: false, error: "Webhook is disabled for this import" }, { status: 403 });
+      return NextResponse.json({ success: false, error: "Invalid or disabled webhook" }, { status: 401 });
     }
 
     // CRITICAL: Check if already running (prevents concurrent executions)
