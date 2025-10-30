@@ -32,23 +32,64 @@ describe("Enhanced Testing Infrastructure", () => {
   });
 
   describe("Test Environment", () => {
-    it("should provide isolated test environment with core components", () => {
-      // Test that environment provides essential components
+    it("should provide isolated test environment with functional Payload instance", async () => {
+      // Verify Payload instance can perform actual database operations
       expect(testEnv.payload).toBeDefined();
-      expect(testEnv.seedManager).toBeDefined();
-      expect(testEnv.tempDir).toBeDefined();
-      expect(testEnv.cleanup).toBeDefined();
+
+      // Test that Payload can query collections
+      const result = await testEnv.payload.find({ collection: "users", limit: 1 });
+      expect(result).toHaveProperty("docs");
+      expect(result).toHaveProperty("totalDocs");
+      expect(typeof result.totalDocs).toBe("number");
+      expect(Array.isArray(result.docs)).toBe(true);
     });
 
-    it("should provide helper methods for common operations", async () => {
-      // Test collection count
-      const result = await testEnv.payload.find({ collection: "users", limit: 1 });
-      expect(typeof result.totalDocs).toBe("number");
+    it("should provide functional SeedManager that can manipulate data", async () => {
+      expect(testEnv.seedManager).toBeDefined();
 
-      // Test truncation
-      await testEnv.seedManager.truncate(["users"]);
-      const afterResult = await testEnv.payload.find({ collection: "users", limit: 1 });
+      // Verify SeedManager can actually truncate collections
+      // Use a collection that doesn't auto-create entries
+      await testEnv.payload.create({
+        collection: "catalogs",
+        data: {
+          name: "Test Catalog",
+          slug: "test-catalog",
+          _status: "published",
+        },
+      });
+
+      const beforeResult = await testEnv.payload.find({ collection: "catalogs", limit: 100 });
+      expect(beforeResult.totalDocs).toBeGreaterThan(0);
+
+      // Test truncation actually removes data
+      await testEnv.seedManager.truncate(["catalogs"]);
+
+      const afterResult = await testEnv.payload.find({ collection: "catalogs", limit: 1 });
       expect(afterResult.totalDocs).toBe(0);
+    });
+
+    it("should provide valid temporary directory that exists", async () => {
+      expect(testEnv.tempDir).toBeDefined();
+      expect(typeof testEnv.tempDir).toBe("string");
+
+      if (!testEnv.tempDir) {
+        throw new Error("tempDir is undefined");
+      }
+
+      expect(testEnv.tempDir.length).toBeGreaterThan(0);
+
+      // Verify temp directory actually exists on filesystem
+      const fs = await import("fs/promises");
+      const stats = await fs.stat(testEnv.tempDir);
+      expect(stats.isDirectory()).toBe(true);
+    });
+
+    it("should provide functional cleanup callback", () => {
+      expect(testEnv.cleanup).toBeDefined();
+      expect(typeof testEnv.cleanup).toBe("function");
+
+      // Cleanup will be called in afterAll, we just verify it's callable
+      expect(testEnv.cleanup).toBeInstanceOf(Function);
     });
   });
 
@@ -224,44 +265,61 @@ describe("Enhanced Testing Infrastructure", () => {
   });
 
   describe("Enhanced Database Operations", () => {
-    it("should handle collection counts", async () => {
+    it("should query collections and return valid results", async () => {
       const result = await testEnv.payload.find({ collection: "users", limit: 1 });
+
+      // Verify result structure is valid
+      expect(result).toHaveProperty("docs");
+      expect(result).toHaveProperty("totalDocs");
       expect(typeof result.totalDocs).toBe("number");
       expect(result.totalDocs).toBeGreaterThanOrEqual(0);
+      expect(Array.isArray(result.docs)).toBe(true);
     });
 
-    it("should truncate collections without errors", async () => {
-      // Test that truncation doesn't throw errors
-      await expect(testEnv.seedManager.truncate(["users"])).resolves.not.toThrow();
+    it("should truncate collections and verify data is removed", async () => {
+      // Create some data first (use catalogs to avoid admin user auto-creation)
+      await testEnv.payload.create({
+        collection: "catalogs",
+        data: {
+          name: "Truncate Test Catalog 2",
+          slug: "truncate-test-2",
+          _status: "published",
+        },
+      });
 
-      const result = await testEnv.payload.find({ collection: "users", limit: 1 });
-      expect(result.totalDocs).toBe(0);
+      const beforeResult = await testEnv.payload.find({ collection: "catalogs", limit: 100 });
+      expect(beforeResult.totalDocs).toBeGreaterThan(0);
+
+      // Truncate and verify data was removed
+      await testEnv.seedManager.truncate(["catalogs"]);
+
+      const afterResult = await testEnv.payload.find({ collection: "catalogs", limit: 1 });
+      expect(afterResult.totalDocs).toBe(0);
     });
   });
 
   describe("Integration Test Scenarios", () => {
-    it("should handle basic seeding operations", async () => {
-      // Test that seeding doesn't throw errors (infrastructure test)
-      await expect(
-        testEnv.seedManager.seed({
-          collections: ["users"],
-          environment: "test",
-          truncate: true,
-        })
-      ).resolves.not.toThrow();
+    it("should seed collections with actual data", async () => {
+      // Ensure clean state
+      await testEnv.seedManager.truncate(["users"]);
 
-      // Test that we can get the count (infrastructure test)
-      const result = await testEnv.payload.find({ collection: "users", limit: 1 });
+      // Seed users collection
+      await testEnv.seedManager.seed({
+        collections: ["users"],
+        environment: "test",
+        truncate: true,
+      });
+
+      // Verify users were actually seeded (not just that it didn't throw)
+      const result = await testEnv.payload.find({ collection: "users", limit: 100 });
       expect(typeof result.totalDocs).toBe("number");
-      expect(result.totalDocs).toBeGreaterThanOrEqual(0);
-    });
+      expect(result.totalDocs).toBeGreaterThan(0); // Should have seeded at least 1 user
 
-    it("should provide test environment isolation", () => {
-      // Test that test environment provides isolated setup
-      expect(testEnv.payload).toBeDefined();
-      expect(testEnv.seedManager).toBeDefined();
-      expect(testEnv.cleanup).toBeDefined();
-      expect(typeof testEnv.tempDir).toBe("string");
+      // Verify seeded data has expected structure
+      expect(result.docs.length).toBeGreaterThan(0);
+      const firstUser = result.docs[0];
+      expect(firstUser).toHaveProperty("email");
+      expect(firstUser).toHaveProperty("role");
     });
   });
 });

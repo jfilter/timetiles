@@ -119,17 +119,80 @@ describe("GeocodingService", () => {
     vi.clearAllMocks();
   });
 
-  describe.sequential("constructor", () => {
-    it("should initialize with Google geocoder when API key is available", () => {
+  describe.sequential("initialization", () => {
+    it("should successfully initialize with Google geocoder when API key is available and provider exists", async () => {
       process.env.GEOCODING_GOOGLE_MAPS_API_KEY = TEST_CREDENTIALS.apiKey.key;
+
+      // Create Google provider in database
+      await payload.create({
+        collection: "geocoding-providers",
+        data: {
+          name: "Google Maps (Init Test)",
+          type: "google",
+          enabled: true,
+          priority: 1,
+          rateLimit: 50,
+          config: {
+            google: {
+              apiKey: TEST_CREDENTIALS.apiKey.key,
+              language: "en",
+            },
+          },
+          tags: ["testing"],
+        },
+      });
+
       const service = new GeocodingService(payload);
-      expect(service).toBeDefined();
+
+      // Verify service initializes successfully and loads providers
+      await service.initialize();
+
+      // Verify configuration can be tested (proves providers were loaded)
+      // testConfiguration returns a Record<string, unknown> with provider names as keys
+      const config = await service.testConfiguration();
+      expect(config).toBeDefined();
+      expect(typeof config).toBe("object");
+
+      // Should have at least the Google provider we created
+      expect(config).toHaveProperty("Google Maps (Init Test)");
     });
 
-    it("should initialize without Google geocoder when API key is not available", () => {
+    it("should successfully initialize with only Nominatim when Google API key is not available", async () => {
       delete process.env.GEOCODING_GOOGLE_MAPS_API_KEY;
+
+      // Create only Nominatim provider
+      await payload.create({
+        collection: "geocoding-providers",
+        data: {
+          name: "Nominatim (Init Test)",
+          type: "nominatim",
+          enabled: true,
+          priority: 1,
+          rateLimit: 1,
+          config: {
+            nominatim: {
+              baseUrl: "https://nominatim.openstreetmap.org",
+              userAgent: "TimeTiles-Test/1.0",
+              addressdetails: true,
+              extratags: false,
+            },
+          },
+          tags: ["testing", "free-tier"],
+        },
+      });
+
       const service = new GeocodingService(payload);
-      expect(service).toBeDefined();
+
+      // Verify service initializes successfully
+      await service.initialize();
+
+      // Verify configuration shows only Nominatim provider
+      const config = await service.testConfiguration();
+      expect(config).toBeDefined();
+      expect(typeof config).toBe("object");
+
+      // Should have the Nominatim provider we created
+      expect(config).toHaveProperty("Nominatim (Init Test)");
     });
   });
 

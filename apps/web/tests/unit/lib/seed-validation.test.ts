@@ -18,13 +18,46 @@ describe("Seed Data Validation", () => {
     it("should generate valid users for development environment", () => {
       const users = userSeeds("development");
       expect(users.length).toBeGreaterThan(0);
+
+      // Validate email and password exist
       expect(users.every((user) => user.email && user.password)).toBe(true);
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      users.forEach((user) => {
+        expect(emailRegex.test(user.email)).toBe(true);
+      });
+
+      // Validate password is non-empty string
+      users.forEach((user) => {
+        expect(typeof user.password).toBe("string");
+        expect(user.password.length).toBeGreaterThan(0);
+      });
     });
 
     it("should generate valid users for production environment", () => {
       const users = userSeeds("production");
       expect(users.length).toBeGreaterThan(0);
+
+      // Validate required fields exist
       expect(users.every((user) => user.role && user.isActive !== undefined)).toBe(true);
+
+      // Validate role values are valid
+      const validRoles = ["admin", "editor", "user"];
+      users.forEach((user) => {
+        expect(validRoles).toContain(user.role);
+      });
+
+      // Validate isActive is actually a boolean, not just "not undefined"
+      users.forEach((user) => {
+        expect(typeof user.isActive).toBe("boolean");
+      });
+
+      // Validate email format in production too
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      users.forEach((user) => {
+        expect(emailRegex.test(user.email)).toBe(true);
+      });
     });
   });
 
@@ -82,12 +115,23 @@ describe("Seed Data Validation", () => {
   // Import Seeds tests removed - import jobs are created dynamically, not seeded
 
   describe("Data Consistency", () => {
-    it("should generate different amounts of data per environment", () => {
+    it("should generate environment-appropriate amounts of data", () => {
       const devUsers = userSeeds("development");
       const prodUsers = userSeeds("production");
+      const testUsers = userSeeds("test");
 
-      // Development should have more data than production
+      // Verify each environment has users
+      expect(devUsers.length).toBeGreaterThan(0);
+      expect(prodUsers.length).toBeGreaterThan(0);
+      expect(testUsers.length).toBeGreaterThan(0);
+
+      // Development should have more data for testing purposes
+      // This is by design: dev needs diverse data, prod needs minimal seeds
       expect(devUsers.length).toBeGreaterThan(prodUsers.length);
+
+      // Test environment should have moderate amount
+      expect(testUsers.length).toBeGreaterThanOrEqual(prodUsers.length);
+      expect(testUsers.length).toBeLessThanOrEqual(devUsers.length);
     });
 
     it("should include development-specific data in development environment", () => {

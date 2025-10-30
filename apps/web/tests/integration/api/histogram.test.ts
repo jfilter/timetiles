@@ -204,8 +204,22 @@ describe("/api/events/histogram", () => {
     // Total should include our test events
     expect(data.metadata.total).toBeGreaterThanOrEqual(testEventIds.length);
 
-    // The topDatasets implementation is not fully implemented yet
-    // expect(data.metadata.topDatasets.length).toBeGreaterThan(0);
+    // topDatasets is not implemented yet - currently returns empty array
+    // See route.ts:242 where topDatasets is hardcoded to []
+    expect(data.metadata.topDatasets).toEqual([]);
+  });
+
+  // TODO: Implement topDatasets metadata and enable this test
+  it.skip("should include top datasets in metadata when implemented", async () => {
+    const request = new NextRequest(`http://localhost:3000/api/events/histogram`);
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+
+    // When topDatasets is implemented, it should return dataset statistics
+    expect(Array.isArray(data.metadata.topDatasets)).toBe(true);
+    expect(data.metadata.topDatasets.length).toBeGreaterThan(0);
   });
 
   it("should filter by date range", async () => {

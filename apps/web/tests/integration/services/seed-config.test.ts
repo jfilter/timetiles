@@ -256,28 +256,122 @@ describe.sequential("Configuration-Driven Seeding", () => {
   });
 
   describe("Configuration Validation", () => {
-    it("should have valid configuration structure", () => {
+    it("should have valid configuration structure with correct types", () => {
       expect(SEED_CONFIG).toBeDefined();
+      expect(typeof SEED_CONFIG).toBe("object");
+
+      // Verify collections is an object, not just defined
       expect(SEED_CONFIG.collections).toBeDefined();
+      expect(typeof SEED_CONFIG.collections).toBe("object");
+      expect(Object.keys(SEED_CONFIG.collections).length).toBeGreaterThan(0);
+
+      // Verify environments is an object, not just defined
       expect(SEED_CONFIG.environments).toBeDefined();
+      expect(typeof SEED_CONFIG.environments).toBe("object");
+
+      // Verify relationships is an object
       expect(SEED_CONFIG.relationships).toBeDefined();
+      expect(typeof SEED_CONFIG.relationships).toBe("object");
+
+      // Verify generators is an object
       expect(SEED_CONFIG.generators).toBeDefined();
+      expect(typeof SEED_CONFIG.generators).toBe("object");
     });
 
-    it("should have all required environments", () => {
-      expect(SEED_CONFIG.environments.development).toBeDefined();
-      expect(SEED_CONFIG.environments.test).toBeDefined();
-      expect(SEED_CONFIG.environments.production).toBeDefined();
-      expect(SEED_CONFIG.environments.staging).toBeDefined();
+    it("should have all required environments with valid configurations", () => {
+      const requiredEnvironments = ["development", "test", "production", "staging"];
+
+      requiredEnvironments.forEach((env) => {
+        expect(SEED_CONFIG.environments[env]).toBeDefined();
+        const envConfig = SEED_CONFIG.environments[env];
+
+        if (!envConfig) {
+          throw new Error(`Environment config for ${env} is undefined`);
+        }
+
+        // Verify each environment has valid structure
+        expect(typeof envConfig).toBe("object");
+
+        // Each environment should have enabled collections
+        expect(envConfig).toHaveProperty("enabled");
+        expect(Array.isArray(envConfig.enabled)).toBe(true);
+        expect(envConfig.enabled.length).toBeGreaterThan(0);
+      });
+
+      // Verify development has comprehensive settings
+      const devEnv = SEED_CONFIG.environments.development;
+      if (!devEnv) {
+        throw new Error("Development environment is undefined");
+      }
+
+      expect(devEnv.enabled).toContain("users");
+      expect(devEnv.enabled).toContain("catalogs");
+      expect(devEnv.enabled).toContain("events");
+
+      // Verify development has settings configured
+      expect(devEnv.settings).toBeDefined();
+      expect(devEnv.settings?.useRealisticData).toBe(true);
     });
 
-    it("should have valid collection configurations", () => {
-      Object.entries(SEED_CONFIG.collections).forEach(([, config]) => {
+    it("should have valid collection configurations with proper counts", () => {
+      Object.entries(SEED_CONFIG.collections).forEach(([collectionName, config]) => {
         expect(config).toBeDefined();
-        expect(config.count !== undefined || config.disabled).toBe(true);
+        expect(typeof config).toBe("object");
 
+        // If not disabled, should have a count configuration (either number or function)
+        if (!config.disabled) {
+          expect(config.count).toBeDefined();
+          const countType = typeof config.count;
+          expect(["number", "function"]).toContain(countType);
+
+          // If it's a function, test that it returns a number for development
+          if (countType === "function") {
+            const devCount = (config.count as (env: string) => number)("development");
+            expect(typeof devCount).toBe("number");
+            expect(devCount).toBeGreaterThanOrEqual(0);
+          } else {
+            expect(config.count as number).toBeGreaterThan(0);
+          }
+        }
+
+        // Validate dependencies if present
         if (config.dependencies) {
           expect(Array.isArray(config.dependencies)).toBe(true);
+
+          // Each dependency should reference a valid collection
+          config.dependencies.forEach((dep) => {
+            expect(typeof dep).toBe("string");
+            expect(dep.length).toBeGreaterThan(0);
+            // Dependency should reference another collection in the config
+            expect(SEED_CONFIG.collections).toHaveProperty(dep);
+          });
+        }
+      });
+    });
+
+    it("should have valid collection names that match Payload collections", () => {
+      const validCollections = [
+        "users",
+        "catalogs",
+        "datasets",
+        "events",
+        "import-jobs",
+        "import-files", // This is what the config actually uses
+        "media",
+        "location-cache",
+        "geocoding-providers",
+      ];
+
+      Object.keys(SEED_CONFIG.collections).forEach((collectionName) => {
+        expect(validCollections).toContain(collectionName);
+      });
+    });
+
+    it("should have valid dependency graph without circular dependencies", () => {
+      // Simple check: no collection should depend on itself
+      Object.entries(SEED_CONFIG.collections).forEach(([collectionName, config]) => {
+        if (config.dependencies) {
+          expect(config.dependencies).not.toContain(collectionName);
         }
       });
     });

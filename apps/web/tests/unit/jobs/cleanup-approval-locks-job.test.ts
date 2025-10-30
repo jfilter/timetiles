@@ -4,48 +4,49 @@
  * Tests the maintenance job that cleans up stale approval locks
  * from import processing workflows.
  *
+ * Uses real StageTransitionService since it's a simple in-memory Set.
+ * No mocking needed for such simple logic.
+ *
  * @module
  * @category Tests
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { cleanupApprovalLocksJob } from "@/lib/jobs/handlers/cleanup-approval-locks-job";
-
-// Use vi.hoisted to create mocks that can be used in vi.mock factories
-const mocks = vi.hoisted(() => {
-  return {
-    cleanupTask: vi.fn(),
-  };
-});
-
-// Mock external dependencies
-vi.mock("@/lib/services/stage-transition", () => ({
-  StageTransitionService: {
-    cleanupTask: mocks.cleanupTask,
-  },
-}));
+import { StageTransitionService } from "@/lib/services/stage-transition";
 
 describe.sequential("CleanupApprovalLocksJob Handler", () => {
   beforeEach(() => {
-    // Reset all mocks
-    vi.clearAllMocks();
+    // Clear any existing locks before each test
+    StageTransitionService.clearTransitionLocks();
+  });
+
+  afterEach(() => {
+    // Clean up after each test
+    StageTransitionService.clearTransitionLocks();
   });
 
   describe("Success Cases", () => {
-    it("should clean up locks and return correct output", () => {
-      // Mock successful cleanup
-      const mockCleanupResult = {
-        output: {
-          cleaned: 5,
-        },
-      };
+    it("should clean up locks and return correct output when locks exist", () => {
+      // Add some locks to the service
+      // We can't directly add to the private Set, but we can simulate by calling the internal method
+      // Since transitioningJobs is private, we'll test the public API instead
 
-      mocks.cleanupTask.mockReturnValue(mockCleanupResult);
+      // Force add transition locks by using reflection to access private field
+      const transitioningJobs = (StageTransitionService as any).transitioningJobs as Set<string>;
+      transitioningJobs.add("job-1-upload-analyze");
+      transitioningJobs.add("job-2-analyze-detect");
+      transitioningJobs.add("job-3-detect-validate");
+      transitioningJobs.add("job-4-validate-await");
+      transitioningJobs.add("job-5-await-geocode");
+
+      // Verify locks were added
+      expect(transitioningJobs.size).toBe(5);
 
       // Execute job
       const result = cleanupApprovalLocksJob.handler();
 
-      // Verify result
+      // Verify result shows correct number of cleaned locks
       expect(result).toEqual({
         output: {
           transitionLocksCleaned: 5,
@@ -53,54 +54,46 @@ describe.sequential("CleanupApprovalLocksJob Handler", () => {
         },
       });
 
-      // Verify service call
-      expect(mocks.cleanupTask).toHaveBeenCalledTimes(1);
+      // Verify locks were actually cleared
+      expect(transitioningJobs.size).toBe(0);
     });
 
-    it("should handle zero locks cleaned", () => {
-      // Mock cleanup with no locks to clean
-      const mockCleanupResult = {
-        output: {
-          cleaned: 0,
-        },
-      };
-
-      mocks.cleanupTask.mockReturnValue(mockCleanupResult);
+    it("should handle zero locks cleaned when no locks exist", () => {
+      // Ensure no locks exist
+      const transitioningJobs = (StageTransitionService as any).transitioningJobs as Set<string>;
+      expect(transitioningJobs.size).toBe(0);
 
       // Execute job
       const result = cleanupApprovalLocksJob.handler();
 
-      // Verify result
+      // Verify result shows zero cleaned
       expect(result).toEqual({
         output: {
           transitionLocksCleaned: 0,
           totalCleaned: 0,
         },
       });
-
-      // Verify service call
-      expect(mocks.cleanupTask).toHaveBeenCalledTimes(1);
     });
-  });
 
-  describe("Error Handling", () => {
-    it("should propagate errors from StageTransitionService", () => {
-      const mockError = new Error("Service cleanup failed");
-      mocks.cleanupTask.mockImplementation(() => {
-        throw mockError;
-      });
+    it("should clean up different amounts of locks correctly", () => {
+      const transitioningJobs = (StageTransitionService as any).transitioningJobs as Set<string>;
 
-      // Execute job and expect error
-      expect(() => cleanupApprovalLocksJob.handler()).toThrow("Service cleanup failed");
+      // Add just one lock
+      transitioningJobs.add("job-single-lock");
 
-      // Verify service call was made
-      expect(mocks.cleanupTask).toHaveBeenCalledTimes(1);
+      const result = cleanupApprovalLocksJob.handler();
+
+      expect(result.output.totalCleaned).toBe(1);
+      expect(transitioningJobs.size).toBe(0);
     });
   });
 
   describe("Job Configuration", () => {
-    it("should have correct job configuration", () => {
+    it("should have correct job slug", () => {
       expect(cleanupApprovalLocksJob.slug).toBe("cleanup-approval-locks");
+    });
+
+    it("should have correct schedule configuration", () => {
       expect(cleanupApprovalLocksJob.schedule).toEqual([
         {
           cron: "*/5 * * * *", // Every 5 minutes
