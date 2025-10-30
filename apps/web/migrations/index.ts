@@ -11,6 +11,7 @@ import * as migration_20250821_150506_add_soft_delete_fields from './20250821_15
 import * as migration_20250825_185232_add_user_quotas from './20250825_185232_add_user_quotas';
 import * as migration_20250826_085916_add_http_cache_field from './20250826_085916_add_http_cache_field';
 import * as migration_20251006_164200_add_created_by_fields from './20251006_164200_add_created_by_fields';
+import * as migration_20251030_173500_add_catalog_quota_fields from './20251030_173500_add_catalog_quota_fields';
 
 export const migrations = [
   {
@@ -76,6 +77,11 @@ export const migrations = [
   {
     up: migration_20251006_164200_add_created_by_fields.up,
     down: migration_20251006_164200_add_created_by_fields.down,
-    name: '20251006_164200_add_created_by_fields'
+    name: '20251006_164200_add_created_by_fields',
+  },
+  {
+    up: migration_20251030_173500_add_catalog_quota_fields.up,
+    down: migration_20251030_173500_add_catalog_quota_fields.down,
+    name: '20251030_173500_add_catalog_quota_fields'
   },
 ];
