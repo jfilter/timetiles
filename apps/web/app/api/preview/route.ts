@@ -6,13 +6,13 @@
  *
  * @module
  */
-import configPromise from "@payload-config";
 import { draftMode } from "next/headers";
 import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import { getPayload } from "payload";
 
 import { logger } from "@/lib/logger";
+import config from "@/payload.config";
 
 export const GET = async (request: NextRequest): Promise<Response> => {
   const { searchParams } = request.nextUrl;
@@ -28,7 +28,7 @@ export const GET = async (request: NextRequest): Promise<Response> => {
 
   try {
     // Verify the user is authenticated with Payload
-    const payload = await getPayload({ config: configPromise });
+    const payload = await getPayload({ config });
 
     // Properly validate JWT token using Payload's auth system
     const authCookie = request.cookies.get("payload-token");

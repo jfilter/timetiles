@@ -8,7 +8,6 @@
  * @category API
  */
 
-import config from "@payload-config";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import type { Payload } from "payload";
@@ -17,6 +16,7 @@ import { getPayload } from "payload";
 import { JOB_TYPES } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
 import { getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import config from "@/payload.config";
 import type { ScheduledImport } from "@/payload-types";
 
 interface RateLimitResponse {

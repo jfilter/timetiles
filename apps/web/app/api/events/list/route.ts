@@ -12,26 +12,12 @@ import { NextResponse } from "next/server";
 import type { Where } from "payload";
 import { getPayload } from "payload";
 
-import { logger } from "@/lib/logger";
+import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
+import { type MapBounds, parseBoundsParameter } from "@/lib/types/geo";
 import config from "@/payload.config";
 import type { Event } from "@/payload-types";
-
-interface MapBounds {
-  north: number;
-  south: number;
-  east: number;
-  west: number;
-}
-
-const isValidBounds = (value: unknown): value is MapBounds =>
-  typeof value === "object" &&
-  value != null &&
-  typeof (value as Record<string, unknown>).north === "number" &&
-  typeof (value as Record<string, unknown>).south === "number" &&
-  typeof (value as Record<string, unknown>).east === "number" &&
-  typeof (value as Record<string, unknown>).west === "number";
 
 const addCatalogFilter = (where: Where, catalog: string) => {
   where.and = [
@@ -119,18 +105,25 @@ const transformEvent = (event: Event) => ({
 });
 
 export const GET = withRateLimit(
-  withOptionalAuth(async (request: AuthenticatedRequest) => {
+  withOptionalAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
     try {
       const payload = await getPayload({ config });
 
       const parameters = extractListParameters(request.nextUrl.searchParams);
-      const where = buildWhereClause(parameters);
+
+      // Validate bounds parameter
+      const boundsResult = parseBoundsParameter(parameters.boundsParam);
+      if (boundsResult.error) {
+        return boundsResult.error;
+      }
+
+      const where = buildWhereClause(parameters, boundsResult.bounds);
       const result = await executeEventsQuery(payload, where, parameters, request.user);
       const response = buildListResponse(result);
 
       return NextResponse.json(response);
     } catch (error) {
-      logger.error("Error fetching events list:", error);
+      logError(error, "Failed to fetch events list", { user: request.user?.id });
       return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
     }
   }),
@@ -148,11 +141,11 @@ const extractListParameters = (searchParams: URLSearchParams) => ({
   sort: searchParams.get("sort") ?? "-eventTimestamp",
 });
 
-const buildWhereClause = (parameters: ReturnType<typeof extractListParameters>): Where => {
+const buildWhereClause = (parameters: ReturnType<typeof extractListParameters>, bounds: MapBounds | null): Where => {
   const where: Where = {};
 
   addFiltersToWhere(where, parameters);
-  addBoundsToWhere(where, parameters.boundsParam);
+  addBoundsToWhere(where, bounds);
   addDateFiltersToWhere(where, parameters.startDate, parameters.endDate);
 
   return where;
@@ -170,16 +163,9 @@ const addFiltersToWhere = (where: Where, parameters: ReturnType<typeof extractLi
   }
 };
 
-const addBoundsToWhere = (where: Where, boundsParam: string | null) => {
-  if (boundsParam != null) {
-    try {
-      const parsedBounds = JSON.parse(boundsParam) as unknown;
-      if (isValidBounds(parsedBounds)) {
-        addBoundsFilter(where, parsedBounds);
-      }
-    } catch {
-      throw new Error("Invalid bounds format");
-    }
+const addBoundsToWhere = (where: Where, bounds: MapBounds | null) => {
+  if (bounds != null) {
+    addBoundsFilter(where, bounds);
   }
 };
 

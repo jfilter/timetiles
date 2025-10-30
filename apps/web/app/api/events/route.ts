@@ -8,12 +8,14 @@
  * for the client.
  * @module
  */
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import type { Where } from "payload";
 import { getPayload } from "payload";
 
-import { logger } from "@/lib/logger";
+import { logError, logger } from "@/lib/logger";
+import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
+import { withRateLimit } from "@/lib/middleware/rate-limit";
+import { isValidBounds, type MapBounds } from "@/lib/types/geo";
 import config from "@/payload.config";
 import type { Event } from "@/payload-types";
 
@@ -30,20 +32,32 @@ const getEventDataValue = (data: Record<string, unknown>, field: string): unknow
   return undefined;
 };
 
-interface MapBounds {
-  north: number;
-  south: number;
-  east: number;
-  west: number;
-}
+/**
+ * Get catalog IDs that the user has access to
+ */
+const getAccessibleCatalogIds = async (
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  user?: { id: string; email: string; role: string }
+): Promise<number[]> => {
+  try {
+    const catalogs = await payload.find({
+      collection: "catalogs",
+      where: user
+        ? {
+            or: [{ isPublic: { equals: true } }, { createdBy: { equals: user.id } }],
+          }
+        : { isPublic: { equals: true } },
+      limit: 1000,
+      user,
+      overrideAccess: false,
+    });
 
-const isValidBounds = (value: unknown): value is MapBounds =>
-  typeof value === "object" &&
-  value != null &&
-  typeof (value as Record<string, unknown>).north === "number" &&
-  typeof (value as Record<string, unknown>).south === "number" &&
-  typeof (value as Record<string, unknown>).east === "number" &&
-  typeof (value as Record<string, unknown>).west === "number";
+    return catalogs.docs.map((c) => (typeof c.id === "number" ? c.id : parseInt(String(c.id))));
+  } catch (error) {
+    logger.warn("Error fetching accessible catalogs", { error });
+    return [];
+  }
+};
 
 const addCatalogFilter = (where: Where, catalog: string) => {
   where.and = [
@@ -129,7 +143,7 @@ const filterEventsByDate = (events: Event[], startDate: string | null, endDate: 
 };
 
 const matchesEventTimestamp = (event: Event, startDateTime: Date | null, endDateTime: Date | null): boolean => {
-  if (event.eventTimestamp == null || event.eventTimestamp == undefined) {
+  if (event.eventTimestamp == null) {
     return false;
   }
 
@@ -172,21 +186,28 @@ const matchesDataFieldDate = (
   return (!startDateTime || dataDate >= startDateTime) && (!endDateTime || dataDate < endDateTime);
 };
 
-export const GET = async (request: NextRequest) => {
-  try {
-    const payload = await getPayload({ config });
-    const parameters = extractEventsParameters(request.nextUrl.searchParams);
-    const where = buildEventsWhereClause(parameters);
-    const events = await executeEventsQuery(payload, where);
-    const filteredEvents = filterEventsByDate(events.docs, parameters.startDate, parameters.endDate);
-    const response = serializeEventsResponse(filteredEvents, events);
+export const GET = withRateLimit(
+  withOptionalAuth(async (request: AuthenticatedRequest) => {
+    try {
+      const payload = await getPayload({ config });
+      const parameters = extractEventsParameters(request.nextUrl.searchParams);
 
-    return NextResponse.json(response);
-  } catch (error) {
-    logger.error("Error fetching events:", error);
-    return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
-  }
-};
+      // Get accessible catalog IDs for this user
+      const accessibleCatalogIds = await getAccessibleCatalogIds(payload, request.user);
+
+      const where = buildEventsWhereClause(parameters, accessibleCatalogIds);
+      const events = await executeEventsQuery(payload, where);
+      const filteredEvents = filterEventsByDate(events.docs, parameters.startDate, parameters.endDate);
+      const response = serializeEventsResponse(filteredEvents, events);
+
+      return NextResponse.json(response);
+    } catch (error) {
+      logError(error, "Failed to fetch events", { user: request.user?.id });
+      return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
+    }
+  }),
+  { type: "API_GENERAL" }
+);
 
 const extractEventsParameters = (searchParams: URLSearchParams) => ({
   catalog: searchParams.get("catalog"),
@@ -196,15 +217,32 @@ const extractEventsParameters = (searchParams: URLSearchParams) => ({
   endDate: searchParams.get("endDate"),
 });
 
-const buildEventsWhereClause = (parameters: ReturnType<typeof extractEventsParameters>): Where => {
+const buildEventsWhereClause = (
+  parameters: ReturnType<typeof extractEventsParameters>,
+  accessibleCatalogIds: number[]
+): Where => {
   const where: Where = {};
   const { catalog, datasets, boundsParam, startDate, endDate } = parameters;
 
+  applyAccessControlFilter(where, accessibleCatalogIds);
   applyCatalogAndDatasetFilters(where, catalog, datasets);
   applyBoundsFilter(where, boundsParam);
   applyDateFilters(where, startDate, endDate);
 
   return where;
+};
+
+const applyAccessControlFilter = (where: Where, accessibleCatalogIds: number[]) => {
+  if (accessibleCatalogIds.length > 0) {
+    where.and = [
+      ...(Array.isArray(where.and) ? where.and : []),
+      {
+        "dataset.catalog": {
+          in: accessibleCatalogIds,
+        },
+      },
+    ];
+  }
 };
 
 const applyCatalogAndDatasetFilters = (where: Where, catalog: string | null, datasets: string[]) => {
@@ -226,7 +264,7 @@ const applyBoundsFilter = (where: Where, boundsParam: string | null) => {
         addBoundsFilter(where, parsedBounds);
       }
     } catch (error) {
-      logger.error("Invalid bounds parameter:", error);
+      logError(error, "Invalid bounds parameter");
     }
   }
 };

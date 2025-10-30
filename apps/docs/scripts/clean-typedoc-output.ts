@@ -186,7 +186,7 @@ const fixFunctionSignatures = (dir: string): void => {
 
           // Check if signature continues on next lines
           let j = i + 1;
-          while (j < lines.length && lines[j] && !/^[▸#*-]|\s*$/.test(lines[j]!)) {
+          while (j < lines.length && lines[j] && !/^[▸#*-]|\s*$/.test(lines[j] ?? "")) {
             currentSignature += " " + (lines[j]?.trim() || "");
             j++;
           }

@@ -15,22 +15,8 @@ import { getPayload } from "payload";
 import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
+import { isValidBounds, type MapBounds } from "@/lib/types/geo";
 import config from "@/payload.config";
-
-interface MapBounds {
-  north: number;
-  south: number;
-  east: number;
-  west: number;
-}
-
-const isValidBounds = (value: unknown): value is MapBounds =>
-  typeof value === "object" &&
-  value != null &&
-  typeof (value as Record<string, unknown>).north === "number" &&
-  typeof (value as Record<string, unknown>).south === "number" &&
-  typeof (value as Record<string, unknown>).east === "number" &&
-  typeof (value as Record<string, unknown>).west === "number";
 
 /**
  * Get catalog IDs that the user has access to

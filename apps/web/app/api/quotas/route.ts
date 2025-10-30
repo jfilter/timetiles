@@ -14,7 +14,7 @@ import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { getQuotaService } from "@/lib/services/quota-service";
-import configPromise from "@/payload.config";
+import config from "@/payload.config";
 
 const logger = createLogger("api-quotas");
 
@@ -30,7 +30,7 @@ const logger = createLogger("api-quotas");
 export const GET = withRateLimit(
   async (req: NextRequest) => {
     try {
-      const payload = await getPayload({ config: configPromise });
+      const payload = await getPayload({ config });
 
       // Get user from session
       const { user } = await payload.auth({ headers: req.headers });

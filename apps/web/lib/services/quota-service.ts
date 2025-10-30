@@ -300,7 +300,7 @@ export class QuotaService {
       }
     }
 
-    console.log("[checkQuota] Returning final result", { wouldExceed, current, limit });
+    logger.debug("checkQuota: Returning final result", { wouldExceed, current, limit });
     return {
       allowed: !wouldExceed,
       current,
@@ -316,13 +316,13 @@ export class QuotaService {
    */
   async incrementUsage(userId: number, usageType: UsageType, amount: number = 1, req?: any): Promise<void> {
     try {
-      console.log("[incrementUsage] 1. Entry", { userId, usageType, amount });
+      logger.debug("incrementUsage: Entry", { userId, usageType, amount });
       const user = await this.payload.findByID({
         collection: "users",
         id: userId,
         overrideAccess: true, // Skip access control to avoid nested operations
       });
-      console.log("[incrementUsage] 2. Got user");
+      logger.debug("incrementUsage: Got user");
 
       if (!user) {
         logger.error("User not found for usage increment", { userId });
@@ -330,33 +330,33 @@ export class QuotaService {
       }
 
       const currentUsage = (user.usage as UserUsage) || this.getEmptyUsage();
-      console.log("[incrementUsage] 3. Got current usage");
+      logger.debug("incrementUsage: Got current usage");
 
       // Check if daily reset is needed
       if (this.isDailyUsageType(usageType) && this.shouldResetDailyUsage(currentUsage.lastResetDate)) {
-        console.log("[incrementUsage] 4. Daily reset needed, calling resetDailyCounters");
+        logger.debug("incrementUsage: Daily reset needed, calling resetDailyCounters");
         await this.resetDailyCounters(userId, req);
-        console.log("[incrementUsage] 5. Daily reset completed");
+        logger.debug("incrementUsage: Daily reset completed");
         // Refetch to get updated usage
         const updatedUser = await this.payload.findByID({
           collection: "users",
           id: userId,
           overrideAccess: true, // Skip access control to avoid nested operations
         });
-        console.log("[incrementUsage] 6. Refetched user");
+        logger.debug("incrementUsage: Refetched user");
         if (updatedUser?.usage) {
           Object.assign(currentUsage, updatedUser.usage);
         }
       }
 
-      console.log("[incrementUsage] 7. Incrementing counter");
+      logger.debug("incrementUsage: Incrementing counter");
       // Increment the counter
       const newUsage = {
         ...currentUsage,
         [usageType]: (currentUsage[usageType] || 0) + amount,
       };
 
-      console.log("[incrementUsage] 8. Calling payload.update");
+      logger.debug("incrementUsage: Calling payload.update");
       await this.payload.update({
         collection: "users",
         id: userId,
@@ -370,7 +370,7 @@ export class QuotaService {
         },
         overrideAccess: true, // Skip access control to avoid nested operations
       });
-      console.log("[incrementUsage] 9. Update completed");
+      logger.debug("incrementUsage: Update completed");
 
       logger.debug("Usage incremented", {
         userId,

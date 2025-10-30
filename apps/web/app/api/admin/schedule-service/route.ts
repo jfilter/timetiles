@@ -7,13 +7,13 @@
  * @module
  */
 
-import config from "@payload-config";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { createRequestLogger } from "@/lib/logger";
 import { getScheduleService, startScheduleService, stopScheduleService } from "@/lib/services/schedule-service";
+import config from "@/payload.config";
 
 const logger = createRequestLogger("schedule-service-api");
 

@@ -15,30 +15,8 @@ import { getPayload, type Payload } from "payload";
 import { logError, logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
+import { type MapBounds, parseBoundsParameter } from "@/lib/types/geo";
 import config from "@/payload.config";
-
-interface MapBounds {
-  north: number;
-  south: number;
-  east: number;
-  west: number;
-}
-
-const isValidBounds = (value: unknown): value is MapBounds =>
-  typeof value === "object" &&
-  value != null &&
-  typeof (value as Record<string, unknown>).north === "number" &&
-  typeof (value as Record<string, unknown>).south === "number" &&
-  typeof (value as Record<string, unknown>).east === "number" &&
-  typeof (value as Record<string, unknown>).west === "number";
-
-const parseBounds = (boundsParam: string): MapBounds => {
-  const parsedBounds = JSON.parse(boundsParam) as unknown;
-  if (!isValidBounds(parsedBounds)) {
-    throw new Error("Invalid bounds format");
-  }
-  return parsedBounds;
-};
 
 /**
  * Get catalog IDs that the user has access to
@@ -125,13 +103,13 @@ const buildFiltersWithBounds = (params: {
 };
 
 export const GET = withRateLimit(
-  withOptionalAuth(async (request: AuthenticatedRequest) => {
+  withOptionalAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
     try {
       const payload = await getPayload({ config });
 
       const parameters = extractHistogramParameters(request.nextUrl.searchParams);
       const boundsResult = parseBoundsParameter(parameters.boundsParam);
-      if ("error" in boundsResult) {
+      if (boundsResult.error) {
         return boundsResult.error;
       }
       const bounds = boundsResult.bounds;
@@ -164,23 +142,6 @@ const extractHistogramParameters = (searchParams: URLSearchParams) => ({
   endDate: searchParams.get("endDate"),
   granularity: searchParams.get("granularity") ?? "auto",
 });
-
-const parseBoundsParameter = (boundsParam: string | null): { bounds: MapBounds | null } | { error: NextResponse } => {
-  if (boundsParam == null || boundsParam === "") {
-    return { bounds: null };
-  }
-
-  try {
-    return { bounds: parseBounds(boundsParam) };
-  } catch {
-    return {
-      error: NextResponse.json(
-        { error: "Invalid bounds format. Expected: {north, south, east, west}" },
-        { status: 400 }
-      ),
-    };
-  }
-};
 
 const createFunctionNotFoundResponse = (): NextResponse => {
   logger.error("Required calculate_event_histogram function not found in database");

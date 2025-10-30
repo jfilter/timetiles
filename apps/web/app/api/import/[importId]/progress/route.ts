@@ -7,13 +7,13 @@
  * This is crucial for providing feedback to the user during the import process.
  * @module
  */
-import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
+import config from "@/payload.config";
 import type { ImportJob } from "@/payload-types";
 
 interface JobProgress {
