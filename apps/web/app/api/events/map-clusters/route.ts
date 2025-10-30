@@ -16,6 +16,7 @@ import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { isValidBounds, type MapBounds } from "@/lib/types/geo";
+import type { User } from "@/payload-types";
 import config from "@/payload.config";
 
 /**
@@ -23,26 +24,10 @@ import config from "@/payload.config";
  */
 const getAccessibleCatalogIds = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
-  user?: { id: string; email: string; role: string }
+  user?: User | null
 ): Promise<number[]> => {
-  try {
-    const catalogs = await payload.find({
-      collection: "catalogs",
-      where: user
-        ? {
-            or: [{ isPublic: { equals: true } }, { createdBy: { equals: user.id } }],
-          }
-        : { isPublic: { equals: true } },
-      limit: 1000,
-      user,
-      overrideAccess: false,
-    });
-
-    return catalogs.docs.map((c) => (typeof c.id === "number" ? c.id : parseInt(String(c.id))));
-  } catch (error) {
-    logger.warn("Error fetching accessible catalogs", { error });
-    return [];
-  }
+  const { getAllAccessibleCatalogIds } = await import("@/lib/services/access-control");
+  return getAllAccessibleCatalogIds(payload, user);
 };
 
 export const GET = withRateLimit(

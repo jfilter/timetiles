@@ -36,28 +36,10 @@ const Datasets: CollectionConfig = {
       // 1. Public datasets in public catalogs
       // 2. Any dataset (public or private) in catalogs owned by the user
 
-      // Get catalogs that are public
-      const publicCatalogs = await payload.find({
-        collection: "catalogs",
-        where: { isPublic: { equals: true } },
-        limit: 100,
-        pagination: false,
-        overrideAccess: true,
-      });
-      const publicCatalogIds = publicCatalogs.docs.map((cat) => cat.id);
-
-      // Get catalogs owned by the user (if authenticated)
-      let ownedCatalogIds: number[] = [];
-      if (user) {
-        const ownedCatalogs = await payload.find({
-          collection: "catalogs",
-          where: { createdBy: { equals: user.id } },
-          limit: 100,
-          pagination: false,
-          overrideAccess: true,
-        });
-        ownedCatalogIds = ownedCatalogs.docs.map((cat) => cat.id);
-      }
+      // Get accessible catalogs using shared helper
+      const { publicCatalogIds, ownedCatalogIds } = await (
+        await import("@/lib/services/access-control")
+      ).getAccessibleCatalogIds(payload, user);
 
       // Build query:
       // - Public datasets in public catalogs

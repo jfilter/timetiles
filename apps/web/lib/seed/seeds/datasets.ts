@@ -145,7 +145,7 @@ const createDatasetFromTemplate = (
     catalog: catalog.slug,
     language: "eng",
     _status: isArchived ? "draft" : "published",
-    isPublic: catalog.type !== "community", // Community datasets are private
+    isPublic: catalog.slug !== "historical-records", // All datasets are public except archived ones
     metadata: {
       update_frequency: isArchived ? "none" : getUpdateFrequency(catalog.type),
       data_source: getDataSource(catalog.type),

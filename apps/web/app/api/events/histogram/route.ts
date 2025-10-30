@@ -16,6 +16,7 @@ import { logError, logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { type MapBounds, parseBoundsParameter } from "@/lib/types/geo";
+import type { User } from "@/payload-types";
 import config from "@/payload.config";
 
 /**
@@ -23,7 +24,7 @@ import config from "@/payload.config";
  */
 const getAccessibleCatalogIds = async (
   payload: Payload,
-  user?: { id: string; email: string; role: string }
+  user?: User | null
 ): Promise<number[]> => {
   try {
     const catalogs = await payload.find({

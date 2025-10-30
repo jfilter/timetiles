@@ -52,28 +52,10 @@ const Events: CollectionConfig = {
       const { user, payload } = req;
       if (user?.role === "admin") return true;
 
-      // Get public catalogs
-      const publicCatalogs = await payload.find({
-        collection: "catalogs",
-        where: { isPublic: { equals: true } },
-        limit: 100,
-        pagination: false,
-        overrideAccess: true,
-      });
-      const publicCatalogIds = publicCatalogs.docs.map((cat) => cat.id);
-
-      // Get owned catalogs (if authenticated)
-      let ownedCatalogIds: number[] = [];
-      if (user) {
-        const ownedCatalogs = await payload.find({
-          collection: "catalogs",
-          where: { createdBy: { equals: user.id } },
-          limit: 100,
-          pagination: false,
-          overrideAccess: true,
-        });
-        ownedCatalogIds = ownedCatalogs.docs.map((cat) => cat.id);
-      }
+      // Get accessible catalogs using shared helper
+      const { publicCatalogIds, ownedCatalogIds } = await (
+        await import("@/lib/services/access-control")
+      ).getAccessibleCatalogIds(payload, user);
 
       // Get accessible datasets:
       // - Public datasets in public catalogs

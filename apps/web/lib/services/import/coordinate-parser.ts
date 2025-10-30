@@ -42,10 +42,12 @@ export const tryParseDecimal = (str: string): number | null => {
  * ```typescript
  * parseDMSFormat("40°26'46\"N"); // Returns 40.446111
  * parseDMSFormat("40 26 46 N"); // Returns 40.446111
+ * parseDMSFormat("40° 42' 46\" N"); // Returns 40.7128
+ * parseDMSFormat("-40°26'46\""); // Returns -39.553889
  * ```
  */
 export const parseDMSFormat = (str: string): number | null => {
-  const dmsRegex = /^(-?\d{1,3})[°\s](\d{1,2})['\s](\d{1,2}\.?\d{0,6})["\s]?([NSEW])?$/i;
+  const dmsRegex = /^(-?\d{1,3})[°\s]\s*(\d{1,2})['′\s]\s*(\d{1,2}\.?\d{0,6})["″\s]?\s*([NSEW])?$/i;
   const dmsMatch = dmsRegex.exec(str);
 
   if (
@@ -64,10 +66,58 @@ export const parseDMSFormat = (str: string): number | null => {
   const seconds = parseFloat(dmsMatch[3]);
   const direction = dmsMatch[4];
 
-  let result = degrees + minutes / 60 + seconds / 3600;
+  // Calculate fractional part
+  const fractional = minutes / 60 + seconds / 3600;
 
+  // For negative degrees, add the fractional part (making it less negative)
+  // For positive degrees, add the fractional part (making it more positive)
+  let result;
+  if (degrees < 0) {
+    result = degrees + fractional;
+  } else {
+    result = degrees + fractional;
+  }
+
+  // Apply direction if specified
   if (direction != null && direction !== "" && (direction.toUpperCase() === "S" || direction.toUpperCase() === "W")) {
-    result = -result;
+    result = -Math.abs(result);
+  }
+
+  return result;
+};
+
+/**
+ * Parse degrees and decimal minutes format (e.g., "40°42.768'N").
+ *
+ * @example
+ * ```typescript
+ * parseDegreesMinutesFormat("40°42.768'N"); // Returns 40.7128
+ * ```
+ */
+export const parseDegreesMinutesFormat = (str: string): number | null => {
+  const dmRegex = /^(-?\d{1,3})[°\s](\d{1,3}\.?\d{0,6})['′\s]?([NSEW])?$/i;
+  const dmMatch = dmRegex.exec(str);
+
+  if (
+    dmMatch?.[1] == null ||
+    dmMatch?.[1] === "" ||
+    dmMatch[2] == null ||
+    dmMatch[2] === ""
+  ) {
+    return null;
+  }
+
+  const degrees = parseFloat(dmMatch[1]);
+  const minutes = parseFloat(dmMatch[2]);
+  const direction = dmMatch[3];
+
+  // For negative degrees, add the minutes (making it less negative)
+  // For positive degrees, add the minutes (making it more positive)
+  const result = degrees + minutes / 60;
+
+  // Apply direction if specified
+  if (direction != null && direction !== "" && (direction.toUpperCase() === "S" || direction.toUpperCase() === "W")) {
+    return -Math.abs(result);
   }
 
   return result;
@@ -116,10 +166,16 @@ export const parseCoordinate = (value: unknown): number | null => {
     return decimal;
   }
 
-  // Try DMS format
+  // Try DMS format (degrees, minutes, seconds)
   const dmsValue = parseDMSFormat(str);
   if (dmsValue !== null) {
     return dmsValue;
+  }
+
+  // Try degrees and decimal minutes format
+  const dmValue = parseDegreesMinutesFormat(str);
+  if (dmValue !== null) {
+    return dmValue;
   }
 
   // Try directional format

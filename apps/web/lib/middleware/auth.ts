@@ -3,13 +3,10 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
+import type { User } from "@/payload-types";
+
 export interface AuthenticatedRequest extends NextRequest {
-  user?: {
-    id: string;
-    email: string;
-    role: string;
-    trustLevel?: number;
-  };
+  user?: User;
 }
 
 /**

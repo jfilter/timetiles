@@ -17,7 +17,7 @@ import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/au
 import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { type MapBounds, parseBoundsParameter } from "@/lib/types/geo";
 import config from "@/payload.config";
-import type { Event } from "@/payload-types";
+import type { Event, User } from "@/payload-types";
 
 const addCatalogFilter = (where: Where, catalog: string) => {
   where.and = [
@@ -179,7 +179,7 @@ const executeEventsQuery = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   where: Where,
   parameters: ReturnType<typeof extractListParameters>,
-  user?: { id: string; email: string; role: string }
+  user?: User | null
 ) =>
   payload.find({
     collection: "events",

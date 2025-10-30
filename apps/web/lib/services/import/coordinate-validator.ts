@@ -12,6 +12,9 @@
  */
 import { logger } from "@/lib/logger";
 
+import { parseCoordinate as parseCoordinateFromParser } from "./coordinate-parser";
+import { isValidLatitude, isValidLongitude } from "./coordinate-validation-utils";
+
 export interface ValidatedCoordinates {
   latitude: number;
   longitude: number;
@@ -114,7 +117,7 @@ export class CoordinateValidator {
     if (swapCheck) return swapCheck;
 
     // Check valid ranges
-    if (!this.isValidLatitude(validLat) || !this.isValidLongitude(validLon)) {
+    if (!isValidLatitude(validLat) || !isValidLongitude(validLon)) {
       return {
         latitude: validLat,
         longitude: validLon,
@@ -300,16 +303,18 @@ export class CoordinateValidator {
 
   /**
    * Validate latitude range.
+   * Uses shared validation utility.
    */
   isValidLatitude(value: number): boolean {
-    return value >= -90 && value <= 90;
+    return isValidLatitude(value);
   }
 
   /**
    * Validate longitude range.
+   * Uses shared validation utility.
    */
   isValidLongitude(value: number): boolean {
-    return value >= -180 && value <= 180;
+    return isValidLongitude(value);
   }
 
   /**
@@ -327,158 +332,10 @@ export class CoordinateValidator {
 
   /**
    * Parse various coordinate formats to decimal degrees.
+   * Uses the shared coordinate parsing utility.
    */
   parseCoordinate(value: unknown): number | null {
-    if (value == null || value == undefined || value === "") {
-      return null;
-    }
-
-    // Handle number type
-    if (typeof value == "number") {
-      return value;
-    }
-
-    // Convert to string and clean
-    const str = this.convertValueToString(value);
-
-    // Try different coordinate formats in order
-    return (
-      this.parseDMSFormat(str) ??
-      this.parseDegreesMinutesFormat(str) ??
-      this.parseDegreesWithDirectionFormat(str) ??
-      this.parseDecimalDegrees(str)
-    );
-  }
-
-  /**
-   * Convert unknown value to clean string.
-   */
-  private convertValueToString(value: unknown): string {
-    if (typeof value === "string") {
-      return value.trim();
-    } else if (typeof value === "number" || typeof value === "boolean") {
-      return String(value).trim();
-    } else if (typeof value === "object" && value != null) {
-      return JSON.stringify(value).trim();
-    } else {
-      return "";
-    }
-  }
-
-  /**
-   * Parse DMS format (e.g., "40°42'46"N" or "40° 42' 46" N").
-   */
-  private parseDMSFormat(str: string): number | null {
-    const dmsRegex = /^(-?\d{1,3})°\s*(\d{1,2})['′]\s*(\d{1,2}\.?\d{0,6})["″]\s*([NSEW])?$/i;
-    const dmsMatch = dmsRegex.exec(str);
-
-    if (dmsMatch?.[1] != null && dmsMatch[2] != null && dmsMatch[3] != null) {
-      const degrees = parseFloat(dmsMatch[1]);
-      const minutes = parseFloat(dmsMatch[2]);
-      const seconds = parseFloat(dmsMatch[3]);
-      const direction = dmsMatch[4];
-
-      const result = Math.abs(degrees) + minutes / 60 + seconds / 3600;
-      return this.applyDirectionalSign(result, direction, degrees);
-    }
-
-    return null;
-  }
-
-  /**
-   * Parse degrees and decimal minutes format (e.g., "40°42.768'N").
-   */
-  private parseDegreesMinutesFormat(str: string): number | null {
-    const dmRegex = /^(-?\d{1,3})[°\s](\d{1,3}\.?\d{0,6})['′\s]?([NSEW])?$/i;
-    const dmMatch = dmRegex.exec(str);
-
-    if (
-      dmMatch?.[1] != null &&
-      dmMatch?.[1] != undefined &&
-      dmMatch?.[1] != "" &&
-      dmMatch[2] != null &&
-      dmMatch[2] != undefined &&
-      dmMatch[2] != ""
-    ) {
-      const degrees = parseFloat(dmMatch[1]);
-      const minutes = parseFloat(dmMatch[2]);
-      const direction = dmMatch[3];
-
-      const result = Math.abs(degrees) + minutes / 60;
-      return this.applyDirectionalSign(result, direction, degrees);
-    }
-
-    return null;
-  }
-
-  /**
-   * Parse degrees with direction format (e.g., "40.7128 N" or "40.7128N").
-   */
-  private parseDegreesWithDirectionFormat(str: string): number | null {
-    const trimmed = str.trim().toUpperCase();
-
-    // Check for directional suffixes
-    for (const direction of ["N", "S", "E", "W"]) {
-      const result = this.tryParseWithDirection(trimmed, direction);
-      if (result !== null) {
-        return result;
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Helper to try parsing a coordinate with a specific direction.
-   */
-  private tryParseWithDirection(trimmed: string, direction: string): number | null {
-    // Check direct suffix (e.g., "40.7128N")
-    if (trimmed.endsWith(direction)) {
-      return this.parseDirectionalValue(trimmed.slice(0, -1).trim(), direction);
-    }
-
-    // Check spaced suffix (e.g., "40.7128 N")
-    if (trimmed.endsWith(` ${direction}`)) {
-      return this.parseDirectionalValue(trimmed.slice(0, -(direction.length + 1)).trim(), direction);
-    }
-
-    return null;
-  }
-
-  /**
-   * Parse and apply directional sign to a numeric value.
-   */
-  private parseDirectionalValue(numStr: string, direction: string): number | null {
-    const value = parseFloat(numStr);
-    if (isNaN(value)) {
-      return null;
-    }
-
-    const absValue = Math.abs(value);
-    return direction === "S" || direction === "W" ? -absValue : absValue;
-  }
-
-  /**
-   * Parse simple decimal degrees.
-   */
-  private parseDecimalDegrees(str: string): number | null {
-    const decimal = parseFloat(str);
-    return !isNaN(decimal) ? decimal : null;
-  }
-
-  /**
-   * Apply directional sign to coordinate value.
-   */
-  private applyDirectionalSign(result: number, direction: string | undefined, originalDegrees: number): number {
-    if (
-      (direction != null &&
-        direction != undefined &&
-        (direction.toUpperCase() == "S" || direction.toUpperCase() == "W")) ||
-      originalDegrees < 0
-    ) {
-      return -result;
-    }
-    return result;
+    return parseCoordinateFromParser(value);
   }
 
   /**

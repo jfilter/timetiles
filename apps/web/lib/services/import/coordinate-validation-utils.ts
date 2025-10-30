@@ -25,7 +25,21 @@ export interface CoordinateSample {
 }
 
 /**
- * Check if coordinates are valid.
+ * Check if latitude is within valid range.
+ */
+export const isValidLatitude = (value: number): boolean => {
+  return value >= -90 && value <= 90;
+};
+
+/**
+ * Check if longitude is within valid range.
+ */
+export const isValidLongitude = (value: number): boolean => {
+  return value >= -180 && value <= 180;
+};
+
+/**
+ * Check if coordinates are valid (includes (0,0) check).
  */
 export const isValidCoordinate = (lat: number | null, lon: number | null): boolean => {
   if (lat == null || lon == null) {
