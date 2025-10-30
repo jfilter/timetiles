@@ -101,11 +101,11 @@ describe.sequential("Hierarchical Access Control", () => {
     privateDatasetInPublicCatalog = await payload.create({
       collection: "datasets",
       data: {
-        name: "Private Dataset in Public Catalog",
-        description: "Should only be accessible to owner and admin",
+        name: "Public Dataset in Public Catalog (Secondary)",
+        description: "Secondary public dataset for access control testing",
         catalog: publicCatalog.id,
         language: "eng",
-        isPublic: false,
+        isPublic: true, // Must be public since catalog is public
       },
       user: ownerUser,
     });
@@ -273,23 +273,26 @@ describe.sequential("Hierarchical Access Control", () => {
       expect(resultOther.docs).toHaveLength(1);
     });
 
-    it("should restrict private dataset in public catalog to owner/admin", async () => {
-      // Anonymous user - should not see
+    it("should allow anyone to read public dataset in public catalog (secondary)", async () => {
+      // Note: Private datasets in public catalogs are no longer allowed due to security fix
+      // This test now verifies a second public dataset in the public catalog
+
+      // Anonymous user - should see (public dataset)
       const resultAnon = await payload.find({
         collection: "datasets",
         where: { id: { equals: privateDatasetInPublicCatalog.id } },
         overrideAccess: false,
       });
-      expect(resultAnon.docs).toHaveLength(0);
+      expect(resultAnon.docs).toHaveLength(1);
 
-      // Other user - should not see
+      // Other user - should see (public dataset)
       const resultOther = await payload.find({
         collection: "datasets",
         where: { id: { equals: privateDatasetInPublicCatalog.id } },
         user: otherUser,
         overrideAccess: false,
       });
-      expect(resultOther.docs).toHaveLength(0);
+      expect(resultOther.docs).toHaveLength(1);
 
       // Owner - should see
       const resultOwner = await payload.find({

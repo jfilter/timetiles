@@ -103,6 +103,7 @@ describe("/api/events/map-clusters", () => {
           },
         },
         language: "en",
+        isPublic: true, // Must be public since catalog is public
       },
     });
     testDatasetId = String(dataset.id);
