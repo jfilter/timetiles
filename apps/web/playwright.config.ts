@@ -6,8 +6,8 @@
  *
  * @module
  */
-import { config as loadEnv } from "dotenv";
 import { defineConfig, devices } from "@playwright/test";
+import { config as loadEnv } from "dotenv";
 
 import { deriveTestDatabaseUrl, getDatabaseUrl } from "./lib/utils/database-url";
 

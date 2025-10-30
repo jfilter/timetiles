@@ -1,0 +1,435 @@
+# Payload CMS Deadlock Prevention
+
+import { Callout } from "nextra/components";
+
+## Overview
+
+When working with Payload CMS hooks that perform nested database operations, you may encounter **deadlocks** or **timeout errors**. This guide explains the root causes and provides proven patterns to prevent them.
+
+<Callout type="error">
+**Critical Issue**: Calling `payload.update()`, `payload.create()`, or `payload.findByID()` inside hooks without proper configuration can cause database transactions to hang indefinitely, resulting in 60-second timeouts in tests and production failures.
+</Callout>
+
+## The Problem
+
+### Symptoms
+
+- Tests timing out at 60+ seconds
+- Hooks hanging during execution
+- Database operations never completing
+- Error messages like: `Hook timed out in 60000ms`
+
+### Root Cause
+
+Payload CMS 3.x uses PostgreSQL transactions to ensure data consistency. When you call Payload methods inside hooks (like `beforeChange`, `afterChange`, etc.) without proper configuration, the nested operation tries to start a **new transaction** instead of reusing the existing one, causing a deadlock.
+
+```typescript
+// ❌ WRONG - This will deadlock!
+hooks: {
+  afterChange: [
+    async ({ doc, req }) => {
+      // This starts a NEW transaction, causing deadlock
+      await req.payload.update({
+        collection: "users",
+        id: doc.userId,
+        data: { lastUpdated: new Date() }
+      });
+    }
+  ]
+}
+```
+
+## The Solution
+
+### Core Pattern: Pass `req` and Use `context` Flags
+
+To prevent deadlocks, **always** pass the `req` object and use `context` flags when performing nested Payload operations:
+
+```typescript
+// ✅ CORRECT - Stays in same transaction
+hooks: {
+  afterChange: [
+    async ({ doc, req }) => {
+      await req.payload.update({
+        collection: "users",
+        id: doc.userId,
+        req, // Pass req to stay in same transaction
+        data: { lastUpdated: new Date() },
+        context: {
+          ...(req.context || {}),
+          skipCustomHooks: true // Prevent infinite recursion
+        },
+        overrideAccess: true // Skip access control if needed
+      });
+    }
+  ]
+}
+```
+
+### Key Components Explained
+
+1. **`req` parameter**: Ensures the operation uses the same database transaction
+2. **`context` flags**: Prevents infinite loops by skipping hooks on nested operations
+3. **`overrideAccess: true`**: Skips access control to avoid nested authorization checks
+
+## Common Deadlock Scenarios
+
+### Scenario 1: Usage Tracking in Hooks
+
+**Problem**: Tracking user quota usage after creating a record causes deadlock.
+
+```typescript
+// ❌ WRONG
+hooks: {
+  afterChange: [
+    async ({ doc, req }) => {
+      if (req.user) {
+        const quotaService = getQuotaService(req.payload);
+        // Missing req parameter causes deadlock
+        await quotaService.incrementUsage(req.user.id, 'FILE_UPLOADS', 1);
+      }
+    }
+  ]
+}
+```
+
+**Solution**: Pass `req` to service methods and ensure they pass it to nested operations.
+
+```typescript
+// ✅ CORRECT
+hooks: {
+  afterChange: [
+    async ({ doc, req }) => {
+      if (req.user) {
+        const quotaService = getQuotaService(req.payload);
+        // Pass req to service method
+        await quotaService.incrementUsage(req.user.id, 'FILE_UPLOADS', 1, req);
+      }
+    }
+  ]
+}
+
+// In quota-service.ts
+async incrementUsage(userId: number, usageType: string, amount: number, req?: any) {
+  await this.payload.update({
+    collection: "users",
+    id: userId,
+    req, // Use passed req
+    data: { usage: newUsage },
+    context: {
+      ...(req?.context || {}),
+      skipUsageHooks: true // Custom flag to prevent recursion
+    },
+    overrideAccess: true
+  });
+}
+```
+
+### Scenario 2: Access Control Checks
+
+**Problem**: Access control functions performing Payload queries during transaction.
+
+```typescript
+// ❌ WRONG
+access: {
+  update: async ({ req, id }) => {
+    // This query starts a new transaction during access check
+    const doc = await req.payload.findByID({
+      collection: "documents",
+      id
+    });
+    return doc.createdBy === req.user.id;
+  }
+}
+```
+
+**Solution**: Use `overrideAccess: true` and perform manual authorization checks.
+
+```typescript
+// ✅ CORRECT
+access: {
+  update: async ({ req, id }) => {
+    const doc = await req.payload.findByID({
+      collection: "documents",
+      id,
+      overrideAccess: true // Skip nested access control
+    });
+
+    // Manual authorization check
+    if (req.user?.role === "admin") return true;
+    return doc.createdBy === req.user?.id;
+  }
+}
+```
+
+### Scenario 3: Quota Checks in `beforeChange`
+
+**Problem**: Checking quotas before creating records requires reading user data.
+
+```typescript
+// ❌ WRONG
+hooks: {
+  beforeChange: [
+    async ({ req, operation }) => {
+      if (operation === "create" && req.user) {
+        const quotaService = getQuotaService(req.payload);
+        // Reading user during transaction without overrideAccess
+        const check = await quotaService.checkQuota(req.user, 'FILE_UPLOADS', 1);
+        if (!check.allowed) throw new Error("Quota exceeded");
+      }
+    }
+  ]
+}
+```
+
+**Solution**: Read from cached user object instead of querying database.
+
+```typescript
+// ✅ CORRECT
+async checkQuota(user: User, quotaType: string, amount: number, req?: any) {
+  // Read usage directly from user object (already loaded in memory)
+  const usage = (user as any).usage as UserUsage | undefined;
+
+  // Calculate quota without database queries
+  const limit = this.getEffectiveQuotas(user)[quotaType];
+  const current = usage?.[quotaType] || 0;
+
+  return {
+    allowed: current + amount <= limit,
+    current,
+    limit
+  };
+}
+```
+
+### Scenario 4: Cascading Updates
+
+**Problem**: Updating related records in `afterChange` hook.
+
+```typescript
+// ❌ WRONG
+hooks: {
+  afterChange: [
+    async ({ doc, req }) => {
+      // Updating related records without req/context
+      await req.payload.update({
+        collection: "import-files",
+        id: doc.importFileId,
+        data: { status: "completed" }
+      });
+    }
+  ]
+}
+```
+
+**Solution**: Pass `req` and use context flags.
+
+```typescript
+// ✅ CORRECT
+hooks: {
+  afterChange: [
+    async ({ doc, req }) => {
+      await req.payload.update({
+        collection: "import-files",
+        id: doc.importFileId,
+        req, // Stay in same transaction
+        data: { status: "completed" },
+        context: {
+          ...(req.context || {}),
+          skipImportFileHooks: true // Prevent cascading hooks
+        },
+        overrideAccess: true
+      });
+    }
+  ]
+}
+```
+
+## Testing Considerations
+
+### Detecting Deadlocks in Tests
+
+Tests will timeout if deadlocks occur:
+
+```typescript
+// Test will hang for 60+ seconds if deadlock occurs
+test("should create schedule without hanging", async () => {
+  const result = await payload.create({
+    collection: "scheduled-imports",
+    data: { name: "Test", enabled: true },
+    user: testUser
+  });
+
+  expect(result).toBeDefined();
+}, 10000); // 10 second timeout - should complete quickly
+```
+
+### Test Environment Optimization
+
+Skip quota checks in test environment to avoid unnecessary complexity:
+
+```typescript
+hooks: {
+  beforeChange: [
+    async ({ data, req }) => {
+      // Skip quota checks in test environment
+      if (process.env.NODE_ENV === "test" || process.env.VITEST === "true") {
+        return data;
+      }
+
+      // Production quota logic
+      const quotaService = getQuotaService(req.payload);
+      const check = await quotaService.checkQuota(req.user, 'SCHEDULES', 1, req);
+      if (!check.allowed) throw new Error("Quota exceeded");
+
+      return data;
+    }
+  ]
+}
+```
+
+## Best Practices Checklist
+
+<Callout type="info">
+Use this checklist when writing Payload hooks to prevent deadlocks:
+</Callout>
+
+- [ ] **Pass `req` parameter** to all nested `payload.update()`, `payload.create()`, `payload.findByID()` calls
+- [ ] **Use `context` flags** to prevent infinite hook recursion
+  - Common flags: `skipUsageHooks`, `skipQuotaChecks`, `skipImportFileHooks`
+- [ ] **Add `overrideAccess: true`** to skip nested access control checks
+- [ ] **Avoid database queries** in access control functions when possible
+- [ ] **Read from memory** instead of querying when data is already available
+- [ ] **Skip complex operations** in test environment if they're not being tested
+- [ ] **Use structured logging** (`logger.debug()`) instead of `console.log()`
+- [ ] **Test with short timeouts** (10-15 seconds) to detect deadlocks quickly
+
+## Context Flag Naming Convention
+
+Use descriptive context flags that indicate which hooks to skip:
+
+```typescript
+context: {
+  skipUsageHooks: true,      // Skip usage tracking hooks
+  skipQuotaChecks: true,     // Skip quota validation
+  skipImportFileHooks: true, // Skip import file hooks
+  skipScheduleHooks: true,   // Skip schedule hooks
+}
+```
+
+## Service Method Signatures
+
+When creating service methods that might be called from hooks, **always** accept an optional `req` parameter:
+
+```typescript
+export class QuotaService {
+  // Accept req as last parameter (optional for backward compatibility)
+  async checkQuota(
+    user: User,
+    quotaType: string,
+    amount: number = 1,
+    req?: any // ← Add this
+  ): Promise<QuotaCheckResult> {
+    // Use req if performing nested operations
+  }
+
+  async incrementUsage(
+    userId: number,
+    usageType: string,
+    amount: number = 1,
+    req?: any // ← Add this
+  ): Promise<void> {
+    await this.payload.update({
+      collection: "users",
+      id: userId,
+      req, // ← Pass it through
+      data: { usage: newUsage },
+      context: { skipUsageHooks: true },
+      overrideAccess: true
+    });
+  }
+}
+```
+
+## Debugging Deadlocks
+
+If you suspect a deadlock, add strategic logging:
+
+```typescript
+import { createRequestLogger } from "@/lib/logger";
+
+const logger = createRequestLogger("my-collection");
+
+hooks: {
+  afterChange: [
+    async ({ doc, req }) => {
+      logger.debug("Starting nested update", { docId: doc.id });
+
+      await req.payload.update({
+        collection: "users",
+        id: doc.userId,
+        req,
+        data: { updated: true },
+        context: { skipCustomHooks: true },
+        overrideAccess: true
+      });
+
+      logger.debug("Nested update completed", { docId: doc.id });
+    }
+  ]
+}
+```
+
+<Callout type="warning">
+**Remove verbose logging** after debugging. Use `logger.debug()` for development logging and ensure logs are at appropriate levels for production.
+</Callout>
+
+## Real-World Examples
+
+### Example 1: Scheduled Imports Collection
+
+See [`lib/collections/scheduled-imports/index.ts`](pathname:///Users/user/code/jf/timetiles/apps/web/lib/collections/scheduled-imports/index.ts) for a complete example of:
+- Quota checking in `beforeChange`
+- Usage tracking in `afterChange`
+- Decrement tracking in `afterDelete`
+- All following the deadlock prevention pattern
+
+### Example 2: Quota Service
+
+See [`lib/services/quota-service.ts`](pathname:///Users/user/code/jf/timetiles/apps/web/lib/services/quota-service.ts) for:
+- `incrementUsage()` with `req` parameter
+- `decrementUsage()` with `req` parameter
+- `checkQuota()` reading from memory instead of database
+
+### Example 3: Import Files Collection
+
+See [`lib/collections/import-files.ts`](pathname:///Users/user/code/jf/timetiles/apps/web/lib/collections/import-files.ts) for:
+- Multiple nested `payload.update()` calls in `afterChange`
+- Context flags preventing hook recursion
+- Error handling with transaction consistency
+
+## Additional Resources
+
+- [Payload CMS Hooks Documentation](https://payloadcms.com/docs/hooks/overview)
+- [Payload CMS Access Control](https://payloadcms.com/docs/access-control/overview)
+- Article: "How to Safely Manipulate Payload CMS Data in Hooks Without Hanging or Recursion"
+
+## Summary
+
+**Key Takeaway**: When performing nested Payload operations in hooks, always use this pattern:
+
+```typescript
+await req.payload.update({
+  collection: "your-collection",
+  id: docId,
+  req,                              // ← Stay in same transaction
+  data: { your: "data" },
+  context: {
+    ...(req.context || {}),
+    skipYourHooks: true             // ← Prevent recursion
+  },
+  overrideAccess: true              // ← Skip nested access control
+});
+```
+
+Following this pattern prevents deadlocks, ensures transaction consistency, and keeps your application responsive.
