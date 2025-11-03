@@ -169,7 +169,7 @@ describe("/api/events/map-clusters", () => {
       `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=2`
     );
 
-    const response = await GET(request);
+    const response = await GET(request, { params: Promise.resolve({}) });
 
     if (response.status !== 200) {
       const error = await response.json();
@@ -293,7 +293,7 @@ describe("/api/events/map-clusters", () => {
       )}&zoom=2&datasets=${testDatasetId}`
     );
 
-    const response = await GET(request);
+    const response = await GET(request, { params: Promise.resolve({}) });
 
     if (response.status !== 200) {
       const error = await response.json();
@@ -328,7 +328,7 @@ describe("/api/events/map-clusters", () => {
       )}&zoom=2&startDate=${startDate}&endDate=${endDate}`
     );
 
-    const response = await GET(request);
+    const response = await GET(request, { params: Promise.resolve({}) });
 
     if (response.status !== 200) {
       const error = await response.json();
@@ -352,7 +352,7 @@ describe("/api/events/map-clusters", () => {
   it("should handle missing bounds parameter", async () => {
     const request = new NextRequest("http://localhost:3000/api/events/map-clusters?zoom=10");
 
-    const response = await GET(request);
+    const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -362,7 +362,7 @@ describe("/api/events/map-clusters", () => {
   it("should handle invalid bounds format", async () => {
     const request = new NextRequest(`http://localhost:3000/api/events/map-clusters?bounds=invalid&zoom=10`);
 
-    const response = await GET(request);
+    const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(400);
     const data = await response.json();

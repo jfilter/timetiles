@@ -57,8 +57,11 @@ interface RateLimitOptions {
  * ```
  */
 export const withRateLimit =
-  <TContext = unknown>(handler: (req: AuthenticatedRequest, context?: TContext) => Promise<Response> | Response, options?: RateLimitOptions) =>
-  async (request: AuthenticatedRequest, context?: TContext) => {
+  <TContext = unknown>(
+    handler: (req: AuthenticatedRequest, context: TContext) => Promise<Response> | Response,
+    options?: RateLimitOptions
+  ) =>
+  async (request: AuthenticatedRequest, context: TContext) => {
     const payload = await getPayload({ config });
     const rateLimitService = getRateLimitService(payload);
     const clientId = getClientIdentifier(request);
@@ -66,7 +69,11 @@ export const withRateLimit =
     // Check rate limit based on configuration
     const rateLimitCheck = options?.configName
       ? rateLimitService.checkConfiguredRateLimit(clientId, RATE_LIMITS[options.configName])
-      : rateLimitService.checkTrustLevelRateLimit(clientId, request.user as User | null | undefined, options?.type ?? "API_GENERAL");
+      : rateLimitService.checkTrustLevelRateLimit(
+          clientId,
+          request.user as User | null | undefined,
+          options?.type ?? "API_GENERAL"
+        );
 
     if (!rateLimitCheck.allowed) {
       const retryAfter = rateLimitCheck.resetTime ? Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000) : 60;

@@ -29,7 +29,7 @@ const logger = createLogger("api-quotas");
  * - Reset times for daily quotas
  */
 export const GET = withRateLimit(
-  async (req: NextRequest) => {
+  async (req: NextRequest, _context: unknown) => {
     try {
       const payload = await getPayload({ config });
 

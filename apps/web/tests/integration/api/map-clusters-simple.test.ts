@@ -43,7 +43,7 @@ describe("Map-clusters API test", () => {
       const request = new NextRequest(url);
 
       // Call the API route
-      const response = await GET(request);
+      const response = await GET(request, { params: Promise.resolve({}) });
 
       const data = await response.json();
 

@@ -148,7 +148,7 @@ describe("/api/events/histogram", () => {
 
   it("should return histogram data with auto granularity", async () => {
     const request = new NextRequest("http://localhost:3000/api/events/histogram");
-    const response = await GET(request);
+    const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -174,7 +174,7 @@ describe("/api/events/histogram", () => {
 
   it("should use month granularity for our test data", async () => {
     const request = new NextRequest("http://localhost:3000/api/events/histogram?granularity=month");
-    const response = await GET(request);
+    const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -196,7 +196,7 @@ describe("/api/events/histogram", () => {
 
   it("should filter by dataset", async () => {
     const request = new NextRequest(`http://localhost:3000/api/events/histogram?datasets=${testDatasetId}`);
-    const response = await GET(request);
+    const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -212,7 +212,7 @@ describe("/api/events/histogram", () => {
   // TODO: Implement topDatasets metadata and enable this test
   it.skip("should include top datasets in metadata when implemented", async () => {
     const request = new NextRequest(`http://localhost:3000/api/events/histogram`);
-    const response = await GET(request);
+    const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -229,7 +229,7 @@ describe("/api/events/histogram", () => {
     const request = new NextRequest(
       `http://localhost:3000/api/events/histogram?startDate=${startDate}&endDate=${endDate}`
     );
-    const response = await GET(request);
+    const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -254,7 +254,7 @@ describe("/api/events/histogram", () => {
     const request = new NextRequest(
       `http://localhost:3000/api/events/histogram?bounds=${encodeURIComponent(JSON.stringify(bounds))}`
     );
-    const response = await GET(request);
+    const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -271,7 +271,7 @@ describe("/api/events/histogram", () => {
     const request = new NextRequest(
       `http://localhost:3000/api/events/histogram?startDate=${startDate}&endDate=${endDate}&granularity=day`
     );
-    const response = await GET(request);
+    const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -283,7 +283,7 @@ describe("/api/events/histogram", () => {
 
   it("should handle year granularity", async () => {
     const request = new NextRequest("http://localhost:3000/api/events/histogram?granularity=year");
-    const response = await GET(request);
+    const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -296,7 +296,7 @@ describe("/api/events/histogram", () => {
 
   it("should handle invalid bounds format", async () => {
     const request = new NextRequest("http://localhost:3000/api/events/histogram?bounds=invalid");
-    const response = await GET(request);
+    const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(400);
     const data = await response.json();

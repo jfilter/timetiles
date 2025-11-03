@@ -31,7 +31,11 @@ export class SchemaVersioningService {
   /**
    * Get the next schema version number for a dataset.
    */
-  static async getNextSchemaVersion(payload: Payload, datasetId: string | number, req?: PayloadRequest): Promise<number> {
+  static async getNextSchemaVersion(
+    payload: Payload,
+    datasetId: string | number,
+    req?: PayloadRequest
+  ): Promise<number> {
     const existingSchemas = await payload.find({
       collection: COLLECTION_NAMES.DATASET_SCHEMAS,
       where: {

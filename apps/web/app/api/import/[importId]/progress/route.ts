@@ -75,9 +75,8 @@ export const GET = withRateLimit(
   withAuth(
     async (
       request: AuthenticatedRequest,
-      context?: { params: Promise<{ importId: string }> }
+      context: { params: Promise<{ importId: string }> }
     ): Promise<NextResponse> => {
-      if (!context) throw new Error("Context is required");
       try {
         const payload = await getPayload({ config });
 

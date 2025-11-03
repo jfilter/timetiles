@@ -33,7 +33,7 @@ const getAccessibleCatalogIds = async (
 };
 
 export const GET = withRateLimit(
-  withOptionalAuth(async (request: AuthenticatedRequest) => {
+  withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown) => {
     try {
       const payload = await getPayload({ config });
 

@@ -105,7 +105,7 @@ const transformEvent = (event: Event) => ({
 });
 
 export const GET = withRateLimit(
-  withOptionalAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
+  withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown): Promise<NextResponse> => {
     try {
       const payload = await getPayload({ config });
 

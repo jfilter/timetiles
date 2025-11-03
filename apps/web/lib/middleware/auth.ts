@@ -1,3 +1,11 @@
+/**
+ * Authentication middleware for API routes.
+ *
+ * Provides authentication and authorization middleware functions that integrate
+ * with Payload CMS authentication system.
+ *
+ * @module
+ */
 import config from "@payload-config";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -15,8 +23,8 @@ export interface AuthenticatedRequest extends NextRequest {
  * Returns 401 if user is not authenticated.
  */
 export const withAuth =
-  <TContext = unknown>(handler: (req: AuthenticatedRequest, context?: TContext) => Promise<Response> | Response) =>
-  async (request: NextRequest, context?: TContext) => {
+  <TContext = unknown>(handler: (req: AuthenticatedRequest, context: TContext) => Promise<Response> | Response) =>
+  async (request: NextRequest, context: TContext) => {
     const payload = await getPayload({ config });
 
     try {
@@ -42,8 +50,8 @@ export const withAuth =
  * Does not return an error if user is not authenticated.
  */
 export const withOptionalAuth =
-  <TContext = unknown>(handler: (req: AuthenticatedRequest, context?: TContext) => Promise<Response> | Response) =>
-  async (request: NextRequest, context?: TContext) => {
+  <TContext = unknown>(handler: (req: AuthenticatedRequest, context: TContext) => Promise<Response> | Response) =>
+  async (request: NextRequest, context: TContext) => {
     const payload = await getPayload({ config });
 
     try {
@@ -62,8 +70,8 @@ export const withOptionalAuth =
  * Returns 401 if user is not authenticated and 403 if user is not an admin.
  */
 export const withAdminAuth =
-  <TContext = unknown>(handler: (req: AuthenticatedRequest, context?: TContext) => Promise<Response> | Response) =>
-  async (request: NextRequest, context?: TContext) => {
+  <TContext = unknown>(handler: (req: AuthenticatedRequest, context: TContext) => Promise<Response> | Response) =>
+  async (request: NextRequest, context: TContext) => {
     const payload = await getPayload({ config });
 
     try {

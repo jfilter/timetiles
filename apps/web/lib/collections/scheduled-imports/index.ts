@@ -74,7 +74,12 @@ const handleScheduleQuotaTracking = async ({
   if (isUpdate && originalDoc.enabled !== data?.enabled) {
     if (data?.enabled === true) {
       // Check quota before enabling
-      const quotaCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1, req as PayloadRequest);
+      const quotaCheck = await quotaService.checkQuota(
+        req.user,
+        QUOTA_TYPES.ACTIVE_SCHEDULES,
+        1,
+        req as PayloadRequest
+      );
       if (!quotaCheck.allowed) {
         const message =
           quotaCheck.remaining === 0
@@ -265,7 +270,8 @@ const ScheduledImports: CollectionConfig = {
             }
           } catch (error: unknown) {
             // Catalog doesn't exist or access denied
-            const message = error instanceof Error ? error.message : "You do not have permission to access this catalog";
+            const message =
+              error instanceof Error ? error.message : "You do not have permission to access this catalog";
             throw new Error(message);
           }
         }
