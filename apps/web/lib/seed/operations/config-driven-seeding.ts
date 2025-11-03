@@ -11,8 +11,7 @@
  *
  * @module
  */
-import { createLogger } from "@/lib/logger";
-import { logPerformance } from "@/lib/logger";
+import { createLogger, logPerformance } from "@/lib/logger";
 
 import {
   type CollectionConfig,

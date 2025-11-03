@@ -82,7 +82,7 @@ vi.mock("@/lib/constants/quota-constants", () => ({
 }));
 
 // Mock fetch globally
-global.fetch = vi.fn();
+globalThis.fetch = vi.fn();
 
 // Helper to create a proper fetch mock response
 const createMockResponse = (
@@ -133,7 +133,7 @@ describe.sequential("urlFetchJob", () => {
     process.env.UPLOAD_DIR_IMPORT_FILES = "/tmp/uploads";
 
     // Reset global fetch mock
-    (global.fetch as any) = vi.fn();
+    (globalThis.fetch as any) = vi.fn();
 
     // Setup mock payload with fresh mocks
     mockPayload = {
@@ -165,7 +165,7 @@ describe.sequential("urlFetchJob", () => {
       // Mock fetch response
       const mockCsvData = "id,name,value\n1,test,100\n2,test2,200";
       const mockResponse = createMockResponse(mockCsvData, { contentType: "text/csv" });
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
       // Execute job with direct parameters
       const result = await urlFetchJob.handler({
@@ -181,7 +181,7 @@ describe.sequential("urlFetchJob", () => {
       });
 
       // Verify fetch was called correctly
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         "https://example.com/data.csv",
         expect.objectContaining({
           method: "GET",
@@ -242,7 +242,7 @@ describe.sequential("urlFetchJob", () => {
 
       const mockResponse = createMockResponse("{}", { contentType: "application/json" });
 
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
       await urlFetchJob.handler({
         input: {
@@ -259,7 +259,7 @@ describe.sequential("urlFetchJob", () => {
         req: mockReq,
       });
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         "https://api.example.com/data",
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -274,7 +274,7 @@ describe.sequential("urlFetchJob", () => {
 
       const mockResponse = createMockResponse("{}", { contentType: "application/json" });
 
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
       await urlFetchJob.handler({
         input: {
@@ -291,7 +291,7 @@ describe.sequential("urlFetchJob", () => {
         req: mockReq,
       });
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         "https://api.example.com/data",
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -306,7 +306,7 @@ describe.sequential("urlFetchJob", () => {
 
       const mockResponse = createMockResponse("test data", { contentType: "text/plain" });
 
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
       await urlFetchJob.handler({
         input: {
@@ -325,7 +325,7 @@ describe.sequential("urlFetchJob", () => {
       });
 
       const expectedAuth = `Basic ${Buffer.from("testuser:testpass").toString("base64")}`;
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         "https://api.example.com/data",
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -342,7 +342,7 @@ describe.sequential("urlFetchJob", () => {
         contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
 
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
       const result = await urlFetchJob.handler({
         input: {
@@ -387,7 +387,7 @@ describe.sequential("urlFetchJob", () => {
       });
       mockPayload.update.mockResolvedValue({});
 
-      (global.fetch as any).mockRejectedValue(new Error("HTTP 404: Not Found"));
+      (globalThis.fetch as any).mockRejectedValue(new Error("HTTP 404: Not Found"));
 
       const result = await urlFetchJob.handler({
         input: {
@@ -425,7 +425,7 @@ describe.sequential("urlFetchJob", () => {
 
       const largeSize = 101 * 1024 * 1024; // 101MB
 
-      (global.fetch as any).mockRejectedValue(new Error(`File too large: ${largeSize} bytes`));
+      (globalThis.fetch as any).mockRejectedValue(new Error(`File too large: ${largeSize} bytes`));
 
       const result = await urlFetchJob.handler({
         input: {
@@ -462,7 +462,7 @@ describe.sequential("urlFetchJob", () => {
       mockPayload.update.mockResolvedValue({});
 
       // Mock a timeout error
-      (global.fetch as any).mockRejectedValue(new Error("Request timeout after 30000ms"));
+      (globalThis.fetch as any).mockRejectedValue(new Error("Request timeout after 30000ms"));
 
       const result = await urlFetchJob.handler({
         input: {
@@ -506,7 +506,7 @@ describe.sequential("urlFetchJob", () => {
 
       const mockResponse = createMockResponse("data", { contentType: "text/csv" });
 
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
       await urlFetchJob.handler({
         input: {
@@ -560,7 +560,7 @@ describe.sequential("urlFetchJob", () => {
         headers: new Headers({ "content-type": "text/plain" }),
         arrayBuffer: vi.fn().mockRejectedValue(new Error("HTTP 500")),
       };
-      (global.fetch as any).mockResolvedValue(errorResponse);
+      (globalThis.fetch as any).mockResolvedValue(errorResponse);
 
       const result = await urlFetchJob.handler({
         input: {
@@ -636,7 +636,7 @@ describe.sequential("urlFetchJob", () => {
       const mockData = "data";
       const mockResponse = createMockResponse(mockData, { contentType: "text/csv" });
 
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
       const result = await urlFetchJob.handler({
         input: {
@@ -677,7 +677,7 @@ describe.sequential("urlFetchJob", () => {
 
       const mockResponse = createMockResponse("data", { contentType: "text/csv" });
 
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
       await urlFetchJob.handler({
         input: {
@@ -719,7 +719,7 @@ describe.sequential("urlFetchJob", () => {
       // Server returns generic content type
       const mockResponse = createMockResponse("id,name\n1,test", { contentType: "application/octet-stream" });
 
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
       await urlFetchJob.handler({
         input: {
@@ -764,7 +764,7 @@ describe.sequential("urlFetchJob", () => {
       const mockResponse = createMockResponse(largeData, { contentType: "text/csv" });
 
       // All retry attempts will fail with the same error
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
       // Create the promise and handle it properly
       const handlerPromise = urlFetchJob.handler({
@@ -809,7 +809,7 @@ describe.sequential("urlFetchJob", () => {
 
       // Fail twice, then succeed
       let callCount = 0;
-      (global.fetch as any).mockImplementation(() => {
+      (globalThis.fetch as any).mockImplementation(() => {
         callCount++;
         if (callCount <= 2) {
           return Promise.reject(new Error(`Attempt ${callCount} failed`));
@@ -853,7 +853,7 @@ describe.sequential("urlFetchJob", () => {
       });
 
       // Mock a timeout error directly
-      (global.fetch as any).mockRejectedValue(new Error("Request timeout after 6ms"));
+      (globalThis.fetch as any).mockRejectedValue(new Error("Request timeout after 6ms"));
 
       const result = await urlFetchJob.handler({
         input: {
@@ -897,7 +897,7 @@ describe.sequential("urlFetchJob", () => {
 
       const mockResponse = createMockResponse("{}", { contentType: "application/json" });
 
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
       await urlFetchJob.handler({
         input: {
@@ -910,7 +910,7 @@ describe.sequential("urlFetchJob", () => {
         req: mockReq,
       });
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         "https://api.example.com/data",
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -943,7 +943,7 @@ describe.sequential("urlFetchJob", () => {
 
       const mockResponse = createMockResponse("data", { contentType: "text/csv" });
 
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
       // Mock timing to get consistent duration
       const startTime = Date.now();
@@ -1011,7 +1011,7 @@ describe.sequential("urlFetchJob", () => {
 
       const mockResponse = createMockResponse("test data", { contentType: "text/csv" });
 
-      (global.fetch as any).mockResolvedValue(mockResponse);
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
       await urlFetchJob.handler({
         input: {

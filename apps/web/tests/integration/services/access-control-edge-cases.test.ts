@@ -12,7 +12,8 @@
  * @module
  */
 
-import fs from "fs";
+import fs from "node:fs";
+
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";

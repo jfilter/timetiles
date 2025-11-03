@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import type { User } from "@/payload-types";
 
 import type { AuthenticatedRequest } from "./auth";
 
@@ -56,8 +57,8 @@ interface RateLimitOptions {
  * ```
  */
 export const withRateLimit =
-  (handler: (req: AuthenticatedRequest, context?: any) => Promise<Response> | Response, options?: RateLimitOptions) =>
-  async (request: AuthenticatedRequest, context?: any) => {
+  <TContext = unknown>(handler: (req: AuthenticatedRequest, context?: TContext) => Promise<Response> | Response, options?: RateLimitOptions) =>
+  async (request: AuthenticatedRequest, context?: TContext) => {
     const payload = await getPayload({ config });
     const rateLimitService = getRateLimitService(payload);
     const clientId = getClientIdentifier(request);
@@ -65,7 +66,7 @@ export const withRateLimit =
     // Check rate limit based on configuration
     const rateLimitCheck = options?.configName
       ? rateLimitService.checkConfiguredRateLimit(clientId, RATE_LIMITS[options.configName])
-      : rateLimitService.checkTrustLevelRateLimit(clientId, request.user as any, options?.type ?? "API_GENERAL");
+      : rateLimitService.checkTrustLevelRateLimit(clientId, request.user as User | null | undefined, options?.type ?? "API_GENERAL");
 
     if (!rateLimitCheck.allowed) {
       const retryAfter = rateLimitCheck.resetTime ? Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000) : 60;

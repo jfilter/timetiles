@@ -164,7 +164,7 @@ const ProviderItem = ({
   }, []);
 
   return (
-    <div
+    <button
       key={provider.type}
       draggable={provider.enabled}
       onDragStart={handleDragStartWithIndex}
@@ -172,10 +172,10 @@ const ProviderItem = ({
       onDragLeave={handleDragLeave}
       onDrop={handleDropWithIndex}
       onDragEnd={handleDragEnd}
-      role="button"
       tabIndex={provider.enabled ? 0 : -1}
       onKeyDown={handleKeyDown}
       aria-label={`${provider.type} provider - ${provider.enabled ? "enabled" : "disabled"}`}
+      type="button"
       className={`flex items-center rounded-lg border p-4 transition-all duration-200 ${
         provider.enabled
           ? "cursor-move border-gray-200 bg-white hover:shadow-md"
@@ -188,7 +188,7 @@ const ProviderItem = ({
         <ProviderInfo provider={provider} />
         <ToggleSwitch provider={provider} onToggle={onToggle} />
       </div>
-    </div>
+    </button>
   );
 };
 

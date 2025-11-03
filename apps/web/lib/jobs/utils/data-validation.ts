@@ -10,6 +10,7 @@
  * @module
  */
 import type { createJobLogger } from "@/lib/logger";
+import { isValidDate } from "@/lib/utils/date";
 
 import { getObjectProperty } from "./data-parsing";
 
@@ -71,7 +72,7 @@ export const parseDate = (dateString: string | number | Date): string => {
   }
 
   const parsed = new Date(dateString.trim());
-  if (Number.isNaN(parsed.getTime())) {
+  if (!isValidDate(parsed)) {
     return new Date().toISOString();
   }
 

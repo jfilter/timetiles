@@ -14,8 +14,7 @@
  *
  * @module
  */
-import { logPerformance } from "../logger";
-import { createLogger } from "../logger";
+import { createLogger, logPerformance } from "../logger";
 import { SeedManagerBase } from "./core/seed-manager-base";
 import { ConfigDrivenSeeding } from "./operations/config-driven-seeding";
 import { SeedingOperations } from "./operations/seeding-operations";

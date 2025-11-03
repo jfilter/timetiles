@@ -9,10 +9,10 @@
  * @module
  */
 
-import { createReadStream } from "fs";
-import { promises as fs } from "fs";
+import { createReadStream, promises as fs } from "node:fs";
+import path from "node:path";
+
 import http from "http";
-import path from "path";
 import type { Payload } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 

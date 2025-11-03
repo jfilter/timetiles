@@ -9,6 +9,7 @@
  */
 
 import type { FieldStatistics } from "@/lib/types/schema-detection";
+import { isValidDate } from "@/lib/utils/date";
 
 const updateTypeDistribution = (stats: FieldStatistics, valueType: string): void => {
   if (!stats.typeDistribution) {
@@ -92,7 +93,7 @@ export const updateFieldStats = (stats: FieldStatistics, value: unknown, maxUniq
   updateTypeDistribution(stats, valueType);
 
   // Track numeric stats
-  if (typeof value === "number" && !isNaN(value)) {
+  if (typeof value === "number" && !Number.isNaN(value)) {
     updateNumericStats(stats, value, stats.occurrences);
   }
 
@@ -163,7 +164,7 @@ const isDateString = (value: string): boolean => {
   // eslint-disable-next-line security/detect-unsafe-regex -- Simple date pattern, false positive
   if (/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?$/.test(value)) {
     const date = new Date(value);
-    return !isNaN(date.getTime());
+    return isValidDate(date);
   }
 
   // Common date formats

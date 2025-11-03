@@ -146,9 +146,9 @@ export class CacheManager {
     return address
       .toLowerCase()
       .trim()
-      .replace(/\s+/g, " ") // Replace multiple spaces with single space
-      .replace(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
-      .replace(/,{2,}/g, ",") // Replace multiple commas with single comma (more specific regex)
+      .replaceAll(/\s+/g, " ") // Replace multiple spaces with single space
+      .replaceAll(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
+      .replaceAll(/,{2,}/g, ",") // Replace multiple commas with single comma (more specific regex)
       .replace(/^[\s,]+/, "") // Remove leading whitespace and commas
       .trimEnd()
       .replace(/,$/, ""); // Remove single trailing comma

@@ -12,8 +12,9 @@
  *
  * @module
  */
-import path from "path";
-import type { Payload } from "payload";
+import path from "node:path";
+
+import type { Payload, PayloadRequest } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
@@ -163,7 +164,7 @@ const handleSchemaApproval = async (
     schemaConfig?: { locked?: boolean | null; autoApproveNonBreaking?: boolean | null } | null;
   },
   importJobId: number | string,
-  req?: any
+  req?: PayloadRequest
 ) => {
   if (!requiresApproval && comparison.hasChanges) {
     const schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
@@ -313,7 +314,7 @@ export const validateSchemaJob = {
         schemaBuilder,
         dataset,
         importJobId,
-        context.req
+        context.req as PayloadRequest | undefined
       );
 
       logPerformance("Schema validation", Date.now() - startTime, {

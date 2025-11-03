@@ -12,7 +12,8 @@
  * @module
  * @category Tests
  */
-import crypto from "crypto";
+import crypto from "node:crypto";
+
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";

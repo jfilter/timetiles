@@ -16,6 +16,7 @@ import { getPayload } from "payload";
 import { JOB_TYPES } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
 import { getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import { internalError, methodNotAllowed, unauthorized } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 import type { ScheduledImport } from "@/payload-types";
 
@@ -127,7 +128,7 @@ export const POST = async (_request: NextRequest, { params }: { params: Promise<
       logger.warn("Webhook trigger failed - invalid token", {
         token: token.substring(0, 8) + "...",
       });
-      return NextResponse.json({ success: false, error: "Invalid or disabled webhook" }, { status: 401 });
+      return unauthorized("Invalid or disabled webhook", "INVALID_WEBHOOK");
     }
 
     const scheduledImport = scheduledImports.docs[0] as ScheduledImport;
@@ -137,7 +138,7 @@ export const POST = async (_request: NextRequest, { params }: { params: Promise<
         scheduledImportId: scheduledImport.id,
         name: scheduledImport.name,
       });
-      return NextResponse.json({ success: false, error: "Invalid or disabled webhook" }, { status: 401 });
+      return unauthorized("Invalid or disabled webhook", "INVALID_WEBHOOK");
     }
 
     // CRITICAL: Check if already running (prevents concurrent executions)
@@ -211,9 +212,8 @@ export const POST = async (_request: NextRequest, { params }: { params: Promise<
     logError(error, "Webhook trigger failed", {
       token: token.substring(0, 8) + "...",
     });
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
+    return internalError("Internal server error");
   }
 };
 
-export const GET = () =>
-  NextResponse.json({ error: "Method not allowed. Use POST to trigger imports." }, { status: 405 });
+export const GET = () => methodNotAllowed("Method not allowed. Use POST to trigger imports.");

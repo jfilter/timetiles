@@ -10,7 +10,7 @@
  * @module
  */
 
-import { execSync } from "child_process";
+import { execSync } from "node:child_process";
 
 import { createLogger, logError } from "../lib/logger.js";
 

@@ -31,8 +31,8 @@ export const tryParseDecimal = (str: string): number | null => {
     return null;
   }
 
-  const decimal = parseFloat(trimmed);
-  return !isNaN(decimal) ? decimal : null;
+  const decimal = Number.parseFloat(trimmed);
+  return !Number.isNaN(decimal) ? decimal : null;
 };
 
 /**
@@ -61,9 +61,9 @@ export const parseDMSFormat = (str: string): number | null => {
     return null;
   }
 
-  const degrees = parseFloat(dmsMatch[1]);
-  const minutes = parseFloat(dmsMatch[2]);
-  const seconds = parseFloat(dmsMatch[3]);
+  const degrees = Number.parseFloat(dmsMatch[1]);
+  const minutes = Number.parseFloat(dmsMatch[2]);
+  const seconds = Number.parseFloat(dmsMatch[3]);
   const direction = dmsMatch[4];
 
   // Calculate fractional part
@@ -98,17 +98,12 @@ export const parseDegreesMinutesFormat = (str: string): number | null => {
   const dmRegex = /^(-?\d{1,3})[°\s](\d{1,3}\.?\d{0,6})['′\s]?([NSEW])?$/i;
   const dmMatch = dmRegex.exec(str);
 
-  if (
-    dmMatch?.[1] == null ||
-    dmMatch?.[1] === "" ||
-    dmMatch[2] == null ||
-    dmMatch[2] === ""
-  ) {
+  if (dmMatch?.[1] == null || dmMatch?.[1] === "" || dmMatch[2] == null || dmMatch[2] === "") {
     return null;
   }
 
-  const degrees = parseFloat(dmMatch[1]);
-  const minutes = parseFloat(dmMatch[2]);
+  const degrees = Number.parseFloat(dmMatch[1]);
+  const minutes = Number.parseFloat(dmMatch[2]);
   const direction = dmMatch[3];
 
   // For negative degrees, add the minutes (making it less negative)
@@ -139,7 +134,7 @@ export const parseDirectionalFormat = (str: string): number | null => {
     return null;
   }
 
-  const value = parseFloat(directionMatch[1]);
+  const value = Number.parseFloat(directionMatch[1]);
   const direction = directionMatch[2];
 
   if (direction.toUpperCase() === "S" || direction.toUpperCase() === "W") {

@@ -11,9 +11,10 @@
  * @module
  * @category Jobs
  */
-import fs from "fs";
+import fs from "node:fs";
+import path from "node:path";
+
 import Papa from "papaparse";
-import path from "path";
 import type { Payload } from "payload";
 import { read, utils } from "xlsx";
 

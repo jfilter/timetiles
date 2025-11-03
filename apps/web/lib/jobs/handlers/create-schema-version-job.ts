@@ -6,7 +6,7 @@
  *
  * @module
  */
-import type { Payload } from "payload";
+import type { Payload, PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { createJobLogger, logError } from "@/lib/logger";
@@ -82,7 +82,7 @@ export const createSchemaVersionJob = {
         autoApproved: false,
         approvedBy: approvedById,
         importSources: [],
-        req: context.req,
+        req: context.req as PayloadRequest | undefined,
       });
 
       // Update job with schema version

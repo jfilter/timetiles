@@ -13,6 +13,7 @@ import { getPayload } from "payload";
 import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
+import { internalError, notFound } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 import type { ImportJob } from "@/payload-types";
 
@@ -74,8 +75,9 @@ export const GET = withRateLimit(
   withAuth(
     async (
       request: AuthenticatedRequest,
-      context: { params: Promise<{ importId: string }> }
+      context?: { params: Promise<{ importId: string }> }
     ): Promise<NextResponse> => {
+      if (!context) throw new Error("Context is required");
       try {
         const payload = await getPayload({ config });
 
@@ -93,7 +95,7 @@ export const GET = withRateLimit(
           .catch(() => null);
 
         if (!importFile) {
-          return NextResponse.json({ error: "Import not found or access denied" }, { status: 404 });
+          return notFound("Import not found or access denied");
         }
 
         // Get all related import jobs with dataset details
@@ -142,7 +144,7 @@ export const GET = withRateLimit(
         const { importId } = await context.params;
         logError(error, "Failed to get import progress", { importId });
 
-        return NextResponse.json({ error: "Failed to get import progress" }, { status: 500 });
+        return internalError("Failed to get import progress");
       }
     }
   ),

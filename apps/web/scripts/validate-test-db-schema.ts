@@ -18,9 +18,9 @@
  * @category Scripts
  */
 
-import { execSync } from "child_process";
-import fs from "fs";
-import path from "path";
+import { execSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
 import { createLogger } from "../lib/logger";
 import { deriveTestDatabaseUrl, getDatabaseUrl, parseDatabaseUrl } from "../lib/utils/database-url";

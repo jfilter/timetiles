@@ -11,8 +11,8 @@
  */
 import type { Payload } from "payload";
 
-import type { User } from "@/payload-types";
 import { logger } from "@/lib/logger";
+import type { User } from "@/payload-types";
 
 export interface AccessibleCatalogIds {
   publicCatalogIds: number[];
@@ -32,10 +32,7 @@ export interface AccessibleCatalogIds {
  * @param user - Current user (optional)
  * @returns Object containing public, owned, and all accessible catalog IDs
  */
-export async function getAccessibleCatalogIds(
-  payload: Payload,
-  user?: User | null
-): Promise<AccessibleCatalogIds> {
+export const getAccessibleCatalogIds = async (payload: Payload, user?: User | null): Promise<AccessibleCatalogIds> => {
   try {
     // Get public catalogs
     const publicCatalogs = await payload.find({
@@ -45,7 +42,7 @@ export async function getAccessibleCatalogIds(
       pagination: false,
       overrideAccess: true,
     });
-    const publicCatalogIds = publicCatalogs.docs.map((cat) => cat.id as number);
+    const publicCatalogIds = publicCatalogs.docs.map((cat) => cat.id);
 
     // Get owned catalogs (if authenticated)
     let ownedCatalogIds: number[] = [];
@@ -57,7 +54,7 @@ export async function getAccessibleCatalogIds(
         pagination: false,
         overrideAccess: true,
       });
-      ownedCatalogIds = ownedCatalogs.docs.map((cat) => cat.id as number);
+      ownedCatalogIds = ownedCatalogs.docs.map((cat) => cat.id);
     }
 
     // Combine all accessible catalog IDs (removing duplicates)
@@ -76,7 +73,7 @@ export async function getAccessibleCatalogIds(
       allAccessibleIds: [],
     };
   }
-}
+};
 
 /**
  * Get all accessible catalog IDs for a user (simplified version).
@@ -88,7 +85,7 @@ export async function getAccessibleCatalogIds(
  * @param user - Current user (optional)
  * @returns Array of accessible catalog IDs
  */
-export async function getAllAccessibleCatalogIds(payload: Payload, user?: User | null): Promise<number[]> {
+export const getAllAccessibleCatalogIds = async (payload: Payload, user?: User | null): Promise<number[]> => {
   const { allAccessibleIds } = await getAccessibleCatalogIds(payload, user);
   return allAccessibleIds;
-}
+};

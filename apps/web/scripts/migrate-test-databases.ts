@@ -12,10 +12,12 @@
  * @module
  */
 
-import { execSync } from "child_process";
+import { execSync } from "node:child_process";
+
 import { Client } from "pg";
 
 const main = async () => {
+  // Test database credentials - suppressed in sonar-project.properties
   const client = new Client({
     host: "localhost",
     user: "timetiles_user",
@@ -36,6 +38,7 @@ const main = async () => {
 
     for (const dbName of databases) {
       console.log(`\nMigrating ${dbName}...`);
+      // Test database credentials - suppressed in sonar-project.properties
       const dbUrl = `postgresql://timetiles_user:timetiles_password@localhost:5432/${dbName}`;
 
       try {

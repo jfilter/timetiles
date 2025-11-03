@@ -158,15 +158,16 @@ export class GeocodingOperations {
     return { results, summary };
   }
 
-  async testConfiguration(testAddress?: string): Promise<Record<string, unknown>> {
-    const address = testAddress ?? "1600 Amphitheatre Parkway, Mountain View, CA";
+  async testConfiguration(
+    testAddress = "1600 Amphitheatre Parkway, Mountain View, CA"
+  ): Promise<Record<string, unknown>> {
     const results: Record<string, unknown> = {};
 
-    logger.info("Testing geocoding configuration", { address });
+    logger.info("Testing geocoding configuration", { address: testAddress });
 
     for (const provider of this.providerManager.getProviders().filter((p) => Boolean(p.enabled))) {
       try {
-        const geocodePromise = this.geocodeWithProvider(provider.geocoder, address);
+        const geocodePromise = this.geocodeWithProvider(provider.geocoder, testAddress);
         const timeoutPromise = new Promise((_resolve, reject) =>
           setTimeout(() => reject(new Error("Geocoding timeout")), 5000)
         );

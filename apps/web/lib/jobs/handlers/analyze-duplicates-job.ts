@@ -11,7 +11,8 @@
  *
  * @module
  */
-import path from "path";
+import path from "node:path";
+
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";

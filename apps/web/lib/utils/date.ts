@@ -1,5 +1,5 @@
 /**
- * Provides utility functions for formatting dates.
+ * Provides utility functions for formatting and validating dates.
  *
  * This module contains helpers to convert date strings or Date objects into consistent,
  * human-readable formats for display in the user interface. It handles null or invalid
@@ -8,6 +8,25 @@
  *
  * @module
  */
+
+/**
+ * Check if a Date object is valid.
+ *
+ * @param date - Date object to validate
+ * @returns True if the date is valid, false if invalid (NaN time)
+ *
+ * @example
+ * ```typescript
+ * const date = new Date('invalid');
+ * isValidDate(date); // Returns false
+ *
+ * const validDate = new Date('2024-01-15');
+ * isValidDate(validDate); // Returns true
+ * ```
+ */
+export const isValidDate = (date: Date): boolean => {
+  return !Number.isNaN(date.getTime());
+};
 
 /**
  * Format a date string or Date object for display.
@@ -19,7 +38,7 @@ export const formatDate = (date: string | Date | null | undefined): string => {
     const dateObj = typeof date === "string" ? new Date(date) : date;
 
     // Check if date is valid
-    if (isNaN(dateObj.getTime())) {
+    if (!isValidDate(dateObj)) {
       return "Invalid date";
     }
 
@@ -47,7 +66,7 @@ export const formatDateShort = (date: string | Date | null | undefined): string 
     const dateObj = typeof date === "string" ? new Date(date) : date;
 
     // Check if date is valid
-    if (isNaN(dateObj.getTime())) {
+    if (!isValidDate(dateObj)) {
       return "Invalid date";
     }
 

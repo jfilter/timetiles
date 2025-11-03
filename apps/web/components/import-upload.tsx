@@ -157,7 +157,7 @@ const UploadButtons = ({
         {uploading ? (
           <>
             <span className="animate-spin">⏳</span>
-            Uploading...
+            <span>Uploading...</span>
           </>
         ) : (
           <>📤 Upload & Process</>

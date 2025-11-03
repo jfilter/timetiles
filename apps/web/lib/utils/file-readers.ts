@@ -8,7 +8,8 @@
  *
  * @module
  */
-import fs from "fs";
+import fs from "node:fs";
+
 import Papa from "papaparse";
 import { read, utils } from "xlsx";
 

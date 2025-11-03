@@ -126,7 +126,7 @@ export class GeocodingService {
 
     if (process.env.GEOCODING_CACHE_TTL_DAYS != null && process.env.GEOCODING_CACHE_TTL_DAYS.length > 0) {
       const ttl = parseInt(process.env.GEOCODING_CACHE_TTL_DAYS, 10);
-      if (!isNaN(ttl) && ttl > 0) {
+      if (!Number.isNaN(ttl) && ttl > 0) {
         this.settings.caching.ttlDays = ttl;
       }
     }

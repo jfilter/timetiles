@@ -14,7 +14,8 @@
  * @module
  * @category Jobs
  */
-import path from "path";
+import path from "node:path";
+
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
@@ -23,6 +24,7 @@ import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { getGeocodingResultForRow, getGeocodingResults } from "@/lib/types/geocoding";
+import { isValidDate } from "@/lib/utils/date";
 import { readBatchFromFile } from "@/lib/utils/file-readers";
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 
@@ -509,7 +511,7 @@ const extractTimestamp = (row: Record<string, unknown>): Date => {
   for (const field of timestampFields) {
     if (row[field]) {
       const date = new Date(row[field] as string | number);
-      if (!isNaN(date.getTime())) {
+      if (isValidDate(date)) {
         return date;
       }
     }

@@ -8,10 +8,11 @@
  * @category Test Setup
  */
 
-import { createReadStream } from "fs";
+import { createReadStream } from "node:fs";
+import * as path from "node:path";
+
 import type { IncomingMessage, Server, ServerResponse } from "http";
 import { createServer } from "http";
-import * as path from "path";
 
 export interface TestServerOptions {
   port?: number;

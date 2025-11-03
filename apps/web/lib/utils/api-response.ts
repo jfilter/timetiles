@@ -31,17 +31,17 @@ export interface ErrorResponse {
  * @param details - Optional additional error context
  * @returns NextResponse with standardized error format
  */
-export function apiError(
+export const apiError = (
   message: string,
   status: number,
   code?: string,
   details?: unknown
-): NextResponse<ErrorResponse> {
+): NextResponse<ErrorResponse> => {
   const response: ErrorResponse = { error: message };
   if (code) response.code = code;
   if (details) response.details = details;
   return NextResponse.json(response, { status });
-}
+};
 
 /**
  * Create a 400 Bad Request error response.
@@ -50,9 +50,8 @@ export function apiError(
  * @param code - Optional error code
  * @returns NextResponse with 400 status
  */
-export function badRequest(message: string, code?: string): NextResponse<ErrorResponse> {
-  return apiError(message, 400, code || "BAD_REQUEST");
-}
+export const badRequest = (message: string, code?: string): NextResponse<ErrorResponse> =>
+  apiError(message, 400, code || "BAD_REQUEST");
 
 /**
  * Create a 401 Unauthorized error response.
@@ -61,9 +60,8 @@ export function badRequest(message: string, code?: string): NextResponse<ErrorRe
  * @param code - Optional error code
  * @returns NextResponse with 401 status
  */
-export function unauthorized(message: string = "Unauthorized", code?: string): NextResponse<ErrorResponse> {
-  return apiError(message, 401, code || "UNAUTHORIZED");
-}
+export const unauthorized = (message: string = "Unauthorized", code?: string): NextResponse<ErrorResponse> =>
+  apiError(message, 401, code || "UNAUTHORIZED");
 
 /**
  * Create a 404 Not Found error response.
@@ -72,9 +70,8 @@ export function unauthorized(message: string = "Unauthorized", code?: string): N
  * @param code - Optional error code
  * @returns NextResponse with 404 status
  */
-export function notFound(message: string = "Resource not found", code?: string): NextResponse<ErrorResponse> {
-  return apiError(message, 404, code || "NOT_FOUND");
-}
+export const notFound = (message: string = "Resource not found", code?: string): NextResponse<ErrorResponse> =>
+  apiError(message, 404, code || "NOT_FOUND");
 
 /**
  * Create a 405 Method Not Allowed error response.
@@ -83,9 +80,8 @@ export function notFound(message: string = "Resource not found", code?: string):
  * @param code - Optional error code
  * @returns NextResponse with 405 status
  */
-export function methodNotAllowed(message: string, code?: string): NextResponse<ErrorResponse> {
-  return apiError(message, 405, code || "METHOD_NOT_ALLOWED");
-}
+export const methodNotAllowed = (message: string, code?: string): NextResponse<ErrorResponse> =>
+  apiError(message, 405, code || "METHOD_NOT_ALLOWED");
 
 /**
  * Create a 500 Internal Server Error response.
@@ -95,10 +91,8 @@ export function methodNotAllowed(message: string, code?: string): NextResponse<E
  * @param details - Optional error details (use cautiously, may expose internals)
  * @returns NextResponse with 500 status
  */
-export function internalError(
+export const internalError = (
   message: string = "Internal server error",
   code?: string,
   details?: unknown
-): NextResponse<ErrorResponse> {
-  return apiError(message, 500, code || "INTERNAL_ERROR", details);
-}
+): NextResponse<ErrorResponse> => apiError(message, 500, code || "INTERNAL_ERROR", details);

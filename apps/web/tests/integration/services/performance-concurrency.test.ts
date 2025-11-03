@@ -420,8 +420,8 @@ describe.sequential("Performance and Concurrency Tests", () => {
         );
 
         // Force garbage collection if available
-        if (global.gc) {
-          global.gc();
+        if (globalThis.gc) {
+          globalThis.gc();
         }
       }
 

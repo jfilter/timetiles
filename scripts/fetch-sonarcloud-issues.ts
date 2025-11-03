@@ -249,7 +249,7 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
     }
 
     // Save detailed report
-    const reportPath = path.join(process.cwd(), "sonarcloud-report.json");
+    const reportPath = path.join(process.cwd(), ".claude", "archive", "sonarcloud-issues.json");
     const report = {
       timestamp: new Date().toISOString(),
       projectKey,

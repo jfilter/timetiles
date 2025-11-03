@@ -43,7 +43,7 @@ const validateNumericField = (value: string, fieldName: string, min: number, max
   if (value === "*") return;
 
   const num = parseInt(value);
-  if (isNaN(num) || num < min || num > max) {
+  if (Number.isNaN(num) || num < min || num > max) {
     throw new Error(`Invalid ${fieldName} in cron expression: ${value}`);
   }
 };

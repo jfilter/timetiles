@@ -130,7 +130,7 @@ export const GeocodingTestPanel = ({ testAddress: initialTestAddress, onTest }: 
               <div className="rounded-md border border-gray-200 bg-white p-3">
                 <h5 className="mb-2 flex items-center font-medium text-gray-900">
                   <span className="mr-2 h-3 w-3 rounded-full bg-blue-500" />
-                  Google Maps
+                  <span>Google Maps</span>
                 </h5>
                 {renderResult("Google", results.google)}
               </div>
@@ -138,7 +138,7 @@ export const GeocodingTestPanel = ({ testAddress: initialTestAddress, onTest }: 
               <div className="rounded-md border border-gray-200 bg-white p-3">
                 <h5 className="mb-2 flex items-center font-medium text-gray-900">
                   <span className="mr-2 h-3 w-3 rounded-full bg-green-500" />
-                  Nominatim
+                  <span>Nominatim</span>
                 </h5>
                 {renderResult("Nominatim", results.nominatim)}
               </div>
@@ -146,7 +146,7 @@ export const GeocodingTestPanel = ({ testAddress: initialTestAddress, onTest }: 
               <div className="rounded-md border border-gray-200 bg-white p-3">
                 <h5 className="mb-2 flex items-center font-medium text-gray-900">
                   <span className="mr-2 h-3 w-3 rounded-full bg-orange-500" />
-                  OpenCage
+                  <span>OpenCage</span>
                 </h5>
                 {renderResult("OpenCage", results.opencage)}
               </div>

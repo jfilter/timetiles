@@ -19,7 +19,7 @@
  * @category Collections
  */
 
-import type { CollectionConfig, Payload } from "payload";
+import type { CollectionConfig, Payload, PayloadRequest } from "payload";
 
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService } from "@/lib/services/quota-service";
@@ -74,7 +74,7 @@ const handleScheduleQuotaTracking = async ({
   if (isUpdate && originalDoc.enabled !== data?.enabled) {
     if (data?.enabled === true) {
       // Check quota before enabling
-      const quotaCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1, req);
+      const quotaCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1, req as PayloadRequest);
       if (!quotaCheck.allowed) {
         const message =
           quotaCheck.remaining === 0
@@ -89,7 +89,7 @@ const handleScheduleQuotaTracking = async ({
 
   // Handle new schedule creation
   if (isCreate && data?.enabled !== false) {
-    const quotaCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1, req);
+    const quotaCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1, req as PayloadRequest);
     if (!quotaCheck.allowed) {
       throw new Error(
         `Maximum active schedules reached (${quotaCheck.limit}). Disable another schedule or create this one as disabled.`
@@ -263,9 +263,10 @@ const ScheduledImports: CollectionConfig = {
                 throw new Error("You do not have permission to access this catalog");
               }
             }
-          } catch (error: any) {
+          } catch (error: unknown) {
             // Catalog doesn't exist or access denied
-            throw new Error(error.message || "You do not have permission to access this catalog");
+            const message = error instanceof Error ? error.message : "You do not have permission to access this catalog";
+            throw new Error(message);
           }
         }
 

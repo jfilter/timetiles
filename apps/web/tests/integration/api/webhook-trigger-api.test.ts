@@ -206,8 +206,8 @@ describe.sequential("Webhook Trigger API Integration", () => {
       expect(response.status).toBe(401);
       const data = await response.json();
       expect(data).toMatchObject({
-        success: false,
         error: "Invalid or disabled webhook",
+        code: "INVALID_WEBHOOK",
       });
     });
 
@@ -236,8 +236,8 @@ describe.sequential("Webhook Trigger API Integration", () => {
       expect(response.status).toBe(401);
       const data = await response.json();
       expect(data).toMatchObject({
-        success: false,
         error: "Invalid or disabled webhook",
+        code: "INVALID_WEBHOOK",
       });
     });
 

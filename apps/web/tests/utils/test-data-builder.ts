@@ -192,8 +192,8 @@ export class CatalogBuilder extends BaseTestBuilder<Catalog> {
     this.data.name = name;
     this.data.slug = name
       .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "");
+      .replaceAll(/\s+/g, "-")
+      .replaceAll(/[^a-z0-9-]/g, "");
     return this;
   }
 
@@ -261,8 +261,8 @@ export class DatasetBuilder extends BaseTestBuilder<Dataset> {
     this.data.name = name;
     this.data.slug = name
       .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "");
+      .replaceAll(/\s+/g, "-")
+      .replaceAll(/[^a-z0-9-]/g, "");
     return this;
   }
 

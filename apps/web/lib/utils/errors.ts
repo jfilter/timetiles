@@ -10,9 +10,8 @@
  * @category Utils
  */
 
-import type { User } from "payload";
-
 import { logError as logErrorToLogger, logger } from "@/lib/logger";
+import type { User } from "@/payload-types";
 
 /**
  * Sanitize error for external display.
@@ -25,7 +24,7 @@ import { logError as logErrorToLogger, logger } from "@/lib/logger";
  * @param user - Optional user who encountered the error
  * @returns Generic error message safe for external display
  */
-export const sanitizeError = (error: Error | unknown, context?: string, user?: User | null): string => {
+export const sanitizeError = (error: unknown, context?: string, user?: User | null): string => {
   // Extract error message
   const errorMessage = error instanceof Error ? error.message : String(error);
   const errorStack = error instanceof Error ? error.stack : undefined;
@@ -60,7 +59,7 @@ export const sanitizeError = (error: Error | unknown, context?: string, user?: U
  * @returns Error object safe for API responses
  */
 export const sanitizeErrorForAPI = (
-  error: Error | unknown,
+  error: unknown,
   context?: string,
   user?: User | null
 ): {
@@ -105,7 +104,7 @@ export const sanitizeErrorForAPI = (
  * @param error - The error to check
  * @returns True if the error is safe to show to users
  */
-export const isSafeUserError = (error: Error | unknown): boolean => {
+export const isSafeUserError = (error: unknown): boolean => {
   if (!(error instanceof Error)) return false;
 
   const safeErrorPatterns = [
@@ -133,7 +132,7 @@ export const isSafeUserError = (error: Error | unknown): boolean => {
  * @param user - Optional user who encountered the error
  * @returns User-facing error message
  */
-export const getUserFacingError = (error: Error | unknown, context?: string, user?: User | null): string => {
+export const getUserFacingError = (error: unknown, context?: string, user?: User | null): string => {
   // Log the error internally regardless
   const errorMessage = error instanceof Error ? error.message : String(error);
   const errorStack = error instanceof Error ? error.stack : undefined;

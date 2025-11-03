@@ -7,8 +7,9 @@
  * @module
  * @category Integration Tests
  */
-import fs from "fs";
-import { join } from "path";
+import fs from "node:fs";
+import { join } from "node:path";
+
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";

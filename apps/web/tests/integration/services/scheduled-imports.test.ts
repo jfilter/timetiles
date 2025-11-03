@@ -7,7 +7,8 @@
  * @module
  */
 
-import { promises as fs } from "fs";
+import { promises as fs } from "node:fs";
+
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";

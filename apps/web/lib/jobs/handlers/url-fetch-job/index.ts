@@ -94,7 +94,7 @@ const handleFetchSuccess = async (
 
   // Generate filename with extension
   const { mimeType, fileExtension } = detectFileTypeFromResponse(contentType, data, sourceUrl);
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const timestamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
   const filename = `url-import-${timestamp}-${uuidv4()}${fileExtension}`;
 
   // Create import-files record with file upload

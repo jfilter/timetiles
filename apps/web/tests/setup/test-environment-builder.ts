@@ -9,8 +9,9 @@
  * @category Test Setup
  */
 
-import { randomUUID } from "crypto";
-import fs from "fs";
+import { randomUUID } from "node:crypto";
+import fs from "node:fs";
+
 import { getPayload } from "payload";
 
 import type { CollectionName } from "@/lib/config/payload-config-factory";

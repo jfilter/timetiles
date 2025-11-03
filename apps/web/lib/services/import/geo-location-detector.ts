@@ -300,7 +300,7 @@ export class GeoLocationDetector {
     for (const row of sampleRows.slice(0, Math.min(20, sampleRows.length))) {
       const value = parseCoordinate(Object.hasOwn(row, header) ? row[header] : undefined);
 
-      if (value != null && !isNaN(value)) {
+      if (value != null && !Number.isNaN(value)) {
         stats.total++;
         stats.samples.push(value);
         categorizeCoordinateValue(value, stats);

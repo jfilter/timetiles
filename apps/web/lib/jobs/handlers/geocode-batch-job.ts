@@ -11,7 +11,8 @@
  * @module
  * @category Jobs
  */
-import path from "path";
+import path from "node:path";
+
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
@@ -96,10 +97,10 @@ const processRowGeocoding = async (
     const latValue = row[geocodingCandidate.latitudeField];
     const lngValue = row[geocodingCandidate.longitudeField];
 
-    const lat = typeof latValue === "number" ? latValue : parseFloat(String(latValue));
-    const lng = typeof lngValue === "number" ? lngValue : parseFloat(String(lngValue));
+    const lat = typeof latValue === "number" ? latValue : Number.parseFloat(String(latValue));
+    const lng = typeof lngValue === "number" ? lngValue : Number.parseFloat(String(lngValue));
 
-    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+    if (!Number.isNaN(lat) && !Number.isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
       return {
         rowNumber,
         coordinates: { lat, lng },

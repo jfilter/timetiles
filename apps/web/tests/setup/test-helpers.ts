@@ -7,8 +7,8 @@
  * @module
  * @category Test Setup
  */
-import { randomUUID } from "crypto";
-import path from "path";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
 
 // Helper function to create import file with upload for testing
 export const createImportFileWithUpload = async (

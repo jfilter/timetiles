@@ -42,7 +42,7 @@ export class CoordinateValidator {
    * Check for null/invalid coordinate values.
    */
   private checkNullInvalidValues(lat: number | null, lon: number | null): ValidatedCoordinates | null {
-    if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
+    if (lat == null || lon == null || Number.isNaN(lat) || Number.isNaN(lon)) {
       return {
         latitude: 0,
         longitude: 0,
@@ -179,8 +179,8 @@ export class CoordinateValidator {
     const regex = /^(-?\d{1,3}\.?\d{0,10}),\s{0,5}(-?\d{1,3}\.?\d{0,10})$/;
     const match = regex.exec(value);
     if (match && isValidMatchGroup(match, 1) && isValidMatchGroup(match, 2)) {
-      const lat = parseFloat(match[1]!);
-      const lon = parseFloat(match[2]!);
+      const lat = Number.parseFloat(match[1]!);
+      const lon = Number.parseFloat(match[2]!);
       const validated = this.validateCoordinates(lat, lon);
 
       return {
@@ -205,8 +205,8 @@ export class CoordinateValidator {
     const regex = /^(-?\d{1,3}\.?\d{0,10})\s{1,5}(-?\d{1,3}\.?\d{0,10})$/;
     const match = regex.exec(value);
     if (match && isValidMatchGroup(match, 1) && isValidMatchGroup(match, 2)) {
-      const lat = parseFloat(match[1]!);
-      const lon = parseFloat(match[2]!);
+      const lat = Number.parseFloat(match[1]!);
+      const lon = Number.parseFloat(match[2]!);
       const validated = this.validateCoordinates(lat, lon);
 
       return {
@@ -276,12 +276,12 @@ export class CoordinateValidator {
 
     // Try brackets format [lat, lon] - using string parsing to avoid regex security issues
     if (value.includes(",")) {
-      const cleaned = value.replace(/[[\]]/g, "").trim();
+      const cleaned = value.replaceAll(/[[\]]/g, "").trim();
       const parts = cleaned.split(",");
       if (parts.length === 2) {
-        const lat = parseFloat(parts[0]?.trim() ?? "");
-        const lon = parseFloat(parts[1]?.trim() ?? "");
-        if (!isNaN(lat) && !isNaN(lon)) {
+        const lat = Number.parseFloat(parts[0]?.trim() ?? "");
+        const lon = Number.parseFloat(parts[1]?.trim() ?? "");
+        if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
           const validated = this.validateCoordinates(lat, lon);
           return {
             latitude: validated.latitude,

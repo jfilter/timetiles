@@ -12,8 +12,7 @@
  *
  * @module
  */
-import { createLogger } from "@/lib/logger";
-import { logError } from "@/lib/logger";
+import { createLogger, logError } from "@/lib/logger";
 import type { Config } from "@/payload-types";
 
 import { getDependencyOrder } from "../relationship-config";

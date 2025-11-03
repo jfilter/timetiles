@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
+import { logError } from "@/lib/logger";
 import type { User } from "@/payload-types";
 
 export interface AuthenticatedRequest extends NextRequest {
@@ -14,8 +15,8 @@ export interface AuthenticatedRequest extends NextRequest {
  * Returns 401 if user is not authenticated.
  */
 export const withAuth =
-  (handler: (req: AuthenticatedRequest, context?: any) => Promise<Response> | Response) =>
-  async (request: NextRequest, context?: any) => {
+  <TContext = unknown>(handler: (req: AuthenticatedRequest, context?: TContext) => Promise<Response> | Response) =>
+  async (request: NextRequest, context?: TContext) => {
     const payload = await getPayload({ config });
 
     try {
@@ -27,10 +28,11 @@ export const withAuth =
 
       // Attach user to request
       const authRequest = request as AuthenticatedRequest;
-      authRequest.user = user as any;
+      authRequest.user = user as User;
 
       return await handler(authRequest, context);
     } catch (error) {
+      logError(error, "Authentication failed in withAuth middleware");
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
   };
@@ -40,14 +42,14 @@ export const withAuth =
  * Does not return an error if user is not authenticated.
  */
 export const withOptionalAuth =
-  (handler: (req: AuthenticatedRequest, context?: any) => Promise<Response> | Response) =>
-  async (request: NextRequest, context?: any) => {
+  <TContext = unknown>(handler: (req: AuthenticatedRequest, context?: TContext) => Promise<Response> | Response) =>
+  async (request: NextRequest, context?: TContext) => {
     const payload = await getPayload({ config });
 
     try {
       const { user } = await payload.auth({ headers: request.headers });
       const authRequest = request as AuthenticatedRequest;
-      authRequest.user = user as any;
+      authRequest.user = user as User;
     } catch {
       // Allow unauthenticated access - no user attached
     }
@@ -60,8 +62,8 @@ export const withOptionalAuth =
  * Returns 401 if user is not authenticated and 403 if user is not an admin.
  */
 export const withAdminAuth =
-  (handler: (req: AuthenticatedRequest, context?: any) => Promise<Response> | Response) =>
-  async (request: NextRequest, context?: any) => {
+  <TContext = unknown>(handler: (req: AuthenticatedRequest, context?: TContext) => Promise<Response> | Response) =>
+  async (request: NextRequest, context?: TContext) => {
     const payload = await getPayload({ config });
 
     try {
@@ -77,10 +79,11 @@ export const withAdminAuth =
 
       // Attach user to request
       const authRequest = request as AuthenticatedRequest;
-      authRequest.user = user as any;
+      authRequest.user = user as User;
 
       return await handler(authRequest, context);
     } catch (error) {
+      logError(error, "Authentication failed in withAdminAuth middleware");
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
   };

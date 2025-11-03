@@ -19,7 +19,7 @@
  *
  * @module
  */
-import type { CollectionConfig, Payload } from "payload";
+import type { CollectionConfig, Payload, PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { USAGE_TYPES } from "@/lib/constants/quota-constants";
@@ -36,7 +36,7 @@ const isJobCompleted = (doc: ImportJob): boolean => {
   return doc.stage === PROCESSING_STAGE.COMPLETED || doc.stage === PROCESSING_STAGE.FAILED;
 };
 
-const handleJobCompletion = async (payload: Payload, doc: ImportJob, req?: any): Promise<void> => {
+const handleJobCompletion = async (payload: Payload, doc: ImportJob, req?: PayloadRequest): Promise<void> => {
   // Extract import file ID, handling both relationship object and direct ID cases
   const importFileId = typeof doc.importFile === "object" ? doc.importFile.id : doc.importFile;
 

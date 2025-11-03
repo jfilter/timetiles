@@ -90,7 +90,7 @@ export const ClusteredMap = ({ onBoundsChange, clusters = DEFAULT_CLUSTERS }: Re
     const coordinates = feature.geometry?.type === "Point" ? feature.geometry.coordinates : null;
     if (coordinates && coordinates.length >= 2) {
       const [lng, lat] = coordinates as [number, number];
-      if (typeof lng === "number" && typeof lat === "number" && !isNaN(lng) && !isNaN(lat)) {
+      if (typeof lng === "number" && typeof lat === "number" && !Number.isNaN(lng) && !Number.isNaN(lat)) {
         return [lng, lat];
       }
     }

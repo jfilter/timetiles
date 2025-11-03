@@ -84,7 +84,7 @@
  * @module
  * @category Services
  */
-import type { Payload } from "payload";
+import type { Payload, PayloadRequest } from "payload";
 
 import {
   DEFAULT_QUOTAS,
@@ -102,6 +102,12 @@ import { createLogger } from "@/lib/logger";
 import type { User } from "@/payload-types";
 
 const logger = createLogger("quota-service");
+
+/**
+ * User with runtime usage data populated.
+ * The usage field may be present at runtime even if not in static type.
+ */
+type UserWithUsage = User & { usage?: UserUsage };
 
 /**
  * Custom error class for quota exceeded scenarios.
@@ -214,7 +220,7 @@ export class QuotaService {
     user: User | null | undefined,
     quotaType: QuotaType,
     amount: number = 1,
-    req?: any
+    req?: PayloadRequest
   ): Promise<QuotaCheckResult> {
     // Get effective quotas
     const quotas = this.getEffectiveQuotas(user);
@@ -245,7 +251,7 @@ export class QuotaService {
 
     // Get current usage from user object (avoid nested Payload operations)
     // The user object should already have usage populated
-    const usage = (user as any).usage as UserUsage | undefined;
+    const usage = (user as UserWithUsage).usage;
 
     if (!usage) {
       // Return default empty usage as fallback
@@ -314,7 +320,7 @@ export class QuotaService {
   /**
    * Increment usage counter for a user.
    */
-  async incrementUsage(userId: number, usageType: UsageType, amount: number = 1, req?: any): Promise<void> {
+  async incrementUsage(userId: number, usageType: UsageType, amount: number = 1, req?: PayloadRequest): Promise<void> {
     try {
       logger.debug("incrementUsage: Entry", { userId, usageType, amount });
       const user = await this.payload.findByID({
@@ -391,7 +397,7 @@ export class QuotaService {
   /**
    * Decrement usage counter for a user (e.g., when a schedule is disabled).
    */
-  async decrementUsage(userId: number, usageType: UsageType, amount: number = 1, req?: any): Promise<void> {
+  async decrementUsage(userId: number, usageType: UsageType, amount: number = 1, req?: PayloadRequest): Promise<void> {
     try {
       const user = await this.payload.findByID({
         collection: "users",
@@ -448,7 +454,7 @@ export class QuotaService {
   /**
    * Reset daily counters for a user.
    */
-  async resetDailyCounters(userId: number, req?: any): Promise<void> {
+  async resetDailyCounters(userId: number, req?: PayloadRequest): Promise<void> {
     try {
       // Use req.payload if provided to stay in same transaction
       const payloadInstance = req?.payload || this.payload;
@@ -669,8 +675,6 @@ export const getQuotaService = (payload: Payload): QuotaService => {
     return new QuotaService(payload);
   }
 
-  if (!quotaService) {
-    quotaService = new QuotaService(payload);
-  }
+  quotaService ??= new QuotaService(payload);
   return quotaService;
 };

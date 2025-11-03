@@ -150,9 +150,7 @@ let scheduleServiceInstance: ScheduleService | null = null;
  * Gets or creates the schedule service instance.
  */
 export const getScheduleService = (payload: Payload, config?: ScheduleServiceConfig): ScheduleService => {
-  if (!scheduleServiceInstance) {
-    scheduleServiceInstance = new ScheduleService(payload, config);
-  }
+  scheduleServiceInstance ??= new ScheduleService(payload, config);
   return scheduleServiceInstance;
 };
 

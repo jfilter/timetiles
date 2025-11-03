@@ -13,6 +13,8 @@
  *
  * @module
  */
+import { isValidDate } from "@/lib/utils/date";
+
 import { logger } from "../logger";
 
 type DataRecord = Record<string, unknown>;
@@ -119,7 +121,7 @@ export class TypeTransformationService {
     switch (toType) {
       case "number": {
         const num = Number(value);
-        if (isNaN(num)) throw new Error(`Cannot parse "${String(value)}" as number`);
+        if (Number.isNaN(num)) throw new Error(`Cannot parse "${String(value)}" as number`);
         return num;
       }
       case "boolean": {
@@ -132,7 +134,7 @@ export class TypeTransformationService {
       }
       case "date": {
         const date = new Date(String(value));
-        if (isNaN(date.getTime())) throw new Error(`Cannot parse "${String(value)}" as date`);
+        if (!isValidDate(date)) throw new Error(`Cannot parse "${String(value)}" as date`);
         return date.toISOString();
       }
       default:

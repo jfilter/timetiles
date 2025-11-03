@@ -131,8 +131,8 @@ export const areValidCoordinates = (coords: Coordinates): boolean =>
   coords.latitude <= 90 &&
   coords.longitude >= -180 &&
   coords.longitude <= 180 &&
-  !isNaN(coords.latitude) &&
-  !isNaN(coords.longitude);
+  !Number.isNaN(coords.latitude) &&
+  !Number.isNaN(coords.longitude);
 
 // Extend Vitest's expect with custom geospatial matchers
 declare module "vitest" {

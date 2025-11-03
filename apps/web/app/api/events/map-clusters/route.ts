@@ -16,8 +16,10 @@ import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { isValidBounds, type MapBounds } from "@/lib/types/geo";
-import type { User } from "@/payload-types";
+import { badRequest } from "@/lib/utils/api-response";
+import { checkDatabaseFunction } from "@/lib/utils/database-functions";
 import config from "@/payload.config";
+import type { User } from "@/payload-types";
 
 /**
  * Get catalog IDs that the user has access to
@@ -54,7 +56,7 @@ export const GET = withRateLimit(
       }
 
       const filters = buildFilters(parameters, accessibleCatalogIds);
-      const functionExists = await checkClusteringFunction(payload);
+      const functionExists = await checkDatabaseFunction(payload, "cluster_events");
 
       if (!functionExists) {
         return createFunctionNotFoundResponse();
@@ -86,7 +88,7 @@ const extractRequestParameters = (searchParams: URLSearchParams) => ({
 const parseBounds = (boundsParam: string | null): { bounds: MapBounds } | { error: NextResponse } => {
   if (boundsParam == null) {
     return {
-      error: NextResponse.json({ error: "Missing bounds parameter" }, { status: 400 }),
+      error: badRequest("Missing bounds parameter"),
     };
   }
 
@@ -133,25 +135,6 @@ const buildFilters = (
   if (parameters.startDate != null) filters.startDate = parameters.startDate;
   if (parameters.endDate != null) filters.endDate = parameters.endDate;
   return filters;
-};
-
-const checkClusteringFunction = async (payload: Awaited<ReturnType<typeof getPayload>>): Promise<boolean> => {
-  try {
-    const functionCheck = (await payload.db.drizzle.execute(sql`
-      SELECT EXISTS (
-        SELECT 1 FROM pg_proc
-        WHERE proname = 'cluster_events'
-      ) as exists
-    `)) as { rows: Array<{ exists: boolean }> };
-    const functionExists = functionCheck.rows[0]?.exists ?? false;
-    logger.debug("Clustering function check - exists:", { functionExists });
-    return functionExists;
-  } catch (error) {
-    logger.warn("Function check failed:", {
-      error: (error as Error).message,
-    });
-    return false;
-  }
 };
 
 const createFunctionNotFoundResponse = (): NextResponse => {
@@ -207,10 +190,12 @@ const transformResultToClusters = (rows: Array<Record<string, unknown>>) =>
       geometry: {
         type: "Point",
         coordinates: [
-          parseFloat(
+          Number.parseFloat(
             typeof row.longitude === "string" || typeof row.longitude === "number" ? String(row.longitude) : "0"
           ),
-          parseFloat(typeof row.latitude === "string" || typeof row.latitude === "number" ? String(row.latitude) : "0"),
+          Number.parseFloat(
+            typeof row.latitude === "string" || typeof row.latitude === "number" ? String(row.latitude) : "0"
+          ),
         ],
       },
       properties: {

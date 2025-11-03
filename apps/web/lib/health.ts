@@ -15,9 +15,10 @@
  *
  * @module
  */
+import fs from "node:fs/promises";
+import path from "node:path";
+
 import { sql } from "@payloadcms/db-postgres";
-import fs from "fs/promises";
-import path from "path";
 import { getPayload } from "payload";
 
 import config from "../payload.config";

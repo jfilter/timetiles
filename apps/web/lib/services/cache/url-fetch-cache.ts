@@ -9,7 +9,7 @@
  * @category Services/Cache
  */
 
-import crypto from "crypto";
+import crypto from "node:crypto";
 
 import { logger } from "@/lib/logger";
 
@@ -450,8 +450,6 @@ export class UrlFetchCache {
 let instance: UrlFetchCache | null = null;
 
 export const getUrlFetchCache = (): UrlFetchCache => {
-  if (!instance) {
-    instance = new UrlFetchCache();
-  }
+  instance ??= new UrlFetchCache();
   return instance;
 };

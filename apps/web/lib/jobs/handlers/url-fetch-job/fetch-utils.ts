@@ -8,12 +8,11 @@
  * @category Jobs/UrlFetch
  */
 
-import crypto from "crypto";
-import path from "path";
+import crypto from "node:crypto";
+import path from "node:path";
 
 import { logger } from "@/lib/logger";
-import type { UrlFetchCacheOptions } from "@/lib/services/cache";
-import { getUrlFetchCache, type UrlFetchCache } from "@/lib/services/cache";
+import { getUrlFetchCache, type UrlFetchCache, type UrlFetchCacheOptions } from "@/lib/services/cache";
 import type { ScheduledImport } from "@/payload-types";
 
 export interface FetchResult {

@@ -90,7 +90,7 @@ describe("Seed Data Validation", () => {
 
     it("should have valid language codes", () => {
       const datasets = datasetSeeds("development");
-      expect(datasets.every((dataset) => dataset.language && dataset.language.length === 3)).toBe(true);
+      expect(datasets.every((dataset) => dataset.language?.length === 3)).toBe(true);
     });
   });
 

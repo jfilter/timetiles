@@ -13,7 +13,8 @@
  *
  * @module
  */
-import path from "path";
+import path from "node:path";
+
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
@@ -263,9 +264,9 @@ const detectGeocodingFields = (rows: unknown[]): Record<string, string> => {
     // Sample a few rows to check if they contain valid coordinates
     const sample = rows.slice(0, Math.min(10, rows.length));
     const validCoords = sample.filter((row) => {
-      const lat = parseFloat((row as Record<string, unknown>)[candidates.latitudeField!] as string);
-      const lng = parseFloat((row as Record<string, unknown>)[candidates.longitudeField!] as string);
-      return !isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+      const lat = Number.parseFloat((row as Record<string, unknown>)[candidates.latitudeField!] as string);
+      const lng = Number.parseFloat((row as Record<string, unknown>)[candidates.longitudeField!] as string);
+      return !Number.isNaN(lat) && !Number.isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
     });
 
     if (validCoords.length < sample.length * 0.5) {

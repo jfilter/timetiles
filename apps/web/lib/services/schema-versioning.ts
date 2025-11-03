@@ -17,7 +17,7 @@
  *
  * @module
  */
-import type { Payload } from "payload";
+import type { Payload, PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
@@ -31,7 +31,7 @@ export class SchemaVersioningService {
   /**
    * Get the next schema version number for a dataset.
    */
-  static async getNextSchemaVersion(payload: Payload, datasetId: string | number, req?: any): Promise<number> {
+  static async getNextSchemaVersion(payload: Payload, datasetId: string | number, req?: PayloadRequest): Promise<number> {
     const existingSchemas = await payload.find({
       collection: COLLECTION_NAMES.DATASET_SCHEMAS,
       where: {
@@ -71,7 +71,7 @@ export class SchemaVersioningService {
         recordCount?: number;
         batchCount?: number;
       }>;
-      req?: any;
+      req?: PayloadRequest;
     }
   ): Promise<DatasetSchema> {
     const datasetId = typeof dataset === "object" ? dataset.id : dataset;
@@ -140,7 +140,7 @@ export class SchemaVersioningService {
     payload: Payload,
     importJobId: string | number,
     schemaVersionId: string | number,
-    req?: any
+    req?: PayloadRequest
   ): Promise<void> {
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,

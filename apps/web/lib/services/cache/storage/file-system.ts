@@ -9,9 +9,9 @@
  * @category Services/Cache/Storage
  */
 
-import crypto from "crypto";
-import fs from "fs/promises";
-import path from "path";
+import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 import { logger } from "@/lib/logger";
 
@@ -74,9 +74,7 @@ export class FileSystemCacheStorage implements CacheStorage {
   }
 
   private async ensureInitialized(): Promise<void> {
-    if (!this.initPromise) {
-      this.initPromise = this.initialize();
-    }
+    this.initPromise ??= this.initialize();
     await this.initPromise;
   }
 
@@ -450,7 +448,6 @@ export class FileSystemCacheStorage implements CacheStorage {
 
     // Schedule cleanup operations (async operations not allowed in destroy)
     if (this.initPromise) {
-      // eslint-disable-next-line promise/prefer-await-to-then
       void this.initPromise
         .then(() => {
           return this.saveIndex();

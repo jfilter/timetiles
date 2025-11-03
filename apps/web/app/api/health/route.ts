@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 
 import { runHealthChecks } from "@/lib/health";
 import { createLogger } from "@/lib/logger";
+import { internalError } from "@/lib/utils/api-response";
 
 const logger = createLogger("health-api");
 
@@ -78,6 +79,6 @@ export const GET = async () => {
     });
 
     const errorResponse = createErrorResponse(error);
-    return NextResponse.json(errorResponse, { status: 500 });
+    return internalError("Health check failed", "HEALTH_CHECK_FAILED", errorResponse);
   }
 };

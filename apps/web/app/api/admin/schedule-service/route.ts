@@ -14,6 +14,7 @@ import { createRequestLogger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAdminAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { getScheduleService, startScheduleService, stopScheduleService } from "@/lib/services/schedule-service";
+import { internalError } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 const logger = createRequestLogger("schedule-service-api");
@@ -37,7 +38,7 @@ export const GET = withRateLimit(
       });
     } catch (error) {
       logger.error("Failed to get schedule service status", { error });
-      return NextResponse.json({ error: "Failed to get schedule service status" }, { status: ERROR_STATUS });
+      return internalError("Failed to get schedule service status");
     }
   }),
   { type: "API_GENERAL" }
@@ -70,7 +71,7 @@ export const POST = withRateLimit(
       });
     } catch (error) {
       logger.error("Failed to start schedule service", { error });
-      return NextResponse.json({ error: "Failed to start schedule service" }, { status: ERROR_STATUS });
+      return internalError("Failed to start schedule service");
     }
   }),
   { type: "API_GENERAL" }
@@ -93,7 +94,7 @@ export const DELETE = withRateLimit(
       });
     } catch (error) {
       logger.error("Failed to stop schedule service", { error });
-      return NextResponse.json({ error: "Failed to stop schedule service" }, { status: ERROR_STATUS });
+      return internalError("Failed to stop schedule service");
     }
   }),
   { type: "API_GENERAL" }

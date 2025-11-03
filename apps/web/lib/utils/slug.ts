@@ -12,7 +12,8 @@
  * @category Utilities
  * @module
  */
-import { randomBytes } from "crypto";
+import { randomBytes } from "node:crypto";
+
 import type { PayloadRequest } from "payload";
 
 import type { Config } from "@/payload-types";
@@ -26,8 +27,8 @@ import type { Config } from "@/payload-types";
 export const generateSlug = (text: string): string =>
   text
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replaceAll(/(^-|-$)/g, "");
 
 /**
  * Generates a unique slug by checking for existing slugs and appending random suffixes if needed.

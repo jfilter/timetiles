@@ -283,16 +283,17 @@ export const generateChangeSummary = (comparison: SchemaComparison): string => {
     return "No schema changes detected";
   }
 
-  lines.push(`Schema Changes Summary:`);
-  lines.push(`- Total changes: ${comparison.changes.length}`);
-  lines.push(`- Breaking changes: ${comparison.isBreaking ? "Yes" : "No"}`);
-  lines.push(`- Requires approval: ${comparison.requiresApproval ? "Yes" : "No"}`);
-  lines.push(`- Can auto-approve: ${comparison.canAutoApprove ? "Yes" : "No"}`);
+  lines.push(
+    `Schema Changes Summary:`,
+    `- Total changes: ${comparison.changes.length}`,
+    `- Breaking changes: ${comparison.isBreaking ? "Yes" : "No"}`,
+    `- Requires approval: ${comparison.requiresApproval ? "Yes" : "No"}`,
+    `- Can auto-approve: ${comparison.canAutoApprove ? "Yes" : "No"}`
+  );
 
   const breakingChanges = comparison.changes.filter((c) => c.severity === "error");
   if (breakingChanges.length > 0) {
-    lines.push("");
-    lines.push("Breaking Changes:");
+    lines.push("", "Breaking Changes:");
     for (const change of breakingChanges) {
       const details = change.details as { description?: string };
       const fallback = change.type + " at " + change.path;
@@ -302,8 +303,7 @@ export const generateChangeSummary = (comparison: SchemaComparison): string => {
 
   const nonBreaking = comparison.changes.filter((c) => c.severity !== "error");
   if (nonBreaking.length > 0) {
-    lines.push("");
-    lines.push("Non-Breaking Changes:");
+    lines.push("", "Non-Breaking Changes:");
     for (const change of nonBreaking) {
       const details = change.details as { description?: string };
       const fallback = change.type + " at " + change.path;

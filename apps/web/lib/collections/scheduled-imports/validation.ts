@@ -29,7 +29,7 @@ const validateRange = (field: string, min: number, max: number, name: string): s
     return `Invalid ${name} range in cron expression`;
   }
   const [start, end] = parts.map((p) => parseInt(p));
-  if (!start || !end || isNaN(start) || isNaN(end) || start < min || end > max || start > end) {
+  if (!start || !end || Number.isNaN(start) || Number.isNaN(end) || start < min || end > max || start > end) {
     return `Invalid ${name} range in cron expression (must be ${min}-${max})`;
   }
   return true;
@@ -40,7 +40,7 @@ const validateRange = (field: string, min: number, max: number, name: string): s
  */
 const validateStep = (field: string, name: string): string | true => {
   const step = parseInt(field.substring(2));
-  if (isNaN(step) || step <= 0) {
+  if (Number.isNaN(step) || step <= 0) {
     return `Invalid ${name} step value in cron expression`;
   }
   return true;
@@ -53,7 +53,7 @@ const validateList = (field: string, min: number, max: number, name: string): st
   const values = field.split(",");
   for (const v of values) {
     const num = parseInt(v);
-    if (isNaN(num) || num < min || num > max) {
+    if (Number.isNaN(num) || num < min || num > max) {
       return `Invalid ${name} value ${v} in cron expression (must be ${min}-${max})`;
     }
   }
@@ -79,7 +79,7 @@ const validateField = (field: string, min: number, max: number, name: string): s
 
   // Simple numeric value
   const num = parseInt(field);
-  if (isNaN(num) || num < min || num > max) {
+  if (Number.isNaN(num) || num < min || num > max) {
     return `The following field is invalid: Cron expression - invalid ${name} value (must be ${min}-${max})`;
   }
   return true;

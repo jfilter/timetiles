@@ -8,10 +8,9 @@
  */
 
 // Import geospatial assertions
-import "../../utils/geospatial-assertions";
+import { TEST_COORDINATES } from "../../utils/geospatial-assertions";
 
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
-import { TEST_COORDINATES } from "../../utils/geospatial-assertions";
 import { TestDataBuilder } from "../../utils/test-data-builder";
 
 describe("Basic Enhanced Testing Infrastructure", () => {

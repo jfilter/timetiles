@@ -47,10 +47,13 @@ export default [
     rules: {
       "no-console": "off", // Scripts can use console for output
       "no-undef": "off", // Node.js globals are available
-      "@typescript-eslint/no-unused-vars": ["error", { 
-        argsIgnorePattern: "^_",
-        varsIgnorePattern: "^_",
-      }],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
       "sonarjs/slow-regex": "off", // Scripts may need complex regex patterns
       "regexp/no-super-linear-backtracking": "off", // Allow complex regex for scripts
       "sonarjs/cognitive-complexity": "off", // Scripts can be complex
@@ -73,7 +76,8 @@ export default [
         "error",
         {
           selector: "Program",
-          message: "JavaScript files are not allowed in the scripts directory. Please use TypeScript (.ts) files instead.",
+          message:
+            "JavaScript files are not allowed in the scripts directory. Please use TypeScript (.ts) files instead.",
         },
       ],
     },

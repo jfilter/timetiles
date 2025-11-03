@@ -240,10 +240,10 @@ describe("/api/events/map-clusters", () => {
         geometry: {
           type: "Point",
           coordinates: [
-            parseFloat(
+            Number.parseFloat(
               typeof row.longitude === "string" || typeof row.longitude === "number" ? String(row.longitude) : "0"
             ),
-            parseFloat(
+            Number.parseFloat(
               typeof row.latitude === "string" || typeof row.latitude === "number" ? String(row.latitude) : "0"
             ),
           ],

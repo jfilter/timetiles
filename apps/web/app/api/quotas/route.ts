@@ -14,6 +14,7 @@ import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { getQuotaService } from "@/lib/services/quota-service";
+import { internalError, unauthorized } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 const logger = createLogger("api-quotas");
@@ -36,7 +37,7 @@ export const GET = withRateLimit(
       const { user } = await payload.auth({ headers: req.headers });
 
       if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return unauthorized();
       }
 
       const quotaService = getQuotaService(payload);
@@ -113,7 +114,7 @@ export const GET = withRateLimit(
       });
     } catch (error) {
       logger.error("Failed to get quota status", { error });
-      return NextResponse.json({ error: "Failed to retrieve quota information" }, { status: 500 });
+      return internalError("Failed to retrieve quota information");
     }
   },
   { type: "API_GENERAL" }

@@ -66,17 +66,11 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    // Count initial markers
-    const initialMarkers = await page.locator(".maplibregl-marker").count();
-
     // Switch to different dataset
     await explorePage.selectCatalog("Economic Indicators");
     await explorePage.selectDatasets(["GDP Growth Rates"]);
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
-
-    // Count new markers
-    const newMarkers = await page.locator(".maplibregl-marker").count();
 
     // Verify markers were rendered (test verifies map updates, not specific counts)
     // Both datasets should render markers if data exists

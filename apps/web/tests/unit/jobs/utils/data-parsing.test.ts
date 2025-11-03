@@ -6,9 +6,10 @@
  * @module
  * @category Tests
  */
-import fs from "fs";
+import fs from "node:fs";
+import path from "node:path";
+
 import os from "os";
-import path from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {

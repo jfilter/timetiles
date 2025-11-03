@@ -27,7 +27,7 @@ const { mockGoogleGeocode, mockNominatimGeocode, mockNodeGeocoder } = vi.hoisted
   const mockNominatimGeocode = vi.fn();
 
   const mockNodeGeocoder = vi.fn().mockImplementation((config: any) => {
-    if (config && config.provider === "google") {
+    if (config?.provider === "google") {
       return { geocode: mockGoogleGeocode };
     } else {
       return { geocode: mockNominatimGeocode };
@@ -393,9 +393,9 @@ describe("GeocodingService", () => {
       const normalizedAddress = uniqueAddress
         .toLowerCase()
         .trim()
-        .replace(/\s+/g, " ") // Replace multiple spaces with single space
-        .replace(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
-        .replace(/,{2,}/g, ",") // Replace multiple commas with single comma
+        .replaceAll(/\s+/g, " ") // Replace multiple spaces with single space
+        .replaceAll(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
+        .replaceAll(/,{2,}/g, ",") // Replace multiple commas with single comma
         .replace(/^[\s,]+/, "") // Remove leading whitespace and commas
         .trimEnd()
         .replace(/,$/, ""); // Remove single trailing comma
@@ -613,9 +613,9 @@ describe("GeocodingService", () => {
       const normalizedAddress = uniqueAddresses[0]!
         .toLowerCase()
         .trim()
-        .replace(/\s+/g, " ") // Replace multiple spaces with single space
-        .replace(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
-        .replace(/,{2,}/g, ",") // Replace multiple commas with single comma
+        .replaceAll(/\s+/g, " ") // Replace multiple spaces with single space
+        .replaceAll(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
+        .replaceAll(/,{2,}/g, ",") // Replace multiple commas with single comma
         .replace(/^[\s,]+/, "") // Remove leading whitespace and commas
         .trimEnd()
         .replace(/,$/, ""); // Remove single trailing comma
@@ -717,7 +717,7 @@ describe("GeocodingService", () => {
     it("should normalize addresses for better cache matching", async () => {
       const baseAddress = `123 Cache Normalize St, San Francisco, CA ${testCounter}-${Date.now()}-${Math.random()}`;
       const address1 = baseAddress;
-      const address2 = baseAddress.toUpperCase().replace(/,/g, ", ").replace(/\s+/g, "  ") + "!!!";
+      const address2 = baseAddress.toUpperCase().replaceAll(/,/g, ", ").replaceAll(/\s+/g, "  ") + "!!!";
 
       // Set up mocks BEFORE creating service
       mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
@@ -763,9 +763,9 @@ describe("GeocodingService", () => {
       const normalizedAddress = uniqueAddress
         .toLowerCase()
         .trim()
-        .replace(/\s+/g, " ") // Replace multiple spaces with single space
-        .replace(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
-        .replace(/,{2,}/g, ",") // Replace multiple commas with single comma
+        .replaceAll(/\s+/g, " ") // Replace multiple spaces with single space
+        .replaceAll(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
+        .replaceAll(/,{2,}/g, ",") // Replace multiple commas with single comma
         .replace(/^[\s,]+/, "") // Remove leading whitespace and commas
         .trimEnd()
         .replace(/,$/, ""); // Remove single trailing comma
@@ -820,8 +820,8 @@ describe("GeocodingService", () => {
           originalAddress: uniqueAddress,
           normalizedAddress: uniqueAddress
             .toLowerCase()
-            .replace(/[^a-z0-9\s]/g, "")
-            .replace(/\s+/g, " ")
+            .replaceAll(/[^a-z0-9\s]/g, "")
+            .replaceAll(/\s+/g, " ")
             .trim(),
           latitude: 37.7749,
           longitude: -122.4194,

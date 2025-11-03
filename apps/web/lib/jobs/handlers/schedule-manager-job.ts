@@ -100,7 +100,7 @@ const setCronTimeFields = (date: Date, minute: string, hour: string): void => {
 
   if (minute !== "*") {
     const targetMinute = parseInt(minute);
-    if (isNaN(targetMinute) || targetMinute < 0 || targetMinute > 59) {
+    if (Number.isNaN(targetMinute) || targetMinute < 0 || targetMinute > 59) {
       throw new Error(`Invalid minute in cron expression: ${minute}`);
     }
     date.setUTCMinutes(targetMinute);
@@ -108,7 +108,7 @@ const setCronTimeFields = (date: Date, minute: string, hour: string): void => {
 
   if (hour !== "*") {
     const targetHour = parseInt(hour);
-    if (isNaN(targetHour) || targetHour < 0 || targetHour > 23) {
+    if (Number.isNaN(targetHour) || targetHour < 0 || targetHour > 23) {
       throw new Error(`Invalid hour in cron expression: ${hour}`);
     }
     date.setUTCHours(targetHour);

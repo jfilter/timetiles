@@ -10,58 +10,16 @@
  */
 import { sql } from "@payloadcms/db-postgres";
 import { NextResponse } from "next/server";
-import { getPayload, type Payload } from "payload";
+import { getPayload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
+import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { type MapBounds, parseBoundsParameter } from "@/lib/types/geo";
-import type { User } from "@/payload-types";
+import { internalError } from "@/lib/utils/api-response";
+import { checkDatabaseFunction } from "@/lib/utils/database-functions";
 import config from "@/payload.config";
-
-/**
- * Get catalog IDs that the user has access to
- */
-const getAccessibleCatalogIds = async (
-  payload: Payload,
-  user?: User | null
-): Promise<number[]> => {
-  try {
-    const catalogs = await payload.find({
-      collection: "catalogs",
-      where: user
-        ? {
-            or: [{ isPublic: { equals: true } }, { createdBy: { equals: user.id } }],
-          }
-        : { isPublic: { equals: true } },
-      limit: 1000,
-      user,
-      overrideAccess: false,
-    });
-
-    return catalogs.docs.map((c) => (typeof c.id === "number" ? c.id : parseInt(String(c.id))));
-  } catch (error) {
-    logger.warn("Error fetching accessible catalogs", { error });
-    return [];
-  }
-};
-
-const checkHistogramFunction = async (payload: Payload): Promise<boolean> => {
-  try {
-    const functionCheck = (await payload.db.drizzle.execute(sql`
-      SELECT EXISTS (
-        SELECT 1 FROM pg_proc 
-        WHERE proname = 'calculate_event_histogram'
-      ) as exists
-    `)) as { rows: Array<{ exists: boolean }> };
-    return functionCheck.rows[0]?.exists ?? false;
-  } catch (error) {
-    logger.warn("Function check failed:", {
-      error: (error as Error).message,
-    });
-    return false;
-  }
-};
 
 const buildFiltersWithBounds = (params: {
   catalog: string | null;
@@ -116,9 +74,9 @@ export const GET = withRateLimit(
       const bounds = boundsResult.bounds;
 
       // Get accessible catalog IDs for this user
-      const accessibleCatalogIds = await getAccessibleCatalogIds(payload, request.user);
+      const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, request.user);
 
-      const functionExists = await checkHistogramFunction(payload);
+      const functionExists = await checkDatabaseFunction(payload, "calculate_event_histogram");
       if (!functionExists) {
         return createFunctionNotFoundResponse();
       }
@@ -129,7 +87,7 @@ export const GET = withRateLimit(
       return NextResponse.json(response);
     } catch (_error) {
       logError(_error, "Failed to calculate histogram", { parameters: _error });
-      return NextResponse.json({ error: "Failed to calculate histogram" }, { status: 500 });
+      return internalError("Failed to calculate histogram");
     }
   }),
   { type: "API_GENERAL" }

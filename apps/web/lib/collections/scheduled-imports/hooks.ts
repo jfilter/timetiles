@@ -9,7 +9,8 @@
  * @category Collections/ScheduledImports
  */
 
-import { randomBytes } from "crypto";
+import { randomBytes } from "node:crypto";
+
 import type { CollectionBeforeChangeHook } from "payload";
 
 /**

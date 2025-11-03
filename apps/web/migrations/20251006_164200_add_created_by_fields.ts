@@ -1,5 +1,5 @@
-import type { MigrateUpArgs, MigrateDownArgs } from '@payloadcms/db-postgres'
-import { sql } from '@payloadcms/db-postgres'
+import type { MigrateUpArgs, MigrateDownArgs } from "@payloadcms/db-postgres";
+import { sql } from "@payloadcms/db-postgres";
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
@@ -27,7 +27,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX IF NOT EXISTS "catalogs_created_by_idx" ON "payload"."catalogs" USING btree ("created_by_id");
   CREATE INDEX IF NOT EXISTS "_catalogs_v_version_version_created_by_idx" ON "payload"."_catalogs_v" USING btree ("version_created_by_id");
   CREATE INDEX IF NOT EXISTS "media_created_by_idx" ON "payload"."media" USING btree ("created_by_id");
-  CREATE INDEX IF NOT EXISTS "_media_v_version_version_created_by_idx" ON "payload"."_media_v" USING btree ("version_created_by_id");`)
+  CREATE INDEX IF NOT EXISTS "_media_v_version_version_created_by_idx" ON "payload"."_media_v" USING btree ("version_created_by_id");`);
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
@@ -45,5 +45,5 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   ALTER TABLE "payload"."catalogs" DROP COLUMN IF EXISTS "created_by_id";
   ALTER TABLE "payload"."_catalogs_v" DROP COLUMN IF EXISTS "version_created_by_id";
   ALTER TABLE "payload"."media" DROP COLUMN IF EXISTS "created_by_id";
-  ALTER TABLE "payload"."_media_v" DROP COLUMN IF EXISTS "version_created_by_id";`)
+  ALTER TABLE "payload"."_media_v" DROP COLUMN IF EXISTS "version_created_by_id";`);
 }

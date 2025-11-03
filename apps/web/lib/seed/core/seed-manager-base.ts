@@ -19,7 +19,6 @@ import type { Config } from "@/payload-types";
 
 import { DatabaseOperations } from "../database-operations";
 import { RelationshipResolver } from "../relationship-resolver";
-// import type { SeedOptions } from "../types";
 
 const logger = createLogger("seed");
 

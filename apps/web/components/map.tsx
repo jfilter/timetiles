@@ -92,5 +92,5 @@ export const MapComponent = ({ onBoundsChange, events = DEFAULT_EVENTS }: Readon
     };
   }, [events, isLoaded]);
 
-  return <div ref={mapContainer} className="h-full w-full" role="region" aria-label="Map" style={MAP_STYLE} />;
+  return <section ref={mapContainer} className="h-full w-full" aria-label="Map" style={MAP_STYLE} />;
 };

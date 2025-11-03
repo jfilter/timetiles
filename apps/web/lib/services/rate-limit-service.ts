@@ -521,9 +521,7 @@ export const getRateLimitService = (payload: Payload): RateLimitService => {
     return new RateLimitService(payload);
   }
 
-  if (!rateLimitService) {
-    rateLimitService = new RateLimitService(payload);
-  }
+  rateLimitService ??= new RateLimitService(payload);
   return rateLimitService;
 };
 

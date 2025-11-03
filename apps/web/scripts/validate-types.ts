@@ -10,8 +10,8 @@
  * @category Scripts
  */
 
-import { execSync } from "child_process";
-import fs from "fs";
+import { execSync } from "node:child_process";
+import fs from "node:fs";
 
 import { createLogger, logError } from "../lib/logger.js";
 

@@ -444,7 +444,7 @@ describe("TypeTransformationService", () => {
           toType: "number",
           transformStrategy: "custom",
           customTransform: `
-          const celsius = parseFloat(value.replace('°C', ''));
+          const celsius = Number.parseFloat(value.replace('°C', ''));
           return (celsius * 9/5) + 32; // Convert to Fahrenheit
         `,
           enabled: true,

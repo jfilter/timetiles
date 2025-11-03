@@ -8,10 +8,11 @@
  * @module
  * @category Test Setup
  */
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+
 import dotenv from "dotenv";
-import fs from "fs";
-import path from "path";
 
 // Load environment variables from .env.local
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });

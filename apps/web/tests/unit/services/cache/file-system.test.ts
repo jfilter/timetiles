@@ -5,9 +5,10 @@
  * @category Services/Cache/Tests
  */
 
-import fs from "fs/promises";
+import fs from "node:fs/promises";
+import path from "node:path";
+
 import os from "os";
-import path from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { FileSystemCacheStorage } from "@/lib/services/cache/storage/file-system";

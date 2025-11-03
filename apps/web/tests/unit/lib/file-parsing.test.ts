@@ -8,10 +8,11 @@
  * @category Tests
  */
 // No mocking needed - use real file parsing libraries
-import fs from "fs";
+import fs from "node:fs";
+import path from "node:path";
+
 import os from "os";
 import Papa from "papaparse";
-import path from "path";
 import { read, utils, write } from "xlsx";
 
 import { getFixturePath } from "../../setup/test-helpers";

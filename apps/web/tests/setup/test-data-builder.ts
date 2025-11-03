@@ -4,8 +4,7 @@
  * @module
  */
 
-import type { Payload } from "payload";
-import type { Where } from "payload";
+import type { Payload, Where } from "payload";
 
 import type { Catalog, Config, Dataset, PayloadJob, ScheduledImport, User } from "@/payload-types";
 
