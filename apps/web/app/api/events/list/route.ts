@@ -14,7 +14,6 @@ import { getPayload } from "payload";
 
 import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
-import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { type MapBounds, parseBoundsParameter } from "@/lib/types/geo";
 import config from "@/payload.config";
 import type { Event, User } from "@/payload-types";
@@ -104,31 +103,28 @@ const transformEvent = (event: Event) => ({
   isValid: event.validationStatus === "valid",
 });
 
-export const GET = withRateLimit(
-  withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown): Promise<NextResponse> => {
-    try {
-      const payload = await getPayload({ config });
+export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown): Promise<NextResponse> => {
+  try {
+    const payload = await getPayload({ config });
 
-      const parameters = extractListParameters(request.nextUrl.searchParams);
+    const parameters = extractListParameters(request.nextUrl.searchParams);
 
-      // Validate bounds parameter
-      const boundsResult = parseBoundsParameter(parameters.boundsParam);
-      if (boundsResult.error) {
-        return boundsResult.error;
-      }
-
-      const where = buildWhereClause(parameters, boundsResult.bounds);
-      const result = await executeEventsQuery(payload, where, parameters, request.user);
-      const response = buildListResponse(result);
-
-      return NextResponse.json(response);
-    } catch (error) {
-      logError(error, "Failed to fetch events list", { user: request.user?.id });
-      return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
+    // Validate bounds parameter
+    const boundsResult = parseBoundsParameter(parameters.boundsParam);
+    if (boundsResult.error) {
+      return boundsResult.error;
     }
-  }),
-  { type: "API_GENERAL" }
-);
+
+    const where = buildWhereClause(parameters, boundsResult.bounds);
+    const result = await executeEventsQuery(payload, where, parameters, request.user);
+    const response = buildListResponse(result);
+
+    return NextResponse.json(response);
+  } catch (error) {
+    logError(error, "Failed to fetch events list", { user: request.user?.id });
+    return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
+  }
+});
 
 const extractListParameters = (searchParams: URLSearchParams) => ({
   boundsParam: searchParams.get("bounds"),

@@ -14,7 +14,6 @@ import { getPayload } from "payload";
 
 import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
-import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { isValidBounds, type MapBounds } from "@/lib/types/geo";
 import { badRequest } from "@/lib/utils/api-response";
 import { checkDatabaseFunction } from "@/lib/utils/database-functions";
@@ -32,49 +31,46 @@ const getAccessibleCatalogIds = async (
   return getAllAccessibleCatalogIds(payload, user);
 };
 
-export const GET = withRateLimit(
-  withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown) => {
-    try {
-      const payload = await getPayload({ config });
+export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown) => {
+  try {
+    const payload = await getPayload({ config });
 
-      const parameters = extractRequestParameters(request.nextUrl.searchParams);
+    const parameters = extractRequestParameters(request.nextUrl.searchParams);
 
-      const boundsResult = parseBounds(parameters.boundsParam);
-      if ("error" in boundsResult) {
-        return boundsResult.error;
-      }
+    const boundsResult = parseBounds(parameters.boundsParam);
+    if ("error" in boundsResult) {
+      return boundsResult.error;
+    }
 
-      // Get accessible catalog IDs for this user
-      const accessibleCatalogIds = await getAccessibleCatalogIds(payload, request.user);
+    // Get accessible catalog IDs for this user
+    const accessibleCatalogIds = await getAccessibleCatalogIds(payload, request.user);
 
-      // If no accessible catalogs and no catalog filter specified, return empty result
-      if (accessibleCatalogIds.length === 0 && !parameters.catalog) {
-        return NextResponse.json({
-          type: "FeatureCollection",
-          features: [],
-        });
-      }
-
-      const filters = buildFilters(parameters, accessibleCatalogIds);
-      const functionExists = await checkDatabaseFunction(payload, "cluster_events");
-
-      if (!functionExists) {
-        return createFunctionNotFoundResponse();
-      }
-
-      const result = await executeClusteringQuery(payload, boundsResult.bounds, parameters.zoom, filters);
-      const clusters = transformResultToClusters(result.rows);
-
+    // If no accessible catalogs and no catalog filter specified, return empty result
+    if (accessibleCatalogIds.length === 0 && !parameters.catalog) {
       return NextResponse.json({
         type: "FeatureCollection",
-        features: clusters,
+        features: [],
       });
-    } catch (error) {
-      return handleError(error);
     }
-  }),
-  { type: "API_GENERAL" }
-);
+
+    const filters = buildFilters(parameters, accessibleCatalogIds);
+    const functionExists = await checkDatabaseFunction(payload, "cluster_events");
+
+    if (!functionExists) {
+      return createFunctionNotFoundResponse();
+    }
+
+    const result = await executeClusteringQuery(payload, boundsResult.bounds, parameters.zoom, filters);
+    const clusters = transformResultToClusters(result.rows);
+
+    return NextResponse.json({
+      type: "FeatureCollection",
+      features: clusters,
+    });
+  } catch (error) {
+    return handleError(error);
+  }
+});
 
 const extractRequestParameters = (searchParams: URLSearchParams) => ({
   boundsParam: searchParams.get("bounds"),

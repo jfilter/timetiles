@@ -14,7 +14,6 @@ import { getPayload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
-import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { type MapBounds, parseBoundsParameter } from "@/lib/types/geo";
 import { internalError } from "@/lib/utils/api-response";
@@ -61,37 +60,34 @@ const buildFiltersWithBounds = (params: {
   return filters;
 };
 
-export const GET = withRateLimit(
-  withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown): Promise<NextResponse> => {
-    try {
-      const payload = await getPayload({ config });
+export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown): Promise<NextResponse> => {
+  try {
+    const payload = await getPayload({ config });
 
-      const parameters = extractHistogramParameters(request.nextUrl.searchParams);
-      const boundsResult = parseBoundsParameter(parameters.boundsParam);
-      if (boundsResult.error) {
-        return boundsResult.error;
-      }
-      const bounds = boundsResult.bounds;
-
-      // Get accessible catalog IDs for this user
-      const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, request.user);
-
-      const functionExists = await checkDatabaseFunction(payload, "calculate_event_histogram");
-      if (!functionExists) {
-        return createFunctionNotFoundResponse();
-      }
-
-      const histogramResult = await executeHistogramQuery(payload, parameters, bounds, accessibleCatalogIds);
-      const response = buildHistogramResponse(histogramResult.rows);
-
-      return NextResponse.json(response);
-    } catch (_error) {
-      logError(_error, "Failed to calculate histogram", { parameters: _error });
-      return internalError("Failed to calculate histogram");
+    const parameters = extractHistogramParameters(request.nextUrl.searchParams);
+    const boundsResult = parseBoundsParameter(parameters.boundsParam);
+    if (boundsResult.error) {
+      return boundsResult.error;
     }
-  }),
-  { type: "API_GENERAL" }
-);
+    const bounds = boundsResult.bounds;
+
+    // Get accessible catalog IDs for this user
+    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, request.user);
+
+    const functionExists = await checkDatabaseFunction(payload, "calculate_event_histogram");
+    if (!functionExists) {
+      return createFunctionNotFoundResponse();
+    }
+
+    const histogramResult = await executeHistogramQuery(payload, parameters, bounds, accessibleCatalogIds);
+    const response = buildHistogramResponse(histogramResult.rows);
+
+    return NextResponse.json(response);
+  } catch (_error) {
+    logError(_error, "Failed to calculate histogram", { parameters: _error });
+    return internalError("Failed to calculate histogram");
+  }
+});
 
 const extractHistogramParameters = (searchParams: URLSearchParams) => ({
   boundsParam: searchParams.get("bounds"),
