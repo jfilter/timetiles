@@ -143,17 +143,6 @@ const buildEventParams = (
         : bounds;
 
     params.append("bounds", JSON.stringify(boundsData));
-  } else {
-    // Use default NYC area bounds if no bounds are available yet
-    params.append(
-      "bounds",
-      JSON.stringify({
-        west: -74.2,
-        south: 40.5,
-        east: -73.6,
-        north: 40.9,
-      })
-    );
   }
 
   // Add additional parameters
@@ -309,7 +298,7 @@ export const useEventsListQuery = (
   useQuery({
     queryKey: eventsQueryKeys.list(filters, bounds, limit),
     queryFn: ({ signal }) => fetchEvents(filters, bounds, limit, signal),
-    enabled,
+    enabled: enabled && bounds != null, // Only run when bounds are available
     staleTime: 60 * 1000, // 1 minute
     gcTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
@@ -319,7 +308,7 @@ export const useMapClustersQuery = (filters: FilterState, bounds: BoundsType, zo
   useQuery({
     queryKey: eventsQueryKeys.cluster(filters, bounds, zoom),
     queryFn: ({ signal }) => fetchMapClusters(filters, bounds, zoom, signal),
-    enabled,
+    enabled: enabled && bounds != null, // Only run when bounds are available
     staleTime: 60 * 1000, // 1 minute
     gcTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
@@ -329,7 +318,7 @@ export const useHistogramQuery = (filters: FilterState, bounds: BoundsType, enab
   useQuery({
     queryKey: eventsQueryKeys.histogram(filters, bounds),
     queryFn: ({ signal }) => fetchHistogram(filters, bounds, signal),
-    enabled,
+    enabled: enabled && bounds != null, // Only run when bounds are available
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: false,
