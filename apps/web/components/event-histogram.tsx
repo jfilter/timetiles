@@ -11,19 +11,18 @@
 "use client";
 
 import ReactECharts from "echarts-for-react";
-import type { LngLatBounds } from "maplibre-gl";
 import { useTheme } from "next-themes";
 import { useQueryState } from "nuqs";
 import { useCallback, useMemo } from "react";
 
 import { useFilters } from "../lib/filters";
-import { useHistogramQuery } from "../lib/hooks/use-events-queries";
-import { useUIStore } from "../lib/store";
+import { useHistogramQuery, type SimpleBounds } from "../lib/hooks/use-events-queries";
 
 interface EventHistogramProps {
   loading?: boolean;
   height?: number | string;
   className?: string;
+  bounds?: SimpleBounds | null;
 }
 
 const CHART_STYLE = { height: "100%", width: "100%" };
@@ -33,27 +32,18 @@ export const EventHistogram = ({
   loading: externalLoading = false,
   height = 200,
   className,
+  bounds: propBounds,
 }: Readonly<EventHistogramProps>) => {
   const containerStyle = useMemo(() => ({ height }), [height]);
   const { theme } = useTheme();
   const [, setStartDate] = useQueryState("startDate");
   const [, setEndDate] = useQueryState("endDate");
 
-  // Get filter state and map bounds
+  // Get filter state - bounds are always provided via props (debounced from parent)
   const { filters } = useFilters();
-  const mapBounds = useUIStore((state) => state.ui.mapBounds);
 
-  // Convert mapBounds to LngLatBounds format for React Query
-  const bounds: LngLatBounds | null = useMemo(() => {
-    if (!mapBounds) return null;
-
-    return {
-      getNorth: () => mapBounds.north,
-      getSouth: () => mapBounds.south,
-      getEast: () => mapBounds.east,
-      getWest: () => mapBounds.west,
-    } as LngLatBounds;
-  }, [mapBounds]);
+  // Use the bounds prop directly - no fallback to store
+  const bounds = propBounds ?? null;
 
   // Fetch histogram data using React Query
   const { data: histogramData, isLoading } = useHistogramQuery(filters, bounds);

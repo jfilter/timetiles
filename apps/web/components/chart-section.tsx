@@ -13,6 +13,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { useCallback, useState } from "react";
 
+import type { SimpleBounds } from "../lib/hooks/use-events-queries";
 import type { Catalog, Dataset, Event } from "../payload-types";
 import { DatasetBarChart } from "./dataset-bar-chart";
 import { EventHistogram } from "./event-histogram";
@@ -22,11 +23,12 @@ interface ChartSectionProps {
   datasets: Dataset[];
   catalogs: Catalog[];
   loading?: boolean;
+  bounds?: SimpleBounds | null;
 }
 
 type ChartType = "timeline" | "dataset-bar" | "catalog-bar";
 
-export const ChartSection = ({ events, datasets, catalogs, loading }: Readonly<ChartSectionProps>) => {
+export const ChartSection = ({ events, datasets, catalogs, loading, bounds }: Readonly<ChartSectionProps>) => {
   const [chartType, setChartType] = useState<ChartType>("timeline");
 
   const handleChartTypeChange = useCallback((value: string) => setChartType(value as ChartType), []);
@@ -48,7 +50,7 @@ export const ChartSection = ({ events, datasets, catalogs, loading }: Readonly<C
       </div>
 
       <div className="min-h-[200px]">
-        {chartType === "timeline" && <EventHistogram loading={loading} />}
+        {chartType === "timeline" && <EventHistogram loading={loading} bounds={bounds} />}
         {chartType === "dataset-bar" && (
           <DatasetBarChart
             events={events}

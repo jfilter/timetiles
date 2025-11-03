@@ -340,7 +340,7 @@ export default {
         'ui',         // Shared UI components package
         'assets',     // Shared assets package (logos, images)
         'config',     // Configuration packages (ESLint, TypeScript, Prettier) - ONLY for packages/*-config/
-        
+
         // Core features
         'import',     // File import system (manual, scheduled, webhook)
         'geocoding',  // Address geocoding services
@@ -354,7 +354,8 @@ export default {
         'admin',      // Admin panel features
         'auth',       // Authentication and user sessions
         'media',      // Media and file management
-        
+        'charts',     // Charts and data visualization
+
         // Technical areas
         'db',         // Database, migrations, PostGIS functions
         'api',        // API endpoints (REST)
@@ -362,7 +363,7 @@ export default {
         'deps',       // Dependencies and package management
         'seed',       // Test and development data generation
         'test',       // Testing infrastructure and test files
-        
+
         // Infrastructure
         'ci',         // GitHub Actions, CI/CD pipelines
         'build',      // Docker, build configuration, Turbo
@@ -477,6 +478,7 @@ export default {
           admin: 'Admin panel features',
           auth: 'Authentication and sessions',
           media: 'Media and file management',
+          charts: 'Charts and data visualization',
           
           // Technical
           db: 'Database and migrations',
