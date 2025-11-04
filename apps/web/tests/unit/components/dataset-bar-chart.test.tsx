@@ -124,7 +124,7 @@ describe("DatasetBarChart", () => {
   });
 
   it("shows loading state", () => {
-    render(<DatasetBarChart events={[]} datasets={mockDatasets} catalogs={mockCatalogs} loading />);
+    render(<DatasetBarChart events={[]} datasets={mockDatasets} catalogs={mockCatalogs} isInitialLoad />);
 
     // Check for loading indicator
     const loadingElement = document.querySelector(".animate-spin");

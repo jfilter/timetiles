@@ -22,13 +22,21 @@ interface ChartSectionProps {
   events: Event[];
   datasets: Dataset[];
   catalogs: Catalog[];
-  loading?: boolean;
+  isInitialLoad?: boolean;
+  isUpdating?: boolean;
   bounds?: SimpleBounds | null;
 }
 
 type ChartType = "timeline" | "dataset-bar" | "catalog-bar";
 
-export const ChartSection = ({ events, datasets, catalogs, loading, bounds }: Readonly<ChartSectionProps>) => {
+export const ChartSection = ({
+  events,
+  datasets,
+  catalogs,
+  isInitialLoad = false,
+  isUpdating = false,
+  bounds,
+}: Readonly<ChartSectionProps>) => {
   const [chartType, setChartType] = useState<ChartType>("timeline");
 
   const handleChartTypeChange = useCallback((value: string) => setChartType(value as ChartType), []);
@@ -50,14 +58,17 @@ export const ChartSection = ({ events, datasets, catalogs, loading, bounds }: Re
       </div>
 
       <div className="min-h-[200px]">
-        {chartType === "timeline" && <EventHistogram loading={loading} bounds={bounds} />}
+        {chartType === "timeline" && (
+          <EventHistogram isInitialLoad={isInitialLoad} isUpdating={isUpdating} bounds={bounds} />
+        )}
         {chartType === "dataset-bar" && (
           <DatasetBarChart
             events={events}
             datasets={datasets}
             catalogs={catalogs}
             groupBy="dataset"
-            loading={loading}
+            isInitialLoad={isInitialLoad}
+            isUpdating={isUpdating}
           />
         )}
         {chartType === "catalog-bar" && (
@@ -66,7 +77,8 @@ export const ChartSection = ({ events, datasets, catalogs, loading, bounds }: Re
             datasets={datasets}
             catalogs={catalogs}
             groupBy="catalog"
-            loading={loading}
+            isInitialLoad={isInitialLoad}
+            isUpdating={isUpdating}
           />
         )}
       </div>

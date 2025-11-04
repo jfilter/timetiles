@@ -12,7 +12,8 @@ import type { Event } from "../payload-types";
 
 interface EventsListProps {
   events: Event[];
-  loading?: boolean;
+  isInitialLoad?: boolean;
+  isUpdating?: boolean;
 }
 
 const safeToString = (value: unknown): string => {
@@ -114,8 +115,9 @@ const EventItem = ({ event }: { event: Event }) => {
   );
 };
 
-export const EventsList = ({ events, loading }: Readonly<EventsListProps>) => {
-  if (loading === true) {
+export const EventsList = ({ events, isInitialLoad = false, isUpdating = false }: Readonly<EventsListProps>) => {
+  // Only show full loading state on initial load
+  if (isInitialLoad) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="text-muted-foreground">Loading events...</div>
@@ -123,7 +125,7 @@ export const EventsList = ({ events, loading }: Readonly<EventsListProps>) => {
     );
   }
 
-  if (events.length === 0) {
+  if (events.length === 0 && !isUpdating) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="text-muted-foreground">No events found</div>
@@ -131,11 +133,22 @@ export const EventsList = ({ events, loading }: Readonly<EventsListProps>) => {
     );
   }
 
+  // Show events with subtle loading indicator when updating
   return (
-    <div className="space-y-2">
-      {events.map((event) => (
-        <EventItem key={event.id} event={event} />
-      ))}
+    <div className="relative">
+      {isUpdating && (
+        <div className="absolute right-0 top-0 z-10">
+          <div className="bg-background/80 flex items-center gap-2 rounded-md border px-3 py-1 text-xs backdrop-blur-sm">
+            <div className="border-primary h-3 w-3 animate-spin rounded-full border-b-2" />
+            <span className="text-muted-foreground">Updating...</span>
+          </div>
+        </div>
+      )}
+      <div className={`space-y-2 transition-opacity ${isUpdating ? "opacity-90" : "opacity-100"}`}>
+        {events.map((event) => (
+          <EventItem key={event.id} event={event} />
+        ))}
+      </div>
     </div>
   );
 };

@@ -25,7 +25,8 @@ interface DatasetBarChartProps {
   datasets: Dataset[];
   catalogs: Catalog[];
   groupBy?: "dataset" | "catalog";
-  loading?: boolean;
+  isInitialLoad?: boolean;
+  isUpdating?: boolean;
   height?: number | string;
   className?: string;
 }
@@ -35,7 +36,8 @@ export const DatasetBarChart = ({
   datasets,
   catalogs,
   groupBy = "dataset",
-  loading = false,
+  isInitialLoad = false,
+  isUpdating = false,
   height = 300,
   className,
 }: Readonly<DatasetBarChartProps>) => {
@@ -96,7 +98,8 @@ export const DatasetBarChart = ({
       orientation={chartData.length > 8 ? "horizontal" : "vertical"}
       height={height}
       className={className}
-      loading={loading}
+      isInitialLoad={isInitialLoad}
+      isUpdating={isUpdating}
       theme={theme === "dark" ? defaultDarkTheme : defaultLightTheme}
       onBarClick={handleBarClick}
       xLabel=""

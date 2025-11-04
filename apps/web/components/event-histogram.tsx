@@ -16,10 +16,11 @@ import { useQueryState } from "nuqs";
 import { useCallback, useMemo } from "react";
 
 import { useFilters } from "../lib/filters";
-import { useHistogramQuery, type SimpleBounds } from "../lib/hooks/use-events-queries";
+import { type SimpleBounds, useHistogramQuery } from "../lib/hooks/use-events-queries";
 
 interface EventHistogramProps {
-  loading?: boolean;
+  isInitialLoad?: boolean;
+  isUpdating?: boolean;
   height?: number | string;
   className?: string;
   bounds?: SimpleBounds | null;
@@ -29,7 +30,8 @@ const CHART_STYLE = { height: "100%", width: "100%" };
 const CHART_OPTS = { renderer: "svg" as const };
 
 export const EventHistogram = ({
-  loading: externalLoading = false,
+  isInitialLoad = false,
+  isUpdating: externalIsUpdating = false,
   height = 200,
   className,
   bounds: propBounds,
@@ -50,7 +52,7 @@ export const EventHistogram = ({
 
   // Extract histogram data, with fallback for error states
   const histogram = histogramData?.histogram ?? [];
-  const loading = isLoading || externalLoading;
+  const isUpdating = externalIsUpdating || (isLoading && !isInitialLoad);
 
   // Helper functions for chart configuration
   const getAxisConfig = (isDark: boolean) => ({
@@ -181,7 +183,8 @@ export const EventHistogram = ({
 
   const chartEvents = useMemo(() => ({ click: handleChartClick }), [handleChartClick]);
 
-  if (loading || externalLoading) {
+  // Only show full loading state on initial load
+  if (isInitialLoad) {
     return (
       <div className={`flex items-center justify-center ${className}`} style={containerStyle}>
         <div className="text-muted-foreground text-sm">Loading histogram...</div>
@@ -189,7 +192,7 @@ export const EventHistogram = ({
     );
   }
 
-  if (histogram.length === 0) {
+  if (histogram.length === 0 && !isUpdating) {
     return (
       <div className={`flex items-center justify-center ${className}`} style={containerStyle}>
         <div className="text-muted-foreground text-sm">No data available</div>
@@ -198,8 +201,18 @@ export const EventHistogram = ({
   }
 
   return (
-    <div className={className} style={containerStyle}>
-      <ReactECharts option={getChartOption()} style={CHART_STYLE} onEvents={chartEvents} opts={CHART_OPTS} />
+    <div className={`relative ${className}`} style={containerStyle}>
+      {isUpdating && (
+        <div className="absolute right-2 top-2 z-10">
+          <div className="bg-background/80 flex items-center gap-2 rounded-md border px-3 py-1 text-xs backdrop-blur-sm">
+            <div className="border-primary h-3 w-3 animate-spin rounded-full border-b-2" />
+            <span className="text-muted-foreground">Updating...</span>
+          </div>
+        </div>
+      )}
+      <div className={`transition-opacity ${isUpdating ? "opacity-90" : "opacity-100"}`} style={containerStyle}>
+        <ReactECharts option={getChartOption()} style={CHART_STYLE} onEvents={chartEvents} opts={CHART_OPTS} />
+      </div>
     </div>
   );
 };

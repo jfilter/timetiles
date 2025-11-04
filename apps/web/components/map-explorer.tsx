@@ -15,7 +15,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { useFilters } from "../lib/filters";
 import { useDebounce } from "../lib/hooks/use-debounce";
-import { useEventsListQuery, useMapClustersQuery } from "../lib/hooks/use-events-queries";
+import { useClusterStatsQuery, useEventsListQuery, useMapClustersQuery } from "../lib/hooks/use-events-queries";
 import { useUIStore } from "../lib/store";
 import type { Catalog, Dataset } from "../payload-types";
 import { ActiveFilters } from "./active-filters";
@@ -32,6 +32,7 @@ interface MapExplorerProps {
 
 export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) => {
   const [mapZoom, setMapZoom] = useState(9);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   // Get filter state from URL (nuqs)
   const { filters, activeFilterCount, hasActiveFilters, removeFilter, clearAllFilters } = useFilters();
@@ -68,10 +69,22 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
     mapZoom
   );
 
+  // Fetch global cluster statistics (independent of viewport)
+  const { data: clusterStats } = useClusterStatsQuery(filters);
+
   // Extract data from queries
   const events = eventsData?.events ?? [];
   const clusters = clustersData?.features ?? [];
   const isLoading = eventsLoading || clustersLoading;
+
+  // Track when we've loaded data at least once
+  const isInitialLoad = isLoading && !hasLoadedOnce;
+  const isUpdating = isLoading && hasLoadedOnce;
+
+  // Mark as loaded once we have data
+  if (!isLoading && !hasLoadedOnce && (events.length > 0 || clusters.length > 0)) {
+    setHasLoadedOnce(true);
+  }
 
   // Helper function to get catalog name by ID
   const getCatalogName = (catalogId: string): string => {
@@ -142,7 +155,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
     <div className="flex h-screen">
       {/* Map - Left Side (Full Height) */}
       <div className="h-full w-1/2 lg:w-2/5">
-        <ClusteredMap clusters={clusters} onBoundsChange={handleBoundsChange} />
+        <ClusteredMap clusters={clusters} clusterStats={clusterStats} onBoundsChange={handleBoundsChange} />
       </div>
 
       {/* Right Side Container */}
@@ -173,7 +186,8 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
                   events={events}
                   datasets={datasets}
                   catalogs={catalogs}
-                  loading={isLoading}
+                  isInitialLoad={isInitialLoad}
+                  isUpdating={isUpdating}
                   bounds={debouncedSimpleBounds}
                 />
               </div>
@@ -181,7 +195,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
               {/* Events List */}
               <div className="border-t pt-6">
                 <h2 className="mb-4 text-lg font-semibold">Events ({events.length})</h2>
-                <EventsList events={events} loading={isLoading} />
+                <EventsList events={events} isInitialLoad={isInitialLoad} isUpdating={isUpdating} />
               </div>
             </div>
           </div>

@@ -176,6 +176,7 @@ const executeClusteringQuery = async (
 const transformResultToClusters = (rows: Array<Record<string, unknown>>) =>
   rows.map((row: Record<string, unknown>) => {
     const isCluster = Number(row.event_count) > 1;
+    const featureId = row.cluster_id ?? row.event_id;
 
     if (isCluster) {
       logger.debug("Cluster found:", { row });
@@ -183,6 +184,7 @@ const transformResultToClusters = (rows: Array<Record<string, unknown>>) =>
 
     return {
       type: "Feature",
+      id: featureId, // Root-level ID for MapLibre feature tracking
       geometry: {
         type: "Point",
         coordinates: [
@@ -195,11 +197,9 @@ const transformResultToClusters = (rows: Array<Record<string, unknown>>) =>
         ],
       },
       properties: {
-        id: row.cluster_id ?? row.event_id,
         type: isCluster ? "event-cluster" : "event-point",
         ...(isCluster ? { count: Number(row.event_count) } : {}),
         ...(row.event_title != null && typeof row.event_title === "string" ? { title: row.event_title } : {}),
-        ...(row.event_ids != null && Number(row.event_count) <= 10 ? { eventIds: row.event_ids } : {}),
       },
     };
   });

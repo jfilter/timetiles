@@ -48,7 +48,8 @@ export interface BaseChartProps {
   height?: number | string;
   width?: number | string;
   className?: string;
-  loading?: boolean;
+  isInitialLoad?: boolean;
+  isUpdating?: boolean;
   theme?: ChartTheme;
   config?: Partial<EChartsOption>;
   onChartReady?: (chart: EChartsInstance) => void;

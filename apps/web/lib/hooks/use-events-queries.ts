@@ -94,6 +94,14 @@ export interface ImportProgressResponse {
   createdAt?: string;
 }
 
+export interface ClusterStatsResponse {
+  p20: number;
+  p40: number;
+  p60: number;
+  p80: number;
+  p100: number;
+}
+
 // Simple bounds interface for better React Query compatibility
 export interface SimpleBounds {
   north: number;
@@ -214,6 +222,37 @@ const fetchHistogram = async (
   return response.json() as Promise<HistogramResponse>;
 };
 
+const fetchClusterStats = async (filters: FilterState, signal?: AbortSignal): Promise<ClusterStatsResponse> => {
+  // Build params without bounds (global stats)
+  const params = new URLSearchParams();
+
+  if (filters.catalog != null && filters.catalog !== "") {
+    params.append("catalog", filters.catalog);
+  }
+
+  filters.datasets.forEach((datasetId) => {
+    params.append("datasets", datasetId);
+  });
+
+  if (filters.startDate != null && filters.startDate !== "") {
+    params.append("startDate", filters.startDate);
+  }
+
+  if (filters.endDate != null && filters.endDate !== "") {
+    params.append("endDate", filters.endDate);
+  }
+
+  logger.debug("Fetching global cluster stats", { filters });
+
+  const response = await fetch(`/api/events/cluster-stats?${params.toString()}`, { signal });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch cluster stats: ${response.statusText}`);
+  }
+
+  return response.json() as Promise<ClusterStatsResponse>;
+};
+
 const fetchImportProgress = async (importId: string, signal?: AbortSignal): Promise<ImportProgressResponse> => {
   logger.debug("Fetching import progress", { importId });
 
@@ -281,6 +320,8 @@ export const eventsQueryKeys = {
   clusters: () => [...eventsQueryKeys.all, "clusters"] as const,
   cluster: (filters: FilterState, bounds: BoundsType, zoom: number) =>
     [...eventsQueryKeys.clusters(), { filters, bounds, zoom }] as const,
+  clusterStats: () => [...eventsQueryKeys.all, "cluster-stats"] as const,
+  clusterStat: (filters: FilterState) => [...eventsQueryKeys.clusterStats(), { filters }] as const,
   histograms: () => [...eventsQueryKeys.all, "histogram"] as const,
   histogram: (filters: FilterState, bounds: BoundsType) =>
     [...eventsQueryKeys.histograms(), { filters, bounds }] as const,
@@ -302,6 +343,7 @@ export const useEventsListQuery = (
     staleTime: 60 * 1000, // 1 minute
     gcTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData, // Show previous data while loading new
   });
 
 export const useMapClustersQuery = (filters: FilterState, bounds: BoundsType, zoom: number, enabled: boolean = true) =>
@@ -312,6 +354,7 @@ export const useMapClustersQuery = (filters: FilterState, bounds: BoundsType, zo
     staleTime: 60 * 1000, // 1 minute
     gcTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData, // Show previous data while loading new
   });
 
 export const useHistogramQuery = (filters: FilterState, bounds: BoundsType, enabled: boolean = true) =>
@@ -323,6 +366,16 @@ export const useHistogramQuery = (filters: FilterState, bounds: BoundsType, enab
     gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData, // Show previous data while loading new
+  });
+
+export const useClusterStatsQuery = (filters: FilterState, enabled: boolean = true) =>
+  useQuery({
+    queryKey: eventsQueryKeys.clusterStat(filters),
+    queryFn: ({ signal }) => fetchClusterStats(filters, signal),
+    enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes - stats change less frequently
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnWindowFocus: false,
   });
 
 export const useImportProgressQuery = (importId: string | null) =>

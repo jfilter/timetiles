@@ -355,6 +355,7 @@ export default {
         'auth',       // Authentication and user sessions
         'media',      // Media and file management
         'charts',     // Charts and data visualization
+        'map',        // Map visualization and clustering
 
         // Technical areas
         'db',         // Database, migrations, PostGIS functions
@@ -479,7 +480,8 @@ export default {
           auth: 'Authentication and sessions',
           media: 'Media and file management',
           charts: 'Charts and data visualization',
-          
+          map: 'Map visualization and clustering',
+
           // Technical
           db: 'Database and migrations',
           api: 'API endpoints',

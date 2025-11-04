@@ -67,7 +67,7 @@ describe.sequential("EventHistogram", () => {
       error: null,
     });
 
-    renderWithProviders(<EventHistogram loading />);
+    renderWithProviders(<EventHistogram isInitialLoad />);
     expect(screen.getByText("Loading histogram...")).toBeInTheDocument();
   });
 

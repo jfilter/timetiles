@@ -30,13 +30,13 @@ const createMockEvent = (overrides: Partial<Event> = {}): Event => ({
 
 describe("EventsList", () => {
   test("displays loading state correctly", () => {
-    renderWithProviders(<EventsList events={[]} loading />);
+    renderWithProviders(<EventsList events={[]} isInitialLoad />);
 
     expect(screen.getByText("Loading events...")).toBeInTheDocument();
   });
 
   test("shows empty state when no events provided", () => {
-    renderWithProviders(<EventsList events={[]} loading={false} />);
+    renderWithProviders(<EventsList events={[]} />);
 
     expect(screen.getByText("No events found")).toBeInTheDocument();
   });
@@ -284,7 +284,8 @@ describe("EventsList", () => {
     expect(screen.getAllByText("Event 1")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Event 10")[0]).toBeInTheDocument();
 
-    // Should have proper container structure
-    expect(container.firstChild).toHaveClass("space-y-2");
+    // Should have proper container structure - now wrapped in relative div
+    const innerContainer = container.querySelector(".space-y-2");
+    expect(innerContainer).toBeInTheDocument();
   });
 });
