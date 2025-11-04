@@ -1,6 +1,6 @@
 import type { EChartsOption, SeriesOption } from "echarts";
 
-import type { ChartTheme } from "../types";
+import type { ChartTheme } from "../components/charts/types";
 
 // Type for ECharts series configuration
 interface EChartsSeriesItem {

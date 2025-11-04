@@ -56,31 +56,6 @@ export interface BaseChartProps {
   onEvents?: Record<string, (params: EChartsEventParams) => void>;
 }
 
-export interface HistogramBin<T = unknown> {
-  range: [Date | number, Date | number];
-  count: number;
-  items: T[];
-}
-
-export interface HistogramProps<T = unknown> extends BaseChartProps {
-  data: T[];
-  xAccessor: (item: T) => Date | string | number;
-  yAccessor?: (items: T[]) => number;
-  binning?: "auto" | "day" | "week" | "month" | "year" | number;
-  color?: string | ((bin: HistogramBin<T>) => string);
-  onBarClick?: (bin: HistogramBin<T>) => void;
-  xLabel?: string;
-  yLabel?: string;
-  title?: string;
-  formatter?: {
-    xAxis?: (value: Date | string | number) => string;
-    yAxis?: (value: number) => string;
-    tooltip?: (bin: HistogramBin<T>) => string;
-  };
-}
-
-export type BinningStrategy = "day" | "week" | "month" | "year";
-
 export interface BarChartDataItem {
   label: string;
   value: number;
@@ -88,17 +63,29 @@ export interface BarChartDataItem {
   metadata?: unknown;
 }
 
-export interface BarChartProps extends BaseChartProps {
+export interface BarChartProps {
   data: BarChartDataItem[];
-  orientation?: "horizontal" | "vertical";
+  height?: number | string;
+  className?: string;
+  theme?: ChartTheme;
+  isInitialLoad?: boolean;
+  isUpdating?: boolean;
   onBarClick?: (item: BarChartDataItem, index: number) => void;
-  xLabel?: string;
-  yLabel?: string;
-  title?: string;
-  showValues?: boolean;
-  valueFormatter?: (value: number) => string;
-  labelFormatter?: (label: string) => string;
-  maxLabelLength?: number;
-  sortBy?: "value" | "label" | "none";
-  sortOrder?: "asc" | "desc";
+}
+
+export interface TimeHistogramDataItem {
+  date: string | Date | number;
+  count: number;
+}
+
+export interface TimeHistogramProps {
+  data?: TimeHistogramDataItem[];
+  onBarClick?: (date: Date) => void;
+  theme?: ChartTheme;
+  height?: number | string;
+  className?: string;
+  isInitialLoad?: boolean;
+  isUpdating?: boolean;
+  loadingMessage?: string;
+  emptyMessage?: string;
 }

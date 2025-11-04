@@ -1,14 +1,13 @@
 export { BaseChart } from "./BaseChart";
-export { Histogram } from "./Histogram";
 export { BarChart } from "./BarChart";
+export { TimeHistogram } from "./TimeHistogram";
 export type {
   BaseChartProps,
-  HistogramProps,
-  HistogramBin,
   BarChartProps,
   BarChartDataItem,
   ChartTheme,
-  BinningStrategy,
+  TimeHistogramProps,
+  TimeHistogramDataItem,
 } from "./types";
-export { createHistogramBins, formatDateForBin, determineBinningStrategy } from "./utils/data-transform";
-export { defaultLightTheme, defaultDarkTheme, applyThemeToOption } from "./utils/theme";
+export { defaultLightTheme, defaultDarkTheme, applyThemeToOption } from "../../lib/chart-themes";
+export { useChartTheme } from "../../hooks/use-chart-theme";

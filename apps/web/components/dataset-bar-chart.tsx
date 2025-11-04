@@ -1,114 +1,95 @@
 /**
- * Bar chart visualization for dataset and catalog event counts.
+ * Bar chart visualization for dataset event counts.
  *
- * Displays event distribution across datasets or catalogs as an interactive
+ * Displays event distribution across datasets as an interactive
  * bar chart. Supports click-to-filter functionality and theme-aware styling.
- * Automatically updates based on current filter state.
+ * Uses server-side aggregation for better performance.
  *
  * @module
  * @category Components
  */
 "use client";
 
-import { BarChart, type BarChartDataItem } from "@workspace/ui/components/charts";
-import { defaultDarkTheme, defaultLightTheme } from "@workspace/ui/components/charts";
-import { useTheme } from "next-themes";
+import { BarChart, type BarChartDataItem, useChartTheme } from "@workspace/ui/charts";
 import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
-import { useCallback } from "react";
+import { memo, useCallback, useMemo } from "react";
 
-import { useEventsByCatalog, useEventsByDataset } from "@/lib/hooks/use-event-stats";
-
-import type { Catalog, Dataset, Event } from "../payload-types";
+import { useFilters } from "@/lib/filters";
+import { useChartQuery } from "@/lib/hooks/use-chart-query";
+import { type SimpleBounds, useEventsByDatasetQuery } from "@/lib/hooks/use-events-queries";
 
 interface DatasetBarChartProps {
-  events: Event[];
-  datasets: Dataset[];
-  catalogs: Catalog[];
-  groupBy?: "dataset" | "catalog";
-  isInitialLoad?: boolean;
-  isUpdating?: boolean;
   height?: number | string;
   className?: string;
+  bounds?: SimpleBounds | null;
 }
 
-export const DatasetBarChart = ({
-  events,
-  datasets,
-  catalogs,
-  groupBy = "dataset",
-  isInitialLoad = false,
-  isUpdating = false,
-  height = 300,
-  className,
-}: Readonly<DatasetBarChartProps>) => {
-  const { theme } = useTheme();
+/**
+ * Dataset bar chart component with data fetching.
+ *
+ * Fetches aggregated dataset data from the API and renders it using the BarChart
+ * component.
+ */
+const DatasetBarChartComponent = ({ height = 300, className, bounds: propBounds }: Readonly<DatasetBarChartProps>) => {
+  // Get chart theme
+  const chartTheme = useChartTheme();
+
+  // Get filter state
+  const { filters } = useFilters();
+
+  // Use the bounds prop directly
+  const bounds = propBounds ?? null;
+
+  // Fetch aggregated dataset data using React Query
+  const datasetQuery = useEventsByDatasetQuery(filters, bounds);
+
+  // Add chart-specific loading states
+  const { data: datasetData, isInitialLoad, isUpdating } = useChartQuery(datasetQuery);
+
+  // URL state for dataset filters
   const [, setSelectedDatasets] = useQueryState("datasets", parseAsArrayOf(parseAsString).withDefault([]));
-  const [, setSelectedCatalog] = useQueryState("catalog");
 
-  const datasetData = useEventsByDataset(events, datasets);
-  const catalogData = useEventsByCatalog(events, catalogs);
+  // Transform API data to chart format
+  const chartData: BarChartDataItem[] = useMemo(() => {
+    if (!datasetData) return [];
 
-  const chartData = groupBy === "dataset" ? datasetData : catalogData;
+    return datasetData.datasets.map((item) => ({
+      label: item.datasetName,
+      value: item.count,
+      metadata: { datasetId: String(item.datasetId) },
+    }));
+  }, [datasetData]);
 
   const handleBarClick = useCallback(
     (item: BarChartDataItem) => {
-      if (groupBy === "dataset") {
-        // Toggle dataset selection
-        void setSelectedDatasets((current) => {
-          const metadata = item.metadata as { datasetId: string } | undefined;
-          const datasetId = metadata?.datasetId;
-          if (datasetId == undefined || datasetId == null) return current;
+      // Toggle dataset selection
+      void setSelectedDatasets((current) => {
+        const metadata = item.metadata as { datasetId: string } | undefined;
+        const datasetId = metadata?.datasetId;
+        if (datasetId == undefined || datasetId == null) return current;
 
-          if (current.includes(datasetId)) {
-            return current.filter((id) => id !== datasetId);
-          } else {
-            return [...current, datasetId];
-          }
-        });
-      } else {
-        // Set catalog filter
-        const metadata = item.metadata as { catalogId: string } | undefined;
-        const catalogId = metadata?.catalogId;
-        if (catalogId != null) {
-          void setSelectedCatalog(catalogId);
+        if (current.includes(datasetId)) {
+          return current.filter((id) => id !== datasetId);
+        } else {
+          return [...current, datasetId];
         }
-      }
+      });
     },
-    [groupBy, setSelectedDatasets, setSelectedCatalog]
+    [setSelectedDatasets]
   );
-
-  const valueFormatter = useCallback((value: number) => value.toLocaleString(), []);
-
-  // Generate colors based on theme
-  const getBarColor = (index: number) => {
-    const lightColors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#14b8a6"];
-    const darkColors = ["#60a5fa", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#2dd4bf"];
-    const colors = theme === "dark" ? darkColors : lightColors;
-    return colors[index % colors.length];
-  };
-
-  const dataWithColors = chartData.map((item, index) => ({
-    ...item,
-    color: getBarColor(index),
-  }));
 
   return (
     <BarChart
-      data={dataWithColors}
-      orientation={chartData.length > 8 ? "horizontal" : "vertical"}
+      data={chartData}
       height={height}
       className={className}
       isInitialLoad={isInitialLoad}
       isUpdating={isUpdating}
-      theme={theme === "dark" ? defaultDarkTheme : defaultLightTheme}
+      theme={chartTheme}
       onBarClick={handleBarClick}
-      xLabel=""
-      yLabel="Number of Events"
-      showValues
-      valueFormatter={valueFormatter}
-      maxLabelLength={30}
-      sortBy="value"
-      sortOrder="desc"
     />
   );
 };
+
+// Wrap in memo to prevent re-renders when props haven't changed
+export const DatasetBarChart = memo(DatasetBarChartComponent);

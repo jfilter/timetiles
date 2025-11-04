@@ -182,14 +182,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
 
               {/* Chart Section */}
               <div className="mb-6 border-t pt-6">
-                <ChartSection
-                  events={events}
-                  datasets={datasets}
-                  catalogs={catalogs}
-                  isInitialLoad={isInitialLoad}
-                  isUpdating={isUpdating}
-                  bounds={debouncedSimpleBounds}
-                />
+                <ChartSection bounds={debouncedSimpleBounds} />
               </div>
 
               {/* Events List */}

@@ -9,6 +9,15 @@ import { renderWithProviders } from "../../setup/test-utils";
 
 // Mock next-themes is handled by ThemeProvider in test-utils
 
+// Mock the UI charts package
+vi.mock("@workspace/ui/charts", async () => {
+  const actual = await vi.importActual("@workspace/ui/charts");
+  return {
+    ...(actual as any),
+    useChartTheme: () => ({ backgroundColor: "#ffffff", textColor: "#000000" }),
+  };
+});
+
 // Mock the filters hook
 vi.mock("../../../lib/filters", () => ({
   useFilters: () => ({
@@ -36,6 +45,23 @@ vi.mock("../../../lib/store", () => ({
 // Mock the React Query hook
 vi.mock("../../../lib/hooks/use-events-queries", () => ({
   useHistogramQuery: vi.fn(),
+}));
+
+// Mock the chart hooks
+vi.mock("../../../lib/hooks/use-chart-query", () => ({
+  useChartQuery: (queryResult: any) => ({
+    ...queryResult,
+    isInitialLoad: !queryResult.data && queryResult.isLoading,
+    isUpdating: !!queryResult.data && queryResult.isLoading,
+  }),
+}));
+
+vi.mock("../../../lib/hooks/use-chart-filters", () => ({
+  useChartFilters: () => ({
+    handleDateClick: vi.fn(),
+    handleDatasetClick: vi.fn(),
+    handleCatalogClick: vi.fn(),
+  }),
 }));
 
 // Mock ECharts component
@@ -67,8 +93,10 @@ describe.sequential("EventHistogram", () => {
       error: null,
     });
 
-    renderWithProviders(<EventHistogram isInitialLoad />);
-    expect(screen.getByText("Loading histogram...")).toBeInTheDocument();
+    renderWithProviders(<EventHistogram />);
+    // Check for loading spinner instead of text (BaseChart shows spinner only)
+    const loadingSpinner = document.querySelector(".animate-spin");
+    expect(loadingSpinner).toBeInTheDocument();
   });
 
   it("renders no data state when histogram data is empty", async () => {

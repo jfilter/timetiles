@@ -2,7 +2,7 @@
 
 import ReactEChartsLib from "echarts-for-react";
 import type { EChartsReactProps } from "echarts-for-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as React from "react";
 
 // Type the ReactECharts component properly for strict TypeScript
@@ -16,7 +16,7 @@ type ReactEChartsWithRef = React.ComponentType<
 const ReactECharts = ReactEChartsLib as ReactEChartsWithRef;
 
 import type { BaseChartProps, EChartsInstance } from "./types";
-import { applyThemeToOption, defaultLightTheme } from "./utils/theme";
+import { applyThemeToOption, defaultLightTheme } from "../../lib/chart-themes";
 import { cn } from "../../lib/utils";
 
 export function BaseChart({
@@ -42,7 +42,7 @@ export function BaseChart({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const themedOption = applyThemeToOption(config, theme);
+  const themedOption = useMemo(() => applyThemeToOption(config, theme), [config, theme]);
 
   return (
     <div className={cn("relative", className)} style={{ height, width }}>
@@ -79,8 +79,8 @@ export function BaseChart({
             }
           }}
           onEvents={onEvents}
-          notMerge={true}
-          lazyUpdate={true}
+          notMerge={false}
+          lazyUpdate={false}
         />
       </div>
     </div>

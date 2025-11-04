@@ -77,6 +77,28 @@ export interface HistogramResponse {
   };
 }
 
+export interface DatasetCount {
+  datasetId: number;
+  datasetName: string;
+  count: number;
+}
+
+export interface ByDatasetResponse {
+  datasets: DatasetCount[];
+  total: number;
+}
+
+export interface CatalogCount {
+  catalogId: number;
+  catalogName: string;
+  count: number;
+}
+
+export interface ByCatalogResponse {
+  catalogs: CatalogCount[];
+  total: number;
+}
+
 export interface ImportJobProgress {
   id: string;
   datasetId: string;
@@ -341,6 +363,12 @@ export const eventsQueryKeys = {
   histograms: () => [...eventsQueryKeys.all, "histogram"] as const,
   histogram: (filters: FilterState, bounds: BoundsType) =>
     [...eventsQueryKeys.histograms(), { filters, bounds }] as const,
+  byDatasets: () => [...eventsQueryKeys.all, "by-dataset"] as const,
+  byDataset: (filters: FilterState, bounds: BoundsType) =>
+    [...eventsQueryKeys.byDatasets(), { filters, bounds }] as const,
+  byCatalogs: () => [...eventsQueryKeys.all, "by-catalog"] as const,
+  byCatalog: (filters: FilterState, bounds: BoundsType) =>
+    [...eventsQueryKeys.byCatalogs(), { filters, bounds }] as const,
   imports: () => ["imports"] as const,
   importProgress: (importId: string) => [...eventsQueryKeys.imports(), "progress", importId] as const,
 };
@@ -445,5 +473,77 @@ export const useInvalidateEventsQueries = () => {
         queryKey: eventsQueryKeys.histograms(),
       });
     },
+    invalidateByDataset: () => {
+      void queryClient.invalidateQueries({
+        queryKey: eventsQueryKeys.byDatasets(),
+      });
+    },
+    invalidateByCatalog: () => {
+      void queryClient.invalidateQueries({
+        queryKey: eventsQueryKeys.byCatalogs(),
+      });
+    },
   };
 };
+
+// Fetch functions for dataset/catalog aggregations
+const fetchByDataset = async (
+  filters: FilterState,
+  bounds: BoundsType,
+  signal?: AbortSignal
+): Promise<ByDatasetResponse> => {
+  const params = buildEventParams(filters, bounds);
+  const url = `/api/events/by-dataset?${params.toString()}`;
+
+  logger.debug("Fetching dataset aggregation", { env: process.env.NODE_ENV });
+
+  const response = await fetch(url, { signal });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch dataset aggregation: ${response.statusText}`);
+  }
+
+  return response.json();
+};
+
+const fetchByCatalog = async (
+  filters: FilterState,
+  bounds: BoundsType,
+  signal?: AbortSignal
+): Promise<ByCatalogResponse> => {
+  const params = buildEventParams(filters, bounds);
+  const url = `/api/events/by-catalog?${params.toString()}`;
+
+  logger.debug("Fetching catalog aggregation", { env: process.env.NODE_ENV });
+
+  const response = await fetch(url, { signal });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch catalog aggregation: ${response.statusText}`);
+  }
+
+  return response.json();
+};
+
+// Query hooks for dataset/catalog aggregations
+export const useEventsByDatasetQuery = (filters: FilterState, bounds: BoundsType, enabled: boolean = true) =>
+  useQuery({
+    queryKey: eventsQueryKeys.byDataset(filters, bounds),
+    queryFn: ({ signal }) => fetchByDataset(filters, bounds, signal),
+    enabled: enabled && bounds != null,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
+  });
+
+export const useEventsByCatalogQuery = (filters: FilterState, bounds: BoundsType, enabled: boolean = true) =>
+  useQuery({
+    queryKey: eventsQueryKeys.byCatalog(filters, bounds),
+    queryFn: ({ signal }) => fetchByCatalog(filters, bounds, signal),
+    enabled: enabled && bounds != null,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
+  });

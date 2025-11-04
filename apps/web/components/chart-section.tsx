@@ -3,7 +3,7 @@
  *
  * Container component that allows switching between different chart
  * visualizations including time-based histograms and dataset bar charts.
- * Manages chart type selection and passes data to appropriate chart components.
+ * Manages chart type selection. Charts fetch their own data.
  *
  * @module
  * @category Components
@@ -14,30 +14,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCallback, useState } from "react";
 
 import type { SimpleBounds } from "../lib/hooks/use-events-queries";
-import type { Catalog, Dataset, Event } from "../payload-types";
+import { CatalogBarChart } from "./catalog-bar-chart";
 import { DatasetBarChart } from "./dataset-bar-chart";
 import { EventHistogram } from "./event-histogram";
 
 interface ChartSectionProps {
-  events: Event[];
-  datasets: Dataset[];
-  catalogs: Catalog[];
-  isInitialLoad?: boolean;
-  isUpdating?: boolean;
   bounds?: SimpleBounds | null;
 }
 
-type ChartType = "timeline" | "dataset-bar" | "catalog-bar";
+type ChartType = "histogram" | "dataset-bar" | "catalog-bar";
 
-export const ChartSection = ({
-  events,
-  datasets,
-  catalogs,
-  isInitialLoad = false,
-  isUpdating = false,
-  bounds,
-}: Readonly<ChartSectionProps>) => {
-  const [chartType, setChartType] = useState<ChartType>("timeline");
+export const ChartSection = ({ bounds }: Readonly<ChartSectionProps>) => {
+  const [chartType, setChartType] = useState<ChartType>("histogram");
 
   const handleChartTypeChange = useCallback((value: string) => setChartType(value as ChartType), []);
 
@@ -50,7 +38,7 @@ export const ChartSection = ({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="timeline">Event Timeline</SelectItem>
+            <SelectItem value="histogram">Event histogram</SelectItem>
             <SelectItem value="dataset-bar">Events by Dataset</SelectItem>
             <SelectItem value="catalog-bar">Events by Catalog</SelectItem>
           </SelectContent>
@@ -58,29 +46,9 @@ export const ChartSection = ({
       </div>
 
       <div className="min-h-[200px]">
-        {chartType === "timeline" && (
-          <EventHistogram isInitialLoad={isInitialLoad} isUpdating={isUpdating} bounds={bounds} />
-        )}
-        {chartType === "dataset-bar" && (
-          <DatasetBarChart
-            events={events}
-            datasets={datasets}
-            catalogs={catalogs}
-            groupBy="dataset"
-            isInitialLoad={isInitialLoad}
-            isUpdating={isUpdating}
-          />
-        )}
-        {chartType === "catalog-bar" && (
-          <DatasetBarChart
-            events={events}
-            datasets={datasets}
-            catalogs={catalogs}
-            groupBy="catalog"
-            isInitialLoad={isInitialLoad}
-            isUpdating={isUpdating}
-          />
-        )}
+        {chartType === "histogram" && <EventHistogram bounds={bounds} />}
+        {chartType === "dataset-bar" && <DatasetBarChart bounds={bounds} />}
+        {chartType === "catalog-bar" && <CatalogBarChart bounds={bounds} />}
       </div>
     </div>
   );

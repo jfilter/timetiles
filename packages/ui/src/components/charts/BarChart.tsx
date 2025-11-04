@@ -1,188 +1,153 @@
+/**
+ * Minimal bar chart for smooth animations.
+ *
+ * Simple implementation with stable category axes and value-only updates
+ * for smooth ECharts animations.
+ *
+ * @module
+ * @category Components
+ */
 "use client";
 
 import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
 import { BaseChart } from "./BaseChart";
-import type { BarChartProps, BarChartDataItem } from "./types";
-import { isValidFormatterParams, isValidEventParams, isValidDataIndex } from "./types";
+import type { BarChartDataItem, ChartTheme } from "./types";
 
-export function BarChart({
+// Helper to check if click params are valid
+function isValidClickParams(params: unknown): params is { dataIndex?: number; componentType?: string } {
+  return typeof params === "object" && params !== null && "dataIndex" in params;
+}
+
+export interface BarChartProps {
+  /** Chart data */
+  data: BarChartDataItem[];
+  /** Chart height */
+  height?: number | string;
+  /** Additional CSS classes */
+  className?: string;
+  /** Chart theme */
+  theme?: ChartTheme;
+  /** Show loading overlay */
+  isInitialLoad?: boolean;
+  /** Show updating indicator */
+  isUpdating?: boolean;
+  /** Click handler for bar clicks */
+  onBarClick?: (item: BarChartDataItem, index: number) => void;
+}
+
+/**
+ * Minimal bar chart component with smooth animations.
+ *
+ * Key features:
+ * - Fixed horizontal orientation
+ * - No sorting (maintains data order)
+ * - Minimal configuration
+ * - Focus on smooth value updates
+ */
+export const BarChart = ({
   data,
-  orientation = "vertical",
+  height = 300,
+  className,
+  theme,
+  isInitialLoad,
+  isUpdating,
   onBarClick,
-  xLabel = "",
-  yLabel = "",
-  title = "",
-  showValues = false,
-  valueFormatter = (v: number) => v.toString(),
-  labelFormatter = (l: string) => l,
-  maxLabelLength = 20,
-  sortBy = "none",
-  sortOrder = "desc",
-  ...baseProps
-}: BarChartProps) {
-  const processedData = useMemo(() => {
-    const sorted: BarChartDataItem[] = [...data];
-
-    if (sortBy !== "none") {
-      sorted.sort((a, b) => {
-        const compareValue = sortBy === "value" ? a.value - b.value : a.label.localeCompare(b.label);
-        return sortOrder === "asc" ? compareValue : -compareValue;
-      });
-    }
-
-    return sorted;
-  }, [data, sortBy, sortOrder]);
+}: BarChartProps) => {
+  console.log(`[BarChart] Rendering with ${data.length} items`);
 
   const chartOption: EChartsOption = useMemo(() => {
-    const isHorizontal = orientation === "horizontal";
+    // Extract labels and values
+    const labels = data.map((item) => item.label);
+    const values = data.map((item) => item.value);
 
-    const truncateLabel = (label: string) => {
-      if (label.length <= maxLabelLength) return label;
-      return label.slice(0, maxLabelLength - 3) + "...";
-    };
+    console.log(`[BarChart] chartOption useMemo`);
+    console.log(`  Labels:`, labels);
+    console.log(`  Values:`, values);
 
-    const labels = processedData.map((item) => truncateLabel(labelFormatter(item.label)));
-    const values = processedData.map((item) => item.value);
-    const colors = processedData.map((item) => item.color ?? "#3b82f6");
+    return {
+      // Animation config
+      animation: true,
+      animationDuration: 300,
+      animationDurationUpdate: 300,
+      animationEasing: "cubicOut",
+      animationEasingUpdate: "cubicOut",
 
-    const baseOption: EChartsOption = {
-      title: title
-        ? {
-            text: title,
-            left: "center",
-            top: 0,
-          }
-        : undefined,
-      tooltip: {
-        trigger: "axis",
-        axisPointer: {
-          type: "shadow",
-        },
-        formatter: (params: unknown) => {
-          if (!Array.isArray(params) || params.length === 0) return "";
-
-          const firstParam = params[0] as unknown;
-          if (!isValidFormatterParams(firstParam)) return "";
-
-          const dataIndex = firstParam.dataIndex;
-          if (!isValidDataIndex(dataIndex)) return "";
-
-          const item = processedData[dataIndex];
-          if (!item) return "";
-
-          return `
-            <div style="padding: 8px;">
-              <strong>${item.label}</strong><br/>
-              Value: <strong>${valueFormatter(item.value)}</strong>
-            </div>
-          `;
-        },
-      },
+      // Grid
       grid: {
-        left: "10%",
-        right: "5%",
+        left: "15%",
+        right: "10%",
         bottom: "10%",
-        top: title ? "15%" : "10%",
+        top: "5%",
         containLabel: true,
       },
+
+      // Horizontal bar chart
+      xAxis: {
+        type: "value",
+        name: "Count",
+      },
+      yAxis: {
+        type: "category",
+        data: labels, // Fixed category order
+        inverse: true,
+      },
+
+      // Series
       series: [
         {
-          type: "bar" as const,
-          data: values,
-          itemStyle: {
-            color: (params: unknown) => {
-              if (!isValidFormatterParams(params)) return "#3b82f6";
-
-              const dataIndex = params.dataIndex;
-              return isValidDataIndex(dataIndex) ? (colors[dataIndex] ?? "#3b82f6") : "#3b82f6";
-            },
-          },
-          emphasis: {
+          type: "bar",
+          data: values.map((value, index) => ({
+            value,
+            name: labels[index], // Track by name
             itemStyle: {
-              opacity: 0.8,
+              color: "#3b82f6",
+            },
+          })),
+          universalTransition: true,
+          animationDuration: 300,
+          animationDurationUpdate: 300,
+          label: {
+            show: true,
+            position: "right",
+            formatter: (params: any) => {
+              return params.value?.toString() || "0";
             },
           },
-          label: showValues
-            ? {
-                show: true,
-                position: isHorizontal ? ("right" as const) : ("top" as const),
-                formatter: (params: unknown) => {
-                  if (!isValidFormatterParams(params)) return valueFormatter(0);
-
-                  const value = typeof params.value === "number" ? params.value : 0;
-                  return valueFormatter(value);
-                },
-              }
-            : undefined,
         },
       ],
     };
+  }, [data]);
 
-    if (isHorizontal) {
-      return {
-        ...baseOption,
-        xAxis: {
-          type: "value",
-          name: yLabel,
-          nameLocation: "middle",
-          nameGap: 35,
-        },
-        yAxis: {
-          type: "category",
-          data: labels,
-          name: xLabel,
-          nameLocation: "middle",
-          nameGap: 80,
-          inverse: true,
-          axisLabel: {
-            formatter: (value: string) => value,
-          },
-        },
-      };
-    } else {
-      return {
-        ...baseOption,
-        xAxis: {
-          type: "category",
-          data: labels,
-          name: xLabel,
-          nameLocation: "middle",
-          nameGap: 35,
-          axisLabel: {
-            rotate: labels.some((l) => l.length > 10) ? 45 : 0,
-            formatter: (value: string) => value,
-          },
-        },
-        yAxis: {
-          type: "value",
-          name: yLabel,
-          nameLocation: "middle",
-          nameGap: 50,
-        },
-      };
-    }
-  }, [processedData, orientation, xLabel, yLabel, title, showValues, valueFormatter, labelFormatter, maxLabelLength]);
-
+  // Create event handlers
   const events = useMemo(() => {
-    const baseEvents = { ...baseProps.onEvents };
+    if (!onBarClick) return undefined;
 
-    if (onBarClick) {
-      baseEvents.click = (params: unknown) => {
-        if (!isValidEventParams(params)) return;
+    return {
+      click: (params: unknown) => {
+        if (!isValidClickParams(params)) return;
 
-        if (params.componentType === "series" && params.seriesType === "bar" && isValidDataIndex(params.dataIndex)) {
-          const item = processedData[params.dataIndex];
-          if (item) {
-            onBarClick(item, params.dataIndex);
-          }
+        const dataIndex = params.dataIndex;
+        if (typeof dataIndex !== "number" || dataIndex < 0 || dataIndex >= data.length) return;
+
+        const item = data[dataIndex];
+        if (item) {
+          onBarClick(item, dataIndex);
         }
-      };
-    }
+      },
+    };
+  }, [onBarClick, data]);
 
-    return baseEvents;
-  }, [baseProps.onEvents, onBarClick, processedData]);
-
-  return <BaseChart {...baseProps} config={chartOption} onEvents={events} />;
-}
+  return (
+    <BaseChart
+      height={height}
+      className={className}
+      theme={theme}
+      isInitialLoad={isInitialLoad}
+      isUpdating={isUpdating}
+      config={chartOption}
+      onEvents={events}
+    />
+  );
+};

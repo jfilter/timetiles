@@ -3,7 +3,7 @@
  */
 import { cleanup, render, screen } from "@testing-library/react";
 
-import { DatasetBarChart } from "../../../components/dataset-bar-chart";
+import { CatalogBarChart } from "../../../components/catalog-bar-chart";
 
 // Mock next-themes
 vi.mock("next-themes", () => ({
@@ -15,9 +15,6 @@ vi.mock("nuqs", () => ({
   parseAsString: {
     withDefault: () => {},
   },
-  parseAsArrayOf: () => ({
-    withDefault: () => ({}),
-  }),
   useQueryState: () => [null, vi.fn()],
 }));
 
@@ -42,13 +39,6 @@ vi.mock("../../../lib/hooks/use-chart-query", () => ({
   }),
 }));
 
-vi.mock("../../../lib/hooks/use-chart-filters", () => ({
-  useChartFilters: () => ({
-    handleDatasetClick: vi.fn(),
-    handleCatalogClick: vi.fn(),
-  }),
-}));
-
 vi.mock("@workspace/ui/charts", () => ({
   useChartTheme: () => ({
     backgroundColor: "#ffffff",
@@ -67,14 +57,11 @@ vi.mock("@workspace/ui/charts", () => ({
   ),
 }));
 
-// Mock events queries - define mocks in the factory to avoid hoisting issues
+// Mock events queries
 vi.mock("../../../lib/hooks/use-events-queries", () => {
-  const mockEventsByDatasetQuery = vi.fn(() => ({
+  const mockEventsByCatalogQuery = vi.fn(() => ({
     data: {
-      datasets: [
-        { datasetId: 1, datasetName: "Dataset A", count: 2 },
-        { datasetId: 2, datasetName: "Dataset B", count: 1 },
-      ],
+      catalogs: [{ catalogId: 1, catalogName: "Catalog 1", count: 3 }],
       total: 3,
     },
     isLoading: false,
@@ -82,7 +69,7 @@ vi.mock("../../../lib/hooks/use-events-queries", () => {
   }));
 
   return {
-    useEventsByDatasetQuery: mockEventsByDatasetQuery,
+    useEventsByCatalogQuery: mockEventsByCatalogQuery,
   };
 });
 
@@ -102,18 +89,18 @@ vi.mock("echarts-for-react", () => ({
   },
 }));
 
-describe("DatasetBarChart", () => {
+describe("CatalogBarChart", () => {
   beforeEach(() => {
     cleanup();
   });
 
-  it("renders bar chart with dataset data", () => {
-    render(<DatasetBarChart />);
+  it("renders bar chart with catalog data", () => {
+    render(<CatalogBarChart />);
 
     const chart = screen.getByTestId("bar-chart-mock");
     expect(chart).toBeInTheDocument();
 
-    // Should have bars for datasets with events
+    // Should have bars for catalogs with events
     const bars = chart.querySelectorAll("[data-value]");
     expect(bars.length).toBeGreaterThan(0);
   });
