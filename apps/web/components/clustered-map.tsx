@@ -114,8 +114,17 @@ export const ClusteredMap = ({
       p20: rawStats.p20 ?? 2,
       p40: Math.max(rawStats.p40 ?? 5, (rawStats.p20 ?? 2) + 1),
       p60: Math.max(rawStats.p60 ?? 10, Math.max(rawStats.p40 ?? 5, (rawStats.p20 ?? 2) + 1) + 1),
-      p80: Math.max(rawStats.p80 ?? 20, Math.max(rawStats.p60 ?? 10, Math.max(rawStats.p40 ?? 5, (rawStats.p20 ?? 2) + 1) + 1) + 1),
-      p100: Math.max(rawStats.p100 ?? 50, Math.max(rawStats.p80 ?? 20, Math.max(rawStats.p60 ?? 10, Math.max(rawStats.p40 ?? 5, (rawStats.p20 ?? 2) + 1) + 1) + 1) + 1),
+      p80: Math.max(
+        rawStats.p80 ?? 20,
+        Math.max(rawStats.p60 ?? 10, Math.max(rawStats.p40 ?? 5, (rawStats.p20 ?? 2) + 1) + 1) + 1
+      ),
+      p100: Math.max(
+        rawStats.p100 ?? 50,
+        Math.max(
+          rawStats.p80 ?? 20,
+          Math.max(rawStats.p60 ?? 10, Math.max(rawStats.p40 ?? 5, (rawStats.p20 ?? 2) + 1) + 1) + 1
+        ) + 1
+      ),
     };
 
     logger.debug("Viewport cluster percentiles for opacity", {
@@ -236,12 +245,11 @@ export const ClusteredMap = ({
   };
 
   const clusterLayer = useMemo(
-    () =>
-      ({
-        id: "event-clusters",
-        type: "circle" as const,
-        filter: clusterFilter,
-        paint: {
+    () => ({
+      id: "event-clusters",
+      type: "circle" as const,
+      filter: clusterFilter,
+      paint: {
         // Size based on GLOBAL percentiles (consistent across all views)
         "circle-radius": [
           "step",

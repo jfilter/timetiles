@@ -113,12 +113,18 @@ const calculateGlobalStats = async (
           catalog != null
             ? sql`AND d.catalog_id = ${parseInt(catalog as string)}`
             : accessibleCatalogIds != null && Array.isArray(accessibleCatalogIds) && accessibleCatalogIds.length > 0
-              ? sql`AND d.catalog_id IN (${sql.join(accessibleCatalogIds.map((id) => sql`${id}`), sql`, `)})`
+              ? sql`AND d.catalog_id IN (${sql.join(
+                  accessibleCatalogIds.map((id) => sql`${id}`),
+                  sql`, `
+                )})`
               : sql``
         }
         ${
           Array.isArray(datasets) && datasets.length > 0
-            ? sql`AND e.dataset_id IN (${sql.join(datasets.map((d) => sql`${parseInt(d as string)}`), sql`, `)})`
+            ? sql`AND e.dataset_id IN (${sql.join(
+                datasets.map((d) => sql`${parseInt(d as string)}`),
+                sql`, `
+              )})`
             : sql``
         }
         ${startDate != null ? sql`AND e.event_timestamp >= ${startDate as string}::timestamp` : sql``}

@@ -128,7 +128,8 @@ export class TestEnvironmentBuilder {
     const payload = await getPayload({ config: testConfig });
     logger.info("Payload instance created", { dbName });
 
-    // Payload instances are now created as needed via getPayload({ config })
+    // prodMigrations automatically runs migrations on initialization
+    // No need to call payload.db.migrate() explicitly
 
     // Create and configure SeedManager
     const seedManager = new SeedManager();
