@@ -30,12 +30,13 @@ describe("/api/events/histogram", () => {
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
 
-    // Create test catalog
+    // Create test catalog (make it public so unauthenticated requests can access it)
     const catalog = await payload.create({
       collection: "catalogs",
       data: {
         name: "Test Catalog for Histogram",
         slug: `test-histogram-catalog-${uniqueSuffix}`,
+        isPublic: true,
         description: {
           root: {
             type: "root",
@@ -61,13 +62,14 @@ describe("/api/events/histogram", () => {
       },
     });
 
-    // Create test dataset
+    // Create test dataset (must be public since catalog is public)
     const dataset = await payload.create({
       collection: "datasets",
       data: {
         catalog: catalog.id,
         name: "Test Dataset for Histogram",
         slug: `test-histogram-dataset-${uniqueSuffix}`,
+        isPublic: true,
         description: {
           root: {
             type: "root",
@@ -172,26 +174,28 @@ describe("/api/events/histogram", () => {
     expect(data.metadata).toHaveProperty("topCatalogs");
   });
 
-  it("should use month granularity for our test data", async () => {
-    const request = new NextRequest("http://localhost:3000/api/events/histogram?granularity=month");
+  it("should use flexible bucketing for our test data", async () => {
+    // With flexible bucketing, the system automatically determines bucket size
+    // based on date range (Jan-Jun 2024) and target bucket count
+    const request = new NextRequest("http://localhost:3000/api/events/histogram");
     const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    // We should have at least 4 buckets: Jan, Feb, Mar, Jun (may have others from other tests)
-    const monthsWithData = data.histogram.filter((b: HistogramBucket) => b.count > 0);
-    expect(monthsWithData.length).toBeGreaterThanOrEqual(4);
+    // Should have buckets with data (flexible bucketing will determine optimal size)
+    const bucketsWithData = data.histogram.filter((b: HistogramBucket) => b.count > 0);
+    expect(bucketsWithData.length).toBeGreaterThan(0);
 
-    // January should have events
-    const january = data.histogram.find((b: HistogramBucket) => new Date(b.date).getMonth() === 0);
-    expect(january).toBeDefined();
-    expect(january.count).toBeGreaterThan(0);
+    // Metadata should include bucket size information
+    expect(data.metadata).toHaveProperty("bucketSizeSeconds");
+    expect(data.metadata).toHaveProperty("bucketCount");
+    expect(typeof data.metadata.bucketSizeSeconds).toBe("number");
+    expect(typeof data.metadata.bucketCount).toBe("number");
 
-    // February should have events
-    const february = data.histogram.find((b: HistogramBucket) => new Date(b.date).getMonth() === 1);
-    expect(february).toBeDefined();
-    expect(february.count).toBeGreaterThan(0);
+    // Should have our test events distributed across buckets
+    const totalCount = data.histogram.reduce((sum: number, b: HistogramBucket) => sum + b.count, 0);
+    expect(totalCount).toBeGreaterThanOrEqual(11); // We created 11 test events
   });
 
   it("should filter by dataset", async () => {
@@ -263,35 +267,43 @@ describe("/api/events/histogram", () => {
     expect(data.metadata.total).toBeGreaterThan(0);
   });
 
-  it("should handle day granularity", async () => {
-    // Filter to just January to get day-level data
+  it("should handle short date ranges with smaller buckets", async () => {
+    // Filter to just January - flexible bucketing should create smaller buckets for short ranges
     const startDate = new Date(2024, 0, 1).toISOString().split("T")[0];
     const endDate = new Date(2024, 0, 31).toISOString().split("T")[0];
 
     const request = new NextRequest(
-      `http://localhost:3000/api/events/histogram?startDate=${startDate}&endDate=${endDate}&granularity=day`
+      `http://localhost:3000/api/events/histogram?startDate=${startDate}&endDate=${endDate}`
     );
     const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    // Should have daily buckets for January
-    const daysWithData = data.histogram.filter((b: HistogramBucket) => b.count > 0);
-    expect(daysWithData.length).toBeGreaterThan(0); // Should have at least some days
+    // Should have buckets appropriate for the date range
+    const bucketsWithData = data.histogram.filter((b: HistogramBucket) => b.count > 0);
+    expect(bucketsWithData.length).toBeGreaterThan(0);
+
+    // Bucket size should be reasonable for a month-long range
+    expect(data.metadata.bucketSizeSeconds).toBeLessThan(31 * 24 * 60 * 60); // Less than a month in seconds
   });
 
-  it("should handle year granularity", async () => {
-    const request = new NextRequest("http://localhost:3000/api/events/histogram?granularity=year");
+  it("should handle flexible bucket sizing", async () => {
+    // With no specific range, should create buckets based on all available data
+    const request = new NextRequest("http://localhost:3000/api/events/histogram");
     const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    // Should have at least one bucket for 2024
-    const yearsWithData = data.histogram.filter((b: HistogramBucket) => b.count > 0);
-    expect(yearsWithData.length).toBeGreaterThanOrEqual(1);
-    expect(yearsWithData[0].count).toBeGreaterThan(0);
+    // Should have buckets with data
+    const bucketsWithData = data.histogram.filter((b: HistogramBucket) => b.count > 0);
+    expect(bucketsWithData.length).toBeGreaterThanOrEqual(1);
+    expect(bucketsWithData[0].count).toBeGreaterThan(0);
+
+    // Bucket count should be within reasonable range (20-50 by default)
+    expect(data.metadata.bucketCount).toBeGreaterThanOrEqual(1);
+    expect(data.metadata.bucketCount).toBeLessThanOrEqual(50);
   });
 
   it("should handle invalid bounds format", async () => {

@@ -2,10 +2,13 @@
  * This file defines the API route for generating a temporal histogram of events.
  *
  * It accepts a set of filters (such as catalog, datasets, date range, and geographic bounds)
- * and uses a custom PostgreSQL function (`calculate_event_histogram`) to efficiently aggregate
- * event counts over a specified time interval (e.g., daily, weekly). This is used to power
- * the date histogram chart in the application, providing a performance-optimized way to
- * visualize the distribution of events over time.
+ * and uses a custom PostgreSQL function (`calculate_event_histogram`) to efficiently
+ * aggregate event counts with flexible bucket sizing. Users can specify a target bucket count
+ * range (min/max), and the function automatically calculates the optimal bucket size.
+ *
+ * This is used to power the date histogram chart in the application, providing a
+ * performance-optimized way to visualize the distribution of events over time.
+ *
  * @module
  */
 import { sql } from "@payloadcms/db-postgres";
@@ -95,7 +98,10 @@ const extractHistogramParameters = (searchParams: URLSearchParams) => ({
   datasets: searchParams.getAll("datasets"),
   startDate: searchParams.get("startDate"),
   endDate: searchParams.get("endDate"),
-  granularity: searchParams.get("granularity") ?? "auto",
+  // Flexible bucketing parameters
+  targetBuckets: parseInt(searchParams.get("targetBuckets") ?? "30", 10),
+  minBuckets: parseInt(searchParams.get("minBuckets") ?? "20", 10),
+  maxBuckets: parseInt(searchParams.get("maxBuckets") ?? "50", 10),
 });
 
 const createFunctionNotFoundResponse = (): NextResponse => {
@@ -124,36 +130,49 @@ const executeHistogramQuery = async (
     accessibleCatalogIds,
   });
 
-  const interval = parameters.granularity === "auto" ? "day" : parameters.granularity;
-
   return (await payload.db.drizzle.execute(sql`
     SELECT * FROM calculate_event_histogram(
-      ${interval}::text,
-      ${JSON.stringify(filtersWithBounds)}::jsonb
+      ${JSON.stringify(filtersWithBounds)}::jsonb,
+      ${parameters.targetBuckets}::integer,
+      ${parameters.minBuckets}::integer,
+      ${parameters.maxBuckets}::integer
     )
-  `)) as { rows: Array<{ bucket: string; event_count: number }> };
+  `)) as {
+    rows: Array<{
+      bucket_start: string;
+      bucket_end: string;
+      bucket_size_seconds: number;
+      event_count: number;
+    }>;
+  };
 };
 
-const buildHistogramResponse = (rows: Array<{ bucket: string; event_count: number }>) => {
+const buildHistogramResponse = (
+  rows: Array<{
+    bucket_start: string;
+    bucket_end: string;
+    bucket_size_seconds: number;
+    event_count: number;
+  }>
+) => {
   const total = rows.reduce((sum: number, row) => sum + parseInt(String(row.event_count), 10), 0);
-  const aggregations = {
-    total,
-    dateRange: {
-      min: rows[0]?.bucket ?? null,
-      max: rows[rows.length - 1]?.bucket ?? null,
-    },
-  };
 
   const histogram = rows.map((row) => ({
-    date: row.bucket,
+    date: new Date(row.bucket_start).getTime(), // Bucket start timestamp
+    dateEnd: new Date(row.bucket_end).getTime(), // Bucket end timestamp
     count: parseInt(String(row.event_count), 10),
   }));
 
   return {
     histogram,
     metadata: {
-      total: aggregations.total,
-      dateRange: aggregations.dateRange,
+      total,
+      dateRange: {
+        min: rows[0]?.bucket_start ?? null,
+        max: rows[rows.length - 1]?.bucket_end ?? null,
+      },
+      bucketSizeSeconds: rows[0]?.bucket_size_seconds ?? null,
+      bucketCount: rows.length,
       counts: { datasets: 0, catalogs: 0 },
       topDatasets: [],
       topCatalogs: [],

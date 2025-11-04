@@ -53,12 +53,28 @@ export interface MapClustersResponse {
 }
 
 export interface HistogramData {
-  date: string;
+  date: number; // Bucket start timestamp (Unix timestamp in milliseconds)
+  dateEnd: number; // Bucket end timestamp (Unix timestamp in milliseconds)
   count: number;
 }
 
 export interface HistogramResponse {
   histogram: HistogramData[];
+  metadata: {
+    total: number;
+    dateRange: {
+      min: string | null;
+      max: string | null;
+    };
+    bucketSizeSeconds: number | null;
+    bucketCount: number;
+    counts: {
+      datasets: number;
+      catalogs: number;
+    };
+    topDatasets: Array<unknown>;
+    topCatalogs: Array<unknown>;
+  };
 }
 
 export interface ImportJobProgress {

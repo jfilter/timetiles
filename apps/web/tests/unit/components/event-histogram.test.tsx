@@ -88,14 +88,26 @@ describe.sequential("EventHistogram", () => {
   });
 
   it("renders chart when data is available", async () => {
+    // API now returns timestamps with dateEnd (flexible bucketing)
     const mockHistogramData = [
-      { date: "2024-01-01", count: 5 },
-      { date: "2024-01-02", count: 10 },
+      { date: new Date("2024-01-01").getTime(), dateEnd: new Date("2024-01-02").getTime(), count: 5 },
+      { date: new Date("2024-01-02").getTime(), dateEnd: new Date("2024-01-03").getTime(), count: 10 },
     ];
 
-    // Mock the query with data
+    // Mock the query with data including metadata
     mockUseHistogramQuery.mockReturnValue({
-      data: { histogram: mockHistogramData },
+      data: {
+        histogram: mockHistogramData,
+        metadata: {
+          total: 15,
+          dateRange: { min: "2024-01-01T00:00:00Z", max: "2024-01-03T00:00:00Z" },
+          bucketSizeSeconds: 86400,
+          bucketCount: 2,
+          counts: { datasets: 0, catalogs: 0 },
+          topDatasets: [],
+          topCatalogs: [],
+        },
+      },
       isLoading: false,
       error: null,
     });
@@ -105,8 +117,13 @@ describe.sequential("EventHistogram", () => {
     // Wait for the chart to render
     await waitFor(() => {
       const chartElement = screen.getByTestId("echarts-mock");
-      expect(chartElement.textContent).toContain("2024-01-01");
-      expect(chartElement.textContent).toContain("2024-01-02");
+      // Verify timestamps are in the chart data
+      const timestamp1 = new Date("2024-01-01").getTime().toString();
+      const timestamp2 = new Date("2024-01-02").getTime().toString();
+      expect(chartElement.textContent).toContain(timestamp1);
+      expect(chartElement.textContent).toContain(timestamp2);
+      expect(chartElement.textContent).toContain("5");
+      expect(chartElement.textContent).toContain("10");
     });
   });
 });

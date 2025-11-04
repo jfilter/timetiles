@@ -102,8 +102,8 @@ export const EventHistogram = ({
     },
     formatter: (
       params: Array<{
-        value: [string, number];
-        data: [string, number];
+        value: [number, number];
+        data: [number, number];
         marker: string;
         seriesName: string;
       }>
@@ -170,7 +170,7 @@ export const EventHistogram = ({
   };
 
   const handleChartClick = useCallback(
-    (params: { data: [string, number] }) => {
+    (params: { data: [number, number] }) => {
       if (params.data != null) {
         const date = new Date(params.data[0]);
         const formattedDate = formatDate(date);

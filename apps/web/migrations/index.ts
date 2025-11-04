@@ -13,6 +13,7 @@ import * as migration_20250826_085916_add_http_cache_field from './20250826_0859
 import * as migration_20251006_164200_add_created_by_fields from './20251006_164200_add_created_by_fields';
 import * as migration_20251030_173500_add_catalog_quota_fields from './20251030_173500_add_catalog_quota_fields';
 import * as migration_20251104_102735_update_cluster_events_dynamic_radius from './20251104_102735_update_cluster_events_dynamic_radius';
+import * as migration_20251104_110000_flexible_histogram_buckets from './20251104_110000_flexible_histogram_buckets';
 
 export const migrations = [
   {
@@ -89,5 +90,10 @@ export const migrations = [
     up: migration_20251104_102735_update_cluster_events_dynamic_radius.up,
     down: migration_20251104_102735_update_cluster_events_dynamic_radius.down,
     name: '20251104_102735_update_cluster_events_dynamic_radius'
+  },
+  {
+    up: migration_20251104_110000_flexible_histogram_buckets.up,
+    down: migration_20251104_110000_flexible_histogram_buckets.down,
+    name: '20251104_110000_flexible_histogram_buckets'
   },
 ];
