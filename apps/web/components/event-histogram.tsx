@@ -18,13 +18,8 @@ import { TimeHistogram, useChartTheme } from "@workspace/ui/charts";
 import { useFilters } from "../lib/filters";
 import { useChartFilters } from "../lib/hooks/use-chart-filters";
 import { useChartQuery } from "../lib/hooks/use-chart-query";
-import { type SimpleBounds, useHistogramQuery } from "../lib/hooks/use-events-queries";
-
-interface EventHistogramProps {
-  height?: number | string;
-  className?: string;
-  bounds?: SimpleBounds | null;
-}
+import { useHistogramQuery } from "../lib/hooks/use-events-queries";
+import type { BaseChartProps } from "./shared/chart-types";
 
 /**
  * Event histogram component with data fetching.
@@ -32,26 +27,14 @@ interface EventHistogramProps {
  * Fetches histogram data from the API and renders it using the TimeHistogram
  * component. Handles filter state and click interactions.
  */
-export const EventHistogram = ({ height = 200, className, bounds: propBounds }: Readonly<EventHistogramProps>) => {
-  // Get chart theme
+export const EventHistogram = ({ height = 200, className, bounds }: Readonly<BaseChartProps>) => {
   const chartTheme = useChartTheme();
-
-  // Get filter state
   const { filters } = useFilters();
-
-  // Use the bounds prop directly - no fallback to store
-  const bounds = propBounds ?? null;
-
-  // Fetch histogram data using React Query
-  const histogramQuery = useHistogramQuery(filters, bounds);
-
-  // Add chart-specific loading states
-  const { data: histogramData, isInitialLoad, isUpdating } = useChartQuery(histogramQuery);
-
-  // Get chart filter handlers
   const { handleDateClick } = useChartFilters();
 
-  // Extract histogram data, with fallback for error states
+  const histogramQuery = useHistogramQuery(filters, bounds ?? null);
+  const { data: histogramData, isInitialLoad, isUpdating } = useChartQuery(histogramQuery);
+
   const histogram = histogramData?.histogram ?? [];
 
   return (

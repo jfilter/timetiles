@@ -3,7 +3,7 @@
  */
 import { cleanup, render, screen } from "@testing-library/react";
 
-import { DatasetBarChart } from "../../../components/dataset-bar-chart";
+import { AggregationBarChart } from "../../../components/aggregation-bar-chart";
 
 // Mock next-themes
 vi.mock("next-themes", () => ({
@@ -69,20 +69,28 @@ vi.mock("@workspace/ui/charts", () => ({
 
 // Mock events queries - define mocks in the factory to avoid hoisting issues
 vi.mock("../../../lib/hooks/use-events-queries", () => {
-  const mockEventsByDatasetQuery = vi.fn(() => ({
-    data: {
-      datasets: [
-        { datasetId: 1, datasetName: "Dataset A", count: 2 },
-        { datasetId: 2, datasetName: "Dataset B", count: 1 },
-      ],
-      total: 3,
-    },
+  const mockEventsAggregationQuery = vi.fn((_filters, _bounds, groupBy) => ({
+    data:
+      groupBy === "dataset"
+        ? {
+            items: [
+              { id: 1, name: "Dataset A", count: 2 },
+              { id: 2, name: "Dataset B", count: 1 },
+            ],
+            total: 3,
+            groupedBy: "dataset",
+          }
+        : {
+            items: [],
+            total: 0,
+            groupedBy: "catalog",
+          },
     isLoading: false,
     error: null,
   }));
 
   return {
-    useEventsByDatasetQuery: mockEventsByDatasetQuery,
+    useEventsAggregationQuery: mockEventsAggregationQuery,
   };
 });
 
@@ -102,13 +110,13 @@ vi.mock("echarts-for-react", () => ({
   },
 }));
 
-describe("DatasetBarChart", () => {
+describe("AggregationBarChart - Dataset", () => {
   beforeEach(() => {
     cleanup();
   });
 
   it("renders bar chart with dataset data", () => {
-    render(<DatasetBarChart />);
+    render(<AggregationBarChart type="dataset" />);
 
     const chart = screen.getByTestId("bar-chart-mock");
     expect(chart).toBeInTheDocument();

@@ -99,6 +99,18 @@ export interface ByCatalogResponse {
   total: number;
 }
 
+export interface AggregationItem {
+  id: number | string;
+  name: string;
+  count: number;
+}
+
+export interface AggregationResponse {
+  items: AggregationItem[];
+  total: number;
+  groupedBy: string;
+}
+
 export interface ImportJobProgress {
   id: string;
   datasetId: string;
@@ -369,6 +381,9 @@ export const eventsQueryKeys = {
   byCatalogs: () => [...eventsQueryKeys.all, "by-catalog"] as const,
   byCatalog: (filters: FilterState, bounds: BoundsType) =>
     [...eventsQueryKeys.byCatalogs(), { filters, bounds }] as const,
+  aggregations: () => [...eventsQueryKeys.all, "aggregation"] as const,
+  aggregation: (filters: FilterState, bounds: BoundsType, groupBy: "catalog" | "dataset") =>
+    [...eventsQueryKeys.aggregations(), { filters, bounds, groupBy }] as const,
   imports: () => ["imports"] as const,
   importProgress: (importId: string) => [...eventsQueryKeys.imports(), "progress", importId] as const,
 };
@@ -486,24 +501,43 @@ export const useInvalidateEventsQueries = () => {
   };
 };
 
-// Fetch functions for dataset/catalog aggregations
+// Fetch function for unified aggregation endpoint
+const fetchAggregation = async (
+  filters: FilterState,
+  bounds: BoundsType,
+  groupBy: "catalog" | "dataset",
+  signal?: AbortSignal
+): Promise<AggregationResponse> => {
+  const params = buildEventParams(filters, bounds, { groupBy });
+  const url = `/api/events/aggregate?${params.toString()}`;
+
+  logger.debug("Fetching aggregation", { env: process.env.NODE_ENV, groupBy });
+
+  const response = await fetch(url, { signal });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch aggregation: ${response.statusText}`);
+  }
+
+  return response.json();
+};
+
+// Legacy fetch functions for backward compatibility (now use unified endpoint)
 const fetchByDataset = async (
   filters: FilterState,
   bounds: BoundsType,
   signal?: AbortSignal
 ): Promise<ByDatasetResponse> => {
-  const params = buildEventParams(filters, bounds);
-  const url = `/api/events/by-dataset?${params.toString()}`;
-
-  logger.debug("Fetching dataset aggregation", { env: process.env.NODE_ENV });
-
-  const response = await fetch(url, { signal });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch dataset aggregation: ${response.statusText}`);
-  }
-
-  return response.json();
+  const result = await fetchAggregation(filters, bounds, "dataset", signal);
+  // Transform to legacy format
+  return {
+    datasets: result.items.map((item) => ({
+      datasetId: item.id as number,
+      datasetName: item.name,
+      count: item.count,
+    })),
+    total: result.total,
+  };
 };
 
 const fetchByCatalog = async (
@@ -511,21 +545,36 @@ const fetchByCatalog = async (
   bounds: BoundsType,
   signal?: AbortSignal
 ): Promise<ByCatalogResponse> => {
-  const params = buildEventParams(filters, bounds);
-  const url = `/api/events/by-catalog?${params.toString()}`;
-
-  logger.debug("Fetching catalog aggregation", { env: process.env.NODE_ENV });
-
-  const response = await fetch(url, { signal });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch catalog aggregation: ${response.statusText}`);
-  }
-
-  return response.json();
+  const result = await fetchAggregation(filters, bounds, "catalog", signal);
+  // Transform to legacy format
+  return {
+    catalogs: result.items.map((item) => ({
+      catalogId: item.id as number,
+      catalogName: item.name,
+      count: item.count,
+    })),
+    total: result.total,
+  };
 };
 
-// Query hooks for dataset/catalog aggregations
+// New unified aggregation query hook
+export const useEventsAggregationQuery = (
+  filters: FilterState,
+  bounds: BoundsType,
+  groupBy: "catalog" | "dataset",
+  enabled: boolean = true
+) =>
+  useQuery({
+    queryKey: eventsQueryKeys.aggregation(filters, bounds, groupBy),
+    queryFn: ({ signal }) => fetchAggregation(filters, bounds, groupBy, signal),
+    enabled: enabled && bounds != null,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
+  });
+
+// Legacy query hooks for backward compatibility (now use unified endpoint internally)
 export const useEventsByDatasetQuery = (filters: FilterState, bounds: BoundsType, enabled: boolean = true) =>
   useQuery({
     queryKey: eventsQueryKeys.byDataset(filters, bounds),

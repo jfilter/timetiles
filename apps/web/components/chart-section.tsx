@@ -14,8 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCallback, useState } from "react";
 
 import type { SimpleBounds } from "../lib/hooks/use-events-queries";
-import { CatalogBarChart } from "./catalog-bar-chart";
-import { DatasetBarChart } from "./dataset-bar-chart";
+import { AggregationBarChart } from "./aggregation-bar-chart";
 import { EventHistogram } from "./event-histogram";
 
 interface ChartSectionProps {
@@ -47,8 +46,8 @@ export const ChartSection = ({ bounds }: Readonly<ChartSectionProps>) => {
 
       <div className="min-h-[200px]">
         {chartType === "histogram" && <EventHistogram bounds={bounds} />}
-        {chartType === "dataset-bar" && <DatasetBarChart bounds={bounds} />}
-        {chartType === "catalog-bar" && <CatalogBarChart bounds={bounds} />}
+        {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" />}
+        {chartType === "catalog-bar" && <AggregationBarChart bounds={bounds} type="catalog" />}
       </div>
     </div>
   );

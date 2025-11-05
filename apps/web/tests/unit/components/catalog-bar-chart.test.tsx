@@ -3,7 +3,7 @@
  */
 import { cleanup, render, screen } from "@testing-library/react";
 
-import { CatalogBarChart } from "../../../components/catalog-bar-chart";
+import { AggregationBarChart } from "../../../components/aggregation-bar-chart";
 
 // Mock next-themes
 vi.mock("next-themes", () => ({
@@ -15,6 +15,9 @@ vi.mock("nuqs", () => ({
   parseAsString: {
     withDefault: () => {},
   },
+  parseAsArrayOf: () => ({
+    withDefault: () => ({}),
+  }),
   useQueryState: () => [null, vi.fn()],
 }));
 
@@ -59,17 +62,25 @@ vi.mock("@workspace/ui/charts", () => ({
 
 // Mock events queries
 vi.mock("../../../lib/hooks/use-events-queries", () => {
-  const mockEventsByCatalogQuery = vi.fn(() => ({
-    data: {
-      catalogs: [{ catalogId: 1, catalogName: "Catalog 1", count: 3 }],
-      total: 3,
-    },
+  const mockEventsAggregationQuery = vi.fn((_filters, _bounds, groupBy) => ({
+    data:
+      groupBy === "catalog"
+        ? {
+            items: [{ id: 1, name: "Catalog 1", count: 3 }],
+            total: 3,
+            groupedBy: "catalog",
+          }
+        : {
+            items: [],
+            total: 0,
+            groupedBy: "dataset",
+          },
     isLoading: false,
     error: null,
   }));
 
   return {
-    useEventsByCatalogQuery: mockEventsByCatalogQuery,
+    useEventsAggregationQuery: mockEventsAggregationQuery,
   };
 });
 
@@ -89,13 +100,13 @@ vi.mock("echarts-for-react", () => ({
   },
 }));
 
-describe("CatalogBarChart", () => {
+describe("AggregationBarChart - Catalog", () => {
   beforeEach(() => {
     cleanup();
   });
 
   it("renders bar chart with catalog data", () => {
-    render(<CatalogBarChart />);
+    render(<AggregationBarChart type="catalog" />);
 
     const chart = screen.getByTestId("bar-chart-mock");
     expect(chart).toBeInTheDocument();
