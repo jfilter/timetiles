@@ -16,12 +16,13 @@ import { useCallback, useState } from "react";
 import type { SimpleBounds } from "../lib/hooks/use-events-queries";
 import { AggregationBarChart } from "./aggregation-bar-chart";
 import { EventHistogram } from "./event-histogram";
+import { SimpleBarChart } from "./simple-bar-chart";
 
 interface ChartSectionProps {
   bounds?: SimpleBounds | null;
 }
 
-type ChartType = "histogram" | "dataset-bar" | "catalog-bar";
+type ChartType = "histogram" | "dataset-bar" | "catalog-bar" | "simple-bar";
 
 export const ChartSection = ({ bounds }: Readonly<ChartSectionProps>) => {
   const [chartType, setChartType] = useState<ChartType>("histogram");
@@ -40,6 +41,7 @@ export const ChartSection = ({ bounds }: Readonly<ChartSectionProps>) => {
             <SelectItem value="histogram">Event histogram</SelectItem>
             <SelectItem value="dataset-bar">Events by Dataset</SelectItem>
             <SelectItem value="catalog-bar">Events by Catalog</SelectItem>
+            <SelectItem value="simple-bar">Simple Bar Chart</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -48,6 +50,7 @@ export const ChartSection = ({ bounds }: Readonly<ChartSectionProps>) => {
         {chartType === "histogram" && <EventHistogram bounds={bounds} />}
         {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" />}
         {chartType === "catalog-bar" && <AggregationBarChart bounds={bounds} type="catalog" />}
+        {chartType === "simple-bar" && <SimpleBarChart bounds={bounds} type="catalog" />}
       </div>
     </div>
   );
