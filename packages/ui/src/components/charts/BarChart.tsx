@@ -121,7 +121,9 @@ export const BarChart = ({
   }, [data]);
 
   // Create event handlers
-  const events = useMemo(() => {
+  // Very important to depeond on data to enable animation on data change.
+  // Otherwise the chart will be re-rendered without animation on data updates.
+  const onEventsHandler = useMemo(() => {
     if (!onBarClick) return undefined;
 
     return {
@@ -137,7 +139,7 @@ export const BarChart = ({
         }
       },
     };
-  }, [onBarClick, data]);
+  }, [onBarClick]);
 
   return (
     <BaseChart
@@ -147,7 +149,7 @@ export const BarChart = ({
       isInitialLoad={isInitialLoad}
       isUpdating={isUpdating}
       config={chartOption}
-      onEvents={events}
+      onEvents={onEventsHandler}
     />
   );
 };

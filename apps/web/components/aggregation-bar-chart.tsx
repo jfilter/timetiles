@@ -12,7 +12,7 @@
 
 import { BarChart, type BarChartDataItem, useChartTheme } from "@workspace/ui/charts";
 import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useFilters } from "@/lib/filters";
 import { useChartQuery } from "@/lib/hooks/use-chart-query";
@@ -46,40 +46,43 @@ const AggregationBarChartComponent = ({
   const aggregationQuery = useEventsAggregationQuery(filters, bounds ?? null, type);
   const { data, isInitialLoad, isUpdating } = useChartQuery(aggregationQuery);
 
+  // Store latest data in ref for stable click handler
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
   // URL state management based on type
   const [, setSelectedCatalog] = useQueryState("catalog");
   const [, setSelectedDatasets] = useQueryState("datasets", parseAsArrayOf(parseAsString).withDefault([]));
 
-  // Transform API data to chart format
+  // Transform API data to chart format (without metadata for stable references)
   const chartData: BarChartDataItem[] = useMemo(() => {
     if (!data?.items) return [];
 
     return data.items.map((item) => ({
       label: item.name,
       value: item.count,
-      metadata: { [`${type}Id`]: String(item.id) },
     }));
-  }, [data, type]);
+  }, [data]);
 
-  // Click handler based on aggregation type
+  // Click handler based on aggregation type (stable - uses ref for data access)
   const handleBarClick = useCallback(
-    (item: BarChartDataItem) => {
+    (_item: BarChartDataItem, index: number) => {
+      // Access latest data from ref without coupling callback to data
+      const items = dataRef.current?.items;
+      if (!items?.[index]) return;
+
+      const itemId = String(items[index].id);
+
       if (type === "catalog") {
-        const metadata = item.metadata as { catalogId: string } | undefined;
-        const catalogId = metadata?.catalogId;
-        if (catalogId != null) {
-          void setSelectedCatalog(catalogId);
-        }
+        void setSelectedCatalog(itemId);
       } else {
         void setSelectedDatasets((current) => {
-          const metadata = item.metadata as { datasetId: string } | undefined;
-          const datasetId = metadata?.datasetId;
-          if (datasetId == undefined || datasetId == null) return current;
-
-          if (current.includes(datasetId)) {
-            return current.filter((id) => id !== datasetId);
+          if (current.includes(itemId)) {
+            return current.filter((id) => id !== itemId);
           } else {
-            return [...current, datasetId];
+            return [...current, itemId];
           }
         });
       }
