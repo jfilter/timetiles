@@ -1,7 +1,7 @@
 /**
  * @module
  */
-import { EventsList } from "@/components/events-list";
+import { EventsList } from "@/app/explore/_components/events-list";
 import type { Event } from "@/payload-types";
 
 import { renderWithProviders, screen } from "../../setup/test-utils";

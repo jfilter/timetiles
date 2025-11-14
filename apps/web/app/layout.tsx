@@ -12,7 +12,7 @@ import "@workspace/ui/globals.css";
 
 import { Geist, Geist_Mono } from "next/font/google";
 
-import { ConditionalTopMenuBar } from "@/components/conditional-top-menu-bar";
+import { ConditionalTopMenuBar } from "@/app/_components/conditional-top-menu-bar";
 import { Providers } from "@/components/providers";
 
 const fontSans = Geist({

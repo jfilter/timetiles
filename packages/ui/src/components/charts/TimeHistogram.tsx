@@ -65,7 +65,6 @@ export function TimeHistogram({
   loadingMessage = "Loading histogram...",
   emptyMessage = "No data available",
 }: TimeHistogramProps) {
-
   // Determine if dark theme based on theme prop
   const isDark = useMemo(() => {
     if (!theme) return false;
@@ -208,7 +207,10 @@ export function TimeHistogram({
   if (data.length === 0 && !isInitialLoad && !isUpdating) {
     const containerHeight = typeof height === "number" ? `${height}px` : height;
     return (
-      <div className={className} style={{ height: containerHeight, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div
+        className={className}
+        style={{ height: containerHeight, display: "flex", alignItems: "center", justifyContent: "center" }}
+      >
         <div style={{ color: theme?.textColor || "#6b7280", fontSize: "14px" }}>{emptyMessage}</div>
       </div>
     );

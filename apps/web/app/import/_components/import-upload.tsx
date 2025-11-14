@@ -16,7 +16,7 @@ import {
   type ImportProgressResponse,
   useImportProgressQuery,
   useImportUploadMutation,
-} from "../lib/hooks/use-events-queries";
+} from "@/lib/hooks/use-events-queries";
 
 const getStatusIcon = (status: string): string => {
   switch (status) {

@@ -12,8 +12,8 @@
 
 import { cn } from "@workspace/ui/lib/utils";
 
-import type { Catalog, Dataset } from "../payload-types";
-import { EventFilters } from "./event-filters";
+import { EventFilters } from "@/components/filters/event-filters";
+import type { Catalog, Dataset } from "@/payload-types";
 
 interface FilterDrawerProps {
   catalogs: Catalog[];

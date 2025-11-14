@@ -10,8 +10,9 @@
  */
 import { getPayload } from "payload";
 
-import config from "../payload.config";
-import type { MainMenu } from "../payload-types";
+import config from "@/payload.config";
+import type { MainMenu } from "@/payload-types";
+
 import { ClientConditionalTopMenuBar } from "./client-conditional-top-menu-bar";
 
 const getMainMenu = async (): Promise<MainMenu> => {

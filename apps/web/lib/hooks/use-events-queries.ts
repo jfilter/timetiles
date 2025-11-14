@@ -19,7 +19,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LngLatBounds } from "maplibre-gl";
 
-import type { ClusterFeature } from "@/components/clustered-map";
+import type { ClusterFeature } from "@/components/maps/clustered-map";
 import type { Event } from "@/payload-types";
 
 import type { FilterState } from "../filters";

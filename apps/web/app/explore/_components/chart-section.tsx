@@ -13,9 +13,9 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { useCallback, useState } from "react";
 
-import type { SimpleBounds } from "../lib/hooks/use-events-queries";
-import { AggregationBarChart } from "./aggregation-bar-chart";
-import { EventHistogram } from "./event-histogram";
+import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
+import { EventHistogram } from "@/components/charts/event-histogram";
+import type { SimpleBounds } from "@/lib/hooks/use-events-queries";
 
 interface ChartSectionProps {
   bounds?: SimpleBounds | null;

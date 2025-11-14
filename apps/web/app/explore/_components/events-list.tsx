@@ -8,7 +8,7 @@
  * @module
  * @category Components
  */
-import type { Event } from "../payload-types";
+import type { Event } from "@/payload-types";
 
 interface EventsListProps {
   events: Event[];

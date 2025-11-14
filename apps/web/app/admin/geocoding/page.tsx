@@ -14,8 +14,8 @@ import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 import React from "react";
 
-import { GeocodingTestPanel } from "@/components/geocoding-test-panel";
-import { ProviderPriorityList } from "@/components/provider-priority-list";
+import { GeocodingTestPanel } from "@/app/admin/geocoding/_components/geocoding-test-panel";
+import { ProviderPriorityList } from "@/app/admin/geocoding/_components/provider-priority-list";
 import config from "@/payload.config";
 
 // Force dynamic rendering to prevent build-time database queries

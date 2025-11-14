@@ -13,7 +13,7 @@
 import { X } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
-import type { FilterState } from "../lib/store";
+import type { FilterState } from "@/lib/store";
 
 interface FilterLabels {
   catalog?: string;

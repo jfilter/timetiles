@@ -13,14 +13,15 @@
 import type { LngLatBounds } from "maplibre-gl";
 import { useCallback, useMemo, useState } from "react";
 
-import { useFilters } from "../lib/filters";
-import { useDebounce } from "../lib/hooks/use-debounce";
-import { useClusterStatsQuery, useEventsListQuery, useMapClustersQuery } from "../lib/hooks/use-events-queries";
-import { useUIStore } from "../lib/store";
-import type { Catalog, Dataset } from "../payload-types";
+import { ClusteredMap } from "@/components/maps/clustered-map";
+import { useFilters } from "@/lib/filters";
+import { useDebounce } from "@/lib/hooks/use-debounce";
+import { useClusterStatsQuery, useEventsListQuery, useMapClustersQuery } from "@/lib/hooks/use-events-queries";
+import { useUIStore } from "@/lib/store";
+import type { Catalog, Dataset } from "@/payload-types";
+
 import { ActiveFilters } from "./active-filters";
 import { ChartSection } from "./chart-section";
-import { ClusteredMap } from "./clustered-map";
 import { EventsList } from "./events-list";
 import { ExploreHeader } from "./explore-header";
 import { FilterDrawer } from "./filter-drawer";

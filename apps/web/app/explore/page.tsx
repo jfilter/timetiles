@@ -10,7 +10,7 @@
 import { getPayload } from "payload";
 import { Suspense } from "react";
 
-import { MapExplorer } from "@/components/map-explorer";
+import { MapExplorer } from "@/app/explore/_components/map-explorer";
 import config from "@/payload.config";
 
 // Force dynamic rendering to prevent build-time database queries

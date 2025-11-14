@@ -11,8 +11,8 @@ import { notFound } from "next/navigation";
 import { getPayload } from "payload";
 import React from "react";
 
-import { PageLayout } from "@/components/page-layout";
-import { RichText } from "@/components/rich-text";
+import { PageLayout } from "@/components/layout/page-layout";
+import { RichText } from "@/components/layout/rich-text";
 import config from "@/payload.config";
 
 interface PageProps {

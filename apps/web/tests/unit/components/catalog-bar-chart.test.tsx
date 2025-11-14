@@ -3,7 +3,7 @@
  */
 import { cleanup, render, screen } from "@testing-library/react";
 
-import { AggregationBarChart } from "../../../components/aggregation-bar-chart";
+import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
 
 // Mock next-themes
 vi.mock("next-themes", () => ({

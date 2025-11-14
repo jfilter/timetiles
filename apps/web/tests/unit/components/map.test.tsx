@@ -1,7 +1,7 @@
 /**
  * @module
  */
-import { MapComponent } from "@/components/map";
+import { MapComponent } from "@/components/maps/map";
 
 import { createMapEvents } from "../../mocks";
 import { renderWithProviders } from "../../setup/test-utils";

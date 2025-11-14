@@ -1,7 +1,7 @@
 /**
  * @module
  */
-import { EventFilters } from "@/components/event-filters";
+import { EventFilters } from "@/components/filters/event-filters";
 import type { Catalog } from "@/payload-types";
 
 import { createMockCatalogs, createMockDatasets, createRichText } from "../../mocks";

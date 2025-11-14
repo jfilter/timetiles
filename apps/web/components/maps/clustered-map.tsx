@@ -16,7 +16,7 @@ import type { LngLatBounds } from "maplibre-gl";
 import { useCallback, useMemo, useRef, useState } from "react";
 import Map, { Layer, type MapLayerMouseEvent, type MapRef, Popup, Source } from "react-map-gl/maplibre";
 
-import { createLogger } from "../lib/logger";
+import { createLogger } from "@/lib/logger";
 
 export interface ClusterFeature {
   type: "Feature";

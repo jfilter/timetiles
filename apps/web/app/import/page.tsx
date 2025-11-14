@@ -7,8 +7,8 @@
  *
  * @module
  */
-import { ImportUpload } from "@/components/import-upload";
-import { PageLayout } from "@/components/page-layout";
+import { ImportUpload } from "@/app/import/_components/import-upload";
+import { PageLayout } from "@/components/layout/page-layout";
 
 export default function ImportPage() {
   return (
