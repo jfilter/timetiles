@@ -14,10 +14,11 @@ import { BarChart, type BarChartDataItem, useChartTheme } from "@workspace/ui/ch
 import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 
-import type { BaseChartProps } from "./types";
 import { useFilters } from "@/lib/filters";
 import { useChartQuery } from "@/lib/hooks/use-chart-query";
 import { useEventsAggregationQuery } from "@/lib/hooks/use-events-queries";
+
+import type { BaseChartProps } from "./types";
 
 type AggregationType = "catalog" | "dataset";
 

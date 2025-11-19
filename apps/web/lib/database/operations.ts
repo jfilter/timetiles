@@ -106,12 +106,7 @@ export const executeDatabaseQuery = async (
  *
  * @internal
  */
-const executeQueryViaShell = (
-  databaseName: string,
-  sql: string,
-  isCI: boolean,
-  description?: string
-): string => {
+const executeQueryViaShell = (databaseName: string, sql: string, isCI: boolean, description?: string): string => {
   // Get connection parameters from environment
   const DATABASE_URL = process.env.DATABASE_URL;
   if (!DATABASE_URL) {
@@ -190,10 +185,7 @@ export const terminateConnections = async (databaseName: string): Promise<void> 
  * await dropDatabase('timetiles_test_e2e');
  * ```
  */
-export const dropDatabase = async (
-  databaseName: string,
-  options: { ifExists?: boolean } = {}
-): Promise<void> => {
+export const dropDatabase = async (databaseName: string, options: { ifExists?: boolean } = {}): Promise<void> => {
   // Terminate connections first
   await terminateConnections(databaseName);
 
@@ -221,10 +213,7 @@ export const dropDatabase = async (
  * await createDatabase('timetiles_test_e2e', { ifNotExists: true });
  * ```
  */
-export const createDatabase = async (
-  databaseName: string,
-  options: { ifNotExists?: boolean } = {}
-): Promise<void> => {
+export const createDatabase = async (databaseName: string, options: { ifNotExists?: boolean } = {}): Promise<void> => {
   const client = createDatabaseClient({ database: "postgres" });
   try {
     await client.connect();

@@ -7,10 +7,13 @@
  * @category Integration Tests
  */
 
-// Import geospatial assertions
+import {
+  areValidCoordinates,
+  calculateDistance,
+  generateNearbyCoordinate,
+  TEST_COORDINATES,
+} from "../../setup/geospatial-test-helpers";
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
-import { TEST_COORDINATES } from "../../utils/geospatial-assertions";
-import { TestDataBuilder } from "../../utils/test-data-builder";
 
 describe("Basic Enhanced Testing Infrastructure", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -27,14 +30,22 @@ describe("Basic Enhanced Testing Infrastructure", () => {
 
   describe("TestDataBuilder", () => {
     it("should create realistic events with fluent API", () => {
-      const event = TestDataBuilder.events()
-        .withTitle("Tech Conference 2024")
-        .withCoordinates(40.7128, -74.006) // NYC
-        .withDataset(1)
-        .withRealisticData("conference")
-        .withAddress("123 Tech Street, New York, NY")
-        .withTags(["technology", "networking"])
-        .build();
+      // Create event with inline data
+      const event = {
+        id: Math.floor(Math.random() * 10000),
+        dataset: 1,
+        data: {
+          title: "Tech Conference 2024",
+          category: "Conference",
+          tags: ["technology", "networking", "business", "networking", "professional"],
+          url: "https://example-conference.com",
+          address: "123 Tech Street, New York, NY",
+        },
+        location: { latitude: 40.7128, longitude: -74.006 },
+        coordinateSource: { type: "manual" },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
       expect((event.data as Record<string, unknown>).title).toBe("Tech Conference 2024");
       expect(event.location).toEqual({ latitude: 40.7128, longitude: -74.006 });
@@ -44,18 +55,26 @@ describe("Basic Enhanced Testing Infrastructure", () => {
     });
 
     it("should create multiple events with variations", () => {
-      const events = TestDataBuilder.events()
-        .withDataset(1)
-        .withRealisticData("meetup")
-        .nearLocation(40.7128, -74.006, 10) // Within 10km of NYC
-        .buildMany(3, (event, i) => ({
-          ...event,
+      // Generate events near NYC
+      const baseLocation = { latitude: 40.7128, longitude: -74.006 };
+      const events = Array.from({ length: 3 }, (_, i) => {
+        const location = generateNearbyCoordinate(baseLocation, 10);
+        return {
+          id: Math.floor(Math.random() * 10000),
+          dataset: 1,
           data: {
-            ...(typeof event.data === "object" && event.data !== null && !Array.isArray(event.data) ? event.data : {}),
             title: `Meetup ${i + 1}`,
+            category: "Meetup",
+            tags: ["community", "social", "local"],
+            description: "Local community gathering",
             capacity: 50 + i * 10,
           },
-        }));
+          location,
+          coordinateSource: { type: "manual" },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      });
 
       expect(events).toHaveLength(3);
       events.forEach((event, i) => {
@@ -64,7 +83,8 @@ describe("Basic Enhanced Testing Infrastructure", () => {
         expect((event.data as Record<string, unknown>).capacity).toBe(50 + i * 10);
 
         // Check coordinates are near NYC (within 10km)
-        expect(event.location).toBeWithinRadius(TEST_COORDINATES.NYC, 10);
+        const distance = calculateDistance(event.location, TEST_COORDINATES.NYC);
+        expect(distance).toBeLessThanOrEqual(10);
       });
     });
   });
@@ -74,8 +94,8 @@ describe("Basic Enhanced Testing Infrastructure", () => {
       const validCoords = { latitude: 40.7128, longitude: -74.006 };
       const invalidCoords = { latitude: 200, longitude: -300 };
 
-      expect(validCoords).toHaveValidCoordinates();
-      expect(invalidCoords).not.toHaveValidCoordinates();
+      expect(areValidCoordinates(validCoords)).toBe(true);
+      expect(areValidCoordinates(invalidCoords)).toBe(false);
     });
 
     it("should check distances and radiuses", () => {
@@ -83,11 +103,13 @@ describe("Basic Enhanced Testing Infrastructure", () => {
       const nearbyCoords = { latitude: 40.8, longitude: -74.1 };
       const farCoords = TEST_COORDINATES.LONDON;
 
-      expect(nearbyCoords).toBeWithinRadius(nycCoords, 20);
-      expect(farCoords).not.toBeWithinRadius(nycCoords, 1000);
+      // Within radius checks
+      expect(calculateDistance(nearbyCoords, nycCoords)).toBeLessThanOrEqual(20);
+      expect(calculateDistance(farCoords, nycCoords)).toBeGreaterThan(1000);
 
-      expect(nearbyCoords).toBeCloserThan(nycCoords, 20);
-      expect(farCoords).toBeFurtherThan(nycCoords, 1000);
+      // Distance checks
+      expect(calculateDistance(nearbyCoords, nycCoords)).toBeLessThan(20);
+      expect(calculateDistance(farCoords, nycCoords)).toBeGreaterThan(1000);
     });
   });
 

@@ -17,9 +17,9 @@ import { existsSync, readFileSync } from "fs";
 import { join, resolve } from "path";
 
 // Find the monorepo root by looking for the root package.json with "timetiles" name
-function findMonorepoRoot(startPath: string = process.cwd()): string {
+const findMonorepoRoot = (startPath: string = process.cwd()): string => {
   let currentPath = resolve(startPath);
-  
+
   while (currentPath !== "/") {
     const packageJsonPath = join(currentPath, "package.json");
     if (existsSync(packageJsonPath)) {
@@ -34,10 +34,10 @@ function findMonorepoRoot(startPath: string = process.cwd()): string {
     if (parentPath === currentPath) break;
     currentPath = parentPath;
   }
-  
+
   // Fallback to assuming we're somewhere in the monorepo
   return resolve(startPath);
-}
+};
 
 const ROOT_DIR = findMonorepoRoot();
 const CURRENT_DIR = process.cwd();
@@ -93,7 +93,7 @@ for (const path of possiblePaths) {
 if (!summaryPath) {
   console.error("❌ No coverage summary found.");
   console.error("   Searched in:");
-  possiblePaths.forEach(p => console.error(`   - ${p}`));
+  possiblePaths.forEach((p) => console.error(`   - ${p}`));
   console.error("\n   Run 'pnpm test:coverage' first to generate coverage data.");
   process.exit(1);
 }
@@ -103,12 +103,7 @@ try {
   const total = summary.total;
 
   // Calculate overall coverage (average of all metrics)
-  const overall = (
-    total.lines.pct +
-    total.statements.pct +
-    total.functions.pct +
-    total.branches.pct
-  ) / 4;
+  const overall = (total.lines.pct + total.statements.pct + total.functions.pct + total.branches.pct) / 4;
 
   // Helper to format file path
   const formatPath = (fullPath: string): string => {
@@ -135,7 +130,7 @@ try {
         coverage: data.lines.pct,
         lines: { total: data.lines.total, covered: data.lines.covered },
       }))
-      .filter(file => file.coverage < threshold)
+      .filter((file) => file.coverage < threshold)
       .sort((a, b) => a.coverage - b.coverage);
 
     console.log(`\n⚠️  Files Below ${threshold}% Coverage Threshold:`);
@@ -144,7 +139,7 @@ try {
     if (files.length === 0) {
       console.log(`✅ All files meet or exceed ${threshold}% coverage!`);
     } else {
-      files.forEach(file => {
+      files.forEach((file) => {
         const lineInfo = `(${file.lines.covered}/${file.lines.total} lines)`;
         console.log(`${formatCoverage(file.coverage)} ${formatPath(file.path)} ${lineInfo}`);
       });

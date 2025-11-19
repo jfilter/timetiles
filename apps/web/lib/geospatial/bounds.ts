@@ -1,42 +1,16 @@
 /**
- * Geospatial type definitions and utility functions for map and location features.
+ * Geographic bounds utilities.
  *
- * This module provides shared types and validation functions for working with
- * geographic data, including map bounds, coordinates, and spatial queries.
- * Used across API routes for consistent geospatial data handling.
+ * Functions for working with map bounds, including validation, parsing,
+ * and spatial containment checks.
  *
  * @module
- * @category Types
+ * @category Geospatial
  */
+
 import { NextResponse } from "next/server";
 
-/**
- * Represents geographic bounds for map viewport queries.
- *
- * Defines a rectangular geographic area using latitude and longitude
- * coordinates. Used for filtering events within map bounds and
- * spatial queries.
- *
- * @example
- * ```typescript
- * const bounds: MapBounds = {
- *   north: 37.8,
- *   south: 37.7,
- *   east: -122.4,
- *   west: -122.5
- * };
- * ```
- */
-export interface MapBounds {
-  /** Northern latitude boundary (maximum latitude) */
-  north: number;
-  /** Southern latitude boundary (minimum latitude) */
-  south: number;
-  /** Eastern longitude boundary (maximum longitude) */
-  east: number;
-  /** Western longitude boundary (minimum longitude) */
-  west: number;
-}
+import type { Coordinates, MapBounds } from "./types";
 
 /**
  * Type guard to validate MapBounds objects at runtime.
@@ -132,4 +106,58 @@ export const parseBoundsParameter = (boundsParam: string | null): ParseBoundsRes
       ),
     };
   }
+};
+
+/**
+ * Check if a point is within a bounding box.
+ *
+ * Determines whether a coordinate point falls within the specified
+ * geographic bounds.
+ *
+ * @param point - Coordinate to check
+ * @param bounds - Bounding box to check against
+ * @returns True if point is within bounds
+ *
+ * @example
+ * ```typescript
+ * const point = { latitude: 40.7, longitude: -74.0 };
+ * const bounds = { north: 41, south: 40, east: -73, west: -75 };
+ * const isInside = isWithinBounds(point, bounds); // true
+ * ```
+ */
+export const isWithinBounds = (point: Coordinates, bounds: MapBounds): boolean =>
+  point.latitude >= bounds.south &&
+  point.latitude <= bounds.north &&
+  point.longitude >= bounds.west &&
+  point.longitude <= bounds.east;
+
+/**
+ * Create a bounding box around a center point with given radius.
+ *
+ * Generates a rectangular bounding box centered on a point, extending
+ * the specified radius in all directions. Uses a rough approximation
+ * of 1 degree ≈ 111 km.
+ *
+ * @param center - Center coordinate
+ * @param radiusKm - Radius in kilometers
+ * @returns Bounding box around the center point
+ *
+ * @example
+ * ```typescript
+ * const bounds = createBoundingBox(
+ *   { latitude: 40.7128, longitude: -74.0060 },
+ *   10 // 10 km radius
+ * );
+ * // Returns bounds approximately 10km in each direction
+ * ```
+ */
+export const createBoundingBox = (center: Coordinates, radiusKm: number): MapBounds => {
+  const radiusDeg = radiusKm / 111; // Rough conversion: 1 degree ≈ 111 km
+
+  return {
+    north: center.latitude + radiusDeg,
+    south: center.latitude - radiusDeg,
+    east: center.longitude + radiusDeg,
+    west: center.longitude - radiusDeg,
+  };
 };

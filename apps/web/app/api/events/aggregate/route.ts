@@ -21,7 +21,7 @@ import {
   normalizeEndDate,
   parseDatasetIds,
 } from "@/lib/services/aggregation-filters";
-import { parseBoundsParameter } from "@/lib/types/geo";
+import { parseBoundsParameter } from "@/lib/geospatial";
 import { internalError } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 

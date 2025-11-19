@@ -10,10 +10,10 @@
  *
  * @module
  */
+import { isValidLatitude, isValidLongitude } from "@/lib/geospatial";
 import { logger } from "@/lib/logger";
 
 import { parseCoordinate as parseCoordinateFromParser } from "./coordinate-parser";
-import { isValidLatitude, isValidLongitude } from "./coordinate-validation-utils";
 
 export interface ValidatedCoordinates {
   latitude: number;

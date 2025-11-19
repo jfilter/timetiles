@@ -65,10 +65,9 @@ export const listTestDatabases = async (pattern: string = "timetiles_test%"): Pr
   const client = createDatabaseClient({ database: "postgres" });
   try {
     await client.connect();
-    const result = await client.query(
-      "SELECT datname FROM pg_database WHERE datname LIKE $1 ORDER BY datname",
-      [pattern]
-    );
+    const result = await client.query("SELECT datname FROM pg_database WHERE datname LIKE $1 ORDER BY datname", [
+      pattern,
+    ]);
     return result.rows.map((row) => row.datname as string);
   } finally {
     await client.end();
@@ -106,10 +105,7 @@ export const getDatabaseInfo = async (databaseName: string): Promise<DatabaseInf
     }
 
     // Get database size
-    const sizeResult = await postgresClient.query(
-      "SELECT pg_database_size($1) as size",
-      [databaseName]
-    );
+    const sizeResult = await postgresClient.query("SELECT pg_database_size($1) as size", [databaseName]);
     info.size = parseInt(sizeResult.rows[0]?.size ?? "0");
   } finally {
     await postgresClient.end();
@@ -167,6 +163,5 @@ export const getDatabaseInfo = async (databaseName: string): Promise<DatabaseInf
  */
 export const listTestDatabasesWithInfo = async (pattern: string = "timetiles_test%"): Promise<DatabaseInfo[]> => {
   const names = await listTestDatabases(pattern);
-  const infos = await Promise.all(names.map((name) => getDatabaseInfo(name)));
-  return infos;
+  return Promise.all(names.map((name) => getDatabaseInfo(name)));
 };

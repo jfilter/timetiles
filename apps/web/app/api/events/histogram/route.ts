@@ -15,12 +15,12 @@ import { sql } from "@payloadcms/db-postgres";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
+import { checkDatabaseFunction } from "@/lib/database/functions";
 import { logError, logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
-import { type MapBounds, parseBoundsParameter } from "@/lib/types/geo";
+import { type MapBounds, parseBoundsParameter } from "@/lib/geospatial";
 import { internalError } from "@/lib/utils/api-response";
-import { checkDatabaseFunction } from "@/lib/database/functions";
 import config from "@/payload.config";
 
 const buildFiltersWithBounds = (params: {

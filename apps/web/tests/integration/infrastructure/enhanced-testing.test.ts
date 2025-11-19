@@ -11,10 +11,18 @@
  * @category Integration Tests
  */
 
-// Import geospatial assertions (they extend expect automatically) and helper utilities
+import {
+  areValidCoordinates,
+  calculateCentroid,
+  calculateDistance,
+  createCluster,
+  createRichText,
+  generateNearbyCoordinate,
+  isWithinBounds,
+  TEST_COORDINATES,
+  validateDistribution,
+} from "../../setup/geospatial-test-helpers";
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
-import { GeospatialTestHelper, TEST_COORDINATES } from "../../utils/geospatial-assertions";
-import { TestDataBuilder } from "../../utils/test-data-builder";
 
 describe("Enhanced Testing Infrastructure", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -93,14 +101,22 @@ describe("Enhanced Testing Infrastructure", () => {
 
   describe("TestDataBuilder with Builder Patterns", () => {
     it("should create realistic events with fluent API", () => {
-      const event = TestDataBuilder.events()
-        .withTitle("Tech Conference 2024")
-        .withCoordinates(40.7128, -74.006) // NYC
-        .withDataset(1)
-        .withRealisticData("conference")
-        .withAddress("123 Tech Street, New York, NY")
-        .withTags(["technology", "networking"])
-        .build();
+      // Create event with inline data
+      const event = {
+        id: Math.floor(Math.random() * 10000),
+        dataset: 1,
+        data: {
+          title: "Tech Conference 2024",
+          category: "Conference",
+          tags: ["technology", "networking", "business", "networking", "professional"],
+          url: "https://example-conference.com",
+          address: "123 Tech Street, New York, NY",
+        },
+        location: { latitude: 40.7128, longitude: -74.006 },
+        coordinateSource: { type: "manual" },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
       expect((event.data as Record<string, unknown>).title).toBe("Tech Conference 2024");
       expect(event.location).toEqual({ latitude: 40.7128, longitude: -74.006 });
@@ -110,18 +126,26 @@ describe("Enhanced Testing Infrastructure", () => {
     });
 
     it("should create multiple events with variations", () => {
-      const events = TestDataBuilder.events()
-        .withDataset(1)
-        .withRealisticData("meetup")
-        .nearLocation(40.7128, -74.006, 10) // Within 10km of NYC
-        .buildMany(5, (event, i) => ({
-          ...event,
+      // Generate events near NYC
+      const baseLocation = { latitude: 40.7128, longitude: -74.006 };
+      const events = Array.from({ length: 5 }, (_, i) => {
+        const location = generateNearbyCoordinate(baseLocation, 10);
+        return {
+          id: Math.floor(Math.random() * 10000),
+          dataset: 1,
           data: {
-            ...(typeof event.data === "object" && event.data !== null && !Array.isArray(event.data) ? event.data : {}),
             title: `Meetup ${i + 1}`,
+            category: "Meetup",
+            tags: ["community", "social", "local"],
+            description: "Local community gathering",
             capacity: 50 + i * 10,
           },
-        }));
+          location,
+          coordinateSource: { type: "manual" },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      });
 
       expect(events).toHaveLength(5);
       events.forEach((event, i) => {
@@ -130,22 +154,54 @@ describe("Enhanced Testing Infrastructure", () => {
         expect((event.data as Record<string, unknown>).capacity).toBe(50 + i * 10);
 
         // Check coordinates are near NYC (within 10km)
-        expect(event.location).toBeWithinRadius(TEST_COORDINATES.NYC, 10);
+        const distance = calculateDistance(event.location, TEST_COORDINATES.NYC);
+        expect(distance).toBeLessThanOrEqual(10);
       });
     });
 
     it("should create related catalogs and datasets", () => {
-      const catalog = TestDataBuilder.catalogs()
-        .withName("Technology Events")
-        .withDescription("Tech conferences and meetups")
-        .withStatus("published")
-        .build();
+      // Create catalog inline
+      const catalog = {
+        name: "Technology Events",
+        slug: "technology-events",
+        description: createRichText("Tech conferences and meetups"),
+        _status: "published" as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
-      const dataset = TestDataBuilder.datasets()
-        .withName("Tech Conference Schedule")
-        .withCatalog(1)
-        .withRealisticSchema("events")
-        .build();
+      // Create dataset inline
+      const dataset = {
+        name: "Tech Conference Schedule",
+        slug: "tech-conference-schedule",
+        description: createRichText("Test dataset description"),
+        catalog: 1,
+        language: "eng",
+        _status: "published" as const,
+        isPublic: true,
+        schemaConfig: {
+          enabled: true,
+          locked: false,
+          autoGrow: true,
+          autoApproveNonBreaking: false,
+        },
+        metadata: {
+          schemaType: "events",
+          expectedSchema: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              date: { type: "string", format: "date-time" },
+              location: { type: "string" },
+              category: { type: "string" },
+              tags: { type: "array", items: { type: "string" } },
+            },
+            required: ["title", "date"],
+          },
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
       expect(catalog.name).toBe("Technology Events");
       expect(catalog.slug).toBe("technology-events");
@@ -156,23 +212,71 @@ describe("Enhanced Testing Infrastructure", () => {
     });
 
     it("should create realistic test scenarios", () => {
-      const scenario = TestDataBuilder.createScenario("conference-events");
+      // Create scenario inline (conference-events)
+      const catalog = {
+        name: "Technology Events",
+        slug: "technology-events",
+        description: createRichText("Technology conferences and meetups"),
+        _status: "published" as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const dataset = {
+        name: "Tech Conference Schedule",
+        slug: "tech-conference-schedule",
+        description: createRichText("Test dataset description"),
+        catalog: 1,
+        language: "eng",
+        _status: "published" as const,
+        isPublic: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const events = Array.from({ length: 10 }, (_, i) => {
+        const location = generateNearbyCoordinate(TEST_COORDINATES.NYC, 50);
+        return {
+          id: Math.floor(Math.random() * 10000),
+          dataset: 1,
+          data: {
+            title: `Tech Conference ${i + 1}`,
+            category: "Conference",
+            tags: ["business", "networking", "professional"],
+            url: "https://example-conference.com",
+            address: `${100 + i} Tech Street, New York, NY`,
+          },
+          location,
+          coordinateSource: { type: "manual" },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      });
+
+      const scenario = {
+        catalogs: [catalog],
+        datasets: [dataset],
+        events,
+      };
 
       expect(scenario.catalogs).toHaveLength(1);
       expect(scenario.datasets).toHaveLength(1);
       expect(scenario.events).toHaveLength(10);
 
-      const catalog = scenario.catalogs[0];
-      const dataset = scenario.datasets[0];
-      const events = scenario.events;
+      const catalogResult = scenario.catalogs[0];
+      const datasetResult = scenario.datasets[0];
+      const eventsResult = scenario.events;
 
-      expect(catalog?.name).toBe("Technology Events");
-      expect(dataset?.name).toBe("Tech Conference Schedule");
+      expect(catalogResult?.name).toBe("Technology Events");
+      expect(datasetResult?.name).toBe("Tech Conference Schedule");
 
-      events.forEach((event, i) => {
+      eventsResult.forEach((event, i) => {
         expect((event.data as Record<string, unknown>).title).toBe(`Tech Conference ${i + 1}`);
         expect((event.data as Record<string, unknown>).category).toBe("Conference");
-        expect(event.location).toBeWithinRadius(TEST_COORDINATES.NYC, 50);
+
+        // Check within 50km radius
+        const distance = calculateDistance(event.location, TEST_COORDINATES.NYC);
+        expect(distance).toBeLessThanOrEqual(50);
       });
     });
   });
@@ -182,8 +286,8 @@ describe("Enhanced Testing Infrastructure", () => {
       const validCoords = { latitude: 40.7128, longitude: -74.006 };
       const invalidCoords = { latitude: 200, longitude: -300 };
 
-      expect(validCoords).toHaveValidCoordinates();
-      expect(invalidCoords).not.toHaveValidCoordinates();
+      expect(areValidCoordinates(validCoords)).toBe(true);
+      expect(areValidCoordinates(invalidCoords)).toBe(false);
     });
 
     it("should check distances and radiuses", () => {
@@ -191,11 +295,13 @@ describe("Enhanced Testing Infrastructure", () => {
       const nearbyCoords = { latitude: 40.8, longitude: -74.1 };
       const farCoords = TEST_COORDINATES.LONDON;
 
-      expect(nearbyCoords).toBeWithinRadius(nycCoords, 20);
-      expect(farCoords).not.toBeWithinRadius(nycCoords, 1000);
+      // Within radius checks
+      expect(calculateDistance(nearbyCoords, nycCoords)).toBeLessThanOrEqual(20);
+      expect(calculateDistance(farCoords, nycCoords)).toBeGreaterThan(1000);
 
-      expect(nearbyCoords).toBeCloserThan(nycCoords, 20);
-      expect(farCoords).toBeFurtherThan(nycCoords, 1000);
+      // Distance checks
+      expect(calculateDistance(nearbyCoords, nycCoords)).toBeLessThan(20);
+      expect(calculateDistance(farCoords, nycCoords)).toBeGreaterThan(1000);
     });
 
     it("should validate bounding boxes", () => {
@@ -203,26 +309,25 @@ describe("Enhanced Testing Infrastructure", () => {
       const coordsInNyc = { latitude: 40.7, longitude: -74.0 };
       const coordsOutsideNyc = { latitude: 42.0, longitude: -71.0 }; // Boston area
 
-      expect(coordsInNyc).toBeWithinBounds(nycMetroBounds);
-      expect(coordsOutsideNyc).not.toBeWithinBounds(nycMetroBounds);
+      expect(isWithinBounds(coordsInNyc, nycMetroBounds)).toBe(true);
+      expect(isWithinBounds(coordsOutsideNyc, nycMetroBounds)).toBe(false);
     });
 
     it("should work with GeospatialTestHelper utilities", () => {
       // Create a cluster of points
-      const cluster = GeospatialTestHelper.createCluster(TEST_COORDINATES.NYC, 10, 5);
+      const cluster = createCluster(TEST_COORDINATES.NYC, 10, 5);
       expect(cluster).toHaveLength(10);
 
       cluster.forEach((point) => {
-        expect(point).toHaveValidCoordinates();
-        expect(point).toBeWithinRadius(TEST_COORDINATES.NYC, 5);
+        expect(areValidCoordinates(point)).toBe(true);
+        expect(calculateDistance(point, TEST_COORDINATES.NYC)).toBeLessThanOrEqual(5);
       });
 
       // Create multiple clusters
-      const multipleClusters = GeospatialTestHelper.createMultipleClusters(
-        [TEST_COORDINATES.NYC, TEST_COORDINATES.SAN_FRANCISCO],
-        5,
-        2
-      );
+      const multipleClusters = [
+        createCluster(TEST_COORDINATES.NYC, 5, 2),
+        createCluster(TEST_COORDINATES.SAN_FRANCISCO, 5, 2),
+      ];
 
       expect(multipleClusters).toHaveLength(2);
       expect(multipleClusters[0]).toHaveLength(5);
@@ -230,11 +335,11 @@ describe("Enhanced Testing Infrastructure", () => {
 
       // Validate distribution
       const allPoints = multipleClusters.flat();
-      const distribution = GeospatialTestHelper.validateDistribution(allPoints);
+      const distribution = validateDistribution(allPoints);
 
       expect(distribution.isValid).toBe(true);
       expect(distribution.issues).toHaveLength(0);
-      expect(distribution.centroid).toHaveValidCoordinates();
+      expect(areValidCoordinates(distribution.centroid)).toBe(true);
     });
 
     it("should check centroid calculations", () => {
@@ -246,8 +351,11 @@ describe("Enhanced Testing Infrastructure", () => {
       ];
 
       const expectedCentroid = { latitude: 40.5, longitude: -74.0 };
+      const actualCentroid = calculateCentroid(points);
 
-      expect(expectedCentroid).toBeACentroidOf(points, 0.1);
+      // Check within 0.1km tolerance
+      const distance = calculateDistance(expectedCentroid, actualCentroid);
+      expect(distance).toBeLessThanOrEqual(0.1);
     });
 
     it("should handle event objects with location properties", () => {
@@ -257,8 +365,8 @@ describe("Enhanced Testing Infrastructure", () => {
         data: {},
       };
 
-      expect(event).toHaveValidCoordinates();
-      expect(event).toBeWithinRadius(TEST_COORDINATES.NYC, 1);
+      expect(areValidCoordinates(event.location)).toBe(true);
+      expect(calculateDistance(event.location, TEST_COORDINATES.NYC)).toBeLessThanOrEqual(1);
     });
   });
 

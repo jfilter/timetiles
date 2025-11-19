@@ -16,7 +16,7 @@
  * Format detection utilities for geolocation data.
  */
 
-import { isValidCoordinate } from "./coordinate-validation-utils";
+import { isValidCoordinate } from "@/lib/geospatial";
 
 export interface FormatDetectionResult {
   format: string;

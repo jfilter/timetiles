@@ -13,9 +13,6 @@
  *
  * @module
  */
-import { logger } from "@/lib/logger";
-
-import { parseCoordinate } from "./coordinate-parser";
 import {
   categorizeCoordinateValue,
   type CoordinateSample,
@@ -23,7 +20,10 @@ import {
   isValidLatitudeCandidate,
   isValidLongitudeCandidate,
   valueToString,
-} from "./coordinate-validation-utils";
+} from "@/lib/geospatial";
+import { logger } from "@/lib/logger";
+
+import { parseCoordinate } from "./coordinate-parser";
 import {
   checkCommaFormat,
   checkGeoJsonFormat,

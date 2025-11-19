@@ -15,12 +15,12 @@
 
 import { TimeHistogram, useChartTheme } from "@workspace/ui/charts";
 
-import type { BaseChartProps } from "./types";
-
 import { useFilters } from "@/lib/filters";
 import { useChartFilters } from "@/lib/hooks/use-chart-filters";
 import { useChartQuery } from "@/lib/hooks/use-chart-query";
 import { useHistogramQuery } from "@/lib/hooks/use-events-queries";
+
+import type { BaseChartProps } from "./types";
 
 /**
  * Event histogram component with data fetching.
