@@ -549,6 +549,59 @@ const Datasets: CollectionConfig = {
         },
       ],
     },
+    // Display Field Configuration
+    {
+      name: "displayConfig",
+      type: "group",
+      admin: {
+        description: "Customize how events from this dataset are displayed in the UI",
+      },
+      fields: [
+        {
+          name: "primaryLabelField",
+          type: "text",
+          admin: {
+            description:
+              "Field path to use as the primary label/title (e.g., 'title', 'event_name'). Leave empty for automatic selection.",
+            placeholder: "Auto-detect from field metadata",
+          },
+        },
+        {
+          name: "displayFields",
+          type: "array",
+          admin: {
+            description: "Specify which fields to show in event lists. Leave empty for automatic selection.",
+          },
+          fields: [
+            {
+              name: "fieldPath",
+              type: "text",
+              required: true,
+              admin: {
+                description: "JSON path to field (e.g., 'description', 'location.city')",
+              },
+            },
+            {
+              name: "label",
+              type: "text",
+              admin: {
+                description: "Optional custom label for display (defaults to field name)",
+              },
+            },
+          ],
+        },
+        {
+          name: "maxDisplayFields",
+          type: "number",
+          min: 1,
+          max: 10,
+          defaultValue: 3,
+          admin: {
+            description: "Maximum number of fields to display in list views",
+          },
+        },
+      ],
+    },
   ],
 };
 

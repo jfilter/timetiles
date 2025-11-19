@@ -91,6 +91,10 @@ const transformEvent = (event: Event) => ({
       event.dataset.catalog != null
         ? event.dataset.catalog.name
         : undefined,
+    fieldMetadata:
+      typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMetadata : undefined,
+    displayConfig:
+      typeof event.dataset === "object" && event.dataset != null ? event.dataset.displayConfig : undefined,
   },
   data: event.data,
   location: event.location
@@ -99,6 +103,7 @@ const transformEvent = (event: Event) => ({
         latitude: event.location.latitude,
       }
     : null,
+  geocodingInfo: event.geocodingInfo,
   eventTimestamp: event.eventTimestamp,
   isValid: event.validationStatus === "valid",
 });

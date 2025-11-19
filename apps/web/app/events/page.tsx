@@ -2,7 +2,7 @@
  * This file defines the page for listing events.
  *
  * It fetches a list of the 50 most recent, published events from the Payload CMS.
- * Each event in the list is displayed with its title, date, dataset, and location,
+ * Each event in the list is displayed intelligently based on dataset field metadata,
  * and serves as a link to the detailed event page.
  *
  * @module
@@ -12,6 +12,7 @@ import Link from "next/link";
 import { getPayload } from "payload";
 
 import { formatDateShort } from "@/lib/utils/date";
+import { formatEventForDisplay } from "@/lib/utils/event-display-formatter";
 
 export const dynamic = "force-dynamic";
 
@@ -40,12 +41,19 @@ export default async function EventsListPage() {
       ) : (
         <div className="grid gap-4">
           {events.map((event) => {
-            const eventData = event.data as Record<string, unknown>;
-            const title =
-              (typeof eventData.title === "string" && eventData.title) ||
-              (typeof eventData.name === "string" && eventData.name) ||
-              `Event ${event.id}`;
             const dataset = typeof event.dataset === "object" ? event.dataset : null;
+            const eventData = typeof event.data === "object" && event.data != null ? event.data : {};
+            const fieldMetadata =
+              dataset && typeof dataset.fieldMetadata === "object" ? dataset.fieldMetadata : null;
+            const displayConfig =
+              dataset && typeof dataset.displayConfig === "object" ? dataset.displayConfig : null;
+
+            const displayInfo = formatEventForDisplay(
+              eventData as Record<string, unknown>,
+              fieldMetadata as Record<string, unknown> | null,
+              event.id,
+              displayConfig as never
+            );
 
             return (
               <Link
@@ -55,7 +63,7 @@ export default async function EventsListPage() {
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <h2 className="mb-1 text-xl font-semibold">{title}</h2>
+                    <h2 className="mb-1 text-xl font-semibold">{displayInfo.primaryLabel}</h2>
                     <div className="space-y-1 text-sm text-gray-600">
                       {event.eventTimestamp != null && <p>Date: {formatDateShort(event.eventTimestamp)}</p>}
                       {dataset != null && <p>Dataset: {dataset.name}</p>}
