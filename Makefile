@@ -104,7 +104,11 @@ test:
 #   make test-ai FILTER=store.test                  # Run store tests
 #   make test-ai FILTER=tests/unit/lib              # Run specific directory
 test-ai:
-	cd apps/web && pnpm test:ai $(FILTER)
+	@if [ -z "$(FILTER)" ]; then \
+		cd apps/web && pnpm test:ai; \
+	else \
+		cd apps/web && pnpm test:ai $(FILTER); \
+	fi
 
 # Run combined code quality checks with AI-friendly output (lint + typecheck)
 check-ai:
@@ -118,13 +122,14 @@ test-coverage:
 coverage:
 	pnpm test:coverage:summary
 
-# Check coverage threshold (files below 80%)
+# Check coverage threshold (files below 80%) - bypasses turbo (app-specific with arguments)
 coverage-check:
 	pnpm --filter web test:coverage:check
 
-# Seed database
+# Seed database (web-specific with arguments)
+# Usage: make seed ARGS="development users catalogs"
 seed:
-	pnpm seed
+	pnpm --filter web seed $(ARGS)
 
 # Full development setup (infrastructure + dev server)
 dev-full: up
@@ -133,17 +138,17 @@ dev-full: up
 	@echo "🚀 Starting development server..."
 	pnpm dev
 
-# Run E2E tests (handles database setup automatically)
+# Run E2E tests (handles database setup automatically) - web-specific, bypasses turbo
 test-e2e:
 	@echo "🧪 Running E2E tests with automatic database setup..."
 	pnpm --filter web test:e2e
 
-# Run database migrations
+# Run database migrations (web-specific, bypasses turbo)
 migrate:
 	@echo "🔄 Running database migrations..."
 	pnpm --filter web payload:migrate
 
-# Create a new database migration
+# Create a new database migration (bypasses turbo - interactive command)
 migrate-create:
 	@echo "📝 Creating new database migration..."
 	pnpm --filter web payload:migrate:create
@@ -178,7 +183,7 @@ help:
 	@echo "  test-e2e      - Run E2E tests with automatic database setup"
 	@echo ""
 	@echo "🌱 Database:"
-	@echo "  seed        - Seed database with sample data"
+	@echo "  seed        - Seed database with sample data (usage: make seed ARGS='development users')"
 	@echo "  migrate     - Run pending database migrations"
 	@echo "  migrate-create - Create a new database migration"
 	@echo ""

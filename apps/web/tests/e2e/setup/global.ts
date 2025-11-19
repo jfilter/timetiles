@@ -12,7 +12,7 @@ import { test as setup } from "@playwright/test";
 
 import { logger } from "../../../lib/logger";
 import { SeedManager } from "../../../lib/seed";
-import { setupTestDatabase } from "../../../scripts/setup-test-db";
+import { setupTestDatabase } from "../../../scripts/e2e-setup-database";
 
 setup("create test database and seed data", async () => {
   logger.info("🚀 Setting up E2E test environment...");

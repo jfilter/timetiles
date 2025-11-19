@@ -38,6 +38,19 @@ out/
 build
 dist
 
+# TypeScript build artifacts
+*.tsbuildinfo
+# Compiled outputs in packages/ui
+packages/ui/src/**/*.js
+packages/ui/src/**/*.d.ts
+packages/ui/src/**/*.d.ts.map
+packages/ui/tests/**/*.js
+packages/ui/tests/**/*.d.ts
+packages/ui/tests/**/*.d.ts.map
+packages/ui/*.js
+packages/ui/*.d.ts
+packages/ui/*.d.ts.map
+
 # Debug
 npm-debug.log*
 dev.log

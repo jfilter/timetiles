@@ -4,9 +4,13 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "build": "tsc --build",
+    "build:watch": "tsc --build --watch",
     "lint": "eslint . --cache",
     "format": "eslint . --fix --quiet --cache && prettier --write . --log-level error",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.7",
@@ -30,11 +34,13 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^2.1.8",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "^9.20.1",
     "tailwindcss": "^4.0.8",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
   },
   "exports": {
     "./globals.css": "./src/styles/globals.css",

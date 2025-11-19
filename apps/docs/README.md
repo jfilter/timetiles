@@ -21,7 +21,7 @@ This is the documentation site for TimeTiles, built with [Nextra](https://nextra
 
    ```bash
    # From project root
-   pnpm docs:dev
+   pnpm --filter docs dev
 
    # Or directly in docs directory
    cd apps/docs
@@ -34,8 +34,7 @@ This is the documentation site for TimeTiles, built with [Nextra](https://nextra
 
 ```bash
 # From project root
-pnpm docs:build
-pnpm docs:export
+pnpm --filter docs build
 
 # Or directly in docs directory
 cd apps/docs
@@ -117,7 +116,7 @@ The documentation is automatically deployed to GitHub Pages when changes are pus
 The deployment is handled by `.github/workflows/docs.yml`:
 
 1. **Triggers**: On push to main branch or PR with docs changes
-2. **Build**: Runs `pnpm docs:export` to generate static files
+2. **Build**: Runs `pnpm --filter docs build` to generate static files
 3. **Deploy**: Uploads to GitHub Pages
 
 ### Manual Deployment
@@ -125,8 +124,8 @@ The deployment is handled by `.github/workflows/docs.yml`:
 To deploy manually:
 
 ```bash
-# Build and export
-pnpm docs:export
+# Build static files
+pnpm --filter docs build
 
 # The `out` directory contains the static files
 # Upload these to your static hosting provider
@@ -177,7 +176,7 @@ Edit `next.config.mjs` for:
 1. **Fork** the repository
 2. **Create** a feature branch
 3. **Add** or update documentation
-4. **Test** locally with `pnpm docs:dev`
+4. **Test** locally with `pnpm --filter docs dev`
 5. **Submit** a pull request
 
 ## Links

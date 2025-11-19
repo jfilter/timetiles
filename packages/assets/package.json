@@ -6,6 +6,9 @@
   "exports": {
     "./logos/*": "./logos/*"
   },
+  "scripts": {
+    "format": "prettier --write . --log-level error"
+  },
   "devDependencies": {
     "@mermaid-js/mermaid-cli": "^11.12.0"
   }

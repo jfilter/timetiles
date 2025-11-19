@@ -18,7 +18,7 @@ import { execSync } from "node:child_process";
 
 import { createLogger } from "../lib/logger";
 import { deriveTestDatabaseUrl, getDatabaseUrl, parseDatabaseUrl } from "../lib/utils/database-url";
-import { resetTestDatabase, validateTestDatabaseSchema } from "./validate-test-db-schema";
+import { resetTestDatabase, validateTestDatabaseSchema } from "./e2e-validate-schema";
 
 const logger = createLogger("test-db-setup");
 

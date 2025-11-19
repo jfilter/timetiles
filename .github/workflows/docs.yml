@@ -71,7 +71,7 @@ jobs:
           static_site_generator: next
 
       - name: Build documentation
-        run: pnpm docs:export
+        run: pnpm --filter docs build
         env:
           # Set the repository name for GitHub Pages deployment
           GITHUB_REPOSITORY: ${{ github.repository }}

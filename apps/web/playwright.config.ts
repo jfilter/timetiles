@@ -47,7 +47,12 @@ export default defineConfig({
   /* Limit workers to prevent resource contention */
   workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: "list",
+  reporter: [
+    ["list"],
+    ["json", { outputFile: "test-results/results.json" }],
+  ],
+  /* Explicit output directory for test artifacts */
+  outputDir: "./test-results",
   /* Test timeout - 60 seconds locally, 120 seconds in CI */
   timeout: process.env.CI != null && process.env.CI !== "" ? 120000 : 60000,
   /* Expect timeout - shorter expect assertions timeout */
@@ -58,8 +63,8 @@ export default defineConfig({
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: "http://localhost:3002",
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: "on-first-retry",
+    /* Collect trace on failure for better debugging. See https://playwright.dev/docs/trace-viewer */
+    trace: "retain-on-failure",
     /* Take screenshot on failure */
     screenshot: "only-on-failure",
     /* Record video on failure */

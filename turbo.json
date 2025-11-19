@@ -63,23 +63,6 @@
       "dependsOn": ["^build"],
       "outputs": ["coverage/**", ".nyc_output/**", "coverage.json"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"]
-    },
-    "seed": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "cache": false
-    },
-    "docs:dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "docs:build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "out/**"]
-    },
-    "docs:export": {
-      "dependsOn": ["docs:build"],
-      "outputs": ["out/**"]
     }
   }
 }

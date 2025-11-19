@@ -11,8 +11,8 @@
 import { test as setup } from "@playwright/test";
 
 // Import scripts directly as they are standalone
-import { setupTestDatabase } from "../../../scripts/setup-test-db";
-import { validateTestDatabaseSchema } from "../../../scripts/validate-test-db-schema";
+import { setupTestDatabase } from "../../../scripts/e2e-setup-database";
+import { validateTestDatabaseSchema } from "../../../scripts/e2e-validate-schema";
 
 setup("create test database and seed data", async () => {
   console.log("🚀 Setting up E2E test environment...");

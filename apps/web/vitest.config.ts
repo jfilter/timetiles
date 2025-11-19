@@ -58,6 +58,7 @@ export default defineConfig({
     poolOptions: {
       forks: {
         isolate: !isUnitTest, // Disable isolation for unit tests, keep for integration
+        execArgv: ["--no-warnings"], // Suppress Node.js warnings
       },
     },
     fileParallelism: true,

@@ -11,8 +11,8 @@
  * - Migration state mismatches.
  *
  * Usage:
- *   node --import tsx/esm scripts/validate-test-db-schema.ts
- *   node --import tsx/esm scripts/validate-test-db-schema.ts --fix.
+ *   node --import tsx/esm scripts/e2e-validate-schema.ts
+ *   node --import tsx/esm scripts/e2e-validate-schema.ts --fix.
  *
  * @module
  * @category Scripts

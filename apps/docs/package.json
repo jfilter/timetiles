@@ -7,14 +7,14 @@
   "scripts": {
     "dev": "pnpm docs:api && next dev --port 3001",
     "build": "pnpm docs:api && next build",
-    "docs:build": "pnpm docs:api && next build",
     "docs:api": "cd ../web && pnpm exec typedoc && tsx ../docs/scripts/clean-typedoc-output.ts",
     "docs:api:watch": "nodemon --watch ../web/lib --ext ts --exec \"pnpm docs:api\"",
     "start": "next start --port 3001",
     "lint": "next lint --dir app --dir content --dir scripts",
     "typecheck": "tsc --noEmit",
-    "export": "pnpm docs:api && next build",
-    "format": "next lint --dir app --dir content --dir scripts --fix --quiet && prettier --write . --ignore-path ../../.prettierignore --log-level error"
+    "format": "next lint --dir app --dir content --dir scripts --fix --quiet && prettier --write . --ignore-path ../../.prettierignore --log-level error",
+    "check-links": "tsx scripts/check-links.ts",
+    "check-links:internal": "SKIP_EXTERNAL=1 tsx scripts/check-links.ts"
   },
   "dependencies": {
     "@timetiles/assets": "workspace:*",

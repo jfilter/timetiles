@@ -46,7 +46,13 @@ const CURRENT_DIR = process.cwd();
 const args = process.argv.slice(2);
 const getArgValue = (flag: string, defaultValue: string): string => {
   const index = args.indexOf(flag);
-  return index !== -1 && args[index + 1] ? args[index + 1] : defaultValue;
+  if (index !== -1) {
+    const value = args[index + 1];
+    if (value !== undefined) {
+      return value;
+    }
+  }
+  return defaultValue;
 };
 
 const showSimple = args.includes("--simple");

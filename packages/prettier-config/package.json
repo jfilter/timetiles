@@ -14,8 +14,7 @@
   ],
   "scripts": {
     "lint": "eslint . --ext .js --cache",
-    "typecheck": "echo 'No TypeScript files to check'",
-    "format": "prettier --write . --log-level error"
+    "format": "eslint . --ext .js --cache --fix --quiet && prettier --write . --log-level error"
   },
   "dependencies": {},
   "devDependencies": {
