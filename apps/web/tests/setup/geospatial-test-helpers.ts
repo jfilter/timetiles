@@ -139,32 +139,3 @@ export const validateDistribution = (
     issues,
   };
 };
-
-/**
- * Create a Payload CMS rich text object for testing.
- *
- * @param text - Plain text to wrap in rich text structure
- * @returns Payload CMS rich text object
- */
-export const createRichText = (text: string) => ({
-  root: {
-    type: "root",
-    children: [
-      {
-        type: "paragraph",
-        version: 1,
-        children: [
-          {
-            type: "text",
-            text,
-            version: 1,
-          },
-        ],
-      },
-    ],
-    direction: "ltr" as const,
-    format: "" as const,
-    indent: 0,
-    version: 1,
-  },
-});

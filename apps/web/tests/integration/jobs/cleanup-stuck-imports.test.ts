@@ -10,13 +10,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { cleanupStuckScheduledImportsJob } from "@/lib/jobs/handlers/cleanup-stuck-scheduled-imports-job";
 import type { Catalog, ScheduledImport, User } from "@/payload-types";
 
-import { TestDataBuilder } from "../../setup/test-data-builder";
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
 describe.sequential("Cleanup Stuck Imports Job Integration", () => {
   let payload: Payload;
   let cleanup: () => Promise<void>;
-  let testData: TestDataBuilder;
   let testUser: User;
   let testCatalog: Catalog;
 
@@ -24,15 +22,26 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
     const env = await createIntegrationTestEnvironment();
     payload = env.payload;
     cleanup = env.cleanup;
-    testData = new TestDataBuilder(payload);
 
-    testUser = await testData.createUser({
-      email: `cleanup-test-${Date.now()}@example.com`,
+    const timestamp = Date.now();
+    testUser = await payload.create({
+      collection: "users",
+      data: {
+        email: `cleanup-test-${timestamp}@example.com`,
+        password: "test123456",
+        role: "admin",
+        trustLevel: "5",
+      },
     });
 
-    testCatalog = await testData.createCatalog({
-      name: `Cleanup Test Catalog ${Date.now()}`,
-      createdBy: testUser.id,
+    testCatalog = await payload.create({
+      collection: "catalogs",
+      data: {
+        name: `Cleanup Test Catalog ${timestamp}`,
+        slug: `cleanup-test-catalog-${timestamp}`,
+        _status: "published",
+        createdBy: testUser.id,
+      },
     });
   });
 
@@ -78,12 +87,19 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
 
       // Create stuck import
-      const stuckImport = await testData.createScheduledImport({
-        name: "Stuck Import Test",
-        catalog: testCatalog.id,
-        createdBy: testUser.id,
-        lastStatus: "running",
-        lastRun: threeHoursAgo,
+      const stuckImport = await payload.create({
+        collection: "scheduled-imports",
+        data: {
+          sourceUrl: "https://example.com/test-data.csv",
+          enabled: true,
+          scheduleType: "frequency",
+          frequency: "daily",
+          name: "Stuck Import Test",
+          catalog: testCatalog.id,
+          createdBy: testUser.id,
+          lastStatus: "running",
+          lastRun: threeHoursAgo.toISOString(),
+        },
       });
 
       // Run cleanup job
@@ -112,12 +128,19 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000);
 
       // Create recent import
-      const recentImport = await testData.createScheduledImport({
-        name: "Recent Import Test",
-        catalog: testCatalog.id,
-        createdBy: testUser.id,
-        lastStatus: "running",
-        lastRun: oneHourAgo,
+      const recentImport = await payload.create({
+        collection: "scheduled-imports",
+        data: {
+          sourceUrl: "https://example.com/test-data.csv",
+          enabled: true,
+          scheduleType: "frequency",
+          frequency: "daily",
+          name: "Recent Import Test",
+          catalog: testCatalog.id,
+          createdBy: testUser.id,
+          lastStatus: "running",
+          lastRun: oneHourAgo.toISOString(),
+        },
       });
 
       // Run cleanup job
@@ -148,12 +171,19 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
 
       // Create multiple stuck imports
       for (let i = 0; i < 5; i++) {
-        const imp = await testData.createScheduledImport({
-          name: `Stuck Import ${i}`,
-          catalog: testCatalog.id,
-          createdBy: testUser.id,
-          lastStatus: "running",
-          lastRun: fourHoursAgo,
+        const imp = await payload.create({
+          collection: "scheduled-imports",
+          data: {
+            sourceUrl: "https://example.com/test-data.csv",
+            enabled: true,
+            scheduleType: "frequency",
+            frequency: "daily",
+            name: `Stuck Import ${i}`,
+            catalog: testCatalog.id,
+            createdBy: testUser.id,
+            lastStatus: "running",
+            lastRun: fourHoursAgo.toISOString(),
+          },
         });
         stuckImports.push(imp);
       }
@@ -185,12 +215,19 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
       // Create 105 stuck imports
       for (let i = 0; i < 105; i++) {
-        await testData.createScheduledImport({
-          name: `Bulk Stuck Import ${i}`,
-          catalog: testCatalog.id,
-          createdBy: testUser.id,
-          lastStatus: "running",
-          lastRun: fiveHoursAgo,
+        await payload.create({
+          collection: "scheduled-imports",
+          data: {
+            sourceUrl: "https://example.com/test-data.csv",
+            enabled: true,
+            scheduleType: "frequency",
+            frequency: "daily",
+            name: `Bulk Stuck Import ${i}`,
+            catalog: testCatalog.id,
+            createdBy: testUser.id,
+            lastStatus: "running",
+            lastRun: fiveHoursAgo.toISOString(),
+          },
         });
       }
 
@@ -235,20 +272,34 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
 
       // Create stuck imports
-      const import1 = await testData.createScheduledImport({
-        name: "Will Reset",
-        catalog: testCatalog.id,
-        createdBy: testUser.id,
-        lastStatus: "running",
-        lastRun: sixHoursAgo,
+      const import1 = await payload.create({
+        collection: "scheduled-imports",
+        data: {
+          sourceUrl: "https://example.com/test-data.csv",
+          enabled: true,
+          scheduleType: "frequency",
+          frequency: "daily",
+          name: "Will Reset",
+          catalog: testCatalog.id,
+          createdBy: testUser.id,
+          lastStatus: "running",
+          lastRun: sixHoursAgo.toISOString(),
+        },
       });
 
-      const import2 = await testData.createScheduledImport({
-        name: "Will Also Reset",
-        catalog: testCatalog.id,
-        createdBy: testUser.id,
-        lastStatus: "running",
-        lastRun: sixHoursAgo,
+      const import2 = await payload.create({
+        collection: "scheduled-imports",
+        data: {
+          sourceUrl: "https://example.com/test-data.csv",
+          enabled: true,
+          scheduleType: "frequency",
+          frequency: "daily",
+          name: "Will Also Reset",
+          catalog: testCatalog.id,
+          createdBy: testUser.id,
+          lastStatus: "running",
+          lastRun: sixHoursAgo.toISOString(),
+        },
       });
 
       // Delete the second import to cause an error during processing
@@ -305,12 +356,19 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       const sevenHoursAgo = new Date(Date.now() - 7 * 60 * 60 * 1000);
 
       // Create stuck import
-      const stuckImport = await testData.createScheduledImport({
-        name: "Idempotent Test",
-        catalog: testCatalog.id,
-        createdBy: testUser.id,
-        lastStatus: "running",
-        lastRun: sevenHoursAgo,
+      const stuckImport = await payload.create({
+        collection: "scheduled-imports",
+        data: {
+          sourceUrl: "https://example.com/test-data.csv",
+          enabled: true,
+          scheduleType: "frequency",
+          frequency: "daily",
+          name: "Idempotent Test",
+          catalog: testCatalog.id,
+          createdBy: testUser.id,
+          lastStatus: "running",
+          lastRun: sevenHoursAgo.toISOString(),
+        },
       });
 
       // Run cleanup job first time
@@ -351,13 +409,20 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
 
       // Create stuck import with webhook
-      const stuckImport = await testData.createScheduledImport({
-        name: "Webhook Recovery Test",
-        catalog: testCatalog.id,
-        createdBy: testUser.id,
-        webhookEnabled: true,
-        lastStatus: "running",
-        lastRun: eightHoursAgo,
+      const stuckImport = await payload.create({
+        collection: "scheduled-imports",
+        data: {
+          sourceUrl: "https://example.com/test-data.csv",
+          enabled: true,
+          scheduleType: "frequency",
+          frequency: "daily",
+          name: "Webhook Recovery Test",
+          catalog: testCatalog.id,
+          createdBy: testUser.id,
+          webhookEnabled: true,
+          lastStatus: "running",
+          lastRun: eightHoursAgo.toISOString(),
+        },
       });
 
       const webhookToken = stuckImport.webhookToken;
@@ -404,18 +469,25 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       const nineHoursAgo = new Date(Date.now() - 9 * 60 * 60 * 1000);
 
       // Create stuck import with existing history
-      const stuckImport = await testData.createScheduledImport({
-        name: "History Tracking Test",
-        catalog: testCatalog.id,
-        createdBy: testUser.id,
-        lastStatus: "running",
-        lastRun: nineHoursAgo,
-        executionHistory: [
-          {
-            executedAt: nineHoursAgo.toISOString(),
-            status: "success",
-          },
-        ],
+      const stuckImport = await payload.create({
+        collection: "scheduled-imports",
+        data: {
+          sourceUrl: "https://example.com/test-data.csv",
+          enabled: true,
+          scheduleType: "frequency",
+          frequency: "daily",
+          name: "History Tracking Test",
+          catalog: testCatalog.id,
+          createdBy: testUser.id,
+          lastStatus: "running",
+          lastRun: nineHoursAgo.toISOString(),
+          executionHistory: [
+            {
+              executedAt: nineHoursAgo.toISOString(),
+              status: "success",
+            },
+          ],
+        },
       });
 
       // Run cleanup job
@@ -450,35 +522,56 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
         ...Array(3)
           .fill(null)
           .map((_, i) =>
-            testData.createScheduledImport({
-              name: `Old Stuck ${i}`,
-              catalog: testCatalog.id,
-              createdBy: testUser.id,
-              lastStatus: "running",
-              lastRun: tenHoursAgo,
+            payload.create({
+              collection: "scheduled-imports",
+              data: {
+                sourceUrl: "https://example.com/test-data.csv",
+                enabled: true,
+                scheduleType: "frequency",
+                frequency: "daily",
+                name: `Old Stuck ${i}`,
+                catalog: testCatalog.id,
+                createdBy: testUser.id,
+                lastStatus: "running",
+                lastRun: tenHoursAgo.toISOString(),
+              },
             })
           ),
         // Recent running imports (should not be touched)
         ...Array(3)
           .fill(null)
           .map((_, i) =>
-            testData.createScheduledImport({
-              name: `Recent Running ${i}`,
-              catalog: testCatalog.id,
-              createdBy: testUser.id,
-              lastStatus: "running",
-              lastRun: oneHourAgo,
+            payload.create({
+              collection: "scheduled-imports",
+              data: {
+                sourceUrl: "https://example.com/test-data.csv",
+                enabled: true,
+                scheduleType: "frequency",
+                frequency: "daily",
+                name: `Recent Running ${i}`,
+                catalog: testCatalog.id,
+                createdBy: testUser.id,
+                lastStatus: "running",
+                lastRun: oneHourAgo.toISOString(),
+              },
             })
           ),
         // Non-running imports (should not be touched)
         ...Array(3)
           .fill(null)
           .map((_, i) =>
-            testData.createScheduledImport({
-              name: `Idle Import ${i}`,
-              catalog: testCatalog.id,
-              createdBy: testUser.id,
-              lastStatus: "success",
+            payload.create({
+              collection: "scheduled-imports",
+              data: {
+                sourceUrl: "https://example.com/test-data.csv",
+                enabled: true,
+                scheduleType: "frequency",
+                frequency: "daily",
+                name: `Idle Import ${i}`,
+                catalog: testCatalog.id,
+                createdBy: testUser.id,
+                lastStatus: "success",
+              },
             })
           ),
       ]);

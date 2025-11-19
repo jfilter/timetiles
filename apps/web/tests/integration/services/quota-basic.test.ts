@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService } from "@/lib/services/quota-service";
+import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
@@ -32,7 +33,7 @@ describe.sequential("Basic Quota Test", () => {
       collection: "users",
       data: {
         email: "admin@quota.test",
-        password: "password123",
+        password: TEST_CREDENTIALS.basic.strongPassword,
         role: "admin",
         trustLevel: "5",
       },
@@ -43,7 +44,7 @@ describe.sequential("Basic Quota Test", () => {
       collection: "users",
       data: {
         email: "limited@quota.test",
-        password: "password123",
+        password: TEST_CREDENTIALS.basic.strongPassword,
         role: "user",
         trustLevel: "1", // Basic trust level
       },

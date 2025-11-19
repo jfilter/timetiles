@@ -3,6 +3,8 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
+
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 import { createImportFileWithUpload } from "../../setup/test-helpers";
 
@@ -37,7 +39,7 @@ describe.sequential("Schema Approval Workflow", () => {
       collection: "users",
       data: {
         email: "admin@test.com",
-        password: "password123",
+        password: TEST_CREDENTIALS.basic.strongPassword,
         role: "admin",
       },
     });
@@ -46,7 +48,7 @@ describe.sequential("Schema Approval Workflow", () => {
       collection: "users",
       data: {
         email: "editor@test.com",
-        password: "password123",
+        password: TEST_CREDENTIALS.basic.strongPassword,
         role: "editor",
       },
     });
@@ -55,7 +57,7 @@ describe.sequential("Schema Approval Workflow", () => {
       collection: "users",
       data: {
         email: "viewer@test.com",
-        password: "password123",
+        password: TEST_CREDENTIALS.basic.strongPassword,
         role: "user",
       },
     });

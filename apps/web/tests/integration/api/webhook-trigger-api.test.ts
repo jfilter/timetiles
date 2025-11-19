@@ -15,13 +15,11 @@ import { RateLimitService } from "@/lib/services/rate-limit-service";
 import type { Catalog, ScheduledImport, User } from "@/payload-types";
 
 import { TEST_CREDENTIALS, TEST_TOKENS } from "../../constants/test-credentials";
-import { TestDataBuilder } from "../../setup/test-data-builder";
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
 describe.sequential("Webhook Trigger API Integration", () => {
   let payload: Payload;
   let cleanup: () => Promise<void>;
-  let testData: TestDataBuilder;
   let testUser: User;
   let testCatalog: Catalog;
   let testScheduledImport: ScheduledImport;
@@ -44,7 +42,6 @@ describe.sequential("Webhook Trigger API Integration", () => {
     const env = await createIntegrationTestEnvironment();
     payload = env.payload;
     cleanup = env.cleanup;
-    testData = new TestDataBuilder(payload);
 
     // Create a single rate limit service instance for tests
     rateLimitService = new RateLimitService(payload);
@@ -53,13 +50,25 @@ describe.sequential("Webhook Trigger API Integration", () => {
     vi.spyOn(RateLimitModule, "getRateLimitService").mockReturnValue(rateLimitService);
 
     // Create base test data
-    testUser = await testData.createUser({
-      email: `webhook-api-test-${Date.now()}@example.com`,
+    const timestamp = Date.now();
+    testUser = await payload.create({
+      collection: "users",
+      data: {
+        email: `webhook-api-test-${timestamp}@example.com`,
+        password: "test123456",
+        role: "admin",
+        trustLevel: "5",
+      },
     });
 
-    testCatalog = await testData.createCatalog({
-      name: `Webhook API Test Catalog ${Date.now()}`,
-      createdBy: testUser.id,
+    testCatalog = await payload.create({
+      collection: "catalogs",
+      data: {
+        name: `Webhook API Test Catalog ${timestamp}`,
+        slug: `webhook-api-test-catalog-${timestamp}`,
+        _status: "published",
+        createdBy: testUser.id,
+      },
     });
   });
 
@@ -73,12 +82,19 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
   beforeEach(async () => {
     // Create fresh scheduled import for each test
-    testScheduledImport = await testData.createScheduledImport({
-      name: `API Test Import ${Date.now()}`,
-      catalog: testCatalog.id,
-      createdBy: testUser.id,
-      webhookEnabled: true,
-      sourceUrl: "https://example.com/test-data.csv",
+    const timestamp = Date.now();
+    testScheduledImport = await payload.create({
+      collection: "scheduled-imports",
+      data: {
+        name: `API Test Import ${timestamp}`,
+        sourceUrl: "https://example.com/test-data.csv",
+        catalog: testCatalog.id,
+        createdBy: testUser.id,
+        enabled: true,
+        webhookEnabled: true,
+        scheduleType: "frequency",
+        frequency: "daily",
+      },
     });
 
     // Clear rate limits for clean test state
@@ -357,11 +373,18 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
     it("should track rate limits per token", async () => {
       // Create second import
-      const import2 = await testData.createScheduledImport({
-        name: "Second Import",
-        catalog: testCatalog.id,
-        createdBy: testUser.id,
-        webhookEnabled: true,
+      const import2 = await payload.create({
+        collection: "scheduled-imports",
+        data: {
+          name: "Second Import",
+          sourceUrl: "https://example.com/test-data.csv",
+          catalog: testCatalog.id,
+          createdBy: testUser.id,
+          enabled: true,
+          webhookEnabled: true,
+          scheduleType: "frequency",
+          frequency: "daily",
+        },
       });
 
       // First import hits rate limit

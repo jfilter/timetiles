@@ -249,7 +249,7 @@ describe.sequential("urlFetchJob", () => {
           sourceUrl: "https://api.example.com/data",
           authConfig: {
             type: "api-key",
-            apiKey: "secret-key-123",
+            apiKey: TEST_CREDENTIALS.apiKey.secretKey,
             apiKeyHeader: "X-API-Key",
           },
           catalogId: "catalog-123",
@@ -263,7 +263,7 @@ describe.sequential("urlFetchJob", () => {
         "https://api.example.com/data",
         expect.objectContaining({
           headers: expect.objectContaining({
-            "X-API-Key": "secret-key-123",
+            "X-API-Key": TEST_CREDENTIALS.apiKey.secretKey,
           }),
         })
       );
@@ -281,7 +281,7 @@ describe.sequential("urlFetchJob", () => {
           sourceUrl: "https://api.example.com/data",
           authConfig: {
             type: "bearer",
-            bearerToken: "token-abc-123",
+            bearerToken: TEST_CREDENTIALS.bearer.tokenAbc,
           },
           catalogId: "catalog-123",
           originalName: "Bearer Import",
@@ -295,7 +295,7 @@ describe.sequential("urlFetchJob", () => {
         "https://api.example.com/data",
         expect.objectContaining({
           headers: expect.objectContaining({
-            Authorization: "Bearer token-abc-123",
+            Authorization: `Bearer ${TEST_CREDENTIALS.bearer.tokenAbc}`,
           }),
         })
       );
@@ -879,7 +879,7 @@ describe.sequential("urlFetchJob", () => {
         enabled: true,
         authConfig: {
           type: "api-key",
-          apiKey: "secret-key",
+          apiKey: TEST_CREDENTIALS.apiKey.shortSecretKey,
           apiKeyHeader: "X-API-Key",
           customHeaders: JSON.stringify({
             "X-Custom-Header": "custom-value",
@@ -914,7 +914,7 @@ describe.sequential("urlFetchJob", () => {
         "https://api.example.com/data",
         expect.objectContaining({
           headers: expect.objectContaining({
-            "X-API-Key": "secret-key",
+            "X-API-Key": TEST_CREDENTIALS.apiKey.shortSecretKey,
             "X-Custom-Header": "custom-value",
             "Accept-Language": "en-US",
             "X-Request-ID": "12345",

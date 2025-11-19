@@ -23,6 +23,7 @@ import { createServer } from "http";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
+import { TEST_EMAILS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
 
 // Type definitions for urlFetchJob output
@@ -92,7 +93,7 @@ describe.sequential("Network Error Handling Tests", () => {
     const user = await payload.create({
       collection: "users",
       data: {
-        email: "network-test@example.com",
+        email: TEST_EMAILS.network,
         password: "test123456",
         role: "admin",
       },

@@ -17,6 +17,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { TEST_CREDENTIALS, TEST_EMAILS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
 import { TestServer } from "@/tests/setup/test-server";
 
@@ -215,7 +216,7 @@ describe.sequential("Security Validation Tests", () => {
           frequency: "daily",
           authConfig: {
             type: "bearer",
-            bearerToken: "super-secret-token-12345",
+            bearerToken: TEST_CREDENTIALS.bearer.superSecretToken,
           },
         },
       });
@@ -227,7 +228,7 @@ describe.sequential("Security Validation Tests", () => {
       });
 
       // Credentials should be stored (but should be encrypted in production)
-      expect(fetched.authConfig.bearerToken).toBe("super-secret-token-12345");
+      expect(fetched.authConfig.bearerToken).toBe(TEST_CREDENTIALS.bearer.superSecretToken);
     });
 
     it("should handle invalid authentication types", async () => {
@@ -287,8 +288,8 @@ describe.sequential("Security Validation Tests", () => {
           frequency: "daily",
           authConfig: {
             type: "basic",
-            username: "user@example.com",
-            password: "password123",
+            username: TEST_EMAILS.user,
+            password: TEST_CREDENTIALS.basic.strongPassword,
           },
         },
       });
@@ -297,7 +298,7 @@ describe.sequential("Security Validation Tests", () => {
       testServer.respondWithAuth(
         "/basic-auth.csv",
         "basic",
-        { username: "user@example.com", password: "password123" },
+        { username: TEST_EMAILS.user, password: TEST_CREDENTIALS.basic.strongPassword },
         { body: "test,data\n1,2", headers: { "Content-Type": "text/csv" } },
         { status: 401, body: "Unauthorized" }
       );
@@ -460,7 +461,7 @@ describe.sequential("Security Validation Tests", () => {
         collection: "users",
         data: {
           email: "admin2@test.com",
-          password: "password123",
+          password: TEST_CREDENTIALS.basic.strongPassword,
           role: "user",
         },
       });
@@ -655,7 +656,7 @@ describe.sequential("Security Validation Tests", () => {
         collection: "users",
         data: {
           email: "another@test.com",
-          password: "password123",
+          password: TEST_CREDENTIALS.basic.strongPassword,
           role: "user",
         },
       });

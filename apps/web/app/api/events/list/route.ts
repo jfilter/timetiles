@@ -12,9 +12,9 @@ import { NextResponse } from "next/server";
 import type { Where } from "payload";
 import { getPayload } from "payload";
 
+import { type MapBounds, parseBoundsParameter } from "@/lib/geospatial";
 import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
-import { type MapBounds, parseBoundsParameter } from "@/lib/geospatial";
 import config from "@/payload.config";
 import type { Event, User } from "@/payload-types";
 

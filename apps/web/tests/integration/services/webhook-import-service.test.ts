@@ -21,7 +21,6 @@ import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
 import type { Catalog, Dataset, ScheduledImport, User } from "@/payload-types";
 
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
-import { TestDataBuilder } from "../../setup/test-data-builder";
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
 // Test server to serve fixture files
@@ -141,7 +140,6 @@ const startTestServer = async (): Promise<void> => {
 describe.sequential("Webhook Import Service Integration", () => {
   let payload: Payload;
   let cleanup: () => Promise<void>;
-  let testData: TestDataBuilder;
   let testUser: User;
   let testCatalog: Catalog;
   let testDataset: Dataset;
@@ -155,21 +153,38 @@ describe.sequential("Webhook Import Service Integration", () => {
     const env = await createIntegrationTestEnvironment();
     payload = env.payload;
     cleanup = env.cleanup;
-    testData = new TestDataBuilder(payload);
 
     // Setup test data
-    testUser = await testData.createUser({
-      email: `service-test-${Date.now()}@example.com`,
+    const timestamp = Date.now();
+    testUser = await payload.create({
+      collection: "users",
+      data: {
+        email: `service-test-${timestamp}@example.com`,
+        password: "test123456",
+        role: "admin",
+        trustLevel: "5",
+      },
     });
 
-    testCatalog = await testData.createCatalog({
-      name: `Service Test Catalog ${Date.now()}`,
-      createdBy: testUser.id,
+    testCatalog = await payload.create({
+      collection: "catalogs",
+      data: {
+        name: `Service Test Catalog ${timestamp}`,
+        slug: `service-test-catalog-${timestamp}`,
+        _status: "published",
+        createdBy: testUser.id,
+      },
     });
 
-    testDataset = await testData.createDataset({
-      name: `Service Test Dataset ${Date.now()}`,
-      catalog: testCatalog.id,
+    testDataset = await payload.create({
+      collection: "datasets",
+      data: {
+        name: `Service Test Dataset ${timestamp}`,
+        slug: `service-test-dataset-${timestamp}`,
+        catalog: testCatalog.id,
+        language: "eng",
+        _status: "published",
+      },
     });
 
     // Setup upload directory
@@ -193,16 +208,23 @@ describe.sequential("Webhook Import Service Integration", () => {
 
   beforeEach(async () => {
     // Create fresh scheduled import using local test server
-    testScheduledImport = await testData.createScheduledImport({
-      name: `Service Import ${Date.now()}`,
-      catalog: testCatalog.id,
-      dataset: testDataset.id,
-      createdBy: testUser.id,
-      webhookEnabled: true,
-      sourceUrl: `http://127.0.0.1:${testServerPort}/test-data.csv`,
-      advancedOptions: {
-        autoApproveSchema: true,
-        skipDuplicateChecking: false,
+    const timestamp = Date.now();
+    testScheduledImport = await payload.create({
+      collection: "scheduled-imports",
+      data: {
+        name: `Service Import ${timestamp}`,
+        sourceUrl: `http://127.0.0.1:${testServerPort}/test-data.csv`,
+        catalog: testCatalog.id,
+        dataset: testDataset.id,
+        createdBy: testUser.id,
+        enabled: true,
+        webhookEnabled: true,
+        scheduleType: "frequency",
+        frequency: "daily",
+        advancedOptions: {
+          autoApproveSchema: true,
+          skipDuplicateChecking: false,
+        },
       },
     });
   });

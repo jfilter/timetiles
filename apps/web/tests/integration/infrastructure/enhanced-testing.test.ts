@@ -11,12 +11,12 @@
  * @category Integration Tests
  */
 
+import { createRichText } from "../../mocks/utils/factories";
 import {
   areValidCoordinates,
   calculateCentroid,
   calculateDistance,
   createCluster,
-  createRichText,
   generateNearbyCoordinate,
   isWithinBounds,
   TEST_COORDINATES,

@@ -12,6 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { QUOTA_TYPES, TRUST_LEVELS, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService, QuotaExceededError } from "@/lib/services/quota-service";
 import type { User } from "@/payload-types";
+import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 
 import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
 
@@ -33,7 +34,7 @@ describe.sequential("Quota System", () => {
       collection: "users",
       data: {
         email: "limited@test.com",
-        password: "password123",
+        password: TEST_CREDENTIALS.basic.strongPassword,
         role: "user",
         trustLevel: String(TRUST_LEVELS.BASIC), // Limited quotas
         quotas: {
@@ -60,7 +61,7 @@ describe.sequential("Quota System", () => {
       collection: "users",
       data: {
         email: "admin@test.com",
-        password: "password123",
+        password: TEST_CREDENTIALS.basic.strongPassword,
         role: "admin",
         trustLevel: String(TRUST_LEVELS.UNLIMITED), // Convert to string
         // Don't provide quotas - let the hook set them based on trust level

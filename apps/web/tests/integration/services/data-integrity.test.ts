@@ -16,6 +16,7 @@ import crypto from "node:crypto";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TEST_EMAILS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
 import { TestServer } from "@/tests/setup/test-server";
 
@@ -40,7 +41,7 @@ describe.sequential("Data Integrity Tests", () => {
     const user = await payload.create({
       collection: "users",
       data: {
-        email: "integrity-test@example.com",
+        email: TEST_EMAILS.integrity,
         password: "test123456",
         role: "admin",
       },

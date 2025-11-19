@@ -17,6 +17,7 @@
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TEST_EMAILS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
 import { TestServer } from "@/tests/setup/test-server";
 
@@ -60,7 +61,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
     const user = await payload.create({
       collection: "users",
       data: {
-        email: "perf-test@example.com",
+        email: TEST_EMAILS.performance,
         password: "test123456",
         role: "admin",
       },

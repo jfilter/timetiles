@@ -13,9 +13,9 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { checkDatabaseFunction } from "@/lib/database/functions";
+import { isValidBounds, type MapBounds } from "@/lib/geospatial";
 import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
-import { isValidBounds, type MapBounds } from "@/lib/geospatial";
 import { badRequest } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 import type { User } from "@/payload-types";

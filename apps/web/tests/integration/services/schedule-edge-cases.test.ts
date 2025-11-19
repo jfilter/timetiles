@@ -14,6 +14,7 @@
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TEST_EMAILS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
 
 describe.sequential("Schedule Edge Case Tests", () => {
@@ -30,7 +31,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
     await payload.create({
       collection: "users",
       data: {
-        email: "schedule-test@example.com",
+        email: TEST_EMAILS.schedule,
         password: "test123456",
         role: "admin",
       },
