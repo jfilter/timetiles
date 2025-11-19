@@ -1,13 +1,14 @@
 /**
  * List component for displaying event items.
  *
- * Renders a scrollable list of events with title, date, location, and
- * description. Includes loading states and empty state handling.
+ * Renders a scrollable list of events using intelligent field detection
+ * based on dataset schema metadata. Includes loading states and empty state handling.
  * Used in the explore page sidebar for browsing events.
  *
  * @module
  * @category Components
  */
+import { formatEventForDisplay } from "@/lib/utils/event-display-formatter";
 import type { Event } from "@/payload-types";
 
 interface EventsListProps {
@@ -16,77 +17,55 @@ interface EventsListProps {
   isUpdating?: boolean;
 }
 
-const safeToString = (value: unknown): string => {
-  if (value == null || value == undefined) {
-    return "";
-  }
-  if (typeof value === "string") {
-    return value;
-  }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  // For objects and arrays, return empty string to avoid [object Object]
-  return "";
-};
-
-interface EventData {
-  title?: unknown;
-  name?: unknown;
-  description?: unknown;
-  startDate?: unknown;
-  endDate?: unknown;
-  city?: unknown;
-  country?: unknown;
+interface FieldMetadata {
+  [key: string]: {
+    path: string;
+    occurrences: number;
+    occurrencePercent: number;
+    uniqueValues?: number;
+    typeDistribution?: Record<string, number>;
+    formats?: Record<string, number>;
+  };
 }
 
-// Helper functions to reduce complexity
-const getEventData = (event: Event): EventData => {
+const getEventData = (event: Event): Record<string, unknown> => {
   return typeof event.data === "object" && event.data != null && !Array.isArray(event.data)
-    ? (event.data as EventData)
+    ? (event.data as Record<string, unknown>)
     : {};
 };
 
-const getEventTitle = (eventData: EventData, eventId: string): string => {
-  return safeToString(eventData.title) || safeToString(eventData.name) || `Event ${eventId}`;
+const getFieldMetadata = (event: Event): FieldMetadata | null => {
+  if (typeof event.dataset === "object" && event.dataset != null) {
+    const fieldMetadata = event.dataset.fieldMetadata;
+    if (fieldMetadata && typeof fieldMetadata === "object") {
+      return fieldMetadata as FieldMetadata;
+    }
+  }
+  return null;
 };
 
-const EventDescription = ({ description }: { description?: unknown }) => {
-  if (description == null || description === "") return null;
-  return <p className="text-muted-foreground mt-1 text-sm">{safeToString(description)}</p>;
-};
-
-const EventDateRange = ({ startDate, endDate }: { startDate?: unknown; endDate?: unknown }) => {
-  const hasStartDate = startDate != null;
-  const hasEndDate = endDate != null;
-  const hasBothDates = hasStartDate && hasEndDate;
-
-  if (!hasStartDate && !hasEndDate) return null;
+const EventDataFields = ({ fields }: { fields: Array<{ key: string; value: string }> }) => {
+  if (fields.length === 0) return null;
 
   return (
-    <div className="text-muted-foreground mt-2 text-sm">
-      {hasStartDate && <span>{new Date(safeToString(startDate)).toLocaleDateString()}</span>}
-      {hasBothDates && <span> - </span>}
-      {hasEndDate && <span>{new Date(safeToString(endDate)).toLocaleDateString()}</span>}
+    <div className="text-muted-foreground mt-2 space-y-1 text-sm">
+      {fields.map(({ key, value }) => (
+        <div key={key} className="flex gap-2">
+          <span className="font-medium">{key}:</span>
+          <span className="truncate">{value}</span>
+        </div>
+      ))}
     </div>
   );
 };
 
-const EventLocation = ({ event, eventData }: { event: Event; eventData: EventData }) => {
+const EventLocation = ({ event }: { event: Event }) => {
   const hasNormalizedAddress =
     event.geocodingInfo?.normalizedAddress != null && event.geocodingInfo.normalizedAddress !== "";
-  const hasLocationData = eventData.city != null || eventData.country != null;
 
-  if (!hasNormalizedAddress && !hasLocationData) return null;
+  if (!hasNormalizedAddress) return null;
 
-  const displayAddress = hasNormalizedAddress
-    ? event.geocodingInfo?.normalizedAddress
-    : [safeToString(eventData.city), safeToString(eventData.country)].filter(Boolean).join(", ");
-
-  return <div className="text-muted-foreground mt-1 text-sm">{displayAddress}</div>;
+  return <div className="text-muted-foreground mt-1 text-sm">{event.geocodingInfo?.normalizedAddress}</div>;
 };
 
 const EventCoordinates = ({ location }: { location?: { latitude?: number | null; longitude?: number | null } }) => {
@@ -102,14 +81,22 @@ const EventCoordinates = ({ location }: { location?: { latitude?: number | null;
 
 const EventItem = ({ event }: { event: Event }) => {
   const eventData = getEventData(event);
-  const title = getEventTitle(eventData, String(event.id));
+  const fieldMetadata = getFieldMetadata(event);
+
+  // Get display config from dataset if available
+  const displayConfig =
+    typeof event.dataset === "object" && event.dataset != null && typeof event.dataset.displayConfig === "object"
+      ? event.dataset.displayConfig
+      : null;
+
+  // Use the formatter to intelligently extract display info
+  const displayInfo = formatEventForDisplay(eventData, fieldMetadata, event.id, displayConfig as never);
 
   return (
     <div key={event.id} className="hover:bg-accent/50 rounded-lg border p-4 transition-colors">
-      <h3 className="text-lg font-semibold">{title}</h3>
-      <EventDescription description={eventData.description} />
-      <EventDateRange startDate={eventData.startDate} endDate={eventData.endDate} />
-      <EventLocation event={event} eventData={eventData} />
+      <h3 className="text-lg font-semibold">{displayInfo.primaryLabel}</h3>
+      <EventDataFields fields={displayInfo.fields} />
+      <EventLocation event={event} />
       <EventCoordinates location={event.location} />
     </div>
   );
