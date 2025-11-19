@@ -10,11 +10,10 @@
     "docs:api": "cd ../web && pnpm exec typedoc && tsx ../docs/scripts/clean-typedoc-output.ts",
     "docs:api:watch": "nodemon --watch ../web/lib --ext ts --exec \"pnpm docs:api\"",
     "start": "next start --port 3001",
-    "lint": "next lint --dir app --dir content --dir scripts",
+    "lint": "next lint --dir app --dir content --dir scripts && SKIP_EXTERNAL=1 tsx scripts/check-links.ts",
+    "lint:all": "next lint --dir app --dir content --dir scripts && tsx scripts/check-links.ts",
     "typecheck": "tsc --noEmit",
-    "format": "next lint --dir app --dir content --dir scripts --fix --quiet && prettier --write . --ignore-path ../../.prettierignore --log-level error",
-    "check-links": "tsx scripts/check-links.ts",
-    "check-links:internal": "SKIP_EXTERNAL=1 tsx scripts/check-links.ts"
+    "format": "next lint --dir app --dir content --dir scripts --fix --quiet && prettier --write . --ignore-path ../../.prettierignore --log-level error"
   },
   "dependencies": {
     "@timetiles/assets": "workspace:*",

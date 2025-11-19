@@ -43,7 +43,8 @@
       "outputs": [".next/**", "!.next/cache/**"]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": ["^lint"],
+      "inputs": ["**/*.{ts,tsx,js,jsx}", "content/**/*.{md,mdx}", "scripts/**/*.ts"]
     },
     "format": {
       "inputs": ["**/*.{ts,tsx,js,jsx,md,json,yml,yaml}"]

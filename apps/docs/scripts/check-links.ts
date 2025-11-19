@@ -14,7 +14,7 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const docsDir = path.join(__dirname, "../pages");
+const docsDir = path.join(__dirname, "../content");
 
 // Regular expressions to match different link types
 const linkPatterns = [
@@ -54,14 +54,28 @@ interface LinkInfo {
 
 const findAllMdxFiles = async (): Promise<string[]> => {
   const pattern = path.join(docsDir, "**/*.{md,mdx}");
-  return glob(pattern);
+  return glob(pattern, {
+    ignore: [
+      "**/reference/api/**/*.md",
+      "**/reference/api/**/*.mdx",
+      "!**/reference/api/_meta.json",
+      "!**/reference/api/index.mdx",
+    ],
+  });
 };
 
 const extractLinks = (content: string, _filePath: string): string[] => {
   const links = new Set<string>();
 
+  // Remove code blocks (both fenced and inline) to avoid checking example code
+  let contentWithoutCode = content
+    // Remove fenced code blocks (```...```)
+    .replace(/```[\s\S]*?```/g, "")
+    // Remove inline code (`...`)
+    .replace(/`[^`\n]+`/g, "");
+
   linkPatterns.forEach((pattern) => {
-    const matches = content.matchAll(pattern);
+    const matches = contentWithoutCode.matchAll(pattern);
     for (const match of matches) {
       // Get the URL from the match (position varies by pattern)
       const url = match[2] || match[1];
