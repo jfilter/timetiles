@@ -22,23 +22,31 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+import { deriveE2eDatabaseUrl, getDatabaseUrl, parseDatabaseUrl } from "../lib/database/url";
 import { createLogger } from "../lib/logger";
-import { deriveTestDatabaseUrl, getDatabaseUrl, parseDatabaseUrl } from "../lib/utils/database-url";
 
 const logger = createLogger("schema-validator");
 
-// Get DATABASE_URL from environment - required
-const DATABASE_URL = getDatabaseUrl(true)!;
+// Lazy initialization of database configuration
+let _dbConfig: ReturnType<typeof parseDatabaseUrl> | null = null;
 
-// Derive test database URL
-const TEST_DATABASE_URL = deriveTestDatabaseUrl(DATABASE_URL);
-const {
-  username: DB_USER,
-  password: DB_PASSWORD,
-  host: DB_HOST,
-  port: _DB_PORT,
-  database: TEST_DB_NAME,
-} = parseDatabaseUrl(TEST_DATABASE_URL);
+const getDbConfig = () => {
+  if (!_dbConfig) {
+    // Get DATABASE_URL from environment - required
+    const DATABASE_URL = getDatabaseUrl(true)!;
+    // Derive E2E test database URL
+    const TEST_DATABASE_URL = deriveE2eDatabaseUrl(DATABASE_URL);
+    _dbConfig = parseDatabaseUrl(TEST_DATABASE_URL);
+  }
+  return _dbConfig;
+};
+
+// Getters for database configuration components
+const getDbUser = () => getDbConfig().username;
+const getDbPassword = () => getDbConfig().password;
+const getDbHost = () => getDbConfig().host;
+const getDbName = () => getDbConfig().database;
+const getTestDatabaseUrl = () => getDbConfig().fullUrl;
 
 export interface SchemaValidationResult {
   isValid: boolean;
@@ -65,7 +73,7 @@ const runDatabaseQuery = (dbName: string, sql: string, description?: string): st
 
   let command: string;
   if (isCI) {
-    command = `PGPASSWORD=${DB_PASSWORD} psql -h ${DB_HOST} -U ${DB_USER} -d ${dbName} -t -c "${sql}"`;
+    command = `PGPASSWORD=${getDbPassword()} psql -h ${getDbHost()} -U ${getDbUser()} -d ${dbName} -t -c "${sql}"`;
   } else {
     command = `cd ../.. && make db-query DB_NAME=${dbName} SQL="${sql}"`;
   }
@@ -88,7 +96,7 @@ const runDatabaseQuery = (dbName: string, sql: string, description?: string): st
 
 const checkDatabaseExists = (): boolean => {
   try {
-    runDatabaseQuery("postgres", `SELECT 1 FROM pg_database WHERE datname = '${TEST_DB_NAME}'`);
+    runDatabaseQuery("postgres", `SELECT 1 FROM pg_database WHERE datname = '${getDbName()}'`);
     return true;
   } catch {
     return false;
@@ -110,7 +118,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
   try {
     // Check PostGIS extension
     const postgisResult = runDatabaseQuery(
-      TEST_DB_NAME,
+      getDbName(),
       "SELECT COUNT(*) FROM pg_extension WHERE extname = 'postgis'",
       "Check PostGIS extension"
     );
@@ -124,7 +132,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
 
     // Check payload schema
     const schemaResult = runDatabaseQuery(
-      TEST_DB_NAME,
+      getDbName(),
       "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name = 'payload'",
       "Check payload schema"
     );
@@ -139,7 +147,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
     let tableCount = 0;
     if (hasPayloadSchema) {
       const tableResult = runDatabaseQuery(
-        TEST_DB_NAME,
+        getDbName(),
         "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'payload'",
         "Count payload tables"
       );
@@ -193,7 +201,7 @@ const getExpectedMigrations = (): string[] => {
 const getCompletedMigrations = (): string[] => {
   try {
     const result = runDatabaseQuery(
-      TEST_DB_NAME,
+      getDbName(),
       "SELECT name FROM payload.payload_migrations ORDER BY name",
       "Get completed migrations"
     );
@@ -325,12 +333,12 @@ export const resetTestDatabase = async (force: boolean = false): Promise<void> =
     if (isCI) {
       // eslint-disable-next-line sonarjs/os-command -- Safe database drop command in CI
       execSync(
-        `PGPASSWORD=${DB_PASSWORD} psql -h ${DB_HOST} -U ${DB_USER} -d postgres -c "DROP DATABASE IF EXISTS ${TEST_DB_NAME}"`
+        `PGPASSWORD=${getDbPassword()} psql -h ${getDbHost()} -U ${getDbUser()} -d postgres -c "DROP DATABASE IF EXISTS ${getDbName()}"`
       );
       logger.info("✓ Dropped existing test database");
     } else {
       // eslint-disable-next-line sonarjs/os-command -- Safe database drop command via Makefile
-      execSync(`cd ../.. && make db-query DB_NAME=postgres SQL="DROP DATABASE IF EXISTS ${TEST_DB_NAME}"`);
+      execSync(`cd ../.. && make db-query DB_NAME=postgres SQL="DROP DATABASE IF EXISTS ${getDbName()}"`);
       logger.info("✓ Dropped existing test database");
     }
 

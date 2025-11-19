@@ -33,7 +33,7 @@ process.env.NEXT_PUBLIC_PAYLOAD_URL = "http://localhost:3000";
 
 // Payload logging is now properly controlled via logger and loggingLevels configuration
 
-import { getTestDatabaseUrl, parseDatabaseUrl } from "../../lib/utils/database-url";
+import { getTestDatabaseUrl, parseDatabaseUrl } from "../../lib/database/url";
 
 // Use one test database per worker for efficiency
 // Workers will truncate tables between tests instead of creating new databases

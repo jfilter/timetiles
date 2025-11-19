@@ -15,7 +15,7 @@ import {
   getTestDatabaseUrl,
   isTestDatabase,
   parseDatabaseUrl,
-} from "../../../lib/utils/database-url";
+} from "../../../lib/database/url";
 
 describe("Database URL Utilities", () => {
   const originalEnv = process.env;

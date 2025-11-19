@@ -95,7 +95,7 @@ export class TestEnvironmentBuilder {
 
     // Use the same database URL that was set up in the global setup
     // Or get test database URL for this worker
-    const { getTestDatabaseUrl, parseDatabaseUrl } = await import("../../lib/utils/database-url");
+    const { getTestDatabaseUrl, parseDatabaseUrl } = await import("../../lib/database/url");
     const dbUrl = process.env.DATABASE_URL ?? getTestDatabaseUrl();
     const dbName = parseDatabaseUrl(dbUrl).database;
 

@@ -20,7 +20,7 @@ import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/au
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { type MapBounds, parseBoundsParameter } from "@/lib/types/geo";
 import { internalError } from "@/lib/utils/api-response";
-import { checkDatabaseFunction } from "@/lib/utils/database-functions";
+import { checkDatabaseFunction } from "@/lib/database/functions";
 import config from "@/payload.config";
 
 const buildFiltersWithBounds = (params: {

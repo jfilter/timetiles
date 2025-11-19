@@ -1,71 +1,60 @@
 /**
- * Creates isolated test database for each worker.
+ * Test database setup utilities.
+ *
+ * Provides functions for creating, truncating, and dropping worker test databases.
+ * Uses shared database utilities for consistency with E2E setup.
+ *
  * @module
+ * @category Tests
  */
-import { Client } from "pg";
 
+import { dropDatabase, truncateTables } from "../../lib/database/operations";
+import { setupDatabase } from "../../lib/database/setup";
+import { parseDatabaseUrl } from "../../lib/database/url";
 import { logger } from "../../lib/logger";
+
+/**
+ * Creates isolated test database for each worker.
+ *
+ * Uses the shared setupDatabase utility with worker-specific configuration.
+ *
+ * @param dbName - Name of the database to create
+ *
+ * @example
+ * ```typescript
+ * await createTestDatabase('timetiles_test_1');
+ * ```
+ */
 export const createTestDatabase = async (dbName: string): Promise<void> => {
-  const client = new Client({
-    host: "localhost",
-    port: 5432,
-    user: "timetiles_user",
-    password: "timetiles_password",
-    database: "postgres", // Connect to default database first
-  });
-
   try {
-    await client.connect();
+    await setupDatabase({
+      databaseName: dbName,
+      enablePostGIS: true,
+      createPayloadSchema: true,
+      runMigrations: false, // Migrations run separately via verifyDatabaseSchema
+      skipIfExists: true, // Don't recreate if already exists
+      verbose: false, // Quiet mode for tests
+    });
 
-    // Check if database already exists
-    const result = await client.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [dbName]);
-
-    if (result.rows.length === 0) {
-      // Create new database
-      // Safe: dbName is generated internally and properly escaped with quotes
-      // eslint-disable-next-line sonarjs/sql-queries
-      await client.query(`CREATE DATABASE "${dbName}"`);
-      logger.debug(`Created test database: ${dbName}`);
-    } else {
-      logger.debug(`Test database already exists: ${dbName}`);
-    }
+    logger.debug(`Test database ready: ${dbName}`);
   } catch (error) {
-    logger.error({ err: error, dbName }, `Failed to create or check test database ${dbName}`);
+    logger.error({ err: error, dbName }, `Failed to create test database ${dbName}`);
     throw error;
-  } finally {
-    await client.end();
-  }
-
-  // Now connect to the target database and set up the schema
-  const targetClient = new Client({
-    host: "localhost",
-    port: 5432,
-    user: "timetiles_user",
-    password: "timetiles_password",
-    database: dbName,
-  });
-
-  try {
-    await targetClient.connect();
-
-    // Create PostGIS extension if it doesn't exist
-    await targetClient.query(`CREATE EXTENSION IF NOT EXISTS postgis`);
-    await targetClient.query(`CREATE EXTENSION IF NOT EXISTS postgis_topology`);
-
-    // Create the payload schema
-    await targetClient.query(`CREATE SCHEMA IF NOT EXISTS payload`);
-
-    logger.debug(`Ensured PostGIS extensions and payload schema in test database: ${dbName}`);
-  } catch (error) {
-    logger.warn(`Failed to set up PostGIS extension in ${dbName}: ${(error as Error).message}`);
-    throw error;
-  } finally {
-    await targetClient.end();
   }
 };
 
 /**
  * Truncates all tables in the test database.
+ *
+ * Useful for cleaning up between test runs without dropping the entire database.
+ * Uses shared truncateTables utility from lib/database/operations.
+ *
+ * @param dbUrl - Database connection URL (defaults to process.env.DATABASE_URL)
+ *
+ * @example
+ * ```typescript
+ * await truncateAllTables('postgresql://user:pass@localhost:5432/timetiles_test_1');
+ * ```
  */
 export const truncateAllTables = async (dbUrl?: string): Promise<void> => {
   const connectionString = dbUrl ?? process.env.DATABASE_URL;
@@ -73,80 +62,59 @@ export const truncateAllTables = async (dbUrl?: string): Promise<void> => {
     throw new Error("No database URL provided");
   }
 
-  const client = new Client({ connectionString });
-
   try {
-    await client.connect();
-
-    // Get all table names in the payload schema
-    const res = await client.query(`
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = 'payload' AND table_type = 'BASE TABLE'
-        AND table_name NOT LIKE 'payload_migrations%'
-      ORDER BY table_name
-    `);
-
-    const tableNames = res.rows.map((row) => row.table_name);
-
-    if (tableNames.length > 0) {
-      // Truncate all tables with CASCADE to handle foreign keys
-      // Safe: table names are fetched from the database and properly escaped
-      const tableList = tableNames.map((name) => `payload."${name}"`).join(", ");
-      // eslint-disable-next-line sonarjs/sql-queries
-      await client.query(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
-      logger.debug(`Truncated ${tableNames.length} tables in test database`);
-    }
+    const tableCount = await truncateTables(connectionString, {
+      schema: "payload",
+      excludePatterns: ["payload_migrations%"],
+    });
+    logger.debug(`Truncated ${tableCount} tables in test database`);
   } catch (error) {
     logger.error({ err: error }, "Failed to truncate tables");
     throw error;
-  } finally {
-    await client.end();
   }
 };
 
 /**
- * Cleans up test database.
+ * Drops a test database.
+ *
+ * Uses shared dropDatabase utility which handles connection termination.
+ *
+ * @param dbName - Name of the database to drop
+ *
+ * @example
+ * ```typescript
+ * await dropTestDatabase('timetiles_test_1');
+ * ```
  */
 export const dropTestDatabase = async (dbName: string): Promise<void> => {
-  const client = new Client({
-    host: "localhost",
-    port: 5432,
-    user: "timetiles_user",
-    password: "timetiles_password",
-    database: "postgres",
-  });
-
   try {
-    await client.connect();
-
-    // Force close all connections to the database
-    // Safe: dbName is generated internally
-    // eslint-disable-next-line sonarjs/sql-queries
-    await client.query(`
-      SELECT pg_terminate_backend(pg_stat_activity.pid)
-      FROM pg_stat_activity
-      WHERE pg_stat_activity.datname = '${dbName}'
-        AND pid <> pg_backend_pid()
-    `);
-
-    // Drop database
-    // Safe: dbName is generated internally and properly escaped
-    // eslint-disable-next-line sonarjs/sql-queries
-    await client.query(`DROP DATABASE IF EXISTS "${dbName}"`);
-
+    await dropDatabase(dbName, { ifExists: true });
     logger.debug(`Dropped test database: ${dbName}`);
   } catch (error) {
     logger.warn({ err: error, dbName }, `Failed to drop test database ${dbName}`);
-  } finally {
-    await client.end();
   }
 };
 
 /**
  * Extract database name from connection URL.
+ *
+ * Uses shared parseDatabaseUrl utility for consistency.
+ *
+ * @param url - Database connection URL
+ * @returns Database name
+ *
+ * @example
+ * ```typescript
+ * const dbName = getDatabaseName('postgresql://user:pass@localhost:5432/timetiles_test_1');
+ * // Returns: 'timetiles_test_1'
+ * ```
  */
 export const getDatabaseName = (url: string): string => {
-  const match = /\/([^/?]+)(\?|$)/.exec(url);
-  return match?.[1] ?? "timetiles_test";
+  try {
+    const parsed = parseDatabaseUrl(url);
+    return parsed.database;
+  } catch {
+    // Fallback to default if parsing fails
+    return "timetiles_test";
+  }
 };

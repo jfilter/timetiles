@@ -9,7 +9,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { config as loadEnv } from "dotenv";
 
-import { deriveTestDatabaseUrl, getDatabaseUrl } from "./lib/utils/database-url";
+import { deriveE2eDatabaseUrl, getDatabaseUrl } from "./lib/database/url";
 
 // Load environment variables from .env.local before accessing DATABASE_URL
 loadEnv({ path: ".env.local" });
@@ -17,8 +17,8 @@ loadEnv({ path: ".env.local" });
 // Get DATABASE_URL from environment - required
 const DATABASE_URL = getDatabaseUrl(true)!;
 
-// Derive test database URL from base URL (no worker ID for E2E tests)
-const TEST_DATABASE_URL = deriveTestDatabaseUrl(DATABASE_URL);
+// Derive E2E test database URL from base URL
+const TEST_DATABASE_URL = deriveE2eDatabaseUrl(DATABASE_URL);
 
 // Common environment variables for all E2E tests
 const TEST_ENV = {
@@ -28,6 +28,8 @@ const TEST_ENV = {
   PAYLOAD_SECRET: process.env.PAYLOAD_SECRET || "test-secret-key",
   NEXT_PUBLIC_PAYLOAD_URL: process.env.NEXT_PUBLIC_PAYLOAD_URL || "http://localhost:3002",
   NODE_ENV: "test",
+  // Ensure database setup errors are visible even in test mode
+  LOG_LEVEL: "info",
 };
 
 // Set environment variables for Playwright process
@@ -47,10 +49,7 @@ export default defineConfig({
   /* Limit workers to prevent resource contention */
   workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: [
-    ["list"],
-    ["json", { outputFile: "test-results/results.json" }],
-  ],
+  reporter: [["list"], ["json", { outputFile: "test-results/results.json" }]],
   /* Explicit output directory for test artifacts */
   outputDir: "./test-results",
   /* Test timeout - 60 seconds locally, 120 seconds in CI */
@@ -77,60 +76,38 @@ export default defineConfig({
     headless: true,
   },
 
-  /* Global environment variables for all tests and setup */
-  globalSetup: undefined, // Using project dependencies instead
-  globalTeardown: undefined,
-
   /* Configure projects for major browsers */
   projects:
     process.env.TEST_ALL_BROWSERS != null && process.env.TEST_ALL_BROWSERS !== ""
       ? [
-          // Global setup project - runs first
-          {
-            name: "setup db",
-            testMatch: /global\.setup\.ts/,
-            use: {},
-          },
           // Test all browsers when TEST_ALL_BROWSERS is set
           {
             name: "chromium",
             use: { ...devices["Desktop Chrome"] },
-            dependencies: ["setup db"],
           },
           {
             name: "firefox",
             use: { ...devices["Desktop Firefox"] },
-            dependencies: ["setup db"],
           },
           {
             name: "webkit",
             use: { ...devices["Desktop Safari"] },
-            dependencies: ["setup db"],
           },
           /* Test against mobile viewports. */
           {
             name: "Mobile Chrome",
             use: { ...devices["Pixel 5"] },
-            dependencies: ["setup db"],
           },
           {
             name: "Mobile Safari",
             use: { ...devices["iPhone 12"] },
-            dependencies: ["setup db"],
           },
         ]
       : [
-          // Global setup project - runs first
-          {
-            name: "setup db",
-            testMatch: /global\.setup\.ts/,
-            use: {},
-          },
           // Default: only Chromium for speed and efficiency
           {
             name: "chromium",
             use: { ...devices["Desktop Chrome"] },
-            dependencies: ["setup db"],
           },
         ],
 
@@ -139,10 +116,10 @@ export default defineConfig({
     process.env.CI != null && process.env.CI !== ""
       ? undefined // In CI, the server is already running
       : {
-          command: "pnpm dev --port 3002",
+          command: "pnpm setup:e2e-db && pnpm dev --port 3002",
           url: "http://localhost:3002/explore", // Test against the explore page
           reuseExistingServer: true,
-          timeout: 60 * 1000, // Give more time for database setup and migrations
+          timeout: 120 * 1000, // 2 minutes for database setup, migrations, and server start
           env: {
             ...process.env, // Inherit all current environment variables
             ...TEST_ENV, // Override with test environment variables

@@ -53,10 +53,6 @@ export const constructDatabaseUrl = (components: Omit<DatabaseUrlComponents, "fu
  *
  * @example
  * ```typescript
- * // For E2E tests (single database)
- * const testUrl = deriveTestDatabaseUrl(process.env.DATABASE_URL);
- * // Returns: postgresql://user:pass@host:5432/mydb_test
- *
  * // For unit/integration tests (worker-specific)
  * const testUrl = deriveTestDatabaseUrl(process.env.DATABASE_URL, "1");
  * // Returns: postgresql://user:pass@host:5432/mydb_test_1
@@ -75,6 +71,37 @@ export const deriveTestDatabaseUrl = (baseUrl: string, workerId?: string): strin
   return constructDatabaseUrl({
     ...components,
     database: testDbName,
+  });
+};
+
+/**
+ * Derive an E2E test database URL from a base URL
+ *
+ * Creates a dedicated database for E2E tests with _test_e2e suffix
+ * to distinguish from unit/integration test databases.
+ *
+ * @param baseUrl - The base database URL
+ * @returns The E2E test database URL
+ *
+ * @example
+ * ```typescript
+ * const e2eUrl = deriveE2eDatabaseUrl(process.env.DATABASE_URL);
+ * // Returns: postgresql://user:pass@host:5432/mydb_test_e2e
+ * ```
+ */
+export const deriveE2eDatabaseUrl = (baseUrl: string): string => {
+  const components = parseDatabaseUrl(baseUrl);
+  const baseName = components.database;
+
+  // Remove any existing _test suffix to avoid duplication
+  const cleanBaseName = baseName.replace(/_test(_\d+)?$/, "");
+
+  // Add _test_e2e suffix for E2E tests
+  const e2eDbName = `${cleanBaseName}_test_e2e`;
+
+  return constructDatabaseUrl({
+    ...components,
+    database: e2eDbName,
   });
 };
 

@@ -27,6 +27,7 @@
     "test:coverage": "vitest run --coverage --coverage.reportOnFailure=true",
     "test:coverage:summary": "tsx scripts/coverage-summary.ts",
     "test:coverage:check": "tsx scripts/coverage-summary.ts --threshold 80",
+    "setup:e2e-db": "tsx scripts/e2e-setup-database.ts",
     "test:e2e": "playwright test",
     "test:e2e:debug": "playwright test --debug --headed",
     "test:unit": "vitest run tests/unit",
