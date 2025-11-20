@@ -8,8 +8,8 @@ on:
       - 'deploy.sh'
       - 'docker compose.dev.yml'
       - '.dockerignore'
-      - '.github/workflows/deploy-test.yml'
-      
+      - '.github/workflows/test-deployment.yml'
+
   pull_request:
     branches: [main]
     paths:
@@ -17,7 +17,7 @@ on:
       - 'deploy.sh'
       - 'docker compose.dev.yml'
       - '.dockerignore'
-      - '.github/workflows/deploy-test.yml'
+      - '.github/workflows/test-deployment.yml'
       
   workflow_dispatch:
     inputs:
