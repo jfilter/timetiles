@@ -103,7 +103,7 @@ jobs:
 
       - name: Check documentation links
         timeout-minutes: 2
-        run: pnpm --filter docs check-links:internal
+        run: pnpm --filter docs lint
 
       - name: Run tests with coverage
         run: pnpm test:coverage
