@@ -106,13 +106,11 @@ const processBatchSchema = async (
   }
 
   const updatedSchema = await schemaBuilder.getSchema();
-  const geocodingCandidates = nonDuplicateRows.length > 0 ? detectGeocodingFields(nonDuplicateRows) : [];
 
   return {
     nonDuplicateRows,
     schemaBuilder,
     updatedSchema,
-    geocodingCandidates,
   };
 };
 
@@ -154,7 +152,7 @@ export const schemaDetectionJob = {
       }
 
       // Process batch and build schema
-      const { nonDuplicateRows, schemaBuilder, updatedSchema, geocodingCandidates } = await processBatchSchema(
+      const { nonDuplicateRows, schemaBuilder, updatedSchema } = await processBatchSchema(
         rows,
         job,
         batchNumber,
@@ -172,7 +170,6 @@ export const schemaDetectionJob = {
         {
           schema: updatedSchema,
           schemaBuilderState: schemaBuilder.getState(),
-          geocodingCandidates,
         }
       );
 
@@ -227,54 +224,4 @@ export const schemaDetectionJob = {
       throw error;
     }
   },
-};
-
-// Detect fields that might contain geocoding data
-const detectGeocodingFields = (rows: unknown[]): Record<string, string> => {
-  if (rows.length === 0) return {};
-
-  const candidates: Record<string, string> = {};
-  const firstRow = rows[0] as Record<string, unknown> | undefined;
-  const headers = Object.keys(firstRow ?? {});
-
-  // Common patterns for geocoding fields
-  const addressPatterns = [
-    /^(address|addr|location|place|street|city|state|zip|postal|country)/i,
-    /^(lat|latitude|lng|longitude|coord|geo)/i,
-  ];
-
-  for (const header of headers) {
-    if (addressPatterns.some((pattern) => pattern.test(header))) {
-      // Check if it's a coordinate field
-      if (/^(lat|latitude)$/i.test(header)) {
-        candidates.latitudeField = header;
-      } else if (/^(lng|lon|longitude)$/i.test(header)) {
-        candidates.longitudeField = header;
-      } else {
-        // Might be an address field
-        if (!candidates.addressField) {
-          candidates.addressField = header;
-        }
-      }
-    }
-  }
-
-  // Validate coordinate pairs
-  if (candidates.latitudeField && candidates.longitudeField) {
-    // Sample a few rows to check if they contain valid coordinates
-    const sample = rows.slice(0, Math.min(10, rows.length));
-    const validCoords = sample.filter((row) => {
-      const lat = Number.parseFloat((row as Record<string, unknown>)[candidates.latitudeField!] as string);
-      const lng = Number.parseFloat((row as Record<string, unknown>)[candidates.longitudeField!] as string);
-      return !Number.isNaN(lat) && !Number.isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
-    });
-
-    if (validCoords.length < sample.length * 0.5) {
-      // Less than 50% valid coordinates, probably not coordinate fields
-      delete candidates.latitudeField;
-      delete candidates.longitudeField;
-    }
-  }
-
-  return candidates;
 };

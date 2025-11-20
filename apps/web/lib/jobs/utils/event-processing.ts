@@ -9,7 +9,7 @@
  *
  * @module
  */
-import type { CoordinateValidator } from "@/lib/services/import/coordinate-validator";
+import { parseCoordinate } from "@/lib/geospatial";
 
 import { getObjectProperty } from "./data-parsing";
 import { hasValidProperty, parseDate, parseTagsFromRow, safeStringValue } from "./data-validation";
@@ -21,20 +21,19 @@ export const extractCoordinatesFromRow = (
     longitudeColumn?: string;
     combinedColumn?: string;
     coordinateFormat?: string;
-  },
-  coordinateValidator: CoordinateValidator
+  }
 ): { coordinates?: { lat: number; lng: number }; validation?: Record<string, unknown> } => {
   const { latitudeColumn, longitudeColumn, combinedColumn, coordinateFormat } = columnMapping;
 
   try {
     // Try separate lat/lng columns first
-    const separateResult = extractSeparateCoordinates(row, latitudeColumn, longitudeColumn, coordinateValidator);
+    const separateResult = extractSeparateCoordinates(row, latitudeColumn, longitudeColumn);
     if (separateResult.coordinates) {
       return separateResult;
     }
 
     // Try combined coordinate column
-    const combinedResult = extractCombinedCoordinates(row, combinedColumn, coordinateFormat, coordinateValidator);
+    const combinedResult = extractCombinedCoordinates(row, combinedColumn, coordinateFormat);
     if (combinedResult.coordinates) {
       return combinedResult;
     }
@@ -48,10 +47,9 @@ export const extractCoordinatesFromRow = (
 const extractSeparateCoordinates = (
   row: Record<string, unknown>,
   latitudeColumn?: string,
-  longitudeColumn?: string,
-  coordinateValidator?: CoordinateValidator
+  longitudeColumn?: string
 ): { coordinates?: { lat: number; lng: number }; validation?: Record<string, unknown> } => {
-  if (latitudeColumn == null || longitudeColumn == null || coordinateValidator == null) {
+  if (latitudeColumn == null || longitudeColumn == null) {
     return {};
   }
 
@@ -70,17 +68,16 @@ const extractSeparateCoordinates = (
     return {};
   }
 
-  const result = parseAndValidateCoordinates(latStr, lngStr, coordinateValidator);
+  const result = parseAndValidateCoordinates(latStr, lngStr);
   return result ?? {};
 };
 
 const extractCombinedCoordinates = (
   row: Record<string, unknown>,
   combinedColumn?: string,
-  coordinateFormat?: string,
-  coordinateValidator?: CoordinateValidator
+  coordinateFormat?: string
 ): { coordinates?: { lat: number; lng: number }; validation?: Record<string, unknown> } => {
-  if (combinedColumn == null || combinedColumn.length === 0 || coordinateValidator == null) {
+  if (combinedColumn == null || combinedColumn.length === 0) {
     return {};
   }
 
@@ -101,7 +98,7 @@ const extractCombinedCoordinates = (
     return {};
   }
 
-  const result = parseAndValidateCoordinates(String(coords.lat), String(coords.lng), coordinateValidator);
+  const result = parseAndValidateCoordinates(String(coords.lat), String(coords.lng));
   return result ?? {};
 };
 
@@ -133,8 +130,7 @@ const parseCombinedCoordinates = (
 
 const parseAndValidateCoordinates = (
   latStr: string,
-  lngStr: string,
-  coordinateValidator: CoordinateValidator
+  lngStr: string
 ): { coordinates: { lat: number; lng: number }; validation: Record<string, unknown> } | null => {
   const lat = Number(latStr);
   const lng = Number(lngStr);
@@ -143,8 +139,8 @@ const parseAndValidateCoordinates = (
     return null;
   }
 
-  const lat_parsed = coordinateValidator.parseCoordinate(String(lat));
-  const lng_parsed = coordinateValidator.parseCoordinate(String(lng));
+  const lat_parsed = parseCoordinate(String(lat));
+  const lng_parsed = parseCoordinate(String(lng));
 
   if (lat_parsed === null || lng_parsed === null) {
     return null;
@@ -165,8 +161,7 @@ const parseAndValidateCoordinates = (
 export const processRowData = (
   row: Record<string, unknown>,
   hasCoordinates: boolean,
-  columnMapping: Record<string, unknown> | undefined,
-  coordinateValidator: CoordinateValidator
+  columnMapping: Record<string, unknown> | undefined
 ): Record<string, unknown> => {
   // Normalize and validate data
   const processedRow: Record<string, unknown> = {
@@ -191,8 +186,7 @@ export const processRowData = (
         longitudeColumn?: string;
         combinedColumn?: string;
         coordinateFormat?: string;
-      },
-      coordinateValidator
+      }
     );
 
     if (extractedCoords.coordinates) {

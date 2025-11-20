@@ -2,7 +2,7 @@
  * Defines the job handler for validating the detected schema against the dataset's existing schema.
  *
  * This job is responsible for schema management and versioning. Its main tasks are:
- * - Finalizing the schema detection for the entire file using the state from the previous stage.
+ * - Finalizing the schema detection using the cached state from the schema detection stage.
  * - Comparing the newly detected schema with the current schema version of the target dataset.
  * - Identifying breaking changes (e.g., type changes, removed fields) and non-breaking changes (e.g., new optional fields).
  * - Determining whether the changes can be automatically approved based on the dataset's configuration.
@@ -12,18 +12,17 @@
  *
  * @module
  */
-import path from "node:path";
-
 import type { Payload, PayloadRequest } from "payload";
 
-import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
+import { compareSchemas } from "@/lib/services/schema-builder/schema-comparison";
 import { SchemaVersioningService } from "@/lib/services/schema-versioning";
+import type { SchemaComparison } from "@/lib/types/schema-detection";
 import { getSchemaBuilderState } from "@/lib/types/schema-detection";
-import { readBatchFromFile } from "@/lib/utils/file-readers";
 import type { ImportJob, User } from "@/payload-types";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
@@ -61,66 +60,22 @@ const loadResources = async (payload: Payload, importJobId: number) => {
   return { job, dataset, importFile };
 };
 
-// Helper function to extract duplicate row numbers
-const extractDuplicateRows = (job: ImportJob): Set<number> => {
-  const duplicateRows = new Set<number>();
-
-  // Handle the duplicates field which can be of various types
-  const duplicates = job.duplicates;
-  if (duplicates && typeof duplicates === "object" && !Array.isArray(duplicates)) {
-    // Check for internal duplicates
-    if (Array.isArray(duplicates.internal)) {
-      duplicates.internal.forEach((d: unknown) => {
-        if (typeof d === "object" && d !== null && "rowNumber" in d) {
-          duplicateRows.add((d as { rowNumber: number }).rowNumber);
-        }
-      });
-    }
-    // Check for external duplicates
-    if (Array.isArray(duplicates.external)) {
-      duplicates.external.forEach((d: unknown) => {
-        if (typeof d === "object" && d !== null && "rowNumber" in d) {
-          duplicateRows.add((d as { rowNumber: number }).rowNumber);
-        }
-      });
-    }
-  }
-
-  return duplicateRows;
-};
-
-// Helper function to process file schema
-const processFileSchema = async (
-  filePath: string,
-  job: { sheetIndex: number; schemaBuilderState?: unknown },
-  duplicateRows: Set<number>
-): Promise<{ schemaBuilder: ProgressiveSchemaBuilder; detectedSchema: Record<string, unknown> }> => {
+// Helper function to get schema from cached builder state
+const getSchemaFromCache = async (job: {
+  schemaBuilderState?: unknown;
+}): Promise<{ schemaBuilder: ProgressiveSchemaBuilder; detectedSchema: Record<string, unknown> }> => {
+  // Use cached schema builder state from schema detection stage
+  // This avoids re-reading the entire file
   const previousState = getSchemaBuilderState(job);
-  const schemaBuilder = new ProgressiveSchemaBuilder(previousState ?? undefined);
-  const BATCH_SIZE = BATCH_SIZES.SCHEMA_VALIDATION;
-  let batchNumber = 0;
 
-  while (true) {
-    const rows = readBatchFromFile(filePath, {
-      sheetIndex: job.sheetIndex ?? undefined,
-      startRow: batchNumber * BATCH_SIZE,
-      limit: BATCH_SIZE,
-    });
-
-    if (rows.length === 0) break;
-
-    const nonDuplicateRows = rows.filter((_row, index) => {
-      const rowNumber = batchNumber * BATCH_SIZE + index;
-      return !duplicateRows.has(rowNumber);
-    });
-
-    if (nonDuplicateRows.length > 0) {
-      schemaBuilder.processBatch(nonDuplicateRows);
-    }
-
-    batchNumber++;
+  if (!previousState) {
+    throw new Error("Schema builder state not found. Schema detection stage must run first.");
   }
 
+  // Create schema builder from cached state
+  const schemaBuilder = new ProgressiveSchemaBuilder(previousState);
+
+  // Generate schema from cached state (no file reading needed)
   const detectedSchemaRaw = await schemaBuilder.getSchema();
   const detectedSchema =
     typeof detectedSchemaRaw === "object" && !Array.isArray(detectedSchemaRaw) ? detectedSchemaRaw : {};
@@ -149,8 +104,7 @@ const getCurrentSchema = async (payload: Payload, datasetId: number | string): P
 const checkRequiresApproval = (
   comparison: SchemaComparison,
   dataset: { schemaConfig?: { locked?: boolean | null; autoApproveNonBreaking?: boolean | null } | null }
-): boolean =>
-  comparison.hasBreakingChanges || !!dataset.schemaConfig?.locked || !dataset.schemaConfig?.autoApproveNonBreaking;
+): boolean => comparison.isBreaking || !!dataset.schemaConfig?.locked || !dataset.schemaConfig?.autoApproveNonBreaking;
 
 // Helper function to handle schema approval
 const handleSchemaApproval = async (options: {
@@ -167,7 +121,8 @@ const handleSchemaApproval = async (options: {
   req?: PayloadRequest;
 }) => {
   const { payload, requiresApproval, comparison, detectedSchema, schemaBuilder, dataset, importJobId, req } = options;
-  if (!requiresApproval && comparison.hasChanges) {
+  const hasChanges = comparison.changes.length > 0;
+  if (!requiresApproval && hasChanges) {
     const schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
       dataset: dataset.id,
       schema: detectedSchema,
@@ -230,6 +185,35 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   }
 };
 
+// Extract schema changes for backward compatibility
+const extractSchemaChanges = (comparison: SchemaComparison, detectedSchema: Record<string, unknown>) => {
+  const breakingChanges = comparison.changes
+    .filter((c) => c.severity === "error")
+    .map((c) => ({
+      field: c.path,
+      change: c.type,
+      ...(typeof c.details === "object" && c.details !== null ? (c.details as Record<string, unknown>) : {}),
+    }));
+
+  const newFields = comparison.changes
+    .filter((c) => c.type === "new_field")
+    .map((c) => {
+      // Get the type from the detected schema properties
+      const properties = detectedSchema.properties as Record<string, unknown> | undefined;
+      const fieldSchema = properties?.[c.path] as Record<string, unknown> | undefined;
+      const fieldType = fieldSchema?.type && typeof fieldSchema.type === "string" ? fieldSchema.type : "unknown";
+
+      return {
+        field: c.path,
+        type: fieldType,
+        optional:
+          typeof c.details === "object" && c.details !== null && "required" in c.details ? !c.details.required : true,
+      };
+    });
+
+  return { breakingChanges, newFields };
+};
+
 export const validateSchemaJob = {
   slug: JOB_TYPES.VALIDATE_SCHEMA,
   handler: async (context: JobHandlerContext) => {
@@ -249,7 +233,6 @@ export const validateSchemaJob = {
 
       // Check event quota against the number of rows to be imported
       if (importFile.user) {
-        // Get the user who created this import
         const user =
           typeof importFile.user === "object"
             ? importFile.user
@@ -261,31 +244,18 @@ export const validateSchemaJob = {
         }
       }
 
-      // Setup file path
-      const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
-      const filePath = path.join(uploadDir, importFile.filename ?? "");
+      // Get schema from cached builder state (no file reading needed)
+      const { schemaBuilder, detectedSchema } = await getSchemaFromCache({
+        schemaBuilderState: job.schemaBuilderState,
+      });
 
-      // Extract duplicate rows
-      const duplicateRows = extractDuplicateRows(job);
-
-      // Process file schema
-      const { schemaBuilder, detectedSchema } = await processFileSchema(
-        filePath,
-        {
-          sheetIndex: job.sheetIndex ?? 0,
-          schemaBuilderState: job.schemaBuilderState,
-        },
-        duplicateRows
-      );
-
-      // Get current schema
+      // Get current schema and compare
       const currentSchema = await getCurrentSchema(payload, dataset.id);
-
-      // Compare schemas
       const comparison = compareSchemas(currentSchema, detectedSchema);
-
-      // Check if approval is required
       const requiresApproval = checkRequiresApproval(comparison, dataset);
+
+      // Extract changes
+      const { breakingChanges, newFields } = extractSchemaChanges(comparison, detectedSchema);
 
       // Update job with validation results
       await payload.update({
@@ -294,11 +264,11 @@ export const validateSchemaJob = {
         data: {
           schema: detectedSchema,
           schemaValidation: {
-            isCompatible: !comparison.hasBreakingChanges,
-            breakingChanges: comparison.breakingChanges,
-            newFields: comparison.newFields,
+            isCompatible: !comparison.isBreaking,
+            breakingChanges,
+            newFields,
             requiresApproval,
-            approvalReason: comparison.hasBreakingChanges
+            approvalReason: comparison.isBreaking
               ? "Breaking schema changes detected"
               : "Manual approval required by dataset configuration",
           },
@@ -320,15 +290,15 @@ export const validateSchemaJob = {
 
       logPerformance("Schema validation", Date.now() - startTime, {
         importJobId,
-        hasBreakingChanges: comparison.hasBreakingChanges,
+        hasBreakingChanges: comparison.isBreaking,
         requiresApproval,
       });
 
       return {
         output: {
           requiresApproval,
-          hasBreakingChanges: comparison.hasBreakingChanges,
-          newFields: comparison.newFields.length,
+          hasBreakingChanges: comparison.isBreaking,
+          newFields: newFields.length,
         },
       };
     } catch (error) {
@@ -351,73 +321,4 @@ export const validateSchemaJob = {
       throw error;
     }
   },
-};
-
-// Schema comparison logic
-interface SchemaComparison {
-  hasBreakingChanges: boolean;
-  hasChanges: boolean;
-  breakingChanges: Array<{
-    field: string;
-    change: string;
-    from?: string;
-    to?: string;
-  }>;
-  newFields: Array<{
-    field: string;
-    type: string;
-    optional: boolean;
-  }>;
-}
-
-const compareSchemas = (current: Record<string, unknown>, detected: Record<string, unknown>): SchemaComparison => {
-  const breakingChanges: SchemaComparison["breakingChanges"] = [];
-  const newFields: SchemaComparison["newFields"] = [];
-
-  // Type guards for schema properties
-  const currentProps = (current.properties as Record<string, { type: string }>) || {};
-  const detectedProps = (detected.properties as Record<string, { type: string }>) || {};
-
-  // Check for type changes (breaking)
-  for (const [field, currentType] of Object.entries(currentProps)) {
-    const detectedType = detectedProps[field];
-    if (detectedType && detectedType.type !== currentType.type) {
-      breakingChanges.push({
-        field,
-        change: "type_change",
-        from: currentType.type,
-        to: detectedType.type,
-      });
-    }
-  }
-
-  // Check for new fields (non-breaking if optional)
-  for (const [field, fieldSchema] of Object.entries(detectedProps)) {
-    if (!currentProps[field]) {
-      const required = Array.isArray(detected.required) ? detected.required : [];
-      newFields.push({
-        field,
-        type: fieldSchema.type,
-        optional: !required.includes(field),
-      });
-    }
-  }
-
-  // Check for removed required fields (breaking)
-  const currentRequired = Array.isArray(current.required) ? current.required : [];
-  for (const requiredField of currentRequired) {
-    if (!detectedProps[requiredField as string]) {
-      breakingChanges.push({
-        field: requiredField as string,
-        change: "required_field_removed",
-      });
-    }
-  }
-
-  return {
-    hasBreakingChanges: breakingChanges.length > 0,
-    hasChanges: breakingChanges.length > 0 || newFields.length > 0,
-    breakingChanges,
-    newFields,
-  };
 };
