@@ -33,6 +33,20 @@ jobs:
         timeout-minutes: 3
         run: pnpm typecheck
 
+      - name: Lint infrastructure
+        timeout-minutes: 2
+        run: |
+          mkdir -p $HOME/.local/bin
+          export PATH=$HOME/.local/bin:$PATH
+
+          # Install linting tools
+          curl -sSfL https://github.com/rhysd/actionlint/releases/download/v1.7.4/actionlint_1.7.4_linux_amd64.tar.gz | tar xz -C $HOME/.local/bin actionlint
+          wget -q https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 -O $HOME/.local/bin/hadolint
+          chmod +x $HOME/.local/bin/hadolint $HOME/.local/bin/actionlint
+
+          pnpm lint:devops
+        continue-on-error: true
+
       - name: Check documentation links
         timeout-minutes: 2
         run: pnpm --filter docs lint
