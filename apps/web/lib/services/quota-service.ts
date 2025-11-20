@@ -502,28 +502,43 @@ export class QuotaService {
 
   /**
    * Reset daily counters for all users (called by background job).
+   *
+   * Uses Payload's bulk update API with an empty where clause to update all users
+   * in a single operation, avoiding N+1 query issues.
    */
   async resetAllDailyCounters(): Promise<void> {
     try {
-      const users = await this.payload.find({
+      const now = new Date().toISOString();
+
+      // Use Payload's bulk update API to reset all users' daily counters
+      // Empty where clause updates all documents in the collection
+      const result = await this.payload.update({
         collection: "users",
-        limit: 1000,
-        where: {
+        where: {}, // Empty where = update all
+        data: {
           usage: {
-            exists: true,
+            urlFetchesToday: 0,
+            fileUploadsToday: 0,
+            importJobsToday: 0,
+            lastResetDate: now,
           },
         },
+        overrideAccess: true, // Skip access control for background job
       });
 
-      logger.info(`Resetting daily counters for ${users.docs.length} users`);
+      const affectedUsers = result.docs.length;
+      logger.info(`Daily counter reset completed for ${affectedUsers} users`);
 
-      for (const user of users.docs) {
-        await this.resetDailyCounters(user.id);
+      // Log any errors that occurred during the update
+      if (result.errors.length > 0) {
+        logger.error("Some users failed to update during daily counter reset", {
+          errorCount: result.errors.length,
+          errors: result.errors,
+        });
       }
-
-      logger.info("Daily counter reset completed");
     } catch (error) {
       logger.error("Failed to reset all daily counters", { error });
+      throw error; // Re-throw so tests can catch failures
     }
   }
 

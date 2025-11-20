@@ -228,8 +228,8 @@ export const ClusteredMap = ({
 
   const mapRef = useRef<MapRef | null>(null);
 
-  const eventPointFilter: ["==", ["get", string], string] = ["==", ["get", "type"], "event-point"];
-  const clusterFilter: ["==", ["get", string], string] = ["==", ["get", "type"], "event-cluster"];
+  const eventPointFilter: ["==", ["get", string], string] = useMemo(() => ["==", ["get", "type"], "event-point"], []);
+  const clusterFilter: ["==", ["get", string], string] = useMemo(() => ["==", ["get", "type"], "event-cluster"], []);
 
   const eventPointLayer = {
     id: "unclustered-point",
@@ -297,7 +297,7 @@ export const ClusteredMap = ({
         "circle-stroke-opacity": 0.8,
       },
     }),
-    [globalStats, viewportStats]
+    [globalStats, viewportStats, clusterFilter]
   );
 
   const handleMove = useCallback(

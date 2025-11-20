@@ -77,28 +77,6 @@ export interface HistogramResponse {
   };
 }
 
-export interface DatasetCount {
-  datasetId: number;
-  datasetName: string;
-  count: number;
-}
-
-export interface ByDatasetResponse {
-  datasets: DatasetCount[];
-  total: number;
-}
-
-export interface CatalogCount {
-  catalogId: number;
-  catalogName: string;
-  count: number;
-}
-
-export interface ByCatalogResponse {
-  catalogs: CatalogCount[];
-  total: number;
-}
-
 export interface AggregationItem {
   id: number | string;
   name: string;
@@ -375,12 +353,6 @@ export const eventsQueryKeys = {
   histograms: () => [...eventsQueryKeys.all, "histogram"] as const,
   histogram: (filters: FilterState, bounds: BoundsType) =>
     [...eventsQueryKeys.histograms(), { filters, bounds }] as const,
-  byDatasets: () => [...eventsQueryKeys.all, "by-dataset"] as const,
-  byDataset: (filters: FilterState, bounds: BoundsType) =>
-    [...eventsQueryKeys.byDatasets(), { filters, bounds }] as const,
-  byCatalogs: () => [...eventsQueryKeys.all, "by-catalog"] as const,
-  byCatalog: (filters: FilterState, bounds: BoundsType) =>
-    [...eventsQueryKeys.byCatalogs(), { filters, bounds }] as const,
   aggregations: () => [...eventsQueryKeys.all, "aggregation"] as const,
   aggregation: (filters: FilterState, bounds: BoundsType, groupBy: "catalog" | "dataset") =>
     [...eventsQueryKeys.aggregations(), { filters, bounds, groupBy }] as const,
@@ -488,16 +460,6 @@ export const useInvalidateEventsQueries = () => {
         queryKey: eventsQueryKeys.histograms(),
       });
     },
-    invalidateByDataset: () => {
-      void queryClient.invalidateQueries({
-        queryKey: eventsQueryKeys.byDatasets(),
-      });
-    },
-    invalidateByCatalog: () => {
-      void queryClient.invalidateQueries({
-        queryKey: eventsQueryKeys.byCatalogs(),
-      });
-    },
   };
 };
 
@@ -522,42 +484,7 @@ const fetchAggregation = async (
   return response.json();
 };
 
-// Legacy fetch functions for backward compatibility (now use unified endpoint)
-const fetchByDataset = async (
-  filters: FilterState,
-  bounds: BoundsType,
-  signal?: AbortSignal
-): Promise<ByDatasetResponse> => {
-  const result = await fetchAggregation(filters, bounds, "dataset", signal);
-  // Transform to legacy format
-  return {
-    datasets: result.items.map((item) => ({
-      datasetId: item.id as number,
-      datasetName: item.name,
-      count: item.count,
-    })),
-    total: result.total,
-  };
-};
-
-const fetchByCatalog = async (
-  filters: FilterState,
-  bounds: BoundsType,
-  signal?: AbortSignal
-): Promise<ByCatalogResponse> => {
-  const result = await fetchAggregation(filters, bounds, "catalog", signal);
-  // Transform to legacy format
-  return {
-    catalogs: result.items.map((item) => ({
-      catalogId: item.id as number,
-      catalogName: item.name,
-      count: item.count,
-    })),
-    total: result.total,
-  };
-};
-
-// New unified aggregation query hook
+// Unified aggregation query hook
 export const useEventsAggregationQuery = (
   filters: FilterState,
   bounds: BoundsType,
@@ -567,29 +494,6 @@ export const useEventsAggregationQuery = (
   useQuery({
     queryKey: eventsQueryKeys.aggregation(filters, bounds, groupBy),
     queryFn: ({ signal }) => fetchAggregation(filters, bounds, groupBy, signal),
-    enabled: enabled && bounds != null,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: false,
-    placeholderData: (previousData) => previousData,
-  });
-
-// Legacy query hooks for backward compatibility (now use unified endpoint internally)
-export const useEventsByDatasetQuery = (filters: FilterState, bounds: BoundsType, enabled: boolean = true) =>
-  useQuery({
-    queryKey: eventsQueryKeys.byDataset(filters, bounds),
-    queryFn: ({ signal }) => fetchByDataset(filters, bounds, signal),
-    enabled: enabled && bounds != null,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: false,
-    placeholderData: (previousData) => previousData,
-  });
-
-export const useEventsByCatalogQuery = (filters: FilterState, bounds: BoundsType, enabled: boolean = true) =>
-  useQuery({
-    queryKey: eventsQueryKeys.byCatalog(filters, bounds),
-    queryFn: ({ signal }) => fetchByCatalog(filters, bounds, signal),
     enabled: enabled && bounds != null,
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes

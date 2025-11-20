@@ -18,6 +18,40 @@ import { constructDatabaseUrl, parseDatabaseUrl } from "./url";
 const logger = createLogger("database-setup");
 
 /**
+ * Check if PostgreSQL server is running and accessible.
+ *
+ * @throws Error with helpful message if PostgreSQL is not accessible
+ *
+ * @example
+ * ```typescript
+ * await checkPostgreSQLConnection();
+ * ```
+ */
+export const checkPostgreSQLConnection = async (): Promise<void> => {
+  const client = createDatabaseClient({ database: "postgres" });
+  try {
+    await client.connect();
+    await client.end();
+  } catch (error) {
+    const isConnectionRefused =
+      error instanceof Error &&
+      (error.message.includes("ECONNREFUSED") || error.message.includes("connect ECONNREFUSED"));
+
+    if (isConnectionRefused) {
+      throw new Error(
+        `❌ PostgreSQL is not running!\n\n` +
+          `Integration tests require a PostgreSQL database.\n\n` +
+          `To start PostgreSQL:\n` +
+          `  • Run: make dev (starts DB + dev server)\n` +
+          `  • Or: docker compose up -d db\n\n` +
+          `Original error: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+    throw error;
+  }
+};
+
+/**
  * Options for database setup
  */
 export interface DatabaseSetupOptions {
