@@ -13,10 +13,10 @@ Check system health regularly:
 curl https://your-domain.com/api/health
 
 # Container status (production)
-docker-compose -f deploy/docker-compose.prod.yml ps
+docker-compose -f deployment/docker-compose.prod.yml ps
 
 # Database connectivity
-docker-compose -f deploy/docker-compose.prod.yml exec postgres pg_isready
+docker-compose -f deployment/docker-compose.prod.yml exec postgres pg_isready
 
 # View recent logs
 ./deploy.sh logs --tail=100
@@ -59,7 +59,7 @@ docker-compose -f deploy/docker-compose.prod.yml exec postgres pg_isready
 The backup system automatically:
 
 - Keeps only the last 30 database backups
-- Stores backups in `deploy/backups/`
+- Stores backups in `deployment/backups/`
 - Names files with timestamps for easy identification
 - Compresses backups to save space
 
@@ -108,7 +108,7 @@ curl https://your-domain.com/api/health
 
 ```bash
 # Check pending migrations
-docker-compose -f deploy/docker-compose.prod.yml exec web \
+docker-compose -f deployment/docker-compose.prod.yml exec web \
   pnpm payload migrate:status
 
 # Run migrations
@@ -123,7 +123,7 @@ Run regularly (weekly recommended):
 
 ```bash
 # Connect to database
-docker-compose -f deploy/docker-compose.prod.yml exec postgres psql -U timetiles_user timetiles
+docker-compose -f deployment/docker-compose.prod.yml exec postgres psql -U timetiles_user timetiles
 
 # Vacuum and analyze
 VACUUM ANALYZE;
@@ -169,12 +169,12 @@ ORDER BY idx_scan;
 ./deploy.sh logs -f
 
 # Check specific service
-docker-compose -f deploy/docker-compose.prod.yml logs web --tail=100
-docker-compose -f deploy/docker-compose.prod.yml logs postgres --tail=50
+docker-compose -f deployment/docker-compose.prod.yml logs web --tail=100
+docker-compose -f deployment/docker-compose.prod.yml logs postgres --tail=50
 
 # Search logs
-docker-compose -f deploy/docker-compose.prod.yml logs | grep ERROR
-docker-compose -f deploy/docker-compose.prod.yml logs | grep "import.*failed"
+docker-compose -f deployment/docker-compose.prod.yml logs | grep ERROR
+docker-compose -f deployment/docker-compose.prod.yml logs | grep "import.*failed"
 ```
 
 ### Disk Usage
@@ -197,12 +197,12 @@ docker system prune -a --volumes
 docker stats
 
 # Database size
-docker-compose -f deploy/docker-compose.prod.yml exec postgres \
+docker-compose -f deployment/docker-compose.prod.yml exec postgres \
   psql -U timetiles_user -d timetiles -c \
   "SELECT pg_size_pretty(pg_database_size('timetiles'));"
 
 # Table sizes
-docker-compose -f deploy/docker-compose.prod.yml exec postgres \
+docker-compose -f deployment/docker-compose.prod.yml exec postgres \
   psql -U timetiles_user -d timetiles -c \
   "SELECT schemaname, tablename, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
    FROM pg_tables
@@ -221,10 +221,10 @@ docker-compose -f deploy/docker-compose.prod.yml exec postgres \
 ./deploy.sh logs web
 
 # Verify environment
-docker-compose -f deploy/docker-compose.prod.yml exec web env | grep -E "DATABASE|PAYLOAD"
+docker-compose -f deployment/docker-compose.prod.yml exec web env | grep -E "DATABASE|PAYLOAD"
 
 # Test database connection
-docker-compose -f deploy/docker-compose.prod.yml exec web \
+docker-compose -f deployment/docker-compose.prod.yml exec web \
   psql $DATABASE_URL -c "SELECT 1"
 ```
 
@@ -232,14 +232,14 @@ docker-compose -f deploy/docker-compose.prod.yml exec web \
 
 ```bash
 # Check import job status
-docker-compose -f deploy/docker-compose.prod.yml exec web \
+docker-compose -f deployment/docker-compose.prod.yml exec web \
   psql $DATABASE_URL -c "SELECT * FROM payload.import_jobs ORDER BY created_at DESC LIMIT 5;"
 
 # View error details
-docker-compose -f deploy/docker-compose.prod.yml logs web | grep -A5 "import.*error"
+docker-compose -f deployment/docker-compose.prod.yml logs web | grep -A5 "import.*error"
 
 # Reset stuck imports
-docker-compose -f deploy/docker-compose.prod.yml exec web \
+docker-compose -f deployment/docker-compose.prod.yml exec web \
   psql $DATABASE_URL -c "UPDATE payload.import_jobs SET status = 'failed' WHERE status = 'processing' AND updated_at < NOW() - INTERVAL '1 hour';"
 ```
 
@@ -247,14 +247,14 @@ docker-compose -f deploy/docker-compose.prod.yml exec web \
 
 ```bash
 # Check Node.js memory
-docker-compose -f deploy/docker-compose.prod.yml exec web \
+docker-compose -f deployment/docker-compose.prod.yml exec web \
   node -e "console.log(process.memoryUsage())"
 
 # Restart to clear memory
-docker-compose -f deploy/docker-compose.prod.yml restart web
+docker-compose -f deployment/docker-compose.prod.yml restart web
 
 # Increase memory limit if needed
-# Edit deploy/.env.production
+# Edit deployment/.env.production
 NODE_OPTIONS="--max-old-space-size=4096"
 ```
 
@@ -262,15 +262,15 @@ NODE_OPTIONS="--max-old-space-size=4096"
 
 ```bash
 # Check certificate expiry
-docker-compose -f deploy/docker-compose.prod.yml exec nginx \
+docker-compose -f deployment/docker-compose.prod.yml exec nginx \
   openssl x509 -in /etc/letsencrypt/live/your-domain.com/cert.pem -text -noout | grep "Not After"
 
 # Force renewal
-docker-compose -f deploy/docker-compose.prod.yml exec certbot \
+docker-compose -f deployment/docker-compose.prod.yml exec certbot \
   certbot renew --force-renewal
 
 # Restart nginx
-docker-compose -f deploy/docker-compose.prod.yml restart nginx
+docker-compose -f deployment/docker-compose.prod.yml restart nginx
 ```
 
 ### Debug Mode
@@ -278,7 +278,7 @@ docker-compose -f deploy/docker-compose.prod.yml restart nginx
 Enable detailed logging for troubleshooting:
 
 ```bash
-# Edit deploy/.env.production
+# Edit deployment/.env.production
 LOG_LEVEL=debug
 
 # Restart application
@@ -296,11 +296,11 @@ Certificates auto-renew, but verify monthly:
 
 ```bash
 # Check renewal
-docker-compose -f deploy/docker-compose.prod.yml exec certbot \
+docker-compose -f deployment/docker-compose.prod.yml exec certbot \
   certbot certificates
 
 # Test renewal
-docker-compose -f deploy/docker-compose.prod.yml exec certbot \
+docker-compose -f deployment/docker-compose.prod.yml exec certbot \
   certbot renew --dry-run
 ```
 
@@ -308,7 +308,7 @@ docker-compose -f deploy/docker-compose.prod.yml exec certbot \
 
 ```bash
 # Update base images
-docker-compose -f deploy/docker-compose.prod.yml pull
+docker-compose -f deployment/docker-compose.prod.yml pull
 ./deploy.sh down
 ./deploy.sh up
 

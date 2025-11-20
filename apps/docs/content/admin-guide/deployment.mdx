@@ -4,11 +4,11 @@ This guide covers deploying TimeTiles to production using Docker and Docker Comp
 
 ## Overview
 
-TimeTiles provides a production-ready Docker deployment that includes:
+TimeTiles provides a production-ready Docker deployment with:
 
 - **Nginx** reverse proxy with SSL/TLS termination
 - **Next.js** application server (standalone build)
-- **PostgreSQL 17** with PostGIS extension
+- **PostgreSQL 17** with PostGIS 3.5+
 - **Certbot** for automatic SSL certificate renewal
 
 ## Quick Start
@@ -22,7 +22,7 @@ cd timetiles
 ./deploy.sh setup
 
 # 3. Configure environment
-nano deploy/.env.production
+nano deployment/.env.production
 # Set your domain, passwords, and email
 
 # 4. Build and deploy
@@ -34,15 +34,17 @@ nano deploy/.env.production
 ./deploy.sh ssl
 ```
 
+## Prerequisites
+
+See [Installation Guide](/admin-guide/installation) for complete system requirements and prerequisites.
+
 ## File Structure
 
-All production deployment files are located in the `deploy/` directory:
-
 ```
-deploy/
+deployment/
 ├── Dockerfile.prod              # Multi-stage production build
 ├── docker-compose.prod.yml      # Service orchestration
-├── deploy.sh                    # Deployment script
+├── deploy.sh                    # Deployment helper script
 ├── .env.production.example      # Environment template
 ├── .env.production             # Your configuration (create from .example)
 └── nginx/                       # Nginx configuration
@@ -52,62 +54,44 @@ deploy/
 
 ## Configuration
 
-### Required Environment Variables
-
-Create `deploy/.env.production` from the template:
+Create your environment file:
 
 ```bash
-cp deploy/.env.production.example deploy/.env.production
+cp deployment/.env.production.example deployment/.env.production
+nano deployment/.env.production
 ```
 
-Essential settings:
+See [Configuration Guide](/admin-guide/configuration) for all environment variables. At minimum, configure:
 
-```env
-# Domain Configuration
-DOMAIN_NAME=your-domain.com
-LETSENCRYPT_EMAIL=admin@your-domain.com
-
-# Database
-DB_PASSWORD=<strong-password>
-DB_USER=timetiles_user
-DB_NAME=timetiles
-
-# Payload CMS
-PAYLOAD_SECRET=<32+ character secret>
-
-# Optional: Geocoding
-GOOGLE_MAPS_API_KEY=<your-api-key>
-```
-
-### Advanced Configuration
-
-The environment file supports extensive customization:
-
-- **PostgreSQL tuning**: Memory, connections, cache settings
-- **Port mapping**: Custom ports without modifying compose files
-- **Container naming**: Support for multiple deployments
+- `DOMAIN_NAME` - Your production domain
+- `DB_PASSWORD` - Strong database password
+- `PAYLOAD_SECRET` - Random 32+ character secret (generate with: `openssl rand -base64 32`)
+- `LETSENCRYPT_EMAIL` - Email for SSL certificate notifications
 
 ## SSL/TLS Setup
 
 ### Let's Encrypt (Recommended)
 
-Automatic SSL certificates from Let's Encrypt:
+Automatic SSL certificates:
 
-1. **Ensure DNS is configured**: Point your domain to the server
-2. **Run SSL initialization**: `./deploy.sh ssl`
-3. **Automatic renewal**: Certificates renew every 12 hours automatically
+```bash
+# After DNS is configured and services are running
+./deploy.sh ssl
+```
+
+Certificates auto-renew every 12 hours via Certbot.
 
 ### Custom Certificates
 
-To use your own SSL certificates:
-
-1. Place certificates in `deploy/nginx/ssl/`
-2. Update nginx configuration to reference your certificates
-3. Restart nginx: `docker-compose -f deploy/docker-compose.prod.yml restart nginx`
+1. Place certificates in `deployment/nginx/ssl/`:
+   - `fullchain.pem` (certificate + chain)
+   - `privkey.pem` (private key)
+2. Update nginx config to reference your certificates
+3. Restart: `docker-compose -f deployment/docker-compose.prod.yml restart nginx`
 
 ## Deployment Commands
 
-The `deploy.sh` script provides convenient management commands:
+### Using deploy.sh Script
 
 ```bash
 # Service Management
@@ -118,20 +102,19 @@ The `deploy.sh` script provides convenient management commands:
 
 # Database
 ./deploy.sh migrate   # Run database migrations
-./deploy.sh backup    # Backup database
 
 # Maintenance
 ./deploy.sh logs      # View logs
 ./deploy.sh update    # Pull updates and redeploy
 ```
 
-### Direct Docker Commands
+### Direct Docker Compose
 
-For advanced usage, you can use Docker Compose directly:
+For advanced usage:
 
 ```bash
 # Define alias for convenience
-alias dc-prod="docker-compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production"
+alias dc-prod="docker-compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production"
 
 # Examples
 dc-prod ps            # List containers
@@ -139,222 +122,98 @@ dc-prod logs web      # View web logs
 dc-prod exec web sh   # Shell into web container
 ```
 
-## System Requirements
-
-### Minimum Requirements
-
-- **CPU**: 2 cores
-- **RAM**: 2GB (4GB for building)
-- **Storage**: 10GB SSD
-- **OS**: Linux (Ubuntu 20.04+ recommended)
-- **Docker**: 20.10+
-- **Docker Compose**: 2.0+
-
-### Recommended for Production
-
-- **CPU**: 4+ cores
-- **RAM**: 8GB+
-- **Storage**: 50GB+ SSD
-- **Network**: Stable internet for geocoding services
-
-## Security Considerations
+## Security
 
 ### Network Security
 
-- Only ports 80 and 443 are exposed
+- Only ports 80 (HTTP) and 443 (HTTPS) are exposed
 - Internal services communicate on private Docker network
-- PostgreSQL and Redis are not exposed externally
+- PostgreSQL is not exposed externally
 
 ### Application Security
 
 - Next.js runs as non-root user
-- Environment secrets are isolated
+- Environment secrets isolated
 - HTTPS enforced with security headers
 - Rate limiting on API endpoints
 
-### Best Practices
+### Security Checklist
 
-1. **Use strong passwords** for database and admin accounts
-2. **Enable firewall** allowing only necessary ports
-3. **Regular updates**: Keep Docker images updated
-4. **Backup strategy**: Implement automated backups
-5. **Monitoring**: Set up health checks and alerts
+- [x] Strong database password (20+ characters)
+- [x] Random Payload secret (32+ characters)
+- [x] HTTPS enabled with valid certificate
+- [x] Firewall configured (allow only 80, 443, SSH)
+- [x] Regular security updates enabled
+- [x] Backup strategy in place
 
-## Backup and Recovery
+## Health Checks
 
-### Database Backup
+Verify deployment:
 
 ```bash
-# Manual backup
-./deploy.sh backup
+# Check all services
+./deploy.sh status
 
-# Automated backup (add to crontab)
-0 2 * * * /path/to/timetiles/deploy.sh backup
+# Check application health
+curl https://your-domain.com/api/health
+
+# Should return: {"status":"ok","timestamp":"..."}
 ```
 
-### Full Backup
+## Common Issues
 
-Including uploaded files and configuration:
+### Build Fails with Out of Memory
+
+Add swap space:
 
 ```bash
-# Stop services
-./deploy.sh down
-
-# Backup volumes
-tar -czf backup.tar.gz \
-  deploy/.env.production \
-  /var/lib/docker/volumes/timetiles_*
-
-# Restart services
-./deploy.sh up
+sudo fallocate -l 4G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
 ```
 
-### Recovery
+Or build locally and push image to registry.
+
+### SSL Certificate Fails
+
+Verify DNS and Let's Encrypt challenge:
 
 ```bash
-# Restore database
-gunzip < backup.sql.gz | docker-compose -f deploy/docker-compose.prod.yml exec -T postgres psql -U timetiles_user timetiles
+# Check DNS resolves to your server
+nslookup your-domain.com
 
-# Restore volumes
-tar -xzf backup.tar.gz
-docker-compose -f deploy/docker-compose.prod.yml up -d
-```
-
-## Monitoring
-
-### Health Checks
-
-- **Application**: `https://your-domain.com/api/health`
-- **Database**: Automatic health checks via Docker
-- **Redis**: Automatic health checks via Docker
-
-### Resource Monitoring
-
-```bash
-# Container statistics
-docker stats
-
-# Disk usage
-df -h
-
-# Service logs
-./deploy.sh logs
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**Database Connection Failed**
-
-```bash
-# Check PostgreSQL status
-docker-compose -f deploy/docker-compose.prod.yml exec postgres pg_isready
-
-# View database logs
-docker-compose -f deploy/docker-compose.prod.yml logs postgres
-```
-
-**SSL Certificate Issues**
-
-```bash
-# Test Let's Encrypt challenge
+# Test HTTP challenge path
 curl http://your-domain.com/.well-known/acme-challenge/test
-
-# Renew certificates manually
-docker-compose -f deploy/docker-compose.prod.yml exec certbot certbot renew --force-renewal
 ```
 
-**Build Failures**
-
-```bash
-# Clean rebuild
-./deploy.sh down
-docker system prune -f
-./deploy.sh build
-```
-
-**Memory Issues**
-
-If builds fail due to memory:
-
-1. Add swap space: `sudo fallocate -l 4G /swapfile`
-2. Or build locally and transfer image
-
-### Debug Mode
-
-Enable detailed logging:
-
-```bash
-# Edit deploy/.env.production
-LOG_LEVEL=debug
-
-# Restart services
-./deploy.sh restart
-
-# View debug logs
-./deploy.sh logs
-```
-
-## Performance Optimization
-
-### Database Tuning
-
-Adjust PostgreSQL settings in `.env.production`:
-
-```env
-# For 8GB RAM server
-PG_SHARED_BUFFERS=2GB
-PG_CACHE_SIZE=6GB
-PG_WORK_MEM=64MB
-```
-
-### Redis Optimization
-
-```env
-# Increase cache size
-REDIS_MAX_MEMORY=1gb
-```
-
-### Application Caching
-
-- Static assets cached by Nginx
-- API responses cached in Redis
-- Next.js optimizations enabled
-
-## Scaling
-
-### Horizontal Scaling
-
-For high traffic, deploy multiple web instances:
-
-1. Use external PostgreSQL (RDS, Cloud SQL)
-2. Use external Redis (ElastiCache, Memorystore)
-3. Deploy multiple web containers behind load balancer
-
-### Vertical Scaling
-
-Increase resources in `.env.production`:
-
-```env
-# Resource limits
-PG_MAX_CONNECTIONS=200
-REDIS_MAX_MEMORY=2gb
-```
-
-## Migration from Development
-
-When moving from development to production:
-
-1. **Export data**: Use Payload CMS export functionality
-2. **Transfer files**: Copy uploaded media files
-3. **Update configuration**: Production database and URLs
-4. **Run migrations**: Ensure schema is up-to-date
-5. **Test thoroughly**: Verify all features work
+For more troubleshooting, see [Maintenance Guide](/admin-guide/maintenance#troubleshooting).
 
 ## Next Steps
 
-- Configure [monitoring and alerts](/admin-guide/maintenance#monitoring)
-- Set up [automated backups](/admin-guide/maintenance#backups)
-- Review [security checklist](/admin-guide/configuration#security)
-- Enable [advanced features](/user-guide/getting-started)
+After successful deployment:
+
+1. **Set up monitoring**: See [Monitoring Guide](/admin-guide/maintenance#monitoring)
+2. **Configure backups**: See [Backup Guide](/admin-guide/maintenance#backups)
+3. **Performance tuning**: See [Maintenance Guide](/admin-guide/maintenance#performance)
+4. **Review security**: See [Configuration Guide](/admin-guide/configuration#security)
+
+## Updating Production
+
+To deploy updates:
+
+```bash
+# Pull latest changes
+git pull
+
+# Rebuild and redeploy
+./deploy.sh update
+
+# Or manually:
+./deploy.sh down
+./deploy.sh build
+./deploy.sh up
+./deploy.sh migrate
+```
+
+See [Maintenance Guide](/admin-guide/maintenance) for routine operations.

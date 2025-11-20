@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'deploy/**'
+      - 'deployment/**'
       - 'deploy.sh'
       - 'docker compose.dev.yml'
       - '.dockerignore'
@@ -13,7 +13,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'deploy/**'
+      - 'deployment/**'
       - 'deploy.sh'
       - 'docker compose.dev.yml'
       - '.dockerignore'
@@ -42,22 +42,22 @@ jobs:
         
       - name: Create test environment file
         run: |
-          cp deploy/.env.production.example deploy/.env.production
+          cp deployment/.env.production.example deployment/.env.production
           
           # Set test values
-          sed -i 's/CHANGE_ME_STRONG_PASSWORD/test_password_123/g' deploy/.env.production
-          sed -i 's/CHANGE_ME_RANDOM_32_CHAR_SECRET/test_secret_key_that_is_32_chars/g' deploy/.env.production
-          sed -i 's/your-domain.com/localhost/g' deploy/.env.production
-          sed -i 's/admin@${DOMAIN_NAME}/test@localhost/g' deploy/.env.production
+          sed -i 's/CHANGE_ME_STRONG_PASSWORD/test_password_123/g' deployment/.env.production
+          sed -i 's/CHANGE_ME_RANDOM_32_CHAR_SECRET/test_secret_key_that_is_32_chars/g' deployment/.env.production
+          sed -i 's/your-domain.com/localhost/g' deployment/.env.production
+          sed -i 's/admin@${DOMAIN_NAME}/test@localhost/g' deployment/.env.production
           
           # Show config (without secrets in real deployment)
           echo "=== Test Configuration ==="
-          grep -E "^[^#]" deploy/.env.production | grep -v PASSWORD | grep -v SECRET
+          grep -E "^[^#]" deployment/.env.production | grep -v PASSWORD | grep -v SECRET
           
       - name: Build Docker image
         run: |
           echo "Building production Docker image..."
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production build
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production build
           
           # Check image size
           IMAGE_SIZE=$(docker images --format "{{.Size}}" timetiles-web:latest)
@@ -66,15 +66,15 @@ jobs:
       - name: Start services
         run: |
           echo "Starting all services..."
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production up -d
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production up -d
           
           # Show running containers
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production ps
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production ps
           
       - name: Wait for services to be healthy
         run: |
           echo "Waiting for PostgreSQL..."
-          timeout 60 bash -c 'until docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T postgres pg_isready -U timetiles_user -d timetiles; do sleep 2; done'
+          timeout 60 bash -c 'until docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T postgres pg_isready -U timetiles_user -d timetiles; do sleep 2; done'
           
           echo "Waiting for web app..."
           timeout 60 bash -c 'until curl -f http://localhost:80/api/health 2>/dev/null; do sleep 2; done'
@@ -82,7 +82,7 @@ jobs:
       - name: Run database migrations
         run: |
           echo "Running Payload migrations..."
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T web \
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T web \
             pnpm payload:migrate
             
       - name: Generate self-signed SSL certificate
@@ -99,7 +99,7 @@ jobs:
             -subj "/C=US/ST=Test/L=Test/O=Test/CN=localhost"
           
           # Create the certificate directory structure that matches Let's Encrypt
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T nginx \
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T nginx \
             mkdir -p /etc/letsencrypt/live/localhost
           
           # Copy certificates into nginx container
@@ -107,11 +107,11 @@ jobs:
           docker cp ssl/privkey.pem timetiles-nginx:/etc/letsencrypt/live/localhost/privkey.pem
           
           # Update nginx config to use the certificates
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T nginx \
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T nginx \
             sed -i 's/${DOMAIN_NAME}/localhost/g' /etc/nginx/sites-enabled/app.conf
           
           # Reload nginx to apply SSL config
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T nginx \
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T nginx \
             nginx -s reload
           
           sleep 5
@@ -134,9 +134,9 @@ jobs:
           echo "HTTP to HTTPS redirect code: $REDIRECT_CODE"
           
           # Test Let's Encrypt challenge path (still works on HTTP)
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T nginx \
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T nginx \
             mkdir -p /var/www/certbot/.well-known/acme-challenge
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T nginx \
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T nginx \
             echo "test" > /var/www/certbot/.well-known/acme-challenge/test.txt
           curl -f http://localhost:80/.well-known/acme-challenge/test.txt || exit 1
           
@@ -165,11 +165,11 @@ jobs:
           echo "Testing database operations..."
           
           # Check PostGIS is installed
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T postgres \
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T postgres \
             psql -U timetiles_user -d timetiles -c "SELECT PostGIS_Version();"
             
           # Check Payload schema exists
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production exec -T postgres \
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T postgres \
             psql -U timetiles_user -d timetiles -c "\dn payload"
             
       - name: Test container restart
@@ -177,7 +177,7 @@ jobs:
           echo "Testing container restart..."
           
           # Restart web container
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production restart web
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production restart web
           
           # Wait for it to come back
           sleep 10
@@ -197,22 +197,22 @@ jobs:
         if: failure()
         run: |
           echo "=== Docker Compose Status ==="
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production ps
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production ps
           
           echo "=== Web App Logs ==="
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production logs web
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production logs web
           
           echo "=== Nginx Logs ==="
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production logs nginx
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production logs nginx
           
           echo "=== PostgreSQL Logs ==="
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production logs postgres
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production logs postgres
           
       - name: Cleanup
         if: always()
         run: |
           echo "Stopping and removing containers..."
-          docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production down -v
+          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production down -v
           
           echo "Cleanup complete!"
 
@@ -225,7 +225,7 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Make deploy script executable
-        run: chmod +x deploy.sh deploy/deploy.sh
+        run: chmod +x deploy.sh deployment/deploy.sh
         
       - name: Test deploy script setup
         run: |
@@ -233,15 +233,15 @@ jobs:
           ./deploy.sh setup
           
           # Verify files were created
-          if [ ! -f deploy/.env.production ]; then
+          if [ ! -f deployment/.env.production ]; then
             echo "Setup failed - .env.production not created!"
             exit 1
           fi
           
           # Update test values
-          sed -i 's/CHANGE_ME_STRONG_PASSWORD/test_password_123/g' deploy/.env.production
-          sed -i 's/your-domain.com/localhost/g' deploy/.env.production
-          sed -i 's/admin@${DOMAIN_NAME}/test@localhost/g' deploy/.env.production
+          sed -i 's/CHANGE_ME_STRONG_PASSWORD/test_password_123/g' deployment/.env.production
+          sed -i 's/your-domain.com/localhost/g' deployment/.env.production
+          sed -i 's/admin@${DOMAIN_NAME}/test@localhost/g' deployment/.env.production
           
       - name: Test deploy script build
         run: |

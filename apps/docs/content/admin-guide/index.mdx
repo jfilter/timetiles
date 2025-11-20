@@ -31,35 +31,8 @@ Routine tasks, backups, updates, monitoring, and troubleshooting.
 
 ## Quick Start
 
-### Development Setup
-
-```bash
-# Clone and setup
-git clone https://github.com/jfilter/timetiles.git
-cd timetiles
-make setup
-
-# Start development environment
-make dev
-```
-
-Access at http://localhost:3000
-
-### Production Deployment
-
-```bash
-# Setup production environment
-cd deploy
-cp .env.production.example .env.production
-# Edit .env.production with your settings
-
-# Deploy
-./deploy.sh setup
-./deploy.sh build
-./deploy.sh up
-./deploy.sh migrate
-./deploy.sh ssl  # After DNS is configured
-```
+- **Development**: See [Quick Start Guide](/quick-start) for local setup
+- **Production**: See [Deployment Guide](./deployment) for production deployment
 
 ## Architecture
 

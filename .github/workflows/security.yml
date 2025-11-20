@@ -139,7 +139,7 @@ jobs:
       - name: Build Docker image
         run: |
           # Build the production Docker image
-          docker build -f deploy/Dockerfile.prod -t ${{ env.DOCKER_IMAGE }} .
+          docker build -f deployment/Dockerfile.prod -t ${{ env.DOCKER_IMAGE }} .
           
           # Show image details
           docker images ${{ env.DOCKER_IMAGE }}

@@ -1,57 +1,48 @@
 # Roadmap
 
-TimeTiles is in early development and not yet functional for actual use.
+TimeTiles is in **alpha phase** - core features are functional but the system is still under active development.
 
-**Current Phase:** Pre-Alpha Development
+**Current Phase:** Alpha
 
-## Foundation Built ✅
+## Completed ✅
 
-- [x] Project setup and monorepo structure
-- [x] Database schema with PostGIS
-- [x] Basic Payload CMS integration
-- [x] Next.js frontend foundation
-- [x] Development environment setup
-- [x] Isolated unit and integration test with vitest
-- [x] e2e tests with Playwright
-- [x] CI with Github Actions
+### Foundation
 
-## Alpha Release 🚧
+- [x] Monorepo structure with Turbo
+- [x] PostgreSQL 17 + PostGIS 3.5 database
+- [x] Payload CMS integration
+- [x] Next.js 15 frontend
+- [x] Comprehensive testing (Vitest + Playwright)
+- [x] CI/CD with GitHub Actions
+- [x] Docker production deployment
 
 ### Core Import System
 
-- [ ] **File parsing and batch processing** (CSV, JSON, Excel support)
-- [ ] **Progressive schema detection** during import using quicktype
-- [ ] **Smart deduplication** with configurable ID strategies:
-  - External ID from source data
-  - Computed hash from selected fields
-  - Auto-detection via content hashing
-  - Hybrid approaches
-- [ ] **Type transformation system** for handling data mismatches
-- [ ] **Geographic field detection** (latitude/longitude auto-detection)
-- [ ] **Schema approval workflow** for editors
+- [x] File parsing (CSV, JSON, Excel)
+- [x] Progressive schema detection
+- [x] Smart deduplication strategies
+- [x] Geographic field detection
+- [x] Schema approval workflow
+- [x] Batch processing with background jobs
 
-### Dynamic Filter Generation
+### Data Exploration
 
-- [ ] **Automatic filter generation** from detected schemas
-- [ ] **Intelligent filter types**:
-  - Text search for high-cardinality fields
-  - Select/multi-select for enums
-  - Range sliders for numeric data
-  - Date pickers and ranges
-  - Geographic radius/bounds filters
-- [ ] **Editor customization interface**:
-  - Custom labels, descriptions, and help text
-  - Multi-language support with fallbacks
-  - Simple/Advanced mode configuration
-  - Filter grouping and ordering
-  - Validation rules and examples
-- [ ] **Filter conflict resolution** when schemas change
+- [x] Map visualization with clustering
+- [x] Dynamic filter generation
+- [x] Timeline histogram
+- [x] Event list with pagination
+- [x] Geographic filtering
 
-### Visualization & Interface
+## Alpha Phase 🚧
 
-- [ ] Basic map visualization with geographic filtering
-- [ ] Filter UI with simple/advanced modes
-- [ ] Real-time filter validation and suggestions
+### In Progress
+
+- [ ] Advanced filter customization UI
+- [ ] Performance optimizations for large datasets
+- [ ] URL-based scheduled imports
+- [ ] Enhanced geocoding support
+- [ ] User quota management
+- [ ] Improved error handling and validation
 
 ## Beta Release 📋
 

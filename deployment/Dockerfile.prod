@@ -66,6 +66,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 # Copy Payload migrations (required at runtime)
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/migrations ./apps/web/migrations
 
+# Create uploads directory with proper ownership for volume mount
+RUN mkdir -p /app/apps/web/uploads \
+    && chown -R nextjs:nodejs /app/apps/web/uploads
+
 # Set runtime environment
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -75,10 +79,6 @@ ENV HOSTNAME="0.0.0.0"
 USER nextjs
 
 EXPOSE 3000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => { process.exit(1); })"
 
 # Start the server
 CMD ["node", "apps/web/server.js"]

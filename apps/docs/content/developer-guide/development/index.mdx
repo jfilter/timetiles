@@ -1,27 +1,18 @@
 # Development Setup
 
-Welcome to TimeTiles development! This section covers everything you need to know to contribute to the project, from initial setup to advanced debugging techniques.
+Welcome to TimeTiles development! This guide covers contributor-specific setup and workflows.
 
-## Quick Start for Developers
+## Prerequisites
 
-### Prerequisites
+See [Installation Guide](/admin-guide/installation) for system requirements. Additionally, developers need:
 
-- **Node.js**: 24 or higher
-- **pnpm**: v10.12.4 (package manager)
-- **PostgreSQL**: 17+ with PostGIS 3.5+ extension
-- **Git**: For version control
-- **Git LFS**: For managing image assets
+- **Git LFS**: For managing image assets in the assets package
 
-### Development Environment Setup
+## Quick Start
 
-1. **Clone the Repository**
+1. Follow the [Quick Start Guide](/quick-start) for basic setup
 
-   ```bash
-   git clone https://github.com/yourusername/timetiles.git
-   cd timetiles
-   ```
-
-2. **Setup Git LFS**
+2. **Setup Git LFS** (developer-specific):
 
    ```bash
    # Install Git LFS if not already installed
@@ -31,33 +22,14 @@ Welcome to TimeTiles development! This section covers everything you need to kno
    git lfs pull
    ```
 
-3. **Install Dependencies**
+3. **Configure development environment**:
 
    ```bash
-   pnpm install
-   ```
-
-4. **Database Setup**
-
-   ```bash
-   # Start PostgreSQL with PostGIS
-   make up
-
    # Copy environment configuration
    cp apps/web/.env.example apps/web/.env.local
-   ```
 
-5. **Run Migrations**
-
-   ```bash
-   cd apps/web
-   pnpm payload:migrate
-   cd ../..
-   ```
-
-6. **Start Development Server**
-   ```bash
-   pnpm dev
+   # Start development servers
+   make dev
    ```
 
 The application will be available at:
