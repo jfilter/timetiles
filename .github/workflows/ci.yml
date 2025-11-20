@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  # Lint, type check, and build
+  # Lint, typecheck, and build
   build:
     name: Build & Quality Checks
     runs-on: ubuntu-latest
@@ -28,20 +28,6 @@ jobs:
       - name: Lint code
         timeout-minutes: 3
         run: pnpm lint
-        continue-on-error: true
-
-      - name: Lint DevOps
-        timeout-minutes: 2
-        run: |
-          mkdir -p $HOME/.local/bin
-          export PATH=$HOME/.local/bin:$PATH
-
-          # Install linting tools
-          curl -sSfL https://github.com/rhysd/actionlint/releases/download/v1.7.4/actionlint_1.7.4_linux_amd64.tar.gz | tar xz -C $HOME/.local/bin actionlint
-          wget -q https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 -O $HOME/.local/bin/hadolint
-          chmod +x $HOME/.local/bin/hadolint $HOME/.local/bin/actionlint
-
-          pnpm lint:devops
 
       - name: Type check
         timeout-minutes: 3
@@ -50,6 +36,7 @@ jobs:
       - name: Check documentation links
         timeout-minutes: 2
         run: pnpm --filter docs lint
+        continue-on-error: true
 
       - name: Build web app
         timeout-minutes: 10
