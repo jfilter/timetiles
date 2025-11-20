@@ -67,6 +67,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate API documentation
+        run: pnpm docs:api
+        working-directory: apps/docs
+        timeout-minutes: 3
+
       - name: Lint documentation
         run: pnpm --filter docs lint
         timeout-minutes: 3
