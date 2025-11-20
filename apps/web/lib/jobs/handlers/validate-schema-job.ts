@@ -153,19 +153,20 @@ const checkRequiresApproval = (
   comparison.hasBreakingChanges || !!dataset.schemaConfig?.locked || !dataset.schemaConfig?.autoApproveNonBreaking;
 
 // Helper function to handle schema approval
-const handleSchemaApproval = async (
-  payload: Payload,
-  requiresApproval: boolean,
-  comparison: SchemaComparison,
-  detectedSchema: Record<string, unknown>,
-  schemaBuilder: ProgressiveSchemaBuilder,
+const handleSchemaApproval = async (options: {
+  payload: Payload;
+  requiresApproval: boolean;
+  comparison: SchemaComparison;
+  detectedSchema: Record<string, unknown>;
+  schemaBuilder: ProgressiveSchemaBuilder;
   dataset: {
     id: string | number;
     schemaConfig?: { locked?: boolean | null; autoApproveNonBreaking?: boolean | null } | null;
-  },
-  importJobId: number | string,
-  req?: PayloadRequest
-) => {
+  };
+  importJobId: number | string;
+  req?: PayloadRequest;
+}) => {
+  const { payload, requiresApproval, comparison, detectedSchema, schemaBuilder, dataset, importJobId, req } = options;
   if (!requiresApproval && comparison.hasChanges) {
     const schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
       dataset: dataset.id,
@@ -193,7 +194,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   const eventsToImport = totalRows - duplicateCount;
 
   // Check maxEventsPerImport quota
-  const eventQuotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, eventsToImport);
+  const eventQuotaCheck = quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, eventsToImport);
 
   if (!eventQuotaCheck.allowed) {
     const errorMessage = `This import would create ${eventsToImport} events, exceeding your limit of ${eventQuotaCheck.limit} events per import.`;
@@ -211,7 +212,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   }
 
   // Check total events quota
-  const totalEventsCheck = await quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS, eventsToImport);
+  const totalEventsCheck = quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS, eventsToImport);
 
   if (!totalEventsCheck.allowed) {
     const errorMessage = `Creating ${eventsToImport} events would exceed your total events limit (${totalEventsCheck.current}/${totalEventsCheck.limit}).`;
@@ -306,7 +307,7 @@ export const validateSchemaJob = {
       });
 
       // Handle schema approval if needed
-      await handleSchemaApproval(
+      await handleSchemaApproval({
         payload,
         requiresApproval,
         comparison,
@@ -314,8 +315,8 @@ export const validateSchemaJob = {
         schemaBuilder,
         dataset,
         importJobId,
-        context.req as PayloadRequest | undefined
-      );
+        req: context.req as PayloadRequest | undefined,
+      });
 
       logPerformance("Schema validation", Date.now() - startTime, {
         importJobId,

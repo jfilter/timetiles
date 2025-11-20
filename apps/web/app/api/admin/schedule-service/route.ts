@@ -80,7 +80,7 @@ export const POST = withRateLimit(
  * Stops the schedule service.
  */
 export const DELETE = withRateLimit(
-  withAdminAuth(async (_request: AuthenticatedRequest, _context: unknown): Promise<NextResponse> => {
+  withAdminAuth((_request: AuthenticatedRequest, _context: unknown): NextResponse => {
     try {
       stopScheduleService();
 

@@ -20,7 +20,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
 
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import { createIntegrationTestEnvironment, withCatalog } from "../../setup/integration/environment";
 
 describe.sequential("End-to-End Job Processing with Manual Execution", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -51,15 +51,9 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
     await testEnv.seedManager.truncate();
 
     // Create test catalog
-    const timestamp = Date.now();
-    const randomSuffix = Math.random().toString(36).substring(2, 8);
-    const catalog = await payload.create({
-      collection: "catalogs",
-      data: {
-        name: `E2E Test Catalog ${timestamp}`,
-        slug: `e2e-test-catalog-${timestamp}-${randomSuffix}`,
-        description: "Catalog for end-to-end job processing testing",
-      },
+    const { catalog } = await withCatalog(testEnv, {
+      name: "E2E Test Catalog",
+      description: "Catalog for end-to-end job processing testing",
     });
     testCatalogId = catalog.id;
   });

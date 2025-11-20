@@ -7,9 +7,14 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import type { Catalog, ScheduledImport, User } from "@/payload-types";
 
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withScheduledImport,
+} from "../../setup/integration/environment";
 
 describe.sequential("Schedule Manager Concurrency Updates", () => {
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;
   let testUser: User;
@@ -17,7 +22,8 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
   let testImport: ScheduledImport;
 
   beforeAll(async () => {
-    const env = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
+    const env = testEnv;
     payload = env.payload;
     cleanup = env.cleanup;
 
@@ -31,15 +37,12 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
       },
     });
 
-    testCatalog = await payload.create({
-      collection: "catalogs",
-      data: {
-        name: `Schedule Concurrency Catalog ${Date.now()}`,
-        slug: `schedule-concurrency-catalog-${Date.now()}`,
-        description: "Test catalog for schedule manager concurrency",
-        isPublic: false,
-      },
+    const { catalog } = await withCatalog(env, {
+      name: "Schedule Concurrency Catalog",
+      description: "Test catalog for schedule manager concurrency",
+      isPublic: false,
     });
+    testCatalog = catalog;
   });
 
   afterAll(async () => {
@@ -50,19 +53,18 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
     vi.clearAllMocks();
 
     // Create fresh scheduled import for each test
-    testImport = await payload.create({
-      collection: "scheduled-imports",
-      data: {
+    const { scheduledImport } = await withScheduledImport(
+      testEnv,
+      testCatalog.id,
+      "https://example.com/schedule-test.csv",
+      {
         name: `Schedule Test Import ${Date.now()}`,
-        sourceUrl: "https://example.com/schedule-test.csv",
-        catalog: testCatalog.id,
         createdBy: testUser.id,
-        enabled: true,
-        scheduleType: "frequency",
         frequency: "hourly",
         importNameTemplate: "Schedule {{name}} - {{date}}",
-      },
-    });
+      }
+    );
+    testImport = scheduledImport;
   });
 
   it("should create test scheduled import successfully", () => {
@@ -99,20 +101,20 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
     vi.setSystemTime(baseTime);
 
     // Create a scheduled import with lastRun set to make it overdue
-    const scheduledImport = await payload.create({
-      collection: "scheduled-imports",
-      data: {
+    const { scheduledImport } = await withScheduledImport(
+      testEnv,
+      testCatalog.id,
+      "https://example.com/concurrent-test.csv",
+      {
         name: `Concurrent Test Import ${Date.now()}`,
-        sourceUrl: "https://example.com/concurrent-test.csv",
-        catalog: testCatalog.id,
         createdBy: testUser.id,
-        enabled: true,
-        scheduleType: "frequency",
         frequency: "hourly",
-        lastRun: new Date("2024-01-15T08:30:00.000Z").toISOString(), // 1.5 hours ago
         importNameTemplate: "Concurrent {{name}} - {{date}}",
-      },
-    });
+        additionalData: {
+          lastRun: new Date("2024-01-15T08:30:00.000Z").toISOString(), // 1.5 hours ago
+        },
+      }
+    );
 
     // Advance time to make the schedule overdue
     // Last run was 8:30 AM, next run should be 9:00 AM

@@ -34,13 +34,14 @@ const safeToString = (value: unknown): string => {
 };
 
 interface EventData {
-  title?: unknown;
-  name?: unknown;
-  description?: unknown;
-  startDate?: unknown;
-  endDate?: unknown;
-  city?: unknown;
-  country?: unknown;
+  title?: string;
+  name?: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  city?: string;
+  country?: string;
+  [key: string]: unknown;
 }
 
 // Helper functions to reduce complexity

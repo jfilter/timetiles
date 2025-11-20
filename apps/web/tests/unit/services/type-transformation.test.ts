@@ -1,20 +1,12 @@
 /**
  * @module
  */
-import { describe, expect, it, vi } from "vitest";
+// Import centralized logger mock
+import "@/tests/mocks/services/logger";
+
+import { describe, expect, it } from "vitest";
 
 import { TypeTransformationService } from "../../../lib/services/type-transformation";
-
-// Mock logger
-vi.mock("../../../lib/logger", () => ({
-  logger: {
-    child: vi.fn(() => ({
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-    })),
-  },
-}));
 
 describe("TypeTransformationService", () => {
   describe("transformRecord", () => {

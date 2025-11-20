@@ -59,7 +59,7 @@ test.describe("Explore Page - Map Interactions", () => {
     expect(mapClustersWithBounds.length).toBeGreaterThan(0);
   });
 
-  test("should update markers when events change", async ({ page }) => {
+  test("should update markers when events change", async ({ page: _page }) => {
     // Load events for first dataset
     await explorePage.selectCatalog("Environmental Data");
     await explorePage.selectDatasets(["Air Quality Measurements"]);

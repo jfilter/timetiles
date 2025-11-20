@@ -16,8 +16,7 @@ import { geocodeBatchJob } from "@/lib/jobs/handlers/geocode-batch-job";
 import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
 import { validateSchemaJob } from "@/lib/jobs/handlers/validate-schema-job";
 
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
-import { createImportFileWithUpload } from "../../setup/test-helpers";
+import { createIntegrationTestEnvironment, withCatalog, withImportFile } from "../../setup/integration/environment";
 
 describe.sequential("Job Processing Flow Integration", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -48,15 +47,9 @@ describe.sequential("Job Processing Flow Integration", () => {
     await testEnv.seedManager.truncate();
 
     // Create test catalog with auto-approval settings
-    const timestamp = Date.now();
-    const randomSuffix = Math.random().toString(36).substring(2, 8);
-    const catalog = await payload.create({
-      collection: "catalogs",
-      data: {
-        name: `Job Test Catalog ${timestamp}`,
-        slug: `job-test-catalog-${timestamp}-${randomSuffix}`,
-        description: "Catalog for job processing testing",
-      },
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Job Test Catalog",
+      description: "Catalog for job processing testing",
     });
     testCatalogId = catalog.id;
   });
@@ -75,16 +68,9 @@ Data Workshop,2024-05-10,Austin TX`;
       fs.writeFileSync(csvPath, csvContent, "utf8");
 
       // Create import-files record with proper file upload
-      const importFile = await createImportFileWithUpload(
-        payload,
-        {
-          catalog: testCatalogId,
-          status: "pending",
-        },
-        csvContent,
-        csvFileName,
-        "text/csv"
-      );
+      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+        filename: csvFileName,
+      });
 
       // Move file to expected location
       const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
@@ -270,16 +256,9 @@ Data Workshop,2024-05-10,Austin TX`;
       const csvPath = path.join(testDir, "csv-files", csvFileName);
       fs.writeFileSync(csvPath, csvContent, "utf8");
 
-      const importFile = await createImportFileWithUpload(
-        payload,
-        {
-          catalog: testCatalogId,
-          status: "pending",
-        },
-        csvContent,
-        csvFileName,
-        "text/csv"
-      );
+      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+        filename: csvFileName,
+      });
 
       // Move file to expected location
       const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
@@ -325,16 +304,9 @@ Event 2,2024-01-02,Location 2`;
       const importPath = path.join(importDir, csvFileName);
       fs.writeFileSync(importPath, csvContent, "utf8");
 
-      const importFile = await createImportFileWithUpload(
-        payload,
-        {
-          catalog: testCatalogId,
-          status: "pending",
-        },
-        csvContent,
-        csvFileName,
-        "text/csv"
-      );
+      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+        filename: csvFileName,
+      });
 
       try {
         // Run dataset detection

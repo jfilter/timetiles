@@ -12,7 +12,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Catalog, Dataset, Event, User } from "@/payload-types";
-import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
+import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
 describe.sequential("Hierarchical Access Control", () => {
   let payload: any;
@@ -36,35 +36,22 @@ describe.sequential("Hierarchical Access Control", () => {
     payload = env.payload;
     cleanup = env.cleanup;
 
-    // Create test users
-    adminUser = await payload.create({
-      collection: "users",
-      data: {
-        email: "admin@access-test.com",
-        password: "admin123456",
-        role: "admin",
-      },
-    });
+    // Create test users using withUsers helper
+    const { users } = await withUsers(env, ["admin", "user"]);
+    adminUser = users.admin;
+    ownerUser = users.user;
 
-    ownerUser = await payload.create({
-      collection: "users",
-      data: {
-        email: "owner@access-test.com",
-        password: "owner123456",
-        role: "user",
-      },
-    });
-
+    // Create second regular user (other) manually
     otherUser = await payload.create({
       collection: "users",
       data: {
-        email: "other@access-test.com",
-        password: "other123456",
+        email: "other@test.com",
+        password: "password123",
         role: "user",
       },
     });
 
-    // Create test catalogs (as owner)
+    // Create test catalogs (as owner) - Note: user context matters for access control
     publicCatalog = await payload.create({
       collection: "catalogs",
       data: {
@@ -85,7 +72,7 @@ describe.sequential("Hierarchical Access Control", () => {
       user: ownerUser,
     });
 
-    // Create test datasets with various public/private combinations
+    // Create test datasets - Note: user context critical for ownership testing
     publicDatasetInPublicCatalog = await payload.create({
       collection: "datasets",
       data: {
@@ -105,7 +92,7 @@ describe.sequential("Hierarchical Access Control", () => {
         description: "Secondary public dataset for access control testing",
         catalog: publicCatalog.id,
         language: "eng",
-        isPublic: true, // Must be public since catalog is public
+        isPublic: true,
       },
       user: ownerUser,
     });

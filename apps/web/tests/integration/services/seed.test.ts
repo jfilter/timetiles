@@ -10,7 +10,7 @@ import { datasetSeeds } from "../../../lib/seed/seeds/datasets";
 import { eventSeeds } from "../../../lib/seed/seeds/events";
 // importSeeds removed - import jobs are created dynamically, not seeded
 import { userSeeds } from "../../../lib/seed/seeds/users";
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
 describe.sequential("Seed System", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

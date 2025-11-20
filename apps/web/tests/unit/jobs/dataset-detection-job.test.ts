@@ -8,6 +8,9 @@
  * @module
  * @category Tests
  */
+// Import centralized logger mock
+import "@/tests/mocks/services/logger";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { datasetDetectionJob } from "@/lib/jobs/handlers/dataset-detection-job";
@@ -25,21 +28,6 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/logger", () => ({
-  logger: {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-  createJobLogger: vi.fn(() => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  })),
-  logError: vi.fn(),
-  logPerformance: vi.fn(),
-}));
-
 vi.mock("fs", () => ({
   default: mocks.fs,
   promises: {

@@ -11,7 +11,7 @@ import {
   getEnvironmentSettings,
   SEED_CONFIG,
 } from "../../../lib/seed/seed.config";
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
 describe.sequential("Configuration-Driven Seeding", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -314,7 +314,7 @@ describe.sequential("Configuration-Driven Seeding", () => {
     });
 
     it("should have valid collection configurations with proper counts", () => {
-      Object.entries(SEED_CONFIG.collections).forEach(([collectionName, config]) => {
+      Object.entries(SEED_CONFIG.collections).forEach(([_collectionName, config]) => {
         expect(config).toBeDefined();
         expect(typeof config).toBe("object");
 

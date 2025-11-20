@@ -1,9 +1,12 @@
 /**
- * Vitest global test setup.
+ * Vitest global integration test setup.
  *
  * Configures the test environment, creates isolated test databases,
  * verifies schema integrity, and sets up environment variables for
- * all test suites.
+ * integration test suites.
+ *
+ * This file is ONLY for integration tests. Unit tests should NOT
+ * require database setup and use the minimal setup in unit.ts.
  *
  * @module
  * @category Test Setup
@@ -19,8 +22,8 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
 import { logger } from "@/lib/logger";
 
-import { createTestDatabase } from "./database-setup";
-import { verifyDatabaseSchema } from "./verify-schema";
+import { createTestDatabase } from "./database";
+import { verifyDatabaseSchema } from "./schema-verification";
 
 // Set test environment
 if (!process.env.NODE_ENV) {
@@ -33,7 +36,7 @@ process.env.NEXT_PUBLIC_PAYLOAD_URL = "http://localhost:3000";
 
 // Payload logging is now properly controlled via logger and loggingLevels configuration
 
-import { getTestDatabaseUrl, parseDatabaseUrl } from "../../lib/database/url";
+import { getTestDatabaseUrl, parseDatabaseUrl } from "../../../lib/database/url";
 
 // Use one test database per worker for efficiency
 // Workers will truncate tables between tests instead of creating new databases
@@ -48,9 +51,10 @@ process.env.DATABASE_URL = dbUrl;
 const tempDir = `/tmp/timetiles-test-${workerId}-${randomUUID()}`;
 process.env.TEMP_DIR = tempDir;
 
-process.env.UPLOAD_DIR_MEDIA = `/tmp/media`;
-process.env.UPLOAD_DIR_IMPORT_FILES = `/tmp/import-files`;
-process.env.UPLOAD_TEMP_DIR = `/tmp/temp`;
+// Use worker-specific upload directories for test isolation
+process.env.UPLOAD_DIR_MEDIA = `/tmp/media-${workerId}`;
+process.env.UPLOAD_DIR_IMPORT_FILES = `/tmp/test-uploads-${workerId}`;
+process.env.UPLOAD_TEMP_DIR = `/tmp/temp-${workerId}`;
 
 // Check if we're running integration tests
 // In CI, always setup database for all tests (isolated per worker)
@@ -166,6 +170,18 @@ afterAll(() => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 
+  // Clean up upload directories
+  const uploadDirs = [
+    process.env.UPLOAD_DIR_MEDIA!,
+    process.env.UPLOAD_DIR_IMPORT_FILES!,
+    process.env.UPLOAD_TEMP_DIR!,
+  ];
+  uploadDirs.forEach((dir) => {
+    if (fs.existsSync(dir)) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   // Don't drop the database - leave it for debugging if needed
   // The next test run will reuse it
 });
@@ -173,5 +189,5 @@ afterAll(() => {
 // Import centralized mocks only for non-E2E tests
 // eslint-disable-next-line turbo/no-undeclared-env-vars
 if (!process.env.PLAYWRIGHT_TEST) {
-  void import("../mocks/external/next-navigation");
+  void import("../../mocks/external/next-navigation");
 }

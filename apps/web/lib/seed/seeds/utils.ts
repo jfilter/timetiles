@@ -266,13 +266,21 @@ const generateGovernmentMetadata = (index: number): Record<string, unknown> => {
   const statuses = ["open", "in-progress", "resolved", "closed"];
   const severities = ["low", "medium", "high", "critical"];
 
+  const agency = agencies[index % agencies.length];
+  const department = departments[(index + 1) % departments.length];
+  const status = statuses[index % statuses.length];
+  const reference = `REF-2024-${String(index + 1000).padStart(5, "0")}`;
+
   return {
-    agency: agencies[index % agencies.length],
-    department: departments[(index + 1) % departments.length],
+    title: `${agency} ${department} Report ${reference}`,
+    description: `Official ${status} report from ${agency} ${department} regarding compliance and operations.`,
+    startDate: new Date(Date.now() - index * 86400000).toISOString(),
+    agency,
+    department,
     contact: `contact-${index}@agency.gov`,
     severity: severities[index % severities.length],
-    status: statuses[index % statuses.length],
-    reference_number: `REF-2024-${String(index + 1000).padStart(5, "0")}`,
+    status,
+    reference_number: reference,
     reported_date: new Date(Date.now() - index * 86400000).toISOString(), // Days ago
   };
 };
@@ -285,17 +293,28 @@ const generateEnvironmentalMetadata = (index: number): Record<string, unknown> =
   const units = ["μg/m³", "ppb", "ppm", "mg/m³"];
   const qualities = ["good", "moderate", "poor", "hazardous"];
 
+  const measurement = measurements[index % measurements.length];
+  // eslint-disable-next-line sonarjs/pseudo-random -- Test data generation, not security-sensitive
+  const value = Math.round(Math.random() * 100 * 10) / 10;
+  const unit = units[index % units.length];
+  // eslint-disable-next-line sonarjs/pseudo-random -- Test data generation, not security-sensitive
+  const quality = qualities[Math.floor(Math.random() * qualities.length)];
+  const timestamp = new Date(Date.now() - index * 3600000).toISOString();
+
   return {
+    title: `${measurement} Reading: ${value}${unit}`,
+    description: `Environmental sensor reading for ${measurement} showing ${quality} air quality conditions.`,
+    startDate: timestamp,
     station_id: `ENV-${String(index + 100).padStart(3, "0")}`,
-    measurement_type: measurements[index % measurements.length],
+    measurement_type: measurement,
     // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
-    value: Math.round(Math.random() * 100 * 10) / 10,
-    unit: units[index % units.length],
+    value,
+    unit,
     sensor_id: `SENSOR-${index + 1000}`,
     // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
-    quality: qualities[Math.floor(Math.random() * qualities.length)],
+    quality,
     conditions: ["Clear", "Cloudy", "Rainy", "Foggy"][index % 4],
-    timestamp: new Date(Date.now() - index * 3600000).toISOString(), // Hours ago
+    timestamp, // Hours ago
   };
 };
 
@@ -307,14 +326,22 @@ const generateAcademicMetadata = (index: number): Record<string, unknown> => {
   const disciplines = ["Computer Science", "Biology", "Physics", "Economics", "Psychology"];
   const funders = ["NSF", "NIH", "DOE", "NASA", "Private Foundation"];
 
+  const institution = institutions[index % institutions.length];
+  const discipline = disciplines[index % disciplines.length];
+  const researcher = `Dr. ${["Smith", "Johnson", "Williams", "Brown", "Jones"][index % 5]}`;
+  const pubDate = new Date(Date.now() - index * 86400000).toISOString().split("T")[0];
+
   return {
-    institution: institutions[index % institutions.length],
-    researcher: `Dr. ${["Smith", "Johnson", "Williams", "Brown", "Jones"][index % 5]}`,
+    title: `${discipline} Research Study by ${institution}`,
+    description: `New findings in ${discipline} led by ${researcher}, funded by ${funders[index % funders.length]}.`,
+    startDate: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+    institution,
+    researcher,
     funding: funders[index % funders.length],
-    discipline: disciplines[index % disciplines.length],
-    keywords: ["research", disciplines[index % disciplines.length]?.toLowerCase() ?? "unknown", "study"],
+    discipline,
+    keywords: ["research", discipline?.toLowerCase() ?? "", "study"].filter(Boolean),
     doi: `10.1234/example.${index + 1000}`,
-    publication_date: new Date(Date.now() - index * 86400000).toISOString().split("T")[0],
+    publication_date: pubDate,
     sample_size: 100 + index * 50,
   };
 };
@@ -326,15 +353,24 @@ const generateCulturalMetadata = (index: number): Record<string, unknown> => {
   const venues = ["City Theater", "Music Hall", "Art Gallery", "Convention Center", "Stadium"];
   const genres = ["Rock", "Classical", "Jazz", "Pop", "Electronic"];
 
+  const venue = venues[index % venues.length];
+  const performer = `Artist ${index + 1}`;
+  const genre = genres[index % genres.length];
+  const eventDate = new Date(Date.now() + index * 86400000).toISOString();
+
   return {
-    venue: venues[index % venues.length],
-    performer: `Artist ${index + 1}`,
+    title: `${performer} Live at ${venue}`,
+    description: `A ${genre} performance by ${performer}. Tickets starting at $${25 + (index % 10) * 5}.`,
+    startDate: eventDate,
+    endDate: new Date(new Date(eventDate).getTime() + (90 + (index % 6) * 30) * 60000).toISOString(),
+    venue,
+    performer,
     ticket_price: 25 + (index % 10) * 5,
     capacity: 500 + (index % 10) * 100,
-    genre: genres[index % genres.length],
+    genre,
     duration_minutes: 90 + (index % 6) * 30,
     age_restriction: index % 3 === 0 ? "21+" : "All Ages",
-    event_date: new Date(Date.now() + index * 86400000).toISOString(), // Days in future
+    event_date: eventDate, // Days in future
   };
 };
 
@@ -346,14 +382,23 @@ const generateEconomicMetadata = (index: number): Record<string, unknown> => {
   const regions = ["North America", "Europe", "Asia", "South America", "Africa"];
   const sectors = ["Technology", "Healthcare", "Finance", "Manufacturing", "Retail"];
 
+  const indicator = indicators[index % indicators.length];
+  const region = regions[index % regions.length];
+  const period = `Q${(index % 4) + 1} 2024`;
+  // eslint-disable-next-line sonarjs/pseudo-random -- Test data generation, not security-sensitive
+  const value = Math.round(Math.random() * 1000) / 10;
+
   return {
-    indicator: indicators[index % indicators.length],
+    title: `${indicator} Report - ${region} (${period})`,
+    description: `Economic analysis of ${indicator} for the ${region} region during ${period}.`,
+    startDate: new Date().toISOString(),
+    indicator,
     // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
-    value: Math.round(Math.random() * 1000) / 10,
+    value,
     unit: "%",
-    region: regions[index % regions.length],
+    region,
     sector: sectors[index % sectors.length],
-    period: `Q${(index % 4) + 1} 2024`,
+    period,
     source: "Economic Research Bureau",
     confidence: ["high", "medium", "low"][index % 3],
   };

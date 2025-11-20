@@ -13,6 +13,7 @@
  *
  * @module
  */
+/* eslint-disable no-console */
 import { existsSync, readFileSync } from "fs";
 import { join, resolve } from "path";
 
@@ -28,7 +29,9 @@ const findMonorepoRoot = (startPath: string = process.cwd()): string => {
         if (packageJson.name === "timetiles") {
           return currentPath;
         }
-      } catch {}
+      } catch {
+        // Ignore errors when reading package.json from parent directories
+      }
     }
     const parentPath = resolve(currentPath, "..");
     if (parentPath === currentPath) break;
@@ -123,13 +126,20 @@ try {
       lines: { total: number; covered: number };
     }
 
+    interface CoverageData {
+      lines: { pct: number; total: number; covered: number };
+    }
+
     const files: FileData[] = Object.entries(summary)
       .filter(([key]) => key !== "total")
-      .map(([path, data]: [string, any]) => ({
-        path,
-        coverage: data.lines.pct,
-        lines: { total: data.lines.total, covered: data.lines.covered },
-      }))
+      .map(([path, data]) => {
+        const coverageData = data as CoverageData;
+        return {
+          path,
+          coverage: coverageData.lines.pct,
+          lines: { total: coverageData.lines.total, covered: coverageData.lines.covered },
+        };
+      })
       .filter((file) => file.coverage < threshold)
       .sort((a, b) => a.coverage - b.coverage);
 

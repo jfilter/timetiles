@@ -17,7 +17,7 @@ export default defineWorkspace([
       globals: true,
       environment: "node",
       include: ["tests/unit/**/*.test.ts"],
-      setupFiles: ["tests/setup/unit.ts"],
+      setupFiles: ["tests/setup/unit/global-setup-minimal.ts"],
     },
   },
   {

@@ -19,7 +19,7 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     include: ["tests/unit/components/**/*.test.tsx"],
-    setupFiles: ["tests/setup/components.ts"],
+    setupFiles: ["tests/setup/unit/global-setup.ts"],
     testTimeout: 10000,
     pool: "forks",
   },

@@ -7,6 +7,9 @@
  * @module
  * @category Tests
  */
+// Import centralized logger mock
+import "@/tests/mocks/services/logger";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { geocodeBatchJob } from "@/lib/jobs/handlers/geocode-batch-job";
@@ -23,16 +26,6 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/logger", () => ({
-  createJobLogger: vi.fn(() => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  })),
-  logError: vi.fn(),
-  logPerformance: vi.fn(),
-}));
-
 vi.mock("@/lib/services/geocoding", () => ({
   geocodeAddress: mocks.geocodeAddress,
 }));

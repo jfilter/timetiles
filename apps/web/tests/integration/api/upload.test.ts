@@ -12,8 +12,7 @@ import { join } from "node:path";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
-import { createImportFileWithUpload } from "../../setup/test-helpers";
+import { createIntegrationTestEnvironment, withCatalog, withImportFile } from "../../setup/integration/environment";
 
 describe.sequential("Import Files Collection", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -36,16 +35,7 @@ describe.sequential("Import Files Collection", () => {
     await testEnv.seedManager.truncate();
 
     // Create test catalog
-    const timestamp = Date.now();
-    const randomSuffix = Math.random().toString(36).substring(2, 8);
-    const catalog = await payload.create({
-      collection: "catalogs",
-      data: {
-        name: `Test Catalog ${timestamp}`,
-        slug: `test-catalog-${timestamp}-${randomSuffix}`,
-        description: "Catalog for testing",
-      },
-    });
+    const { catalog } = await withCatalog(testEnv);
     testCatalogId = catalog.id;
   });
 
@@ -56,18 +46,11 @@ describe.sequential("Import Files Collection", () => {
     const fileName = "valid-events.csv";
 
     // Use the helper function that properly handles file uploads
-    const importFile = await createImportFileWithUpload(
-      payload,
-      {
-        catalog: parseInt(testCatalogId, 10),
-        status: "pending",
-        datasetsCount: 0,
-        datasetsProcessed: 0,
-      },
-      fileBuffer,
-      fileName,
-      "text/csv"
-    );
+    const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+      filename: fileName,
+      datasetsCount: 0,
+      datasetsProcessed: 0,
+    });
 
     expect(importFile.id).toBeDefined();
     expect(importFile.filename).toBeDefined(); // Payload auto-generated
@@ -82,17 +65,10 @@ describe.sequential("Import Files Collection", () => {
     const fileBuffer = fs.readFileSync(testFilePath);
     const fileName = "valid-events.csv";
 
-    const importFile = await createImportFileWithUpload(
-      payload,
-      {
-        catalog: parseInt(testCatalogId, 10),
-        sessionId: "test-session-123",
-        status: "pending",
-      },
-      fileBuffer,
-      fileName,
-      "text/csv"
-    );
+    const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+      filename: fileName,
+      sessionId: "test-session-123",
+    });
 
     // Check that hooks populated metadata correctly
     expect(importFile.originalName).toBe("valid-events.csv"); // Set by beforeOperation hook
@@ -123,16 +99,9 @@ describe.sequential("Import Files Collection", () => {
     const fileBuffer = fs.readFileSync(testFilePath);
     const fileName = "valid-events.csv";
 
-    const importFile = await createImportFileWithUpload(
-      payload,
-      {
-        catalog: parseInt(testCatalogId, 10),
-        status: "pending",
-      },
-      fileBuffer,
-      fileName,
-      "text/csv"
-    );
+    const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+      filename: fileName,
+    });
 
     // Should succeed without rate limiting errors for the first request
     expect(importFile.id).toBeDefined();

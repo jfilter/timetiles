@@ -35,8 +35,39 @@ import { webhookFields } from "./fields/webhook-fields";
 import { beforeChangeHook } from "./hooks";
 import { validateCronExpression, validateUrl } from "./validation";
 
+// Helper to check if quota checks should be skipped
+const shouldSkipQuotaChecks = (
+  req: { user?: User | null; context?: Record<string, unknown> },
+  context?: Record<string, unknown>
+): boolean =>
+  process.env.NODE_ENV === "test" ||
+  process.env.VITEST === "true" ||
+  !req.user ||
+  Boolean(context?.skipQuotaChecks || req.context?.skipQuotaChecks);
+
+// Helper to check active schedules quota
+const checkActiveSchedulesQuota = (
+  user: User,
+  quotaService: ReturnType<typeof getQuotaService>,
+  req: PayloadRequest
+): void => {
+  const quotaCheck = quotaService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1, req);
+  if (!quotaCheck.allowed) {
+    const message =
+      quotaCheck.remaining === 0
+        ? `Maximum active schedules reached (${quotaCheck.limit}). Disable another schedule first.`
+        : `Cannot enable schedule: quota exceeded`;
+    throw new Error(message);
+  }
+};
+
+// Helper to check if update is enabling a schedule
+const isEnablingSchedule = (originalDoc: Record<string, unknown>, data: Record<string, unknown>): boolean => {
+  return originalDoc.enabled !== data?.enabled && data?.enabled === true;
+};
+
 // Helper function to handle schedule quota tracking
-const handleScheduleQuotaTracking = async ({
+const handleScheduleQuotaTracking = ({
   data,
   operation,
   req,
@@ -45,21 +76,11 @@ const handleScheduleQuotaTracking = async ({
 }: {
   data: Record<string, unknown>;
   operation: "create" | "update";
-  req: { user?: User | null; payload: Payload; context?: Record<string, any> };
+  req: { user?: User | null; payload: Payload; context?: Record<string, unknown> };
   originalDoc?: Record<string, unknown>;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }) => {
-  // Skip quota checks in test environment to avoid deadlocks
-  if (process.env.NODE_ENV === "test" || process.env.VITEST === "true") {
-    return data;
-  }
-
-  if (!req.user) {
-    return data;
-  }
-
-  // Skip quota checks if flagged (prevents deadlocks from nested operations)
-  if (context?.skipQuotaChecks || req.context?.skipQuotaChecks) {
+  if (shouldSkipQuotaChecks(req, context)) {
     return data;
   }
 
@@ -70,39 +91,82 @@ const handleScheduleQuotaTracking = async ({
 
   const quotaService = getQuotaService(req.payload);
 
-  // Handle update operations (enabling/disabling)
-  if (isUpdate && originalDoc.enabled !== data?.enabled) {
-    if (data?.enabled === true) {
-      // Check quota before enabling
-      const quotaCheck = await quotaService.checkQuota(
-        req.user,
-        QUOTA_TYPES.ACTIVE_SCHEDULES,
-        1,
-        req as PayloadRequest
-      );
-      if (!quotaCheck.allowed) {
-        const message =
-          quotaCheck.remaining === 0
-            ? `Maximum active schedules reached (${quotaCheck.limit}). Disable another schedule first.`
-            : `Cannot enable schedule: quota exceeded`;
-        throw new Error(message);
-      }
-      // Note: Actual increment happens in afterChange hook to avoid nested Payload operations
-    }
-    // Note: Decrement happens in afterChange hook to avoid nested Payload operations during transaction
+  // Handle update operations (enabling a disabled schedule)
+  if (isUpdate && isEnablingSchedule(originalDoc, data)) {
+    checkActiveSchedulesQuota(req.user!, quotaService, req as PayloadRequest);
+    // Note: Actual increment happens in afterChange hook to avoid nested Payload operations
+    return data;
   }
 
-  // Handle new schedule creation
+  // Handle new schedule creation (enabled by default)
   if (isCreate && data?.enabled !== false) {
-    const quotaCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1, req as PayloadRequest);
-    if (!quotaCheck.allowed) {
-      throw new Error(
-        `Maximum active schedules reached (${quotaCheck.limit}). Disable another schedule or create this one as disabled.`
-      );
-    }
+    checkActiveSchedulesQuota(req.user!, quotaService, req as PayloadRequest);
   }
 
   return data;
+};
+
+// Helper to validate catalog access
+const validateCatalogAccess = async (data: unknown, req: PayloadRequest): Promise<void> => {
+  const typedData = data as Record<string, unknown> | undefined;
+  if (!typedData?.catalog || !req.user) return;
+
+  const catalogId =
+    typeof typedData.catalog === "object" ? (typedData.catalog as { id: string | number }).id : typedData.catalog;
+
+  try {
+    const catalog = await req.payload.findByID({
+      collection: "catalogs",
+      id: catalogId as string | number,
+      overrideAccess: true,
+    });
+
+    if (catalog.createdBy) {
+      const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+      if (req.user.role !== "admin" && createdById !== req.user.id && !catalog.isPublic) {
+        throw new Error("You do not have permission to access this catalog");
+      }
+    }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "You do not have permission to access this catalog";
+    throw new Error(message);
+  }
+};
+
+// Helper to validate source URL
+const validateSourceUrl = (data: unknown): void => {
+  const typedData = data as Record<string, unknown> | undefined;
+  if (!typedData?.sourceUrl) return;
+
+  const urlValidation = validateUrl(typedData.sourceUrl as string);
+  if (urlValidation !== true) {
+    throw new Error(urlValidation);
+  }
+};
+
+// Helper to validate cron expression
+const validateCronSchedule = (data: unknown): void => {
+  const typedData = data as Record<string, unknown> | undefined;
+  if (typedData?.scheduleType !== "cron" || !typedData?.cronExpression) return;
+
+  const cronValidation = validateCronExpression(typedData.cronExpression as string);
+  if (cronValidation !== true) {
+    throw new Error(cronValidation);
+  }
+};
+
+// Helper to validate schedule configuration
+const validateScheduleConfig = (data: unknown): void => {
+  const typedData = data as Record<string, unknown> | undefined;
+  if (!typedData?.enabled) return;
+
+  if (typedData.scheduleType === "frequency" && !typedData.frequency) {
+    throw new Error("Frequency is required when schedule type is 'frequency'");
+  }
+
+  if (typedData.scheduleType === "cron" && !typedData.cronExpression) {
+    throw new Error("Cron expression is required when schedule type is 'cron'");
+  }
 };
 
 const ScheduledImports: CollectionConfig = {
@@ -116,7 +180,8 @@ const ScheduledImports: CollectionConfig = {
   },
   access: {
     // Users can only read their own scheduled imports
-    read: async ({ req: { user } }) => {
+    // eslint-disable-next-line sonarjs/function-return-type
+    read: ({ req: { user } }): boolean | { createdBy: { equals: string | number } } => {
       if (!user) return false;
       if (user.role === "admin") return true;
 
@@ -246,59 +311,18 @@ const ScheduledImports: CollectionConfig = {
       },
     ],
     beforeValidate: [
-      // eslint-disable-next-line complexity
       async ({ data, req }) => {
         // Validate catalog access
-        if (data?.catalog && req.user) {
-          const catalogId = typeof data.catalog === "object" ? data.catalog.id : data.catalog;
-
-          try {
-            // Try to read the catalog - use overrideAccess to avoid deadlock
-            // Access control for catalogs is already enforced at the catalog collection level
-            const catalog = await req.payload.findByID({
-              collection: "catalogs",
-              id: catalogId,
-              overrideAccess: true, // Avoid nested access control causing deadlock
-            });
-
-            // Manual access check: verify user can access this catalog
-            if (catalog.createdBy) {
-              const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
-              if (req.user.role !== "admin" && createdById !== req.user.id && !catalog.isPublic) {
-                throw new Error("You do not have permission to access this catalog");
-              }
-            }
-          } catch (error: unknown) {
-            // Catalog doesn't exist or access denied
-            const message =
-              error instanceof Error ? error.message : "You do not have permission to access this catalog";
-            throw new Error(message);
-          }
-        }
+        await validateCatalogAccess(data, req);
 
         // Validate URL
-        if (data?.sourceUrl) {
-          const urlValidation = validateUrl(data.sourceUrl);
-          if (urlValidation !== true) {
-            throw new Error(urlValidation);
-          }
-        }
+        validateSourceUrl(data);
 
         // Validate cron expression if using cron schedule
-        if (data?.scheduleType === "cron" && data?.cronExpression) {
-          const cronValidation = validateCronExpression(data.cronExpression);
-          if (cronValidation !== true) {
-            throw new Error(cronValidation);
-          }
-        }
+        validateCronSchedule(data);
 
         // Validate schedule configuration
-        if (data?.enabled && data.scheduleType === "frequency" && !data.frequency) {
-          throw new Error("Frequency is required when schedule type is 'frequency'");
-        }
-        if (data?.enabled && data.scheduleType === "cron" && !data.cronExpression) {
-          throw new Error("Cron expression is required when schedule type is 'cron'");
-        }
+        validateScheduleConfig(data);
 
         return data;
       },

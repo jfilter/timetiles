@@ -4,11 +4,11 @@
 import { EventFilters } from "@/components/filters/event-filters";
 import type { Catalog } from "@/payload-types";
 
-import { createMockCatalogs, createMockDatasets, createRichText } from "../../mocks";
-import { renderWithProviders, userEvent } from "../../setup/test-utils";
+import { createCatalogs, createDatasets, createRichText } from "../../mocks";
+import { renderWithProviders, userEvent } from "../../setup/unit/react-render";
 
-const mockCatalogs = createMockCatalogs(2);
-const mockDatasets = createMockDatasets(3);
+const mockCatalogs = createCatalogs(2);
+const mockDatasets = createDatasets(3);
 
 describe("EventFilters", () => {
   test("renders with all datasets initially when no catalog selected", () => {

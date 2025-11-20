@@ -8,10 +8,10 @@
  * @category Tests
  */
 
-import { dropDatabase, truncateTables } from "../../lib/database/operations";
-import { setupDatabase } from "../../lib/database/setup";
-import { parseDatabaseUrl } from "../../lib/database/url";
-import { logger } from "../../lib/logger";
+import { dropDatabase, truncateTables } from "../../../lib/database/operations";
+import { setupDatabase } from "../../../lib/database/setup";
+import { parseDatabaseUrl } from "../../../lib/database/url";
+import { logger } from "../../../lib/logger";
 
 /**
  * Creates isolated test database for each worker.

@@ -51,7 +51,7 @@ export const apiError = (
  * @returns NextResponse with 400 status
  */
 export const badRequest = (message: string, code?: string): NextResponse<ErrorResponse> =>
-  apiError(message, 400, code || "BAD_REQUEST");
+  apiError(message, 400, code ?? "BAD_REQUEST");
 
 /**
  * Create a 401 Unauthorized error response.
@@ -61,7 +61,7 @@ export const badRequest = (message: string, code?: string): NextResponse<ErrorRe
  * @returns NextResponse with 401 status
  */
 export const unauthorized = (message: string = "Unauthorized", code?: string): NextResponse<ErrorResponse> =>
-  apiError(message, 401, code || "UNAUTHORIZED");
+  apiError(message, 401, code ?? "UNAUTHORIZED");
 
 /**
  * Create a 404 Not Found error response.
@@ -71,7 +71,7 @@ export const unauthorized = (message: string = "Unauthorized", code?: string): N
  * @returns NextResponse with 404 status
  */
 export const notFound = (message: string = "Resource not found", code?: string): NextResponse<ErrorResponse> =>
-  apiError(message, 404, code || "NOT_FOUND");
+  apiError(message, 404, code ?? "NOT_FOUND");
 
 /**
  * Create a 405 Method Not Allowed error response.
@@ -81,7 +81,7 @@ export const notFound = (message: string = "Resource not found", code?: string):
  * @returns NextResponse with 405 status
  */
 export const methodNotAllowed = (message: string, code?: string): NextResponse<ErrorResponse> =>
-  apiError(message, 405, code || "METHOD_NOT_ALLOWED");
+  apiError(message, 405, code ?? "METHOD_NOT_ALLOWED");
 
 /**
  * Create a 500 Internal Server Error response.
@@ -95,4 +95,4 @@ export const internalError = (
   message: string = "Internal server error",
   code?: string,
   details?: unknown
-): NextResponse<ErrorResponse> => apiError(message, 500, code || "INTERNAL_ERROR", details);
+): NextResponse<ErrorResponse> => apiError(message, 500, code ?? "INTERNAL_ERROR", details);

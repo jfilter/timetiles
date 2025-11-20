@@ -15,9 +15,14 @@ import { RateLimitService } from "@/lib/services/rate-limit-service";
 import type { Catalog, ScheduledImport, User } from "@/payload-types";
 
 import { TEST_CREDENTIALS, TEST_TOKENS } from "../../constants/test-credentials";
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withScheduledImport,
+} from "../../setup/integration/environment";
 
 describe.sequential("Webhook Trigger API Integration", () => {
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
   let cleanup: () => Promise<void>;
   let testUser: User;
@@ -39,9 +44,9 @@ describe.sequential("Webhook Trigger API Integration", () => {
   };
 
   beforeAll(async () => {
-    const env = await createIntegrationTestEnvironment();
-    payload = env.payload;
-    cleanup = env.cleanup;
+    testEnv = await createIntegrationTestEnvironment();
+    payload = testEnv.payload;
+    cleanup = testEnv.cleanup;
 
     // Create a single rate limit service instance for tests
     rateLimitService = new RateLimitService(payload);
@@ -61,15 +66,10 @@ describe.sequential("Webhook Trigger API Integration", () => {
       },
     });
 
-    testCatalog = await payload.create({
-      collection: "catalogs",
-      data: {
-        name: `Webhook API Test Catalog ${timestamp}`,
-        slug: `webhook-api-test-catalog-${timestamp}`,
-        _status: "published",
-        createdBy: testUser.id,
-      },
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Webhook API Test Catalog",
     });
+    testCatalog = catalog;
   });
 
   afterAll(async () => {
@@ -82,20 +82,17 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
   beforeEach(async () => {
     // Create fresh scheduled import for each test
-    const timestamp = Date.now();
-    testScheduledImport = await payload.create({
-      collection: "scheduled-imports",
-      data: {
-        name: `API Test Import ${timestamp}`,
-        sourceUrl: "https://example.com/test-data.csv",
-        catalog: testCatalog.id,
+    const { scheduledImport } = await withScheduledImport(
+      testEnv,
+      testCatalog.id,
+      "https://example.com/test-data.csv",
+      {
         createdBy: testUser.id,
-        enabled: true,
         webhookEnabled: true,
-        scheduleType: "frequency",
         frequency: "daily",
-      },
-    });
+      }
+    );
+    testScheduledImport = scheduledImport;
 
     // Clear rate limits for clean test state
     rateLimitService.resetRateLimit(`webhook:${testScheduledImport.webhookToken}:burst`);

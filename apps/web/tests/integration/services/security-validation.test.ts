@@ -18,8 +18,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { TEST_CREDENTIALS, TEST_EMAILS } from "@/tests/constants/test-credentials";
-import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
-import { TestServer } from "@/tests/setup/test-server";
+import {
+  createIntegrationTestEnvironment,
+  withScheduledImport,
+  withTestServer,
+} from "@/tests/setup/integration/environment";
 
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
@@ -41,22 +44,22 @@ interface UrlFetchFailureOutput {
 type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
 
 describe.sequential("Security Validation Tests", () => {
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;
   let adminUserId: string;
   let regularUserId: string;
   let testCatalogId: string;
-  let testServer: TestServer;
+  let testServer: any;
   let testServerUrl: string;
 
   beforeAll(async () => {
-    const env = await createIntegrationTestEnvironment();
-    payload = env.payload;
-    cleanup = env.cleanup;
-
-    // Create and start test server
-    testServer = new TestServer();
-    testServerUrl = await testServer.start();
+    testEnv = await createIntegrationTestEnvironment();
+    const envWithServer = await withTestServer(testEnv);
+    payload = envWithServer.payload;
+    cleanup = envWithServer.cleanup;
+    testServer = envWithServer.testServer;
+    testServerUrl = envWithServer.testServerUrl;
 
     // Create admin user
     const adminUser = await payload.create({
@@ -94,7 +97,6 @@ describe.sequential("Security Validation Tests", () => {
   }, 60000);
 
   afterAll(async () => {
-    await testServer.stop();
     await cleanup();
   });
 
@@ -115,16 +117,9 @@ describe.sequential("Security Validation Tests", () => {
       ).resolves.toBeTruthy(); // Currently allows localhost - this might need to be restricted
 
       // Test that the job handler rejects localhost in production
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Localhost Import Test",
-          sourceUrl: "http://127.0.0.1/internal.csv",
-          enabled: true,
-          catalog: testCatalogId,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, "http://127.0.0.1/internal.csv", {
+        name: "Localhost Import Test",
+        frequency: "daily",
       });
 
       // In production, this should be blocked
@@ -135,16 +130,9 @@ describe.sequential("Security Validation Tests", () => {
       const privateIPs = ["http://192.168.1.1/data.csv", "http://10.0.0.1/data.csv", "http://172.16.0.1/data.csv"];
 
       for (const url of privateIPs) {
-        const scheduledImport = await payload.create({
-          collection: "scheduled-imports",
-          data: {
-            name: `Private IP Import ${url}`,
-            sourceUrl: url,
-            enabled: true,
-            catalog: testCatalogId,
-            scheduleType: "frequency",
-            frequency: "daily",
-          },
+        const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, url, {
+          name: `Private IP Import ${url}`,
+          frequency: "daily",
         });
 
         // Currently allows private IPs - in production this should be configurable
@@ -169,17 +157,15 @@ describe.sequential("Security Validation Tests", () => {
     });
 
     it("should handle URL redirection to private IPs", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
+      const { scheduledImport } = await withScheduledImport(
+        testEnv,
+        testCatalogId,
+        `${testServerUrl}/redirect-to-private.csv`,
+        {
           name: "Redirect to Private IP",
-          sourceUrl: `${testServerUrl}/redirect-to-private.csv`,
-          enabled: true,
-          catalog: testCatalogId,
-          scheduleType: "frequency",
           frequency: "daily",
-        },
-      });
+        }
+      );
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
@@ -205,21 +191,19 @@ describe.sequential("Security Validation Tests", () => {
 
   describe("Authentication Credential Security", () => {
     it("should not expose authentication credentials in logs", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
+      const { scheduledImport } = await withScheduledImport(
+        testEnv,
+        testCatalogId,
+        "https://api.example.com/data.csv",
+        {
           name: "Secure Auth Import",
-          sourceUrl: "https://api.example.com/data.csv",
-          enabled: true,
-          catalog: testCatalogId,
-          scheduleType: "frequency",
           frequency: "daily",
           authConfig: {
             type: "bearer",
             bearerToken: TEST_CREDENTIALS.bearer.superSecretToken,
           },
-        },
-      });
+        }
+      );
 
       // Fetch the created record
       const fetched = await payload.findByID({
@@ -235,14 +219,12 @@ describe.sequential("Security Validation Tests", () => {
       // Set up test server endpoint
       testServer.respondWithCSV("/invalid-auth.csv", "test,data\n1,2");
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
+      const { scheduledImport } = await withScheduledImport(
+        testEnv,
+        testCatalogId,
+        `${testServerUrl}/invalid-auth.csv`,
+        {
           name: "Invalid Auth Type Import",
-          sourceUrl: `${testServerUrl}/invalid-auth.csv`,
-          enabled: true,
-          catalog: testCatalogId,
-          scheduleType: "frequency",
           frequency: "daily",
           authConfig: {
             type: "none",
@@ -252,8 +234,8 @@ describe.sequential("Security Validation Tests", () => {
               "X-Bypass-Auth": "1",
             },
           },
-        },
-      });
+        }
+      );
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
@@ -277,20 +259,13 @@ describe.sequential("Security Validation Tests", () => {
     });
 
     it("should validate Basic Auth credentials format", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Basic Auth Import",
-          sourceUrl: `${testServerUrl}/basic-auth.csv`,
-          enabled: true,
-          catalog: testCatalogId,
-          scheduleType: "frequency",
-          frequency: "daily",
-          authConfig: {
-            type: "basic",
-            username: TEST_EMAILS.user,
-            password: TEST_CREDENTIALS.basic.strongPassword,
-          },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/basic-auth.csv`, {
+        name: "Basic Auth Import",
+        frequency: "daily",
+        authConfig: {
+          type: "basic",
+          username: TEST_EMAILS.user,
+          password: TEST_CREDENTIALS.basic.strongPassword,
         },
       });
 
@@ -338,18 +313,16 @@ describe.sequential("Security Validation Tests", () => {
       testServer.respondWithCSV("/malicious-template.csv", "test,data\n1,2");
 
       for (const template of maliciousTemplates) {
-        const scheduledImport = await payload.create({
-          collection: "scheduled-imports",
-          data: {
+        const { scheduledImport } = await withScheduledImport(
+          testEnv,
+          testCatalogId,
+          `${testServerUrl}/malicious-template.csv`,
+          {
             name: "XSS Test Import",
-            sourceUrl: `${testServerUrl}/malicious-template.csv`,
-            enabled: true,
-            catalog: testCatalogId,
-            scheduleType: "frequency",
             frequency: "daily",
             importNameTemplate: template,
-          },
-        });
+          }
+        );
 
         // Template should be stored as-is (sanitization happens on use)
         expect(scheduledImport.importNameTemplate).toBe(template);
@@ -360,14 +333,12 @@ describe.sequential("Security Validation Tests", () => {
       // Set up test server endpoint
       testServer.respondWithCSV("/custom-headers.csv", "test,data\n1,2");
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
+      const { scheduledImport } = await withScheduledImport(
+        testEnv,
+        testCatalogId,
+        `${testServerUrl}/custom-headers.csv`,
+        {
           name: "Custom Headers Test",
-          sourceUrl: `${testServerUrl}/custom-headers.csv`,
-          enabled: true,
-          catalog: testCatalogId,
-          scheduleType: "frequency",
           frequency: "daily",
           authConfig: {
             type: "none",
@@ -378,8 +349,8 @@ describe.sequential("Security Validation Tests", () => {
               // 'Authorization': 'Bearer stolen-token', // Should not override auth
             },
           },
-        },
-      });
+        }
+      );
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
@@ -409,17 +380,15 @@ describe.sequential("Security Validation Tests", () => {
       testServer.respondWithCSV("/private-catalog.csv", "test,data\n1,2");
 
       // Create import as admin
-      const adminImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
+      const { scheduledImport: adminImport } = await withScheduledImport(
+        testEnv,
+        testCatalogId,
+        `${testServerUrl}/admin.csv`,
+        {
           name: "Admin Import",
-          sourceUrl: `${testServerUrl}/admin.csv`,
-          enabled: true,
-          catalog: testCatalogId,
-          scheduleType: "frequency",
           frequency: "daily",
-        },
-      });
+        }
+      );
 
       // Regular user should be able to read
       const canRead = await payload.find({
@@ -514,17 +483,15 @@ describe.sequential("Security Validation Tests", () => {
       });
 
       // Create scheduled import for private catalog
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
+      const { scheduledImport } = await withScheduledImport(
+        testEnv,
+        privateCatalog.id,
+        `${testServerUrl}/fetch-test.csv`,
+        {
           name: "URL Fetch Permission Test",
-          sourceUrl: `${testServerUrl}/fetch-test.csv`,
-          enabled: true,
-          catalog: privateCatalog.id,
-          scheduleType: "frequency",
           frequency: "daily",
-        },
-      });
+        }
+      );
 
       testServer.respondWithCSV("/fetch-test.csv", "test,data\n1,2");
 
@@ -638,18 +605,17 @@ describe.sequential("Security Validation Tests", () => {
         id: regularUserId,
       });
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
+      const { scheduledImport } = await withScheduledImport(
+        testEnv,
+        testCatalogId,
+        `${testServerUrl}/regular-user-data.csv`,
+        {
           name: "Regular User's Scheduled Import",
-          sourceUrl: `${testServerUrl}/regular-user-data.csv`,
           enabled: false,
-          catalog: testCatalogId,
-          scheduleType: "frequency",
           frequency: "daily",
-        },
-        user: regularUserFull,
-      });
+          user: regularUserFull,
+        }
+      );
 
       // Create another regular user
       const anotherUser = await payload.create({
@@ -682,16 +648,9 @@ describe.sequential("Security Validation Tests", () => {
 
   describe("File Content Security", () => {
     it("should reject files with suspicious content", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Suspicious Content Import",
-          sourceUrl: `${testServerUrl}/suspicious.csv`,
-          enabled: true,
-          catalog: testCatalogId,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/suspicious.csv`, {
+        name: "Suspicious Content Import",
+        frequency: "daily",
       });
 
       // Set up test server endpoint with CSV injection content
@@ -719,15 +678,10 @@ describe.sequential("Security Validation Tests", () => {
     });
 
     it("should handle zip bombs and large files", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Large File Import",
-          sourceUrl: `${testServerUrl}/large.csv`,
-          enabled: true,
-          catalog: testCatalogId,
-          scheduleType: "frequency",
-          frequency: "daily",
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/large.csv`, {
+        name: "Large File Import",
+        frequency: "daily",
+        additionalData: {
           advancedOptions: {
             maxFileSizeMB: 1, // 1MB limit
           },
@@ -771,16 +725,9 @@ describe.sequential("Security Validation Tests", () => {
 
   describe("Error Message Security", () => {
     it("should not expose internal system details in error messages", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Error Exposure Test",
-          sourceUrl: `${testServerUrl}/error-test.csv`,
-          enabled: true,
-          catalog: testCatalogId,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/error-test.csv`, {
+        name: "Error Exposure Test",
+        frequency: "daily",
       });
 
       // Set up test server endpoint that simulates connection error

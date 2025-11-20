@@ -216,12 +216,12 @@ export class QuotaService {
   /**
    * Check if a user can perform an action based on quota limits.
    */
-  async checkQuota(
+  checkQuota(
     user: User | null | undefined,
     quotaType: QuotaType,
     amount: number = 1,
-    req?: PayloadRequest
-  ): Promise<QuotaCheckResult> {
+    _req?: PayloadRequest
+  ): QuotaCheckResult {
     // Get effective quotas
     const quotas = this.getEffectiveQuotas(user);
     const limit = quotas[quotaType];
@@ -371,7 +371,7 @@ export class QuotaService {
           usage: newUsage,
         },
         context: {
-          ...(req?.context || {}),
+          ...(req?.context ?? {}),
           skipUsageHooks: true, // Prevent infinite loops
         },
         overrideAccess: true, // Skip access control to avoid nested operations
@@ -429,7 +429,7 @@ export class QuotaService {
           usage: newUsage,
         },
         context: {
-          ...(req?.context || {}),
+          ...(req?.context ?? {}),
           skipUsageHooks: true, // Prevent infinite loops
         },
         overrideAccess: true, // Skip access control to avoid nested operations
@@ -457,7 +457,7 @@ export class QuotaService {
   async resetDailyCounters(userId: number, req?: PayloadRequest): Promise<void> {
     try {
       // Use req.payload if provided to stay in same transaction
-      const payloadInstance = req?.payload || this.payload;
+      const payloadInstance = req?.payload ?? this.payload;
 
       const user = await payloadInstance.findByID({
         collection: "users",
@@ -488,7 +488,7 @@ export class QuotaService {
           usage: newUsage,
         },
         context: {
-          ...(req?.context || {}),
+          ...(req?.context ?? {}),
           skipQuotaChecks: true, // Prevent infinite loops
         },
         overrideAccess: true, // Skip access control to avoid nested operations
@@ -618,8 +618,8 @@ export class QuotaService {
   /**
    * Validate a quota check and throw if exceeded.
    */
-  async validateQuota(user: User | null | undefined, quotaType: QuotaType, amount: number = 1): Promise<void> {
-    const result = await this.checkQuota(user, quotaType, amount);
+  validateQuota(user: User | null | undefined, quotaType: QuotaType, amount: number = 1): void {
+    const result = this.checkQuota(user, quotaType, amount);
 
     if (!result.allowed) {
       throw new QuotaExceededError(quotaType, result.current, result.limit, result.resetTime);
@@ -634,7 +634,7 @@ export class QuotaService {
    * - Detailed quotas across all types (system architecture)
    * - Exact reset times (rate limiting strategy)
    */
-  async getQuotaHeaders(user: User | null | undefined, quotaType?: QuotaType): Promise<Record<string, string>> {
+  getQuotaHeaders(user: User | null | undefined, quotaType?: QuotaType): Record<string, string> {
     const headers: Record<string, string> = {};
 
     if (!user) {
@@ -643,7 +643,7 @@ export class QuotaService {
 
     // Only add specific quota information if requested for a specific operation
     if (quotaType) {
-      const result = await this.checkQuota(user, quotaType);
+      const result = this.checkQuota(user, quotaType);
 
       // Return only minimal rate-limit information for the current operation
       // Do not expose exact limits for admin users (would reveal privileged status)

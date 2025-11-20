@@ -4,7 +4,7 @@
 import { EventsList } from "@/app/explore/_components/events-list";
 import type { Event } from "@/payload-types";
 
-import { renderWithProviders, screen } from "../../setup/test-utils";
+import { renderWithProviders, screen } from "../../setup/unit/react-render";
 
 // Create realistic event data that matches actual Payload structure
 const createMockEvent = (overrides: Partial<Event> = {}): Event => ({

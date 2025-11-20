@@ -13,29 +13,34 @@
  * @category Tests
  */
 import crypto from "node:crypto";
+import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TEST_EMAILS } from "@/tests/constants/test-credentials";
-import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
-import { TestServer } from "@/tests/setup/test-server";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withScheduledImport,
+  withTestServer,
+} from "@/tests/setup/integration/environment";
 
 describe.sequential("Data Integrity Tests", () => {
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;
   let testUserId: string;
   let testCatalogId: string;
-  let testServer: TestServer;
+  let testServer: any;
   let testServerUrl: string;
 
   beforeAll(async () => {
-    const env = await createIntegrationTestEnvironment();
-    payload = env.payload;
-    cleanup = env.cleanup;
-
-    // Create and start test server
-    testServer = new TestServer();
-    testServerUrl = await testServer.start();
+    testEnv = await createIntegrationTestEnvironment();
+    const envWithServer = await withTestServer(testEnv);
+    payload = envWithServer.payload;
+    cleanup = envWithServer.cleanup;
+    testServer = envWithServer.testServer;
+    testServerUrl = envWithServer.testServerUrl;
 
     // Create test user
     const user = await payload.create({
@@ -49,32 +54,29 @@ describe.sequential("Data Integrity Tests", () => {
     testUserId = user.id;
 
     // Create test catalog
-    const catalog = await payload.create({
-      collection: "catalogs",
-      data: {
-        name: "Integrity Test Catalog",
-        description: "Catalog for data integrity tests",
-      },
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Integrity Test Catalog",
+      description: "Catalog for data integrity tests",
     });
     testCatalogId = catalog.id;
   }, 60000);
 
   afterAll(async () => {
-    await testServer.stop();
+    if (testServer) {
+      await testServer.stop();
+    }
     await cleanup();
   });
 
   beforeEach(async () => {
     // Stop current server and create new one with fresh routes
-    const oldServer = testServer;
-    if (oldServer) {
-      await oldServer.stop();
+    if (testServer) {
+      await testServer.stop();
     }
-    const newServer = new TestServer();
-    const newUrl = await newServer.start();
-    // eslint-disable-next-line require-atomic-updates
-    testServer = newServer;
-    testServerUrl = newUrl;
+    const { TestServer } = await import("@/tests/setup/integration/http-server");
+    // eslint-disable-next-line require-atomic-updates -- Sequential test setup, no race condition
+    testServer = new TestServer();
+    testServerUrl = await testServer.start();
   });
 
   describe("Hash-based Duplicate Detection", () => {
@@ -82,16 +84,9 @@ describe.sequential("Data Integrity Tests", () => {
       const csvContent = "id,name,value\n1,Test Item,100\n2,Another Item,200";
       const expectedHash = crypto.createHash("sha256").update(csvContent).digest("hex");
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Hash Test Import",
-          sourceUrl: `${testServerUrl}/hash-test.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/hash-test.csv`, {
+        name: "Hash Test Import",
+        frequency: "daily",
       });
 
       // Set up test server endpoint
@@ -132,16 +127,9 @@ describe.sequential("Data Integrity Tests", () => {
     it("should detect duplicate content across multiple imports", async () => {
       const csvContent = "id,name,value\n1,Duplicate Test,100";
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Duplicate Detection Import",
-          sourceUrl: `${testServerUrl}/duplicate.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "hourly",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/duplicate.csv`, {
+        name: "Duplicate Detection Import",
+        frequency: "hourly",
       });
 
       // Set up test server endpoint to return same content for both requests
@@ -209,15 +197,10 @@ describe.sequential("Data Integrity Tests", () => {
       const rowCount = Math.ceil((5 * 1024 * 1024) / row.length);
       const largeContent = header + row.repeat(rowCount);
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Large File Hash Import",
-          sourceUrl: `${testServerUrl}/large-hash.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/large-hash.csv`, {
+        name: "Large File Hash Import",
+        frequency: "daily",
+        additionalData: {
           advancedConfig: {
             maxFileSize: 10, // 10MB limit
           },
@@ -255,22 +238,17 @@ describe.sequential("Data Integrity Tests", () => {
 
   describe("Execution History Tracking", () => {
     it("should accurately track execution history", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "History Tracking Import",
-          sourceUrl: `${testServerUrl}/history.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "hourly",
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/history.csv`, {
+        name: "History Tracking Import",
+        frequency: "hourly",
+        additionalData: {
           // Set lastRun to 10 hours ago so it should trigger
           lastRun: new Date("2024-01-01T02:00:00.000Z"),
         },
       });
 
       // Set up test server endpoint to return dynamic content
-      testServer.route("/history.csv", (_req, res) => {
+      testServer.route("/history.csv", (_req: IncomingMessage, res: ServerResponse) => {
         const timestamp = Date.now();
         const csvContent = `timestamp,value\n${timestamp},${Math.random()}`;
         res.writeHead(200, {
@@ -356,18 +334,18 @@ describe.sequential("Data Integrity Tests", () => {
     });
 
     it("should limit execution history to 10 entries", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
+      const { scheduledImport } = await withScheduledImport(
+        testEnv,
+        testCatalogId,
+        `${testServerUrl}/history-limit.csv`,
+        {
           name: "History Limit Import",
-          sourceUrl: `${testServerUrl}/history-limit.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
           frequency: "hourly",
-          executionHistory: [], // Start with empty history
-        },
-      });
+          additionalData: {
+            executionHistory: [], // Start with empty history
+          },
+        }
+      );
 
       // Set up test server endpoint
       testServer.respondWithCSV("/history-limit.csv", "test,data\n1,2");
@@ -444,21 +422,14 @@ describe.sequential("Data Integrity Tests", () => {
 
   describe("Statistics Accuracy", () => {
     it("should accurately track success and failure rates", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Statistics Test Import",
-          sourceUrl: `${testServerUrl}/stats.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "hourly",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/stats.csv`, {
+        name: "Statistics Test Import",
+        frequency: "hourly",
       });
 
       // Set up test server endpoint with mixed responses
       let callCount = 0;
-      testServer.route("/stats.csv", (_req, res) => {
+      testServer.route("/stats.csv", (_req: IncomingMessage, res: ServerResponse) => {
         callCount++;
         // Fail on 2nd and 4th calls
         if (callCount === 2 || callCount === 4) {
@@ -541,15 +512,10 @@ describe.sequential("Data Integrity Tests", () => {
     });
 
     it("should calculate average duration correctly", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Duration Test Import",
-          sourceUrl: `${testServerUrl}/duration.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "hourly",
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/duration.csv`, {
+        name: "Duration Test Import",
+        frequency: "hourly",
+        additionalData: {
           statistics: {
             totalRuns: 0,
             successfulRuns: 0,
@@ -562,7 +528,7 @@ describe.sequential("Data Integrity Tests", () => {
       // Set up test server endpoint with varying delays
       const delays = [100, 200, 150, 300, 250];
       let callIndex = 0;
-      testServer.route("/duration.csv", async (_req, res) => {
+      testServer.route("/duration.csv", async (_req: IncomingMessage, res: ServerResponse) => {
         const delay = delays[callIndex++] ?? 100;
         await new Promise((resolve) => setTimeout(resolve, delay));
         const csvContent = "test,data\n1,2";
@@ -656,16 +622,9 @@ describe.sequential("Data Integrity Tests", () => {
     it("should preserve exact file content including special characters", async () => {
       const specialContent = 'id,name,description\n1,"Test, Inc.","Quote: ""Hello"" - O\'Reilly"\n2,Café,Niño José™';
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Special Chars Import",
-          sourceUrl: `${testServerUrl}/special.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/special.csv`, {
+        name: "Special Chars Import",
+        frequency: "daily",
       });
 
       // Set up test server endpoint
@@ -701,16 +660,9 @@ describe.sequential("Data Integrity Tests", () => {
     });
 
     it("should handle different encodings correctly", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Encoding Test Import",
-          sourceUrl: `${testServerUrl}/encoded.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/encoded.csv`, {
+        name: "Encoding Test Import",
+        frequency: "daily",
       });
 
       // Test with Latin-1 encoded content
@@ -749,27 +701,29 @@ describe.sequential("Data Integrity Tests", () => {
 
   describe("Retry Data Consistency", () => {
     it("should maintain data consistency across retries", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
+      const { scheduledImport } = await withScheduledImport(
+        testEnv,
+        testCatalogId,
+        `${testServerUrl}/retry-consistency.csv`,
+        {
           name: "Retry Consistency Import",
-          sourceUrl: `${testServerUrl}/retry-consistency.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
           frequency: "daily",
-          retryConfig: {
-            maxRetries: 1,
-            retryDelayMinutes: 1, // Will use 100ms in test env
-            exponentialBackoff: false,
+          maxRetries: 1,
+          retryDelayMinutes: 1, // Will use 100ms in test env
+          additionalData: {
+            retryConfig: {
+              maxRetries: 1,
+              retryDelayMinutes: 1, // Will use 100ms in test env
+              exponentialBackoff: false,
+            },
           },
-        },
-      });
+        }
+      );
 
       // Set up test server endpoint with intermittent failures
       let attemptCount = 0;
       const consistentData = "id,value,timestamp\n1,100,2024-01-01T12:00:00Z";
-      testServer.route("/retry-consistency.csv", (_req, res) => {
+      testServer.route("/retry-consistency.csv", (_req: IncomingMessage, res: ServerResponse) => {
         attemptCount++;
         if (attemptCount === 1) {
           res.writeHead(503, { "Content-Type": "text/plain" });

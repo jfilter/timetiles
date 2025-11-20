@@ -24,7 +24,7 @@ export default defineConfig({
     globals: true,
     environment: isIntegrationTest ? "node" : "jsdom",
     exclude: ["**/node_modules/**"],
-    setupFiles: ["tests/setup/setup.ts"],
+    setupFiles: ["tests/setup/integration/global-setup.ts"],
     testTimeout: isUnitTest ? 10000 : 30000, // Shorter timeout for unit tests
     hookTimeout: isUnitTest ? 10000 : 30000,
     reporters: ["verbose"],

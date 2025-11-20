@@ -9,19 +9,26 @@
  * @category Services/Cache/Tests
  */
 
+import type { IncomingMessage, ServerResponse } from "node:http";
+
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { fetchWithRetry } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
 import { getUrlFetchCache } from "@/lib/services/cache";
-import { TestServer } from "@/tests/setup/test-server";
+import { createIntegrationTestEnvironment } from "@/tests/setup/integration/environment";
 
 describe.sequential("HTTP Cache Integration", () => {
   const urlFetchCache = getUrlFetchCache();
-  let testServer: TestServer;
+  let testServer: any;
   let serverUrl: string;
+  let cleanup: () => Promise<void>;
 
   beforeAll(async () => {
-    // Create and start test server
+    // Create integration test environment
+    const testEnv = await createIntegrationTestEnvironment();
+
+    // Create test server with routes before starting
+    const { TestServer } = await import("@/tests/setup/integration/http-server");
     testServer = new TestServer();
 
     // Setup test endpoints
@@ -29,7 +36,7 @@ describe.sequential("HTTP Cache Integration", () => {
       .respondWithJSON("/json", { slideshow: { title: "Sample" } })
       .respond("/status/404", { status: 404, body: "Not Found" })
       .respond("/status/500", { status: 500, body: "Server Error" })
-      .route("/uuid", (_req, res) => {
+      .route("/uuid", (_req: IncomingMessage, res: ServerResponse) => {
         res.writeHead(200, {
           "Content-Type": "application/json",
           "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -50,7 +57,7 @@ describe.sequential("HTTP Cache Integration", () => {
         headers: { "Cache-Control": "max-age=2" },
         body: "Cache control response",
       })
-      .setDefaultHandler((req, res) => {
+      .setDefaultHandler((req: IncomingMessage, res: ServerResponse) => {
         // Handle /get with query parameters
         if (req.url?.startsWith("/get")) {
           res.writeHead(200, { "Content-Type": "application/json" });
@@ -62,11 +69,17 @@ describe.sequential("HTTP Cache Integration", () => {
       });
 
     serverUrl = await testServer.start();
+
+    // Extend cleanup to stop server
+    const originalCleanup = testEnv.cleanup;
+    cleanup = async () => {
+      await testServer.stop();
+      await originalCleanup();
+    };
   });
 
   afterAll(async () => {
-    // Stop test server
-    await testServer.stop();
+    await cleanup();
   });
 
   beforeEach(async () => {

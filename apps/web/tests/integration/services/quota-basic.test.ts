@@ -10,7 +10,7 @@ import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
 // Force sequential execution to avoid database state conflicts
 describe.sequential("Basic Quota Test", () => {

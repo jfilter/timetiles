@@ -2,23 +2,14 @@
  * Unit tests for cleanup stuck scheduled imports job.
  * @module
  */
+//Import centralized logger mock FIRST
+import "@/tests/mocks/services/logger";
 
+import type { BasePayload } from "payload";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cleanupStuckScheduledImportsJob } from "@/lib/jobs/handlers/cleanup-stuck-scheduled-imports-job";
-import { logError, logger } from "@/lib/logger";
-
-// Mock logger
-vi.mock("@/lib/logger", () => ({
-  logger: {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-  logError: vi.fn(),
-}));
-
-import type { BasePayload } from "payload";
+import { mockLogger } from "@/tests/mocks/services/logger";
 
 type MockPayload = {
   find: ReturnType<typeof vi.fn>;
@@ -302,9 +293,12 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
       });
 
       // Should have initial log and completion log
-      expect(logger.info).toHaveBeenCalledTimes(3);
-      expect(logger.info).toHaveBeenCalledWith("Starting cleanup stuck scheduled imports job", expect.any(Object));
-      expect(logger.info).toHaveBeenCalledWith(
+      expect(mockLogger.logger.info).toHaveBeenCalledTimes(3);
+      expect(mockLogger.logger.info).toHaveBeenCalledWith(
+        "Starting cleanup stuck scheduled imports job",
+        expect.any(Object)
+      );
+      expect(mockLogger.logger.info).toHaveBeenCalledWith(
         "Found running scheduled imports",
         expect.objectContaining({
           count: 0,
@@ -323,7 +317,11 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
         })
       ).rejects.toThrow("Database connection failed");
 
-      expect(logError).toHaveBeenCalledWith(error, "Cleanup stuck scheduled imports job failed", expect.any(Object));
+      expect(mockLogger.logError).toHaveBeenCalledWith(
+        error,
+        "Cleanup stuck scheduled imports job failed",
+        expect.any(Object)
+      );
     });
   });
 

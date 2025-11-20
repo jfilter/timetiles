@@ -24,7 +24,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
 import { TEST_EMAILS } from "@/tests/constants/test-credentials";
-import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withScheduledImport,
+} from "@/tests/setup/integration/environment";
 
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
@@ -47,6 +51,7 @@ type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
 type UrlFetchErrorOutput = UrlFetchFailureOutput;
 
 describe.sequential("Network Error Handling Tests", () => {
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;
   let testUserId: string;
@@ -85,7 +90,8 @@ describe.sequential("Network Error Handling Tests", () => {
   };
 
   beforeAll(async () => {
-    const env = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
+    const env = testEnv;
     payload = env.payload;
     cleanup = env.cleanup;
 
@@ -101,12 +107,9 @@ describe.sequential("Network Error Handling Tests", () => {
     testUserId = user.id;
 
     // Create test catalog
-    const catalog = await payload.create({
-      collection: "catalogs",
-      data: {
-        name: "Network Test Catalog",
-        description: "Catalog for network error tests",
-      },
+    const { catalog } = await withCatalog(env, {
+      name: "Network Test Catalog",
+      description: "Catalog for network error tests",
     });
     testCatalogId = catalog.id;
   }, 60000);
@@ -165,17 +168,15 @@ describe.sequential("Network Error Handling Tests", () => {
         }
       });
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
+      const { scheduledImport } = await withScheduledImport(
+        testEnv,
+        testCatalogId,
+        `${testServerUrl}/file with spaces.csv`,
+        {
           name: "URL with Spaces Import",
-          sourceUrl: `${testServerUrl}/file with spaces.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
           frequency: "daily",
-        },
-      });
+        }
+      );
 
       // Execute the job
       const result = await urlFetchJob.handler({
@@ -201,17 +202,15 @@ describe.sequential("Network Error Handling Tests", () => {
 
   describe("DNS Resolution Failures", () => {
     it("should handle non-existent domain names", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
+      const { scheduledImport } = await withScheduledImport(
+        testEnv,
+        testCatalogId,
+        "https://this-domain-definitely-does-not-exist-12345.com/file.csv",
+        {
           name: "DNS Failure Import",
-          sourceUrl: "https://this-domain-definitely-does-not-exist-12345.com/file.csv",
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
           frequency: "daily",
-        },
-      });
+        }
+      );
 
       // Execute the job - real DNS will fail for non-existent domain
       const result = await urlFetchJob.handler({
@@ -238,16 +237,9 @@ describe.sequential("Network Error Handling Tests", () => {
   describe("Connection Failures", () => {
     it("should handle connection refused errors", async () => {
       // Use a port that's guaranteed to be refused (1 is privileged and likely unused)
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Connection Refused Import",
-          sourceUrl: "http://127.0.0.1:1/file.csv", // Port 1 should be refused
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, "http://127.0.0.1:1/file.csv", {
+        name: "Connection Refused Import",
+        frequency: "daily",
       });
 
       // Execute the job - real connection will be refused
@@ -278,15 +270,12 @@ describe.sequential("Network Error Handling Tests", () => {
         // The connection is established but no data is sent
       });
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Timeout Import",
-          sourceUrl: `${testServerUrl}/slow-file.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/slow-file.csv`, {
+        name: "Timeout Import",
+        frequency: "daily",
+        maxRetries: 0, // No retries for timeout test to avoid exceeding test timeout
+        retryDelayMinutes: 1, // Minimum allowed
+        additionalData: {
           advancedOptions: {
             timeoutMinutes: 1, // Minimum allowed (in test env this becomes 3 seconds)
           },
@@ -329,16 +318,9 @@ describe.sequential("Network Error Handling Tests", () => {
         res.end("Not Found");
       });
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "404 Import",
-          sourceUrl: `${testServerUrl}/missing.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/missing.csv`, {
+        name: "404 Import",
+        frequency: "daily",
       });
 
       // Execute the job
@@ -369,16 +351,9 @@ describe.sequential("Network Error Handling Tests", () => {
         res.end("Internal Server Error");
       });
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "500 Import",
-          sourceUrl: `${testServerUrl}/error.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/error.csv`, {
+        name: "500 Import",
+        frequency: "daily",
       });
 
       // Execute the job
@@ -415,19 +390,12 @@ describe.sequential("Network Error Handling Tests", () => {
         }
       });
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Auth Failure Import",
-          sourceUrl: `${testServerUrl}/protected.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
-          authConfig: {
-            type: "bearer",
-            bearerToken: "invalid-token",
-          },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/protected.csv`, {
+        name: "Auth Failure Import",
+        frequency: "daily",
+        authConfig: {
+          type: "bearer",
+          bearerToken: "invalid-token",
         },
       });
 
@@ -466,16 +434,9 @@ describe.sequential("Network Error Handling Tests", () => {
         setTimeout(() => res.destroy(), 10);
       });
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Partial Download Import",
-          sourceUrl: `${testServerUrl}/partial.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/partial.csv`, {
+        name: "Partial Download Import",
+        frequency: "daily",
       });
 
       // Execute the job
@@ -506,15 +467,10 @@ describe.sequential("Network Error Handling Tests", () => {
         res.end("<html><body>Not a CSV</body></html>");
       });
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Wrong Content Type Import",
-          sourceUrl: `${testServerUrl}/wrong-type.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/wrong-type.csv`, {
+        name: "Wrong Content Type Import",
+        frequency: "daily",
+        additionalData: {
           advancedConfig: {
             expectedContentType: "csv",
           },
@@ -552,15 +508,10 @@ describe.sequential("Network Error Handling Tests", () => {
         res.end(binaryData);
       });
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Binary Data Import",
-          sourceUrl: `${testServerUrl}/binary.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/binary.csv`, {
+        name: "Binary Data Import",
+        frequency: "daily",
+        additionalData: {
           advancedConfig: {
             expectedContentType: "csv",
           },
@@ -604,15 +555,10 @@ describe.sequential("Network Error Handling Tests", () => {
         res.end(largeData);
       });
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Large File Import",
-          sourceUrl: `${testServerUrl}/large.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/large.csv`, {
+        name: "Large File Import",
+        frequency: "daily",
+        additionalData: {
           advancedOptions: {
             maxFileSizeMB: 1, // 1MB limit
           },
@@ -659,16 +605,9 @@ describe.sequential("Network Error Handling Tests", () => {
         }
       });
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Redirect Import",
-          sourceUrl: `${testServerUrl}/redirect1.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/redirect1.csv`, {
+        name: "Redirect Import",
+        frequency: "daily",
       });
 
       // Execute the job - fetch follows redirects automatically
@@ -698,16 +637,9 @@ describe.sequential("Network Error Handling Tests", () => {
         res.end();
       });
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Infinite Redirect Import",
-          sourceUrl: `${testServerUrl}/loop.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/loop.csv`, {
+        name: "Infinite Redirect Import",
+        frequency: "daily",
       });
 
       // Execute the job - should fail due to too many redirects
@@ -742,16 +674,9 @@ describe.sequential("Network Error Handling Tests", () => {
         res.end("name,date,location\nEvent 1,2024-01-01,San Francisco\n");
       });
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Real Queue Test Import",
-          sourceUrl: `${testServerUrl}/data.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/data.csv`, {
+        name: "Real Queue Test Import",
+        frequency: "daily",
       });
 
       // Execute the job with real job queue

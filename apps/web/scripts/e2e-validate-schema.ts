@@ -46,7 +46,7 @@ const getDbUser = () => getDbConfig().username;
 const getDbPassword = () => getDbConfig().password;
 const getDbHost = () => getDbConfig().host;
 const getDbName = () => getDbConfig().database;
-const getTestDatabaseUrl = () => getDbConfig().fullUrl;
+const _getTestDatabaseUrl = () => getDbConfig().fullUrl;
 
 export interface SchemaValidationResult {
   isValid: boolean;

@@ -66,7 +66,7 @@ describe("Data Parsing Utilities", () => {
       const obj: Record<string, unknown> = {};
       setObjectProperty(obj, "__proto__", { polluted: true });
       expect((obj as any).__proto__.polluted).toBeUndefined();
-      expect(Object.prototype.hasOwnProperty("polluted")).toBe(false);
+      expect(Object.hasOwn(Object.prototype, "polluted")).toBe(false);
     });
 
     it("should reject constructor property", () => {
@@ -78,9 +78,11 @@ describe("Data Parsing Utilities", () => {
 
     it("should reject toString property", () => {
       const obj: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- Testing prototype property protection
       const originalToString = obj.toString;
       setObjectProperty(obj, "toString", "malicious");
       // toString should not be modifiable through this function
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- Testing prototype property protection
       expect(obj.toString).toBe(originalToString);
     });
 
@@ -224,6 +226,7 @@ Event 1,Desc 1,2024-03-15`;
     // with files created by the xlsx library.
 
     it("should handle empty worksheet", () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- xlsx requires CommonJS for file writing in tests
       const xlsx = require("xlsx");
       const workbook = xlsx.utils.book_new();
       const worksheet = xlsx.utils.aoa_to_sheet([]);
@@ -236,6 +239,7 @@ Event 1,Desc 1,2024-03-15`;
     });
 
     it("should parse valid Excel file", () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- xlsx requires CommonJS for file writing in tests
       const xlsx = require("xlsx");
       const workbook = xlsx.utils.book_new();
       const data = [
@@ -258,6 +262,7 @@ Event 1,Desc 1,2024-03-15`;
     });
 
     it("should handle missing headers", () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- xlsx requires CommonJS for file writing in tests
       const xlsx = require("xlsx");
       const workbook = xlsx.utils.book_new();
       const data = [
@@ -294,6 +299,7 @@ Event 1,2024-03-15`;
     });
 
     it("should route to Excel parser", () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- xlsx requires CommonJS for file writing in tests
       const xlsx = require("xlsx");
       const workbook = xlsx.utils.book_new();
       const data = [

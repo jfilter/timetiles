@@ -8,7 +8,11 @@
  * @category Utils
  */
 
+import { createLogger } from "@/lib/logger";
+
 import { createDatabaseClient } from "./client";
+
+const logger = createLogger("db-discovery");
 
 /**
  * Database metadata information
@@ -138,7 +142,7 @@ export const getDatabaseInfo = async (databaseName: string): Promise<DatabaseInf
       }
     } catch (error) {
       // Database might not be accessible, return what we have
-      console.warn(`Could not access database ${databaseName}:`, error);
+      logger.warn(`Could not access database ${databaseName}:`, error);
     } finally {
       await dbClient.end();
     }

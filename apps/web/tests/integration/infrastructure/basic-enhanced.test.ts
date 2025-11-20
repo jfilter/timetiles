@@ -7,13 +7,13 @@
  * @category Integration Tests
  */
 
+import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 import {
   areValidCoordinates,
   calculateDistance,
   generateNearbyCoordinate,
   TEST_COORDINATES,
-} from "../../setup/geospatial-test-helpers";
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+} from "../../setup/integration/geospatial-data";
 
 describe("Basic Enhanced Testing Infrastructure", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

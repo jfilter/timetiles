@@ -94,6 +94,7 @@ export const deriveE2eDatabaseUrl = (baseUrl: string): string => {
   const baseName = components.database;
 
   // Remove any existing _test suffix to avoid duplication
+  // eslint-disable-next-line security/detect-unsafe-regex -- Simple bounded regex for database name cleanup
   const cleanBaseName = baseName.replace(/_test(_\d+)?$/, "");
 
   // Add _test_e2e suffix for E2E tests

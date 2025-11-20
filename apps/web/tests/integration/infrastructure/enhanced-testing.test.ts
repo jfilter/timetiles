@@ -11,7 +11,8 @@
  * @category Integration Tests
  */
 
-import { createRichText } from "../../mocks/utils/factories";
+import { createRichText } from "../../setup/factories";
+import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 import {
   areValidCoordinates,
   calculateCentroid,
@@ -21,8 +22,7 @@ import {
   isWithinBounds,
   TEST_COORDINATES,
   validateDistribution,
-} from "../../setup/geospatial-test-helpers";
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+} from "../../setup/integration/geospatial-data";
 
 describe("Enhanced Testing Infrastructure", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

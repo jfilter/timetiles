@@ -61,7 +61,7 @@ const handleJobCompletion = async (payload: Payload, doc: ImportJob, req?: Paylo
       req, // Pass req to stay in same transaction
       data: { status: hasFailures ? "failed" : "completed" },
       context: {
-        ...(req?.context || {}),
+        ...(req?.context ?? {}),
         skipImportFileHooks: true, // Prevent infinite loops
       },
     });

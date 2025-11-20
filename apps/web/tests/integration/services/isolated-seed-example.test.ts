@@ -3,8 +3,8 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
-import { createTestId } from "../../setup/test-helpers";
+import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
+import { createTestId } from "../../setup/paths";
 
 describe("Isolated Seed System Test Example", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

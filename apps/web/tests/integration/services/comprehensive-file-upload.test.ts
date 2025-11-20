@@ -20,22 +20,24 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
 
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
-import { createImportFileWithUpload } from "../../setup/test-helpers";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withDataset,
+  withImportFile,
+} from "../../setup/integration/environment";
 
 describe.sequential("Comprehensive File Upload Tests", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
-  let testDir: string;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
-    testDir = testEnv.tempDir ?? "/tmp";
 
     // Create temp directory for test files
-    const filesDir = path.join(testDir, "test-files");
+    const filesDir = path.join(testEnv.uploadDir, "test-files");
     if (!fs.existsSync(filesDir)) {
       fs.mkdirSync(filesDir, { recursive: true });
     }
@@ -52,15 +54,9 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     await testEnv.seedManager.truncate();
 
     // Create test catalog
-    const timestamp = Date.now();
-    const randomSuffix = Math.random().toString(36).substring(2, 8);
-    const catalog = await payload.create({
-      collection: "catalogs",
-      data: {
-        name: `Comprehensive Test Catalog ${timestamp}`,
-        slug: `comprehensive-test-catalog-${timestamp}-${randomSuffix}`,
-        description: "Catalog for comprehensive file upload testing",
-      },
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Comprehensive Test Catalog",
+      description: "Catalog for comprehensive file upload testing",
     });
     testCatalogId = catalog.id;
   });
@@ -72,17 +68,10 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     autoGrow?: boolean;
     autoApproveNonBreaking?: boolean;
   }) => {
-    const timestamp = Date.now();
-    return await payload.create({
-      collection: "datasets",
-      data: {
-        name: `Test Dataset ${timestamp}`,
-        slug: `test-dataset-${timestamp}`,
-        catalog: testCatalogId,
-        language: "eng", // Required field
-        schemaConfig,
-      },
+    const { dataset } = await withDataset(testEnv, testCatalogId, {
+      schemaConfig,
     });
+    return dataset;
   };
 
   const runJobsUntilComplete = async (importFileId: string, maxIterations = 50) => {
@@ -174,18 +163,12 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       logger.debug(`✓ Using fixture file: ${fixturePath} (${fileBuffer.length} bytes)`);
 
       // Use the helper function that properly handles file uploads
-      const importFile = await createImportFileWithUpload(
-        payload,
-        {
-          catalog: parseInt(testCatalogId, 10),
-          status: "pending",
-          datasetsCount: 0,
-          datasetsProcessed: 0,
-        },
-        fileBuffer,
-        fileName,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      );
+      const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+        filename: fileName,
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        datasetsCount: 0,
+        datasetsProcessed: 0,
+      });
 
       logger.debug(`✓ Created Excel import file: ${importFile.id}`);
 
@@ -267,16 +250,10 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           // Try to create import file record with invalid MIME type
           // This should fail during creation due to MIME type validation
           await expect(
-            createImportFileWithUpload(
-              payload,
-              {
-                catalog: testCatalogId,
-                status: "pending",
-              },
-              fileTest.content,
-              fileTest.name,
-              fileTest.mimeType
-            )
+            withImportFile(testEnv, testCatalogId, fileTest.content, {
+              filename: fileTest.name,
+              mimeType: fileTest.mimeType,
+            })
           ).rejects.toThrow();
 
           logger.debug(`  ✓ ${fileTest.name} correctly rejected during upload (MIME type validation)`);
@@ -300,16 +277,10 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       const fileName = `corrupted-${Date.now()}.xlsx`;
 
       try {
-        const importFile = await createImportFileWithUpload(
-          payload,
-          {
-            catalog: testCatalogId,
-            status: "pending",
-          },
-          corruptedContent,
-          fileName,
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        );
+        const { importFile } = await withImportFile(testEnv, testCatalogId, corruptedContent, {
+          filename: fileName,
+          mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
 
         // Wait for processing
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -347,16 +318,9 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 
       try {
         // Create import file linked to locked dataset
-        const importFile = await createImportFileWithUpload(
-          payload,
-          {
-            catalog: testCatalogId,
-            status: "pending",
-          },
-          csvContent,
-          "approval-test.csv",
-          "text/csv"
-        );
+        const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+          filename: "approval-test.csv",
+        });
 
         // Wait for dataset-detection job to create import-job, then link it to our specific dataset
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -429,16 +393,9 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 "Approved Event","2024-01-01","Test Location"`;
 
       try {
-        const importFile = await createImportFileWithUpload(
-          payload,
-          {
-            catalog: testCatalogId,
-            status: "pending",
-          },
-          csvContent,
-          "approval-continue.csv",
-          "text/csv"
-        );
+        const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+          filename: "approval-continue.csv",
+        });
 
         // Wait for dataset-detection job to create import-job, then link it to our specific dataset
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -598,16 +555,9 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       fs.writeFileSync(importPath, csvContent, "utf8");
 
       try {
-        const importFile = await createImportFileWithUpload(
-          payload,
-          {
-            catalog: testCatalogId,
-            status: "pending",
-          },
-          csvContent,
-          "auto-approve.csv",
-          "text/csv"
-        );
+        const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+          filename: "auto-approve.csv",
+        });
 
         // Wait for dataset-detection job to create import-job, then link it to our specific dataset
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -670,16 +620,9 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 "Rejected Event","2024-01-01","Reject Location","Bad Data"`;
 
       try {
-        const importFile = await createImportFileWithUpload(
-          payload,
-          {
-            catalog: testCatalogId,
-            status: "pending",
-          },
-          csvContent,
-          "rejection-test.csv",
-          "text/csv"
-        );
+        const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+          filename: "rejection-test.csv",
+        });
 
         // Wait for dataset-detection job to create import-job, then link it to our specific dataset
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -763,16 +706,9 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       const csvContent = [headers, ...rows].join("\n");
 
       try {
-        const importFile = await createImportFileWithUpload(
-          payload,
-          {
-            catalog: testCatalogId,
-            status: "pending",
-          },
-          csvContent,
-          "large-dataset.csv",
-          "text/csv"
-        );
+        const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+          filename: "large-dataset.csv",
+        });
 
         logger.debug(`✓ Created large file import (${csvContent.length} bytes)`);
 

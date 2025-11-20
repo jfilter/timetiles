@@ -119,8 +119,8 @@ export default [
       // Allow console statements in test files
       "no-console": "off", // Tests often need console for debugging and setup logs
       // Relax file size limits for test files
-      "sonarjs/max-lines": ["error", { maximum: 2000 }], // Increased for integration tests
-      "sonarjs/max-lines-per-function": ["error", { maximum: 1500 }], // Allow longer test functions for complex scenarios
+      "sonarjs/max-lines": ["error", { maximum: 1000 }], // Increased for comprehensive integration tests
+      "sonarjs/max-lines-per-function": ["error", { maximum: 1000 }], // Allow longer test suites with multiple test cases
       "sonarjs/cognitive-complexity": ["error", 30], // More complex test setups allowed
       // Allow longer functions in tests (setup, teardown, comprehensive test scenarios)
       complexity: ["error", 25], // Increase from 20 to 25 for tests

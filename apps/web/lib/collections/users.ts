@@ -33,7 +33,8 @@ const Users: CollectionConfig = {
   },
   access: {
     // Users can read their own profile, admins can read all
-    read: ({ req: { user } }) => {
+    // eslint-disable-next-line sonarjs/function-return-type
+    read: ({ req: { user } }): boolean | { id: { equals: string | number } } => {
       if (!user) return false;
       if (user.role === "admin") return true;
       return { id: { equals: user.id } };
@@ -47,7 +48,8 @@ const Users: CollectionConfig = {
     },
 
     // Users can update their own profile (except role), admins can update anyone
-    update: ({ req: { user }, data }) => {
+    // eslint-disable-next-line sonarjs/function-return-type
+    update: ({ req: { user }, data }): boolean | { id: { equals: string | number } } => {
       if (!user) return false;
       if (user.role === "admin") return true;
 
@@ -304,7 +306,7 @@ const Users: CollectionConfig = {
           if (defaultQuotas && !data.customQuotas) {
             // Merge with defaults, filtering out undefined values from Payload's group initialization
             const providedQuotas = data.quotas || {};
-            const filteredProvidedQuotas: Record<string, any> = {};
+            const filteredProvidedQuotas: Record<string, number> = {};
 
             for (const key in providedQuotas) {
               if (providedQuotas[key] !== undefined) {
@@ -327,7 +329,7 @@ const Users: CollectionConfig = {
           // Merge with defaults, filtering out undefined values from Payload's group initialization
           // Payload initializes group fields with all fields set to undefined
           const providedQuotas = data.quotas || {};
-          const filteredProvidedQuotas: Record<string, any> = {};
+          const filteredProvidedQuotas: Record<string, number> = {};
 
           for (const key in providedQuotas) {
             if (providedQuotas[key] !== undefined) {

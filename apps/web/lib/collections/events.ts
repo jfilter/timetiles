@@ -104,41 +104,27 @@ const Events: CollectionConfig = {
     create: async ({ req: { user, payload }, data }) => {
       if (!user) return false;
       if (user.role === "admin") return true;
+      if (!data?.dataset) return false;
 
-      // Validate user has access to the dataset
-      if (data?.dataset) {
-        const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
-        try {
-          const dataset = await payload.findByID({
-            collection: "datasets",
-            id: datasetId,
-            overrideAccess: true,
-          });
+      const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
 
-          if (dataset) {
-            const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
-            const catalog = await payload.findByID({
-              collection: "catalogs",
-              id: catalogId,
-              overrideAccess: true,
-            });
+      try {
+        const dataset = await payload.findByID({ collection: "datasets", id: datasetId, overrideAccess: true });
+        if (!dataset) return false;
 
-            // Can create events if:
-            // 1. Dataset and catalog are both public, OR
-            // 2. User owns the catalog
-            if (dataset.isPublic && catalog?.isPublic) return true;
+        const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
+        const catalog = await payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: true });
 
-            if (catalog?.createdBy) {
-              const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
-              return user.id === createdById;
-            }
-          }
-        } catch {
-          return false;
-        }
+        // Can create events if dataset and catalog are both public
+        if (dataset.isPublic && catalog?.isPublic) return true;
+
+        // Or if user owns the catalog
+        if (!catalog?.createdBy) return false;
+        const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+        return user.id === createdById;
+      } catch {
+        return false;
       }
-
-      return false;
     },
 
     // Only catalog owner or admins can update
@@ -509,7 +495,7 @@ const Events: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      async ({ data, operation, req }) => {
+      ({ data, operation, req }) => {
         // Skip quota checks for system operations and admin users
         if (!req.user || req.user.role === "admin") {
           return data;
@@ -520,7 +506,7 @@ const Events: CollectionConfig = {
           const quotaService = getQuotaService(req.payload);
 
           // Check total events quota
-          const totalEventsCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.TOTAL_EVENTS, 1);
+          const totalEventsCheck = quotaService.checkQuota(req.user, QUOTA_TYPES.TOTAL_EVENTS, 1);
 
           if (!totalEventsCheck.allowed) {
             throw new Error(

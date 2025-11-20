@@ -10,7 +10,7 @@
 import { NextRequest } from "next/server";
 
 import { GET } from "../../../app/api/events/map-clusters/route";
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
 describe("Map-clusters API test", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

@@ -26,6 +26,7 @@ export const tryParseDecimal = (str: string): number | null => {
 
   // Quick validation: must match numeric pattern
   // Allows: 123, -123, 123.456, -123.456, .5, -.5, 1.5e2, 1.5e-2
+  // eslint-disable-next-line security/detect-unsafe-regex -- Well-bounded regex for decimal parsing
   const numericRegex = /^-?(?:\d+(?:\.\d+)?|\.\d+)([eE][+-]?\d+)?$/;
   if (!numericRegex.test(trimmed)) {
     return null;
@@ -69,14 +70,8 @@ export const parseDMSFormat = (str: string): number | null => {
   // Calculate fractional part
   const fractional = minutes / 60 + seconds / 3600;
 
-  // For negative degrees, add the fractional part (making it less negative)
-  // For positive degrees, add the fractional part (making it more positive)
-  let result;
-  if (degrees < 0) {
-    result = degrees + fractional;
-  } else {
-    result = degrees + fractional;
-  }
+  // Add fractional part to degrees (works for both positive and negative)
+  let result = degrees + fractional;
 
   // Apply direction if specified
   if (direction != null && direction !== "" && (direction.toUpperCase() === "S" || direction.toUpperCase() === "W")) {

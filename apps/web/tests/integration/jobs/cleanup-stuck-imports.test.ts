@@ -10,18 +10,23 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { cleanupStuckScheduledImportsJob } from "@/lib/jobs/handlers/cleanup-stuck-scheduled-imports-job";
 import type { Catalog, ScheduledImport, User } from "@/payload-types";
 
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withScheduledImport,
+} from "../../setup/integration/environment";
 
 describe.sequential("Cleanup Stuck Imports Job Integration", () => {
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
   let cleanup: () => Promise<void>;
   let testUser: User;
   let testCatalog: Catalog;
 
   beforeAll(async () => {
-    const env = await createIntegrationTestEnvironment();
-    payload = env.payload;
-    cleanup = env.cleanup;
+    testEnv = await createIntegrationTestEnvironment();
+    payload = testEnv.payload;
+    cleanup = testEnv.cleanup;
 
     const timestamp = Date.now();
     testUser = await payload.create({
@@ -34,15 +39,10 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       },
     });
 
-    testCatalog = await payload.create({
-      collection: "catalogs",
-      data: {
-        name: `Cleanup Test Catalog ${timestamp}`,
-        slug: `cleanup-test-catalog-${timestamp}`,
-        _status: "published",
-        createdBy: testUser.id,
-      },
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Cleanup Test Catalog",
     });
+    testCatalog = catalog;
   });
 
   afterAll(async () => {
@@ -87,20 +87,20 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
 
       // Create stuck import
-      const stuckImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          sourceUrl: "https://example.com/test-data.csv",
-          enabled: true,
-          scheduleType: "frequency",
-          frequency: "daily",
+      const { scheduledImport: stuckImport } = await withScheduledImport(
+        testEnv,
+        testCatalog.id,
+        "https://example.com/test-data.csv",
+        {
           name: "Stuck Import Test",
-          catalog: testCatalog.id,
+          frequency: "daily",
           createdBy: testUser.id,
-          lastStatus: "running",
-          lastRun: threeHoursAgo.toISOString(),
-        },
-      });
+          additionalData: {
+            lastStatus: "running",
+            lastRun: threeHoursAgo.toISOString(),
+          },
+        }
+      );
 
       // Run cleanup job
       const result = await cleanupStuckScheduledImportsJob.handler({

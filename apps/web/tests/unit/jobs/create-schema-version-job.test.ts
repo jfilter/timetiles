@@ -7,6 +7,9 @@
  * @module
  * @category Tests
  */
+// Import centralized logger mock
+import "@/tests/mocks/services/logger";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createSchemaVersionJob } from "@/lib/jobs/handlers/create-schema-version-job";
@@ -21,15 +24,6 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/logger", () => ({
-  createJobLogger: vi.fn(() => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  })),
-  logError: vi.fn(),
-}));
-
 vi.mock("@/lib/services/schema-versioning", () => ({
   SchemaVersioningService: {
     createSchemaVersion: mocks.createSchemaVersion,

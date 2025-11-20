@@ -23,8 +23,6 @@ import type { Config } from "@/payload-types";
 
 import { createLogger, logError, logPerformance } from "../logger";
 
-// Removed PayloadUpdateInput type as it was only used by commented out updateMany function
-
 const logger = createLogger("db-operations");
 
 export interface BatchOperationResult {
@@ -86,12 +84,6 @@ export class DatabaseOperations {
       };
     }
   }
-
-  // createMany function removed - was not used anywhere in codebase
-
-  // updateMany function removed - was not used anywhere in codebase
-
-  // getCollectionStats function removed - was not used anywhere in codebase
 
   /**
    * SQL TRUNCATE with CASCADE - most efficient method.
@@ -357,8 +349,6 @@ export class DatabaseOperations {
 
     return { successful, errors };
   }
-
-  // getTableStats function removed - was only used by removed getCollectionStats function
 }
 
 /**

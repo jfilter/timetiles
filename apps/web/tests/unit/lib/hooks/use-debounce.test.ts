@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Unit tests for debounce hooks.
  *
@@ -6,7 +7,6 @@
  *
  * @module
  * @category Tests
- * @vitest-environment jsdom
  */
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -379,7 +379,7 @@ describe("useDebounceWithComparison", () => {
   });
 
   it("should work without comparison function (default behavior)", () => {
-    const { result, rerender } = renderHook(({ value, delay }) => useDebounceWithComparison(value, delay, undefined), {
+    const { result, rerender } = renderHook(({ value, delay }) => useDebounceWithComparison(value, delay), {
       initialProps: { value: 10, delay: 300 },
     });
 

@@ -126,7 +126,7 @@ export const createPayloadSchema = async (databaseName: string): Promise<void> =
  * await runMigrations('postgresql://user:pass@localhost:5432/timetiles_test_e2e');
  * ```
  */
-export const runMigrations = async (connectionString: string): Promise<void> => {
+export const runMigrations = (connectionString: string): void => {
   try {
     logger.info("Running Payload migrations...");
 
@@ -183,6 +183,60 @@ export const runMigrations = async (connectionString: string): Promise<void> => 
  * });
  * ```
  */
+// Helper to resolve database name and connection string
+const resolveDatabaseConnection = (
+  databaseName: string,
+  connectionString?: string
+): { dbName: string; connString: string } => {
+  if (connectionString) {
+    const parsed = parseDatabaseUrl(connectionString);
+    return { dbName: parsed.database, connString: connectionString };
+  }
+
+  const baseUrl = process.env.DATABASE_URL;
+  if (!baseUrl) {
+    throw new Error("DATABASE_URL environment variable is required");
+  }
+
+  const baseComponents = parseDatabaseUrl(baseUrl);
+  const connString = constructDatabaseUrl({
+    ...baseComponents,
+    database: databaseName,
+  });
+
+  return { dbName: databaseName, connString };
+};
+
+// Helper to log if verbose mode is enabled
+const logVerbose = (verbose: boolean, message: string): void => {
+  if (verbose) {
+    logger.info(message);
+  }
+};
+
+// Helper to handle existing database check
+const shouldSkipSetup = async (
+  dbName: string,
+  skipIfExists: boolean,
+  dropIfExists: boolean,
+  verbose: boolean
+): Promise<boolean> => {
+  const exists = await databaseExists(dbName);
+
+  if (exists && skipIfExists && !dropIfExists) {
+    logVerbose(verbose, `Database ${dbName} already exists, skipping setup`);
+    return true;
+  }
+
+  // Drop database if it exists and dropIfExists is true
+  if (dropIfExists && exists) {
+    logVerbose(verbose, `Dropping existing database: ${dbName}`);
+    await dropDatabase(dbName, { ifExists: true });
+  }
+
+  return false;
+};
+
 export const setupDatabase = async (options: DatabaseSetupOptions): Promise<void> => {
   const {
     databaseName,
@@ -195,81 +249,36 @@ export const setupDatabase = async (options: DatabaseSetupOptions): Promise<void
     verbose = false,
   } = options;
 
-  if (verbose) {
-    logger.info(`Setting up database: ${databaseName}`);
-  }
+  logVerbose(verbose, `Setting up database: ${databaseName}`);
 
-  // Determine database name and connection string
-  let dbName = databaseName;
-  let connString = connectionString;
+  // Resolve database name and connection string
+  const { dbName, connString } = resolveDatabaseConnection(databaseName, connectionString);
 
-  if (connectionString) {
-    const parsed = parseDatabaseUrl(connectionString);
-    dbName = parsed.database;
-  } else {
-    // Construct connection string from database name
-    // Use environment variables for connection parameters
-    const baseUrl = process.env.DATABASE_URL;
-    if (!baseUrl) {
-      throw new Error("DATABASE_URL environment variable is required");
-    }
+  // Check if we should skip setup
+  const skip = await shouldSkipSetup(dbName, skipIfExists, dropIfExists, verbose);
+  if (skip) return;
 
-    const baseComponents = parseDatabaseUrl(baseUrl);
-    connString = constructDatabaseUrl({
-      ...baseComponents,
-      database: dbName,
-    });
-  }
-
-  // Step 1: Check if database exists
-  const exists = await databaseExists(dbName);
-
-  if (exists && skipIfExists && !dropIfExists) {
-    if (verbose) {
-      logger.info(`Database ${dbName} already exists, skipping setup`);
-    }
-    return;
-  }
-
-  // Step 2: Drop database if requested
-  if (dropIfExists && exists) {
-    if (verbose) {
-      logger.info(`Dropping existing database: ${dbName}`);
-    }
-    await dropDatabase(dbName, { ifExists: true });
-  }
-
-  // Step 3: Create database
-  if (verbose) {
-    logger.info(`Creating database: ${dbName}`);
-  }
+  // Create database
+  logVerbose(verbose, `Creating database: ${dbName}`);
   await createDatabase(dbName, { ifNotExists: true });
 
-  // Step 4: Enable PostGIS if requested
+  // Enable PostGIS if requested
   if (enablePostGISOption) {
-    if (verbose) {
-      logger.info("Enabling PostGIS extension...");
-    }
+    logVerbose(verbose, "Enabling PostGIS extension...");
     await enablePostGIS(dbName);
   }
 
-  // Step 5: Create payload schema if requested
+  // Create payload schema if requested
   if (createPayloadSchemaOption) {
-    if (verbose) {
-      logger.info("Creating payload schema...");
-    }
+    logVerbose(verbose, "Creating payload schema...");
     await createPayloadSchema(dbName);
   }
 
-  // Step 6: Run migrations if requested
+  // Run migrations if requested
   if (runMigrationsOption) {
-    if (verbose) {
-      logger.info("Running migrations...");
-    }
-    await runMigrations(connString!);
+    logVerbose(verbose, "Running migrations...");
+    runMigrations(connString);
   }
 
-  if (verbose) {
-    logger.info(`✓ Database ${dbName} setup completed`);
-  }
+  logVerbose(verbose, `✓ Database ${dbName} setup completed`);
 };

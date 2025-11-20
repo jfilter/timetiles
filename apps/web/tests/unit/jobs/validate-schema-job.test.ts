@@ -7,6 +7,10 @@
  * @module
  * @category Tests
  */
+// Import centralized mocks FIRST (before anything that uses them)
+import "@/tests/mocks/services/logger";
+import "@/tests/mocks/services/path";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { validateSchemaJob } from "@/lib/jobs/handlers/validate-schema-job";
@@ -24,21 +28,6 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/logger", () => ({
-  createLogger: vi.fn(() => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  })),
-  createJobLogger: vi.fn(() => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  })),
-  logError: vi.fn(),
-  logPerformance: vi.fn(),
-}));
-
 vi.mock("@/lib/utils/file-readers", () => ({
   readBatchFromFile: mocks.readBatchFromFile,
 }));
@@ -56,13 +45,6 @@ vi.mock("@/lib/services/schema-versioning", () => ({
 
 vi.mock("@/lib/types/schema-detection", () => ({
   getSchemaBuilderState: mocks.getSchemaBuilderState,
-}));
-
-vi.mock("path", () => ({
-  default: {
-    resolve: vi.fn(() => "/mock/import-files"),
-    join: vi.fn((dir, filename) => `${dir}/${filename}`),
-  },
 }));
 
 describe.sequential("ValidateSchemaJob Handler", () => {

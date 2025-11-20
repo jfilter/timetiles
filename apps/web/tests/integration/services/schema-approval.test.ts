@@ -3,10 +3,14 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
-
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
-import { createImportFileWithUpload } from "../../setup/test-helpers";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withDataset,
+  withImportFile,
+  withSchemaVersion,
+  withUsers,
+} from "../../setup/integration/environment";
 
 describe.sequential("Schema Approval Workflow", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -35,87 +39,47 @@ describe.sequential("Schema Approval Workflow", () => {
     await testEnv.seedManager.truncate();
 
     // Create test users
-    adminUser = await payload.create({
-      collection: "users",
-      data: {
-        email: "admin@test.com",
-        password: TEST_CREDENTIALS.basic.strongPassword,
-        role: "admin",
-      },
-    });
-
-    editorUser = await payload.create({
-      collection: "users",
-      data: {
-        email: "editor@test.com",
-        password: TEST_CREDENTIALS.basic.strongPassword,
-        role: "editor",
-      },
-    });
-
-    viewerUser = await payload.create({
-      collection: "users",
-      data: {
-        email: "viewer@test.com",
-        password: TEST_CREDENTIALS.basic.strongPassword,
-        role: "user",
-      },
-    });
+    const { users } = await withUsers(testEnv, ["admin", "editor", "user"]);
+    adminUser = users.admin;
+    editorUser = users.editor;
+    viewerUser = users.user;
 
     // Create test catalog with editor
-    const catalog = await payload.create({
-      collection: "catalogs",
-      data: {
-        name: "Schema Approval Test Catalog",
-        slug: `schema-approval-catalog-${Date.now()}`,
-        description: "Catalog for schema approval tests",
-        editors: [editorUser.id],
-      },
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Schema Approval Test Catalog",
+      description: "Catalog for schema approval tests",
+      editors: [editorUser.id],
     });
     testCatalogId = catalog.id;
 
     // Create test dataset with schema locking enabled
-    const dataset = await payload.create({
-      collection: "datasets",
-      data: {
-        name: "Schema Approval Test Dataset",
-        slug: `schema-approval-dataset-${Date.now()}`,
-        description: "Dataset for schema approval tests",
-        catalog: testCatalogId,
-        language: "eng",
-        schemaConfig: {
-          locked: true, // Require approval for all changes
-          autoGrow: false,
-          strictValidation: true,
-          allowTransformations: true,
-          maxSchemaDepth: 3,
+    const { dataset } = await withDataset(testEnv, testCatalogId, {
+      name: "Schema Approval Test Dataset",
+      description: "Dataset for schema approval tests",
+      schemaConfig: {
+        locked: true, // Require approval for all changes
+        autoGrow: false,
+        strictValidation: true,
+        allowTransformations: true,
+        maxSchemaDepth: 3,
+      },
+      currentSchema: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          date: { type: "string", format: "date" },
         },
-        currentSchema: {
-          type: "object",
-          properties: {
-            id: { type: "string" },
-            title: { type: "string" },
-            date: { type: "string", format: "date" },
-          },
-          required: ["id", "title", "date"],
-        },
-        schemaVersion: 1,
+        required: ["id", "title", "date"],
       },
     });
     testDatasetId = dataset.id;
 
     // Create test import file
     const csvContent = "title,date,location\nTest Event,2024-01-01,Test Location";
-    const importFile = await createImportFileWithUpload(
-      payload,
-      {
-        catalog: testCatalogId,
-        status: "completed",
-      },
-      csvContent,
-      "test-import.csv",
-      "text/csv"
-    );
+    const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+      status: "completed",
+    });
     testImportFileId = importFile.id;
 
     // Create test import job
@@ -134,45 +98,18 @@ describe.sequential("Schema Approval Workflow", () => {
   describe("Schema Creation and Approval", () => {
     it("creates draft schema when changes detected", async () => {
       // Create a draft schema with changes
-      const draftSchema = await payload.create({
-        collection: "dataset-schemas",
-        data: {
-          dataset: testDatasetId,
-          versionNumber: 2,
-          _status: "draft",
-          schema: {
-            type: "object",
-            properties: {
-              id: { type: "string" },
-              title: { type: "string" },
-              date: { type: "string", format: "date" },
-              category: { type: "string" }, // New field
-            },
-            required: ["id", "title", "date"],
-          },
-          fieldMetadata: {
-            id: { occurrences: 100, occurrencePercent: 100 },
-            title: { occurrences: 100, occurrencePercent: 100 },
-            date: { occurrences: 100, occurrencePercent: 100 },
-            category: { occurrences: 80, occurrencePercent: 80 },
-          },
-          schemaSummary: {
-            totalFields: 4,
-            newFields: [{ path: "category" }],
-            removedFields: [],
-            typeChanges: [],
-            enumChanges: [],
-          },
-          importSources: [
-            {
-              import: testImportJobId,
-              recordCount: 100,
-              batchCount: 1,
-            },
-          ],
-          approvalRequired: true,
-          autoApproved: false,
+      const { schema: draftSchema } = await withSchemaVersion(testEnv, testDatasetId, {
+        versionNumber: 2,
+        status: "draft",
+        schemaProperties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          date: { type: "string", format: "date" },
+          category: { type: "string" }, // New field
         },
+        required: ["id", "title", "date"],
+        newFields: ["category"],
+        importJob: testImportJobId,
       });
 
       expect(draftSchema._status).toBe("draft");
@@ -182,31 +119,17 @@ describe.sequential("Schema Approval Workflow", () => {
 
     it("allows admin to approve schema", async () => {
       // Create draft schema
-      const draftSchema = await payload.create({
-        collection: "dataset-schemas",
-        data: {
-          dataset: testDatasetId,
-          versionNumber: 2,
-          _status: "draft",
-          schema: {
-            type: "object",
-            properties: {
-              id: { type: "string" },
-              title: { type: "string" },
-              date: { type: "string", format: "date" },
-              status: { type: "string", enum: ["active", "pending"] },
-            },
-          },
-          fieldMetadata: {},
-          schemaSummary: {
-            totalFields: 4,
-            newFields: [{ path: "status" }],
-          },
-          approvalRequired: true,
+      const { schema: draftSchema } = await withSchemaVersion(testEnv, testDatasetId, {
+        versionNumber: 2,
+        status: "draft",
+        schemaProperties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          date: { type: "string", format: "date" },
+          status: { type: "string", enum: ["active", "pending"] },
         },
+        newFields: ["status"],
       });
-
-      // Mock user context for approval
 
       // Simulate approval
       const approvedSchema = await payload.update({
@@ -227,17 +150,11 @@ describe.sequential("Schema Approval Workflow", () => {
 
     it("allows authorized editor to approve schema", async () => {
       // Create draft schema
-      const draftSchema = await payload.create({
-        collection: "dataset-schemas",
-        data: {
-          dataset: testDatasetId,
-          versionNumber: 2,
-          _status: "draft",
-          schema: { type: "object", properties: {} },
-          fieldMetadata: {},
-          schemaSummary: { totalFields: 0 },
-          approvalRequired: true,
-        },
+      const { schema: draftSchema } = await withSchemaVersion(testEnv, testDatasetId, {
+        versionNumber: 2,
+        status: "draft",
+        schemaProperties: {}, // Empty schema for minimal test
+        required: [],
       });
 
       // Mock editor context (who has access to the catalog)

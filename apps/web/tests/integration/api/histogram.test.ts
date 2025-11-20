@@ -23,77 +23,25 @@ describe("/api/events/histogram", () => {
   let testDatasetId: string;
   const testEventIds: string[] = [];
   let testEnv: any;
-  const uniqueSuffix = Date.now().toString();
 
   beforeAll(async () => {
-    const { createIntegrationTestEnvironment } = await import("../../setup/test-environment-builder");
+    const { createIntegrationTestEnvironment, withCatalog, withDataset } = await import(
+      "../../setup/integration/environment"
+    );
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
 
     // Create test catalog (make it public so unauthenticated requests can access it)
-    const catalog = await payload.create({
-      collection: "catalogs",
-      data: {
-        name: "Test Catalog for Histogram",
-        slug: `test-histogram-catalog-${uniqueSuffix}`,
-        isPublic: true,
-        description: {
-          root: {
-            type: "root",
-            children: [
-              {
-                type: "paragraph",
-                children: [
-                  {
-                    type: "text",
-                    text: "Test catalog for histogram integration tests",
-                    version: 1,
-                  },
-                ],
-                version: 1,
-              },
-            ],
-            direction: "ltr",
-            format: "",
-            indent: 0,
-            version: 1,
-          },
-        },
-      },
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Test Catalog for Histogram",
+      description: "Test catalog for histogram integration tests",
+      isPublic: true,
     });
 
     // Create test dataset (must be public since catalog is public)
-    const dataset = await payload.create({
-      collection: "datasets",
-      data: {
-        catalog: catalog.id,
-        name: "Test Dataset for Histogram",
-        slug: `test-histogram-dataset-${uniqueSuffix}`,
-        isPublic: true,
-        description: {
-          root: {
-            type: "root",
-            children: [
-              {
-                type: "paragraph",
-                children: [
-                  {
-                    type: "text",
-                    text: "Test dataset for histogram integration tests",
-                    version: 1,
-                  },
-                ],
-                version: 1,
-              },
-            ],
-            direction: "ltr",
-            format: "",
-            indent: 0,
-            version: 1,
-          },
-        },
-        language: "en",
-      },
+    const { dataset } = await withDataset(testEnv, catalog.id, {
+      name: "Test Dataset for Histogram",
+      isPublic: true,
     });
     testDatasetId = String(dataset.id);
 

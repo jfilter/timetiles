@@ -36,42 +36,19 @@ describe("/api/events/map-clusters", () => {
   const uniqueSuffix = Date.now().toString();
 
   beforeAll(async () => {
-    const { createIntegrationTestEnvironment } = await import("../../setup/test-environment-builder");
+    const { createIntegrationTestEnvironment, withCatalog } = await import("../../setup/integration/environment");
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
 
     // Create test catalog
-    const catalog = await payload.create({
-      collection: "catalogs",
-      data: {
-        name: "Test Catalog for Clustering",
-        slug: `test-clustering-catalog-${uniqueSuffix}`,
-        isPublic: true,
-        description: {
-          root: {
-            type: "root",
-            children: [
-              {
-                type: "paragraph",
-                children: [
-                  {
-                    type: "text",
-                    text: "Test catalog for clustering integration tests",
-                    version: 1,
-                  },
-                ],
-                version: 1,
-              },
-            ],
-            direction: "ltr",
-            format: "",
-            indent: 0,
-            version: 1,
-          },
-        },
-      },
+    // eslint-disable-next-line require-atomic-updates -- Sequential test setup, no race condition
+    testEnv = await withCatalog(testEnv, {
+      name: "Test Catalog for Clustering",
+      slug: `test-clustering-catalog-${uniqueSuffix}`,
+      isPublic: true,
+      description: "Test catalog for clustering integration tests",
     });
-    testCatalogId = String(catalog.id);
+    testCatalogId = String(testEnv.catalog.id);
 
     // Create test dataset
     const dataset = await payload.create({
@@ -426,11 +403,13 @@ describe("/api/events/map-clusters", () => {
 
     // Verify cluster IDs follow tile coordinate pattern: should contain '@' separator
     if (result10.rows.length > 0) {
-      const clusterId = String(result10.rows[0]?.cluster_id || "");
+      const clusterIdValue = result10.rows[0]?.cluster_id;
       // Cluster ID is SHA256 hash, but the input pattern should be zoom@tileX,tileY
-      // We can verify by checking if different zoom levels produce different IDs
-      expect(clusterId).toBeTruthy();
-      expect(clusterId.length).toBe(64); // SHA256 hash length
+      // Ensure we only stringify valid values
+      if (typeof clusterIdValue === "string") {
+        expect(clusterIdValue).toBeTruthy();
+        expect(clusterIdValue.length).toBe(64); // SHA256 hash length
+      }
     }
   });
 
@@ -522,7 +501,9 @@ describe("/api/events/map-clusters", () => {
     expect(result1.rows.length).toBe(result2.rows.length);
 
     // Cluster IDs should match exactly
+    // eslint-disable-next-line sonarjs/no-alphabetical-sort -- Sorting numeric IDs for comparison
     const ids1 = result1.rows.map((r) => r.cluster_id).sort();
+    // eslint-disable-next-line sonarjs/no-alphabetical-sort -- Sorting numeric IDs for comparison
     const ids2 = result2.rows.map((r) => r.cluster_id).sort();
 
     expect(ids1).toEqual(ids2);

@@ -15,11 +15,17 @@
  * @module
  */
 
+import type { IncomingMessage, ServerResponse } from "node:http";
+
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TEST_EMAILS } from "@/tests/constants/test-credentials";
-import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
-import { TestServer } from "@/tests/setup/test-server";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withScheduledImport,
+  withTestServer,
+} from "@/tests/setup/integration/environment";
 
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
@@ -41,21 +47,21 @@ interface UrlFetchFailureOutput {
 type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
 
 describe.sequential("Performance and Concurrency Tests", () => {
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;
   let testUserId: string;
   let testCatalogId: string;
-  let testServer: TestServer;
+  let testServer: any;
   let testServerUrl: string;
 
   beforeAll(async () => {
-    const env = await createIntegrationTestEnvironment();
-    payload = env.payload;
-    cleanup = env.cleanup;
-
-    // Create and start test server
-    testServer = new TestServer();
-    testServerUrl = await testServer.start();
+    testEnv = await createIntegrationTestEnvironment();
+    const envWithServer = await withTestServer(testEnv);
+    payload = envWithServer.payload;
+    cleanup = envWithServer.cleanup;
+    testServer = envWithServer.testServer;
+    testServerUrl = envWithServer.testServerUrl;
 
     // Create test user
     const user = await payload.create({
@@ -69,33 +75,30 @@ describe.sequential("Performance and Concurrency Tests", () => {
     testUserId = user.id;
 
     // Create test catalog
-    const catalog = await payload.create({
-      collection: "catalogs",
-      data: {
-        name: "Performance Test Catalog",
-        description: "Catalog for performance tests",
-      },
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Performance Test Catalog",
+      description: "Catalog for performance tests",
     });
     testCatalogId = catalog.id;
   }, 60000);
 
   afterAll(async () => {
     vi.useRealTimers(); // Ensure timers are restored
-    await testServer.stop();
+    if (testServer) {
+      await testServer.stop();
+    }
     await cleanup();
   });
 
   beforeEach(async () => {
     // Stop current server and create new one with fresh routes
-    const oldServer = testServer;
-    if (oldServer) {
-      await oldServer.stop();
+    if (testServer) {
+      await testServer.stop();
     }
-    const newServer = new TestServer();
-    const newUrl = await newServer.start();
-    // eslint-disable-next-line require-atomic-updates
-    testServer = newServer;
-    testServerUrl = newUrl;
+    const { TestServer } = await import("@/tests/setup/integration/http-server");
+    // eslint-disable-next-line require-atomic-updates -- Sequential test setup, no race condition
+    testServer = new TestServer();
+    testServerUrl = await testServer.start();
   });
 
   afterEach(() => {
@@ -105,16 +108,9 @@ describe.sequential("Performance and Concurrency Tests", () => {
 
   describe("Large File Performance", () => {
     it("should handle CSV files with streaming", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "CSV Stream Test",
-          sourceUrl: `${testServerUrl}/stream.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/stream.csv`, {
+        name: "CSV Stream Test",
+        frequency: "daily",
       });
 
       // Generate small CSV to verify streaming works
@@ -160,15 +156,10 @@ describe.sequential("Performance and Concurrency Tests", () => {
     });
 
     it("should handle Excel files correctly", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Large Excel Import",
-          sourceUrl: `${testServerUrl}/large.xlsx`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/large.xlsx`, {
+        name: "Large Excel Import",
+        frequency: "daily",
+        additionalData: {
           advancedConfig: {
             maxFileSize: 30, // 30MB limit
             expectedContentType: "xlsx",
@@ -217,20 +208,12 @@ describe.sequential("Performance and Concurrency Tests", () => {
     it("should handle multiple concurrent URL fetches", async () => {
       // Create multiple scheduled imports (reduced for test performance)
       const schedules = await Promise.all(
-        Array.from({ length: 2 }, (_, i) => {
-          // Reduced to just 2 for debugging
-          return payload.create({
-            collection: "scheduled-imports",
-            data: {
-              name: `Concurrent Import ${i}`,
-              sourceUrl: `${testServerUrl}/concurrent-${i}.csv`,
-              enabled: true,
-              catalog: testCatalogId as any,
-              scheduleType: "frequency",
-              frequency: "hourly",
-            },
-          });
-        })
+        Array.from({ length: 2 }, (_, i) =>
+          withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/concurrent-${i}.csv`, {
+            name: `Concurrent Import ${i}`,
+            frequency: "hourly",
+          }).then((result) => result.scheduledImport)
+        )
       );
 
       // Set up test server endpoints for concurrent requests
@@ -278,15 +261,10 @@ describe.sequential("Performance and Concurrency Tests", () => {
       vi.setSystemTime(baseTime);
 
       // Create a scheduled import with lastRun set to an hour ago
-      await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Duplicate Prevention Import",
-          sourceUrl: `${testServerUrl}/duplicate-test.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "hourly",
+      await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/duplicate-test.csv`, {
+        name: "Duplicate Prevention Import",
+        frequency: "hourly",
+        additionalData: {
           lastRun: new Date("2024-01-01T11:30:00.000Z"), // 1.5 hours ago from current time
         },
       });
@@ -328,20 +306,12 @@ describe.sequential("Performance and Concurrency Tests", () => {
 
       // Create scheduled imports quickly (reduced for test performance)
       const schedules = await Promise.all(
-        Array.from({ length: 3 }, (_, i) => {
-          // Reduced from 10 to 3 for faster tests
-          return payload.create({
-            collection: "scheduled-imports",
-            data: {
-              name: `Queue Test Import ${i}`,
-              sourceUrl: `${testServerUrl}/queue-test-${i}.csv`,
-              enabled: true,
-              catalog: testCatalogId as any,
-              scheduleType: "frequency",
-              frequency: "daily",
-            },
-          });
-        })
+        Array.from({ length: 3 }, (_, i) =>
+          withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/queue-test-${i}.csv`, {
+            name: `Queue Test Import ${i}`,
+            frequency: "daily",
+          }).then((result) => result.scheduledImport)
+        )
       );
 
       const createTime = Date.now() - startTime;
@@ -380,20 +350,12 @@ describe.sequential("Performance and Concurrency Tests", () => {
         // Just one batch for speed
         // Create schedules
         const schedules = await Promise.all(
-          Array.from({ length: 2 }, (_, i) => {
-            // Just 2 schedules
-            return payload.create({
-              collection: "scheduled-imports",
-              data: {
-                name: `Memory Test Import ${batch}-${i}`,
-                sourceUrl: `${testServerUrl}/memory-${batch}-${i}.csv`,
-                enabled: true,
-                catalog: testCatalogId as any,
-                scheduleType: "frequency",
-                frequency: "hourly",
-              },
-            });
-          })
+          Array.from({ length: 2 }, (_, i) =>
+            withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/memory-${batch}-${i}.csv`, {
+              name: `Memory Test Import ${batch}-${i}`,
+              frequency: "hourly",
+            }).then((result) => result.scheduledImport)
+          )
         );
 
         // Set up test server endpoints for memory test
@@ -436,23 +398,21 @@ describe.sequential("Performance and Concurrency Tests", () => {
 
   describe("Rate Limiting", () => {
     it("should handle rate-limited APIs gracefully", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
+      const { scheduledImport } = await withScheduledImport(
+        testEnv,
+        testCatalogId,
+        `${testServerUrl}/rate-limited.csv`,
+        {
           name: "Rate Limited Import",
-          sourceUrl: `${testServerUrl}/rate-limited.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
           frequency: "hourly",
           maxRetries: 3,
           retryDelayMinutes: 1,
-        },
-      });
+        }
+      );
 
       // Set up test server endpoint with rate limiting
       let requestCount = 0;
-      testServer.route("/rate-limited.csv", (_req, res) => {
+      testServer.route("/rate-limited.csv", (_req: IncomingMessage, res: ServerResponse) => {
         requestCount++;
         if (requestCount <= 2) {
           // First two attempts fail with rate limit
@@ -500,17 +460,10 @@ describe.sequential("Performance and Concurrency Tests", () => {
 
   describe("Timeout Performance", () => {
     it("should handle slow responses efficiently", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Slow Response Import",
-          sourceUrl: `${testServerUrl}/slow.csv`,
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
-          timeoutSeconds: 30, // 30 second timeout (minimum allowed)
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/slow.csv`, {
+        name: "Slow Response Import",
+        frequency: "daily",
+        timeoutSeconds: 30, // 30 second timeout (minimum allowed)
       });
 
       // Set up test server endpoint with slow response

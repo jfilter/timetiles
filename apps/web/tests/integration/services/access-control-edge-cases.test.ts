@@ -12,20 +12,23 @@
  * @module
  */
 
-import fs from "node:fs";
-
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import type { User } from "@/payload-types";
-import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
-import { createImportFileWithUpload } from "@/tests/setup/test-helpers";
+import {
+  createIntegrationTestEnvironment,
+  withImportFile,
+  withScheduledImport,
+  withUsers,
+} from "@/tests/setup/integration/environment";
 
 /**
  * Edge case tests for access control.
  * Refactored to avoid triggering job processing hooks.
  */
 describe.sequential("Access Control Edge Cases", () => {
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;
 
@@ -35,40 +38,22 @@ describe.sequential("Access Control Edge Cases", () => {
   let otherUser: User;
 
   beforeAll(async () => {
-    const env = await createIntegrationTestEnvironment();
-    payload = env.payload;
-    cleanup = env.cleanup;
+    testEnv = await createIntegrationTestEnvironment();
+    payload = testEnv.payload;
+    cleanup = testEnv.cleanup;
+    // Upload dir is automatically created and cleaned up by testEnv
 
-    // Ensure upload directory exists
-    const uploadDir = process.env.UPLOAD_DIR_IMPORT_FILES ?? "/tmp/import-files";
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
+    // Create test users using withUsers helper
+    const { users } = await withUsers(testEnv, ["admin", "user"]);
+    adminUser = users.admin;
+    ownerUser = users.user;
 
-    // Create test users
-    adminUser = await payload.create({
-      collection: "users",
-      data: {
-        email: "admin@edge-test.com",
-        password: "admin123456",
-        role: "admin",
-      },
-    });
-
-    ownerUser = await payload.create({
-      collection: "users",
-      data: {
-        email: "owner@edge-test.com",
-        password: "owner123456",
-        role: "user",
-      },
-    });
-
+    // Create second regular user (other) manually
     otherUser = await payload.create({
       collection: "users",
       data: {
-        email: "other@edge-test.com",
-        password: "other123456",
+        email: "other@test.com",
+        password: "password123",
         role: "user",
       },
     });
@@ -247,17 +232,10 @@ describe.sequential("Access Control Edge Cases", () => {
       // Create import file as ownerUser using helper
       console.log("[TEST] Creating import file...");
       const csvContent = "name,date\nTest Event,2024-01-01";
-      const importFile = await createImportFileWithUpload(
-        payload,
-        {
-          catalog: catalog.id,
-          user: ownerUser.id,
-          status: "pending",
-        },
-        csvContent,
-        "test.csv",
-        "text/csv"
-      );
+      const { importFile } = await withImportFile(testEnv, catalog.id, csvContent, {
+        filename: "test.csv",
+        user: ownerUser.id,
+      });
       console.log(`[TEST] Import file created: ${importFile.id}`);
 
       // Wait for file to be written and hook to trigger
@@ -327,16 +305,10 @@ describe.sequential("Access Control Edge Cases", () => {
     it("should handle import file access based on user relationship", async () => {
       // Create import file as ownerUser using helper
       const csvContent = "name,date\nOwner Event,2024-01-01";
-      const importFile = await createImportFileWithUpload(
-        payload,
-        {
-          user: ownerUser.id,
-          status: "pending",
-        },
-        csvContent,
-        "owner-file.csv",
-        "text/csv"
-      );
+      const { importFile } = await withImportFile(testEnv, null, csvContent, {
+        filename: "owner-file.csv",
+        user: ownerUser.id,
+      });
 
       // Wait for hooks to complete and process jobs
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -617,17 +589,11 @@ describe.sequential("Access Control Edge Cases", () => {
     it("should handle import file with null user (session-based)", async () => {
       // Create import file without user (unauthenticated upload) using helper
       const csvContent = "name,date\nSession Event,2024-01-01";
-      const importFile = await createImportFileWithUpload(
-        payload,
-        {
-          status: "pending",
-          sessionId: "test-session-123",
-          // No user field
-        },
-        csvContent,
-        "unauthenticated-upload.csv",
-        "text/csv"
-      );
+      const { importFile } = await withImportFile(testEnv, null, csvContent, {
+        filename: "unauthenticated-upload.csv",
+        sessionId: "test-session-123",
+        // No user field
+      });
 
       // Wait for hooks to complete and process jobs
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -750,35 +716,26 @@ describe.sequential("Access Control Edge Cases", () => {
 
       // otherUser should not be able to create scheduled import for private catalog
       await expect(
-        payload.create({
-          collection: "scheduled-imports",
-          data: {
-            name: "Unauthorized Scheduled Import",
-            sourceUrl: "https://example.com/data.csv",
-            catalog: privateCatalog.id,
-            scheduleType: "frequency",
-            frequency: "daily",
-            enabled: false,
-          },
+        withScheduledImport(testEnv, privateCatalog.id, "https://example.com/data.csv", {
+          name: "Unauthorized Scheduled Import",
+          frequency: "daily",
+          enabled: false,
           user: otherUser,
-          overrideAccess: false,
         })
       ).rejects.toThrow();
 
       // ownerUser should be able to create scheduled import
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
+      const { scheduledImport } = await withScheduledImport(
+        testEnv,
+        privateCatalog.id,
+        "https://example.com/data.csv",
+        {
           name: "Authorized Scheduled Import",
-          sourceUrl: "https://example.com/data.csv",
-          catalog: privateCatalog.id,
-          scheduleType: "frequency",
           frequency: "daily",
           enabled: false,
-        },
-        user: ownerUser,
-        overrideAccess: false,
-      });
+          user: ownerUser,
+        }
+      );
       expect(scheduledImport.name).toBe("Authorized Scheduled Import");
     });
   });

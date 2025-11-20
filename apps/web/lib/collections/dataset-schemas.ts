@@ -27,34 +27,24 @@ const DatasetSchemas: CollectionConfig = {
       const { user } = req;
       if (user?.role === "admin") return true;
 
-      if (data?.dataset) {
-        const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
-        const dataset = await req.payload.findByID({
-          collection: "datasets",
-          id: datasetId,
-        });
+      if (!data?.dataset) return false;
 
-        // Public dataset
-        if (dataset?.isPublic) return true;
+      // Get dataset and check if public
+      const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
+      const dataset = await req.payload.findByID({ collection: "datasets", id: datasetId });
+      if (dataset?.isPublic) return true;
 
-        // Check catalog
-        if (dataset?.catalog) {
-          const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
-          const catalog = await req.payload.findByID({
-            collection: "catalogs",
-            id: catalogId,
-          });
+      // Check catalog access
+      if (!dataset?.catalog) return false;
 
-          if (catalog?.isPublic) return true;
+      const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
+      const catalog = await req.payload.findByID({ collection: "catalogs", id: catalogId });
+      if (catalog?.isPublic) return true;
 
-          if (user && catalog?.createdBy) {
-            const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
-            return user.id === createdById;
-          }
-        }
-      }
-
-      return false;
+      // Check catalog ownership
+      if (!user || !catalog?.createdBy) return false;
+      const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+      return user.id === createdById;
     },
 
     // Auto-generated during imports - no manual creation

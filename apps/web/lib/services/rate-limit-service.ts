@@ -414,17 +414,6 @@ export class RateLimitService {
         },
         "Rate limit exceeded"
       );
-
-      // You could also store this in a database for monitoring
-      // await this.payload.create({
-      //   collection: 'rate-limit-violations',
-      //   data: {
-      //     identifier,
-      //     attemptedCount,
-      //     limit,
-      //     timestamp: new Date().toISOString(),
-      //   }
-      // })
     } catch (error) {
       logger.error({ error, identifier }, "Failed to log rate limit violation");
     }

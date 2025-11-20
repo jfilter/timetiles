@@ -61,7 +61,7 @@ export interface SecurityEvent {
   /** User agent string */
   userAgent?: string;
   /** Additional context-specific metadata */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   /** Human-readable message describing the event */
   message?: string;
   /** Timestamp when the event occurred */
@@ -112,7 +112,7 @@ const getSeverity = (eventType: SecurityEventType): SecurityEventSeverity => {
  * });
  * ```
  */
-export const logSecurityEvent = async (event: SecurityEvent): Promise<void> => {
+export const logSecurityEvent = (event: SecurityEvent): void => {
   const severity = getSeverity(event.type);
   const timestamp = event.timestamp ?? new Date();
 
@@ -153,13 +153,13 @@ export const logSecurityEvent = async (event: SecurityEvent): Promise<void> => {
 /**
  * Log authentication failure event
  */
-export const logAuthFailure = async (params: {
+export const logAuthFailure = (params: {
   email?: string;
   ipAddress?: string;
   userAgent?: string;
   reason?: string;
-}): Promise<void> => {
-  await logSecurityEvent({
+}): void => {
+  logSecurityEvent({
     type: "auth_failure",
     userEmail: params.email,
     ipAddress: params.ipAddress,
@@ -172,14 +172,14 @@ export const logAuthFailure = async (params: {
 /**
  * Log authentication success event
  */
-export const logAuthSuccess = async (params: {
+export const logAuthSuccess = (params: {
   userId: string;
   email: string;
   role?: string;
   ipAddress?: string;
   userAgent?: string;
-}): Promise<void> => {
-  await logSecurityEvent({
+}): void => {
+  logSecurityEvent({
     type: "auth_success",
     userId: params.userId,
     userEmail: params.email,
@@ -193,14 +193,14 @@ export const logAuthSuccess = async (params: {
 /**
  * Log access denial event
  */
-export const logAccessDenied = async (params: {
+export const logAccessDenied = (params: {
   user?: User | null;
   resource: string;
   action: string;
   ipAddress?: string;
   reason?: string;
-}): Promise<void> => {
-  await logSecurityEvent({
+}): void => {
+  logSecurityEvent({
     type: "access_denied",
     userId: params.user?.id ? String(params.user.id) : undefined,
     userEmail: params.user?.email,
@@ -216,15 +216,15 @@ export const logAccessDenied = async (params: {
 /**
  * Log privilege change event
  */
-export const logPrivilegeChange = async (params: {
+export const logPrivilegeChange = (params: {
   targetUserId: string;
   targetUserEmail?: string;
   changedBy?: User | null;
   oldRole: string;
   newRole: string;
   ipAddress?: string;
-}): Promise<void> => {
-  await logSecurityEvent({
+}): void => {
+  logSecurityEvent({
     type: "privilege_change",
     userId: params.changedBy?.id ? String(params.changedBy.id) : undefined,
     userEmail: params.changedBy?.email,
@@ -243,14 +243,14 @@ export const logPrivilegeChange = async (params: {
 /**
  * Log suspicious activity event
  */
-export const logSuspiciousActivity = async (params: {
+export const logSuspiciousActivity = (params: {
   user?: User | null;
   activityType: string;
   description: string;
   ipAddress?: string;
-  metadata?: Record<string, any>;
-}): Promise<void> => {
-  await logSecurityEvent({
+  metadata?: Record<string, unknown>;
+}): void => {
+  logSecurityEvent({
     type: "suspicious_activity",
     userId: params.user?.id ? String(params.user.id) : undefined,
     userEmail: params.user?.email,
@@ -267,13 +267,13 @@ export const logSuspiciousActivity = async (params: {
 /**
  * Log rate limit exceeded event
  */
-export const logRateLimitExceeded = async (params: {
+export const logRateLimitExceeded = (params: {
   identifier: string;
   resource: string;
   limit: number;
   ipAddress?: string;
-}): Promise<void> => {
-  await logSecurityEvent({
+}): void => {
+  logSecurityEvent({
     type: "rate_limit_exceeded",
     resource: params.resource,
     ipAddress: params.ipAddress,
@@ -288,13 +288,8 @@ export const logRateLimitExceeded = async (params: {
 /**
  * Log quota exceeded event
  */
-export const logQuotaExceeded = async (params: {
-  user: User;
-  quotaType: string;
-  limit: number;
-  current: number;
-}): Promise<void> => {
-  await logSecurityEvent({
+export const logQuotaExceeded = (params: { user: User; quotaType: string; limit: number; current: number }): void => {
+  logSecurityEvent({
     type: "quota_exceeded",
     userId: String(params.user.id),
     userEmail: params.user.email,
@@ -311,13 +306,13 @@ export const logQuotaExceeded = async (params: {
 /**
  * Log token enumeration attempt
  */
-export const logTokenEnumeration = async (params: {
+export const logTokenEnumeration = (params: {
   tokenType: string;
   resource: string;
   ipAddress?: string;
   attemptCount?: number;
-}): Promise<void> => {
-  await logSecurityEvent({
+}): void => {
+  logSecurityEvent({
     type: "token_enumeration",
     resource: params.resource,
     ipAddress: params.ipAddress,
@@ -332,13 +327,13 @@ export const logTokenEnumeration = async (params: {
 /**
  * Log privilege escalation attempt
  */
-export const logPrivilegeEscalationAttempt = async (params: {
+export const logPrivilegeEscalationAttempt = (params: {
   user: User;
   attemptedRole: string;
   ipAddress?: string;
   method?: string;
-}): Promise<void> => {
-  await logSecurityEvent({
+}): void => {
+  logSecurityEvent({
     type: "privilege_escalation_attempt",
     userId: String(params.user.id),
     userEmail: params.user.email,
@@ -356,14 +351,14 @@ export const logPrivilegeEscalationAttempt = async (params: {
 /**
  * Log configuration change event
  */
-export const logConfigurationChange = async (params: {
+export const logConfigurationChange = (params: {
   user: User;
   component: string;
   action: string;
   ipAddress?: string;
-  metadata?: Record<string, any>;
-}): Promise<void> => {
-  await logSecurityEvent({
+  metadata?: Record<string, unknown>;
+}): void => {
+  logSecurityEvent({
     type: "configuration_change",
     userId: String(params.user.id),
     userEmail: params.user.email,

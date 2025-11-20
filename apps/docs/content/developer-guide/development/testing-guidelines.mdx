@@ -1,276 +1,142 @@
 # Testing Guidelines
 
-Comprehensive testing guidelines for the TimeTiles project, covering test types, mocking strategies, and debugging techniques.
+Testing strategy for TimeTiles: unit tests for logic, integration tests for workflows, E2E tests for user journeys.
 
-## Testing Philosophy
+## Core Principle
 
-**Use real implementations, not mocks.** Tests should verify actual behavior with real data and functions.
+**Use real implementations.** Only mock external paid APIs, rate-limited services, or when testing error scenarios.
 
 ## Test Types
 
-### Unit Tests
+### Unit Tests (`tests/unit/`)
 
-Test individual functions and components in isolation.
+Test isolated functions and business logic.
 
-- **Location:** `apps/web/tests/unit/`
-- **Naming:** `*.test.ts` or `*.test.tsx`
 - **Framework:** Vitest
 - **Speed:** < 100ms per test
+- **Setup:** Mock payload objects, use test data factories
+- **Examples:** Coordinate parsing, date formatting, schema validation
 
-Mocking is acceptable for:
+### Integration Tests (`tests/integration/`)
 
-- External dependencies
-- Database operations (when testing pure logic)
-- Time-sensitive operations (`vi.setSystemTime`)
+Test components working together with real database.
 
-### Integration Tests
+- **Framework:** Vitest with PostgreSQL
+- **Setup:** `createIntegrationTestEnvironment()`
+- **Database:** Isolated per worker, auto cleanup
+- **Examples:** File uploads, job processing, API endpoints
 
-Test multiple components working together.
+### E2E Tests (`tests/e2e/`)
 
-- **Location:** `apps/web/tests/integration/`
-- **Naming:** `*.test.ts`
-- **Framework:** Vitest
-- **Database:** Each test file gets isolated database
+Test complete user workflows in the browser.
 
-#### Never Mock
+- **Framework:** Playwright
+- **Environment:** Full application stack
+- **Examples:** Import workflow, map exploration, data filtering
+
+## Mocking Rules
+
+### Never Mock
 
 - Database operations → use test database
-- Payload operations → use real Payload
+- Payload CMS operations → use real Payload
 - Internal services → use actual implementations
 - File system → use temp directories
+- Job queues → use real handlers
 
-#### Can Mock (with documentation)
+### Can Mock (Document Why)
 
-- **External paid APIs** (Google Maps geocoding)
-- **Rate-limited services** (avoid CI/CD quota issues)
-- **Network failures** (for error testing)
+- **External paid APIs** (Google Maps) → costs and rate limits
+- **Rate-limited services** → avoid CI/CD quotas
+- **Network failures** → test error handling
+- **Time** → `vi.setSystemTime()` for date tests
 
-When mocking external services:
+### Example: Mocking External API
 
 ```typescript
 /**
- * Mocking is acceptable here because:
- * 1. Testing our service logic, not the external API
- * 2. Real API has costs and rate limits
- * 3. Need deterministic responses for test scenarios
+ * Mocking acceptable because:
+ * - Testing OUR caching/fallback logic
+ * - Real API has costs and rate limits
+ * - Need deterministic test scenarios
  */
-vi.mock("node-geocoder", () => ({
-  default: mockGeocoder,
-}));
-```
-
-### End-to-End Tests
-
-Test complete user workflows through the UI.
-
-- **Location:** `apps/web/tests/e2e/`
-- **Naming:** `*.spec.ts` or `*.test.ts`
-- **Framework:** Playwright
-- **Environment:** Full application with real database
-
-## Key Testing Patterns
-
-### Database Testing
-
-```typescript
-const env = await createIntegrationTestEnvironment();
-const { payload, cleanup } = env;
-// Tests run in isolated database
-await cleanup(); // In afterAll
-```
-
-### Job Queue Testing
-
-```typescript
-// ✅ Use real job handler
-const result = await someJob.handler({
-  job: { id: "test-1" },
-  req: { payload },
-  input: {
-    /* real input */
-  },
-});
-
-// ❌ Never mock payload.jobs.queue
-```
-
-### External HTTP Services
-
-Use TestServer instead of mocking fetch:
-
-```typescript
-import { TestServer } from "../../setup/test-server";
-
-const testServer = new TestServer();
-const testUrl = await testServer.start();
-
-testServer.respondWithCSV("/data.csv", "id,name\n1,test");
-testServer.respondWithJSON("/api/geocode", {
-  results: [{ lat: 37.7749, lng: -122.4194 }],
-});
-
-// Cleanup
-await testServer.stop();
+vi.mock("node-geocoder", () => ({ default: mockGeocoder }));
 ```
 
 ## Running Tests
 
-### Basic Commands
-
 ```bash
-# All tests
-make test
+# Unit and Integration
+pnpm test                    # All tests
+pnpm test:ai                 # AI-friendly output (silent, JSON results)
+pnpm test:debug              # Verbose output with logs
+pnpm test:unit               # Unit tests only
+pnpm test:integration        # Integration tests only
+pnpm test:coverage           # With coverage report
 
-# Specific test file
+# E2E Tests
+pnpm test:e2e                # All E2E tests
+pnpm test:e2e:debug          # Debug mode (headed, visible)
+
+# Specific tests
 pnpm test tests/unit/services/schema-builder.test.ts
-
-# Pattern matching
 pnpm test --grep "geocoding"
 
-# Coverage report
-make test-coverage
-```
-
-### E2E Tests
-
-```bash
-pnpm test:e2e          # Run all E2E tests
-pnpm test:e2e:ui       # Interactive UI mode
-pnpm test:e2e:headed   # Browser visible
-pnpm test:e2e:debug    # Debug mode
-```
-
-## Debugging Tests
-
-Tests run silently by default. Use `LOG_LEVEL` for debugging:
-
-```bash
-# Quick debugging
-pnpm test:debug
-
-# Manual control
-LOG_LEVEL=debug pnpm test tests/path/to/test.ts
-
-# Watch mode with debugging
-LOG_LEVEL=debug pnpm test:watch
-```
-
-### Log Levels
-
-| Environment | Default  | Override          | Effect                 |
-| ----------- | -------- | ----------------- | ---------------------- |
-| Development | `debug`  | `LOG_LEVEL=info`  | All logs visible       |
-| Production  | `info`   | `LOG_LEVEL=error` | Info+ visible          |
-| Tests       | `silent` | `LOG_LEVEL=debug` | No logs unless enabled |
-
-Available levels: `silent`, `error`, `warn`, `info`, `debug`, `trace`
-
-### Common Debugging Scenarios
-
-```bash
-# Database issues
+# With debugging logs
 LOG_LEVEL=debug pnpm test tests/integration/services/seed-config.test.ts
-
-# Import processing
-LOG_LEVEL=debug pnpm test tests/integration/import/
-
-# Payload configuration
-LOG_LEVEL=debug pnpm test tests/integration/
 ```
 
-## AI-Friendly Testing
+**AI Output:** Results saved to `.test-results.json`, `.lint-results.json`, `.typecheck-results.json`
 
-For cleaner AI analysis output:
+## Test Setup Patterns
 
-```bash
-make test-ai    # Minimal output, JSON results
-make check-ai   # Code quality summary
-```
+### Integration Tests (with Database)
 
-Results saved to:
-
-- `.test-results.json`
-- `.lint-results.json`
-- `.typecheck-results.json`
-
-## Common Mistakes
-
-### ❌ Mocking Internal Services
+Use `createIntegrationTestEnvironment()` for tests that need real PostgreSQL and Payload CMS:
 
 ```typescript
-// WRONG - Never mock your own services
-vi.mock("@/lib/services/import-service");
-```
+import { createIntegrationTestEnvironment, withCatalog, withDataset } from "@/tests/setup/integration-test-environment";
 
-### ❌ Mocking Database
+let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
-```typescript
-// WRONG - Use real database
-payload.find = vi.fn().mockResolvedValue({ docs: [] });
-```
+beforeAll(async () => { testEnv = await createIntegrationTestEnvironment(); });
+afterAll(async () => { await testEnv.cleanup(); });
+beforeEach(async () => { await testEnv.seedManager.truncate(); });
 
-### ✅ Mocking External APIs
-
-```typescript
-// CORRECT - Mock external paid service
-vi.mock("node-geocoder", () => ({
-  default: mockGeocoder,
-}));
-```
-
-### ✅ Using Real Database
-
-```typescript
-// CORRECT - Real database operations
-const result = await payload.find({
-  collection: "events",
-  where: {
-    /* conditions */
-  },
+it("processes import file", async () => {
+  const { catalog } = await withCatalog(testEnv);
+  const { dataset } = await withDataset(testEnv, catalog.id);
+  // Test with real database and Payload...
 });
 ```
 
-## Best Practices
+**Use for:** File uploads, job processing, API endpoints, access control, geospatial queries
 
-1. **Test Coverage**: Focus on critical business logic
-2. **Clear Names**: Describe what's being tested
-3. **AAA Pattern**: Arrange → Act → Assert
-4. **Isolation**: Each test should be independent
-5. **Fast Tests**: Keep unit tests under 100ms
+### Unit Tests (with Mocks)
 
-## Mocking Summary
+Use factories and mocks for tests that verify business logic:
 
-**Never Mock:**
+```typescript
+import { vi } from "vitest";
+import { createEvent } from "@/tests/setup/factories";
 
-- Payload operations
-- Database queries
-- Internal services
-- File system
-- Your own modules
+const mockPayload = { findByID: vi.fn(), create: vi.fn() };
 
-**Can Mock:**
-
-- External paid APIs (with documentation)
-- Rate-limited services
-- Network failures (for error testing)
-- Time (`vi.setSystemTime`)
-
-**When Mocking:**
-
-- Document WHY
-- Mock at the boundary
-- Test YOUR logic
-- Keep responses realistic
-
-## Test Organization
-
+it("validates event data", () => {
+  const event = createEvent({ data: { title: "Test" } });
+  expect(validateEvent(event).valid).toBe(true);
+});
 ```
-apps/web/tests/
-├── unit/           # Isolated function tests
-├── integration/    # Component interaction tests
-├── e2e/           # User workflow tests
-└── setup/         # Test utilities
-    ├── test-server.ts
-    ├── test-environment-builder.ts
-    └── test-helpers.ts
+
+**Use for:** Validation logic, coordinate parsing, schema building, date formatting, utility functions
+
+### Component Tests (with Factories)
+
+```typescript
+import { renderWithProviders } from "@/tests/setup/test-utils";
+import { createEvent } from "@/tests/setup/factories";
+
+const event = createEvent({ data: { title: "My Event" } });
+const { getByText } = renderWithProviders(<EventCard event={event} />);
+expect(getByText("My Event")).toBeInTheDocument();
 ```

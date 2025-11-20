@@ -7,7 +7,7 @@
  * @module
  */
 
-import { promises as fs } from "node:fs";
+import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,8 +16,11 @@ import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
 import { logger } from "@/lib/logger";
 import type { Catalog, Dataset, User } from "@/payload-types";
 
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
-import { TestServer } from "../../setup/test-server";
+import {
+  createIntegrationTestEnvironment,
+  withScheduledImport,
+  withTestServer,
+} from "../../setup/integration/environment";
 
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
@@ -37,20 +40,23 @@ interface UrlFetchFailureOutput {
 }
 
 describe.sequential("Scheduled Imports Integration", () => {
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testUser: User;
   let testCatalog: Catalog;
   let testDataset: Dataset;
   let cleanup: () => Promise<void>;
-  let uploadDir: string;
-  let testServer: TestServer;
+  let testServer: any;
   let testServerUrl: string;
 
   beforeAll(async () => {
     const timestamp = Date.now();
-    const env = await createIntegrationTestEnvironment();
-    payload = env.payload;
-    cleanup = env.cleanup;
+    testEnv = await createIntegrationTestEnvironment();
+    const envWithServer = await withTestServer(testEnv);
+    payload = envWithServer.payload;
+    cleanup = envWithServer.cleanup;
+    testServer = envWithServer.testServer;
+    testServerUrl = envWithServer.testServerUrl;
 
     // Create shared test data once
     testUser = await payload.create({
@@ -86,19 +92,9 @@ describe.sequential("Scheduled Imports Integration", () => {
         },
       },
     });
-
-    // Initialize test server
-    testServer = new TestServer();
-    testServerUrl = await testServer.start();
   });
 
   beforeEach(async () => {
-    // Set up clean upload directory for each test
-    const timestamp = Date.now();
-    uploadDir = `/tmp/test-uploads-${timestamp}`;
-    process.env.UPLOAD_DIR_IMPORT_FILES = uploadDir;
-    await fs.mkdir(uploadDir, { recursive: true });
-
     // Clear mocks
     vi.clearAllMocks();
 
@@ -136,24 +132,17 @@ describe.sequential("Scheduled Imports Integration", () => {
     }
 
     // Stop current server and create new one with fresh routes
-    const oldServer = testServer;
-    if (oldServer) {
-      await oldServer.stop();
+    if (testServer) {
+      await testServer.stop();
     }
-    const newServer = new TestServer();
-    const newUrl = await newServer.start();
-    // eslint-disable-next-line require-atomic-updates
-    testServer = newServer;
-    testServerUrl = newUrl;
+    const { TestServer } = await import("../../setup/integration/http-server");
+    // eslint-disable-next-line require-atomic-updates -- Sequential test setup, no race condition
+    testServer = new TestServer();
+    testServerUrl = await testServer.start();
   });
 
   afterEach(async () => {
-    // Cleanup test files
-    try {
-      await fs.rm(uploadDir, { recursive: true });
-    } catch {
-      // Ignore cleanup errors
-    }
+    // Upload dir cleanup handled by testEnv.cleanup()
   });
 
   afterAll(async () => {
@@ -173,26 +162,20 @@ describe.sequential("Scheduled Imports Integration", () => {
       // Set up test server endpoint
       testServer.respondWithCSV("/api/data.csv", "id,name,value\n1,test,100");
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Daily Data Import",
-          description: "Imports data from API every day",
-          enabled: true,
-          sourceUrl: `${testServerUrl}/api/data.csv`,
-          authConfig: {
-            type: "api-key",
-            apiKey: "test-key-123",
-            apiKeyHeader: "X-API-Key",
-          },
-          catalog: testCatalog.id,
-          scheduleType: "cron",
-          cronExpression: "0 0 * * *", // Daily at midnight
-          maxRetries: 3,
-          retryDelayMinutes: 5,
-          timeoutSeconds: 300,
-          importNameTemplate: "{{name}} - {{date}}",
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalog.id, `${testServerUrl}/api/data.csv`, {
+        name: "Daily Data Import",
+        description: "Imports data from API every day",
+        scheduleType: "cron",
+        cronExpression: "0 0 * * *", // Daily at midnight
+        authConfig: {
+          type: "api-key",
+          apiKey: "test-key-123",
+          apiKeyHeader: "X-API-Key",
         },
+        maxRetries: 3,
+        retryDelayMinutes: 5,
+        timeoutSeconds: 300,
+        importNameTemplate: "{{name}} - {{date}}",
       });
 
       expect(scheduledImport).toMatchObject({
@@ -245,23 +228,18 @@ describe.sequential("Scheduled Imports Integration", () => {
       vi.setSystemTime(new Date("2024-01-15T00:30:00.000Z")); // 30 minutes after midnight UTC
 
       // Create a scheduled import that ran yesterday
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Daily Import",
-          enabled: true,
-          sourceUrl: `${testServerUrl}/test-data.csv`,
-          authConfig: { type: "none" },
-          catalog: testCatalog.id,
-          datasetMapping: {
-            mappingType: "single",
-            singleDataset: testDataset.id,
-          },
-          scheduleType: "frequency",
-          frequency: "daily",
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalog.id, `${testServerUrl}/test-data.csv`, {
+        name: "Daily Import",
+        frequency: "daily",
+        authConfig: { type: "none" },
+        datasetMapping: {
+          mappingType: "single",
+          singleDataset: testDataset.id,
+        },
+        importNameTemplate: "{{name}} - {{date}}",
+        additionalData: {
           lastRun: new Date("2024-01-14T00:00:00.000Z"), // Yesterday at midnight UTC
           nextRun: new Date("2024-01-15T00:00:00.000Z"), // Today at midnight UTC - due to run
-          importNameTemplate: "{{name}} - {{date}}",
         },
       });
 
@@ -354,44 +332,32 @@ describe.sequential("Scheduled Imports Integration", () => {
       vi.setSystemTime(new Date("2024-01-15T10:30:00.000Z"));
 
       // Create multiple schedules - use ISO format with Z for UTC
-      await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Hourly Import",
-          enabled: true,
-          sourceUrl: `${testServerUrl}/schedule1.csv`,
-          authConfig: { type: "none" },
-          catalog: testCatalog.id,
-          scheduleType: "cron",
-          cronExpression: "0 * * * *", // Every hour
+      await withScheduledImport(testEnv, testCatalog.id, `${testServerUrl}/schedule1.csv`, {
+        name: "Hourly Import",
+        scheduleType: "cron",
+        cronExpression: "0 * * * *", // Every hour
+        authConfig: { type: "none" },
+        additionalData: {
           lastRun: new Date("2024-01-15T09:00:00.000Z"), // 1.5 hours ago - should trigger
         },
       });
 
-      await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Daily Import",
-          enabled: true,
-          sourceUrl: `${testServerUrl}/schedule2.csv`,
-          authConfig: { type: "none" },
-          catalog: testCatalog.id,
-          scheduleType: "cron",
-          cronExpression: "0 0 * * *", // Daily at midnight
+      await withScheduledImport(testEnv, testCatalog.id, `${testServerUrl}/schedule2.csv`, {
+        name: "Daily Import",
+        scheduleType: "cron",
+        cronExpression: "0 0 * * *", // Daily at midnight
+        authConfig: { type: "none" },
+        additionalData: {
           lastRun: new Date("2024-01-15T00:00:00.000Z"), // Today - should not trigger
         },
       });
 
-      await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Another Hourly",
-          enabled: true,
-          sourceUrl: `${testServerUrl}/schedule3.csv`,
-          authConfig: { type: "none" },
-          catalog: testCatalog.id,
-          scheduleType: "cron",
-          cronExpression: "0 * * * *", // Every hour
+      await withScheduledImport(testEnv, testCatalog.id, `${testServerUrl}/schedule3.csv`, {
+        name: "Another Hourly",
+        scheduleType: "cron",
+        cronExpression: "0 * * * *", // Every hour
+        authConfig: { type: "none" },
+        additionalData: {
           lastRun: new Date("2024-01-15T08:00:00.000Z"), // 2.5 hours ago - should trigger
         },
       });
@@ -1007,7 +973,7 @@ describe.sequential("Scheduled Imports Integration", () => {
 
       // Fail twice, then succeed
       let attempt = 0;
-      testServer.route("/flaky-endpoint", (req, res) => {
+      testServer.route("/flaky-endpoint", (req: IncomingMessage, res: ServerResponse) => {
         attempt++;
         if (attempt < 3) {
           req.socket.destroy();

@@ -1,6 +1,10 @@
 /**
  * @module
  */
+// Import centralized mocks FIRST (before anything that uses them)
+import "@/tests/mocks/services/logger";
+import "@/tests/mocks/services/path";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { analyzeDuplicatesJob } from "@/lib/jobs/handlers/analyze-duplicates-job";
@@ -15,16 +19,6 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/logger", () => ({
-  createJobLogger: vi.fn(() => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  })),
-  logError: vi.fn(),
-  logPerformance: vi.fn(),
-}));
-
 vi.mock("@/lib/services/progress-tracking", () => ({
   ProgressTrackingService: {
     createDeduplicationProgress: vi.fn((total, processed, internal, external) => ({
@@ -42,13 +36,6 @@ vi.mock("@/lib/utils/file-readers", () => ({
 
 vi.mock("@/lib/services/id-generation", () => ({
   generateUniqueId: mocks.generateUniqueId,
-}));
-
-vi.mock("path", () => ({
-  default: {
-    resolve: vi.fn(() => "/mock/import-files"),
-    join: vi.fn((dir, filename) => `${dir}/${filename}`),
-  },
 }));
 
 describe.sequential("AnalyzeDuplicatesJob Handler", () => {

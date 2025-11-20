@@ -9,7 +9,7 @@ import {
   RATE_LIMITS,
   RateLimitService,
 } from "../../../lib/services/rate-limit-service";
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
 describe.sequential("RateLimitService", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

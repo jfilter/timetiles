@@ -15,7 +15,7 @@ import os from "os";
 import Papa from "papaparse";
 import { read, utils, write } from "xlsx";
 
-import { getFixturePath } from "../../setup/test-helpers";
+import { getFixturePath } from "../../setup/paths";
 
 describe("File Parsing", () => {
   let tempDir: string;

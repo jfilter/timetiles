@@ -40,15 +40,6 @@ const ALLOWED_MIME_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.oasis.opendocument.spreadsheet",
   "application/vnd.google-apps.spreadsheet",
-  // "application/pdf",
-  // "application/zip",
-  // "application/x-zip-compressed",
-  // "application/x-zip",
-  // "application/x-tar",
-  // "application/gzip",
-  // "application/x-gzip",
-  // "application/x-rar-compressed",
-  // "application/xml",
 ];
 
 // User-specific file size limits (enforced in beforeValidate hook)
@@ -403,7 +394,7 @@ const ImportFiles: CollectionConfig = {
       },
     ],
     beforeValidate: [
-      async ({ data, req, operation }) => {
+      ({ data, req, operation }) => {
         // Only run on create operations
         if (operation !== "create") return data;
 
@@ -415,7 +406,7 @@ const ImportFiles: CollectionConfig = {
           const quotaService = getQuotaService(req.payload);
 
           // Check daily file upload quota
-          const uploadQuotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+          const uploadQuotaCheck = quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
 
           if (!uploadQuotaCheck.allowed) {
             throw new Error(

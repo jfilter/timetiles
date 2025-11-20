@@ -106,7 +106,7 @@ export const GET = withRateLimit(
       };
 
       // Add quota headers
-      const headers = await quotaService.getQuotaHeaders(user);
+      const headers = quotaService.getQuotaHeaders(user);
 
       return NextResponse.json(response, {
         status: 200,

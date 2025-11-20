@@ -97,6 +97,19 @@ const calculateGlobalStats = async (
 ) => {
   const { catalog, datasets, startDate, endDate, accessibleCatalogIds } = filters;
 
+  // Build catalog filter SQL
+  let catalogFilter;
+  if (catalog != null) {
+    catalogFilter = sql`AND d.catalog_id = ${parseInt(catalog as string)}`;
+  } else if (accessibleCatalogIds != null && Array.isArray(accessibleCatalogIds) && accessibleCatalogIds.length > 0) {
+    catalogFilter = sql`AND d.catalog_id IN (${sql.join(
+      accessibleCatalogIds.map((id) => sql`${id}`),
+      sql`, `
+    )})`;
+  } else {
+    catalogFilter = sql``;
+  }
+
   // Query to get event counts grouped by location (simulating clustering at high zoom)
   const result = (await payload.db.drizzle.execute(sql`
     WITH filtered_events AS (
@@ -109,16 +122,7 @@ const calculateGlobalStats = async (
       WHERE
         e.location_longitude IS NOT NULL
         AND e.location_latitude IS NOT NULL
-        ${
-          catalog != null
-            ? sql`AND d.catalog_id = ${parseInt(catalog as string)}`
-            : accessibleCatalogIds != null && Array.isArray(accessibleCatalogIds) && accessibleCatalogIds.length > 0
-              ? sql`AND d.catalog_id IN (${sql.join(
-                  accessibleCatalogIds.map((id) => sql`${id}`),
-                  sql`, `
-                )})`
-              : sql``
-        }
+        ${catalogFilter}
         ${
           Array.isArray(datasets) && datasets.length > 0
             ? sql`AND e.dataset_id IN (${sql.join(

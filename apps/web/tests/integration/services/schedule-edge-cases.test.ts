@@ -15,15 +15,21 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TEST_EMAILS } from "@/tests/constants/test-credentials";
-import { createIntegrationTestEnvironment } from "@/tests/setup/test-environment-builder";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withScheduledImport,
+} from "@/tests/setup/integration/environment";
 
 describe.sequential("Schedule Edge Case Tests", () => {
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;
   let testCatalogId: string;
 
   beforeAll(async () => {
-    const env = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment();
+    const env = testEnv;
     payload = env.payload;
     cleanup = env.cleanup;
 
@@ -38,12 +44,9 @@ describe.sequential("Schedule Edge Case Tests", () => {
     });
 
     // Create test catalog
-    const catalog = await payload.create({
-      collection: "catalogs",
-      data: {
-        name: "Schedule Test Catalog",
-        description: "Catalog for schedule edge case tests",
-      },
+    const { catalog } = await withCatalog(env, {
+      name: "Schedule Test Catalog",
+      description: "Catalog for schedule edge case tests",
     });
     testCatalogId = catalog.id;
   }, 60000);
@@ -130,16 +133,10 @@ describe.sequential("Schedule Edge Case Tests", () => {
     });
 
     it("should accept valid complex cron expressions", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Complex Cron Import",
-          sourceUrl: "https://example.com/data.csv",
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "cron",
-          cronExpression: "*/15 9-17 * * 1-5", // Every 15 minutes during business hours on weekdays
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, "https://example.com/data.csv", {
+        name: "Complex Cron Import",
+        scheduleType: "cron",
+        cronExpression: "*/15 9-17 * * 1-5", // Every 15 minutes during business hours on weekdays
       });
 
       expect(scheduledImport.cronExpression).toBe("*/15 9-17 * * 1-5");
@@ -148,16 +145,9 @@ describe.sequential("Schedule Edge Case Tests", () => {
 
   describe("Schedule Type Switching", () => {
     it("should clear frequency when switching to cron", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Type Switch Import",
-          sourceUrl: "https://example.com/data.csv",
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "daily",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, "https://example.com/data.csv", {
+        name: "Type Switch Import",
+        frequency: "daily",
       });
 
       // Switch to cron
@@ -175,16 +165,10 @@ describe.sequential("Schedule Edge Case Tests", () => {
     });
 
     it("should clear cron expression when switching to frequency", async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Type Switch Import 2",
-          sourceUrl: "https://example.com/data.csv",
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "cron",
-          cronExpression: "0 0 * * *",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, "https://example.com/data.csv", {
+        name: "Type Switch Import 2",
+        scheduleType: "cron",
+        cronExpression: "0 0 * * *",
       });
 
       // Switch to frequency
@@ -210,41 +194,20 @@ describe.sequential("Schedule Edge Case Tests", () => {
 
       // Create multiple hourly schedules
       await Promise.all([
-        payload.create({
-          collection: "scheduled-imports",
-          data: {
-            name: "Daily Import 1",
-            sourceUrl: "https://example.com/data1.csv",
-            enabled: true,
-            catalog: testCatalogId as any,
-            scheduleType: "frequency",
-            frequency: "hourly",
-            lastRun: new Date("2024-01-01T10:00:00.000Z"),
-          },
+        withScheduledImport(testEnv, testCatalogId, "https://example.com/data1.csv", {
+          name: "Daily Import 1",
+          frequency: "hourly",
+          additionalData: { lastRun: new Date("2024-01-01T10:00:00.000Z") },
         }),
-        payload.create({
-          collection: "scheduled-imports",
-          data: {
-            name: "Daily Import 2",
-            sourceUrl: "https://example.com/data2.csv",
-            enabled: true,
-            catalog: testCatalogId as any,
-            scheduleType: "frequency",
-            frequency: "hourly",
-            lastRun: new Date("2024-01-01T10:00:00.000Z"),
-          },
+        withScheduledImport(testEnv, testCatalogId, "https://example.com/data2.csv", {
+          name: "Daily Import 2",
+          frequency: "hourly",
+          additionalData: { lastRun: new Date("2024-01-01T10:00:00.000Z") },
         }),
-        payload.create({
-          collection: "scheduled-imports",
-          data: {
-            name: "Daily Import 3",
-            sourceUrl: "https://example.com/data3.csv",
-            enabled: true,
-            catalog: testCatalogId as any,
-            scheduleType: "frequency",
-            frequency: "hourly",
-            lastRun: new Date("2024-01-01T10:00:00.000Z"),
-          },
+        withScheduledImport(testEnv, testCatalogId, "https://example.com/data3.csv", {
+          name: "Daily Import 3",
+          frequency: "hourly",
+          additionalData: { lastRun: new Date("2024-01-01T10:00:00.000Z") },
         }),
       ]);
 
@@ -268,29 +231,16 @@ describe.sequential("Schedule Edge Case Tests", () => {
       vi.setSystemTime(currentTime);
 
       // Create enabled and disabled schedules
-      await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Enabled Import",
-          sourceUrl: "https://example.com/enabled.csv",
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "hourly",
-          lastRun: new Date("2024-01-01T11:00:00.000Z"),
-        },
+      await withScheduledImport(testEnv, testCatalogId, "https://example.com/enabled.csv", {
+        name: "Enabled Import",
+        frequency: "hourly",
+        additionalData: { lastRun: new Date("2024-01-01T11:00:00.000Z") },
       });
 
-      await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Disabled Import",
-          sourceUrl: "https://example.com/disabled.csv",
-          enabled: false,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "hourly",
-        },
+      await withScheduledImport(testEnv, testCatalogId, "https://example.com/disabled.csv", {
+        name: "Disabled Import",
+        enabled: false,
+        frequency: "hourly",
       });
 
       // Move to next hour
@@ -312,15 +262,10 @@ describe.sequential("Schedule Edge Case Tests", () => {
       const currentTime = new Date("2024-01-01T12:00:00.000Z");
       vi.setSystemTime(currentTime);
 
-      await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Running Import",
-          sourceUrl: "https://example.com/running.csv",
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "hourly",
+      await withScheduledImport(testEnv, testCatalogId, "https://example.com/running.csv", {
+        name: "Running Import",
+        frequency: "hourly",
+        additionalData: {
           lastRun: new Date("2024-01-01T11:00:00.000Z"),
           lastStatus: "running",
         },
@@ -346,16 +291,9 @@ describe.sequential("Schedule Edge Case Tests", () => {
       const currentTime = new Date("2024-01-01T12:34:56.000Z");
       vi.setSystemTime(currentTime);
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Hourly Import",
-          sourceUrl: "https://example.com/hourly.csv",
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "hourly",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, "https://example.com/hourly.csv", {
+        name: "Hourly Import",
+        frequency: "hourly",
       });
 
       // Move to next hour
@@ -381,16 +319,9 @@ describe.sequential("Schedule Edge Case Tests", () => {
       const currentTime = new Date("2024-01-03T12:00:00.000Z"); // Wednesday
       vi.setSystemTime(currentTime);
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Weekly Import",
-          sourceUrl: "https://example.com/weekly.csv",
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "weekly",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, "https://example.com/weekly.csv", {
+        name: "Weekly Import",
+        frequency: "weekly",
       });
 
       // Move to Sunday
@@ -416,16 +347,9 @@ describe.sequential("Schedule Edge Case Tests", () => {
       const currentTime = new Date("2024-01-15T12:00:00.000Z");
       vi.setSystemTime(currentTime);
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Monthly Import",
-          sourceUrl: "https://example.com/monthly.csv",
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "monthly",
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, "https://example.com/monthly.csv", {
+        name: "Monthly Import",
+        frequency: "monthly",
       });
 
       // Move to first of next month
@@ -471,40 +395,19 @@ describe.sequential("Schedule Edge Case Tests", () => {
       vi.setSystemTime(currentTime);
 
       // Create multiple schedules
-      await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Success Import",
-          sourceUrl: "https://example.com/success.csv",
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "hourly",
-        },
+      await withScheduledImport(testEnv, testCatalogId, "https://example.com/success.csv", {
+        name: "Success Import",
+        frequency: "hourly",
       });
 
-      await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Error Import",
-          sourceUrl: "https://example.com/error.csv",
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "hourly",
-        },
+      await withScheduledImport(testEnv, testCatalogId, "https://example.com/error.csv", {
+        name: "Error Import",
+        frequency: "hourly",
       });
 
-      await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Another Success Import",
-          sourceUrl: "https://example.com/success2.csv",
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "hourly",
-        },
+      await withScheduledImport(testEnv, testCatalogId, "https://example.com/success2.csv", {
+        name: "Another Success Import",
+        frequency: "hourly",
       });
 
       // Move to next hour
@@ -527,18 +430,10 @@ describe.sequential("Schedule Edge Case Tests", () => {
       const currentTime = new Date("2024-01-01T12:30:00.000Z");
       vi.setSystemTime(currentTime);
 
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "First Run Import",
-          sourceUrl: "https://example.com/first.csv",
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "hourly",
-
-          // No lastRun or nextRun set
-        },
+      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, "https://example.com/first.csv", {
+        name: "First Run Import",
+        frequency: "hourly",
+        // No lastRun or nextRun set
       });
 
       // Move to next hour (first execution)
@@ -570,17 +465,10 @@ describe.sequential("Schedule Edge Case Tests", () => {
       const currentTime = new Date("2024-01-01T12:00:00.000Z");
       vi.setSystemTime(currentTime);
 
-      await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Template Test Import",
-          sourceUrl: "https://example.com/template.csv",
-          enabled: true,
-          catalog: testCatalogId as any,
-          scheduleType: "frequency",
-          frequency: "hourly",
-          importNameTemplate: "{{name}} - {{date}} {{time}} from {{url}}",
-        },
+      await withScheduledImport(testEnv, testCatalogId, "https://example.com/template.csv", {
+        name: "Template Test Import",
+        frequency: "hourly",
+        importNameTemplate: "{{name}} - {{date}} {{time}} from {{url}}",
       });
 
       // Move to next hour

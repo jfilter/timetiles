@@ -55,7 +55,7 @@ const mockNominatimGeocoder = {
 };
 
 import { GeocodingError, GeocodingService } from "../../../lib/services/geocoding/geocoding-service";
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
 describe("GeocodingService", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

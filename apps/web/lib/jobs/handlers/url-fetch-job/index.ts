@@ -17,7 +17,7 @@ import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { getQuotaService } from "@/lib/services/quota-service";
-import type { ScheduledImport } from "@/payload-types";
+import type { ScheduledImport, User } from "@/payload-types";
 
 import { buildAuthHeaders } from "./auth";
 import { calculateDataHash, detectFileTypeFromResponse, type FetchResult, fetchWithRetry } from "./fetch-utils";
@@ -233,6 +233,68 @@ const buildErrorOutput = (error: Error) => {
   };
 };
 
+// Helper to load user from userId (which can be object or ID)
+const loadUser = async (payload: Payload, userId: string | number | User): Promise<User | null> => {
+  if (typeof userId === "object") return userId;
+  return payload.findByID({ collection: "users", id: userId });
+};
+
+// Helper to check and track URL fetch quota
+const checkAndTrackQuota = async (
+  payload: Payload,
+  userId: string | number | User | null | undefined,
+  scheduledImport: ScheduledImport | null
+): Promise<void> => {
+  if (!userId) return;
+
+  const user = await loadUser(payload, userId);
+  if (!user) return;
+
+  const quotaService = getQuotaService(payload);
+  const quotaCheck = quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY, 1);
+
+  if (!quotaCheck.allowed) {
+    const errorMessage = `Daily URL fetch limit reached (${quotaCheck.current}/${quotaCheck.limit}). Resets at midnight UTC.`;
+
+    if (scheduledImport) {
+      await updateScheduledImportFailure(payload, scheduledImport, new Error(errorMessage));
+    }
+
+    throw new Error(errorMessage);
+  }
+
+  // Track URL fetch usage
+  await quotaService.incrementUsage(user.id, USAGE_TYPES.URL_FETCHES_TODAY, 1);
+
+  logger.info("URL fetch quota checked and tracked", {
+    userId: user.id,
+    remaining: quotaCheck.remaining,
+  });
+};
+
+// Helper to prepare cache options
+const prepareCacheOptions = (scheduledImport: ScheduledImport | null, triggeredBy: string | undefined) => ({
+  useCache: scheduledImport?.advancedOptions?.useHttpCache !== false,
+  bypassCache: triggeredBy === "manual" && scheduledImport?.advancedOptions?.bypassCacheOnManual === true,
+  respectCacheControl: scheduledImport?.advancedOptions?.respectCacheControl !== false,
+});
+
+// Helper to perform the fetch operation
+const performFetch = async (input: UrlFetchJobInput, scheduledImport: ScheduledImport | null): Promise<FetchResult> => {
+  const authHeaders = buildAuthHeaders(input.authConfig ?? scheduledImport?.authConfig);
+  const { timeout, maxSize } = prepareFetchOptions(scheduledImport);
+  const cacheOptions = prepareCacheOptions(scheduledImport, input.triggeredBy);
+
+  return fetchWithRetry(input.sourceUrl, {
+    authHeaders,
+    timeout,
+    maxSize,
+    retryConfig: scheduledImport?.retryConfig,
+    cacheOptions,
+    userId: input.userId ? String(input.userId) : undefined,
+  });
+};
+
 export const urlFetchJob = {
   slug: "url-fetch",
   handler: async (context: JobHandlerContext) => {
@@ -245,7 +307,6 @@ export const urlFetchJob = {
       scheduledImportId: input.scheduledImportId,
     });
 
-    // Validate required input
     if (!input.sourceUrl) {
       throw new Error("Source URL is required");
     }
@@ -253,64 +314,14 @@ export const urlFetchJob = {
     let scheduledImport: ScheduledImport | null = null;
 
     try {
-      // Load scheduled import config if applicable
       scheduledImport = await loadScheduledImportConfig(payload, input.scheduledImportId);
 
-      // Check URL fetch quota for the user
+      // Check and track quota
       const userId = input.userId ?? scheduledImport?.createdBy;
-      if (userId) {
-        // Get the user
-        const user = typeof userId === "object" ? userId : await payload.findByID({ collection: "users", id: userId });
+      await checkAndTrackQuota(payload, userId, scheduledImport);
 
-        if (user) {
-          const quotaService = getQuotaService(payload);
-
-          // Check URL fetch quota
-          const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY, 1);
-
-          if (!quotaCheck.allowed) {
-            const errorMessage = `Daily URL fetch limit reached (${quotaCheck.current}/${quotaCheck.limit}). Resets at midnight UTC.`;
-
-            // Update scheduled import as failed if applicable
-            if (scheduledImport) {
-              await updateScheduledImportFailure(payload, scheduledImport, new Error(errorMessage));
-            }
-
-            throw new Error(errorMessage);
-          }
-
-          // Track URL fetch usage
-          await quotaService.incrementUsage(user.id, USAGE_TYPES.URL_FETCHES_TODAY, 1);
-
-          logger.info("URL fetch quota checked and tracked", {
-            userId: user.id,
-            remaining: quotaCheck.remaining,
-          });
-        }
-      }
-
-      // Build authentication headers
-      const authHeaders = buildAuthHeaders(input.authConfig ?? scheduledImport?.authConfig);
-
-      // Prepare fetch options
-      const { timeout, maxSize } = prepareFetchOptions(scheduledImport);
-
-      // Determine cache options - enable caching by default for scheduled imports
-      const cacheOptions = {
-        useCache: scheduledImport?.advancedOptions?.useHttpCache !== false,
-        bypassCache: input.triggeredBy === "manual" && scheduledImport?.advancedOptions?.bypassCacheOnManual === true,
-        respectCacheControl: scheduledImport?.advancedOptions?.respectCacheControl !== false,
-      };
-
-      // Fetch data with retry
-      const fetchResult = await fetchWithRetry(input.sourceUrl, {
-        authHeaders,
-        timeout,
-        maxSize,
-        retryConfig: scheduledImport?.retryConfig,
-        cacheOptions,
-        userId: input.userId ? String(input.userId) : undefined,
-      });
+      // Perform fetch
+      const fetchResult = await performFetch(input, scheduledImport);
 
       logger.info("URL fetch successful", {
         sourceUrl: input.sourceUrl,
@@ -319,10 +330,8 @@ export const urlFetchJob = {
         attempts: fetchResult.attempts,
       });
 
-      // Create context for import handling
-      const importContext = createImportContext(input, scheduledImport);
-
       // Handle successful fetch
+      const importContext = createImportContext(input, scheduledImport);
       const { importFileId, filename, contentHash, isDuplicate } = await handleFetchSuccess(
         payload,
         fetchResult.data,
@@ -345,12 +354,10 @@ export const urlFetchJob = {
         scheduledImportId: input.scheduledImportId,
       });
 
-      // Update scheduled import failure status
       if (scheduledImport) {
         await updateScheduledImportFailure(payload, scheduledImport, errorObj);
       }
 
-      // Return failure output instead of throwing
       return buildErrorOutput(errorObj);
     }
   },

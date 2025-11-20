@@ -9,6 +9,9 @@
  * @module
  */
 
+// Import centralized logger mock
+import "@/tests/mocks/services/logger";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
@@ -46,22 +49,6 @@ vi.mock("fs", () => ({
 
 vi.mock("uuid", () => ({
   v4: () => "test-uuid-1234",
-}));
-
-vi.mock("@/lib/logger", () => ({
-  logger: {
-    info: vi.fn(),
-    debug: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-  logError: vi.fn(),
-  createRequestLogger: () => ({
-    info: vi.fn(),
-    debug: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  }),
 }));
 
 // Mock quota service for unit tests

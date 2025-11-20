@@ -70,15 +70,12 @@ export const sanitizeErrorForAPI = (
   const errorStack = error instanceof Error ? error.stack : undefined;
 
   // Log full error internally
-  logErrorToLogger(
-    error instanceof Error ? error : new Error(String(error)),
-    `API Error${context ? `: ${context}` : ""}`,
-    {
-      userId: user?.id,
-      userRole: user?.role,
-      stack: errorStack,
-    }
-  );
+  const contextSuffix = context ? `: ${context}` : "";
+  logErrorToLogger(error instanceof Error ? error : new Error(String(error)), `API Error${contextSuffix}`, {
+    userId: user?.id,
+    userRole: user?.role,
+    stack: errorStack,
+  });
 
   // Return generic message in production
   if (process.env.NODE_ENV === "production") {

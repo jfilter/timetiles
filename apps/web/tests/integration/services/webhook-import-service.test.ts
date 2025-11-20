@@ -9,7 +9,7 @@
  * @module
  */
 
-import { createReadStream, promises as fs } from "node:fs";
+import { createReadStream } from "node:fs";
 import path from "node:path";
 
 import http from "http";
@@ -21,7 +21,7 @@ import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
 import type { Catalog, Dataset, ScheduledImport, User } from "@/payload-types";
 
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import { createIntegrationTestEnvironment, withScheduledImport } from "../../setup/integration/environment";
 
 // Test server to serve fixture files
 let testServer: http.Server;
@@ -138,21 +138,21 @@ const startTestServer = async (): Promise<void> => {
 };
 
 describe.sequential("Webhook Import Service Integration", () => {
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
   let cleanup: () => Promise<void>;
   let testUser: User;
   let testCatalog: Catalog;
   let testDataset: Dataset;
   let testScheduledImport: ScheduledImport;
-  let uploadDir: string;
 
   beforeAll(async () => {
     // Start the test server first
     await startTestServer();
 
-    const env = await createIntegrationTestEnvironment();
-    payload = env.payload;
-    cleanup = env.cleanup;
+    testEnv = await createIntegrationTestEnvironment();
+    payload = testEnv.payload;
+    cleanup = testEnv.cleanup;
 
     // Setup test data
     const timestamp = Date.now();
@@ -186,11 +186,6 @@ describe.sequential("Webhook Import Service Integration", () => {
         _status: "published",
       },
     });
-
-    // Setup upload directory
-    uploadDir = path.join("/tmp", `webhook-service-test-${Date.now()}`);
-    process.env.UPLOAD_DIR_IMPORT_FILES = uploadDir;
-    await fs.mkdir(uploadDir, { recursive: true });
   });
 
   afterAll(async () => {
@@ -200,33 +195,31 @@ describe.sequential("Webhook Import Service Integration", () => {
         testServer.close(() => resolve());
       });
     }
-    await cleanup();
-    if (uploadDir) {
-      await fs.rm(uploadDir, { recursive: true, force: true });
-    }
+    await cleanup(); // Upload dir cleanup handled by testEnv.cleanup()
   });
 
   beforeEach(async () => {
     // Create fresh scheduled import using local test server
     const timestamp = Date.now();
-    testScheduledImport = await payload.create({
-      collection: "scheduled-imports",
-      data: {
+    const { scheduledImport } = await withScheduledImport(
+      testEnv,
+      testCatalog.id,
+      `http://127.0.0.1:${testServerPort}/test-data.csv`,
+      {
         name: `Service Import ${timestamp}`,
-        sourceUrl: `http://127.0.0.1:${testServerPort}/test-data.csv`,
-        catalog: testCatalog.id,
-        dataset: testDataset.id,
         createdBy: testUser.id,
-        enabled: true,
         webhookEnabled: true,
-        scheduleType: "frequency",
         frequency: "daily",
-        advancedOptions: {
-          autoApproveSchema: true,
-          skipDuplicateChecking: false,
+        additionalData: {
+          dataset: testDataset.id,
+          advancedOptions: {
+            autoApproveSchema: true,
+            skipDuplicateChecking: false,
+          },
         },
-      },
-    });
+      }
+    );
+    testScheduledImport = scheduledImport;
   });
 
   describe("Import File Creation", () => {

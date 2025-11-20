@@ -14,7 +14,7 @@ import { getQuotaService, QuotaExceededError } from "@/lib/services/quota-servic
 import type { User } from "@/payload-types";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 
-import { createIntegrationTestEnvironment } from "../../setup/test-environment-builder";
+import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
 // Force sequential execution for this test file to avoid database state conflicts
 // All tests in this file share the same database within a worker
@@ -83,7 +83,7 @@ describe.sequential("Quota System", () => {
         id: testUser.id,
       });
 
-      const result = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+      const result = quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
 
       expect(result.allowed).toBe(true);
       expect(result.current).toBe(0);
@@ -101,7 +101,7 @@ describe.sequential("Quota System", () => {
       });
 
       // Try to use 3 uploads when limit is 2
-      const result = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 3);
+      const result = quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 3);
 
       expect(result.allowed).toBe(false);
       expect(result.limit).toBe(2);
@@ -120,7 +120,7 @@ describe.sequential("Quota System", () => {
       console.log("Admin user trust level:", admin.trustLevel);
 
       // Admin user created with trust level 5 should have unlimited quotas
-      const result = await quotaService.checkQuota(admin, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1000000);
+      const result = quotaService.checkQuota(admin, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1000000);
 
       expect(result.allowed).toBe(true);
       expect(result.limit).toBe(-1); // Unlimited
@@ -192,7 +192,7 @@ describe.sequential("Quota System", () => {
       });
 
       // Now check if further uploads are blocked
-      const result = await quotaService.checkQuota(updatedUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+      const result = quotaService.checkQuota(updatedUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
 
       expect(result.allowed).toBe(false);
       expect(result.current).toBe(2);
@@ -233,9 +233,7 @@ describe.sequential("Quota System", () => {
       });
 
       // This should throw since we're at the limit
-      await expect(quotaService.validateQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1)).rejects.toThrow(
-        QuotaExceededError
-      );
+      expect(() => quotaService.validateQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1)).toThrow(QuotaExceededError);
     });
   });
 
@@ -272,7 +270,7 @@ describe.sequential("Quota System", () => {
         id: testUser.id,
       });
 
-      const result = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+      const result = quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
 
       expect(result.allowed).toBe(true);
       expect(result.current).toBe(0);
@@ -293,7 +291,7 @@ describe.sequential("Quota System", () => {
       });
 
       // Check if another upload would be blocked
-      const result = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+      const result = quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
 
       expect(result.allowed).toBe(false);
       expect(result.current).toBe(2);
@@ -310,7 +308,7 @@ describe.sequential("Quota System", () => {
       });
 
       // Admin should have unlimited uploads
-      const result = await quotaService.checkQuota(admin, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 100);
+      const result = quotaService.checkQuota(admin, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 100);
 
       expect(result.allowed).toBe(true);
       expect(result.limit).toBe(-1); // Unlimited
@@ -328,7 +326,7 @@ describe.sequential("Quota System", () => {
       });
 
       // Check if user can create a schedule (limit is 1)
-      const result = await quotaService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
+      const result = quotaService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
 
       expect(result.allowed).toBe(true);
       expect(result.limit).toBe(1);
@@ -342,7 +340,7 @@ describe.sequential("Quota System", () => {
         id: testUser.id,
       });
 
-      const result2 = await quotaService.checkQuota(updatedUser, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
+      const result2 = quotaService.checkQuota(updatedUser, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
 
       expect(result2.allowed).toBe(false);
       expect(result2.current).toBe(1);
@@ -369,7 +367,7 @@ describe.sequential("Quota System", () => {
       });
 
       // Check if next fetch would be blocked (limit is 3)
-      const result = await quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY, 1);
+      const result = quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY, 1);
 
       expect(result.allowed).toBe(false);
       expect(result.current).toBe(3);
@@ -400,7 +398,7 @@ describe.sequential("Quota System", () => {
       });
 
       // Check if creating 2 events would exceed limit
-      const result = await quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS, 2);
+      const result = quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS, 2);
 
       expect(result.allowed).toBe(false);
       expect(result.current).toBe(499);
