@@ -60,12 +60,14 @@ jobs:
           DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
           PAYLOAD_SECRET: test-secret-key
           NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
+          NODE_OPTIONS: --max-old-space-size=8192
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: web-build
           path: apps/web/.next
+          include-hidden-files: true
           retention-days: 1
 
   # Validate Payload types are in sync
