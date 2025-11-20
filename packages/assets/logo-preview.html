@@ -1,213 +1,220 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TimeTiles Logo Preview</title>
-  <style>
-    body {
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: #f0f2f5;
-    }
-    h1 {
-      color: #0891b2;
-      text-align: center;
-      margin-bottom: 40px;
-    }
-    h2 {
-      color: #0369a1;
-      margin-top: 40px;
-      margin-bottom: 20px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid #0ea5e9;
-    }
-    .logo-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
-      margin-bottom: 40px;
-    }
-    .logo-card {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-    .logo-card h3 {
-      margin: 0 0 15px 0;
-      color: #075985;
-      font-size: 14px;
-      font-weight: 600;
-    }
-    .logo-container {
-      background: linear-gradient(45deg, #f0f9ff, #ecfeff);
-      border-radius: 8px;
-      padding: 20px;
-      min-height: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .logo-container img {
-      max-width: 100%;
-      height: auto;
-    }
-    .dark-bg {
-      background: linear-gradient(45deg, #1e293b, #334155);
-    }
-    .controls {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    button {
-      background: #0ea5e9;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      font-size: 14px;
-      cursor: pointer;
-      margin: 0 5px;
-    }
-    button:hover {
-      background: #0284c7;
-    }
-    button.active {
-      background: #075985;
-    }
-  </style>
-</head>
-<body>
-  <h1>🎨 TimeTiles Logo Library</h1>
-  
-  <div class="controls">
-    <button onclick="toggleBackground()" id="bgToggle">Toggle Dark Background</button>
-  </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TimeTiles Logo Preview</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: #f0f2f5;
+      }
+      h1 {
+        color: #0891b2;
+        text-align: center;
+        margin-bottom: 40px;
+      }
+      h2 {
+        color: #0369a1;
+        margin-top: 40px;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #0ea5e9;
+      }
+      .logo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 40px;
+      }
+      .logo-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+      .logo-card h3 {
+        margin: 0 0 15px 0;
+        color: #075985;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .logo-container {
+        background: linear-gradient(45deg, #f0f9ff, #ecfeff);
+        border-radius: 8px;
+        padding: 20px;
+        min-height: 120px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .logo-container img {
+        max-width: 100%;
+        height: auto;
+      }
+      .dark-bg {
+        background: linear-gradient(45deg, #1e293b, #334155);
+      }
+      .controls {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      button {
+        background: #0ea5e9;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        margin: 0 5px;
+      }
+      button:hover {
+        background: #0284c7;
+      }
+      button.active {
+        background: #075985;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎨 TimeTiles Logo Library</h1>
 
-  <h2>Static Logos</h2>
-  <div class="logo-grid">
-    <div class="logo-card">
-      <h3>Logo (Static)</h3>
-      <div class="logo-container">
-        <img src="logos/static/logo-static.svg" alt="Static Logo">
+    <div class="controls">
+      <button onclick="toggleBackground()" id="bgToggle">Toggle Dark Background</button>
+    </div>
+
+    <h2>Static Logos</h2>
+    <div class="logo-grid">
+      <div class="logo-card">
+        <h3>Logo (Static)</h3>
+        <div class="logo-container">
+          <img src="logos/static/logo-static.svg" alt="Static Logo" />
+        </div>
+      </div>
+      <div class="logo-card">
+        <h3>Logo + Text (Horizontal)</h3>
+        <div class="logo-container">
+          <img src="logos/static/logo-with-text-horizontal.svg" alt="Horizontal Logo" />
+        </div>
+      </div>
+      <div class="logo-card">
+        <h3>Logo + Text (Vertical)</h3>
+        <div class="logo-container">
+          <img src="logos/static/logo-with-text-vertical.svg" alt="Vertical Logo" />
+        </div>
       </div>
     </div>
-    <div class="logo-card">
-      <h3>Logo + Text (Horizontal)</h3>
-      <div class="logo-container">
-        <img src="logos/static/logo-with-text-horizontal.svg" alt="Horizontal Logo">
+
+    <h2>Animated Logos (Logo Only)</h2>
+    <div class="logo-grid" id="animatedGrid"></div>
+
+    <h2>Animated Logos with Text</h2>
+    <div class="logo-grid" id="animatedWithTextGrid"></div>
+
+    <h2>PNG Exports</h2>
+    <div class="logo-grid">
+      <div class="logo-card">
+        <h3>Logo 512px PNG</h3>
+        <div class="logo-container">
+          <img src="logos/static/logo-512.png" alt="Logo 512px" style="max-width: 200px" />
+        </div>
+      </div>
+      <div class="logo-card">
+        <h3>Logo Horizontal 512px PNG</h3>
+        <div class="logo-container">
+          <img src="logos/static/logo-horizontal-512.png" alt="Logo Horizontal 512px" />
+        </div>
+      </div>
+      <div class="logo-card">
+        <h3>Logo Vertical 512px PNG</h3>
+        <div class="logo-container">
+          <img src="logos/static/logo-vertical-512.png" alt="Logo Vertical 512px" style="max-width: 200px" />
+        </div>
       </div>
     </div>
-    <div class="logo-card">
-      <h3>Logo + Text (Vertical)</h3>
-      <div class="logo-container">
-        <img src="logos/static/logo-with-text-vertical.svg" alt="Vertical Logo">
-      </div>
-    </div>
-  </div>
 
-  <h2>Animated Logos (Logo Only)</h2>
-  <div class="logo-grid" id="animatedGrid"></div>
+    <script>
+      // Animated logo list
+      const animatedLogos = [
+        { file: "01-base-static.svg", name: "Base Animation" },
+        { file: "02-rotating.svg", name: "Rotating" },
+        { file: "03-floating.svg", name: "Floating" },
+        { file: "04-breathing.svg", name: "Breathing" },
+        { file: "05-wave-cascade.svg", name: "Wave Cascade" },
+        { file: "06-random-drift.svg", name: "Random Drift" },
+        { file: "07-orbit.svg", name: "Orbit" },
+        { file: "08-spiral.svg", name: "Spiral" },
+        { file: "09-pendulum.svg", name: "Pendulum" },
+        { file: "10-magnetic-pull.svg", name: "Magnetic Pull" },
+      ];
 
-  <h2>Animated Logos with Text</h2>
-  <div class="logo-grid" id="animatedWithTextGrid"></div>
-
-  <h2>PNG Exports</h2>
-  <div class="logo-grid">
-    <div class="logo-card">
-      <h3>Logo 512px PNG</h3>
-      <div class="logo-container">
-        <img src="logos/static/logo-512.png" alt="Logo 512px" style="max-width: 200px;">
-      </div>
-    </div>
-    <div class="logo-card">
-      <h3>Logo Horizontal 512px PNG</h3>
-      <div class="logo-container">
-        <img src="logos/static/logo-horizontal-512.png" alt="Logo Horizontal 512px">
-      </div>
-    </div>
-    <div class="logo-card">
-      <h3>Logo Vertical 512px PNG</h3>
-      <div class="logo-container">
-        <img src="logos/static/logo-vertical-512.png" alt="Logo Vertical 512px" style="max-width: 200px;">
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // Animated logo list
-    const animatedLogos = [
-      { file: '01-base-static.svg', name: 'Base Animation' },
-      { file: '02-rotating.svg', name: 'Rotating' },
-      { file: '03-floating.svg', name: 'Floating' },
-      { file: '04-breathing.svg', name: 'Breathing' },
-      { file: '05-wave-cascade.svg', name: 'Wave Cascade' },
-      { file: '06-random-drift.svg', name: 'Random Drift' },
-      { file: '07-orbit.svg', name: 'Orbit' },
-      { file: '08-spiral.svg', name: 'Spiral' },
-      { file: '09-pendulum.svg', name: 'Pendulum' },
-      { file: '10-magnetic-pull.svg', name: 'Magnetic Pull' }
-    ];
-
-    // Generate animated logo cards
-    const animatedGrid = document.getElementById('animatedGrid');
-    animatedLogos.forEach(logo => {
-      const card = document.createElement('div');
-      card.className = 'logo-card';
-      card.innerHTML = `
+      // Generate animated logo cards
+      const animatedGrid = document.getElementById("animatedGrid");
+      animatedLogos.forEach((logo) => {
+        const card = document.createElement("div");
+        card.className = "logo-card";
+        card.innerHTML = `
         <h3>${logo.name}</h3>
         <div class="logo-container">
           <img src="logos/animated/${logo.file}" alt="${logo.name}">
         </div>
       `;
-      animatedGrid.appendChild(card);
-    });
+        animatedGrid.appendChild(card);
+      });
 
-    // Generate animated with text logo cards
-    const animatedWithTextGrid = document.getElementById('animatedWithTextGrid');
-    animatedLogos.forEach(logo => {
-      // Horizontal version
-      const horizontalCard = document.createElement('div');
-      horizontalCard.className = 'logo-card';
-      const horizontalFile = logo.file.replace('.svg', '-horizontal.svg');
-      horizontalCard.innerHTML = `
+      // Generate animated with text logo cards
+      const animatedWithTextGrid = document.getElementById("animatedWithTextGrid");
+      animatedLogos.forEach((logo) => {
+        // Horizontal version
+        const horizontalCard = document.createElement("div");
+        horizontalCard.className = "logo-card";
+        const horizontalFile = logo.file.replace(".svg", "-horizontal.svg");
+        horizontalCard.innerHTML = `
         <h3>${logo.name} (Horizontal)</h3>
         <div class="logo-container">
           <img src="logos/animated-with-text/${horizontalFile}" alt="${logo.name} Horizontal">
         </div>
       `;
-      animatedWithTextGrid.appendChild(horizontalCard);
-      
-      // Vertical version
-      const verticalCard = document.createElement('div');
-      verticalCard.className = 'logo-card';
-      const verticalFile = logo.file.replace('.svg', '-vertical.svg');
-      verticalCard.innerHTML = `
+        animatedWithTextGrid.appendChild(horizontalCard);
+
+        // Vertical version
+        const verticalCard = document.createElement("div");
+        verticalCard.className = "logo-card";
+        const verticalFile = logo.file.replace(".svg", "-vertical.svg");
+        verticalCard.innerHTML = `
         <h3>${logo.name} (Vertical)</h3>
         <div class="logo-container">
           <img src="logos/animated-with-text/${verticalFile}" alt="${logo.name} Vertical">
         </div>
       `;
-      animatedWithTextGrid.appendChild(verticalCard);
-    });
-
-    // Toggle background function
-    let darkMode = false;
-    function toggleBackground() {
-      darkMode = !darkMode;
-      const containers = document.querySelectorAll('.logo-container');
-      containers.forEach(container => {
-        if (darkMode) {
-          container.classList.add('dark-bg');
-        } else {
-          container.classList.remove('dark-bg');
-        }
+        animatedWithTextGrid.appendChild(verticalCard);
       });
-      document.getElementById('bgToggle').textContent = darkMode ? 'Toggle Light Background' : 'Toggle Dark Background';
-    }
-  </script>
-</body>
+
+      // Toggle background function
+      let darkMode = false;
+      function toggleBackground() {
+        darkMode = !darkMode;
+        const containers = document.querySelectorAll(".logo-container");
+        containers.forEach((container) => {
+          if (darkMode) {
+            container.classList.add("dark-bg");
+          } else {
+            container.classList.remove("dark-bg");
+          }
+        });
+        document.getElementById("bgToggle").textContent = darkMode
+          ? "Toggle Light Background"
+          : "Toggle Dark Background";
+      }
+    </script>
+  </body>
 </html>

@@ -31,9 +31,9 @@ describe("cn", () => {
 
   it("handles objects with boolean values", () => {
     const result = cn({
-      "active": true,
-      "disabled": false,
-      "focused": true,
+      active: true,
+      disabled: false,
+      focused: true,
     });
     expect(result).toBe("active focused");
   });
@@ -58,7 +58,7 @@ describe("cn", () => {
     const result = cn(
       "base-class",
       ["array-class-1", "array-class-2"],
-      { "object-class": true, "hidden": false },
+      { "object-class": true, hidden: false },
       null,
       "final-class"
     );

@@ -99,9 +99,15 @@ import { createIntegrationTestEnvironment, withCatalog, withDataset } from "@/te
 
 let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
-beforeAll(async () => { testEnv = await createIntegrationTestEnvironment(); });
-afterAll(async () => { await testEnv.cleanup(); });
-beforeEach(async () => { await testEnv.seedManager.truncate(); });
+beforeAll(async () => {
+  testEnv = await createIntegrationTestEnvironment();
+});
+afterAll(async () => {
+  await testEnv.cleanup();
+});
+beforeEach(async () => {
+  await testEnv.seedManager.truncate();
+});
 
 it("processes import file", async () => {
   const { catalog } = await withCatalog(testEnv);

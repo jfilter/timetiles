@@ -307,11 +307,9 @@ const generateEnvironmentalMetadata = (index: number): Record<string, unknown> =
     startDate: timestamp,
     station_id: `ENV-${String(index + 100).padStart(3, "0")}`,
     measurement_type: measurement,
-    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
     value,
     unit,
     sensor_id: `SENSOR-${index + 1000}`,
-    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
     quality,
     conditions: ["Clear", "Cloudy", "Rainy", "Foggy"][index % 4],
     timestamp, // Hours ago
@@ -393,7 +391,6 @@ const generateEconomicMetadata = (index: number): Record<string, unknown> => {
     description: `Economic analysis of ${indicator} for the ${region} region during ${period}.`,
     startDate: new Date().toISOString(),
     indicator,
-    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
     value,
     unit: "%",
     region,

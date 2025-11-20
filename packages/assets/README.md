@@ -40,7 +40,7 @@ logos/
 In Next.js apps, copy logos to public folder during build or use them directly:
 
 ```tsx
-import logo from '@timetiles/assets/logos/logo.svg'
+import logo from "@timetiles/assets/logos/logo.svg";
 ```
 
 For static serving, configure your build process to copy the assets.

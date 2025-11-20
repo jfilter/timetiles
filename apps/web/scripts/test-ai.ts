@@ -75,6 +75,7 @@ const vitestCmd = [
 
 // Run vitest
 try {
+  // eslint-disable-next-line sonarjs/os-command -- vitestCmd is constructed from safe, controlled values only (no user input)
   execSync(vitestCmd, {
     stdio: "pipe",
     cwd: process.cwd(),

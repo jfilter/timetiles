@@ -325,7 +325,6 @@ export const truncateTables = async (
       // Truncate all tables with CASCADE to handle foreign keys
       // Safe: table names are fetched from the database and properly escaped with double quotes
       const tableList = tableNames.map((name) => `${schema}."${name}"`).join(", ");
-      // eslint-disable-next-line sonarjs/sql-queries
       await client.query(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
     }
 

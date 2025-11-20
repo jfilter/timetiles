@@ -449,10 +449,11 @@ export class FileSystemCacheStorage implements CacheStorage {
     // Schedule cleanup operations (async operations not allowed in destroy)
     if (this.initPromise) {
       void this.initPromise
+        // eslint-disable-next-line promise/prefer-await-to-then -- Cannot use async/await in synchronous destroy method
         .then(() => {
           return this.saveIndex();
         })
-        // eslint-disable-next-line promise/prefer-await-to-then
+        // eslint-disable-next-line promise/prefer-await-to-then -- Cannot use async/await in synchronous destroy method
         .catch(() => {
           // Ignore errors on shutdown
         });

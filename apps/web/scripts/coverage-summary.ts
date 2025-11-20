@@ -17,6 +17,27 @@
 import { existsSync, readFileSync } from "fs";
 import { join, resolve } from "path";
 
+// Type definitions for JSON parsing
+interface PackageJson {
+  name: string;
+}
+
+interface CoverageMetric {
+  pct: number;
+  total: number;
+  covered: number;
+}
+
+interface CoverageSummary {
+  total: {
+    lines: CoverageMetric;
+    statements: CoverageMetric;
+    functions: CoverageMetric;
+    branches: CoverageMetric;
+  };
+  [filePath: string]: unknown;
+}
+
 // Find the monorepo root by looking for the root package.json with "timetiles" name
 const findMonorepoRoot = (startPath: string = process.cwd()): string => {
   let currentPath = resolve(startPath);
@@ -25,7 +46,7 @@ const findMonorepoRoot = (startPath: string = process.cwd()): string => {
     const packageJsonPath = join(currentPath, "package.json");
     if (existsSync(packageJsonPath)) {
       try {
-        const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+        const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as PackageJson;
         if (packageJson.name === "timetiles") {
           return currentPath;
         }
@@ -102,7 +123,7 @@ if (!summaryPath) {
 }
 
 try {
-  const summary = JSON.parse(readFileSync(summaryPath, "utf8"));
+  const summary = JSON.parse(readFileSync(summaryPath, "utf8")) as CoverageSummary;
   const total = summary.total;
 
   // Calculate overall coverage (average of all metrics)
