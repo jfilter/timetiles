@@ -1,16 +1,60 @@
-name: Test, Lint & Build
+name: CI
 
 on:
   push:
     branches: [main]
-
   pull_request:
     branches: [main]
 
 jobs:
-  test:
+  # Fast checks that don't need database or build
+  lint-and-typecheck:
+    name: Lint & Type Check
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
 
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint code
+        timeout-minutes: 3
+        run: pnpm lint
+        continue-on-error: true
+
+      - name: Lint DevOps
+        timeout-minutes: 2
+        run: |
+          mkdir -p $HOME/.local/bin
+          export PATH=$HOME/.local/bin:$PATH
+
+          # Install linting tools
+          curl -sSfL https://github.com/rhysd/actionlint/releases/download/v1.7.4/actionlint_1.7.4_linux_amd64.tar.gz | tar xz -C $HOME/.local/bin actionlint
+          wget -q https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 -O $HOME/.local/bin/hadolint
+          chmod +x $HOME/.local/bin/hadolint $HOME/.local/bin/actionlint
+
+          pnpm lint:devops
+
+      - name: Type check
+        timeout-minutes: 3
+        run: pnpm typecheck
+
+      - name: Check documentation links
+        timeout-minutes: 2
+        run: pnpm --filter docs lint
+
+  # Validate Payload types are in sync
+  validate-payload:
+    name: Validate Payload Types
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgis/postgis:17-3.5
@@ -35,29 +79,122 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: true
+
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: "pnpm"
 
-      - run: pnpm install
+      - name: Install dependencies
+        run: pnpm install
 
-      - name: Setup databases
+      - name: Setup database
         run: |
-          # Function to setup a database with PostGIS
+          psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles;"
+          psql -h localhost -U timetiles_user -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE SCHEMA IF NOT EXISTS payload;"
+
+      - name: Run database migrations
+        timeout-minutes: 2
+        run: pnpm payload:migrate
+        working-directory: apps/web
+
+      - name: Validate Payload generated files
+        run: pnpm payload:validate
+        working-directory: apps/web
+
+      - name: Check for uncommitted changes
+        run: |
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "❌ Payload generated files are out of sync!"
+            echo "Please run 'pnpm payload:generate' and commit the changes."
+            git status
+            exit 1
+          else
+            echo "✅ Payload generated files are in sync!"
+          fi
+
+  # Build Next.js application
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build web app
+        timeout-minutes: 10
+        run: pnpm build:compile
+        working-directory: apps/web
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+          PAYLOAD_SECRET: test-secret-key
+          NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: apps/web/.next
+          retention-days: 1
+
+  # Unit and integration tests
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck]
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: timetiles_user
+          POSTGRES_PASSWORD: timetiles_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+      PAYLOAD_SECRET: test-secret-key
+      PGPASSWORD: timetiles_password
+      NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Setup test databases
+        run: |
           setup_db() {
             psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE $1;"
             psql -h localhost -U timetiles_user -d $1 -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE SCHEMA IF NOT EXISTS payload;"
           }
 
-          # Create main database
           setup_db timetiles
-
-          # Create test database for E2E tests (matches Playwright config)
-          setup_db timetiles_test
-
-          # Create test databases for parallel workers
           for i in {1..4}; do
             setup_db timetiles_test_$i
           done
@@ -66,44 +203,6 @@ jobs:
         timeout-minutes: 2
         run: pnpm payload:migrate
         working-directory: apps/web
-
-      - name: Build
-        timeout-minutes: 10
-        run: pnpm build:compile
-        working-directory: apps/web
-
-      - name: Lint Code
-        timeout-minutes: 3
-        run: pnpm lint
-        continue-on-error: true
-
-      - name: Lint DevOps
-        timeout-minutes: 2
-        run: |
-          # Install linting tools
-          mkdir -p $HOME/.local/bin
-          export PATH=$HOME/.local/bin:$PATH
-
-          # Install actionlint
-          curl -sSfL https://github.com/rhysd/actionlint/releases/download/v1.7.4/actionlint_1.7.4_linux_amd64.tar.gz | tar xz -C $HOME/.local/bin actionlint
-
-          # Install hadolint
-          wget -q https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 -O $HOME/.local/bin/hadolint
-          chmod +x $HOME/.local/bin/hadolint $HOME/.local/bin/actionlint
-
-          # shellcheck is already available in GitHub Actions runners
-
-          # Run DevOps linting
-          pnpm lint:devops
-
-      - name: Type check
-        timeout-minutes: 3
-        run: pnpm typecheck
-        working-directory: apps/web
-
-      - name: Check documentation links
-        timeout-minutes: 2
-        run: pnpm --filter docs lint
 
       - name: Run tests with coverage
         id: test-coverage
@@ -120,13 +219,69 @@ jobs:
             echo "⚠️ Coverage report not generated" >> $GITHUB_STEP_SUMMARY
           fi
         working-directory: apps/web
-      
+
       - name: SonarCloud Scan
         if: always()
         uses: SonarSource/sonarqube-scan-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Fail if tests failed
+        if: steps.test-coverage.outcome == 'failure'
+        run: exit 1
+
+  # E2E tests with Playwright
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [build, lint-and-typecheck]
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: timetiles_user
+          POSTGRES_PASSWORD: timetiles_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
+      PAYLOAD_SECRET: test-secret-key
+      PGPASSWORD: timetiles_password
+      NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3002
+      NODE_ENV: production
+      PAYLOAD_CONFIG_PATH: ./payload.config.ts
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: apps/web/.next
+
+      - name: Setup E2E database
+        run: |
+          psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles_test;"
+          psql -h localhost -U timetiles_user -d timetiles_test -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE SCHEMA IF NOT EXISTS payload;"
 
       - name: Setup E2E environment
         timeout-minutes: 10
@@ -136,17 +291,15 @@ jobs:
           pnpm seed
           mkdir -p uploads
         working-directory: apps/web
-        env:
-          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
 
       - name: Start server and run E2E tests
         timeout-minutes: 15
         run: |
-          # Start server on port 3002 to match Playwright config
+          # Start server on port 3002
           PORT=3002 nohup pnpm start > server.log 2>&1 &
           echo $! > .server.pid
 
-          # Wait for server (updated to port 3002)
+          # Wait for server
           npx wait-on http-get://localhost:3002/api/health --timeout 60000 || {
             echo "Server failed to start. Logs:"
             cat server.log
@@ -156,11 +309,14 @@ jobs:
           # Run E2E tests
           pnpm test:e2e
         working-directory: apps/web
-        env:
-          NODE_ENV: production
-          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
-          NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3002
-          PAYLOAD_CONFIG_PATH: ./payload.config.ts
+
+      - name: Upload E2E test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: apps/web/test-results
+          retention-days: 7
 
       - name: Cleanup
         if: always()
