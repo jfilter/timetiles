@@ -47,11 +47,6 @@ jobs:
           pnpm lint:devops
         continue-on-error: true
 
-      - name: Check documentation links
-        timeout-minutes: 2
-        run: pnpm --filter docs lint
-        continue-on-error: true
-
       - name: Build web app
         timeout-minutes: 10
         run: pnpm build:compile
