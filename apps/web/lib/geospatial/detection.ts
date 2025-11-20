@@ -1,30 +1,49 @@
 /**
- * Provides utilities for detecting the format of geographic data within a dataset.
+ * Format detection utilities for geospatial data.
  *
- * This module contains functions and regular expressions designed to identify how location
- * data is represented. It can detect:
- * - Combined coordinate formats (e.g., "lat, lon", "lat lon", GeoJSON).
- * - Individual latitude and longitude columns based on common naming conventions.
+ * Functions for detecting how geographic coordinates are formatted in datasets.
+ * Supports various combined coordinate formats including:
+ * - Comma-separated: "40.7128, -74.0060"
+ * - Space-separated: "40.7128 -74.0060"
+ * - GeoJSON Point: {"type": "Point", "coordinates": [-74.0060, 40.7128]}
  *
- * The results of this detection are used to guide the parsing and validation process
- * during data import, ensuring that geographic information is correctly interpreted.
+ * These detection functions analyze sample data to identify the coordinate format,
+ * enabling automatic parsing during data import.
  *
  * @module
+ * @category Geospatial
  */
+
+import { isValidCoordinate } from "./validation";
 
 /**
- * Format detection utilities for geolocation data.
+ * Result of format detection with confidence score.
  */
-
-import { isValidCoordinate } from "@/lib/geospatial";
-
 export interface FormatDetectionResult {
+  /** Detected format identifier (e.g., "combined_comma", "combined_space", "geojson") */
   format: string;
+  /** Confidence score from 0 to 1 indicating detection reliability */
   confidence: number;
 }
 
 /**
  * Check for comma-separated coordinate format.
+ *
+ * Detects coordinates in the format "lat, lon" with optional spacing.
+ * Validates that parsed coordinates fall within valid ranges.
+ * Requires at least 70% of samples to match the format for positive detection.
+ *
+ * @param samples - Array of sample values to check
+ * @returns Detection result with confidence score, or null if format not detected
+ *
+ * @example
+ * ```typescript
+ * checkCommaFormat(["40.7128, -74.0060", "51.5074, -0.1278"]);
+ * // Returns { format: "combined_comma", confidence: 1.0 }
+ *
+ * checkCommaFormat(["40.7128", "-74.0060"]);
+ * // Returns null (not comma-separated)
+ * ```
  */
 export const checkCommaFormat = (samples: unknown[]): FormatDetectionResult | null => {
   const commaFormat = samples.filter((s) => {
@@ -49,6 +68,22 @@ export const checkCommaFormat = (samples: unknown[]): FormatDetectionResult | nu
 
 /**
  * Check for space-separated coordinate format.
+ *
+ * Detects coordinates in the format "lat lon" (space-separated).
+ * Validates that parsed coordinates fall within valid ranges.
+ * Requires at least 70% of samples to match the format for positive detection.
+ *
+ * @param samples - Array of sample values to check
+ * @returns Detection result with confidence score, or null if format not detected
+ *
+ * @example
+ * ```typescript
+ * checkSpaceFormat(["40.7128 -74.0060", "51.5074 -0.1278"]);
+ * // Returns { format: "combined_space", confidence: 1.0 }
+ *
+ * checkSpaceFormat(["40.7128, -74.0060"]);
+ * // Returns null (comma-separated, not space-separated)
+ * ```
  */
 export const checkSpaceFormat = (samples: unknown[]): FormatDetectionResult | null => {
   const spaceFormat = samples.filter((s) => {
@@ -73,6 +108,30 @@ export const checkSpaceFormat = (samples: unknown[]): FormatDetectionResult | nu
 
 /**
  * Check for GeoJSON Point format.
+ *
+ * Detects coordinates in GeoJSON Point format:
+ * ```json
+ * {"type": "Point", "coordinates": [lon, lat]}
+ * ```
+ *
+ * Note: GeoJSON uses [longitude, latitude] order (opposite of typical lat/lon).
+ * Validates that parsed coordinates fall within valid ranges.
+ * Requires at least 70% of samples to match the format for positive detection.
+ *
+ * @param samples - Array of sample values to check
+ * @returns Detection result with confidence score, or null if format not detected
+ *
+ * @example
+ * ```typescript
+ * checkGeoJsonFormat([
+ *   '{"type": "Point", "coordinates": [-74.0060, 40.7128]}',
+ *   '{"type": "Point", "coordinates": [-0.1278, 51.5074]}'
+ * ]);
+ * // Returns { format: "geojson", confidence: 1.0 }
+ *
+ * checkGeoJsonFormat(["40.7128, -74.0060"]);
+ * // Returns null (not GeoJSON)
+ * ```
  */
 export const checkGeoJsonFormat = (samples: unknown[]): FormatDetectionResult | null => {
   const geoJsonFormat = samples.filter((s) => {
@@ -106,47 +165,3 @@ export const checkGeoJsonFormat = (samples: unknown[]): FormatDetectionResult | 
   }
   return null;
 };
-
-/**
- * Pattern matching for latitude columns.
- */
-export const latitudePatterns = [
-  /^lat(itude)?$/i,
-  /^lat[_\s-]?deg(rees)?$/i,
-  /^y[_\s-]?coord(inate)?$/i,
-  /^location[_\s-]?lat(itude)?$/i,
-  /^geo[_\s-]?lat(itude)?$/i,
-  /^decimal[_\s-]?lat(itude)?$/i,
-  /^latitude[_\s-]?decimal$/i,
-  /^wgs84[_\s-]?lat(itude)?$/i,
-];
-
-/**
- * Pattern matching for longitude columns.
- */
-export const longitudePatterns = [
-  /^lon(g|gitude)?$/i,
-  /^lng$/i,
-  /^lon[_\s-]?deg(rees)?$/i,
-  /^long[_\s-]?deg(rees)?$/i,
-  /^x[_\s-]?coord(inate)?$/i,
-  /^location[_\s-]?lon(g|gitude)?$/i,
-  /^geo[_\s-]?lon(g|gitude)?$/i,
-  /^decimal[_\s-]?lon(g|gitude)?$/i,
-  /^longitude[_\s-]?decimal$/i,
-  /^wgs84[_\s-]?lon(g|gitude)?$/i,
-];
-
-/**
- * Combined coordinate patterns.
- */
-export const combinedPatterns = [
-  /^coord(inate)?s$/i,
-  /^lat[_\s-]?lon(g)?$/i,
-  /^location$/i,
-  /^geo[_\s-]?location$/i,
-  /^position$/i,
-  /^point$/i,
-  /^geometry$/i,
-  /^coordinates$/i,
-];

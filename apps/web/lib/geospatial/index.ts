@@ -30,3 +30,25 @@ export { calculateCentroid, calculateDistance, findMaxDistance } from "./distanc
 
 // Bounds utilities
 export { createBoundingBox, isValidBounds, isWithinBounds, parseBounds, parseBoundsParameter } from "./bounds";
+
+// Coordinate parsing
+export {
+  parseCoordinate,
+  parseDegreesMinutesFormat,
+  parseDirectionalFormat,
+  parseDMSFormat,
+  tryParseDecimal,
+} from "./parsing";
+
+// Format detection
+export type { FormatDetectionResult } from "./detection";
+export { checkCommaFormat, checkGeoJsonFormat, checkSpaceFormat } from "./detection";
+
+// Patterns for coordinate detection
+export {
+  ADDRESS_PATTERNS,
+  COMBINED_COORDINATE_PATTERNS,
+  COORDINATE_BOUNDS,
+  LATITUDE_PATTERNS,
+  LONGITUDE_PATTERNS,
+} from "./patterns";

@@ -1,25 +1,37 @@
 /**
- * Provides utility functions for parsing geographic coordinates from various string formats.
+ * Coordinate parsing utilities for geospatial data.
  *
- * This module contains a set of helper functions designed to interpret different representations
- * of coordinate data that might be found in imported files. It supports common formats such as:
- * - Decimal Degrees (e.g., "40.7128")
+ * Functions for parsing geographic coordinates from various string formats including:
+ * - Decimal Degrees (e.g., "40.7128", "-74.0060")
  * - Degrees Minutes Seconds (DMS) (e.g., "40°26'46\"N")
- * - Coordinates with a directional suffix (e.g., "40.7128 N").
+ * - Degrees Decimal Minutes (e.g., "40°42.768'N")
+ * - Directional format (e.g., "40.7128 N", "74.0060 W")
  *
- * The main export, `parseCoordinate`, attempts to parse a value using these different strategies,
- * returning a standardized decimal degree number if successful.
+ * These parsing functions support the import pipeline by converting various
+ * coordinate representations into standardized decimal degree values.
  *
  * @module
+ * @category Geospatial
  */
 
-/**
- * Coordinate parsing utilities.
- */
+import { valueToString } from "./validation";
 
 /**
  * Try to parse as decimal degrees.
+ *
  * Only accepts strings that are purely numeric (no trailing characters).
+ * Supports standard decimal notation including scientific notation.
+ *
+ * @param str - String to parse
+ * @returns Parsed decimal degrees or null if invalid
+ *
+ * @example
+ * ```typescript
+ * tryParseDecimal("40.7128");  // Returns 40.7128
+ * tryParseDecimal("-74.0060"); // Returns -74.0060
+ * tryParseDecimal("1.5e2");    // Returns 150
+ * tryParseDecimal("abc");      // Returns null
+ * ```
  */
 export const tryParseDecimal = (str: string): number | null => {
   const trimmed = str.trim();
@@ -39,12 +51,18 @@ export const tryParseDecimal = (str: string): number | null => {
 /**
  * Parse DMS (Degrees Minutes Seconds) format.
  *
+ * Supports various separators and directional indicators (N/S/E/W).
+ * Handles both positive and negative degree notation.
+ *
+ * @param str - String in DMS format
+ * @returns Parsed decimal degrees or null if invalid
+ *
  * @example
  * ```typescript
- * parseDMSFormat("40°26'46\"N"); // Returns 40.446111
- * parseDMSFormat("40 26 46 N"); // Returns 40.446111
+ * parseDMSFormat("40°26'46\"N");    // Returns 40.446111
+ * parseDMSFormat("40 26 46 N");     // Returns 40.446111
  * parseDMSFormat("40° 42' 46\" N"); // Returns 40.7128
- * parseDMSFormat("-40°26'46\""); // Returns -39.553889
+ * parseDMSFormat("-40°26'46\"");    // Returns -40.446111
  * ```
  */
 export const parseDMSFormat = (str: string): number | null => {
@@ -82,11 +100,17 @@ export const parseDMSFormat = (str: string): number | null => {
 };
 
 /**
- * Parse degrees and decimal minutes format (e.g., "40°42.768'N").
+ * Parse degrees and decimal minutes format.
+ *
+ * Common in GPS devices and navigation systems (e.g., "40°42.768'N").
+ *
+ * @param str - String in degrees/decimal minutes format
+ * @returns Parsed decimal degrees or null if invalid
  *
  * @example
  * ```typescript
  * parseDegreesMinutesFormat("40°42.768'N"); // Returns 40.7128
+ * parseDegreesMinutesFormat("74°0.36'W");   // Returns -74.006
  * ```
  */
 export const parseDegreesMinutesFormat = (str: string): number | null => {
@@ -114,7 +138,21 @@ export const parseDegreesMinutesFormat = (str: string): number | null => {
 };
 
 /**
- * Parse coordinate with direction (e.g., "40.7128 N").
+ * Parse coordinate with directional suffix.
+ *
+ * Handles decimal coordinates followed by cardinal direction (e.g., "40.7128 N").
+ * Automatically applies correct sign based on direction (N/E positive, S/W negative).
+ *
+ * @param str - String with directional suffix
+ * @returns Parsed decimal degrees or null if invalid
+ *
+ * @example
+ * ```typescript
+ * parseDirectionalFormat("40.7128 N");  // Returns 40.7128
+ * parseDirectionalFormat("40.7128 S");  // Returns -40.7128
+ * parseDirectionalFormat("74.0060 W");  // Returns -74.0060
+ * parseDirectionalFormat("74.0060 E");  // Returns 74.0060
+ * ```
  */
 export const parseDirectionalFormat = (str: string): number | null => {
   const directionRegex = /^(-?\d{1,3}\.?\d{0,10})\s{0,2}([NSEW])$/i;
@@ -139,7 +177,27 @@ export const parseDirectionalFormat = (str: string): number | null => {
 };
 
 /**
- * Parse various coordinate formats.
+ * Parse coordinate from various formats.
+ *
+ * Main parsing function that tries multiple strategies to convert a value
+ * into decimal degrees. Attempts parsing in order of likelihood:
+ * 1. Decimal degrees (most common)
+ * 2. DMS format
+ * 3. Degrees/decimal minutes format
+ * 4. Directional format
+ *
+ * @param value - Value to parse (string, number, or other)
+ * @returns Parsed decimal degrees or null if unparseable
+ *
+ * @example
+ * ```typescript
+ * parseCoordinate("40.7128");        // Returns 40.7128
+ * parseCoordinate("40°26'46\"N");    // Returns 40.446111
+ * parseCoordinate("40°42.768'N");    // Returns 40.7128
+ * parseCoordinate("40.7128 N");      // Returns 40.7128
+ * parseCoordinate(40.7128);          // Returns 40.7128
+ * parseCoordinate("invalid");        // Returns null
+ * ```
  */
 export const parseCoordinate = (value: unknown): number | null => {
   const normalized = validateAndNormalizeInput(value);
@@ -178,7 +236,12 @@ export const parseCoordinate = (value: unknown): number | null => {
 };
 
 /**
- * Validate and normalize input value.
+ * Validate and normalize input value for parsing.
+ *
+ * Internal helper that converts various input types to strings and
+ * handles edge cases like null/undefined/empty values.
+ *
+ * @internal
  */
 const validateAndNormalizeInput = (value: unknown): string | null => {
   if (value == null || value == undefined || value === "") {
@@ -192,24 +255,4 @@ const validateAndNormalizeInput = (value: unknown): string | null => {
 
   // Convert to string and clean
   return valueToString(value).trim();
-};
-
-/**
- * Convert value to string safely.
- */
-const valueToString = (value: unknown): string => {
-  if (value == null || value == undefined) {
-    return "";
-  }
-  if (typeof value == "string") {
-    return value;
-  }
-  if (typeof value == "number" || typeof value == "boolean") {
-    return String(value);
-  }
-  if (typeof value == "object") {
-    return JSON.stringify(value);
-  }
-  // All cases handled above, this is unreachable
-  return "";
 };

@@ -13,7 +13,7 @@ import {
   parseDirectionalFormat,
   parseDMSFormat,
   tryParseDecimal,
-} from "../../../../lib/services/import/coordinate-parser";
+} from "../../../lib/geospatial/parsing";
 
 describe("Coordinate Parser Utilities", () => {
   describe("tryParseDecimal", () => {
