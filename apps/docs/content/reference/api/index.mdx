@@ -1,0 +1,157 @@
+**web**
+
+---
+
+# API Reference
+
+## Modules
+
+### API
+
+- [app/api/events/aggregate/route](app/api/events/aggregate/route.md)
+- [app/api/events/cluster-stats/route](app/api/events/cluster-stats/route.md)
+- [app/api/webhooks/trigger/\[token\]/route](app/api/webhooks/trigger/[token]/route.md)
+
+### API Routes
+
+- [app/api/health/route](app/api/health/route.md)
+
+### Collections
+
+- [lib/collections/catalogs](lib/collections/catalogs.md)
+- [lib/collections/scheduled-imports/fields/auth-fields](lib/collections/scheduled-imports/fields/auth-fields.md)
+- [lib/collections/scheduled-imports/fields/basic-fields](lib/collections/scheduled-imports/fields/basic-fields.md)
+- [lib/collections/scheduled-imports/fields/execution-fields](lib/collections/scheduled-imports/fields/execution-fields.md)
+- [lib/collections/scheduled-imports/fields/schedule-fields](lib/collections/scheduled-imports/fields/schedule-fields.md)
+- [lib/collections/scheduled-imports/fields/target-fields](lib/collections/scheduled-imports/fields/target-fields.md)
+- [lib/collections/scheduled-imports](lib/collections/scheduled-imports.md)
+
+### Collections/ScheduledImports
+
+- [lib/collections/scheduled-imports/fields/webhook-fields](lib/collections/scheduled-imports/fields/webhook-fields.md)
+- [lib/collections/scheduled-imports/hooks](lib/collections/scheduled-imports/hooks.md)
+- [lib/collections/scheduled-imports/validation](lib/collections/scheduled-imports/validation.md)
+
+### Hooks
+
+- [lib/hooks/use-chart-filters](lib/hooks/use-chart-filters.md)
+- [lib/hooks/use-chart-query](lib/hooks/use-chart-query.md)
+
+### Jobs
+
+- [lib/jobs/handlers/cache-cleanup-job](lib/jobs/handlers/cache-cleanup-job.md)
+- [lib/jobs/handlers/cleanup-stuck-scheduled-imports-job](lib/jobs/handlers/cleanup-stuck-scheduled-imports-job.md)
+- [lib/jobs/handlers/create-events-batch-job](lib/jobs/handlers/create-events-batch-job.md)
+- [lib/jobs/handlers/dataset-detection-job](lib/jobs/handlers/dataset-detection-job.md)
+- [lib/jobs/handlers/geocode-batch-job](lib/jobs/handlers/geocode-batch-job.md)
+- [lib/jobs/handlers/schedule-manager-job](lib/jobs/handlers/schedule-manager-job.md)
+- [lib/jobs/handlers/url-fetch-job](lib/jobs/handlers/url-fetch-job.md)
+- [lib/jobs/handlers/url-fetch-job](lib/jobs/handlers/url-fetch-job-1.md)
+
+### Jobs/UrlFetch
+
+- [lib/jobs/handlers/url-fetch-job/auth](lib/jobs/handlers/url-fetch-job/auth.md)
+- [lib/jobs/handlers/url-fetch-job/fetch-utils](lib/jobs/handlers/url-fetch-job/fetch-utils.md)
+- [lib/jobs/handlers/url-fetch-job/scheduled-import-utils](lib/jobs/handlers/url-fetch-job/scheduled-import-utils.md)
+
+### Other
+
+- [app/api/admin/schedule-service/route](app/api/admin/schedule-service/route.md)
+- [app/api/events/histogram/route](app/api/events/histogram/route.md)
+- [app/api/events/list/route](app/api/events/list/route.md)
+- [app/api/events/map-clusters/route](app/api/events/map-clusters/route.md)
+- [app/api/import/\[importId\]/progress/route](app/api/import/[importId]/progress/route.md)
+- [app/api/preview/route](app/api/preview/route.md)
+- [app/api/quotas/route](app/api/quotas/route.md)
+- [lib/collections/dataset-schemas](lib/collections/dataset-schemas.md)
+- [lib/collections/datasets](lib/collections/datasets.md)
+- [lib/collections/events](lib/collections/events.md)
+- [lib/collections/geocoding-providers](lib/collections/geocoding-providers.md)
+- [lib/collections/import-files](lib/collections/import-files.md)
+- [lib/collections/import-jobs/access-control](lib/collections/import-jobs/access-control.md)
+- [lib/collections/import-jobs/fields](lib/collections/import-jobs/fields.md)
+- [lib/collections/import-jobs/helpers](lib/collections/import-jobs/helpers.md)
+- [lib/collections/import-jobs/hooks](lib/collections/import-jobs/hooks.md)
+- [lib/collections/import-jobs](lib/collections/import-jobs.md)
+- [lib/collections/location-cache](lib/collections/location-cache.md)
+- [lib/collections/media](lib/collections/media.md)
+- [lib/collections/pages](lib/collections/pages.md)
+- [lib/collections/shared-fields](lib/collections/shared-fields.md)
+- [lib/collections/users](lib/collections/users.md)
+- [lib/constants/import-constants](lib/constants/import-constants.md)
+- [lib/constants/quota-constants](lib/constants/quota-constants.md)
+- [lib/globals/main-menu](lib/globals/main-menu.md)
+- [lib/hooks/use-event-stats](lib/hooks/use-event-stats.md)
+- [lib/hooks/use-events-queries](lib/hooks/use-events-queries.md)
+- [lib/hooks/use-theme](lib/hooks/use-theme.md)
+- [lib/jobs/handlers/analyze-duplicates-job](lib/jobs/handlers/analyze-duplicates-job.md)
+- [lib/jobs/handlers/cleanup-approval-locks-job](lib/jobs/handlers/cleanup-approval-locks-job.md)
+- [lib/jobs/handlers/create-schema-version-job](lib/jobs/handlers/create-schema-version-job.md)
+- [lib/jobs/handlers/quota-reset-job](lib/jobs/handlers/quota-reset-job.md)
+- [lib/jobs/handlers/schema-detection-job](lib/jobs/handlers/schema-detection-job.md)
+- [lib/jobs/handlers/validate-schema-job](lib/jobs/handlers/validate-schema-job.md)
+- [lib/jobs/import-jobs](lib/jobs/import-jobs.md)
+- [lib/jobs/types/job-inputs](lib/jobs/types/job-inputs.md)
+- [lib/jobs/utils/data-parsing](lib/jobs/utils/data-parsing.md)
+- [lib/jobs/utils/data-validation](lib/jobs/utils/data-validation.md)
+- [lib/jobs/utils/event-processing](lib/jobs/utils/event-processing.md)
+- [lib/jobs/utils/job-context](lib/jobs/utils/job-context.md)
+- [lib/services/error-recovery](lib/services/error-recovery.md)
+- [lib/services/geocoding](lib/services/geocoding.md)
+- [lib/services/geocoding/cache-manager](lib/services/geocoding/cache-manager.md)
+- [lib/services/geocoding/geocoding-operations](lib/services/geocoding/geocoding-operations.md)
+- [lib/services/geocoding/geocoding-service](lib/services/geocoding/geocoding-service.md)
+- [lib/services/geocoding/provider-manager](lib/services/geocoding/provider-manager.md)
+- [lib/services/geocoding/types](lib/services/geocoding/types.md)
+- [lib/services/id-generation](lib/services/id-generation.md)
+- [lib/services/progress-tracking](lib/services/progress-tracking.md)
+- [lib/services/schema-versioning](lib/services/schema-versioning.md)
+- [lib/services/stage-transition](lib/services/stage-transition.md)
+- [lib/services/type-transformation](lib/services/type-transformation.md)
+- [lib/types/geocoding](lib/types/geocoding.md)
+- [lib/types/schema-detection](lib/types/schema-detection.md)
+- [lib/utils/date](lib/utils/date.md)
+- [lib/utils/file-readers](lib/utils/file-readers.md)
+
+### React Hooks
+
+- [lib/hooks/use-debounce](lib/hooks/use-debounce.md)
+
+### Services
+
+- [lib/services/access-control](lib/services/access-control.md)
+- [lib/services/aggregation-filters](lib/services/aggregation-filters.md)
+- [lib/services/audit-log](lib/services/audit-log.md)
+- [lib/services/quota-service](lib/services/quota-service.md)
+- [lib/services/rate-limit-service](lib/services/rate-limit-service.md)
+- [lib/services/schedule-service](lib/services/schedule-service.md)
+- [lib/services/schema-builder](lib/services/schema-builder.md)
+
+### Services/Cache
+
+- [lib/services/cache/cache](lib/services/cache/cache.md)
+- [lib/services/cache](lib/services/cache.md)
+- [lib/services/cache/manager](lib/services/cache/manager.md)
+- [lib/services/cache/types](lib/services/cache/types.md)
+- [lib/services/cache/url-fetch-cache](lib/services/cache/url-fetch-cache.md)
+
+### Services/Cache/Storage
+
+- [lib/services/cache/storage/file-system](lib/services/cache/storage/file-system.md)
+- [lib/services/cache/storage/memory](lib/services/cache/storage/memory.md)
+
+### Services/SchemaBuilder
+
+- [lib/services/schema-builder/field-statistics](lib/services/schema-builder/field-statistics.md)
+- [lib/services/schema-builder/pattern-detection](lib/services/schema-builder/pattern-detection.md)
+- [lib/services/schema-builder/schema-comparison](lib/services/schema-builder/schema-comparison.md)
+
+### Utilities
+
+- [lib/utils/cron-parser](lib/utils/cron-parser.md)
+- [lib/utils/slug](lib/utils/slug.md)
+
+### Utils
+
+- [lib/utils/api-response](lib/utils/api-response.md)
+- [lib/utils/errors](lib/utils/errors.md)

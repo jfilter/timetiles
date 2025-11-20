@@ -58,7 +58,7 @@ const removeBracketDirectories = (): void => {
 };
 
 /**
- * Convert all .md files to .mdx
+ * Convert all .md files to .mdx and handle README files
  */
 const convertMdToMdx = (dir: string): void => {
   if (!fs.existsSync(dir)) return;
@@ -72,7 +72,13 @@ const convertMdToMdx = (dir: string): void => {
     if (stat.isDirectory()) {
       convertMdToMdx(fullPath);
     } else if (item.endsWith(".md") && !item.endsWith(".mdx")) {
-      const newPath = fullPath.replace(/\.md$/, ".mdx");
+      let newPath = fullPath.replace(/\.md$/, ".mdx");
+
+      // Convert README.md to index.mdx for Nextra compatibility
+      if (item === "README.md") {
+        newPath = path.join(path.dirname(fullPath), "index.mdx");
+      }
+
       fs.renameSync(fullPath, newPath);
       console.log(`Converted: ${path.relative(API_DIR, fullPath)} -> ${path.basename(newPath)}`);
     }
