@@ -15,6 +15,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
+import {
+  createMockContext,
+  createMockImportFile,
+  createMockImportJob,
+  createMockPayload,
+  TEST_FILENAMES,
+  TEST_IDS,
+} from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
@@ -54,29 +62,14 @@ describe.sequential("SchemaDetectionJob Handler", () => {
     // Reset all mocks
     vi.clearAllMocks();
 
-    // Mock payload with required methods
-    mockPayload = {
-      findByID: vi.fn(),
-      update: vi.fn(),
-      jobs: {
-        queue: vi.fn().mockResolvedValue({}),
-      },
-    };
+    // Create standard mock payload and context using factories
+    mockPayload = createMockPayload();
+    mockContext = createMockContext(mockPayload, {
+      importJobId: TEST_IDS.IMPORT_JOB,
+      batchNumber: 0,
+    });
 
-    // Mock context
-    mockContext = {
-      payload: mockPayload,
-      job: {
-        id: "test-job-1",
-        taskStatus: "running",
-      } as any,
-      input: {
-        importJobId: "import-123",
-        batchNumber: 0,
-      } as any,
-    };
-
-    // Mock schema builder instance
+    // Mock schema builder instance (job-specific)
     mockSchemaBuilderInstance = {
       processBatch: vi.fn(),
       getState: vi.fn(),
@@ -89,22 +82,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
   describe("Success Cases", () => {
     it("should analyze batch data and detect schema successfully", async () => {
-      // Mock import job
-      const mockImportJob = {
-        id: "import-123",
-        importFile: "file-789",
-        sheetIndex: 0,
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-      };
-
-      // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      // Create mock data using factories
+      const mockImportJob = createMockImportJob();
+      const mockImportFile = createMockImportFile();
 
       // Mock file data
       const mockFileData = [
@@ -179,28 +159,14 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         {
           schema: mockSchema,
           schemaBuilderState: mockState,
-          geocodingCandidates: {},
         }
       );
     });
 
-    it("should detect geocoding candidates correctly", async () => {
-      // Mock import job
-      const mockImportJob = {
-        id: "import-123",
-        importFile: "file-789",
-        sheetIndex: 0,
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-      };
-
-      // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+    it("should detect geocoding fields via schema builder", async () => {
+      // Create mock data using factories
+      const mockImportJob = createMockImportJob();
+      const mockImportFile = createMockImportFile();
 
       // Mock file data with geocoding fields
       const mockData = [
@@ -208,7 +174,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         { id: "2", address: "456 Oak Ave", latitude: "34.0522", longitude: "-118.2437" },
       ];
 
-      // Mock schema and state
+      // Mock schema and state with detected geo fields
       const mockSchema = {
         type: "object",
         properties: {
@@ -227,6 +193,12 @@ describe.sequential("SchemaDetectionJob Handler", () => {
           longitude: { occurrences: 2, uniqueValues: 2 },
         },
         recordCount: 2,
+        detectedGeoFields: {
+          addressField: "address",
+          latitude: "latitude",
+          longitude: "longitude",
+          confidence: 1,
+        },
       };
 
       // Setup mocks
@@ -253,7 +225,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         },
       });
 
-      // Verify geocoding candidates were detected and passed to progress tracking
+      // Verify geocoding fields are in schema builder state (not separate geocodingCandidates)
       expect(mocks.updateJobProgress).toHaveBeenCalledWith(
         mockPayload,
         "import-123",
@@ -263,32 +235,24 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         {
           schema: mockSchema,
           schemaBuilderState: mockState,
-          geocodingCandidates: {
-            addressField: "address",
-            latitudeField: "latitude",
-            longitudeField: "longitude",
-          },
         }
       );
+
+      // Verify detectedGeoFields are in the state
+      const callArgs = mocks.updateJobProgress.mock.calls[0];
+      expect(callArgs).toBeDefined();
+      expect(callArgs![5].schemaBuilderState.detectedGeoFields).toEqual({
+        addressField: "address",
+        latitude: "latitude",
+        longitude: "longitude",
+        confidence: 1,
+      });
     });
 
     it("should queue next batch when more data exists", async () => {
-      // Mock import job
-      const mockImportJob = {
-        id: "import-123",
-        importFile: "file-789",
-        sheetIndex: 0,
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-      };
-
-      // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      // Create mock data using factories
+      const mockImportJob = createMockImportJob();
+      const mockImportFile = createMockImportFile();
 
       // Mock a full batch (10000 rows) to trigger hasMore = true
       const fullBatch = Array.from({ length: 10000 }, (_, i) => ({
@@ -348,22 +312,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
     });
 
     it("should handle empty batch and move to validation stage", async () => {
-      // Mock import job
-      const mockImportJob = {
-        id: "import-123",
-        importFile: "file-789",
-        sheetIndex: 0,
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-      };
-
-      // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "empty.csv",
-      };
+      // Create mock data using factories
+      const mockImportJob = createMockImportJob();
+      const mockImportFile = createMockImportFile(TEST_IDS.IMPORT_FILE, TEST_FILENAMES.EMPTY);
 
       // Setup mocks
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
@@ -396,22 +347,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
     });
 
     it("should skip duplicate rows during schema building", async () => {
-      // Mock import job with duplicates
-      const mockImportJob = {
-        id: "import-123",
-        importFile: "file-789",
-        sheetIndex: 0,
-        duplicates: {
-          internal: [{ rowNumber: 1, uniqueId: "dataset-456:ext:2" }],
-          external: [{ rowNumber: 2, uniqueId: "dataset-456:ext:3" }],
-        },
-      };
-
-      // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      // Create mock data using factories (with duplicates)
+      const mockImportJob = createMockImportJob({ hasDuplicates: true });
+      const mockImportFile = createMockImportFile();
 
       // Mock file data (3 rows, but 2 are duplicates)
       const mockFileData = [
@@ -476,7 +414,6 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         {
           schema: mockSchema,
           schemaBuilderState: mockState,
-          geocodingCandidates: {},
         }
       );
     });
@@ -490,10 +427,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
     });
 
     it("should throw error when import file not found", async () => {
-      const mockImportJob = {
-        id: "import-123",
-        importFile: "file-789",
-      };
+      const mockImportJob = createMockImportJob();
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(null); // Import file not found
 
@@ -501,15 +435,8 @@ describe.sequential("SchemaDetectionJob Handler", () => {
     });
 
     it("should handle file reading errors", async () => {
-      const mockImportJob = {
-        id: "import-123",
-        importFile: "file-789",
-      };
-
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      const mockImportJob = createMockImportJob();
+      const mockImportFile = createMockImportFile();
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
 
@@ -538,22 +465,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
   describe("Edge Cases", () => {
     it("should handle existing schema builder state", async () => {
-      // Mock import job with existing schema builder state
-      const mockImportJob = {
-        id: "import-123",
-        importFile: "file-789",
-        sheetIndex: 0,
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-      };
-
-      // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      // Create mock data using factories
+      const mockImportJob = createMockImportJob();
+      const mockImportFile = createMockImportFile();
 
       // Mock file data
       const mockFileData = [{ id: "1", title: "Event 1" }];

@@ -276,6 +276,80 @@ describe.sequential("Quota System", () => {
       expect(result.current).toBe(0);
       expect(result.remaining).toBe(2);
     });
+
+    it("should reset daily counters for all users efficiently", async () => {
+      const quotaService = getQuotaService(payload);
+
+      // Create additional test users with usage
+      const user2 = await payload.create({
+        collection: "users",
+        data: {
+          email: "quota-test-2@example.com",
+          password: "test123456",
+          trustLevel: TRUST_LEVELS.REGULAR,
+        },
+      });
+
+      const user3 = await payload.create({
+        collection: "users",
+        data: {
+          email: "quota-test-3@example.com",
+          password: "test123456",
+          trustLevel: TRUST_LEVELS.REGULAR,
+        },
+      });
+
+      // Add usage to all users
+      await quotaService.incrementUsage(testUser.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 5);
+      await quotaService.incrementUsage(testUser.id, USAGE_TYPES.URL_FETCHES_TODAY, 3);
+      await quotaService.incrementUsage(user2.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 2);
+      await quotaService.incrementUsage(user2.id, USAGE_TYPES.IMPORT_JOBS_TODAY, 1);
+      await quotaService.incrementUsage(user3.id, USAGE_TYPES.URL_FETCHES_TODAY, 7);
+
+      // Verify users have usage
+      const beforeReset1 = await payload.findByID({ collection: "users", id: testUser.id });
+      const beforeReset2 = await payload.findByID({ collection: "users", id: user2.id });
+      const beforeReset3 = await payload.findByID({ collection: "users", id: user3.id });
+
+      expect(beforeReset1.usage.fileUploadsToday).toBe(5);
+      expect(beforeReset2.usage.fileUploadsToday).toBe(2);
+      expect(beforeReset3.usage.urlFetchesToday).toBe(7);
+
+      // Reset all daily counters using Payload's bulk update API
+      await quotaService.resetAllDailyCounters();
+
+      // Verify all users had their daily counters reset
+      const afterReset1 = await payload.findByID({ collection: "users", id: testUser.id });
+      const afterReset2 = await payload.findByID({ collection: "users", id: user2.id });
+      const afterReset3 = await payload.findByID({ collection: "users", id: user3.id });
+
+      // All daily counters should be 0
+      expect(afterReset1.usage.fileUploadsToday).toBe(0);
+      expect(afterReset1.usage.urlFetchesToday).toBe(0);
+      expect(afterReset1.usage.importJobsToday).toBe(0);
+
+      expect(afterReset2.usage.fileUploadsToday).toBe(0);
+      expect(afterReset2.usage.urlFetchesToday).toBe(0);
+      expect(afterReset2.usage.importJobsToday).toBe(0);
+
+      expect(afterReset3.usage.fileUploadsToday).toBe(0);
+      expect(afterReset3.usage.urlFetchesToday).toBe(0);
+      expect(afterReset3.usage.importJobsToday).toBe(0);
+
+      // Verify lastResetDate was updated for all users
+      expect(afterReset1.usage.lastResetDate).toBeDefined();
+      expect(afterReset2.usage.lastResetDate).toBeDefined();
+      expect(afterReset3.usage.lastResetDate).toBeDefined();
+
+      // Total events should NOT be reset
+      expect(afterReset1.usage.totalEventsCreated).toBeGreaterThanOrEqual(0);
+      expect(afterReset2.usage.totalEventsCreated).toBeGreaterThanOrEqual(0);
+      expect(afterReset3.usage.totalEventsCreated).toBeGreaterThanOrEqual(0);
+
+      // Cleanup additional users
+      await payload.delete({ collection: "users", id: user2.id });
+      await payload.delete({ collection: "users", id: user3.id });
+    });
   });
 
   describe("File Upload Quota Checking", () => {

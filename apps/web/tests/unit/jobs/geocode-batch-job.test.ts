@@ -14,6 +14,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { geocodeBatchJob } from "@/lib/jobs/handlers/geocode-batch-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
+import {
+  createMockDataset,
+  createMockImportFile,
+  createMockImportJob,
+  createMockPayload,
+} from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
@@ -67,14 +73,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     // Mock payload with required methods
-    mockPayload = {
-      findByID: vi.fn(),
-      find: vi.fn(),
-      update: vi.fn(),
-      jobs: {
-        queue: vi.fn().mockResolvedValue({}),
-      },
-    };
+    mockPayload = createMockPayload();
 
     // Mock context
     mockContext = {
@@ -101,8 +100,11 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         dataset: "dataset-123",
         importFile: "file-123",
         sheetIndex: 0,
-        geocodingCandidates: {
-          addressField: "address",
+        schemaBuilderState: {
+          detectedGeoFields: {
+            addressField: "address",
+            confidence: 0,
+          },
         },
         duplicates: {
           internal: [],
@@ -110,17 +112,11 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         },
       };
 
-      const mockDataset = {
-        id: "dataset-123",
-        name: "Test Dataset",
-      };
+      const mockDataset = createMockDataset();
 
-      const mockImportFile = {
-        id: "file-123",
-        filename: "test.csv",
-      };
+      const mockImportFile = createMockImportFile();
 
-      // Mock getGeocodingCandidate to return address field
+      // Mock getGeocodingCandidate to return address field from schema builder state
       const { getGeocodingCandidate } = await import("@/lib/types/geocoding");
       vi.mocked(getGeocodingCandidate).mockReturnValue({
         addressField: "address",
@@ -166,8 +162,11 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         dataset: "dataset-123",
         importFile: "file-123",
         sheetIndex: 0,
-        geocodingCandidates: {
-          addressField: "address",
+        schemaBuilderState: {
+          detectedGeoFields: {
+            addressField: "address",
+            confidence: 0,
+          },
         },
         duplicates: {
           internal: [],
@@ -506,16 +505,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should handle no geocoding candidates", async () => {
-      const mockImportJob = {
-        id: "import-123",
-        dataset: "dataset-123",
-        importFile: "file-123",
-        sheetIndex: 0,
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-      };
+      const mockImportJob = createMockImportJob();
 
       const mockDataset = { id: "dataset-123" };
       const mockImportFile = { id: "file-123", filename: "test.csv" };

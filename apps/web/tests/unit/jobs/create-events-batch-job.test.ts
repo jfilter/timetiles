@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createEventsBatchJob } from "@/lib/jobs/handlers/create-events-batch-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
+import { createMockContext, createMockImportFile } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
@@ -54,17 +55,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     };
 
     // Mock context
-    mockContext = {
-      payload: mockPayload,
-      job: {
-        id: "test-job-1",
-        taskStatus: "running",
-      } as any,
-      input: {
-        importJobId: "import-123",
-        batchNumber: 0,
-      } as any,
-    };
+    mockContext = createMockContext(mockPayload, {
+      importJobId: "import-123",
+      batchNumber: 0,
+    });
   });
 
   describe("Success Cases", () => {
@@ -92,10 +86,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       };
 
       // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      const mockImportFile = createMockImportFile();
 
       // Mock file data
       const mockFileData = [
@@ -190,10 +181,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         idStrategy: { type: "external", externalIdPath: "id" },
       };
 
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      const mockImportFile = createMockImportFile();
 
       // Mock file data (3 rows, but 2 are duplicates)
       const mockFileData = [

@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { datasetDetectionJob } from "@/lib/jobs/handlers/dataset-detection-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
+import { createMockPayload } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
@@ -66,15 +67,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     // Excel files will need to be handled differently since we removed xlsx mocks
 
     // Mock payload with required methods
-    mockPayload = {
-      findByID: vi.fn(),
-      find: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      jobs: {
-        queue: vi.fn().mockResolvedValue({}),
-      },
-    };
+    mockPayload = createMockPayload();
 
     // Mock context
     mockContext = {

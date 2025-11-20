@@ -14,6 +14,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createSchemaVersionJob } from "@/lib/jobs/handlers/create-schema-version-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
+import { createMockDataset } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
@@ -93,10 +94,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       };
 
       // Mock dataset
-      const mockDataset = {
-        id: "dataset-456",
-        name: "Test Dataset",
-      };
+      const mockDataset = createMockDataset();
 
       // Mock field stats
       const mockFieldStats = {
@@ -227,10 +225,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
     it("should handle dataset as object reference", async () => {
       // Mock import job with dataset as object
-      const mockDataset = {
-        id: "dataset-456",
-        name: "Test Dataset",
-      };
+      const mockDataset = createMockDataset();
 
       const mockImportJob = {
         id: "import-123",
@@ -285,10 +280,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         },
       };
 
-      const mockDataset = {
-        id: "dataset-456",
-        name: "Test Dataset",
-      };
+      const mockDataset = createMockDataset();
 
       const mockSchemaVersion = {
         id: "schema-version-101",
@@ -354,10 +346,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         },
       };
 
-      const mockDataset = {
-        id: "dataset-456",
-        name: "Test Dataset",
-      };
+      const mockDataset = createMockDataset();
 
       const mockError = new Error("Schema version creation failed");
 

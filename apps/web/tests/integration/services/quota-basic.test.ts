@@ -73,7 +73,7 @@ describe.sequential("Basic Quota Test", () => {
     const quotaService = getQuotaService(payload);
 
     // First check - should be allowed
-    const check1 = await quotaService.checkQuota(updatedUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+    const check1 = quotaService.checkQuota(updatedUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
 
     console.log("First check:", check1);
     expect(check1.allowed).toBe(true);
@@ -93,7 +93,7 @@ describe.sequential("Basic Quota Test", () => {
     console.log("User usage:", freshUser.usage);
 
     // Second check - should be blocked
-    const check2 = await quotaService.checkQuota(freshUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+    const check2 = quotaService.checkQuota(freshUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
 
     console.log("Second check:", check2);
     expect(check2.allowed).toBe(false);

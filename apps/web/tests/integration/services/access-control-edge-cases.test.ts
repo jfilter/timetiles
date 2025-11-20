@@ -504,24 +504,32 @@ describe.sequential("Access Control Edge Cases", () => {
 
       // Try concurrent updates - one should fail
       const updatePromises = [
-        payload
-          .update({
-            collection: "catalogs",
-            id: catalog.id,
-            data: { name: "Updated by Owner" },
-            user: ownerUser,
-            overrideAccess: false,
-          })
-          .catch((error: unknown) => ({ error })),
-        payload
-          .update({
-            collection: "catalogs",
-            id: catalog.id,
-            data: { name: "Updated by Other" },
-            user: otherUser,
-            overrideAccess: false,
-          })
-          .catch((error: unknown) => ({ error })),
+        (async () => {
+          try {
+            return await payload.update({
+              collection: "catalogs",
+              id: catalog.id,
+              data: { name: "Updated by Owner" },
+              user: ownerUser,
+              overrideAccess: false,
+            });
+          } catch (error: unknown) {
+            return { error };
+          }
+        })(),
+        (async () => {
+          try {
+            return await payload.update({
+              collection: "catalogs",
+              id: catalog.id,
+              data: { name: "Updated by Other" },
+              user: otherUser,
+              overrideAccess: false,
+            });
+          } catch (error: unknown) {
+            return { error };
+          }
+        })(),
       ];
 
       const results = await Promise.all(updatePromises);

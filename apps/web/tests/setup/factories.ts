@@ -5,10 +5,14 @@
  * - Utility data (dates, coordinates, files, CSV)
  * - Rich text structures for Payload CMS
  * - Domain objects (catalogs, datasets, events)
+ * - Mock infrastructure (Payload, JobHandlerContext, test data)
  *
  * @module
  * @category Test Setup
  */
+import { vi } from "vitest";
+
+import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import type { Catalog, Dataset, Event } from "@/payload-types";
 
 // =============================================================================
@@ -218,4 +222,221 @@ export const createMapEvents = (count: number = 3) => {
       longitude: -74.006 + i * 0.01,
     })
   );
+};
+
+// =============================================================================
+// Test Constants
+// =============================================================================
+
+/**
+ * Standard test IDs to avoid magic strings in tests.
+ * Use these instead of hardcoded values for consistency.
+ */
+export const TEST_IDS = {
+  IMPORT_JOB: "import-123",
+  DATASET: "dataset-456",
+  IMPORT_FILE: "file-789",
+  JOB: "test-job-1",
+  USER: "user-123",
+  CATALOG: "catalog-123",
+  SCHEMA_VERSION: "schema-v1",
+} as const;
+
+/**
+ * Standard test filenames to avoid magic strings.
+ */
+export const TEST_FILENAMES = {
+  CSV: "test.csv",
+  EXCEL: "test.xlsx",
+  EMPTY: "empty.csv",
+} as const;
+
+// =============================================================================
+// Mock Infrastructure Factories (for Unit Tests)
+// =============================================================================
+
+/**
+ * Creates a mock Payload object with common methods for job handler tests.
+ *
+ * Provides mocked versions of commonly used Payload methods:
+ * - findByID, find, create, update
+ * - jobs.queue for job queueing
+ *
+ * @param overrides - Optional overrides for specific mock methods
+ * @returns Mock Payload object with vi.fn() mocks
+ *
+ * @example
+ * ```typescript
+ * const mockPayload = createMockPayload();
+ * mockPayload.findByID.mockResolvedValueOnce({ id: "123", name: "Test" });
+ * ```
+ */
+export const createMockPayload = (overrides: Partial<any> = {}) => {
+  return {
+    findByID: vi.fn(),
+    find: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    jobs: {
+      queue: vi.fn().mockResolvedValue({}),
+    },
+    ...overrides,
+  };
+};
+
+/**
+ * Creates a mock JobHandlerContext for job handler tests.
+ *
+ * @param payload - Mock Payload instance (use createMockPayload())
+ * @param input - Job input data (varies by job type)
+ * @param jobId - Job ID (default: "test-job-1")
+ * @returns JobHandlerContext mock object
+ *
+ * @example
+ * ```typescript
+ * const mockPayload = createMockPayload();
+ * const mockContext = createMockContext(mockPayload, {
+ *   importJobId: TEST_IDS.IMPORT_JOB,
+ *   batchNumber: 0,
+ * });
+ * ```
+ */
+export const createMockContext = <T = unknown>(
+  payload: unknown,
+  input: T,
+  jobId: string = TEST_IDS.JOB
+): JobHandlerContext => {
+  return {
+    payload,
+    job: {
+      id: jobId,
+      taskStatus: "running",
+    },
+    input,
+  } as unknown as JobHandlerContext;
+};
+
+/**
+ * Creates a mock ImportJob object for testing.
+ *
+ * @param options - Configuration options
+ * @returns Mock ImportJob object matching Payload structure
+ *
+ * @example
+ * ```typescript
+ * const job = createMockImportJob({ hasDuplicates: true });
+ * const jobWithProgress = createMockImportJob({
+ *   progress: { current: 50, total: 100 }
+ * });
+ * ```
+ */
+export interface MockImportJobOptions {
+  id?: string | number;
+  dataset?: string | number;
+  importFile?: string | number;
+  sheetIndex?: number;
+  hasDuplicates?: boolean;
+  progress?: Record<string, any>;
+  schemaBuilderState?: any;
+  stage?: string;
+  status?: string;
+  errors?: any[];
+}
+
+export const createMockImportJob = (options: MockImportJobOptions = {}) => {
+  return {
+    id: options.id ?? TEST_IDS.IMPORT_JOB,
+    dataset: options.dataset ?? TEST_IDS.DATASET,
+    importFile: options.importFile ?? TEST_IDS.IMPORT_FILE,
+    sheetIndex: options.sheetIndex ?? 0,
+    stage: options.stage ?? "SCHEMA_DETECTION",
+    status: options.status ?? "processing",
+    duplicates: options.hasDuplicates
+      ? {
+          internal: [{ rowNumber: 1, uniqueId: "dup-1" }],
+          external: [{ rowNumber: 2, uniqueId: "dup-2" }],
+        }
+      : {
+          internal: [],
+          external: [],
+        },
+    progress: options.progress ?? { current: 0, total: 100 },
+    errors: options.errors ?? [],
+    schemaBuilderState: options.schemaBuilderState,
+  };
+};
+
+/**
+ * Creates a mock Dataset object for testing.
+ *
+ * This extends the existing createDataset() but provides job-specific defaults.
+ *
+ * @param id - Dataset ID (default: TEST_IDS.DATASET)
+ * @param name - Dataset name (default: "Test Dataset")
+ * @param options - Additional options
+ * @returns Mock Dataset object
+ *
+ * @example
+ * ```typescript
+ * const dataset = createMockDataset();
+ * const lockedDataset = createMockDataset("dataset-1", "Locked DS", {
+ *   schemaConfig: { locked: true }
+ * });
+ * ```
+ */
+export const createMockDataset = (
+  id: string | number = TEST_IDS.DATASET,
+  name: string = "Test Dataset",
+  options: {
+    schemaConfig?: unknown;
+    deduplicationConfig?: unknown;
+    idStrategy?: unknown;
+  } = {}
+) => {
+  return {
+    id,
+    name,
+    schemaConfig: options.schemaConfig ?? {
+      autoGrow: true,
+      autoApproveNonBreaking: true,
+      locked: false,
+    },
+    deduplicationConfig: options.deduplicationConfig ?? {
+      enabled: true,
+    },
+    idStrategy: options.idStrategy ?? {
+      type: "external" as const,
+      externalIdPath: "id",
+    },
+  };
+};
+
+/**
+ * Creates a mock ImportFile object for testing.
+ *
+ * @param id - Import file ID (default: TEST_IDS.IMPORT_FILE)
+ * @param filename - Filename (default: TEST_FILENAMES.CSV)
+ * @param options - Additional options
+ * @returns Mock ImportFile object
+ *
+ * @example
+ * ```typescript
+ * const file = createMockImportFile();
+ * const excelFile = createMockImportFile("file-1", TEST_FILENAMES.EXCEL);
+ * ```
+ */
+export const createMockImportFile = (
+  id: string | number = TEST_IDS.IMPORT_FILE,
+  filename: string = TEST_FILENAMES.CSV,
+  options: {
+    filePath?: string;
+    status?: string;
+  } = {}
+) => {
+  return {
+    id,
+    filename,
+    filePath: options.filePath ?? `/tmp/${filename}`,
+    status: options.status ?? "uploaded",
+  };
 };

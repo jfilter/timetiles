@@ -15,6 +15,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { validateSchemaJob } from "@/lib/jobs/handlers/validate-schema-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
+import type { ImportJob } from "@/payload-types";
+import {
+  createMockContext,
+  createMockDataset,
+  createMockImportFile,
+  createMockImportJob,
+  createMockPayload,
+} from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
@@ -56,26 +64,13 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     // Reset all mocks
     vi.clearAllMocks();
 
-    // Mock payload with required methods
-    mockPayload = {
-      findByID: vi.fn(),
-      find: vi.fn(),
-      update: vi.fn(),
-    };
+    // Create standard mock payload and context using factories
+    mockPayload = createMockPayload();
+    mockContext = createMockContext(mockPayload, {
+      importJobId: "123",
+    });
 
-    // Mock context
-    mockContext = {
-      payload: mockPayload,
-      job: {
-        id: "test-job-1",
-        taskStatus: "running",
-      } as any,
-      input: {
-        importJobId: "123",
-      } as any,
-    };
-
-    // Mock schema builder instance
+    // Mock schema builder instance (job-specific)
     mockSchemaBuilderInstance = {
       processBatch: vi.fn(),
       getSchema: vi.fn(),
@@ -88,42 +83,15 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
   describe("Success Cases", () => {
     it("should auto-approve schema with only non-breaking changes", async () => {
-      // Mock import job
-      const mockImportJob = {
+      // Create mock data using factories
+      const mockImportJob = createMockImportJob({
         id: 123,
-        dataset: "dataset-456",
-        importFile: "file-789",
-        sheetIndex: 0,
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-        progress: {
-          total: 100,
-        },
-      };
-
-      // Mock dataset with auto-approve configuration
-      const mockDataset = {
-        id: "dataset-456",
-        schemaConfig: {
-          autoGrow: true,
-          autoApproveNonBreaking: true,
-          locked: false,
-        },
-      };
-
-      // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+        progress: { total: 100 },
+      });
+      const mockDataset = createMockDataset();
+      const mockImportFile = createMockImportFile();
 
       // Mock file data
-      const mockFileData = [
-        { id: "1", title: "Event 1", newField: "optional" },
-        { id: "2", title: "Event 2", newField: "optional" },
-      ];
 
       // Mock detected schema with new optional field
       const mockDetectedSchema = {
@@ -146,7 +114,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         required: ["id", "title"],
       };
 
-      // Mock schema builder state
+      // Mock schema builder state (cached from schema detection stage)
       const mockSchemaBuilderState = {
         fieldStats: {
           id: { occurrences: 100, uniqueValues: 100 },
@@ -155,6 +123,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         },
         recordCount: 100,
       };
+
+      // Add schema builder state to import job
+      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+        mockSchemaBuilderState;
 
       // Setup mocks
       mockPayload.findByID
@@ -167,11 +139,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         docs: [{ schema: mockCurrentSchema }],
       });
 
-      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData).mockReturnValueOnce([]); // End of file
+      // Mock getSchemaBuilderState to return cached state (no file reading needed)
+      mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
 
-      mocks.getSchemaBuilderState.mockReturnValueOnce(null);
-
-      mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);
+      // Mock schema generation from cached state (no batch processing needed)
       mockSchemaBuilderInstance.getSchema.mockResolvedValueOnce(mockDetectedSchema);
       mockSchemaBuilderInstance.getState.mockReturnValueOnce(mockSchemaBuilderState);
 
@@ -259,10 +230,6 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       };
 
       // Mock file data
-      const mockFileData = [
-        { id: 123, title: "Event 1" }, // id is now number instead of string
-        { id: 456, title: "Event 2" },
-      ];
 
       // Mock detected schema with breaking change (id: number)
       const mockDetectedSchema = {
@@ -284,7 +251,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         required: ["id", "title"],
       };
 
-      // Mock schema builder state
+      // Mock schema builder state (cached from schema detection stage)
       const mockSchemaBuilderState = {
         fieldStats: {
           id: { occurrences: 100, uniqueValues: 100 },
@@ -292,6 +259,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         },
         recordCount: 100,
       };
+
+      // Add schema builder state to import job
+      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+        mockSchemaBuilderState;
 
       // Setup mocks
       mockPayload.findByID
@@ -304,11 +275,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         docs: [{ schema: mockCurrentSchema }],
       });
 
-      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData).mockReturnValueOnce([]); // End of file
+      // Mock getSchemaBuilderState to return cached state (no file reading needed)
+      mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
 
-      mocks.getSchemaBuilderState.mockReturnValueOnce(null);
-
-      mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);
+      // Mock schema generation from cached state (no batch processing needed)
       mockSchemaBuilderInstance.getSchema.mockResolvedValueOnce(mockDetectedSchema);
       mockSchemaBuilderInstance.getState.mockReturnValueOnce(mockSchemaBuilderState);
 
@@ -341,8 +311,9 @@ describe.sequential("ValidateSchemaJob Handler", () => {
               {
                 field: "id",
                 change: "type_change",
-                from: "string",
-                to: "number",
+                description: "Field 'id' type changed from string to number",
+                oldType: "string",
+                newType: "number",
               },
             ],
             newFields: [],
@@ -386,12 +357,6 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         filename: "test.csv",
       };
 
-      // Mock file data with new field
-      const mockFileData = [
-        { id: "1", title: "Event 1", newField: "value" },
-        { id: "2", title: "Event 2", newField: "value" },
-      ];
-
       // Mock detected schema with new field
       const mockDetectedSchema = {
         type: "object",
@@ -413,6 +378,16 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         required: ["id", "title"],
       };
 
+      // Mock schema builder state (cached from schema detection stage)
+      const mockSchemaBuilderState = {
+        fieldStats: {},
+        recordCount: 100,
+      };
+
+      // Add schema builder state to import job
+      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+        mockSchemaBuilderState;
+
       // Setup mocks
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
@@ -424,16 +399,12 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         docs: [{ schema: mockCurrentSchema }],
       });
 
-      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData).mockReturnValueOnce([]); // End of file
+      // Mock getSchemaBuilderState to return cached state (no file reading needed)
+      mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
 
-      mocks.getSchemaBuilderState.mockReturnValueOnce(null);
-
-      mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);
+      // Mock schema generation from cached state (no batch processing needed)
       mockSchemaBuilderInstance.getSchema.mockResolvedValueOnce(mockDetectedSchema);
-      mockSchemaBuilderInstance.getState.mockReturnValueOnce({
-        fieldStats: {},
-        recordCount: 100,
-      });
+      mockSchemaBuilderInstance.getState.mockReturnValueOnce(mockSchemaBuilderState);
 
       mockPayload.update.mockResolvedValueOnce({});
 
@@ -512,11 +483,12 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Import file not found");
     });
 
-    it("should handle file reading errors", async () => {
+    it("should throw error when schema builder state is missing", async () => {
       const mockImportJob = {
         id: 123,
         dataset: "dataset-456",
         importFile: "file-789",
+        // No schemaBuilderState - this should cause an error
       };
 
       const mockDataset = {
@@ -534,12 +506,12 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockImportFile);
 
+      // Mock getSchemaBuilderState to return null (missing state)
       mocks.getSchemaBuilderState.mockReturnValueOnce(null);
-      mocks.readBatchFromFile.mockImplementation(() => {
-        throw new Error("File not found");
-      });
 
-      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("File not found");
+      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow(
+        "Schema builder state not found. Schema detection stage must run first."
+      );
 
       // Verify error handling updated job status
       expect(mockPayload.update).toHaveBeenCalledWith({
@@ -550,7 +522,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
           errors: [
             {
               row: 0,
-              error: "File not found",
+              error: "Schema builder state not found. Schema detection stage must run first.",
             },
           ],
         },
@@ -592,10 +564,6 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       };
 
       // Mock file data
-      const mockFileData = [
-        { id: "1", title: "Event 1" },
-        { id: "2", title: "Event 2" },
-      ];
 
       // Mock detected schema (same as current)
       const mockSchema = {
@@ -606,6 +574,16 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         },
         required: ["id", "title"],
       };
+
+      // Mock schema builder state (cached from schema detection stage)
+      const mockSchemaBuilderState = {
+        fieldStats: {},
+        recordCount: 100,
+      };
+
+      // Add schema builder state to import job
+      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+        mockSchemaBuilderState;
 
       // Setup mocks
       mockPayload.findByID
@@ -618,16 +596,12 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         docs: [{ schema: mockSchema }],
       });
 
-      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData).mockReturnValueOnce([]); // End of file
+      // Mock getSchemaBuilderState to return cached state (no file reading needed)
+      mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
 
-      mocks.getSchemaBuilderState.mockReturnValueOnce(null);
-
-      mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);
+      // Mock schema generation from cached state (no batch processing needed)
       mockSchemaBuilderInstance.getSchema.mockResolvedValueOnce(mockSchema);
-      mockSchemaBuilderInstance.getState.mockReturnValueOnce({
-        fieldStats: {},
-        recordCount: 100,
-      });
+      mockSchemaBuilderInstance.getState.mockReturnValueOnce(mockSchemaBuilderState);
 
       mockPayload.update.mockResolvedValueOnce({});
 
@@ -696,13 +670,6 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         filename: "test.csv",
       };
 
-      // Mock file data (3 rows, but 2 are duplicates)
-      const mockFileData = [
-        { id: "1", title: "Event 1" }, // Will be processed
-        { id: "2", title: "Event 2" }, // Internal duplicate - skip
-        { id: "3", title: "Event 3" }, // External duplicate - skip
-      ];
-
       // Mock schema
       const mockSchema = {
         type: "object",
@@ -712,6 +679,16 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         },
         required: ["id", "title"],
       };
+
+      // Mock schema builder state (cached from schema detection stage)
+      const mockSchemaBuilderState = {
+        fieldStats: {},
+        recordCount: 1, // Only 1 non-duplicate row processed
+      };
+
+      // Add schema builder state to import job
+      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+        mockSchemaBuilderState;
 
       // Setup mocks
       mockPayload.findByID
@@ -723,26 +700,21 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         docs: [{ schema: mockSchema }],
       });
 
-      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData).mockReturnValueOnce([]); // End of file
+      // Mock getSchemaBuilderState to return cached state (no file reading needed)
+      mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
 
-      mocks.getSchemaBuilderState.mockReturnValueOnce(null);
-
-      mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);
+      // Mock schema generation from cached state (no batch processing needed)
       mockSchemaBuilderInstance.getSchema.mockResolvedValueOnce(mockSchema);
-      mockSchemaBuilderInstance.getState.mockReturnValueOnce({
-        fieldStats: {},
-        recordCount: 1, // Only 1 non-duplicate row processed
-      });
+      mockSchemaBuilderInstance.getState.mockReturnValueOnce(mockSchemaBuilderState);
 
       mockPayload.update.mockResolvedValueOnce({});
 
       // Execute job
       await validateSchemaJob.handler(mockContext);
 
-      // Verify schema builder was called with filtered non-duplicate rows
-      expect(mockSchemaBuilderInstance.processBatch).toHaveBeenCalledWith(
-        [{ id: "1", title: "Event 1" }] // Only non-duplicate row
-      );
+      // Verify schema builder was created with cached state (no batch processing)
+      // The duplicate filtering happened during schema detection stage, not here
+      expect(mockSchemaBuilderInstance.processBatch).not.toHaveBeenCalled();
     });
   });
 });

@@ -20,6 +20,7 @@ import dotenv from "dotenv";
 // Load environment variables from .env.local
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
+import { checkPostgreSQLConnection } from "@/lib/database/setup";
 import { logger } from "@/lib/logger";
 
 import { createTestDatabase } from "./database";
@@ -120,6 +121,14 @@ beforeAll(async () => {
       fs.mkdirSync(fullPath, { recursive: true });
     }
   });
+
+  // Check PostgreSQL is running before attempting database operations
+  try {
+    await checkPostgreSQLConnection();
+  } catch (error) {
+    logger.error("PostgreSQL connectivity check failed");
+    throw error;
+  }
 
   // Create test database if it doesn't exist (includes PostGIS setup)
   // This will now truncate if the database already exists

@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { analyzeDuplicatesJob } from "@/lib/jobs/handlers/analyze-duplicates-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
+import { createMockImportFile } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
@@ -88,10 +89,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       };
 
       // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      const mockImportFile = createMockImportFile();
 
       // Setup payload mock responses
       mockPayload.findByID
@@ -165,10 +163,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       };
 
       // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      const mockImportFile = createMockImportFile();
 
       // Mock file data - no duplicates
       const mockFileData = [
@@ -258,10 +253,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       };
 
       // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      const mockImportFile = createMockImportFile();
 
       // Mock file data with internal duplicate
       const mockFileData = [
@@ -322,10 +314,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       };
 
       // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      const mockImportFile = createMockImportFile();
 
       // Mock file data
       const mockFileData = [
@@ -435,10 +424,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         },
       };
 
-      const mockImportFile = {
-        id: "file-789",
-        filename: "empty.csv",
-      };
+      const mockImportFile = createMockImportFile();
 
       // Setup mocks
       mockPayload.findByID
