@@ -16,7 +16,7 @@ import Datasets from "@/lib/collections/datasets";
 import Events from "@/lib/collections/events";
 import GeocodingProviders from "@/lib/collections/geocoding-providers";
 import ImportFiles from "@/lib/collections/import-files";
-import ImportJobs from "@/lib/collections/import-jobs";
+import ImportJobs from "@/lib/collections/import-jobs/";
 import LocationCache from "@/lib/collections/location-cache";
 import Media from "@/lib/collections/media";
 import { Pages } from "@/lib/collections/pages";
