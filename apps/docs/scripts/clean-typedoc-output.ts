@@ -83,6 +83,24 @@ const convertMdToMdx = (dir: string): void => {
       console.log(`Converted: ${path.relative(API_DIR, fullPath)} -> ${path.basename(newPath)}`);
     }
   }
+
+  // Handle case where a .mdx file exists alongside a directory with same name
+  // Move the .mdx file into the directory as index.mdx
+  for (const item of items) {
+    if (item.endsWith(".mdx")) {
+      const baseName = item.replace(/\.mdx$/, "");
+      const dirPath = path.join(dir, baseName);
+      const filePath = path.join(dir, item);
+
+      if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
+        const indexPath = path.join(dirPath, "index.mdx");
+        if (!fs.existsSync(indexPath)) {
+          fs.renameSync(filePath, indexPath);
+          console.log(`Moved ${item} into ${baseName}/index.mdx for Nextra compatibility`);
+        }
+      }
+    }
+  }
 };
 
 /**
