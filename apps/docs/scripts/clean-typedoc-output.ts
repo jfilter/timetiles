@@ -125,21 +125,19 @@ const cleanupFileContent = (filePath: string): void => {
 
   // Escape <= and >= symbols in MDX content (outside code blocks)
   // These can cause MDX parsing errors when interpreted as JSX
-  const lines = content.split('\n');
-  const escapedLines = lines.map((line, index) => {
+  const lines = content.split("\n");
+  const escapedLines = lines.map((line) => {
     // Skip code blocks and code spans
-    if (line.startsWith('```') || line.startsWith('    ') || line.match(/^>\s*`/)) {
+    if (line.startsWith("```") || line.startsWith("    ") || line.match(/^>\s*`/)) {
       return line;
     }
     // Don't escape inside backticks
-    if (line.includes('`')) {
+    if (line.includes("`")) {
       return line;
     }
     // Escape <= and >= outside of code
-    if (line.includes('<=') || line.includes('>=')) {
-      const escapedLine = line
-        .replace(/<=(?![^<]*`)/g, '&lt;=')
-        .replace(/>=(?![^>]*`)/g, '&gt;=');
+    if (line.includes("<=") || line.includes(">=")) {
+      const escapedLine = line.replace(/<=(?![^<]*`)/g, "&lt;=").replace(/>=(?![^>]*`)/g, "&gt;=");
       if (escapedLine !== line) {
         modified = true;
       }
@@ -149,7 +147,7 @@ const cleanupFileContent = (filePath: string): void => {
   });
 
   if (modified) {
-    fs.writeFileSync(filePath, escapedLines.join('\n'));
+    fs.writeFileSync(filePath, escapedLines.join("\n"));
   }
 };
 
