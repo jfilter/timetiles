@@ -294,9 +294,16 @@ export class ProgressiveSchemaBuilder {
       if (!schema.properties) {
         schema.properties = {};
       }
-      if (!schema.required) {
-        schema.required = [];
+
+      // For first import (no current schema), mark all fields as optional
+      // Only mark fields as required if they appear in 90%+ of records
+      const required: string[] = [];
+      for (const [field, stats] of Object.entries(this.state.fieldStats)) {
+        if (stats.occurrences >= this.state.recordCount * 0.9) {
+          required.push(field);
+        }
       }
+      schema.required = required;
 
       // Enhance with our field statistics
       this.enhanceSchemaWithStats(schema);

@@ -91,12 +91,33 @@ export const getGeocodingResults = (job: { geocodingResults?: unknown }): Geocod
 
 /**
  * Safe getter for geocoding candidates from import job.
+ * Reads from schemaBuilderState.detectedGeoFields.
  */
-export const getGeocodingCandidate = (job: { geocodingCandidates?: unknown }): GeocodingCandidate | null => {
-  if (isValidGeocodingCandidate(job.geocodingCandidates)) {
-    return job.geocodingCandidates;
+export const getGeocodingCandidate = (job: { schemaBuilderState?: unknown }): GeocodingCandidate | null => {
+  // Extract detectedGeoFields from schema builder state
+  if (!job.schemaBuilderState || typeof job.schemaBuilderState !== "object") {
+    return null;
   }
-  return null;
+
+  const state = job.schemaBuilderState as { detectedGeoFields?: unknown };
+  if (!state.detectedGeoFields || typeof state.detectedGeoFields !== "object") {
+    return null;
+  }
+
+  const geoFields = state.detectedGeoFields as Record<string, unknown>;
+  const candidate: GeocodingCandidate = {
+    addressField: typeof geoFields.addressField === "string" ? geoFields.addressField : undefined,
+    latitudeField: typeof geoFields.latitude === "string" ? geoFields.latitude : undefined,
+    longitudeField: typeof geoFields.longitude === "string" ? geoFields.longitude : undefined,
+    confidence: typeof geoFields.confidence === "number" ? geoFields.confidence : undefined,
+  };
+
+  // Return null if no fields were detected
+  if (!candidate.addressField && !candidate.latitudeField && !candidate.longitudeField) {
+    return null;
+  }
+
+  return candidate;
 };
 
 /**

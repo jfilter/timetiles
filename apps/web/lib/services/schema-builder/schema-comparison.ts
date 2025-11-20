@@ -55,9 +55,16 @@ const detectAddedFields = (context: ChangeDetectionContext): boolean => {
   let hasBreakingChanges = false;
   const { oldProps, newProps, newRequired, changes } = context;
 
+  // Check if this is a first import (no existing fields)
+  const isFirstImport = Object.keys(oldProps).length === 0;
+
   for (const field of Object.keys(newProps)) {
     if (!oldProps[field]) {
       const isRequired = newRequired.includes(field);
+
+      // For first imports, all new fields are non-breaking
+      const isBreaking = !isFirstImport && isRequired;
+
       const change: SchemaChange = {
         type: "new_field",
         path: field,
@@ -65,11 +72,11 @@ const detectAddedFields = (context: ChangeDetectionContext): boolean => {
           description: `Field '${field}' was added${isRequired ? " (required)" : ""}`,
           required: isRequired,
         },
-        severity: isRequired ? "error" : "info",
-        autoApprovable: !isRequired,
+        severity: isBreaking ? "error" : "info",
+        autoApprovable: !isBreaking,
       };
       changes.push(change);
-      if (isRequired) {
+      if (isBreaking) {
         hasBreakingChanges = true;
       }
     }

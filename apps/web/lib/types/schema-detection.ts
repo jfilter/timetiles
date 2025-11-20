@@ -78,6 +78,9 @@ export interface SchemaBuilderState {
   detectedGeoFields: {
     latitude?: string;
     longitude?: string;
+    combinedField?: string;
+    combinedFormat?: string;
+    addressField?: string;
     confidence: number;
   };
 
