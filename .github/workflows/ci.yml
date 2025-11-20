@@ -112,6 +112,7 @@ jobs:
       - name: Report coverage
         if: always()
         run: npx tsx scripts/coverage-summary.ts --details >> $GITHUB_STEP_SUMMARY
+        working-directory: apps/web
       
       - name: SonarCloud Scan
         if: always()
