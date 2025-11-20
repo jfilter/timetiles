@@ -147,6 +147,12 @@ const cleanupFileContent = (filePath: string): void => {
     modified = true;
   }
 
+  // Fix *** horizontal rules to --- (prettier prefers ---)
+  if (content.includes("***")) {
+    content = content.replace(/^\*\*\*$/gm, "---");
+    modified = true;
+  }
+
   // Escape <= and >= symbols in MDX content (outside code blocks)
   // These can cause MDX parsing errors when interpreted as JSX
   const lines = content.split("\n");

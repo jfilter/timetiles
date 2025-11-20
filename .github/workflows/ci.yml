@@ -25,6 +25,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Generate API documentation
+        timeout-minutes: 3
+        run: pnpm docs:api
+        working-directory: apps/docs
+
       - name: Lint code
         timeout-minutes: 3
         run: pnpm lint
