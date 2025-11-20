@@ -4,7 +4,7 @@ This directory contains production deployment configuration for TimeTiles.
 
 ## 📚 Documentation
 
-For complete deployment instructions, see the **[Admin Guide → Deployment](https://docs.timetiles.org/admin-guide/deployment)** documentation.
+For complete deployment instructions, see the **[Admin Guide → Deployment](https://docs.timetiles.io/admin-guide/deployment)** documentation.
 
 ## Quick Start
 

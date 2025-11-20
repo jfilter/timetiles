@@ -43,15 +43,15 @@ The application will be available at:
 
 ```bash
 make dev          # Start all apps with database
-pnpm dev          # Start just the dev servers
-pnpm lint         # Run linter (ALWAYS run after changes)
-pnpm typecheck    # TypeScript check (ALWAYS run after changes)
+make check-ai     # Run lint and typecheck (ALWAYS run after changes)
+make test-ai      # Run all tests (AI-friendly output)
 ```
 
 ### Testing
 
 ```bash
-pnpm test                           # Run all tests
+make test                           # Run all tests
+make test-ai                        # Run tests with AI-friendly output
 cd apps/web && pnpm test:debug      # Debug tests with logs
 cd apps/web && pnpm test:e2e        # End-to-end tests
 ```
@@ -70,7 +70,7 @@ make db-reset                               # Reset database
 
 1. Create a feature branch: `git checkout -b feature/your-feature`
 2. Make your changes following the existing code patterns
-3. **ALWAYS run**: `pnpm lint && pnpm typecheck`
+3. **ALWAYS run**: `make check-ai` (runs lint and typecheck)
 4. Write tests for new functionality
 5. Update documentation if needed
 

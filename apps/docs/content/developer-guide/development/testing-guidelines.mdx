@@ -65,10 +65,18 @@ vi.mock("node-geocoder", () => ({ default: mockGeocoder }));
 
 ## Running Tests
 
+**From project root** (monorepo orchestration):
+
+```bash
+make test         # Run all tests across all packages
+make test-ai      # AI-friendly output (silent, JSON results)
+```
+
+**From `apps/web`** (package-specific commands):
+
 ```bash
 # Unit and Integration
 pnpm test                    # All tests
-pnpm test:ai                 # AI-friendly output (silent, JSON results)
 pnpm test:debug              # Verbose output with logs
 pnpm test:unit               # Unit tests only
 pnpm test:integration        # Integration tests only

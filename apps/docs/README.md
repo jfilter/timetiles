@@ -47,14 +47,16 @@ The static files will be generated in the `out` directory.
 
 ```
 apps/docs/
-├── pages/                    # Documentation pages (MDX)
-│   ├── _meta.json           # Navigation configuration
+├── content/                  # Documentation pages (MDX)
+│   ├── _meta.js             # Navigation configuration
 │   ├── index.mdx            # Homepage
-│   ├── getting-started/     # Getting started guides
-│   ├── guides/              # User guides
-│   ├── api/                 # API documentation
-│   ├── development/         # Developer documentation
-│   └── reference/           # Reference materials
+│   ├── admin-guide/         # Admin documentation
+│   ├── developer-guide/     # Developer documentation
+│   ├── overview/            # Product overview
+│   ├── reference/           # Reference documentation
+│   │   └── api/            # Auto-generated API docs (TypeDoc)
+│   └── user-guide/         # User guides
+├── scripts/                 # Build scripts
 ├── theme.config.tsx         # Nextra theme configuration
 ├── next.config.mjs          # Next.js configuration
 └── package.json             # Dependencies and scripts
@@ -64,19 +66,20 @@ apps/docs/
 
 ### Creating New Pages
 
-1. Create a new `.mdx` file in the appropriate directory under `pages/`
-2. Add the page to the corresponding `_meta.json` file for navigation
+1. Create a new `.mdx` file in the appropriate directory under `content/`
+2. Add the page to the corresponding `_meta.js` file for navigation
 3. Use MDX syntax for rich content with React components
 
 ### Navigation Structure
 
-Navigation is controlled by `_meta.json` files in each directory:
+Navigation is controlled by `_meta.js` files in each directory:
 
-```json
-{
+```javascript
+// Example _meta.js
+export default {
   "page-slug": "Display Name",
-  "another-page": "Another Page"
-}
+  "another-page": "Another Page",
+};
 ```
 
 ### MDX Features
@@ -88,24 +91,11 @@ Navigation is controlled by `_meta.json` files in each directory:
 
 Example:
 
-````mdx
-# Page Title
-
-Regular markdown content.
-
+```mdx
 import { Callout } from "nextra/components";
 
-<Callout type="info">This is an info callout.</Callout>
-
-```javascript
-// Code blocks with syntax highlighting
-function example() {
-  return "Hello, world!";
-}
+<Callout type="info">Important information</Callout>
 ```
-````
-
-````
 
 ## Deployment
 
@@ -129,7 +119,7 @@ pnpm --filter docs build
 
 # The `out` directory contains the static files
 # Upload these to your static hosting provider
-````
+```
 
 ## Configuration
 

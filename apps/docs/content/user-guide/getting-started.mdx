@@ -1,6 +1,8 @@
 # Getting Started Guide
 
-This guide covers the basics of using TimeTiles to create interactive chronicles.
+This guide covers the basics of using TimeTiles to create and explore interactive chronicles of historical events.
+
+> **💻 Developers:** If you need to install TimeTiles locally, see the [Quick Start Guide](/quick-start) instead.
 
 ## 1. Prepare Your Data
 
@@ -21,21 +23,60 @@ TimeTiles works with CSV or Excel files containing events. Your data needs:
 
 **Example CSV:**
 
+Create a file called `sample-events.csv`:
+
 ```csv
-date,title,location,category,description
-2024-01-15,"Community Meeting","San Francisco, CA","Politics","Town hall on housing policy"
-2024-02-20,"Protest March","New York, NY","Activism","Climate action demonstration"
+title,date,location,category,description
+"Tech Conference 2024","2024-03-15","San Francisco, CA","Technology","Annual developer conference"
+"Climate Summit","2024-04-22","New York, NY","Environment","Earth Day climate action summit"
+"Music Festival","2024-06-21","Austin, TX","Culture","Summer music festival"
+"Science Fair","2024-09-10","Boston, MA","Education","Regional science competition"
+"Art Exhibition","2024-11-05","Los Angeles, CA","Culture","Modern art showcase"
 ```
 
-## 2. Create Your Chronicle
+## 2. Import Your Data
 
-1. Click **"New Chronicle"** in the dashboard
-2. Upload your CSV or Excel file
-3. Map your columns to TimeTiles fields
-4. Review and confirm the import
-5. Your chronicle is ready!
+1. **Access the Import Page**
+   - Navigate to the import page (usually `/import` or via "New Chronicle" button)
 
-## 3. Share Your Work
+2. **Create a Catalog**
+   - Click "Create New Catalog" and give it a name (e.g., "My First Chronicle")
+   - Catalogs help organize related datasets
+
+3. **Upload Your File**
+   - Drag and drop your CSV or Excel file
+   - TimeTiles will automatically detect your data structure
+
+4. **Review Schema Detection**
+   - TimeTiles automatically identifies date, location, and title fields
+   - Verify the detected schema matches your data
+   - Adjust field mappings if needed
+
+5. **Start Processing**
+   - Confirm the import
+   - Watch as TimeTiles:
+     - Validates your data
+     - Geocodes addresses to coordinates
+     - Creates interactive visualizations
+
+## 3. Explore Your Chronicle
+
+Once processing completes, you'll see your events visualized:
+
+- **Map View**: Events plotted on an interactive map with clustering
+- **Timeline**: Time slider to filter events by date range
+- **Filters**: Filter by category, tags, or custom fields
+- **Event Details**: Click on any event to see full information
+- **Search**: Find specific events by text search
+
+**Pro Tips:**
+
+- Use the time slider to see how events unfold chronologically
+- Click map clusters to zoom into specific areas
+- Combine multiple filters for precise exploration
+- The URL updates with your filters - bookmark or share specific views!
+
+## 4. Share Your Work
 
 Once your chronicle is created, you can:
 

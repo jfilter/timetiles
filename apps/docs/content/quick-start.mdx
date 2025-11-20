@@ -1,6 +1,8 @@
 # Quick Start Guide
 
-Get TimeTiles up and running in minutes. This guide will help you set up TimeTiles locally for evaluation, development, or self-hosting.
+Get TimeTiles up and running in minutes. This guide is for developers and administrators who want to set up TimeTiles locally for development or self-hosting.
+
+> **👤 End users:** If you're looking to import and explore data, see the [Getting Started Guide](/user-guide/getting-started) instead.
 
 ## Prerequisites
 
@@ -31,63 +33,21 @@ cd apps/web && pnpm payload:migrate
 pnpm dev
 ```
 
-Open http://localhost:3000 to see the application.
+Open http://localhost:3000 to see the application running!
 
-## Creating Your First Chronicle
-
-### 1. Access the Application
-
-Open http://localhost:3000 in your browser. You'll see the main TimeTiles interface.
-
-### 2. Prepare Sample Data
-
-Create a simple CSV file called `sample-events.csv`:
-
-```csv
-title,date,location,category,description
-"Tech Conference 2024","2024-03-15","San Francisco, CA","Technology","Annual developer conference"
-"Climate Summit","2024-04-22","New York, NY","Environment","Earth Day climate action summit"
-"Music Festival","2024-06-21","Austin, TX","Culture","Summer music festival"
-"Science Fair","2024-09-10","Boston, MA","Education","Regional science competition"
-"Art Exhibition","2024-11-05","Los Angeles, CA","Culture","Modern art showcase"
-```
-
-### 3. Import Your Data
-
-1. Navigate to http://localhost:3000/import
-2. Click "Create New Catalog" and name it "My First Chronicle"
-3. Drag and drop your `sample-events.csv` file
-4. Watch as TimeTiles:
-   - Detects your data structure
-   - Geocodes the addresses
-   - Creates interactive visualizations
-
-### 4. Explore Your Chronicle
-
-Once processing completes:
-
-- **Map View**: See your events plotted on an interactive map
-- **Timeline**: Use the time slider to filter events by date
-- **Filters**: Try filtering by category
-- **Details**: Click on events to see full information
-
-### 5. Share Your Work
-
-Copy the URL from your browser - it includes all current filters and can be shared with others!
+> **✅ Next Steps:** See the [Getting Started Guide](/user-guide/getting-started) to learn how to import and explore data.
 
 ## Development Commands
 
-From the project root:
+**Monorepo commands** (from project root):
 
-- `pnpm dev` - Start development server
-- `pnpm build` - Build all packages
-- `pnpm test` - Run tests
-- `pnpm lint` - Run linting
-- `pnpm format` - Format code with Prettier
+- `make dev` - Start all services with database
+- `make test` - Run all tests
+- `make check-ai` - Run lint and typecheck (AI-friendly)
 
-From `apps/web`:
+**Package-specific commands** (from `apps/web`):
 
-- `pnpm dev` - Start Next.js dev server
+- `pnpm dev` - Start Next.js dev server only
 - `pnpm payload:generate` - Generate TypeScript types
 - `pnpm seed` - Seed development data
 - `pnpm test` - Run Vitest tests

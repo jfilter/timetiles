@@ -67,6 +67,16 @@ The backup system automatically:
 
 ### Application Updates
 
+1. **Backup first** - Always create a backup before updating
+2. **Pull latest code** - Get the latest approved changes
+3. **Rebuild and deploy** - Use deployment commands to update
+4. **Run migrations** - Apply any database schema changes
+5. **Verify health** - Check that the application is running correctly
+
+See [Deployment Commands](./deployment#deployment-commands) for detailed command reference.
+
+### Update Workflow
+
 ```bash
 # 1. Backup first
 ./deploy.sh backup
@@ -74,31 +84,10 @@ The backup system automatically:
 # 2. Pull latest code
 git pull origin main
 
-# 3. Rebuild and deploy
-./deploy.sh down
-./deploy.sh build
-./deploy.sh up
+# 3. Use update command (handles rebuild, migrations, restart)
+./deploy.sh update
 
-# 4. Run migrations
-./deploy.sh migrate
-
-# 5. Verify health
-curl https://your-domain.com/api/health
-```
-
-### Software Updates
-
-Production updates are handled through the deployment pipeline:
-
-```bash
-# Pull latest approved changes
-git pull origin main
-
-# Upgrade to new version
-./deploy.sh upgrade
-
-# Verify deployment
-./deploy.sh status
+# 4. Verify health
 curl https://your-domain.com/api/health
 ```
 
@@ -161,6 +150,28 @@ ORDER BY idx_scan;
 ```
 
 ## Monitoring
+
+### Health Checks
+
+Monitor application health regularly:
+
+```bash
+# Check overall health
+curl https://your-domain.com/api/health
+
+# Check service status
+./deploy.sh status
+
+# Verify services are running
+docker-compose -f deployment/docker-compose.prod.yml ps
+```
+
+**Recommended monitoring schedule:**
+
+- Health endpoint: Every 5 minutes
+- Service status: Every hour
+- Log review: Daily
+- Resource usage: Weekly
 
 ### Log Management
 
