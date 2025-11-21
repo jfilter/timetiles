@@ -340,7 +340,7 @@ export interface Dataset {
   slug?: string | null;
   catalog: number | Catalog;
   /**
-   * ISO-639 3 letter code (e.g., eng, deu, fra)
+   * ISO-639-3 code: 3 lowercase letters (e.g., eng, deu, fra)
    */
   language: string;
   isPublic?: boolean | null;
@@ -462,6 +462,49 @@ export interface Dataset {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Transform rules applied to incoming data before validation (e.g., field renames)
+   */
+  importTransforms?:
+    | {
+        /**
+         * Unique identifier for this transform rule
+         */
+        id: string;
+        /**
+         * Type of transformation to apply
+         */
+        type: 'rename';
+        /**
+         * Source field path in import file (e.g., 'date' or 'user.email')
+         */
+        from: string;
+        /**
+         * Target field path in dataset schema (e.g., 'start_date' or 'contact.email')
+         */
+        to: string;
+        /**
+         * Uncheck to disable without deleting
+         */
+        active?: boolean | null;
+        /**
+         * When this transform was created
+         */
+        addedAt?: string | null;
+        /**
+         * User who created this transform
+         */
+        addedBy?: (number | null) | User;
+        /**
+         * Confidence score if auto-detected (0-100)
+         */
+        confidence?: number | null;
+        /**
+         * Whether this transform was suggested by auto-detection
+         */
+        autoDetected?: boolean | null;
+      }[]
+    | null;
   enumDetection?: {
     mode?: ('count' | 'percentage' | 'disabled') | null;
     /**
@@ -482,6 +525,23 @@ export interface Dataset {
      * Override: JSON path to longitude (detected: location.lng, lng, lon, longitude)
      */
     longitudePath?: string | null;
+  };
+  /**
+   * Override language-aware auto-detection of field mappings. Leave empty to use automatic detection based on dataset language.
+   */
+  fieldMappingOverrides?: {
+    /**
+     * Override detected title field (e.g., 'event_name', 'titel', 'titre')
+     */
+    titlePath?: string | null;
+    /**
+     * Override detected description field (e.g., 'details', 'beschreibung', 'détails')
+     */
+    descriptionPath?: string | null;
+    /**
+     * Override detected timestamp field (e.g., 'created_at', 'datum', 'date')
+     */
+    timestampPath?: string | null;
   };
   updatedAt: string;
   createdAt: string;
@@ -609,6 +669,23 @@ export interface DatasetSchema {
     | number
     | boolean
     | null;
+  /**
+   * Detected or configured field mappings for standard event properties
+   */
+  fieldMappings?: {
+    /**
+     * Path to title/name field in source data
+     */
+    titlePath?: string | null;
+    /**
+     * Path to description/details field in source data
+     */
+    descriptionPath?: string | null;
+    /**
+     * Path to timestamp/date field in source data
+     */
+    timestampPath?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -685,6 +762,23 @@ export interface ImportJob {
     | number
     | boolean
     | null;
+  /**
+   * Detected or configured field mappings for standard event properties
+   */
+  detectedFieldMappings?: {
+    /**
+     * Path to title/name field in source data
+     */
+    titlePath?: string | null;
+    /**
+     * Path to description/details field in source data
+     */
+    descriptionPath?: string | null;
+    /**
+     * Path to timestamp/date field in source data
+     */
+    timestampPath?: string | null;
+  };
   schemaValidation?: {
     /**
      * Whether schema is compatible with dataset schema
@@ -706,6 +800,18 @@ export interface ImportJob {
      * New fields detected (auto-grow candidates)
      */
     newFields?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    /**
+     * Auto-detected field rename suggestions with confidence scores
+     */
+    transformSuggestions?:
       | {
           [k: string]: unknown;
         }
@@ -1242,7 +1348,7 @@ export interface Event {
    */
   importJob?: (number | null) | ImportJob;
   /**
-   * Generic data in JSON format
+   * Generic data in JSON format (JSONB indexed for fast queries)
    */
   data:
     | {
@@ -1990,6 +2096,19 @@ export interface DatasetsSelect<T extends boolean = true> {
         enabled?: T;
         id?: T;
       };
+  importTransforms?:
+    | T
+    | {
+        id?: T;
+        type?: T;
+        from?: T;
+        to?: T;
+        active?: T;
+        addedAt?: T;
+        addedBy?: T;
+        confidence?: T;
+        autoDetected?: T;
+      };
   enumDetection?:
     | T
     | {
@@ -2002,6 +2121,13 @@ export interface DatasetsSelect<T extends boolean = true> {
         autoDetect?: T;
         latitudePath?: T;
         longitudePath?: T;
+      };
+  fieldMappingOverrides?:
+    | T
+    | {
+        titlePath?: T;
+        descriptionPath?: T;
+        timestampPath?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -2064,6 +2190,13 @@ export interface DatasetSchemasSelect<T extends boolean = true> {
   approvalNotes?: T;
   autoApproved?: T;
   conflicts?: T;
+  fieldMappings?:
+    | T
+    | {
+        titlePath?: T;
+        descriptionPath?: T;
+        timestampPath?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
@@ -2121,12 +2254,20 @@ export interface ImportJobsSelect<T extends boolean = true> {
       };
   schema?: T;
   schemaBuilderState?: T;
+  detectedFieldMappings?:
+    | T
+    | {
+        titlePath?: T;
+        descriptionPath?: T;
+        timestampPath?: T;
+      };
   schemaValidation?:
     | T
     | {
         isCompatible?: T;
         breakingChanges?: T;
         newFields?: T;
+        transformSuggestions?: T;
         requiresApproval?: T;
         approvalReason?: T;
         approved?: T;
