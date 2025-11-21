@@ -146,7 +146,8 @@ jobs:
           if [ $attempt -eq $max_attempts ]; then
             echo "Health check failed after $max_attempts attempts"
             echo "Checking nginx and web container logs:"
-            ./deploy.sh logs --tail=50
+            cd deployment
+            docker compose -f docker-compose.prod.yml -f docker-compose.test.yml --env-file .env.production logs --tail=50
             exit 1
           fi
 
@@ -314,7 +315,8 @@ jobs:
       - name: Collect logs on failure
         if: failure()
         run: |
-          ./deploy.sh logs --tail=200
+          cd deployment
+          docker compose -f docker-compose.prod.yml -f docker-compose.test.yml --env-file .env.production logs --tail=200
 
       - name: Cleanup
         if: always()
