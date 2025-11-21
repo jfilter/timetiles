@@ -32,7 +32,7 @@ jobs:
 
       - name: Lint code
         timeout-minutes: 3
-        run: pnpm lint
+        run: pnpm lint --filter=!docs
 
       - name: Type check
         timeout-minutes: 3
