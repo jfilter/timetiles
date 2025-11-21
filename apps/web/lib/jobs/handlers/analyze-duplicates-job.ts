@@ -20,10 +20,11 @@ import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { readBatchFromFile } from "@/lib/utils/file-readers";
-import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
+import type { Dataset, ImportJob } from "@/payload-types";
 
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
+import { loadJobResources } from "../utils/resource-loading";
 
 interface DuplicateAnalysisResult {
   internalDuplicates: Array<{
@@ -42,40 +43,6 @@ interface DuplicateAnalysisResult {
 }
 
 // Helper functions to reduce complexity
-const getJobResources = async (
-  payload: Payload,
-  importJobId: string | number
-): Promise<{ job: ImportJob; dataset: Dataset; importFile: ImportFile }> => {
-  const job = await payload.findByID({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
-    id: importJobId,
-  });
-
-  if (!job) {
-    throw new Error(`Import job not found: ${importJobId}`);
-  }
-
-  const dataset =
-    typeof job.dataset === "object"
-      ? job.dataset
-      : await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: job.dataset });
-
-  if (!dataset) {
-    throw new Error("Dataset not found");
-  }
-
-  const importFile =
-    typeof job.importFile === "object"
-      ? job.importFile
-      : await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: job.importFile });
-
-  if (!importFile) {
-    throw new Error("Import file not found");
-  }
-
-  return { job, dataset, importFile };
-};
-
 const skipDeduplication = async (
   payload: Payload,
   importJobId: string | number,
@@ -206,7 +173,7 @@ export const analyzeDuplicatesJob = {
 
     try {
       // Get all required resources
-      const { job, dataset, importFile } = await getJobResources(payload, importJobId);
+      const { job, dataset, importFile } = await loadJobResources(payload, importJobId);
 
       // Check if deduplication should be skipped
       const shouldSkip = await skipDeduplication(payload, importJobId, job, dataset, logger);

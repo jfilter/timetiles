@@ -242,7 +242,7 @@ const Events: CollectionConfig = {
       type: "json",
       required: true,
       admin: {
-        description: "Generic data in JSON format",
+        description: "Generic data in JSON format (JSONB indexed for fast queries)",
       },
     },
     {

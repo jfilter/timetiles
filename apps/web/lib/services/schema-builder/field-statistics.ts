@@ -36,12 +36,20 @@ const updateNumericStats = (stats: FieldStatistics, value: number, occurrences: 
 };
 
 const trackUniqueSamples = (stats: FieldStatistics, value: unknown, maxUniqueValues: number): void => {
-  if (
-    stats.uniqueSamples.length < maxUniqueValues &&
-    (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) &&
-    !stats.uniqueSamples.includes(value)
-  ) {
-    stats.uniqueSamples.push(value);
+  if (stats.uniqueSamples.length >= maxUniqueValues) {
+    return;
+  }
+
+  // Convert value to storable type (Date -> ISO string)
+  let sampleValue: string | number | boolean | null | undefined;
+  if (value instanceof Date) {
+    sampleValue = value.toISOString();
+  } else if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) {
+    sampleValue = value;
+  }
+
+  if (sampleValue !== undefined && !stats.uniqueSamples.includes(sampleValue)) {
+    stats.uniqueSamples.push(sampleValue);
   }
 };
 

@@ -79,6 +79,7 @@ export const createSchemaVersionJob = {
         dataset: dataset.id,
         schema: job.schema,
         fieldMetadata: fieldStats || {},
+        fieldMappings: job.detectedFieldMappings,
         autoApproved: false,
         approvedBy: approvedById,
         importSources: [],

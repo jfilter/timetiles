@@ -79,29 +79,65 @@ const addDateFilter = (where: Where, startDate: string | null, endDate: string |
   ];
 };
 
-const transformEvent = (event: Event) => ({
-  id: event.id,
-  dataset: {
-    id: typeof event.dataset === "object" && event.dataset != null ? event.dataset.id : event.dataset,
-    title: typeof event.dataset === "object" && event.dataset != null ? event.dataset.name : undefined,
-    catalog:
-      typeof event.dataset === "object" &&
-      event.dataset != null &&
-      typeof event.dataset.catalog === "object" &&
-      event.dataset.catalog != null
-        ? event.dataset.catalog.name
-        : undefined,
-  },
-  data: event.data,
-  location: event.location
-    ? {
-        longitude: event.location.longitude,
-        latitude: event.location.latitude,
-      }
-    : null,
-  eventTimestamp: event.eventTimestamp,
-  isValid: event.validationStatus === "valid",
-});
+const extractFieldFromData = (data: unknown, path: string | null | undefined): string | null => {
+  if (!path || typeof data !== "object" || data === null || Array.isArray(data)) {
+    return null;
+  }
+  const value = (data as Record<string, unknown>)[path];
+  if (value === null || value === undefined) return null;
+  // Only convert primitives to string, not objects
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return null;
+};
+
+const transformEvent = (event: Event) => {
+  // Extract field mappings from dataset
+  const fieldMappings =
+    typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
+
+  // Extract title, description, and id using field mappings
+  const eventData = event.data;
+  const title =
+    extractFieldFromData(eventData, fieldMappings?.titlePath) ??
+    extractFieldFromData(eventData, "title") ??
+    extractFieldFromData(eventData, "name");
+  const description =
+    extractFieldFromData(eventData, fieldMappings?.descriptionPath) ?? extractFieldFromData(eventData, "description");
+  const id = extractFieldFromData(eventData, "id");
+
+  // Enrich data with extracted fields so UI can always access title/description/id
+  // regardless of original field names (e.g., "titel" in German data becomes "title")
+  const enrichedData =
+    typeof eventData === "object" && eventData !== null && !Array.isArray(eventData)
+      ? { ...eventData, title, description, id }
+      : eventData;
+
+  return {
+    id: event.id,
+    dataset: {
+      id: typeof event.dataset === "object" && event.dataset != null ? event.dataset.id : event.dataset,
+      title: typeof event.dataset === "object" && event.dataset != null ? event.dataset.name : undefined,
+      catalog:
+        typeof event.dataset === "object" &&
+        event.dataset != null &&
+        typeof event.dataset.catalog === "object" &&
+        event.dataset.catalog != null
+          ? event.dataset.catalog.name
+          : undefined,
+    },
+    data: enrichedData,
+    location: event.location
+      ? {
+          longitude: event.location.longitude,
+          latitude: event.location.latitude,
+        }
+      : null,
+    eventTimestamp: event.eventTimestamp,
+    isValid: event.validationStatus === "valid",
+  };
+};
 
 export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown): Promise<NextResponse> => {
   try {

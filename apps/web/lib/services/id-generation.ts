@@ -19,6 +19,12 @@ import type { Dataset } from "@/payload-types";
 // Simple wrapper for use in job handlers
 export const generateUniqueId = (data: unknown, idStrategy: Dataset["idStrategy"]): string => {
   const result = IdGenerationService.generateEventId(data, { idStrategy } as Dataset);
+
+  // Throw error if ID generation failed - don't create events with error IDs
+  if (result.error) {
+    throw new Error(`Failed to generate unique ID: ${result.error}`);
+  }
+
   return result.uniqueId;
 };
 
@@ -36,10 +42,7 @@ export class IdGenerationService {
     const strategy = dataset.idStrategy;
 
     if (!strategy) {
-      return {
-        uniqueId: `${dataset.id}:auto:${Date.now()}`,
-        strategy: "auto",
-      };
+      throw new Error("Dataset idStrategy is required but was undefined");
     }
 
     try {

@@ -57,7 +57,7 @@ const readBatchFromCSV = (filePath: string, startRow: number, limit: number): Re
   const result = Papa.parse(fileContent, {
     header: true,
     skipEmptyLines: true,
-    dynamicTyping: true,
+    dynamicTyping: true, // Keep enabled - useful for production
     transformHeader: (header) => header.trim(),
   });
 

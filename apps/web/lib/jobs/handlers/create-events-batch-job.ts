@@ -22,14 +22,18 @@ import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/li
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
+import { applyTransforms } from "@/lib/services/import-transforms";
 import { getQuotaService } from "@/lib/services/quota-service";
+import { TypeTransformationService } from "@/lib/services/type-transformation";
 import { getGeocodingResultForRow, getGeocodingResults } from "@/lib/types/geocoding";
+import type { ImportTransform } from "@/lib/types/import-transforms";
 import { isValidDate } from "@/lib/utils/date";
 import { readBatchFromFile } from "@/lib/utils/file-readers";
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 
 import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
+import { extractDuplicateRows } from "../utils/resource-loading";
 
 /**
  * Updates import file status based on the status of all associated jobs.
@@ -77,33 +81,65 @@ const updateImportFileStatusIfAllJobsComplete = async (
 };
 
 // Extract helper functions to reduce complexity
-type DuplicatesData = string | number | boolean | unknown[] | { [k: string]: unknown } | null;
 
-const getDuplicateRows = (job: {
-  duplicates?: {
-    internal?: DuplicatesData;
-    external?: DuplicatesData;
-  };
-}): Set<number> => {
-  const duplicateRows = new Set<number>();
+/**
+ * Apply type transformations to a row based on dataset configuration.
+ * Note: This works on data that hasn't been auto-typed by Papa Parse.
+ * For CSV files with dynamicTyping: true, transformations may not apply.
+ */
+const applyTypeTransformations = async (
+  row: Record<string, unknown>,
+  dataset: Dataset,
+  logger: ReturnType<typeof createJobLogger>
+): Promise<{
+  transformedRow: Record<string, unknown>;
+  transformationChanges: Array<{ path: string; oldValue: unknown; newValue: unknown; error?: string }> | null;
+}> => {
+  const allowTransformations = dataset.schemaConfig?.allowTransformations ?? true;
+  const transformations = dataset.typeTransformations ?? [];
 
-  if (Array.isArray(job.duplicates?.internal)) {
-    job.duplicates.internal.forEach((d) => {
-      if (typeof d === "object" && d !== null && "rowNumber" in d) {
-        duplicateRows.add((d as { rowNumber: number }).rowNumber);
-      }
-    });
+  if (!allowTransformations || transformations.length === 0) {
+    return { transformedRow: row, transformationChanges: null };
   }
 
-  if (Array.isArray(job.duplicates?.external)) {
-    job.duplicates.external.forEach((d) => {
-      if (typeof d === "object" && d !== null && "rowNumber" in d) {
-        duplicateRows.add((d as { rowNumber: number }).rowNumber);
-      }
-    });
-  }
+  try {
+    const transformationRules = transformations.map((t) => ({
+      fieldPath: t.fieldPath,
+      fromType: t.fromType,
+      toType: t.toType,
+      transformStrategy: t.transformStrategy,
+      customTransform: t.customTransform ?? undefined,
+      enabled: t.enabled ?? true,
+    }));
 
-  return duplicateRows;
+    const service = new TypeTransformationService(transformationRules);
+    const result = await service.transformRecord(row);
+
+    const successfulChanges = result.changes.filter((change) => !change.error);
+    const failedChanges = result.changes.filter((change) => change.error);
+
+    if (successfulChanges.length > 0) {
+      logger.debug("Applied type transformations", {
+        fieldCount: successfulChanges.length,
+        changes: successfulChanges,
+      });
+    }
+
+    if (failedChanges.length > 0) {
+      logger.warn("Some transformations failed", {
+        fieldCount: failedChanges.length,
+        changes: failedChanges,
+      });
+    }
+
+    return {
+      transformedRow: result.transformed,
+      transformationChanges: successfulChanges.length > 0 ? successfulChanges : null,
+    };
+  } catch (error) {
+    logger.error("Type transformation failed", { error });
+    return { transformedRow: row, transformationChanges: null };
+  }
 };
 
 const createEventData = (
@@ -111,7 +147,9 @@ const createEventData = (
   dataset: Dataset,
   importJobId: string | number,
   geocoding: ReturnType<typeof getGeocodingResultForRow>,
-  job: { datasetSchemaVersion?: unknown }
+  job: { datasetSchemaVersion?: unknown },
+  transformationChanges: Array<{ path: string; oldValue: unknown; newValue: unknown; error?: string }> | null,
+  timestampPath?: string | null
 ) => {
   const uniqueId = generateUniqueId(row, dataset.idStrategy);
   const importJobNum = typeof importJobId === "string" ? parseInt(importJobId, 10) : importJobId;
@@ -131,7 +169,7 @@ const createEventData = (
     importJob: importJobNum,
     data: row,
     uniqueId,
-    eventTimestamp: extractTimestamp(row).toISOString(),
+    eventTimestamp: extractTimestamp(row, timestampPath).toISOString(),
     location: geocoding
       ? {
           latitude: geocoding.coordinates.lat,
@@ -146,7 +184,8 @@ const createEventData = (
       : {
           type: "none" as const,
         },
-    validationStatus: "pending" as const,
+    validationStatus: transformationChanges ? ("transformed" as const) : ("pending" as const),
+    transformations: transformationChanges,
     schemaVersionNumber: schemaVersion,
   };
 };
@@ -154,21 +193,14 @@ const createEventData = (
 const processEventBatch = async (
   payload: Payload,
   rows: Record<string, unknown>[],
-  job: {
-    duplicates?: {
-      internal?: DuplicatesData;
-      external?: DuplicatesData;
-    };
-    datasetSchemaVersion?: unknown;
-    geocodingResults?: unknown;
-  },
+  job: ImportJob,
   dataset: Dataset,
   importJobId: string | number,
   batchNumber: number,
   logger: ReturnType<typeof createJobLogger>
 ) => {
   const BATCH_SIZE = BATCH_SIZES.EVENT_CREATION;
-  const duplicateRows = getDuplicateRows(job);
+  const duplicateRows = extractDuplicateRows(job);
   const geocodingResults = getGeocodingResults(job);
 
   let eventsCreated = 0;
@@ -184,8 +216,60 @@ const processEventBatch = async (
     }
 
     try {
+      // Apply import transforms first (field renames)
+      const importTransforms: ImportTransform[] = (dataset.importTransforms ?? [])
+        .filter(
+          (
+            t: unknown
+          ): t is {
+            id: string;
+            type: string;
+            from: string;
+            to: string;
+            active: boolean | null | undefined;
+            autoDetected: boolean | null | undefined;
+          } => {
+            return (
+              typeof t === "object" &&
+              t !== null &&
+              "active" in t &&
+              "type" in t &&
+              "from" in t &&
+              "to" in t &&
+              "id" in t &&
+              "autoDetected" in t
+            );
+          }
+        )
+        .filter((t) => t.active === true)
+        .map((t) => ({
+          id: t.id,
+          type: t.type as "rename",
+          from: t.from,
+          to: t.to,
+          active: true,
+          autoDetected: t.autoDetected ?? false,
+        }));
+
+      const rowAfterImportTransforms = importTransforms.length > 0 ? applyTransforms(row, importTransforms) : row;
+
+      // Apply type transformations
+      const { transformedRow, transformationChanges } = await applyTypeTransformations(
+        rowAfterImportTransforms,
+        dataset,
+        logger
+      );
+
       const geocoding = getGeocodingResultForRow(geocodingResults, rowNumber);
-      const eventData = createEventData(row, dataset, importJobId, geocoding, job);
+      const eventData = createEventData(
+        transformedRow,
+        dataset,
+        importJobId,
+        geocoding,
+        job,
+        transformationChanges,
+        job.detectedFieldMappings?.timestampPath
+      );
 
       await payload.create({
         collection: COLLECTION_NAMES.EVENTS,
@@ -276,10 +360,10 @@ const getJobResources = async (payload: Payload, importJobId: string | number) =
     throw new Error(`Import job not found: ${importJobId}`);
   }
 
-  const dataset =
-    typeof job.dataset === "object"
-      ? job.dataset
-      : await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: job.dataset });
+  // Always fetch dataset by ID to ensure we have all fields including idStrategy
+  const datasetId = typeof job.dataset === "object" ? job.dataset.id : job.dataset;
+
+  const dataset = await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: datasetId });
 
   if (!dataset) {
     throw new Error("Dataset not found");
@@ -319,19 +403,7 @@ const processBatchData = async (
     return { rows, eventsCreated: 0, eventsSkipped: 0, errors: [] };
   }
 
-  const result = await processEventBatch(
-    payload,
-    rows,
-    {
-      duplicates: job.duplicates,
-      datasetSchemaVersion: job.datasetSchemaVersion,
-      geocodingResults: job.geocodingResults,
-    },
-    dataset,
-    job.id,
-    batchNumber,
-    logger
-  );
+  const result = await processEventBatch(payload, rows, job, dataset, job.id, batchNumber, logger);
 
   return { rows, ...result };
 };
@@ -503,9 +575,17 @@ export const createEventsBatchJob = {
   },
 };
 
-// Helper to extract timestamp from row data
-const extractTimestamp = (row: Record<string, unknown>): Date => {
-  // Look for common timestamp fields
+// Helper to extract timestamp from row data using field mapping
+const extractTimestamp = (row: Record<string, unknown>, timestampPath?: string | null): Date => {
+  // Try mapped field first
+  if (timestampPath && row[timestampPath]) {
+    const date = new Date(row[timestampPath] as string | number);
+    if (isValidDate(date)) {
+      return date;
+    }
+  }
+
+  // Fallback to common timestamp fields
   const timestampFields = ["timestamp", "date", "datetime", "created_at", "event_date", "event_time"];
 
   for (const field of timestampFields) {
