@@ -107,6 +107,49 @@ export const importJobFields: Field[] = [
       condition: (data) => [PROCESSING_STAGE.DETECT_SCHEMA, PROCESSING_STAGE.VALIDATE_SCHEMA].includes(data.stage),
     },
   },
+  {
+    name: "detectedFieldMappings",
+    type: "group",
+    label: "Field Mappings",
+    admin: {
+      description: "Detected or configured field mappings for standard event properties",
+      condition: (data) =>
+        [
+          PROCESSING_STAGE.VALIDATE_SCHEMA,
+          PROCESSING_STAGE.AWAIT_APPROVAL,
+          PROCESSING_STAGE.CREATE_SCHEMA_VERSION,
+          PROCESSING_STAGE.GEOCODE_BATCH,
+          PROCESSING_STAGE.CREATE_EVENTS,
+          PROCESSING_STAGE.COMPLETED,
+        ].includes(data.stage),
+    },
+    fields: [
+      {
+        name: "titlePath",
+        type: "text",
+        admin: {
+          description: "Path to title/name field in source data",
+          readOnly: true,
+        },
+      },
+      {
+        name: "descriptionPath",
+        type: "text",
+        admin: {
+          description: "Path to description/details field in source data",
+          readOnly: true,
+        },
+      },
+      {
+        name: "timestampPath",
+        type: "text",
+        admin: {
+          description: "Path to timestamp/date field in source data",
+          readOnly: true,
+        },
+      },
+    ],
+  },
 
   // Schema Validation
   {
@@ -145,6 +188,14 @@ export const importJobFields: Field[] = [
         admin: {
           description: "New fields detected (auto-grow candidates)",
           condition: (data) => data.schemaValidation?.newFields?.length > 0,
+        },
+      },
+      {
+        name: "transformSuggestions",
+        type: "json",
+        admin: {
+          description: "Auto-detected field rename suggestions with confidence scores",
+          condition: (data) => data.schemaValidation?.transformSuggestions?.length > 0,
         },
       },
       {

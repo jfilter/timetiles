@@ -223,8 +223,15 @@ const Datasets: CollectionConfig = {
       type: "text",
       required: true,
       maxLength: 3,
+      minLength: 3,
+      validate: (value: string | null | undefined): string | true => {
+        if (!value) return "Language code is required";
+        if (value.length !== 3) return "Language code must be exactly 3 characters (ISO 639-3)";
+        if (!/^[a-z]{3}$/.test(value)) return "Language code must be 3 lowercase letters (e.g., eng, deu, fra)";
+        return true;
+      },
       admin: {
-        description: "ISO-639 3 letter code (e.g., eng, deu, fra)",
+        description: "ISO-639-3 code: 3 lowercase letters (e.g., eng, deu, fra)",
       },
     },
     {
@@ -254,7 +261,7 @@ const Datasets: CollectionConfig = {
             { label: "Try External, Fallback to Computed", value: "hybrid" },
           ],
           required: true,
-          defaultValue: "external",
+          defaultValue: "auto",
           admin: {
             description: "How to generate unique IDs for events",
           },
@@ -486,6 +493,100 @@ const Datasets: CollectionConfig = {
         },
       ],
     },
+    // Import Transform Rules
+    {
+      name: "importTransforms",
+      type: "array",
+      admin: {
+        condition: ({ req }) => req?.user?.role === "editor" || req?.user?.role === "admin",
+        description: "Transform rules applied to incoming data before validation (e.g., field renames)",
+      },
+      fields: [
+        {
+          name: "id",
+          type: "text",
+          required: true,
+          defaultValue: () => crypto.randomUUID(),
+          admin: {
+            readOnly: true,
+            description: "Unique identifier for this transform rule",
+          },
+        },
+        {
+          name: "type",
+          type: "select",
+          required: true,
+          options: [
+            { label: "Rename Field", value: "rename" },
+            // Future: split, merge, transform, compute
+          ],
+          defaultValue: "rename",
+          admin: {
+            description: "Type of transformation to apply",
+          },
+        },
+        {
+          name: "from",
+          type: "text",
+          required: true,
+          admin: {
+            description: "Source field path in import file (e.g., 'date' or 'user.email')",
+          },
+        },
+        {
+          name: "to",
+          type: "text",
+          required: true,
+          admin: {
+            description: "Target field path in dataset schema (e.g., 'start_date' or 'contact.email')",
+          },
+        },
+        {
+          name: "active",
+          type: "checkbox",
+          defaultValue: true,
+          admin: {
+            description: "Uncheck to disable without deleting",
+          },
+        },
+        {
+          name: "addedAt",
+          type: "date",
+          admin: {
+            readOnly: true,
+            description: "When this transform was created",
+          },
+        },
+        {
+          name: "addedBy",
+          type: "relationship",
+          relationTo: "users",
+          admin: {
+            readOnly: true,
+            description: "User who created this transform",
+          },
+        },
+        {
+          name: "confidence",
+          type: "number",
+          min: 0,
+          max: 100,
+          admin: {
+            readOnly: true,
+            description: "Confidence score if auto-detected (0-100)",
+          },
+        },
+        {
+          name: "autoDetected",
+          type: "checkbox",
+          defaultValue: false,
+          admin: {
+            readOnly: true,
+            description: "Whether this transform was suggested by auto-detection",
+          },
+        },
+      ],
+    },
     // Enum Detection Configuration
     {
       name: "enumDetection",
@@ -543,6 +644,40 @@ const Datasets: CollectionConfig = {
           type: "text",
           admin: {
             description: "Override: JSON path to longitude (detected: location.lng, lng, lon, longitude)",
+          },
+        },
+      ],
+    },
+    // Field Mapping Overrides (Language-aware field detection)
+    {
+      name: "fieldMappingOverrides",
+      type: "group",
+      label: "Field Mapping Overrides",
+      admin: {
+        condition: ({ req }) => req?.user?.role === "editor" || req?.user?.role === "admin",
+        description:
+          "Override language-aware auto-detection of field mappings. Leave empty to use automatic detection based on dataset language.",
+      },
+      fields: [
+        {
+          name: "titlePath",
+          type: "text",
+          admin: {
+            description: "Override detected title field (e.g., 'event_name', 'titel', 'titre')",
+          },
+        },
+        {
+          name: "descriptionPath",
+          type: "text",
+          admin: {
+            description: "Override detected description field (e.g., 'details', 'beschreibung', 'détails')",
+          },
+        },
+        {
+          name: "timestampPath",
+          type: "text",
+          admin: {
+            description: "Override detected timestamp field (e.g., 'created_at', 'datum', 'date')",
           },
         },
       ],

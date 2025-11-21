@@ -8,6 +8,7 @@
  * @category Services/SchemaBuilder
  */
 
+import type { TransformSuggestion } from "@/lib/types/import-transforms";
 import type { SchemaChange, SchemaComparison } from "@/lib/types/schema-detection";
 
 interface SchemaPropertyMap {
@@ -319,4 +320,309 @@ export const generateChangeSummary = (comparison: SchemaComparison): string => {
   }
 
   return lines.join("\n");
+};
+
+/**
+ * Transform detection utilities
+ */
+
+/**
+ * Detect potential transform rules from schema changes.
+ *
+ * Analyzes removed and added fields to identify likely renames.
+ * Returns suggestions with confidence scores based on multiple factors.
+ *
+ * @param oldSchema - The existing/previous schema
+ * @param newSchema - The new/detected schema
+ * @param changes - The detected schema changes
+ * @returns Array of transform suggestions
+ */
+export const detectTransforms = (
+  oldSchema: Record<string, unknown>,
+  newSchema: Record<string, unknown>,
+  changes: SchemaChange[]
+): TransformSuggestion[] => {
+  const suggestions: TransformSuggestion[] = [];
+
+  // Find removed and added fields
+  const removed = changes.filter((c) => c.type === "removed_field");
+  const added = changes.filter((c) => c.type === "new_field");
+
+  // Try to match removed → added as renames
+  for (const removedChange of removed) {
+    for (const addedChange of added) {
+      const suggestion = detectRenameTransform(removedChange.path, addedChange.path, oldSchema, newSchema);
+
+      if (suggestion && suggestion.confidence >= 70) {
+        suggestions.push(suggestion);
+      }
+    }
+  }
+
+  return suggestions;
+};
+
+/**
+ * Detect if two field changes represent a rename.
+ *
+ * Analyzes multiple factors to determine if a removed + added field
+ * pair represents an intentional field rename.
+ *
+ * Scoring breakdown:
+ * - Name similarity: 0-40 points (Levenshtein distance)
+ * - Type compatibility: 0-30 points (same or compatible types)
+ * - Common patterns: 0-20 points (matches known rename patterns)
+ * - Position proximity: 0-10 points (similar position in schema)
+ *
+ * Threshold: >= 70 points to suggest a rename
+ *
+ * @param oldPath - Path of the removed field (existing schema)
+ * @param newPath - Path of the added field (new schema)
+ * @param oldSchema - The existing/previous schema
+ * @param newSchema - The new/detected schema
+ * @returns Transform suggestion if confidence >= 70, otherwise null
+ */
+const detectRenameTransform = (
+  oldPath: string,
+  newPath: string,
+  oldSchema: Record<string, unknown>,
+  newSchema: Record<string, unknown>
+): TransformSuggestion | null => {
+  let score = 0;
+  const reasons: string[] = [];
+
+  // 1. Name similarity (40 points max)
+  const similarity = calculateSimilarity(oldPath, newPath);
+  const similarityScore = similarity * 40;
+  score += similarityScore;
+  if (similarity > 0.5) {
+    reasons.push(`Similar names (${Math.round(similarity * 100)}%)`);
+  }
+
+  // 2. Type compatibility (30 points max)
+  const oldProp = (oldSchema.properties as SchemaPropertyMap)?.[oldPath];
+  const newProp = (newSchema.properties as SchemaPropertyMap)?.[newPath];
+
+  if (oldProp && newProp) {
+    const oldType = getFieldType(oldProp);
+    const newType = getFieldType(newProp);
+
+    if (typesCompatible(oldType, newType)) {
+      score += 30;
+      reasons.push("Compatible types");
+    }
+  }
+
+  // 3. Common rename patterns (20 points max)
+  if (matchesCommonPattern(oldPath, newPath)) {
+    score += 20;
+    reasons.push("Matches common rename pattern");
+  }
+
+  // 4. Position proximity (10 points max)
+  const positionScore = calculatePositionScore(oldPath, newPath, oldSchema, newSchema);
+  score += positionScore;
+  if (positionScore > 5) {
+    reasons.push("Similar position in schema");
+  }
+
+  // Confidence threshold: 70+ = suggest rename
+  if (score >= 70) {
+    return {
+      type: "rename",
+      from: newPath, // What's in the new import file
+      to: oldPath, // What's in the existing schema
+      confidence: Math.round(score),
+      reason: reasons.join(", "),
+    };
+  }
+
+  return null;
+};
+
+/**
+ * Calculate string similarity using Levenshtein distance.
+ *
+ * Extracts leaf names for nested paths and compares them
+ * case-insensitively.
+ *
+ * @param str1 - First field path
+ * @param str2 - Second field path
+ * @returns Similarity score (0-1, where 1 is identical)
+ */
+const calculateSimilarity = (str1: string, str2: string): number => {
+  // Extract leaf names for nested paths
+  const leaf1 = str1.split(".").pop() ?? str1;
+  const leaf2 = str2.split(".").pop() ?? str2;
+
+  const longer = leaf1.length > leaf2.length ? leaf1 : leaf2;
+  const shorter = leaf1.length > leaf2.length ? leaf2 : leaf1;
+
+  if (longer.length === 0) return 1.0;
+
+  const distance = levenshteinDistance(longer.toLowerCase(), shorter.toLowerCase());
+  return (longer.length - distance) / longer.length;
+};
+
+/**
+ * Calculate Levenshtein distance between two strings.
+ *
+ * The Levenshtein distance is the minimum number of single-character
+ * edits (insertions, deletions, or substitutions) required to change
+ * one string into the other.
+ *
+ * @param str1 - First string
+ * @param str2 - Second string
+ * @returns Levenshtein distance (0 = identical)
+ */
+const levenshteinDistance = (str1: string, str2: string): number => {
+  const len1 = str1.length;
+  const len2 = str2.length;
+
+  // Create 2D array for dynamic programming
+  const matrix: number[][] = Array.from({ length: len1 + 1 }, () => Array(len2 + 1).fill(0));
+
+  // Initialize first row and column
+  for (let i = 0; i <= len1; i++) {
+    matrix[i]![0] = i;
+  }
+  for (let j = 0; j <= len2; j++) {
+    matrix[0]![j] = j;
+  }
+
+  // Fill matrix
+  for (let i = 1; i <= len1; i++) {
+    for (let j = 1; j <= len2; j++) {
+      const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+      const row = matrix[i]!;
+      const prevRow = matrix[i - 1]!;
+      row[j] = Math.min(
+        prevRow[j]! + 1, // Deletion
+        row[j - 1]! + 1, // Insertion
+        prevRow[j - 1]! + cost // Substitution
+      );
+    }
+  }
+
+  return matrix[len1]![len2]!;
+};
+
+/**
+ * Check if two types are compatible.
+ *
+ * Types are compatible if they're the same or one is a subset of the other.
+ * For example, "string" is compatible with "string | null".
+ *
+ * @param oldType - Original field type
+ * @param newType - New field type
+ * @returns True if types are compatible
+ */
+const typesCompatible = (oldType: string, newType: string): boolean => {
+  // Exact match
+  if (oldType === newType) return true;
+
+  // Handle nullable types (e.g., "string | null")
+  const oldBase = oldType.replace(" | null", "").trim();
+  const newBase = newType.replace(" | null", "").trim();
+
+  if (oldBase === newBase) return true;
+
+  // Date and string are somewhat compatible
+  return (oldType === "string" && newType === "date") || (oldType === "date" && newType === "string");
+};
+
+/**
+ * Check if rename matches common patterns.
+ *
+ * Detects common field renaming patterns like:
+ * - Adding prefixes: "date" → "start_date", "date" → "end_date"
+ * - Adding suffixes: "author" → "author_name"
+ * - Removing suffixes: "user_id" → "user"
+ * - Adding context: "title" → "event_title"
+ *
+ * @param oldPath - Path of the removed field
+ * @param newPath - Path of the added field
+ * @returns True if matches a common pattern
+ */
+const matchesCommonPattern = (oldPath: string, newPath: string): boolean => {
+  // Extract leaf names
+  const oldLeaf = (oldPath.split(".").pop() ?? oldPath).toLowerCase();
+  const newLeaf = (newPath.split(".").pop() ?? newPath).toLowerCase();
+
+  // Check common patterns by constructing expected strings
+  const patterns: Array<(old: string) => string | null> = [
+    (old) => `start_${old}`, // "date" → "start_date"
+    (old) => `end_${old}`, // "date" → "end_date"
+    (old) => `${old}_name`, // "author" → "author_name"
+    (old) => `event_${old}`, // "title" → "event_title"
+    (old) => `item_${old}`, // "title" → "item_title"
+    (old) => `${old}_id`, // "user" → "user_id"
+  ];
+
+  // Check if newLeaf matches any pattern applied to oldLeaf
+  for (const pattern of patterns) {
+    const expected = pattern(oldLeaf);
+    if (expected === newLeaf) {
+      return true;
+    }
+  }
+
+  // Check reverse patterns (e.g., "user_id" → "user")
+  const reversePatterns: Array<(newVal: string) => string | null> = [
+    (newVal) => (newVal.startsWith("start_") ? newVal.substring(6) : null),
+    (newVal) => (newVal.startsWith("end_") ? newVal.substring(4) : null),
+    (newVal) => (newVal.endsWith("_name") ? newVal.slice(0, -5) : null),
+    (newVal) => (newVal.startsWith("event_") ? newVal.substring(6) : null),
+    (newVal) => (newVal.startsWith("item_") ? newVal.substring(5) : null),
+    (newVal) => (newVal.endsWith("_id") ? newVal.slice(0, -3) : null),
+  ];
+
+  // Check if oldLeaf matches any reverse pattern applied to newLeaf
+  for (const pattern of reversePatterns) {
+    const expected = pattern(newLeaf);
+    if (expected === oldLeaf) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+/**
+ * Calculate position proximity score.
+ *
+ * Fields that appear in similar positions in the schema are more
+ * likely to be renames (e.g., both are the 2nd field).
+ *
+ * @param oldPath - Path of the removed field
+ * @param newPath - Path of the added field
+ * @param oldSchema - The existing/previous schema
+ * @param newSchema - The new/detected schema
+ * @returns Position score (0-10 points)
+ */
+const calculatePositionScore = (
+  oldPath: string,
+  newPath: string,
+  oldSchema: Record<string, unknown>,
+  newSchema: Record<string, unknown>
+): number => {
+  const oldProps = (oldSchema.properties as SchemaPropertyMap) ?? {};
+  const newProps = (newSchema.properties as SchemaPropertyMap) ?? {};
+
+  const oldKeys = Object.keys(oldProps);
+  const newKeys = Object.keys(newProps);
+
+  const oldIndex = oldKeys.indexOf(oldPath);
+  const newIndex = newKeys.indexOf(newPath);
+
+  if (oldIndex === -1 || newIndex === -1) return 0;
+
+  // Calculate difference in position
+  const diff = Math.abs(oldIndex - newIndex);
+
+  // Score decreases with distance
+  if (diff === 0) return 10; // Same position
+  if (diff === 1) return 7; // Adjacent
+  if (diff === 2) return 4; // Close
+  return 0; // Too far apart
 };

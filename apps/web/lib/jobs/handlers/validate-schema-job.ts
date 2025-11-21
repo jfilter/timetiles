@@ -19,7 +19,7 @@ import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
-import { compareSchemas } from "@/lib/services/schema-builder/schema-comparison";
+import { compareSchemas, detectTransforms } from "@/lib/services/schema-builder/schema-comparison";
 import { SchemaVersioningService } from "@/lib/services/schema-versioning";
 import type { SchemaComparison } from "@/lib/types/schema-detection";
 import { getSchemaBuilderState } from "@/lib/types/schema-detection";
@@ -106,6 +106,17 @@ const checkRequiresApproval = (
   dataset: { schemaConfig?: { locked?: boolean | null; autoApproveNonBreaking?: boolean | null } | null }
 ): boolean => comparison.isBreaking || !!dataset.schemaConfig?.locked || !dataset.schemaConfig?.autoApproveNonBreaking;
 
+// Helper function to get approval reason
+const getApprovalReason = (hasHighConfidenceTransforms: boolean, isBreaking: boolean): string => {
+  if (hasHighConfidenceTransforms) {
+    return "Potential field renames detected";
+  }
+  if (isBreaking) {
+    return "Breaking schema changes detected";
+  }
+  return "Manual approval required by dataset configuration";
+};
+
 // Helper function to handle schema approval
 const handleSchemaApproval = async (options: {
   payload: Payload;
@@ -118,15 +129,31 @@ const handleSchemaApproval = async (options: {
     schemaConfig?: { locked?: boolean | null; autoApproveNonBreaking?: boolean | null } | null;
   };
   importJobId: number | string;
+  fieldMappings?: {
+    titlePath?: string | null;
+    descriptionPath?: string | null;
+    timestampPath?: string | null;
+  };
   req?: PayloadRequest;
 }) => {
-  const { payload, requiresApproval, comparison, detectedSchema, schemaBuilder, dataset, importJobId, req } = options;
+  const {
+    payload,
+    requiresApproval,
+    comparison,
+    detectedSchema,
+    schemaBuilder,
+    dataset,
+    importJobId,
+    fieldMappings,
+    req,
+  } = options;
   const hasChanges = comparison.changes.length > 0;
   if (!requiresApproval && hasChanges) {
     const schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
       dataset: dataset.id,
       schema: detectedSchema,
       fieldMetadata: schemaBuilder.getState().fieldStats,
+      fieldMappings,
       autoApproved: true,
       approvedBy: null, // No user for auto-approval
       importSources: [],
@@ -252,7 +279,22 @@ export const validateSchemaJob = {
       // Get current schema and compare
       const currentSchema = await getCurrentSchema(payload, dataset.id);
       const comparison = compareSchemas(currentSchema, detectedSchema);
-      const requiresApproval = checkRequiresApproval(comparison, dataset);
+
+      // Detect potential import transforms from schema changes
+      const transformSuggestions = detectTransforms(currentSchema, detectedSchema, comparison.changes);
+
+      logger.info("Transform detection complete", {
+        suggestionsCount: transformSuggestions.length,
+        suggestions: transformSuggestions.map((s) => ({
+          from: s.from,
+          to: s.to,
+          confidence: s.confidence,
+        })),
+      });
+
+      // Require approval if there are high-confidence transform suggestions
+      const hasHighConfidenceTransforms = transformSuggestions.some((s) => s.confidence >= 80);
+      const requiresApproval = checkRequiresApproval(comparison, dataset) || hasHighConfidenceTransforms;
 
       // Extract changes
       const { breakingChanges, newFields } = extractSchemaChanges(comparison, detectedSchema);
@@ -267,10 +309,9 @@ export const validateSchemaJob = {
             isCompatible: !comparison.isBreaking,
             breakingChanges,
             newFields,
+            transformSuggestions, // Store transform suggestions
             requiresApproval,
-            approvalReason: comparison.isBreaking
-              ? "Breaking schema changes detected"
-              : "Manual approval required by dataset configuration",
+            approvalReason: getApprovalReason(hasHighConfidenceTransforms, comparison.isBreaking),
           },
           stage: requiresApproval ? PROCESSING_STAGE.AWAIT_APPROVAL : PROCESSING_STAGE.GEOCODE_BATCH,
         },
@@ -285,8 +326,12 @@ export const validateSchemaJob = {
         schemaBuilder,
         dataset,
         importJobId,
+        fieldMappings: job.detectedFieldMappings,
         req: context.req as PayloadRequest | undefined,
       });
+
+      // Stage transition to GEOCODE_BATCH automatically queues geocode-batch job via afterChange hook
+      // No manual queueing needed here
 
       logPerformance("Schema validation", Date.now() - startTime, {
         importJobId,

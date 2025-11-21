@@ -22,7 +22,10 @@ export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
       data.schemaValidation?.approved === true &&
       originalDoc?.schemaValidation?.approved !== true
     ) {
-      const approvedBy = req.user?.id ?? 1;
+      if (!req.user) {
+        throw new Error("Authentication required to approve schema changes");
+      }
+      const approvedBy = req.user.id;
       data.stage = PROCESSING_STAGE.CREATE_SCHEMA_VERSION;
       data.schemaValidation.approvedAt = new Date();
       data.schemaValidation.approvedBy = approvedBy;
