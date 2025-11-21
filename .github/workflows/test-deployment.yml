@@ -265,8 +265,8 @@ jobs:
           echo "Listing backups..."
           ./deploy.sh backup list
 
-          # Get the latest backup file
-          LATEST_BACKUP=$(ls -t backups/db-*.sql.gz | head -1)
+          # Get the latest backup file (filename only, deploy.sh prepends backup dir)
+          LATEST_BACKUP=$(ls -t backups/db-*.sql.gz | head -1 | xargs basename)
           echo "Latest backup: $LATEST_BACKUP"
 
           # Delete test data
