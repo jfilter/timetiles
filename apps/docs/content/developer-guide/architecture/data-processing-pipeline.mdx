@@ -194,6 +194,47 @@ export const advanceToNextStage = async ({ doc, previousDoc, req }) => {
 };
 ```
 
+### Background Job Lifecycle
+
+**Important**: Payload CMS automatically deletes completed jobs by default ([PR #9283](https://github.com/payloadcms/payload/pull/9283)).
+
+**Job Deletion Behavior**:
+
+- `deleteJobOnComplete: true` (default) - Completed jobs are automatically removed from the `payload-jobs` collection
+- `deleteJobOnComplete: false` - Jobs are retained for debugging or potential rerun
+
+**Why This Matters**:
+
+The auto-deletion behavior has important implications for the pipeline design:
+
+1. **No Double-Queueing**: Jobs should only be queued once - either by hooks OR manually, never both
+2. **Hook-Based Queueing**: Collection `afterChange` hooks automatically queue the next job when stages transition
+3. **Job Handlers Focus on Work**: Each handler should focus on its task, not queue the next job
+4. **StageTransitionService**: Use this service to move between stages - it queues jobs via hooks
+
+**Correct Pattern**:
+
+```typescript
+// ✅ CORRECT - Let hooks handle queueing
+await StageTransitionService.transitionTo(payload, importJob, "GEOCODE_BATCH");
+// The afterChange hook automatically queues the geocode-batch job
+
+// ❌ WRONG - Manual queueing causes double-execution
+await payload.jobs.queue({ task: "geocode-batch", input: { importJobId } });
+await StageTransitionService.transitionTo(payload, importJob, "GEOCODE_BATCH");
+// Now geocode-batch will run TWICE - once from manual queue, once from hook!
+```
+
+**Testing Implications**:
+
+Because jobs are deleted after completion, tests must:
+
+- Query pending jobs BEFORE running them (use `completedAt: { exists: false }`)
+- Check side effects (events created, data changed) rather than job history
+- Verify job counts at each stage transition to detect double-queueing
+
+**See Also**: `lib/collections/import-jobs/hooks.ts` for automatic job queueing logic.
+
 ### Batch Processing
 
 Large files are processed in configurable batches:

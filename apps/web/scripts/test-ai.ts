@@ -12,15 +12,21 @@
  *   tsx scripts/test-ai.ts store.test         # Run store.test.ts only
  *   tsx scripts/test-ai.ts tests/unit/lib     # Run tests in directory
  *   tsx scripts/test-ai.ts tests/unit         # Run all unit tests
+ *   tsx scripts/test-ai.ts date store         # Run multiple patterns (space-separated)
+ *   tsx scripts/test-ai.ts "date|store|geo"   # Run multiple patterns (pipe-separated)
  *
  * Via Makefile (recommended):
  *   make test-ai                              # Run all tests
  *   make test-ai FILTER=date.test             # Run specific test
  *   make test-ai FILTER=tests/unit/lib        # Run directory
+ *   make test-ai FILTER="date store geo"      # Multiple patterns (space-separated)
+ *   make test-ai FILTER="date|store|geo"      # Multiple patterns (pipe-separated)
  *
  * Via pnpm:
  *   pnpm test:ai                              # Run all tests
  *   pnpm test:ai date.test                    # Run specific test
+ *   pnpm test:ai date store geo               # Multiple patterns (space-separated)
+ *   pnpm test:ai "date|store|geo"             # Multiple patterns (pipe-separated)
  *
  * Performance: Pattern filters are 24-120x faster than running all tests.
  *
@@ -55,7 +61,19 @@ interface TestSummary {
 
 // Get filter arguments (everything after script name, excluding flags and --)
 const filters = process.argv.slice(2).filter((arg) => !arg.startsWith("-") && arg !== "--");
-const filterArg = filters.length > 0 ? filters.join(" ") : "";
+
+// Support both space-separated AND pipe-separated patterns
+// Examples:
+//   "date store geo"           -> "date store geo"
+//   "date|store|geo"           -> "date store geo"
+//   "(date|store|geo)"         -> "date store geo"
+const processedFilters = filters.flatMap((filter): string[] => {
+  // Remove optional wrapping parentheses and split by pipe
+  const cleaned = filter.replace(/^\(/, "").replace(/\)$/, "");
+  return cleaned.includes("|") ? cleaned.split("|") : [filter];
+});
+
+const filterArg = processedFilters.length > 0 ? processedFilters.join(" ") : "";
 
 // Build vitest command
 // Note: Filter must come AFTER 'vitest run' but BEFORE reporter flags

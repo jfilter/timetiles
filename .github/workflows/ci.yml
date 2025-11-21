@@ -47,7 +47,8 @@ jobs:
           # Install linting tools
           curl -sSfL https://github.com/rhysd/actionlint/releases/download/v1.7.4/actionlint_1.7.4_linux_amd64.tar.gz | tar xz -C $HOME/.local/bin actionlint
           wget -q https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 -O $HOME/.local/bin/hadolint
-          chmod +x $HOME/.local/bin/hadolint $HOME/.local/bin/actionlint
+          curl -sSfL https://github.com/mrtazz/checkmake/releases/download/0.2.2/checkmake-0.2.2.linux.amd64 -o $HOME/.local/bin/checkmake
+          chmod +x $HOME/.local/bin/hadolint $HOME/.local/bin/actionlint $HOME/.local/bin/checkmake
 
           pnpm lint:devops
         continue-on-error: true

@@ -103,11 +103,13 @@ test:
 #   make test-ai FILTER=date.test                   # Run tests matching pattern (faster)
 #   make test-ai FILTER=store.test                  # Run store tests
 #   make test-ai FILTER=tests/unit/lib              # Run specific directory
+#   make test-ai FILTER="date|store|geo"            # Run multiple patterns (pipe-separated)
+#   make test-ai FILTER="date store geo"            # Run multiple patterns (space-separated)
 test-ai:
 	@if [ -z "$(FILTER)" ]; then \
 		cd apps/web && pnpm test:ai; \
 	else \
-		cd apps/web && pnpm test:ai $(FILTER); \
+		cd apps/web && pnpm test:ai "$(FILTER)"; \
 	fi
 
 # Run combined code quality checks with AI-friendly output (lint + typecheck)

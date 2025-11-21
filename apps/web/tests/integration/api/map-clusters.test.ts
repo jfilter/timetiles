@@ -79,7 +79,7 @@ describe("/api/events/map-clusters", () => {
             version: 1,
           },
         },
-        language: "en",
+        language: "eng",
         isPublic: true, // Must be public since catalog is public
       },
     });
