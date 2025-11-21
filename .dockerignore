@@ -112,6 +112,12 @@ Desktop.ini
 scripts/setup-git.sh
 scripts/fetch-sonarcloud-issues.ts
 scripts/test-summary.ts
+scripts/test-ai.ts
+scripts/e2e-validate-schema.ts
+
+# Makefiles not needed in production
+Makefile
+**/Makefile
 
 # Archive and backup files
 *.bak
