@@ -44,6 +44,7 @@ export const enum_transforms_to_type = db_schema.enum("enum_transforms_to_type",
   "object",
 ]);
 export const strategy = db_schema.enum("strategy", ["parse", "cast", "custom", "reject"]);
+export const enum_datasets_import_transforms_type = db_schema.enum("enum_datasets_import_transforms_type", ["rename"]);
 export const enum_datasets_id_strategy_type = db_schema.enum("enum_datasets_id_strategy_type", [
   "external",
   "computed",
@@ -84,6 +85,10 @@ export const enum__transforms_v_to_type = db_schema.enum("enum__transforms_v_to_
   "array",
   "object",
 ]);
+export const enum__datasets_v_version_import_transforms_type = db_schema.enum(
+  "enum__datasets_v_version_import_transforms_type",
+  ["rename"]
+);
 export const enum__datasets_v_version_id_strategy_type = db_schema.enum("enum__datasets_v_version_id_strategy_type", [
   "external",
   "computed",
@@ -491,6 +496,35 @@ export const transforms = db_schema.table(
   })
 );
 
+export const datasets_import_transforms = db_schema.table(
+  "datasets_import_transforms",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    type: enum_datasets_import_transforms_type("type").default("rename"),
+    from: varchar("from"),
+    to: varchar("to"),
+    active: boolean("active").default(true),
+    addedAt: timestamp("added_at", { mode: "string", withTimezone: true, precision: 3 }),
+    addedBy: integer("added_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    confidence: numeric("confidence"),
+    autoDetected: boolean("auto_detected").default(false),
+  },
+  (columns) => ({
+    _orderIdx: index("datasets_import_transforms_order_idx").on(columns._order),
+    _parentIDIdx: index("datasets_import_transforms_parent_id_idx").on(columns._parentID),
+    datasets_import_transforms_added_by_idx: index("datasets_import_transforms_added_by_idx").on(columns.addedBy),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [datasets.id],
+      name: "datasets_import_transforms_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
 export const datasets = db_schema.table(
   "datasets",
   {
@@ -504,7 +538,7 @@ export const datasets = db_schema.table(
     language: varchar("language"),
     isPublic: boolean("is_public").default(false),
     metadata: jsonb("metadata"),
-    idStrategy_type: enum_datasets_id_strategy_type("id_strategy_type").default("external"),
+    idStrategy_type: enum_datasets_id_strategy_type("id_strategy_type").default("auto"),
     idStrategy_externalIdPath: varchar("id_strategy_external_id_path"),
     idStrategy_duplicateStrategy: enum_datasets_id_strategy_duplicate_strategy(
       "id_strategy_duplicate_strategy"
@@ -528,6 +562,9 @@ export const datasets = db_schema.table(
     geoFieldDetection_autoDetect: boolean("geo_field_detection_auto_detect").default(true),
     geoFieldDetection_latitudePath: varchar("geo_field_detection_latitude_path"),
     geoFieldDetection_longitudePath: varchar("geo_field_detection_longitude_path"),
+    fieldMappingOverrides_titlePath: varchar("field_mapping_overrides_title_path"),
+    fieldMappingOverrides_descriptionPath: varchar("field_mapping_overrides_description_path"),
+    fieldMappingOverrides_timestampPath: varchar("field_mapping_overrides_timestamp_path"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
@@ -588,6 +625,38 @@ export const _transforms_v = db_schema.table(
   })
 );
 
+export const _datasets_v_version_import_transforms = db_schema.table(
+  "_datasets_v_version_import_transforms",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    _uuid: varchar("_uuid"),
+    type: enum__datasets_v_version_import_transforms_type("type").default("rename"),
+    from: varchar("from"),
+    to: varchar("to"),
+    active: boolean("active").default(true),
+    addedAt: timestamp("added_at", { mode: "string", withTimezone: true, precision: 3 }),
+    addedBy: integer("added_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    confidence: numeric("confidence"),
+    autoDetected: boolean("auto_detected").default(false),
+  },
+  (columns) => ({
+    _orderIdx: index("_datasets_v_version_import_transforms_order_idx").on(columns._order),
+    _parentIDIdx: index("_datasets_v_version_import_transforms_parent_id_idx").on(columns._parentID),
+    _datasets_v_version_import_transforms_added_by_idx: index("_datasets_v_version_import_transforms_added_by_idx").on(
+      columns.addedBy
+    ),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_datasets_v.id],
+      name: "_datasets_v_version_import_transforms_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
 export const _datasets_v = db_schema.table(
   "_datasets_v",
   {
@@ -604,7 +673,7 @@ export const _datasets_v = db_schema.table(
     version_language: varchar("version_language"),
     version_isPublic: boolean("version_is_public").default(false),
     version_metadata: jsonb("version_metadata"),
-    version_idStrategy_type: enum__datasets_v_version_id_strategy_type("version_id_strategy_type").default("external"),
+    version_idStrategy_type: enum__datasets_v_version_id_strategy_type("version_id_strategy_type").default("auto"),
     version_idStrategy_externalIdPath: varchar("version_id_strategy_external_id_path"),
     version_idStrategy_duplicateStrategy: enum__datasets_v_version_id_strategy_duplicate_strategy(
       "version_id_strategy_duplicate_strategy"
@@ -633,6 +702,9 @@ export const _datasets_v = db_schema.table(
     version_geoFieldDetection_autoDetect: boolean("version_geo_field_detection_auto_detect").default(true),
     version_geoFieldDetection_latitudePath: varchar("version_geo_field_detection_latitude_path"),
     version_geoFieldDetection_longitudePath: varchar("version_geo_field_detection_longitude_path"),
+    version_fieldMappingOverrides_titlePath: varchar("version_field_mapping_overrides_title_path"),
+    version_fieldMappingOverrides_descriptionPath: varchar("version_field_mapping_overrides_description_path"),
+    version_fieldMappingOverrides_timestampPath: varchar("version_field_mapping_overrides_timestamp_path"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
@@ -790,6 +862,9 @@ export const dataset_schemas = db_schema.table(
     approvalNotes: varchar("approval_notes"),
     autoApproved: boolean("auto_approved"),
     conflicts: jsonb("conflicts"),
+    fieldMappings_titlePath: varchar("field_mappings_title_path"),
+    fieldMappings_descriptionPath: varchar("field_mappings_description_path"),
+    fieldMappings_timestampPath: varchar("field_mappings_timestamp_path"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
@@ -938,6 +1013,9 @@ export const _dataset_schemas_v = db_schema.table(
     version_approvalNotes: varchar("version_approval_notes"),
     version_autoApproved: boolean("version_auto_approved"),
     version_conflicts: jsonb("version_conflicts"),
+    version_fieldMappings_titlePath: varchar("version_field_mappings_title_path"),
+    version_fieldMappings_descriptionPath: varchar("version_field_mappings_description_path"),
+    version_fieldMappings_timestampPath: varchar("version_field_mappings_timestamp_path"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
@@ -1179,9 +1257,13 @@ export const import_jobs = db_schema.table(
     progress_batchNumber: numeric("progress_batch_number").default("0"),
     schema: jsonb("schema"),
     schemaBuilderState: jsonb("schema_builder_state"),
+    detectedFieldMappings_titlePath: varchar("detected_field_mappings_title_path"),
+    detectedFieldMappings_descriptionPath: varchar("detected_field_mappings_description_path"),
+    detectedFieldMappings_timestampPath: varchar("detected_field_mappings_timestamp_path"),
     schemaValidation_isCompatible: boolean("schema_validation_is_compatible"),
     schemaValidation_breakingChanges: jsonb("schema_validation_breaking_changes"),
     schemaValidation_newFields: jsonb("schema_validation_new_fields"),
+    schemaValidation_transformSuggestions: jsonb("schema_validation_transform_suggestions"),
     schemaValidation_requiresApproval: boolean("schema_validation_requires_approval"),
     schemaValidation_approvalReason: varchar("schema_validation_approval_reason"),
     schemaValidation_approved: boolean("schema_validation_approved"),
@@ -1277,9 +1359,13 @@ export const _import_jobs_v = db_schema.table(
     version_progress_batchNumber: numeric("version_progress_batch_number").default("0"),
     version_schema: jsonb("version_schema"),
     version_schemaBuilderState: jsonb("version_schema_builder_state"),
+    version_detectedFieldMappings_titlePath: varchar("version_detected_field_mappings_title_path"),
+    version_detectedFieldMappings_descriptionPath: varchar("version_detected_field_mappings_description_path"),
+    version_detectedFieldMappings_timestampPath: varchar("version_detected_field_mappings_timestamp_path"),
     version_schemaValidation_isCompatible: boolean("version_schema_validation_is_compatible"),
     version_schemaValidation_breakingChanges: jsonb("version_schema_validation_breaking_changes"),
     version_schemaValidation_newFields: jsonb("version_schema_validation_new_fields"),
+    version_schemaValidation_transformSuggestions: jsonb("version_schema_validation_transform_suggestions"),
     version_schemaValidation_requiresApproval: boolean("version_schema_validation_requires_approval"),
     version_schemaValidation_approvalReason: varchar("version_schema_validation_approval_reason"),
     version_schemaValidation_approved: boolean("version_schema_validation_approved"),
@@ -2789,6 +2875,18 @@ export const relations_transforms = relations(transforms, ({ one }) => ({
     relationName: "typeTransformations",
   }),
 }));
+export const relations_datasets_import_transforms = relations(datasets_import_transforms, ({ one }) => ({
+  _parentID: one(datasets, {
+    fields: [datasets_import_transforms._parentID],
+    references: [datasets.id],
+    relationName: "importTransforms",
+  }),
+  addedBy: one(users, {
+    fields: [datasets_import_transforms.addedBy],
+    references: [users.id],
+    relationName: "addedBy",
+  }),
+}));
 export const relations_datasets = relations(datasets, ({ one, many }) => ({
   catalog: one(catalogs, {
     fields: [datasets.catalog],
@@ -2800,6 +2898,9 @@ export const relations_datasets = relations(datasets, ({ one, many }) => ({
   }),
   typeTransformations: many(transforms, {
     relationName: "typeTransformations",
+  }),
+  importTransforms: many(datasets_import_transforms, {
+    relationName: "importTransforms",
   }),
 }));
 export const relations__datasets_v_version_id_strategy_computed_id_fields = relations(
@@ -2819,6 +2920,21 @@ export const relations__transforms_v = relations(_transforms_v, ({ one }) => ({
     relationName: "version_typeTransformations",
   }),
 }));
+export const relations__datasets_v_version_import_transforms = relations(
+  _datasets_v_version_import_transforms,
+  ({ one }) => ({
+    _parentID: one(_datasets_v, {
+      fields: [_datasets_v_version_import_transforms._parentID],
+      references: [_datasets_v.id],
+      relationName: "version_importTransforms",
+    }),
+    addedBy: one(users, {
+      fields: [_datasets_v_version_import_transforms.addedBy],
+      references: [users.id],
+      relationName: "addedBy",
+    }),
+  })
+);
 export const relations__datasets_v = relations(_datasets_v, ({ one, many }) => ({
   parent: one(datasets, {
     fields: [_datasets_v.parent],
@@ -2835,6 +2951,9 @@ export const relations__datasets_v = relations(_datasets_v, ({ one, many }) => (
   }),
   version_typeTransformations: many(_transforms_v, {
     relationName: "version_typeTransformations",
+  }),
+  version_importTransforms: many(_datasets_v_version_import_transforms, {
+    relationName: "version_importTransforms",
   }),
 }));
 export const relations_dataset_schemas_schema_summary_new_fields = relations(
@@ -3497,6 +3616,7 @@ type DatabaseSchema = {
   enum_transforms_from_type: typeof enum_transforms_from_type;
   enum_transforms_to_type: typeof enum_transforms_to_type;
   strategy: typeof strategy;
+  enum_datasets_import_transforms_type: typeof enum_datasets_import_transforms_type;
   enum_datasets_id_strategy_type: typeof enum_datasets_id_strategy_type;
   enum_datasets_id_strategy_duplicate_strategy: typeof enum_datasets_id_strategy_duplicate_strategy;
   enum_datasets_schema_config_enum_mode: typeof enum_datasets_schema_config_enum_mode;
@@ -3505,6 +3625,7 @@ type DatabaseSchema = {
   enum_datasets_status: typeof enum_datasets_status;
   enum__transforms_v_from_type: typeof enum__transforms_v_from_type;
   enum__transforms_v_to_type: typeof enum__transforms_v_to_type;
+  enum__datasets_v_version_import_transforms_type: typeof enum__datasets_v_version_import_transforms_type;
   enum__datasets_v_version_id_strategy_type: typeof enum__datasets_v_version_id_strategy_type;
   enum__datasets_v_version_id_strategy_duplicate_strategy: typeof enum__datasets_v_version_id_strategy_duplicate_strategy;
   enum__datasets_v_version_schema_config_enum_mode: typeof enum__datasets_v_version_schema_config_enum_mode;
@@ -3571,9 +3692,11 @@ type DatabaseSchema = {
   _catalogs_v: typeof _catalogs_v;
   datasets_id_strategy_computed_id_fields: typeof datasets_id_strategy_computed_id_fields;
   transforms: typeof transforms;
+  datasets_import_transforms: typeof datasets_import_transforms;
   datasets: typeof datasets;
   _datasets_v_version_id_strategy_computed_id_fields: typeof _datasets_v_version_id_strategy_computed_id_fields;
   _transforms_v: typeof _transforms_v;
+  _datasets_v_version_import_transforms: typeof _datasets_v_version_import_transforms;
   _datasets_v: typeof _datasets_v;
   dataset_schemas_schema_summary_new_fields: typeof dataset_schemas_schema_summary_new_fields;
   dataset_schemas_schema_summary_removed_fields: typeof dataset_schemas_schema_summary_removed_fields;
@@ -3633,9 +3756,11 @@ type DatabaseSchema = {
   relations__catalogs_v: typeof relations__catalogs_v;
   relations_datasets_id_strategy_computed_id_fields: typeof relations_datasets_id_strategy_computed_id_fields;
   relations_transforms: typeof relations_transforms;
+  relations_datasets_import_transforms: typeof relations_datasets_import_transforms;
   relations_datasets: typeof relations_datasets;
   relations__datasets_v_version_id_strategy_computed_id_fields: typeof relations__datasets_v_version_id_strategy_computed_id_fields;
   relations__transforms_v: typeof relations__transforms_v;
+  relations__datasets_v_version_import_transforms: typeof relations__datasets_v_version_import_transforms;
   relations__datasets_v: typeof relations__datasets_v;
   relations_dataset_schemas_schema_summary_new_fields: typeof relations_dataset_schemas_schema_summary_new_fields;
   relations_dataset_schemas_schema_summary_removed_fields: typeof relations_dataset_schemas_schema_summary_removed_fields;

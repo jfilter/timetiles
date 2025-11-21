@@ -35,7 +35,7 @@ const createFieldStats = (
       defaultFormats = { dateTime: 100 };
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars, sonarjs/no-unused-vars
+    // eslint-disable-next-line sonarjs/no-unused-vars
     const { fieldType: _, ...partialWithoutFieldType } = partial;
     stats[name] = {
       path: name,

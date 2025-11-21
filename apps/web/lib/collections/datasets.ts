@@ -12,8 +12,10 @@
  *
  * @module
  */
-import type { CollectionConfig, Where } from "payload";
+import type { CollectionConfig } from "payload";
 
+import * as access from "./datasets/access";
+import { validatePublicCatalogDataset } from "./datasets/hooks";
 import { basicMetadataFields, createCommonConfig, createSlugField, metadataField } from "./shared-fields";
 
 const Datasets: CollectionConfig = {
@@ -24,189 +26,14 @@ const Datasets: CollectionConfig = {
     defaultColumns: ["name", "catalog", "language", "isPublic"],
   },
   access: {
-    // Public datasets or datasets in public catalogs can be read by anyone
-    // Private datasets require catalog ownership or admin
-    read: async ({ req }) => {
-      const { user, payload } = req;
-
-      // Admin can read all
-      if (user?.role === "admin") return true;
-
-      // For non-admin users, we need to check:
-      // 1. Public datasets in public catalogs
-      // 2. Any dataset (public or private) in catalogs owned by the user
-
-      // Get accessible catalogs using shared helper
-      const { publicCatalogIds, ownedCatalogIds } = await (
-        await import("@/lib/services/access-control")
-      ).getAccessibleCatalogIds(payload, user);
-
-      // Build query:
-      // - Public datasets in public catalogs
-      // - Any dataset (public or private) in owned catalogs
-      // - Datasets created by the user (if authenticated)
-      const conditions: Where[] = [];
-
-      if (publicCatalogIds.length > 0) {
-        conditions.push({
-          and: [{ catalog: { in: publicCatalogIds } }, { isPublic: { equals: true } }],
-        });
-      }
-
-      if (ownedCatalogIds.length > 0) {
-        conditions.push({
-          catalog: { in: ownedCatalogIds },
-        });
-      }
-
-      // Note: Datasets don't have a createdBy field tracked directly
-      // They inherit access through catalog ownership
-      // Users can create datasets in public catalogs but those datasets
-      // follow the standard access rules (must be public to be readable by non-owners)
-
-      if (conditions.length === 0) {
-        // Return impossible condition instead of false to allow 200 with empty results
-        // This provides graceful degradation when there's no public data
-        return { id: { equals: -1 } } as Where; // No dataset has ID -1
-      }
-
-      return { or: conditions };
-    },
-
-    // Only authenticated users can create datasets, and they must have access to the catalog
-    create: async ({ req: { user, payload }, data }) => {
-      if (!user) return false;
-      if (user?.role === "admin") return true;
-
-      // Check if user has access to the catalog
-      if (data?.catalog) {
-        const catalogId = typeof data.catalog === "object" ? data.catalog.id : data.catalog;
-        try {
-          const catalog = await payload.findByID({
-            collection: "catalogs",
-            id: catalogId,
-            overrideAccess: true,
-          });
-
-          // Can create in public catalogs or own private catalogs
-          if (catalog?.isPublic) return true;
-
-          if (catalog?.createdBy) {
-            const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
-            return user.id === createdById;
-          }
-        } catch {
-          return false;
-        }
-      }
-
-      return false;
-    },
-
-    // Only catalog owner or admins can update
-    update: async ({ req, id }) => {
-      const { user, payload } = req;
-      if (user?.role === "admin") return true;
-
-      if (!user || !id) return false;
-
-      try {
-        // Fetch the existing dataset with override to get catalog info
-        const existingDataset = await payload.findByID({
-          collection: "datasets",
-          id,
-          overrideAccess: true,
-        });
-
-        if (existingDataset?.catalog) {
-          const catalogId =
-            typeof existingDataset.catalog === "object" ? existingDataset.catalog.id : existingDataset.catalog;
-          const catalog = await payload.findByID({
-            collection: "catalogs",
-            id: catalogId,
-            overrideAccess: true,
-          });
-
-          if (catalog?.createdBy) {
-            const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
-            return user.id === createdById;
-          }
-        }
-
-        return false;
-      } catch {
-        return false;
-      }
-    },
-
-    // Only catalog owner or admins can delete
-    delete: async ({ req, id }) => {
-      const { user, payload } = req;
-      if (user?.role === "admin") return true;
-
-      if (!user || !id) return false;
-
-      try {
-        // Fetch the existing dataset with override to get catalog info
-        const existingDataset = await payload.findByID({
-          collection: "datasets",
-          id,
-          overrideAccess: true,
-        });
-
-        if (existingDataset?.catalog) {
-          const catalogId =
-            typeof existingDataset.catalog === "object" ? existingDataset.catalog.id : existingDataset.catalog;
-          const catalog = await payload.findByID({
-            collection: "catalogs",
-            id: catalogId,
-            overrideAccess: true,
-          });
-
-          if (catalog?.createdBy) {
-            const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
-            return user.id === createdById;
-          }
-        }
-
-        return false;
-      } catch {
-        return false;
-      }
-    },
-
-    // Only admins can read version history
-    readVersions: ({ req: { user } }) => user?.role === "admin",
+    read: access.read,
+    create: access.create,
+    update: access.update,
+    delete: access.deleteAccess,
+    readVersions: access.readVersions,
   },
   hooks: {
-    beforeChange: [
-      async ({ data, req, operation }) => {
-        // Validate: Datasets in public catalogs must be public
-        if ((operation === "create" || operation === "update") && data?.catalog) {
-          const catalogId = typeof data.catalog === "object" ? data.catalog.id : data.catalog;
-          try {
-            const catalog = await req.payload.findByID({
-              collection: "catalogs",
-              id: catalogId,
-              overrideAccess: true,
-            });
-
-            // If catalog is public, dataset must also be public
-            if (catalog?.isPublic && data.isPublic === false) {
-              throw new Error("Datasets in public catalogs must be public");
-            }
-          } catch (error) {
-            // Re-throw validation errors
-            if (error instanceof Error && error.message.includes("must be public")) {
-              throw error;
-            }
-            // Catalog not found - will be caught by required validation
-          }
-        }
-
-        return data;
-      },
-    ],
+    beforeChange: [validatePublicCatalogDataset],
   },
   fields: [
     ...basicMetadataFields,
