@@ -70,21 +70,22 @@ jobs:
 
           echo "Nginx config prepared with substitutions applied"
 
-          # Create docker-compose override for testing
-          cat > deployment/docker-compose.test.yml << 'EOF'
+          # Create docker-compose override for testing with absolute paths
+          cat > deployment/docker-compose.test.yml << EOF
           services:
             nginx:
               volumes:
-                - ./nginx-test/nginx.conf:/etc/nginx/nginx.conf:ro
-                - ./nginx-test/sites-enabled:/etc/nginx/sites-enabled:ro
-                - ./ssl:/etc/letsencrypt:ro
+                - $(pwd)/deployment/nginx-test/nginx.conf:/etc/nginx/nginx.conf:ro
+                - $(pwd)/deployment/nginx-test/sites-enabled:/etc/nginx/sites-enabled:ro
+                - $(pwd)/deployment/ssl:/etc/letsencrypt:ro
                 - certbot-webroot:/var/www/certbot:ro
 
           volumes:
             certbot-webroot:
           EOF
 
-          echo "Docker compose override created"
+          echo "Docker compose override created with absolute paths"
+          cat deployment/docker-compose.test.yml
 
       - name: Generate self-signed SSL certificate
         run: |
