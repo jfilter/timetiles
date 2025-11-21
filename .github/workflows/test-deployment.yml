@@ -53,7 +53,14 @@ jobs:
           # Show config (without secrets in real deployment)
           echo "=== Test Configuration ==="
           grep -E "^[^#]" deployment/.env.production | grep -v PASSWORD | grep -v SECRET
-          
+
+      - name: Prepare nginx configuration
+        run: |
+          echo "Substituting DOMAIN_NAME in nginx config..."
+          sed -i 's/${DOMAIN_NAME}/localhost/g' deployment/nginx/sites-enabled/app.conf
+
+          echo "Nginx config prepared for testing"
+
       - name: Build Docker image
         run: |
           echo "Building production Docker image..."
@@ -105,11 +112,7 @@ jobs:
           # Copy certificates into nginx container
           docker cp ssl/fullchain.pem timetiles-nginx:/etc/letsencrypt/live/localhost/fullchain.pem
           docker cp ssl/privkey.pem timetiles-nginx:/etc/letsencrypt/live/localhost/privkey.pem
-          
-          # Update nginx config to use the certificates
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T nginx \
-            sed -i 's/${DOMAIN_NAME}/localhost/g' /etc/nginx/sites-enabled/app.conf
-          
+
           # Reload nginx to apply SSL config
           docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T nginx \
             nginx -s reload
@@ -260,12 +263,12 @@ jobs:
       
       - name: Run database migrations
         run: |
-          cd deploy
+          cd deployment
           ./deploy.sh migrate
           
       - name: Check application health
         run: |
-          cd deploy
+          cd deployment
           ./deploy.sh status
           
           # Test health endpoint
@@ -289,8 +292,8 @@ jobs:
       
       - name: Test backup and restore functionality
         run: |
-          cd deploy
-          
+          cd deployment
+
           # Create some test data
           docker compose -f docker-compose.prod.yml exec -T postgres psql -U timetiles_user timetiles -c \
             "INSERT INTO payload.users (email, created_at, updated_at) VALUES ('test@backup.com', NOW(), NOW());"
