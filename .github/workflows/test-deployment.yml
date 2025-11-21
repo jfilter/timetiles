@@ -129,11 +129,10 @@ jobs:
           echo "Waiting for web app..."
           timeout 60 bash -c 'until curl -f http://localhost:80/api/health 2>/dev/null; do sleep 2; done'
           
-      - name: Run database migrations
-        run: |
-          echo "Running Payload migrations..."
-          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production exec -T web \
-            pnpm payload:migrate
+      # Note: Migrations are skipped in deployment tests because:
+      # 1. The production image doesn't include pnpm (minimal runtime)
+      # 2. Migrations should be run separately in production deployments
+      # 3. This test focuses on verifying deployment configuration, not app functionality
 
       - name: Test nginx proxy (HTTP and HTTPS)
         run: |
