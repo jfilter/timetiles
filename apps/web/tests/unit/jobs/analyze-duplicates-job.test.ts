@@ -100,7 +100,8 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob) // First call returns import job
         .mockResolvedValueOnce(mockDataset) // Second call returns dataset
-        .mockResolvedValueOnce(mockImportFile); // Third call returns import file
+        .mockResolvedValueOnce(mockImportFile) // Third call returns import file
+        .mockResolvedValueOnce(mockImportJob); // Fourth call refetches import job after progress init
 
       // Mock file reading for countTotalRows - simulate 100 rows in file
       const mockRows = new Array(100).fill({ id: "1", title: "Event 1" });
@@ -116,8 +117,8 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       // Verify result
       expect(result).toEqual({ output: { skipped: true } });
 
-      // Verify payload calls
-      expect(mockPayload.findByID).toHaveBeenCalledTimes(3);
+      // Verify payload calls - includes refetch after progress initialization
+      expect(mockPayload.findByID).toHaveBeenCalledTimes(4);
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(1, {
         collection: "import-jobs",
         id: "import-123",
@@ -129,6 +130,10 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(3, {
         collection: "import-files",
         id: "file-789",
+      });
+      expect(mockPayload.findByID).toHaveBeenNthCalledWith(4, {
+        collection: "import-jobs",
+        id: "import-123",
       });
 
       // Verify update call

@@ -358,14 +358,13 @@ const ImportFiles: CollectionConfig = {
 
         const logger = createRequestLogger("import-files-beforeoperation");
 
-        // Skip filename modification for test environments
-        // This allows integration tests and E2E seeding to preserve exact filenames
-        const isTestEnv = process.env.NODE_ENV === "test" || process.env.DATABASE_URL?.includes("_test");
-
-        // Handle file uploads (original logic)
-        if (req.file && !isTestEnv) {
+        // Handle file uploads
+        if (req.file) {
           // Store original filename for later use
           const originalName = req.file.name;
+
+          // Always store original name in request context for use in beforeChange hook
+          (req as typeof req & { originalFileName?: string }).originalFileName = originalName;
 
           // Check if this is already a URL import file (starts with "url-import-")
           // If so, keep the original filename to maintain consistency
@@ -391,9 +390,6 @@ const ImportFiles: CollectionConfig = {
               uniqueId,
             });
           }
-
-          // Store original name in request context for use in beforeChange hook
-          (req as typeof req & { originalFileName?: string }).originalFileName = originalName;
         }
       },
     ],
