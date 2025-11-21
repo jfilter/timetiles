@@ -78,7 +78,7 @@ jobs:
                 - $(pwd)/deployment/nginx-test/nginx.conf:/etc/nginx/nginx.conf:ro
                 - $(pwd)/deployment/nginx-test/sites-enabled:/etc/nginx/sites-enabled:ro
                 - $(pwd)/deployment/ssl:/etc/letsencrypt:ro
-                - certbot-webroot:/var/www/certbot:ro
+                - certbot-webroot:/var/www/certbot  # Writable for testing
 
           volumes:
             certbot-webroot:
