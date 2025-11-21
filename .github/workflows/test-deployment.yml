@@ -235,9 +235,10 @@ jobs:
       - name: Test backup and restore functionality
         run: |
           cd deployment
+          DC_CMD="docker compose -f docker-compose.prod.yml -f docker-compose.test.yml --env-file .env.production"
 
           # Create some test data
-          docker compose -f docker-compose.prod.yml exec -T postgres psql -U timetiles_user timetiles -c \
+          $DC_CMD exec -T postgres psql -U timetiles_user timetiles -c \
             "INSERT INTO payload.users (email, created_at, updated_at) VALUES ('test@backup.com', NOW(), NOW());"
 
           # Test database backup
@@ -269,11 +270,11 @@ jobs:
           echo "Latest backup: $LATEST_BACKUP"
 
           # Delete test data
-          docker compose -f docker-compose.prod.yml exec -T postgres psql -U timetiles_user timetiles -c \
+          $DC_CMD exec -T postgres psql -U timetiles_user timetiles -c \
             "DELETE FROM payload.users WHERE email = 'test@backup.com';"
 
           # Verify data is gone
-          COUNT=$(docker compose -f docker-compose.prod.yml exec -T postgres psql -U timetiles_user timetiles -t -c \
+          COUNT=$($DC_CMD exec -T postgres psql -U timetiles_user timetiles -t -c \
             "SELECT COUNT(*) FROM payload.users WHERE email = 'test@backup.com';" | tr -d ' ')
           if [ "$COUNT" != "0" ]; then
             echo "Failed to delete test data"
@@ -285,7 +286,7 @@ jobs:
           echo "yes" | ./deploy.sh restore "$LATEST_BACKUP"
 
           # Verify data was restored
-          COUNT=$(docker compose -f docker-compose.prod.yml exec -T postgres psql -U timetiles_user timetiles -t -c \
+          COUNT=$($DC_CMD exec -T postgres psql -U timetiles_user timetiles -t -c \
             "SELECT COUNT(*) FROM payload.users WHERE email = 'test@backup.com';" | tr -d ' ')
           if [ "$COUNT" != "1" ]; then
             echo "Restore failed - test data not found after restore"
@@ -299,7 +300,7 @@ jobs:
           ./deploy.sh backup clean
 
           # Clean up test data
-          docker compose -f docker-compose.prod.yml exec -T postgres psql -U timetiles_user timetiles -c \
+          $DC_CMD exec -T postgres psql -U timetiles_user timetiles -c \
             "DELETE FROM payload.users WHERE email = 'test@backup.com';"
 
           cd ..
