@@ -1,5 +1,5 @@
-import type { MigrateUpArgs, MigrateDownArgs} from '@payloadcms/db-postgres';
-import { sql } from '@payloadcms/db-postgres'
+import type { MigrateUpArgs, MigrateDownArgs } from "@payloadcms/db-postgres";
+import { sql } from "@payloadcms/db-postgres";
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
@@ -20,7 +20,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   ALTER TABLE "payload"."import_jobs" ADD COLUMN "detected_field_mappings_timestamp_path" varchar;
   ALTER TABLE "payload"."_import_jobs_v" ADD COLUMN "version_detected_field_mappings_title_path" varchar;
   ALTER TABLE "payload"."_import_jobs_v" ADD COLUMN "version_detected_field_mappings_description_path" varchar;
-  ALTER TABLE "payload"."_import_jobs_v" ADD COLUMN "version_detected_field_mappings_timestamp_path" varchar;`)
+  ALTER TABLE "payload"."_import_jobs_v" ADD COLUMN "version_detected_field_mappings_timestamp_path" varchar;`);
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
@@ -42,5 +42,5 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   ALTER TABLE "payload"."import_jobs" DROP COLUMN "detected_field_mappings_timestamp_path";
   ALTER TABLE "payload"."_import_jobs_v" DROP COLUMN "version_detected_field_mappings_title_path";
   ALTER TABLE "payload"."_import_jobs_v" DROP COLUMN "version_detected_field_mappings_description_path";
-  ALTER TABLE "payload"."_import_jobs_v" DROP COLUMN "version_detected_field_mappings_timestamp_path";`)
+  ALTER TABLE "payload"."_import_jobs_v" DROP COLUMN "version_detected_field_mappings_timestamp_path";`);
 }

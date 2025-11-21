@@ -1,12 +1,12 @@
 /**
- * Defines the job handler for geocoding a batch of addresses from an imported file.
+ * Defines the job handler for geocoding unique locations from an imported file.
  *
- * This job processes a batch of rows to find their geographic coordinates. It handles two scenarios:
- * 1.  **Address Geocoding:** If an address field was identified, it calls an external geocoding service to convert the address into latitude and longitude.
- * 2.  **Coordinate Validation:** If latitude and longitude columns were provided in the data, it validates and standardizes them.
+ * This job extracts unique location values from the location field and geocodes them.
+ * Unlike the previous implementation, it does not process coordinates (lat/lon) - those
+ * are read directly from field mappings during event creation.
  *
- * The job skips rows that were marked as duplicates. The results are stored in the `import-jobs` document.
- * It queues subsequent geocoding jobs for remaining batches and, upon completion, transitions the import to the `EVENT_CREATION` stage.
+ * The geocoded results are stored as a map from location string to coordinates,
+ * allowing multiple rows with the same location to share the same geocoding result.
  *
  * @module
  * @category Jobs
@@ -15,149 +15,104 @@ import path from "node:path";
 
 import type { Payload } from "payload";
 
-import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { geocodeAddress } from "@/lib/services/geocoding";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
-import type { GeocodingResult, GeocodingResultsMap } from "@/lib/types/geocoding";
-import { getGeocodingCandidate, getGeocodingResults } from "@/lib/types/geocoding";
-import { readBatchFromFile } from "@/lib/utils/file-readers";
+import type { GeocodingResultsMap } from "@/lib/types/geocoding";
+import { getGeocodingCandidate } from "@/lib/types/geocoding";
+import { readAllRowsFromFile } from "@/lib/utils/file-readers";
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
 
-interface DuplicateInfo {
-  rowNumber: number;
-}
-
 /**
- * Extract duplicate row numbers from job data.
+ * Extract unique location values from rows.
  */
-const getDuplicateRows = (job: ImportJob): Set<number> => {
-  const duplicateRows = new Set<number>();
-
-  if (job.duplicates?.internal && Array.isArray(job.duplicates.internal)) {
-    job.duplicates.internal.forEach((d: unknown) => {
-      if (typeof d === "object" && d !== null && "rowNumber" in d) {
-        const duplicate = d as DuplicateInfo;
-        duplicateRows.add(duplicate.rowNumber);
-      }
-    });
-  }
-
-  if (job.duplicates?.external && Array.isArray(job.duplicates.external)) {
-    job.duplicates.external.forEach((d: unknown) => {
-      if (typeof d === "object" && d !== null && "rowNumber" in d) {
-        const duplicate = d as DuplicateInfo;
-        duplicateRows.add(duplicate.rowNumber);
-      }
-    });
-  }
-
-  return duplicateRows;
-};
-
-/**
- * Process geocoding for a single row.
- */
-const processRowGeocoding = async (
-  row: Record<string, unknown>,
-  rowNumber: number,
-  geocodingCandidate: {
-    addressField?: string;
-    latitudeField?: string;
-    longitudeField?: string;
-  },
-  logger: ReturnType<typeof createJobLogger>
-): Promise<GeocodingResult | null> => {
-  // Check if row needs geocoding via address field
-  if (geocodingCandidate.addressField) {
-    const address = row[geocodingCandidate.addressField];
-
-    if (address && typeof address === "string" && address.trim()) {
-      try {
-        const result = await geocodeAddress(address);
-        return {
-          rowNumber,
-          coordinates: {
-            lat: result.latitude,
-            lng: result.longitude,
-          },
-          confidence: result.confidence ?? 0,
-          formattedAddress: result.normalizedAddress,
-        };
-      } catch (error) {
-        logger.warn("Geocoding failed for row", { rowNumber, error });
-        return null;
-      }
-    }
-  } else if (geocodingCandidate.latitudeField && geocodingCandidate.longitudeField) {
-    // Already have coordinates, just validate them
-    const latValue = row[geocodingCandidate.latitudeField];
-    const lngValue = row[geocodingCandidate.longitudeField];
-
-    const lat = typeof latValue === "number" ? latValue : Number.parseFloat(String(latValue));
-    const lng = typeof lngValue === "number" ? lngValue : Number.parseFloat(String(lngValue));
-
-    if (!Number.isNaN(lat) && !Number.isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-      return {
-        rowNumber,
-        coordinates: { lat, lng },
-        confidence: 1.0,
-        source: "provided",
-      };
-    }
-  }
-
-  return null;
-};
-
-/**
- * Process a batch of rows for geocoding.
- */
-const processBatch = async (
+const extractUniqueLocations = (
   rows: Record<string, unknown>[],
-  batchNumber: number,
-  duplicateRows: Set<number>,
-  geocodingCandidate: {
-    addressField?: string;
-    latitudeField?: string;
-    longitudeField?: string;
-  },
+  locationField: string,
+  logger: ReturnType<typeof createJobLogger>
+): Set<string> => {
+  const uniqueLocations = new Set<string>();
+
+  for (const row of rows) {
+    const location = row[locationField];
+
+    if (location && typeof location === "string") {
+      const trimmed = location.trim();
+      if (trimmed) {
+        uniqueLocations.add(trimmed);
+      }
+    }
+  }
+
+  logger.info("Extracted unique locations", {
+    totalRows: rows.length,
+    uniqueLocations: uniqueLocations.size,
+  });
+
+  return uniqueLocations;
+};
+
+/**
+ * Geocode unique locations with progress tracking.
+ */
+const geocodeUniqueLocations = async (
+  payload: Payload,
+  importJobId: string | number,
+  locations: Set<string>,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<{
-  geocodedResults: GeocodingResult[];
-  geocodedCount: number;
-  failedCount: number;
-  processedCount: number;
+  results: GeocodingResultsMap;
+  successCount: number;
+  failureCount: number;
 }> => {
-  const geocodedResults: GeocodingResult[] = [];
-  let geocodedCount = 0;
-  let failedCount = 0;
-  let processedCount = 0;
-  const GEOCODING_BATCH_SIZE = BATCH_SIZES.GEOCODING;
+  const results: GeocodingResultsMap = {};
+  let successCount = 0;
+  let failureCount = 0;
+  let processed = 0;
 
-  for (const [index, row] of rows.entries()) {
-    const rowNumber = batchNumber * GEOCODING_BATCH_SIZE + index;
+  for (const location of locations) {
+    try {
+      const result = await geocodeAddress(location);
+      results[location] = {
+        coordinates: {
+          lat: result.latitude,
+          lng: result.longitude,
+        },
+        confidence: result.confidence ?? 0,
+        formattedAddress: result.normalizedAddress,
+      };
+      successCount++;
+      logger.debug("Geocoded location", { location, result });
+    } catch (error) {
+      logger.warn("Geocoding failed", { location, error });
+      failureCount++;
+    }
 
-    // Skip duplicate rows
-    if (duplicateRows.has(rowNumber)) continue;
+    processed++;
 
-    processedCount++;
-
-    const result = await processRowGeocoding(row, rowNumber, geocodingCandidate, logger);
-
-    if (result) {
-      geocodedResults.push(result);
-      geocodedCount++;
-    } else if (geocodingCandidate.addressField && row[geocodingCandidate.addressField]) {
-      // Only count as failed if there was an address to geocode
-      failedCount++;
+    // Update progress every 10 locations or on completion
+    if (processed % 10 === 0 || processed === locations.size) {
+      await ProgressTrackingService.updateStageProgress(
+        payload,
+        importJobId,
+        PROCESSING_STAGE.GEOCODE_BATCH,
+        processed,
+        Math.min(10, locations.size - processed + 10)
+      );
     }
   }
 
-  return { geocodedResults, geocodedCount, failedCount, processedCount };
+  logger.info("Geocoding completed", {
+    total: locations.size,
+    success: successCount,
+    failed: failureCount,
+  });
+
+  return { results, successCount, failureCount };
 };
 
 /**
@@ -206,22 +161,23 @@ export const geocodeBatchJob = {
   handler: async (context: JobHandlerContext): Promise<{ output: Record<string, unknown> }> => {
     const payload = (context.req?.payload ?? context.payload) as Payload;
     const input = (context.input ?? context.job?.input) as GeocodingBatchJobInput["input"];
-    const { importJobId, batchNumber } = input;
+    const { importJobId } = input;
 
     const jobId = context.job?.id ?? "unknown";
-    const logger = createJobLogger(jobId, "geocode-batch");
-    logger.info("Starting geocoding batch", { importJobId, batchNumber });
+    const logger = createJobLogger(jobId, "geocode-unique-locations");
+    logger.info("Starting unique location geocoding", { importJobId });
     const startTime = Date.now();
 
     try {
       const { job, importFile } = await getJobResources(payload, importJobId);
 
-      // Get geocoding candidates safely
+      // Get geocoding candidate (locationPath) from field mappings
       const geocodingCandidate = getGeocodingCandidate(job);
 
-      // Skip if no geocoding candidates detected
-      if (!geocodingCandidate) {
-        logger.info("No geocoding candidates, moving to event creation");
+      // Skip if no location field detected
+      if (!geocodingCandidate?.locationField) {
+        logger.info("No location field detected, moving to event creation");
+        await ProgressTrackingService.skipStage(payload, importJobId, PROCESSING_STAGE.GEOCODE_BATCH);
         await payload.update({
           collection: COLLECTION_NAMES.IMPORT_JOBS,
           id: importJobId,
@@ -232,82 +188,70 @@ export const geocodeBatchJob = {
 
       const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES ?? "");
       const filePath = path.join(uploadDir, importFile.filename ?? "");
-      const GEOCODING_BATCH_SIZE = BATCH_SIZES.GEOCODING;
 
-      // Get duplicate rows to skip
-      const duplicateRows = getDuplicateRows(job);
-
-      // Read batch of rows
-      const rows = readBatchFromFile(filePath, {
+      // Read ALL rows from file (not batched)
+      const rows = readAllRowsFromFile(filePath, {
         sheetIndex: typeof job.sheetIndex === "number" ? job.sheetIndex : 0,
-        startRow: batchNumber * GEOCODING_BATCH_SIZE,
-        limit: GEOCODING_BATCH_SIZE,
       });
 
-      // Process geocoding
-      const { geocodedResults, geocodedCount, failedCount, processedCount } = await processBatch(
-        rows,
-        batchNumber,
-        duplicateRows,
-        geocodingCandidate,
+      logger.info("Read rows from file", { totalRows: rows.length });
+
+      // Extract unique locations
+      const uniqueLocations = extractUniqueLocations(rows, geocodingCandidate.locationField, logger);
+
+      // Start tracking with unique locations count as total
+      await ProgressTrackingService.startStage(
+        payload,
+        importJobId,
+        PROCESSING_STAGE.GEOCODE_BATCH,
+        uniqueLocations.size
+      );
+
+      // Geocode unique locations
+      const { results, successCount, failureCount } = await geocodeUniqueLocations(
+        payload,
+        importJobId,
+        uniqueLocations,
         logger
       );
 
+      // Complete GEOCODE_BATCH stage
+      await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.GEOCODE_BATCH);
+
       // Store geocoding results
-      const currentResults: GeocodingResultsMap = getGeocodingResults(job);
-      const updatedResults: GeocodingResultsMap = {
-        ...currentResults,
-        ...Object.fromEntries(geocodedResults.map((r) => [r.rowNumber.toString(), r])),
-      };
+      await payload.update({
+        collection: COLLECTION_NAMES.IMPORT_JOBS,
+        id: importJobId,
+        data: {
+          geocodingResults: results,
+          stage: PROCESSING_STAGE.CREATE_EVENTS,
+        },
+      });
 
-      await ProgressTrackingService.updateGeocodingProgress(payload, importJobId, processedCount, job, updatedResults);
-
-      // Continue with next batch or move to event creation
-      const hasMore = rows.length === GEOCODING_BATCH_SIZE;
-      if (hasMore) {
-        await payload.jobs.queue({
-          task: JOB_TYPES.GEOCODE_BATCH,
-          input: { importJobId, batchNumber: batchNumber + 1 },
-        });
-      } else {
-        await payload.update({
-          collection: COLLECTION_NAMES.IMPORT_JOBS,
-          id: importJobId,
-          data: { stage: PROCESSING_STAGE.CREATE_EVENTS },
-        });
-      }
-
-      logPerformance("Geocoding batch", Date.now() - startTime, {
+      logPerformance("Unique location geocoding", Date.now() - startTime, {
         importJobId,
-        batchNumber,
-        geocodedCount,
-        failedCount,
+        totalRows: rows.length,
+        uniqueLocations: uniqueLocations.size,
+        successCount,
+        failureCount,
       });
 
       return {
         output: {
-          batchNumber,
-          geocodedCount,
-          failedCount,
-          hasMore,
+          totalRows: rows.length,
+          uniqueLocations: uniqueLocations.size,
+          geocodedCount: successCount,
+          failedCount: failureCount,
         },
       };
     } catch (error) {
-      logError(error, "Geocoding batch failed", { importJobId, batchNumber });
+      logError(error, "Unique location geocoding failed", { importJobId });
 
       // Update job status to failed
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
-        data: {
-          stage: PROCESSING_STAGE.FAILED,
-          errors: [
-            {
-              row: batchNumber * 100,
-              error: error instanceof Error ? error.message : "Unknown error",
-            },
-          ],
-        },
+        data: { stage: PROCESSING_STAGE.FAILED },
       });
 
       throw error;

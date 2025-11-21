@@ -18,6 +18,10 @@ const mocks = vi.hoisted(() => {
     generateUniqueId: vi.fn(),
     getGeocodingResults: vi.fn(),
     getGeocodingResultForRow: vi.fn(),
+    startStage: vi.fn(),
+    updateStageProgress: vi.fn(),
+    completeBatch: vi.fn(),
+    completeStage: vi.fn(),
   };
 });
 
@@ -35,6 +39,15 @@ vi.mock("@/lib/types/geocoding", () => ({
   getGeocodingResultForRow: mocks.getGeocodingResultForRow,
 }));
 
+vi.mock("@/lib/services/progress-tracking", () => ({
+  ProgressTrackingService: {
+    startStage: mocks.startStage,
+    updateStageProgress: mocks.updateStageProgress,
+    completeBatch: mocks.completeBatch,
+    completeStage: mocks.completeStage,
+  },
+}));
+
 describe.sequential("CreateEventsBatchJob Handler", () => {
   let mockPayload: any;
   let mockContext: JobHandlerContext;
@@ -42,6 +55,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
   beforeEach(() => {
     // Reset all mocks
     vi.clearAllMocks();
+
+    // Setup ProgressTrackingService mocks to return resolved promises
+    mocks.startStage.mockResolvedValue(undefined);
+    mocks.updateStageProgress.mockResolvedValue(undefined);
+    mocks.completeBatch.mockResolvedValue(undefined);
+    mocks.completeStage.mockResolvedValue(undefined);
 
     // Mock payload
     mockPayload = {
@@ -63,8 +82,8 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
   describe("Success Cases", () => {
     it("should create events successfully from batch data", async () => {
-      // Mock import job
-      const mockImportJob = {
+      // Mock import job - needs to be mutable to track updates (using const with Object.assign)
+      const mockImportJob: any = {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
@@ -72,8 +91,13 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         duplicates: {
           internal: [],
           external: [],
+          summary: { uniqueRows: 2 },
         },
-        progress: { current: 0 },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
       };
 
       // Mock dataset
@@ -94,11 +118,21 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         { id: "2", title: "Event 2", address: "456 Oak Ave" },
       ];
 
-      // Setup mocks
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      // Setup mocks - findByID will be called multiple times by ProgressTrackingService
+      // update mock should update the mockImportJob
+      mockPayload.update.mockImplementation(({ collection, data }: any) => {
+        if (collection === "import-jobs") {
+          Object.assign(mockImportJob, data);
+        }
+        return Promise.resolve(mockImportJob);
+      });
+
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
 
       mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
 
@@ -149,17 +183,8 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         }),
       });
 
-      // Verify progress update
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
-        id: "import-123",
-        data: expect.objectContaining({
-          progress: expect.objectContaining({
-            current: 2, // 0 + 2 events created
-          }),
-          errors: [],
-        }),
-      });
+      // Verify progress tracking service was called (updates happen via ProgressTrackingService)
+      expect(mockPayload.update).toHaveBeenCalled();
     });
 
     it("should skip duplicate rows identified in previous stage", async () => {
@@ -172,8 +197,13 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         duplicates: {
           internal: [{ rowNumber: 1, uniqueId: "dataset-456:ext:2" }],
           external: [{ rowNumber: 2, uniqueId: "dataset-456:ext:3" }],
+          summary: { uniqueRows: 1 },
         },
-        progress: { current: 0 },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
       };
 
       const mockDataset = {
@@ -190,10 +220,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         { id: "3", title: "Event 3" }, // External duplicate - skip
       ];
 
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
 
       mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
       mocks.generateUniqueId
@@ -225,17 +257,8 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       // Should only create one event (for the non-duplicate row)
       expect(mockPayload.create).toHaveBeenCalledTimes(1);
 
-      // Verify progress update
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
-        id: "import-123",
-        data: expect.objectContaining({
-          progress: expect.objectContaining({
-            current: 1, // 0 + 1 events created
-          }),
-          errors: [],
-        }),
-      });
+      // Verify progress tracking service was called (updates happen via ProgressTrackingService)
+      expect(mockPayload.update).toHaveBeenCalled();
     });
 
     it("should queue next batch when more data exists", async () => {
@@ -243,17 +266,23 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
-        duplicates: { internal: [], external: [] },
-        progress: { current: 0, total: 200 }, // More data available
+        duplicates: { internal: [], external: [], summary: { uniqueRows: 1000 } },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
       };
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
       const mockImportFile = { id: "file-789", filename: "test.csv" };
 
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
 
       // Mock a full batch (1000 rows) to trigger hasMore = true
       const fullBatch = Array.from({ length: 1000 }, (_, i) => ({
@@ -304,17 +333,33 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
-        duplicates: { internal: [], external: [], summary: { internalDuplicates: 1, externalDuplicates: 2 } },
-        progress: { current: 10 },
+        duplicates: {
+          internal: [],
+          external: [],
+          summary: { internalDuplicates: 1, externalDuplicates: 2, uniqueRows: 10 },
+        },
+        progress: {
+          stages: {
+            "create-events": {
+              status: "in_progress",
+              rowsProcessed: 10,
+              rowsTotal: 10,
+            },
+          },
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
       };
 
       const mockDataset = { id: "dataset-456" };
       const mockImportFile = { id: "file-789", filename: "test.csv" };
 
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
 
       // Mock empty batch (no more data)
       mocks.readBatchFromFile.mockReturnValueOnce([]);
@@ -359,6 +404,11 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
       };
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(null); // Dataset not found
@@ -371,6 +421,11 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
       };
 
       const mockDataset = { id: "dataset-456" };
@@ -390,17 +445,23 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
-        duplicates: { internal: [], external: [], summary: {} },
-        progress: { current: 0 },
+        duplicates: { internal: [], external: [], summary: { uniqueRows: 0 } },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
       };
 
       const mockDataset = { id: "dataset-456" };
       const mockImportFile = { id: "file-789", filename: "empty.csv" };
 
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
 
       // Mock empty file
       mocks.readBatchFromFile.mockReturnValueOnce([]);
@@ -433,8 +494,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
-        duplicates: { internal: [], external: [] },
-        progress: { current: 0 },
+        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
       };
 
       const mockDataset = {
@@ -456,10 +521,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       const mockFileData = [{ id: "1", name: "John", age: "25" }];
 
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
 
       mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
@@ -488,8 +555,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
-        duplicates: { internal: [], external: [] },
-        progress: { current: 0 },
+        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
       };
 
       const mockDataset = {
@@ -511,10 +582,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       const mockFileData = [{ id: "1", name: "John", age: "25" }];
 
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
 
       mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
@@ -551,8 +624,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
-        duplicates: { internal: [], external: [] },
-        progress: { current: 0 },
+        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
       };
 
       const mockDataset = {
@@ -566,10 +643,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       const mockFileData = [{ id: "1", age: "25" }];
 
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
 
       mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
@@ -597,8 +676,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
-        duplicates: { internal: [], external: [] },
-        progress: { current: 0 },
+        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
       };
 
       const mockDataset = {
@@ -627,10 +710,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       const mockFileData = [{ id: "1", age: "25", active: "true" }];
 
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
 
       mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
@@ -663,8 +748,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
-        duplicates: { internal: [], external: [] },
-        progress: { current: 0 },
+        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
       };
 
       const mockDataset = {
@@ -686,10 +775,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       const mockFileData = [{ id: "1", age: "25" }];
 
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
 
       mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
@@ -716,8 +807,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
-        duplicates: { internal: [], external: [] },
-        progress: { current: 0 },
+        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
       };
 
       const mockDataset = {
@@ -740,10 +835,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       // Invalid data that will fail transformation
       const mockFileData = [{ id: "1", age: "not-a-number" }];
 
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
 
       mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");

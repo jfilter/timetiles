@@ -77,6 +77,18 @@ export const catalogSeeds = (environment: string): CatalogSeed[] => {
     return [
       ...baseCatalogs,
       createCatalog(
+        "Cultural Events",
+        "Cultural and community events including festivals, performances, and public activities.",
+        "cultural-events",
+        true // Public catalog
+      ),
+      createCatalog(
+        "Government Data",
+        "Public data from government agencies and departments.",
+        "government-data",
+        true // Public catalog
+      ),
+      createCatalog(
         "Community Events Portal",
         "Local community events and activities data maintained by community organizations.",
         "community-events-portal",

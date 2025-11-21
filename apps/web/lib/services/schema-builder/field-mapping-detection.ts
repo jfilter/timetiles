@@ -1,7 +1,7 @@
 /**
  * Language-aware field mapping detection for schema building.
  *
- * Provides detection of standard event fields (title, description, timestamp)
+ * Provides detection of standard event fields (title, description, timestamp, geo)
  * based on dataset language. Supports multiple languages including English,
  * German, French, Spanish, Italian, Dutch, and Portuguese.
  *
@@ -9,6 +9,8 @@
  * @category Services/SchemaBuilder
  */
 
+import { parseCoordinate } from "@/lib/geospatial/parsing";
+import { COORDINATE_BOUNDS, LATITUDE_PATTERNS, LONGITUDE_PATTERNS } from "@/lib/geospatial/patterns";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 import { isValidDate } from "@/lib/utils/date";
 
@@ -19,6 +21,9 @@ export interface FieldMappings {
   titlePath: string | null;
   descriptionPath: string | null;
   timestampPath: string | null;
+  latitudePath: string | null;
+  longitudePath: string | null;
+  locationPath: string | null;
 }
 
 /**
@@ -136,6 +141,110 @@ const FIELD_PATTERNS = {
     ],
     por: [/^data$/i, /^timestamp$/i, /^criado.*em$/i, /^evento.*data$/i, /^evento.*hora$/i, /^hora$/i, /^quando$/i],
   },
+  location: {
+    eng: [
+      /^address$/i,
+      /^addr$/i,
+      /^location$/i,
+      /^place$/i,
+      /^venue$/i,
+      /^city$/i,
+      /^town$/i,
+      /^region$/i,
+      /^area$/i,
+      /^street$/i,
+      /^full.*address$/i,
+      /^event.*location$/i,
+      /^event.*address$/i,
+      /^event.*place$/i,
+      /^postal.*address$/i,
+    ],
+    deu: [
+      /^adresse$/i,
+      /^ort$/i,
+      /^standort$/i,
+      /^platz$/i,
+      /^veranstaltungsort$/i,
+      /^stadt$/i,
+      /^region$/i,
+      /^straße$/i,
+      /^strasse$/i,
+      /^vollständige.*adresse$/i,
+      /^veranstaltung.*ort$/i,
+      /^veranstaltung.*adresse$/i,
+      /^postadresse$/i,
+    ],
+    fra: [
+      /^adresse$/i,
+      /^lieu$/i,
+      /^emplacement$/i,
+      /^place$/i,
+      /^salle$/i,
+      /^ville$/i,
+      /^région$/i,
+      /^rue$/i,
+      /^adresse.*complète$/i,
+      /^événement.*lieu$/i,
+      /^événement.*adresse$/i,
+      /^adresse.*postale$/i,
+    ],
+    spa: [
+      /^dirección$/i,
+      /^lugar$/i,
+      /^ubicación$/i,
+      /^sitio$/i,
+      /^local$/i,
+      /^ciudad$/i,
+      /^región$/i,
+      /^calle$/i,
+      /^dirección.*completa$/i,
+      /^evento.*lugar$/i,
+      /^evento.*dirección$/i,
+      /^dirección.*postal$/i,
+    ],
+    ita: [
+      /^indirizzo$/i,
+      /^luogo$/i,
+      /^posizione$/i,
+      /^posto$/i,
+      /^locale$/i,
+      /^città$/i,
+      /^regione$/i,
+      /^via$/i,
+      /^indirizzo.*completo$/i,
+      /^evento.*luogo$/i,
+      /^evento.*indirizzo$/i,
+      /^indirizzo.*postale$/i,
+    ],
+    nld: [
+      /^adres$/i,
+      /^locatie$/i,
+      /^plaats$/i,
+      /^plek$/i,
+      /^zaal$/i,
+      /^stad$/i,
+      /^regio$/i,
+      /^straat$/i,
+      /^volledig.*adres$/i,
+      /^evenement.*locatie$/i,
+      /^evenement.*adres$/i,
+      /^postadres$/i,
+    ],
+    por: [
+      /^endereço$/i,
+      /^local$/i,
+      /^localização$/i,
+      /^lugar$/i,
+      /^recinto$/i,
+      /^cidade$/i,
+      /^região$/i,
+      /^rua$/i,
+      /^endereço.*completo$/i,
+      /^evento.*local$/i,
+      /^evento.*endereço$/i,
+      /^endereço.*postal$/i,
+    ],
+  },
 } as const;
 
 /**
@@ -145,11 +254,19 @@ const FIELD_PATTERNS = {
  * @param language - ISO-639-3 language code (e.g., 'eng', 'deu', 'fra')
  * @returns Detected field mappings
  */
-export const detectFieldMappings = (fieldStats: Record<string, FieldStatistics>, language: string): FieldMappings => ({
-  titlePath: detectField(fieldStats, "title", language),
-  descriptionPath: detectField(fieldStats, "description", language),
-  timestampPath: detectField(fieldStats, "timestamp", language),
-});
+export const detectFieldMappings = (fieldStats: Record<string, FieldStatistics>, language: string): FieldMappings => {
+  // Detect coordinate fields using geospatial patterns
+  const geoFields = detectGeoFields(fieldStats);
+
+  return {
+    titlePath: detectField(fieldStats, "title", language),
+    descriptionPath: detectField(fieldStats, "description", language),
+    timestampPath: detectField(fieldStats, "timestamp", language),
+    latitudePath: geoFields.latitudePath,
+    longitudePath: geoFields.longitudePath,
+    locationPath: geoFields.locationPath ?? detectField(fieldStats, "location", language),
+  };
+};
 
 /**
  * Detects a specific field type based on language patterns
@@ -238,6 +355,8 @@ const validateFieldType = (stats: FieldStatistics, fieldType: keyof typeof FIELD
       return validateDescriptionField(stats, stringPct);
     case "timestamp":
       return validateTimestampField(stats, stringPct);
+    case "location":
+      return validateLocationField(stats, stringPct);
     default:
       return 0;
   }
@@ -408,4 +527,211 @@ const validateTimestampField = (stats: FieldStatistics, stringPct: number): numb
 
   // No clear date indicators
   return 0;
+};
+
+/**
+ * Validates field as a location field
+ * - Should be mostly strings
+ * - Can be addresses, cities, or any location text
+ * - More flexible than title/description
+ */
+const validateLocationField = (stats: FieldStatistics, stringPct: number): number => {
+  // Must be at least 70% strings (locations are typically text)
+  if (stringPct < 0.7) return 0;
+
+  // Check average length if we have string samples
+  if (stats.uniqueSamples && stats.uniqueSamples.length > 0) {
+    const stringValues = stats.uniqueSamples.filter((v): v is string => typeof v === "string");
+    if (stringValues.length === 0) return 0;
+
+    const avgLength = stringValues.reduce((sum, s) => sum + s.length, 0) / stringValues.length;
+
+    // Location fields can vary widely in length
+    // Cities: "Berlin" (6 chars)
+    // Addresses: "123 Main St, NYC, NY 10001" (27 chars)
+    // Landmarks: "Eiffel Tower, Paris" (20 chars)
+
+    // Ideal location length: 3-100 characters
+    if (avgLength >= 3 && avgLength <= 100) return 1.0;
+    // Acceptable: 2-500 characters
+    if (avgLength >= 2 && avgLength <= 500) return 0.8;
+    // Too short (likely codes not locations)
+    if (avgLength < 2) return 0.2;
+    // Very long (but still acceptable for full addresses)
+    if (avgLength > 500) return 0.6;
+    // Marginal cases
+    return 0.5;
+  }
+
+  // Default score if no samples
+  return 0.5;
+};
+
+/**
+ * Helper to check if numeric field is valid coordinate
+ */
+const isValidNumericCoordinate = (stats: FieldStatistics, bounds: { min: number; max: number }): boolean => {
+  const hasNumericType = (stats.typeDistribution.number ?? 0) > 0 || (stats.typeDistribution.integer ?? 0) > 0;
+  return (
+    hasNumericType &&
+    stats.numericStats !== undefined &&
+    stats.numericStats.min >= bounds.min &&
+    stats.numericStats.max <= bounds.max
+  );
+};
+
+/**
+ * Helper to check if string field contains parseable coordinates
+ */
+const isValidStringCoordinate = (stats: FieldStatistics, bounds: { min: number; max: number }): boolean => {
+  const hasStringType = (stats.typeDistribution.string ?? 0) > 0;
+  if (!hasStringType || !stats.uniqueSamples || stats.uniqueSamples.length === 0) {
+    return false;
+  }
+
+  let validParsedCount = 0;
+  let totalParsed = 0;
+
+  for (const sample of stats.uniqueSamples.slice(0, 10)) {
+    if (typeof sample === "string" && sample.trim() !== "") {
+      const parsed = parseCoordinate(sample);
+      if (parsed !== null) {
+        totalParsed++;
+        if (parsed >= bounds.min && parsed <= bounds.max) {
+          validParsedCount++;
+        }
+      }
+    }
+  }
+
+  // If at least 70% of parsed samples are within bounds, consider it valid
+  return totalParsed > 0 && validParsedCount / totalParsed >= 0.7;
+};
+
+/**
+ * Check if a field contains valid coordinate values
+ */
+const isValidCoordinateField = (stats: FieldStatistics, bounds: { min: number; max: number }): boolean => {
+  return isValidNumericCoordinate(stats, bounds) || isValidStringCoordinate(stats, bounds);
+};
+
+/**
+ * Calculate pattern match confidence for coordinate detection (0.4 points max)
+ */
+const calculatePatternConfidence = (fieldName: string, patterns: RegExp[]): number => {
+  const patternMatch = patterns.findIndex((p) => p.test(fieldName));
+  if (patternMatch === -1) return 0;
+  // Earlier patterns in the list are more specific, so they get higher scores
+  const patternScore = 1 - patternMatch / patterns.length;
+  return patternScore * 0.4;
+};
+
+/**
+ * Calculate data type validity confidence for coordinates (0.3 points max)
+ */
+const calculateTypeConfidence = (stats: FieldStatistics, bounds: { min: number; max: number }): number => {
+  const hasNumericType = (stats.typeDistribution.number ?? 0) > 0 || (stats.typeDistribution.integer ?? 0) > 0;
+  const hasStringType = (stats.typeDistribution.string ?? 0) > 0;
+
+  if (hasNumericType && stats.numericStats) {
+    const inBounds = stats.numericStats.min >= bounds.min && stats.numericStats.max <= bounds.max;
+    return inBounds ? 0.3 : 0;
+  }
+
+  if (hasStringType && stats.uniqueSamples) {
+    let validCount = 0;
+    let totalCount = 0;
+    for (const sample of stats.uniqueSamples.slice(0, 10)) {
+      if (typeof sample === "string" && sample.trim() !== "") {
+        totalCount++;
+        const parsed = parseCoordinate(sample);
+        if (parsed !== null && parsed >= bounds.min && parsed <= bounds.max) {
+          validCount++;
+        }
+      }
+    }
+    return totalCount > 0 ? (validCount / totalCount) * 0.3 : 0;
+  }
+
+  return 0;
+};
+
+/**
+ * Calculate confidence score for a coordinate field.
+ * Returns a score between 0 and 1 based on multiple factors.
+ */
+const calculateFieldConfidence = (
+  stats: FieldStatistics,
+  patterns: RegExp[],
+  bounds: { min: number; max: number }
+): number => {
+  const fieldName = stats.path.split(".").pop() ?? "";
+
+  // Factor 1: Pattern match quality (0.4 points)
+  const patternConfidence = calculatePatternConfidence(fieldName, patterns);
+
+  // Factor 2: Data type validity (0.3 points)
+  const typeConfidence = calculateTypeConfidence(stats, bounds);
+
+  // Factor 3: Data consistency (0.2 points)
+  const totalTypes = Object.values(stats.typeDistribution).reduce((sum, count) => sum + count, 0);
+  const dominantType = Math.max(...Object.values(stats.typeDistribution));
+  const consistencyRatio = dominantType / totalTypes;
+  const consistencyConfidence = consistencyRatio * 0.2;
+
+  // Factor 4: Completeness (0.1 points)
+  const completenessRatio = (stats.occurrences - stats.nullCount) / stats.occurrences;
+  const completenessConfidence = completenessRatio * 0.1;
+
+  return patternConfidence + typeConfidence + consistencyConfidence + completenessConfidence;
+};
+
+/**
+ * Find best matching coordinate field for given patterns and bounds
+ */
+const findCoordinateField = (
+  fieldStats: Record<string, FieldStatistics>,
+  patterns: RegExp[],
+  bounds: { min: number; max: number }
+): string | null => {
+  let bestField: string | null = null;
+  let bestConfidence = 0;
+
+  for (const [fieldPath, stats] of Object.entries(fieldStats)) {
+    const fieldName = fieldPath.split(".").pop() ?? "";
+    if (patterns.some((p) => p.test(fieldName)) && isValidCoordinateField(stats, bounds)) {
+      const confidence = calculateFieldConfidence(stats, patterns, bounds);
+      if (confidence > bestConfidence) {
+        bestField = fieldPath;
+        bestConfidence = confidence;
+      }
+    }
+  }
+
+  return bestField;
+};
+
+/**
+ * Detects geographic fields including coordinates and location text
+ *
+ * @param fieldStats - Statistics for all fields in the dataset
+ * @returns Detected geo field mappings
+ */
+const detectGeoFields = (
+  fieldStats: Record<string, FieldStatistics>
+): {
+  latitudePath: string | null;
+  longitudePath: string | null;
+  locationPath: string | null;
+} => {
+  // Try to find separate lat/lon fields using specialized geospatial patterns
+  const latitudePath = findCoordinateField(fieldStats, LATITUDE_PATTERNS, COORDINATE_BOUNDS.latitude);
+  const longitudePath = findCoordinateField(fieldStats, LONGITUDE_PATTERNS, COORDINATE_BOUNDS.longitude);
+
+  // Location field will be detected by language patterns in the main detectFieldMappings function
+  return {
+    latitudePath,
+    longitudePath,
+    locationPath: null, // Will be filled by language-aware detection
+  };
 };

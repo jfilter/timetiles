@@ -95,12 +95,22 @@ const loadDatasetAndTransforms = async (
 
 // Helper to merge detected mappings with overrides
 const mergeFieldMappings = (
-  detectedMappings: { titlePath: string | null; descriptionPath: string | null; timestampPath: string | null },
+  detectedMappings: {
+    titlePath: string | null;
+    descriptionPath: string | null;
+    timestampPath: string | null;
+    latitudePath: string | null;
+    longitudePath: string | null;
+    locationPath: string | null;
+  },
   dataset: Dataset | null
 ) => ({
   titlePath: dataset?.fieldMappingOverrides?.titlePath ?? detectedMappings.titlePath,
   descriptionPath: dataset?.fieldMappingOverrides?.descriptionPath ?? detectedMappings.descriptionPath,
   timestampPath: dataset?.fieldMappingOverrides?.timestampPath ?? detectedMappings.timestampPath,
+  latitudePath: dataset?.fieldMappingOverrides?.latitudePath ?? detectedMappings.latitudePath,
+  longitudePath: dataset?.fieldMappingOverrides?.longitudePath ?? detectedMappings.longitudePath,
+  locationPath: dataset?.fieldMappingOverrides?.locationPath ?? detectedMappings.locationPath,
 });
 
 // Helper to detect and store field mappings
@@ -132,6 +142,9 @@ const detectAndStoreFieldMappings = async (
       title: Boolean(dataset?.fieldMappingOverrides?.titlePath),
       description: Boolean(dataset?.fieldMappingOverrides?.descriptionPath),
       timestamp: Boolean(dataset?.fieldMappingOverrides?.timestampPath),
+      latitude: Boolean(dataset?.fieldMappingOverrides?.latitudePath),
+      longitude: Boolean(dataset?.fieldMappingOverrides?.longitudePath),
+      location: Boolean(dataset?.fieldMappingOverrides?.locationPath),
     },
   });
 
@@ -227,6 +240,80 @@ const processBatchSchema = async (
   };
 };
 
+// Helper to initialize stage on first batch
+const initializeStageIfNeeded = async (
+  payload: Payload,
+  importJobId: number | string,
+  job: ImportJob,
+  batchNumber: number
+): Promise<void> => {
+  if (batchNumber === 0) {
+    const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
+    await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.DETECT_SCHEMA, uniqueRows);
+  }
+};
+
+// Helper to update progress after batch processing
+const updateBatchProgress = async (
+  payload: Payload,
+  importJobId: number | string,
+  batchNumber: number,
+  rowsInBatch: number,
+  nonDuplicateRows: number
+): Promise<void> => {
+  const BATCH_SIZE = BATCH_SIZES.SCHEMA_DETECTION;
+  const rowsProcessedSoFar = (batchNumber + 1) * BATCH_SIZE - (rowsInBatch < BATCH_SIZE ? BATCH_SIZE - rowsInBatch : 0);
+
+  await ProgressTrackingService.updateStageProgress(
+    payload,
+    importJobId,
+    PROCESSING_STAGE.DETECT_SCHEMA,
+    rowsProcessedSoFar,
+    nonDuplicateRows
+  );
+
+  await ProgressTrackingService.completeBatch(payload, importJobId, PROCESSING_STAGE.DETECT_SCHEMA, batchNumber + 1);
+};
+
+// Helper to update schema state in database
+const updateSchemaState = async (
+  payload: Payload,
+  importJobId: number | string,
+  updatedSchema: Record<string, unknown>,
+  currentState: { fieldStats?: Record<string, FieldStatistics> } | null
+): Promise<void> => {
+  await payload.update({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: importJobId,
+    data: {
+      schema: updatedSchema,
+      schemaBuilderState: currentState as unknown as Record<string, unknown>,
+    },
+  });
+};
+
+// Helper to handle next batch
+const handleNextBatch = async (
+  payload: Payload,
+  importJobId: number | string,
+  batchNumber: number,
+  logger: ReturnType<typeof createJobLogger>
+): Promise<void> => {
+  await queueNextBatch(payload, importJobId, batchNumber, logger);
+};
+
+// Helper to handle completion after last batch
+const handleCompletion = async (
+  payload: Payload,
+  importJobId: number | string,
+  currentState: { fieldStats?: Record<string, FieldStatistics> } | null,
+  dataset: Dataset | null,
+  logger: ReturnType<typeof createJobLogger>
+): Promise<void> => {
+  await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.DETECT_SCHEMA);
+  await completeLastBatch(payload, importJobId, currentState, dataset, logger);
+};
+
 export const schemaDetectionJob = {
   slug: JOB_TYPES.DETECT_SCHEMA,
   handler: async (context: JobHandlerContext) => {
@@ -242,11 +329,10 @@ export const schemaDetectionJob = {
     try {
       // Load resources
       const { job, filePath } = await loadJobAndFilePath(payload, importJobId);
+      await initializeStageIfNeeded(payload, importJobId, job, batchNumber);
 
       // Load dataset and extract active transforms
       const { dataset, transforms } = await loadDatasetAndTransforms(payload, job, logger);
-
-      // Extract duplicate rows
       const duplicateRows = extractDuplicateRows(job);
 
       // Read batch from file
@@ -275,43 +361,20 @@ export const schemaDetectionJob = {
         batchNumber,
         rowsProcessed: nonDuplicateRows.length,
         totalRows: rows.length,
-        BATCH_SIZE,
       });
 
-      // Get current state BEFORE updating
+      // Get current state and update progress
       const currentState = schemaBuilder.getState();
-      logger.debug("Schema builder state", {
-        hasState: Boolean(currentState),
-        hasFieldStats: Boolean(currentState?.fieldStats),
-        fieldStatsKeys: currentState?.fieldStats ? Object.keys(currentState.fieldStats) : [],
-        schemaKeys: updatedSchema ? Object.keys(updatedSchema) : [],
-      });
-
-      // Update job progress
       const hasMore = rows.length === BATCH_SIZE;
-      logger.debug("Checking if more batches needed", {
-        rowsLength: rows.length,
-        BATCH_SIZE,
-        hasMore,
-      });
 
-      await ProgressTrackingService.updateJobProgress(
-        payload,
-        importJobId,
-        "schema_detection",
-        nonDuplicateRows.length,
-        job,
-        {
-          schema: updatedSchema,
-          schemaBuilderState: currentState,
-        }
-      );
+      await updateBatchProgress(payload, importJobId, batchNumber, rows.length, nonDuplicateRows.length);
+      await updateSchemaState(payload, importJobId, updatedSchema, currentState);
 
-      // Handle next steps
+      // Handle next batch or completion
       if (hasMore) {
-        await queueNextBatch(payload, importJobId, batchNumber, logger);
+        await handleNextBatch(payload, importJobId, batchNumber, logger);
       } else {
-        await completeLastBatch(payload, importJobId, currentState, dataset, logger);
+        await handleCompletion(payload, importJobId, currentState, dataset, logger);
       }
 
       logPerformance("Schema detection batch", Date.now() - startTime, {
@@ -333,7 +396,6 @@ export const schemaDetectionJob = {
     } catch (error) {
       logError(error, "Batch processing failed", { importJobId, batchNumber });
 
-      // Update job status to failed
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
@@ -341,7 +403,7 @@ export const schemaDetectionJob = {
           stage: PROCESSING_STAGE.FAILED,
           errors: [
             {
-              row: batchNumber * 10000,
+              row: batchNumber * BATCH_SIZES.SCHEMA_DETECTION,
               error: error instanceof Error ? error.message : "Unknown error",
             },
           ],

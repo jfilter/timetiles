@@ -21,6 +21,9 @@ const mocks = vi.hoisted(() => {
   return {
     createSchemaVersion: vi.fn(),
     getFieldStats: vi.fn(),
+    startStage: vi.fn().mockResolvedValue(undefined),
+    completeStage: vi.fn().mockResolvedValue(undefined),
+    skipStage: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -35,11 +38,20 @@ vi.mock("@/lib/types/schema-detection", () => ({
   getFieldStats: mocks.getFieldStats,
 }));
 
+vi.mock("@/lib/services/progress-tracking", () => ({
+  ProgressTrackingService: {
+    startStage: mocks.startStage,
+    completeStage: mocks.completeStage,
+    skipStage: mocks.skipStage,
+  },
+}));
+
 vi.mock("@/lib/constants/import-constants", () => ({
   JOB_TYPES: {
     CREATE_SCHEMA_VERSION: "create-schema-version",
   },
   PROCESSING_STAGE: {
+    CREATE_SCHEMA_VERSION: "create-schema-version",
     GEOCODE_BATCH: "geocode-batch",
     FAILED: "failed",
   },
@@ -47,6 +59,12 @@ vi.mock("@/lib/constants/import-constants", () => ({
     IMPORT_JOBS: "import-jobs",
     SCHEMA_VERSIONS: "schema-versions",
     DATASETS: "datasets",
+  },
+  BATCH_SIZES: {
+    DUPLICATE_ANALYSIS: 5000,
+    SCHEMA_DETECTION: 10000,
+    EVENT_CREATION: 1000,
+    DATABASE_CHUNK: 1000,
   },
 }));
 
@@ -85,11 +103,21 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         dataset: "dataset-456",
         schemaValidation: {
           approved: true,
-          approvedBy: "user-789",
+          approvedBy: 789, // Numeric ID
         },
         schema: {
           title: { type: "string" },
           date: { type: "date" },
+        },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
+        duplicates: {
+          summary: {
+            uniqueRows: 100,
+          },
         },
       };
 
@@ -145,9 +173,11 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         dataset: "dataset-456",
         schema: mockImportJob.schema,
         fieldMetadata: mockFieldStats,
+        fieldMappings: undefined,
         autoApproved: false,
-        approvedBy: "user-789",
+        approvedBy: 789,
         importSources: [],
+        req: undefined,
       });
 
       // Verify job updates
@@ -178,6 +208,16 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
           approved: true,
           approvedBy: "user-789",
         },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
+        duplicates: {
+          summary: {
+            uniqueRows: 100,
+          },
+        },
       };
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob);
@@ -204,6 +244,16 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         dataset: "dataset-456",
         schemaValidation: {
           approved: false,
+        },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
+        duplicates: {
+          summary: {
+            uniqueRows: 100,
+          },
         },
       };
 
@@ -236,6 +286,16 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         },
         schema: {
           title: { type: "string" },
+        },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
+        duplicates: {
+          summary: {
+            uniqueRows: 100,
+          },
         },
       };
 
@@ -277,6 +337,16 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         },
         schema: {
           title: { type: "string" },
+        },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
+        duplicates: {
+          summary: {
+            uniqueRows: 100,
+          },
         },
       };
 
@@ -326,6 +396,16 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         schemaValidation: {
           approved: true,
         },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
+        duplicates: {
+          summary: {
+            uniqueRows: 100,
+          },
+        },
       };
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(null); // Dataset not found
@@ -343,6 +423,16 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         },
         schema: {
           title: { type: "string" },
+        },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
+        duplicates: {
+          summary: {
+            uniqueRows: 100,
+          },
         },
       };
 

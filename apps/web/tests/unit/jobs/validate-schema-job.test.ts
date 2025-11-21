@@ -32,6 +32,8 @@ const mocks = vi.hoisted(() => {
     createSchemaVersion: vi.fn(),
     linkImportToSchemaVersion: vi.fn(),
     getSchemaBuilderState: vi.fn(),
+    startStage: vi.fn(),
+    completeStage: vi.fn(),
   };
 });
 
@@ -48,6 +50,13 @@ vi.mock("@/lib/services/schema-versioning", () => ({
   SchemaVersioningService: {
     createSchemaVersion: mocks.createSchemaVersion,
     linkImportToSchemaVersion: mocks.linkImportToSchemaVersion,
+  },
+}));
+
+vi.mock("@/lib/services/progress-tracking", () => ({
+  ProgressTrackingService: {
+    startStage: mocks.startStage,
+    completeStage: mocks.completeStage,
   },
 }));
 

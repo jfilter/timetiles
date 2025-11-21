@@ -542,6 +542,18 @@ export interface Dataset {
      * Override detected timestamp field (e.g., 'created_at', 'datum', 'date')
      */
     timestampPath?: string | null;
+    /**
+     * Override detected latitude field (e.g., 'lat', 'latitude', 'y_coord')
+     */
+    latitudePath?: string | null;
+    /**
+     * Override detected longitude field (e.g., 'lon', 'longitude', 'x_coord')
+     */
+    longitudePath?: string | null;
+    /**
+     * Override detected location field (e.g., 'address', 'location', 'venue', 'city')
+     */
+    locationPath?: string | null;
   };
   updatedAt: string;
   createdAt: string;
@@ -726,17 +738,25 @@ export interface ImportJob {
     | 'failed';
   progress?: {
     /**
-     * Total rows/records processed so far
+     * Detailed progress information for each processing stage
      */
-    current?: number | null;
+    stages?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
     /**
-     * Total rows/records to process
+     * Overall progress percentage (0-100), weighted by stage time estimates
      */
-    total?: number | null;
+    overallPercentage?: number | null;
     /**
-     * Current batch being processed
+     * Estimated completion time for the entire import
      */
-    batchNumber?: number | null;
+    estimatedCompletionTime?: string | null;
   };
   /**
    * Detected JSON Schema from data
@@ -778,6 +798,18 @@ export interface ImportJob {
      * Path to timestamp/date field in source data
      */
     timestampPath?: string | null;
+    /**
+     * Path to latitude coordinate field in source data
+     */
+    latitudePath?: string | null;
+    /**
+     * Path to longitude coordinate field in source data
+     */
+    longitudePath?: string | null;
+    /**
+     * Path to location/address field in source data (for geocoding)
+     */
+    locationPath?: string | null;
   };
   schemaValidation?: {
     /**
@@ -894,19 +926,7 @@ export interface ImportJob {
     };
   };
   /**
-   * Fields identified for geocoding
-   */
-  geocodingCandidates?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Geocoding results by row number
+   * Geocoding results by location string (locationString → coordinates)
    */
   geocodingResults?:
     | {
@@ -917,10 +937,6 @@ export interface ImportJob {
     | number
     | boolean
     | null;
-  geocodingProgress?: {
-    current?: number | null;
-    total?: number | null;
-  };
   /**
    * Processing results and statistics
    */
@@ -2128,6 +2144,9 @@ export interface DatasetsSelect<T extends boolean = true> {
         titlePath?: T;
         descriptionPath?: T;
         timestampPath?: T;
+        latitudePath?: T;
+        longitudePath?: T;
+        locationPath?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -2248,9 +2267,9 @@ export interface ImportJobsSelect<T extends boolean = true> {
   progress?:
     | T
     | {
-        current?: T;
-        total?: T;
-        batchNumber?: T;
+        stages?: T;
+        overallPercentage?: T;
+        estimatedCompletionTime?: T;
       };
   schema?: T;
   schemaBuilderState?: T;
@@ -2260,6 +2279,9 @@ export interface ImportJobsSelect<T extends boolean = true> {
         titlePath?: T;
         descriptionPath?: T;
         timestampPath?: T;
+        latitudePath?: T;
+        longitudePath?: T;
+        locationPath?: T;
       };
   schemaValidation?:
     | T
@@ -2290,14 +2312,7 @@ export interface ImportJobsSelect<T extends boolean = true> {
               externalDuplicates?: T;
             };
       };
-  geocodingCandidates?: T;
   geocodingResults?: T;
-  geocodingProgress?:
-    | T
-    | {
-        current?: T;
-        total?: T;
-      };
   results?: T;
   errors?:
     | T

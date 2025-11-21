@@ -208,10 +208,10 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
 
         logger.info("✓ Event data verification passed");
 
-        // Verify job progression through all stages
-        expect(importJob.progress?.total).toBeGreaterThan(0);
-        expect(importJob.progress?.current).toBeGreaterThan(0); // Events were created
-        logger.info(`✓ Job progress tracking verified: ${importJob.progress?.current}/${importJob.progress?.total}`);
+        // Verify job progression through all stages (new progress structure)
+        expect(importJob.progress?.stages).toBeDefined();
+        expect(importJob.progress?.overallPercentage).toBeGreaterThan(0);
+        logger.info(`✓ Job progress tracking verified: ${importJob.progress?.overallPercentage}% complete`);
 
         logger.info("🎉 End-to-end pipeline test completed successfully!");
       } finally {

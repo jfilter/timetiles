@@ -102,8 +102,16 @@ describe.sequential("Type Transformations Integration", () => {
         dataset: dataset.id,
         importFile: importFile.id,
         stage: "create-events",
-        progress: { current: 0, total: 2 },
-        duplicates: { internal: [], external: [] },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
+        duplicates: {
+          internal: [],
+          external: [],
+          summary: { totalRows: 2, uniqueRows: 2, internalDuplicates: 0, externalDuplicates: 0 },
+        },
       },
     });
 
@@ -169,8 +177,16 @@ describe.sequential("Type Transformations Integration", () => {
         dataset: dataset.id,
         importFile: importFile.id,
         stage: "create-events",
-        progress: { current: 0, total: 1 },
-        duplicates: { internal: [], external: [] },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
+        duplicates: {
+          internal: [],
+          external: [],
+          summary: { totalRows: 1, uniqueRows: 1, internalDuplicates: 0, externalDuplicates: 0 },
+        },
       },
     });
 

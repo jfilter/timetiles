@@ -123,10 +123,53 @@ const setupTestDatabase = async (options: { forceReset?: boolean } = {}): Promis
     logger.info("✅ Test database setup completed successfully");
     logger.info(`🔗 Test database URL: ${TEST_DATABASE_URL}`);
     logger.info(`📊 Schema contains ${finalValidation.migrationState.completedMigrations.length} completed migrations`);
+
+    // Step 5: Seed test data for E2E tests
+    logger.info("Step 5: Seeding test data");
+    try {
+      await seedE2ETestData();
+      logger.info("✅ Test data seeded successfully");
+    } catch (seedError) {
+      logger.error("Failed to seed test data", seedError);
+      throw seedError;
+    }
   } catch (error) {
     const errorMsg = "❌ Test database setup failed:";
     logger.error(errorMsg, error);
     process.exit(1);
+  }
+};
+
+/**
+ * Seed E2E test data using the seed manager.
+ * Uses "development" environment to match CI and default `pnpm seed` behavior.
+ */
+const seedE2ETestData = async (): Promise<void> => {
+  // Set DATABASE_URL to E2E test database so seed manager connects to the right database
+  const originalDatabaseUrl = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = TEST_DATABASE_URL;
+
+  try {
+    const { createSeedManager } = await import("../lib/seed/index");
+
+    const seedManager = createSeedManager();
+
+    // Truncate first to ensure clean state
+    await seedManager.truncate();
+
+    // Seed development environment data (same as CI: pnpm seed)
+    // This creates the catalogs, datasets, and events that E2E tests expect
+    await seedManager.seed({
+      environment: "development",
+      collections: ["users", "catalogs", "datasets", "events", "import-files", "main-menu", "pages"],
+    });
+
+    logger.info("✓ Seeded development data using seed manager");
+  } finally {
+    // Restore original DATABASE_URL
+    if (originalDatabaseUrl) {
+      process.env.DATABASE_URL = originalDatabaseUrl;
+    }
   }
 };
 

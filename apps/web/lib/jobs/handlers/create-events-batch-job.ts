@@ -21,17 +21,16 @@ import type { Payload } from "payload";
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
-import { generateUniqueId } from "@/lib/services/id-generation";
 import { applyTransforms } from "@/lib/services/import-transforms";
+import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { getQuotaService } from "@/lib/services/quota-service";
-import { TypeTransformationService } from "@/lib/services/type-transformation";
-import { getGeocodingResultForRow, getGeocodingResults } from "@/lib/types/geocoding";
+import { getGeocodingResults } from "@/lib/types/geocoding";
 import type { ImportTransform } from "@/lib/types/import-transforms";
-import { isValidDate } from "@/lib/utils/date";
 import { readBatchFromFile } from "@/lib/utils/file-readers";
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 
 import type { CreateEventsBatchJobInput } from "../types/job-inputs";
+import { applyTypeTransformations, createEventData } from "../utils/event-creation-helpers";
 import type { JobHandlerContext } from "../utils/job-context";
 import { extractDuplicateRows } from "../utils/resource-loading";
 
@@ -81,114 +80,6 @@ const updateImportFileStatusIfAllJobsComplete = async (
 };
 
 // Extract helper functions to reduce complexity
-
-/**
- * Apply type transformations to a row based on dataset configuration.
- * Note: This works on data that hasn't been auto-typed by Papa Parse.
- * For CSV files with dynamicTyping: true, transformations may not apply.
- */
-const applyTypeTransformations = async (
-  row: Record<string, unknown>,
-  dataset: Dataset,
-  logger: ReturnType<typeof createJobLogger>
-): Promise<{
-  transformedRow: Record<string, unknown>;
-  transformationChanges: Array<{ path: string; oldValue: unknown; newValue: unknown; error?: string }> | null;
-}> => {
-  const allowTransformations = dataset.schemaConfig?.allowTransformations ?? true;
-  const transformations = dataset.typeTransformations ?? [];
-
-  if (!allowTransformations || transformations.length === 0) {
-    return { transformedRow: row, transformationChanges: null };
-  }
-
-  try {
-    const transformationRules = transformations.map((t) => ({
-      fieldPath: t.fieldPath,
-      fromType: t.fromType,
-      toType: t.toType,
-      transformStrategy: t.transformStrategy,
-      customTransform: t.customTransform ?? undefined,
-      enabled: t.enabled ?? true,
-    }));
-
-    const service = new TypeTransformationService(transformationRules);
-    const result = await service.transformRecord(row);
-
-    const successfulChanges = result.changes.filter((change) => !change.error);
-    const failedChanges = result.changes.filter((change) => change.error);
-
-    if (successfulChanges.length > 0) {
-      logger.debug("Applied type transformations", {
-        fieldCount: successfulChanges.length,
-        changes: successfulChanges,
-      });
-    }
-
-    if (failedChanges.length > 0) {
-      logger.warn("Some transformations failed", {
-        fieldCount: failedChanges.length,
-        changes: failedChanges,
-      });
-    }
-
-    return {
-      transformedRow: result.transformed,
-      transformationChanges: successfulChanges.length > 0 ? successfulChanges : null,
-    };
-  } catch (error) {
-    logger.error("Type transformation failed", { error });
-    return { transformedRow: row, transformationChanges: null };
-  }
-};
-
-const createEventData = (
-  row: Record<string, unknown>,
-  dataset: Dataset,
-  importJobId: string | number,
-  geocoding: ReturnType<typeof getGeocodingResultForRow>,
-  job: { datasetSchemaVersion?: unknown },
-  transformationChanges: Array<{ path: string; oldValue: unknown; newValue: unknown; error?: string }> | null,
-  timestampPath?: string | null
-) => {
-  const uniqueId = generateUniqueId(row, dataset.idStrategy);
-  const importJobNum = typeof importJobId === "string" ? parseInt(importJobId, 10) : importJobId;
-
-  const schemaVersionData = job.datasetSchemaVersion;
-  let schemaVersion: number | undefined;
-  if (typeof schemaVersionData === "object" && schemaVersionData) {
-    schemaVersion = (schemaVersionData as { versionNumber: number }).versionNumber;
-  } else if (typeof schemaVersionData === "number") {
-    schemaVersion = schemaVersionData;
-  } else {
-    schemaVersion = undefined;
-  }
-
-  return {
-    dataset: dataset.id,
-    importJob: importJobNum,
-    data: row,
-    uniqueId,
-    eventTimestamp: extractTimestamp(row, timestampPath).toISOString(),
-    location: geocoding
-      ? {
-          latitude: geocoding.coordinates.lat,
-          longitude: geocoding.coordinates.lng,
-        }
-      : undefined,
-    coordinateSource: geocoding
-      ? {
-          type: "geocoded" as const,
-          confidence: geocoding.confidence,
-        }
-      : {
-          type: "none" as const,
-        },
-    validationStatus: transformationChanges ? ("transformed" as const) : ("pending" as const),
-    transformations: transformationChanges,
-    schemaVersionNumber: schemaVersion,
-  };
-};
 
 const processEventBatch = async (
   payload: Payload,
@@ -260,15 +151,14 @@ const processEventBatch = async (
         logger
       );
 
-      const geocoding = getGeocodingResultForRow(geocodingResults, rowNumber);
+      // Create event with coordinates from field mappings or geocoded locations
       const eventData = createEventData(
         transformedRow,
         dataset,
         importJobId,
-        geocoding,
         job,
-        transformationChanges,
-        job.detectedFieldMappings?.timestampPath
+        geocodingResults,
+        transformationChanges
       );
 
       await payload.create({
@@ -290,14 +180,12 @@ const processEventBatch = async (
   return { eventsCreated, eventsSkipped, errors };
 };
 
-const markJobCompleted = async (
-  payload: Payload,
-  importJobId: string | number,
-  job: ImportJob,
-  eventsCreated: number
-) => {
-  const currentProgress = job.progress?.current ?? 0;
-  const totalEventsCreated = currentProgress + eventsCreated;
+const markJobCompleted = async (payload: Payload, importJobId: string | number, job: ImportJob) => {
+  // Get total events created from CREATE_EVENTS stage progress
+  const stages = (job.progress?.stages as Record<string, { rowsProcessed?: number }> | undefined) ?? {};
+  const createEventsStage = stages[PROCESSING_STAGE.CREATE_EVENTS];
+  const totalEventsCreated = createEventsStage?.rowsProcessed ?? 0;
+
   const duplicatesSkipped =
     (job.duplicates?.summary?.internalDuplicates ?? 0) + (job.duplicates?.summary?.externalDuplicates ?? 0);
 
@@ -408,22 +296,18 @@ const processBatchData = async (
   return { rows, ...result };
 };
 
-const updateJobProgress = async (
+const updateJobErrors = async (
   payload: Payload,
   importJobId: string | number,
   job: ImportJob,
-  eventsCreated: number,
   errors: Array<{ row: number; error: string }>
 ) => {
-  const currentProgress = job.progress?.current ?? 0;
+  if (errors.length === 0) return;
+
   await payload.update({
     collection: COLLECTION_NAMES.IMPORT_JOBS,
     id: importJobId,
     data: {
-      progress: {
-        ...job.progress,
-        current: currentProgress + eventsCreated,
-      },
       errors: [...(job.errors ?? []), ...errors],
     },
   });
@@ -434,11 +318,10 @@ const handleBatchCompletion = async (
   job: ImportJob,
   importJobId: string | number,
   batchNumber: number,
-  eventsCreated: number,
   hasMore: boolean
 ) => {
   if (!hasMore) {
-    await markJobCompleted(payload, importJobId, job, eventsCreated);
+    await markJobCompleted(payload, importJobId, job);
     const importFileId = typeof job.importFile === "object" ? job.importFile.id : job.importFile;
     await updateImportFileStatusIfAllJobsComplete(payload, importFileId);
     return;
@@ -460,7 +343,7 @@ const handleJobError = async (payload: Payload, importJobId: string | number, ba
       stage: PROCESSING_STAGE.FAILED,
       errors: [
         {
-          row: batchNumber * 1000,
+          row: batchNumber * BATCH_SIZES.EVENT_CREATION,
           error: error instanceof Error ? error.message : "Unknown error",
         },
       ],
@@ -488,7 +371,11 @@ const checkEventQuotaForFirstBatch = async (
   }
 
   const quotaService = getQuotaService(payload);
-  const totalRows = job.progress?.total ?? 0;
+
+  // Get total rows from CREATE_EVENTS stage
+  const stages = (job.progress?.stages as Record<string, { rowsTotal?: number }> | undefined) ?? {};
+  const createEventsStage = stages[PROCESSING_STAGE.CREATE_EVENTS];
+  const totalRows = createEventsStage?.rowsTotal ?? 0;
 
   // Check if this import would exceed the per-import limit
   const quotaCheck = quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, totalRows);
@@ -516,6 +403,12 @@ export const createEventsBatchJob = {
     try {
       const { job, dataset, importFile } = await getJobResources(payload, importJobId);
 
+      // Start CREATE_EVENTS stage on first batch
+      if (batchNumber === 0) {
+        const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
+        await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.CREATE_EVENTS, uniqueRows);
+      }
+
       // Check EVENTS_PER_IMPORT quota before processing
       await checkEventQuotaForFirstBatch(payload, importFile, job, batchNumber);
 
@@ -530,14 +423,43 @@ export const createEventsBatchJob = {
 
       // Handle empty batch (end of file)
       if (rows.length === 0) {
-        await markJobCompleted(payload, importJobId, job, 0);
+        await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.CREATE_EVENTS);
+        await markJobCompleted(payload, importJobId, job);
         return { output: { completed: true } };
       }
 
-      // Update progress and continue
-      await updateJobProgress(payload, importJobId, job, eventsCreated, errors);
+      // Calculate cumulative events created
+      const rowsProcessedSoFar =
+        (batchNumber + 1) * BATCH_SIZES.EVENT_CREATION -
+        (rows.length < BATCH_SIZES.EVENT_CREATION ? BATCH_SIZES.EVENT_CREATION - rows.length : 0);
+
+      // Update stage progress
+      await ProgressTrackingService.updateStageProgress(
+        payload,
+        importJobId,
+        PROCESSING_STAGE.CREATE_EVENTS,
+        rowsProcessedSoFar,
+        eventsCreated
+      );
+
+      // Complete this batch
+      await ProgressTrackingService.completeBatch(
+        payload,
+        importJobId,
+        PROCESSING_STAGE.CREATE_EVENTS,
+        batchNumber + 1
+      );
+
+      // Update job errors
+      await updateJobErrors(payload, importJobId, job, errors);
       const hasMore = rows.length === BATCH_SIZES.EVENT_CREATION;
-      await handleBatchCompletion(payload, job, importJobId, batchNumber, eventsCreated, hasMore);
+
+      // If no more batches, complete the stage
+      if (!hasMore) {
+        await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.CREATE_EVENTS);
+      }
+
+      await handleBatchCompletion(payload, job, importJobId, batchNumber, hasMore);
 
       logPerformance("Event creation batch", Date.now() - startTime, {
         importJobId,
@@ -573,30 +495,4 @@ export const createEventsBatchJob = {
       throw error;
     }
   },
-};
-
-// Helper to extract timestamp from row data using field mapping
-const extractTimestamp = (row: Record<string, unknown>, timestampPath?: string | null): Date => {
-  // Try mapped field first
-  if (timestampPath && row[timestampPath]) {
-    const date = new Date(row[timestampPath] as string | number);
-    if (isValidDate(date)) {
-      return date;
-    }
-  }
-
-  // Fallback to common timestamp fields
-  const timestampFields = ["timestamp", "date", "datetime", "created_at", "event_date", "event_time"];
-
-  for (const field of timestampFields) {
-    if (row[field]) {
-      const date = new Date(row[field] as string | number);
-      if (isValidDate(date)) {
-        return date;
-      }
-    }
-  }
-
-  // Default to current time
-  return new Date();
 };

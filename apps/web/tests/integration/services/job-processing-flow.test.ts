@@ -323,11 +323,10 @@ Event 2,2024-01-02,Location 2`;
           })
         ).docs[0];
 
-        // Verify initial progress structure
+        // Verify initial progress structure (new enhanced progress tracking)
         expect(importJob.progress).toBeDefined();
-        expect(importJob.progress.total).toBeGreaterThan(0);
-        expect(importJob.progress.current).toBeGreaterThanOrEqual(0);
-        expect(importJob.progress.batchNumber).toBeDefined();
+        expect(importJob.progress.stages).toBeDefined();
+        expect(importJob.progress.overallPercentage).toBeGreaterThanOrEqual(0);
 
         // Run duplicate analysis and check progress updates
         const duplicateContext = {
@@ -341,10 +340,10 @@ Event 2,2024-01-02,Location 2`;
           id: importJob.id,
         });
 
-        // Progress should be properly structured and maintained
+        // Progress should be properly structured and maintained (new enhanced progress tracking)
         expect(afterDuplicates.progress).toBeDefined();
-        expect(afterDuplicates.progress.total).toBeGreaterThan(0);
-        expect(afterDuplicates.progress.batchNumber).toBeGreaterThanOrEqual(0);
+        expect(afterDuplicates.progress.stages).toBeDefined();
+        expect(afterDuplicates.progress.overallPercentage).toBeGreaterThanOrEqual(0);
 
         // Verify that stage progressed after duplicate analysis
         expect(afterDuplicates.stage).toBe(PROCESSING_STAGE.DETECT_SCHEMA);

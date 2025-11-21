@@ -8,19 +8,11 @@
  */
 
 export interface GeocodingCandidate {
-  /** Field name containing address information */
-  addressField?: string;
-  /** Field name containing latitude data */
-  latitudeField?: string;
-  /** Field name containing longitude data */
-  longitudeField?: string;
-  /** Confidence score for field detection */
-  confidence?: number;
+  /** Field name containing location information (address, city, venue, etc.) */
+  locationField?: string;
 }
 
 export interface GeocodingResult {
-  /** Row number this result applies to */
-  rowNumber: number;
   /** Geographic coordinates */
   coordinates: {
     lat: number;
@@ -30,12 +22,11 @@ export interface GeocodingResult {
   confidence: number;
   /** Formatted/normalized address */
   formattedAddress?: string;
-  /** Source of coordinates */
-  source?: "geocoded" | "provided";
 }
 
+/** Map of location string to geocoding result */
 export interface GeocodingResultsMap {
-  [rowNumber: string]: GeocodingResult;
+  [location: string]: GeocodingResult;
 }
 
 /**
@@ -51,7 +42,6 @@ export const isValidGeocodingResultsMap = (results: unknown): results is Geocodi
     return (
       result &&
       typeof result === "object" &&
-      "rowNumber" in result &&
       "coordinates" in result &&
       typeof result.coordinates === "object" &&
       "lat" in result.coordinates &&
@@ -60,23 +50,6 @@ export const isValidGeocodingResultsMap = (results: unknown): results is Geocodi
       typeof result.coordinates.lng === "number"
     );
   });
-};
-
-/**
- * Type guard to check if geocoding candidates is valid.
- */
-export const isValidGeocodingCandidate = (candidate: unknown): candidate is GeocodingCandidate => {
-  if (!candidate || typeof candidate !== "object") {
-    return false;
-  }
-
-  const cand = candidate as Record<string, unknown>;
-  return (
-    (typeof cand.addressField === "string" || cand.addressField === undefined) &&
-    (typeof cand.latitudeField === "string" || cand.latitudeField === undefined) &&
-    (typeof cand.longitudeField === "string" || cand.longitudeField === undefined) &&
-    (typeof cand.confidence === "number" || cand.confidence === undefined)
-  );
 };
 
 /**
@@ -91,42 +64,32 @@ export const getGeocodingResults = (job: { geocodingResults?: unknown }): Geocod
 
 /**
  * Safe getter for geocoding candidates from import job.
- * Reads from schemaBuilderState.detectedGeoFields.
+ * Reads from detectedFieldMappings.locationPath.
  */
-export const getGeocodingCandidate = (job: { schemaBuilderState?: unknown }): GeocodingCandidate | null => {
-  // Extract detectedGeoFields from schema builder state
-  if (!job.schemaBuilderState || typeof job.schemaBuilderState !== "object") {
+export const getGeocodingCandidate = (job: { detectedFieldMappings?: unknown }): GeocodingCandidate | null => {
+  // Extract locationPath from detected field mappings
+  if (!job.detectedFieldMappings || typeof job.detectedFieldMappings !== "object") {
     return null;
   }
 
-  const state = job.schemaBuilderState as { detectedGeoFields?: unknown };
-  if (!state.detectedGeoFields || typeof state.detectedGeoFields !== "object") {
+  const mappings = job.detectedFieldMappings as Record<string, unknown>;
+  const locationField = typeof mappings.locationPath === "string" ? mappings.locationPath : undefined;
+
+  // Return null if no location field was detected
+  if (!locationField) {
     return null;
   }
 
-  const geoFields = state.detectedGeoFields as Record<string, unknown>;
-  const candidate: GeocodingCandidate = {
-    addressField: typeof geoFields.addressField === "string" ? geoFields.addressField : undefined,
-    latitudeField: typeof geoFields.latitude === "string" ? geoFields.latitude : undefined,
-    longitudeField: typeof geoFields.longitude === "string" ? geoFields.longitude : undefined,
-    confidence: typeof geoFields.confidence === "number" ? geoFields.confidence : undefined,
-  };
-
-  // Return null if no fields were detected
-  if (!candidate.addressField && !candidate.latitudeField && !candidate.longitudeField) {
-    return null;
-  }
-
-  return candidate;
+  return { locationField };
 };
 
 /**
- * Safely get geocoding result for a specific row.
+ * Safely get geocoding result for a specific location.
  */
-export const getGeocodingResultForRow = (
+export const getGeocodingResultForLocation = (
   geocodingResults: GeocodingResultsMap,
-  rowNumber: number
+  location: string
 ): GeocodingResult | null => {
-  const result = geocodingResults[String(rowNumber)];
+  const result = geocodingResults[location];
   return result ?? null;
 };

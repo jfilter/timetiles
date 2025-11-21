@@ -104,7 +104,6 @@ export interface ImportJobProgress {
     external: number;
   };
   schemaValidation?: Record<string, unknown>;
-  geocodingProgress?: Record<string, unknown>;
   results?: Record<string, unknown>;
 }
 

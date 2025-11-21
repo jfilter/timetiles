@@ -1,8 +1,8 @@
 /**
  * Unit tests for the geocode batch job handler.
  *
- * Tests batch geocoding of events during import processing,
- * including address resolution and error handling.
+ * Tests unique location geocoding during import processing,
+ * including deduplication and error handling.
  *
  * @module
  * @category Tests
@@ -14,20 +14,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { geocodeBatchJob } from "@/lib/jobs/handlers/geocode-batch-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
-import {
-  createMockDataset,
-  createMockImportFile,
-  createMockImportJob,
-  createMockPayload,
-} from "@/tests/setup/factories";
+import { createMockDataset, createMockImportJob, createMockPayload } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
   return {
-    readBatchFromFile: vi.fn(),
+    readAllRowsFromFile: vi.fn(),
     geocodeAddress: vi.fn(),
-    updateGeocodingProgress: vi.fn().mockResolvedValue(undefined),
-    getGeocodingCandidate: vi.fn(),
+    getFileRowCount: vi.fn(),
   };
 });
 
@@ -37,56 +31,27 @@ vi.mock("@/lib/services/geocoding", () => ({
 }));
 
 vi.mock("@/lib/utils/file-readers", () => ({
-  readBatchFromFile: mocks.readBatchFromFile,
+  readAllRowsFromFile: mocks.readAllRowsFromFile,
+  getFileRowCount: mocks.getFileRowCount,
 }));
 
-vi.mock("@/lib/services/progress-tracking", () => ({
-  ProgressTrackingService: {
-    updateGeocodingProgress: mocks.updateGeocodingProgress,
-  },
-}));
-
-vi.mock("@/lib/types/geocoding", () => ({
-  getGeocodingCandidate: mocks.getGeocodingCandidate,
-  getGeocodingResults: vi.fn().mockReturnValue({}),
-}));
+// Don't mock @/lib/types/geocoding - use real implementation
 
 describe.sequential("GeocodeBatchJob Handler", () => {
-  let mockPayload: any;
+  let mockPayload: ReturnType<typeof createMockPayload>;
   let mockContext: JobHandlerContext;
 
   beforeEach(() => {
-    // Reset all mocks
     vi.clearAllMocks();
-
-    // Set default mock implementations
-    mocks.readBatchFromFile.mockReturnValue([
-      { id: "1", title: "Event 1", address: "123 Main St, NYC" },
-      { id: "2", title: "Event 2", address: "456 Oak Ave, LA" },
-    ]);
-
-    mocks.geocodeAddress.mockResolvedValue({
-      latitude: 40.7128,
-      longitude: -74.006,
-      confidence: 0.9,
-      normalizedAddress: "123 Main St, New York, NY",
-    });
-
-    // Mock payload with required methods
+    // Explicitly reset hoisted mocks to clear both call history AND implementations
+    mocks.readAllRowsFromFile.mockReset();
+    mocks.geocodeAddress.mockReset();
+    mocks.getFileRowCount.mockReset();
     mockPayload = createMockPayload();
-
-    // Mock context
     mockContext = {
       payload: mockPayload,
-      job: {
-        id: "test-job-1",
-        taskStatus: {},
-      },
-      input: {
-        importJobId: "import-123",
-        batchNumber: 0,
-      },
-    };
+      input: { importJobId: "import-123" },
+    } as unknown as JobHandlerContext;
   });
 
   afterEach(() => {
@@ -94,38 +59,27 @@ describe.sequential("GeocodeBatchJob Handler", () => {
   });
 
   describe("Success Cases", () => {
-    it("should geocode events with addresses successfully", async () => {
+    it("should geocode unique locations successfully", async () => {
       const mockImportJob = {
+        ...createMockImportJob(),
         id: "import-123",
         dataset: "dataset-123",
         importFile: "file-123",
         sheetIndex: 0,
-        schemaBuilderState: {
-          detectedGeoFields: {
-            addressField: "address",
-            confidence: 0,
-          },
-        },
-        duplicates: {
-          internal: [],
-          external: [],
+        detectedFieldMappings: {
+          locationPath: "address",
         },
       };
 
-      const mockDataset = createMockDataset();
+      // Mock file with duplicate locations
+      mocks.readAllRowsFromFile.mockReturnValue([
+        { id: "1", title: "Event 1", address: "123 Main St" },
+        { id: "2", title: "Event 2", address: "456 Oak Ave" },
+        { id: "3", title: "Event 3", address: "123 Main St" }, // Duplicate
+      ]);
 
-      const mockImportFile = createMockImportFile();
-
-      // Mock getGeocodingCandidate to return address field from schema builder state
-      const { getGeocodingCandidate } = await import("@/lib/types/geocoding");
-      vi.mocked(getGeocodingCandidate).mockReturnValue({
-        addressField: "address",
-      });
-
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      // Mock findByID to return the job for the initial call and for ProgressTrackingService calls
+      mockPayload.findByID.mockResolvedValue(mockImportJob);
 
       mocks.geocodeAddress
         .mockResolvedValueOnce({
@@ -141,102 +95,101 @@ describe.sequential("GeocodeBatchJob Handler", () => {
           normalizedAddress: "456 Oak Ave, Los Angeles, CA",
         });
 
-      await geocodeBatchJob.handler(mockContext);
+      const result = await geocodeBatchJob.handler(mockContext);
 
-      expect(mocks.geocodeAddress).toHaveBeenCalledWith("123 Main St, NYC");
-      expect(mocks.geocodeAddress).toHaveBeenCalledWith("456 Oak Ave, LA");
+      // Should only geocode unique locations (2 unique, not 3 total)
+      expect(mocks.geocodeAddress).toHaveBeenCalledTimes(2);
+      expect(mocks.geocodeAddress).toHaveBeenCalledWith("123 Main St");
+      expect(mocks.geocodeAddress).toHaveBeenCalledWith("456 Oak Ave");
 
-      // Check that ProgressTrackingService.updateGeocodingProgress was called
-      expect(mocks.updateGeocodingProgress).toHaveBeenCalledWith(
-        mockPayload,
-        "import-123",
-        2, // processedCount (both rows have addresses and were processed)
-        mockImportJob,
-        expect.any(Object) // geocoding results
-      );
+      // Should store results as location → coordinates map
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "import-jobs",
+        id: "import-123",
+        data: {
+          geocodingResults: {
+            "123 Main St": {
+              coordinates: { lat: 40.7128, lng: -74.006 },
+              confidence: 0.9,
+              formattedAddress: "123 Main St, New York, NY",
+            },
+            "456 Oak Ave": {
+              coordinates: { lat: 34.0522, lng: -118.2437 },
+              confidence: 0.8,
+              formattedAddress: "456 Oak Ave, Los Angeles, CA",
+            },
+          },
+          stage: "create-events",
+        },
+      });
+
+      // Should return correct output
+      expect(result.output).toEqual({
+        totalRows: 3,
+        uniqueLocations: 2,
+        geocodedCount: 2,
+        failedCount: 0,
+      });
     });
 
-    it("should skip events without addresses", async () => {
+    it("should skip rows without location values", async () => {
       const mockImportJob = {
+        ...createMockImportJob(),
         id: "import-123",
-        dataset: "dataset-123",
-        importFile: "file-123",
-        sheetIndex: 0,
-        schemaBuilderState: {
-          detectedGeoFields: {
-            addressField: "address",
-            confidence: 0,
-          },
-        },
-        duplicates: {
-          internal: [],
-          external: [],
+        detectedFieldMappings: {
+          locationPath: "address",
         },
       };
 
-      const mockDataset = { id: "dataset-123" };
-      const mockImportFile = { id: "file-123", filename: "test.csv" };
-
-      // Mock getGeocodingCandidate to return address field
-      const { getGeocodingCandidate } = await import("@/lib/types/geocoding");
-      vi.mocked(getGeocodingCandidate).mockReturnValue({
-        addressField: "address",
-      });
-
-      // Mock file with no addresses
-      mocks.readBatchFromFile.mockReturnValue([
-        { id: "1", title: "Event 1" }, // No address field
+      // Mock file with missing/empty locations
+      mocks.readAllRowsFromFile.mockReturnValue([
+        { id: "1", title: "Event 1", address: "123 Main St" },
+        { id: "2", title: "Event 2" }, // No address field
+        { id: "3", title: "Event 3", address: "" }, // Empty address
+        { id: "4", title: "Event 4", address: "   " }, // Whitespace only
       ]);
 
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      // Mock findByID to return the job for all calls
+      mockPayload.findByID.mockResolvedValue(mockImportJob);
 
-      await geocodeBatchJob.handler(mockContext);
+      mocks.geocodeAddress.mockResolvedValueOnce({
+        latitude: 40.7128,
+        longitude: -74.006,
+        confidence: 0.9,
+        normalizedAddress: "123 Main St, New York, NY",
+      });
 
-      expect(mocks.geocodeAddress).not.toHaveBeenCalled();
+      const result = await geocodeBatchJob.handler(mockContext);
 
-      // Check that ProgressTrackingService.updateGeocodingProgress was called
-      expect(mocks.updateGeocodingProgress).toHaveBeenCalledWith(
-        mockPayload,
-        "import-123",
-        1, // processedCount (all rows were processed)
-        mockImportJob,
-        expect.any(Object)
-      );
+      // Should only geocode the one valid location
+      expect(mocks.geocodeAddress).toHaveBeenCalledTimes(1);
+      expect(mocks.geocodeAddress).toHaveBeenCalledWith("123 Main St");
+
+      expect(result.output).toEqual({
+        totalRows: 4,
+        uniqueLocations: 1,
+        geocodedCount: 1,
+        failedCount: 0,
+      });
     });
 
     it("should handle geocoding failures gracefully", async () => {
       const mockImportJob = {
+        ...createMockImportJob(),
         id: "import-123",
-        dataset: "dataset-123",
-        importFile: "file-123",
-        sheetIndex: 0,
-        geocodingCandidates: {
-          addressField: "address",
-        },
-        duplicates: {
-          internal: [],
-          external: [],
+        detectedFieldMappings: {
+          locationPath: "address",
         },
       };
 
-      const mockDataset = { id: "dataset-123" };
-      const mockImportFile = { id: "file-123", filename: "test.csv" };
-
-      // Mock getGeocodingCandidate to return address field
-      const { getGeocodingCandidate } = await import("@/lib/types/geocoding");
-      vi.mocked(getGeocodingCandidate).mockReturnValue({
-        addressField: "address",
-      });
-
-      mocks.readBatchFromFile.mockReturnValue([
-        { id: "1", title: "Event 1", address: "123 Main St, NYC" },
-        { id: "2", title: "Event 2", address: "Invalid Address" },
+      mocks.readAllRowsFromFile.mockReturnValue([
+        { id: "1", title: "Event 1", address: "123 Main St" },
+        { id: "2", title: "Event 2", address: "Invalid Address XYZ" },
       ]);
 
-      // Mock partial geocoding success - first succeeds, second fails
+      // Mock findByID to return the job for all calls
+      mockPayload.findByID.mockResolvedValue(mockImportJob);
+
       mocks.geocodeAddress
         .mockResolvedValueOnce({
           latitude: 40.7128,
@@ -246,480 +199,305 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         })
         .mockRejectedValueOnce(new Error("Geocoding failed"));
 
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      const result = await geocodeBatchJob.handler(mockContext);
 
-      await geocodeBatchJob.handler(mockContext);
+      // Should geocode both, but only one succeeds
+      expect(mocks.geocodeAddress).toHaveBeenCalledTimes(2);
 
-      // Check that ProgressTrackingService.updateGeocodingProgress was called
-      expect(mocks.updateGeocodingProgress).toHaveBeenCalledWith(
-        mockPayload,
-        "import-123",
-        2, // processedCount (both rows processed)
-        mockImportJob,
-        expect.any(Object)
-      );
-    });
-
-    it("should queue next batch when more data exists", async () => {
-      const mockImportJob = {
-        id: "import-123",
-        dataset: "dataset-123",
-        importFile: "file-123",
-        sheetIndex: 0,
-        geocodingCandidates: {
-          addressField: "address",
-        },
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-      };
-
-      const mockDataset = { id: "dataset-123" };
-      const mockImportFile = { id: "file-123", filename: "test.csv" };
-
-      // Mock getGeocodingCandidate to return address field
-      const { getGeocodingCandidate } = await import("@/lib/types/geocoding");
-      vi.mocked(getGeocodingCandidate).mockReturnValue({
-        addressField: "address",
+      expect(result.output).toEqual({
+        totalRows: 2,
+        uniqueLocations: 2,
+        geocodedCount: 1,
+        failedCount: 1,
       });
 
-      // Mock exactly BATCH_SIZES.GEOCODING (100) rows to indicate more data exists
-      // The job checks if rows.length === GEOCODING_BATCH_SIZE to determine if there's more data
-      const fullBatch = Array.from({ length: 100 }, (_, i) => ({
-        id: String(i + 1),
-        title: `Event ${i + 1}`,
-        address: `${i + 1} Main St`,
-      }));
-      mocks.readBatchFromFile.mockReturnValue(fullBatch);
-
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
-
-      await geocodeBatchJob.handler(mockContext);
-
-      expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
-        task: "geocode-batch",
-        input: {
-          importJobId: "import-123",
-          batchNumber: 1,
-        },
-      });
-    });
-
-    it("should transition to next stage when geocoding is complete", async () => {
-      const mockImportJob = {
-        id: "import-123",
-        dataset: "dataset-123",
-        importFile: "file-123",
-        sheetIndex: 0,
-        geocodingCandidates: {
-          addressField: "address",
-        },
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-      };
-
-      const mockDataset = { id: "dataset-123" };
-      const mockImportFile = { id: "file-123", filename: "test.csv" };
-
-      // Mock getGeocodingCandidate to return address field
-      const { getGeocodingCandidate } = await import("@/lib/types/geocoding");
-      vi.mocked(getGeocodingCandidate).mockReturnValue({
-        addressField: "address",
-      });
-
-      // Mock a small batch (less than batch size, indicating completion)
-      mocks.readBatchFromFile.mockReturnValue([
-        { id: "1", title: "Event 1", address: "123 Main St" },
-        { id: "2", title: "Event 2", address: "456 Oak Ave" },
-      ]);
-
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
-
-      await geocodeBatchJob.handler(mockContext);
-
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
-        id: "import-123",
-        data: {
-          stage: "create-events",
-        },
-      });
-    });
-
-    it("should preserve existing geocoding results", async () => {
-      const mockImportJob = {
-        id: "import-123",
-        dataset: "dataset-123",
-        importFile: "file-123",
-        sheetIndex: 0,
-        geocodingCandidates: {
-          addressField: "address",
-        },
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-      };
-
-      const existingResults = {
-        "0": {
-          rowNumber: 0,
-          coordinates: { lat: 41.8781, lng: -87.6298 },
-          confidence: 0.95,
-          formattedAddress: "Previous Address",
-        },
-      };
-
-      const mockDataset = { id: "dataset-123" };
-      const mockImportFile = { id: "file-123", filename: "test.csv" };
-
-      // Mock getGeocodingCandidate to return address field
-      const { getGeocodingCandidate, getGeocodingResults } = await import("@/lib/types/geocoding");
-      vi.mocked(getGeocodingCandidate).mockReturnValue({
-        addressField: "address",
-      });
-      vi.mocked(getGeocodingResults).mockReturnValue(existingResults);
-
-      mocks.readBatchFromFile.mockReturnValue([{ id: "1", title: "Event 1", address: "123 Main St, NYC" }]);
-
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
-
-      await geocodeBatchJob.handler(mockContext);
-
-      // Check that ProgressTrackingService.updateGeocodingProgress was called with combined results
-      expect(mocks.updateGeocodingProgress).toHaveBeenCalledWith(
-        mockPayload,
-        "import-123",
-        1, // processedCount
-        mockImportJob,
+      // Should still store the successful result
+      expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          "0": expect.objectContaining({
-            // New result added (existing results are merged)
-            rowNumber: 0,
-            coordinates: expect.objectContaining({
-              lat: expect.any(Number),
-              lng: expect.any(Number),
-            }),
+          data: expect.objectContaining({
+            geocodingResults: {
+              "123 Main St": expect.objectContaining({
+                coordinates: { lat: 40.7128, lng: -74.006 },
+              }),
+            },
           }),
         })
       );
     });
-  });
 
-  describe("Error Handling", () => {
-    it("should handle missing import job gracefully", async () => {
-      mockPayload.findByID.mockResolvedValueOnce(null);
-
-      await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("Import job not found: import-123");
-    });
-
-    it("should handle geocoding service errors", async () => {
+    it("should skip geocoding when no location field detected", async () => {
       const mockImportJob = {
+        ...createMockImportJob(),
         id: "import-123",
-        dataset: "dataset-123",
-        importFile: "file-123",
-        sheetIndex: 0,
-        geocodingCandidates: {
-          addressField: "address",
-        },
-        duplicates: {
-          internal: [],
-          external: [],
+        detectedFieldMappings: {
+          // No locationPath
         },
       };
 
-      const mockDataset = { id: "dataset-123" };
-      const mockImportFile = { id: "file-123", filename: "test.csv" };
-
-      // Mock getGeocodingCandidate to return address field
-      const { getGeocodingCandidate } = await import("@/lib/types/geocoding");
-      vi.mocked(getGeocodingCandidate).mockReturnValue({
-        addressField: "address",
-      });
-
-      mocks.readBatchFromFile.mockReturnValue([{ id: "1", title: "Event 1", address: "123 Main St" }]);
-
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
-
-      mocks.geocodeAddress.mockRejectedValue(new Error("Geocoding service unavailable"));
-
-      // Geocoding errors don't cause the job to fail, they're just logged
-      const result = await geocodeBatchJob.handler(mockContext);
-
-      expect(result.output.failedCount).toBe(1);
-      expect(result.output.geocodedCount).toBe(0);
-    });
-
-    it("should handle file reading errors", async () => {
-      const mockImportJob = {
-        id: "import-123",
-        dataset: "dataset-123",
-        importFile: "file-123",
-        sheetIndex: 0,
-        geocodingCandidates: {
-          addressField: "address",
-        },
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-      };
-
-      const mockDataset = { id: "dataset-123" };
-      const mockImportFile = { id: "file-123", filename: "test.csv" };
-
-      // Mock getGeocodingCandidate
-      const { getGeocodingCandidate } = await import("@/lib/types/geocoding");
-      vi.mocked(getGeocodingCandidate).mockReturnValue({
-        addressField: "address",
-      });
-
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
-
-      mocks.readBatchFromFile.mockImplementation(() => {
-        throw new Error("File not found");
-      });
-
-      await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow();
-    });
-
-    it("should handle no geocoding candidates", async () => {
-      const mockImportJob = createMockImportJob();
-
-      const mockDataset = { id: "dataset-123" };
-      const mockImportFile = { id: "file-123", filename: "test.csv" };
-
-      // Mock getGeocodingCandidate to return null (no candidates)
-      mocks.getGeocodingCandidate.mockReturnValue(null);
-
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+      // Mock findByID to return the job for all calls
+      mockPayload.findByID.mockResolvedValue(mockImportJob);
 
       const result = await geocodeBatchJob.handler(mockContext);
 
-      expect(result).toEqual({ output: { skipped: true } });
+      // Should not read file or geocode anything
+      expect(mocks.readAllRowsFromFile).not.toHaveBeenCalled();
+      expect(mocks.geocodeAddress).not.toHaveBeenCalled();
+
+      // Should transition directly to CREATE_EVENTS
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: "import-123",
         data: { stage: "create-events" },
       });
-    });
-  });
 
-  describe("Edge Cases", () => {
-    it("should handle empty batch gracefully", async () => {
+      expect(result.output).toEqual({ skipped: true });
+    });
+
+    it("should handle empty file gracefully", async () => {
       const mockImportJob = {
+        ...createMockImportJob(),
         id: "import-123",
-        dataset: "dataset-123",
-        importFile: "file-123",
-        sheetIndex: 0,
-        geocodingCandidates: {
-          addressField: "address",
-        },
-        duplicates: {
-          internal: [],
-          external: [],
+        detectedFieldMappings: {
+          locationPath: "address",
         },
       };
 
-      const mockDataset = { id: "dataset-123" };
-      const mockImportFile = { id: "file-123", filename: "empty.csv" };
+      mocks.readAllRowsFromFile.mockReturnValue([]);
 
-      // Mock getGeocodingCandidate to return address field
-      const { getGeocodingCandidate } = await import("@/lib/types/geocoding");
-      vi.mocked(getGeocodingCandidate).mockReturnValue({
-        addressField: "address",
-      });
+      // Mock findByID to return the job for all calls
+      mockPayload.findByID.mockResolvedValue(mockImportJob);
 
-      mocks.readBatchFromFile.mockReturnValue([]);
+      const result = await geocodeBatchJob.handler(mockContext);
 
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
-
-      await geocodeBatchJob.handler(mockContext);
-
+      // Should not call geocoding
       expect(mocks.geocodeAddress).not.toHaveBeenCalled();
 
+      // Should store empty results
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: "import-123",
         data: {
+          geocodingResults: {},
+          stage: "create-events",
+        },
+      });
+
+      expect(result.output).toEqual({
+        totalRows: 0,
+        uniqueLocations: 0,
+        geocodedCount: 0,
+        failedCount: 0,
+      });
+    });
+
+    it("should trim whitespace from locations", async () => {
+      const mockImportJob = {
+        ...createMockImportJob(),
+        id: "import-123",
+        detectedFieldMappings: {
+          locationPath: "address",
+        },
+      };
+
+      mocks.readAllRowsFromFile.mockReturnValue([
+        { id: "1", address: "  123 Main St  " },
+        { id: "2", address: "123 Main St" }, // Should be treated as same location
+      ]);
+
+      // Mock findByID to return the job for all calls
+      mockPayload.findByID.mockResolvedValue(mockImportJob);
+
+      mocks.geocodeAddress.mockResolvedValueOnce({
+        latitude: 40.7128,
+        longitude: -74.006,
+        confidence: 0.9,
+        normalizedAddress: "123 Main St, New York, NY",
+      });
+
+      const result = await geocodeBatchJob.handler(mockContext);
+
+      // Should only geocode once (trimmed values are identical)
+      expect(mocks.geocodeAddress).toHaveBeenCalledTimes(1);
+      expect(mocks.geocodeAddress).toHaveBeenCalledWith("123 Main St");
+
+      expect(result.output).toEqual({
+        totalRows: 2,
+        uniqueLocations: 1,
+        geocodedCount: 1,
+        failedCount: 0,
+      });
+    });
+  });
+
+  describe("Error Handling", () => {
+    it("should handle missing import job", async () => {
+      mockPayload.findByID.mockResolvedValueOnce(null);
+
+      await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("Import job not found");
+    });
+
+    it("should handle missing import file", async () => {
+      const mockDataset = createMockDataset();
+      const mockImportJob = {
+        ...createMockImportJob(),
+        id: "import-123",
+        dataset: mockDataset, // Use object to avoid lookup
+        importFile: "file-123", // Use string so it needs to be looked up
+      };
+
+      // First call returns the job, second call for import file lookup returns null
+      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(null); // Import file not found
+
+      await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("Import file not found");
+    });
+
+    it("should set job to FAILED stage on error", async () => {
+      const mockImportJob = {
+        ...createMockImportJob(),
+        id: "import-123",
+        detectedFieldMappings: {
+          locationPath: "address",
+        },
+      };
+
+      // Mock findByID to return the job for all calls
+      mockPayload.findByID.mockResolvedValue(mockImportJob);
+
+      // Make readAllRowsFromFile throw an error
+      mocks.readAllRowsFromFile.mockImplementation(() => {
+        throw new Error("File read error");
+      });
+
+      await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("File read error");
+
+      // Should update job to FAILED stage
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "import-jobs",
+        id: "import-123",
+        data: { stage: "failed" },
+      });
+    });
+  });
+
+  describe("Edge Cases", () => {
+    it("should handle non-string location values", async () => {
+      const mockImportJob = {
+        ...createMockImportJob(),
+        id: "import-123",
+        detectedFieldMappings: {
+          locationPath: "address",
+        },
+      };
+
+      mocks.readAllRowsFromFile.mockReturnValue([
+        { id: "1", address: "123 Main St" },
+        { id: "2", address: 123 }, // Number
+        { id: "3", address: null }, // Null
+        { id: "4", address: { street: "456 Oak" } }, // Object
+      ]);
+
+      // Mock findByID to return the job for all calls
+      mockPayload.findByID.mockResolvedValue(mockImportJob);
+
+      mocks.geocodeAddress.mockResolvedValueOnce({
+        latitude: 40.7128,
+        longitude: -74.006,
+        confidence: 0.9,
+        normalizedAddress: "123 Main St, New York, NY",
+      });
+
+      const result = await geocodeBatchJob.handler(mockContext);
+
+      // Should only geocode the valid string location
+      expect(mocks.geocodeAddress).toHaveBeenCalledTimes(1);
+      expect(mocks.geocodeAddress).toHaveBeenCalledWith("123 Main St");
+
+      expect(result.output).toEqual({
+        totalRows: 4,
+        uniqueLocations: 1,
+        geocodedCount: 1,
+        failedCount: 0,
+      });
+    });
+
+    it("should handle all locations failing to geocode", async () => {
+      const mockImportJob = {
+        ...createMockImportJob(),
+        id: "import-123",
+        detectedFieldMappings: {
+          locationPath: "address",
+        },
+      };
+
+      mocks.readAllRowsFromFile.mockReturnValue([
+        { id: "1", address: "Invalid 1" },
+        { id: "2", address: "Invalid 2" },
+      ]);
+
+      // Mock findByID to return the job for all calls
+      mockPayload.findByID.mockResolvedValue(mockImportJob);
+
+      mocks.geocodeAddress.mockRejectedValue(new Error("Geocoding failed"));
+
+      const result = await geocodeBatchJob.handler(mockContext);
+
+      expect(result.output).toEqual({
+        totalRows: 2,
+        uniqueLocations: 2,
+        geocodedCount: 0,
+        failedCount: 2,
+      });
+
+      // Should store empty results but still transition to CREATE_EVENTS
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "import-jobs",
+        id: "import-123",
+        data: {
+          geocodingResults: {},
           stage: "create-events",
         },
       });
     });
 
-    it("should handle mixed address formats", async () => {
+    it("should handle large number of unique locations", async () => {
       const mockImportJob = {
+        ...createMockImportJob(),
         id: "import-123",
-        dataset: "dataset-123",
-        importFile: "file-123",
-        sheetIndex: 0,
-        geocodingCandidates: {
-          addressField: "address",
-        },
-        duplicates: {
-          internal: [],
-          external: [],
+        detectedFieldMappings: {
+          locationPath: "address",
         },
       };
 
-      const mockDataset = { id: "dataset-123" };
-      const mockImportFile = { id: "file-123", filename: "test.csv" };
+      // Generate 100 rows with 50 unique locations (each location appears twice)
+      const rows = [];
+      for (let i = 0; i < 50; i++) {
+        rows.push({ id: `${i * 2}`, address: `Address ${i}` });
+        rows.push({ id: `${i * 2 + 1}`, address: `Address ${i}` });
+      }
+      mocks.readAllRowsFromFile.mockReturnValue(rows);
 
-      // Mock getGeocodingCandidate to return address field
-      const { getGeocodingCandidate } = await import("@/lib/types/geocoding");
-      vi.mocked(getGeocodingCandidate).mockReturnValue({
-        addressField: "address",
+      // Mock findByID to return the job for all calls
+      mockPayload.findByID.mockResolvedValue(mockImportJob);
+
+      // Mock successful geocoding for all
+      mocks.geocodeAddress.mockResolvedValue({
+        latitude: 40.7128,
+        longitude: -74.006,
+        confidence: 0.9,
+        normalizedAddress: "Test Address",
       });
 
-      mocks.readBatchFromFile.mockReturnValue([
-        { id: "1", address: "123 Main St, NYC" },
-        { id: "2", address: "" }, // Empty address
-        { id: "3", address: null }, // Null address
-        { id: "4", address: "   " }, // Whitespace only
-      ]);
-
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
-
-      await geocodeBatchJob.handler(mockContext);
-
-      // Only valid address should be geocoded
-      expect(mocks.geocodeAddress).toHaveBeenCalledTimes(1);
-      expect(mocks.geocodeAddress).toHaveBeenCalledWith("123 Main St, NYC");
-
-      // Check that ProgressTrackingService.updateGeocodingProgress was called
-      expect(mocks.updateGeocodingProgress).toHaveBeenCalledWith(
-        mockPayload,
-        "import-123",
-        4, // processedCount (all rows processed)
-        mockImportJob,
-        expect.any(Object)
-      );
-    });
-
-    it("should handle large batch numbers correctly", async () => {
-      const largeBatchContext = {
-        ...mockContext,
-        input: {
-          importJobId: "import-123",
-          batchNumber: 10, // Large batch number
-        },
-      };
-
-      const mockImportJob = {
-        id: "import-123",
-        dataset: "dataset-123",
-        importFile: "file-123",
-        sheetIndex: 0,
-        geocodingCandidates: {
-          addressField: "address",
-        },
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-      };
-
-      const mockDataset = { id: "dataset-123" };
-      const mockImportFile = { id: "file-123", filename: "test.csv" };
-
-      // Mock getGeocodingCandidate to return address field
-      const { getGeocodingCandidate } = await import("@/lib/types/geocoding");
-      vi.mocked(getGeocodingCandidate).mockReturnValue({
-        addressField: "address",
-      });
-
-      // Mock a full batch to indicate more data exists
-      const fullBatch = Array.from({ length: 100 }, (_, i) => ({
-        id: String(i + 1),
-        title: `Event ${i + 1}`,
-        address: `${i + 1} Main St`,
-      }));
-      mocks.readBatchFromFile.mockReturnValue(fullBatch);
-
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
-
-      await geocodeBatchJob.handler(largeBatchContext);
-
-      expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
-        task: "geocode-batch",
-        input: {
-          importJobId: "import-123",
-          batchNumber: 11, // Next batch
-        },
-      });
-    });
-
-    it("should handle rate limiting gracefully", async () => {
-      const mockImportJob = {
-        id: "import-123",
-        dataset: "dataset-123",
-        importFile: "file-123",
-        sheetIndex: 0,
-        geocodingCandidates: {
-          addressField: "address",
-        },
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-      };
-
-      const mockDataset = { id: "dataset-123" };
-      const mockImportFile = { id: "file-123", filename: "test.csv" };
-
-      // Mock getGeocodingCandidate to return address field
-      const { getGeocodingCandidate } = await import("@/lib/types/geocoding");
-      vi.mocked(getGeocodingCandidate).mockReturnValue({
-        addressField: "address",
-      });
-
-      mocks.readBatchFromFile.mockReturnValue([{ id: "1", title: "Event 1", address: "123 Main St" }]);
-
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
-
-      mocks.geocodeAddress.mockRejectedValue(new Error("Rate limit exceeded"));
-
-      // Rate limit errors don't cause the job to fail, they're just logged as failed geocoding attempts
       const result = await geocodeBatchJob.handler(mockContext);
 
-      expect(result.output.failedCount).toBe(1);
-      expect(result.output.geocodedCount).toBe(0);
+      // Should geocode exactly 50 unique locations, not 100
+      expect(mocks.geocodeAddress).toHaveBeenCalledTimes(50);
+
+      expect(result.output).toEqual({
+        totalRows: 100,
+        uniqueLocations: 50,
+        geocodedCount: 50,
+        failedCount: 0,
+      });
     });
   });
 });

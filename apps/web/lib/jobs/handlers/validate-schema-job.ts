@@ -17,6 +17,7 @@ import type { Payload, PayloadRequest } from "payload";
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
+import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { compareSchemas, detectTransforms } from "@/lib/services/schema-builder/schema-comparison";
@@ -171,9 +172,10 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   const quotaService = getQuotaService(payload);
 
   // Calculate total events to be imported (considering duplicates)
-  const totalRows = job.progress?.total ?? 0;
-  const duplicateCount = (job.duplicates as { summary?: { total?: number } })?.summary?.total ?? 0;
-  const eventsToImport = totalRows - duplicateCount;
+  const totalRows = job.duplicates?.summary?.totalRows ?? 0;
+  const internalDuplicates = job.duplicates?.summary?.internalDuplicates ?? 0;
+  const externalDuplicates = job.duplicates?.summary?.externalDuplicates ?? 0;
+  const eventsToImport = totalRows - internalDuplicates - externalDuplicates;
 
   // Check maxEventsPerImport quota
   const eventQuotaCheck = quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, eventsToImport);
@@ -258,6 +260,10 @@ export const validateSchemaJob = {
       // Load all required resources
       const { job, dataset, importFile } = await loadResources(payload, jobIdTyped);
 
+      // Start VALIDATE_SCHEMA stage
+      const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
+      await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.VALIDATE_SCHEMA, uniqueRows);
+
       // Check event quota against the number of rows to be imported
       if (importFile.user) {
         const user =
@@ -316,6 +322,9 @@ export const validateSchemaJob = {
           stage: requiresApproval ? PROCESSING_STAGE.AWAIT_APPROVAL : PROCESSING_STAGE.GEOCODE_BATCH,
         },
       });
+
+      // Complete VALIDATE_SCHEMA stage
+      await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
 
       // Handle schema approval if needed
       await handleSchemaApproval({

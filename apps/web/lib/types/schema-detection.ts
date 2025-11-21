@@ -80,7 +80,7 @@ export interface SchemaBuilderState {
     longitude?: string;
     combinedField?: string;
     combinedFormat?: string;
-    addressField?: string;
+    locationField?: string; // Location field for geocoding (address, city, venue, etc.)
     confidence: number;
   };
 

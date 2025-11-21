@@ -46,7 +46,7 @@ interface DuplicateAnalysisResult {
 const skipDeduplication = async (
   payload: Payload,
   importJobId: string | number,
-  job: ImportJob,
+  totalRows: number,
   dataset: Dataset,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<boolean> => {
@@ -62,12 +62,12 @@ const skipDeduplication = async (
           strategy: "disabled",
           internal: [],
           external: [],
-          summary: ProgressTrackingService.createDeduplicationProgress(
-            job.progress?.total ?? 0,
-            job.progress?.total ?? 0,
-            0,
-            0
-          ),
+          summary: {
+            totalRows,
+            uniqueRows: totalRows,
+            internalDuplicates: 0,
+            externalDuplicates: 0,
+          },
         },
       },
     });
@@ -76,15 +76,17 @@ const skipDeduplication = async (
   return false;
 };
 
-const analyzeInternalDuplicates = (
+const analyzeInternalDuplicates = async (
+  payload: Payload,
+  importJobId: string | number,
   filePath: string,
   dataset: Dataset,
   job: ImportJob
-): {
+): Promise<{
   internalDuplicates: DuplicateAnalysisResult["internalDuplicates"];
   uniqueIdMap: Map<string, number>;
   totalRows: number;
-} => {
+}> => {
   const internalDuplicates: DuplicateAnalysisResult["internalDuplicates"] = [];
   const uniqueIdMap = new Map<string, number>();
   let totalRows = 0;
@@ -118,6 +120,17 @@ const analyzeInternalDuplicates = (
     }
 
     batchNumber++;
+
+    // Update progress after each batch
+    await ProgressTrackingService.updateStageProgress(
+      payload,
+      importJobId,
+      PROCESSING_STAGE.ANALYZE_DUPLICATES,
+      totalRows,
+      rows.length
+    );
+
+    await ProgressTrackingService.completeBatch(payload, importJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES, batchNumber);
   }
 
   return { internalDuplicates, uniqueIdMap, totalRows };
@@ -131,7 +144,7 @@ const analyzeExternalDuplicates = async (
   const uniqueIds = Array.from(uniqueIdMap.keys());
   const externalDuplicates: DuplicateAnalysisResult["externalDuplicates"] = [];
 
-  const CHUNK_SIZE = 1000;
+  const CHUNK_SIZE = BATCH_SIZES.DATABASE_CHUNK;
   for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
     const chunk = uniqueIds.slice(i, i + CHUNK_SIZE);
 
@@ -159,6 +172,91 @@ const analyzeExternalDuplicates = async (
   return externalDuplicates;
 };
 
+// Helper to count total rows in file
+const countTotalRows = (filePath: string, sheetIndex: number | null | undefined): number => {
+  const ANALYSIS_BATCH_SIZE = BATCH_SIZES.DUPLICATE_ANALYSIS;
+  let fileTotalRows = 0;
+  let countBatch = 0;
+
+  while (true) {
+    const rows = readBatchFromFile(filePath, {
+      sheetIndex: sheetIndex ?? undefined,
+      startRow: countBatch * ANALYSIS_BATCH_SIZE,
+      limit: ANALYSIS_BATCH_SIZE,
+    });
+    if (rows.length === 0) break;
+    fileTotalRows += rows.length;
+    countBatch++;
+  }
+
+  return fileTotalRows;
+};
+
+// Helper to perform full duplicate analysis
+const performDuplicateAnalysis = async (
+  payload: Payload,
+  importJobId: number | string,
+  filePath: string,
+  dataset: Dataset,
+  job: ImportJob,
+  fileTotalRows: number
+): Promise<{
+  internalDuplicates: DuplicateAnalysisResult["internalDuplicates"];
+  externalDuplicates: DuplicateAnalysisResult["externalDuplicates"];
+  totalRows: number;
+  uniqueRows: number;
+}> => {
+  await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES, fileTotalRows);
+
+  const { internalDuplicates, uniqueIdMap, totalRows } = await analyzeInternalDuplicates(
+    payload,
+    importJobId,
+    filePath,
+    dataset,
+    job
+  );
+
+  const externalDuplicates = await analyzeExternalDuplicates(payload, dataset, uniqueIdMap);
+  const uniqueRows = uniqueIdMap.size;
+
+  await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES);
+  await ProgressTrackingService.updatePostDeduplicationTotals(payload, importJobId, uniqueRows);
+
+  return { internalDuplicates, externalDuplicates, totalRows, uniqueRows };
+};
+
+// Helper to update job with duplicate results
+const updateJobWithDuplicates = async (
+  payload: Payload,
+  importJobId: number | string,
+  dataset: Dataset,
+  results: {
+    internalDuplicates: DuplicateAnalysisResult["internalDuplicates"];
+    externalDuplicates: DuplicateAnalysisResult["externalDuplicates"];
+    totalRows: number;
+    uniqueRows: number;
+  }
+): Promise<void> => {
+  await payload.update({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: importJobId,
+    data: {
+      duplicates: {
+        strategy: dataset.idStrategy?.type ?? "content-hash",
+        internal: results.internalDuplicates,
+        external: results.externalDuplicates,
+        summary: {
+          totalRows: results.totalRows,
+          uniqueRows: results.uniqueRows,
+          internalDuplicates: results.internalDuplicates.length,
+          externalDuplicates: results.externalDuplicates.length,
+        },
+      },
+      stage: PROCESSING_STAGE.DETECT_SCHEMA,
+    },
+  });
+};
+
 export const analyzeDuplicatesJob = {
   slug: JOB_TYPES.ANALYZE_DUPLICATES,
   handler: async (context: JobHandlerContext) => {
@@ -172,62 +270,52 @@ export const analyzeDuplicatesJob = {
     const startTime = Date.now();
 
     try {
-      // Get all required resources
       const { job, dataset, importFile } = await loadJobResources(payload, importJobId);
-
-      // Check if deduplication should be skipped
-      const shouldSkip = await skipDeduplication(payload, importJobId, job, dataset, logger);
-      if (shouldSkip) {
-        return { output: { skipped: true } };
-      }
-
-      // Get file path
       const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
       const filePath = path.join(uploadDir, importFile.filename ?? "");
 
-      // Analyze internal duplicates
-      const { internalDuplicates, uniqueIdMap, totalRows } = analyzeInternalDuplicates(filePath, dataset, job);
+      // Count total rows
+      const fileTotalRows = countTotalRows(filePath, job.sheetIndex);
 
-      // Analyze external duplicates
-      const externalDuplicates = await analyzeExternalDuplicates(payload, dataset, uniqueIdMap);
+      // Initialize progress tracking if needed (check if stages is empty or doesn't exist)
+      const stagesExist = job.progress?.stages && Object.keys(job.progress.stages).length > 0;
+      if (!stagesExist) {
+        await ProgressTrackingService.initializeStageProgress(payload, importJobId, fileTotalRows);
+        // Refetch job to get updated progress structure
+        const updatedJob = await payload.findByID({
+          collection: COLLECTION_NAMES.IMPORT_JOBS,
+          id: importJobId,
+        });
+        Object.assign(job, updatedJob);
+      }
 
-      // Calculate summary
-      const uniqueRows = uniqueIdMap.size;
+      // Check if deduplication should be skipped
+      const shouldSkip = await skipDeduplication(payload, importJobId, fileTotalRows, dataset, logger);
+      if (shouldSkip) {
+        await ProgressTrackingService.skipStage(payload, importJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES);
+        return { output: { skipped: true } };
+      }
 
-      // Update job with duplicate analysis
-      await payload.update({
-        collection: COLLECTION_NAMES.IMPORT_JOBS,
-        id: importJobId,
-        data: {
-          duplicates: {
-            strategy: dataset.idStrategy?.type ?? "content-hash",
-            internal: internalDuplicates,
-            external: externalDuplicates,
-            summary: {
-              totalRows,
-              uniqueRows,
-              internalDuplicates: internalDuplicates.length,
-              externalDuplicates: externalDuplicates.length,
-            },
-          },
-          stage: PROCESSING_STAGE.DETECT_SCHEMA,
-        },
-      });
+      // Perform duplicate analysis
+      const results = await performDuplicateAnalysis(payload, importJobId, filePath, dataset, job, fileTotalRows);
+
+      // Update job with results
+      await updateJobWithDuplicates(payload, importJobId, dataset, results);
 
       logPerformance("Duplicate analysis", Date.now() - startTime, {
         importJobId,
-        totalRows,
-        uniqueRows,
-        internalDuplicates: internalDuplicates.length,
-        externalDuplicates: externalDuplicates.length,
+        totalRows: results.totalRows,
+        uniqueRows: results.uniqueRows,
+        internalDuplicates: results.internalDuplicates.length,
+        externalDuplicates: results.externalDuplicates.length,
       });
 
       return {
         output: {
-          totalRows,
-          uniqueRows,
-          internalDuplicates: internalDuplicates.length,
-          externalDuplicates: externalDuplicates.length,
+          totalRows: results.totalRows,
+          uniqueRows: results.uniqueRows,
+          internalDuplicates: results.internalDuplicates.length,
+          externalDuplicates: results.externalDuplicates.length,
         },
       };
     } catch (error) {

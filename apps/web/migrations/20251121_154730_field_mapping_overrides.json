@@ -1,5 +1,5 @@
 {
-  "id": "ca858eb4-fc8e-4498-8e14-4acb6e0a0614",
+  "id": "bbbe7abd-e487-482a-9f2f-1f17ad24c1e3",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -672,6 +672,156 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "payload.datasets_import_transforms": {
+      "name": "datasets_import_transforms",
+      "schema": "payload",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "enum_datasets_import_transforms_type",
+          "typeSchema": "payload",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'rename'"
+        },
+        "from": {
+          "name": "from",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "to": {
+          "name": "to",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "added_at": {
+          "name": "added_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "added_by_id": {
+          "name": "added_by_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "auto_detected": {
+          "name": "auto_detected",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "datasets_import_transforms_order_idx": {
+          "name": "datasets_import_transforms_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "datasets_import_transforms_parent_id_idx": {
+          "name": "datasets_import_transforms_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "datasets_import_transforms_added_by_idx": {
+          "name": "datasets_import_transforms_added_by_idx",
+          "columns": [
+            {
+              "expression": "added_by_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "datasets_import_transforms_added_by_id_users_id_fk": {
+          "name": "datasets_import_transforms_added_by_id_users_id_fk",
+          "tableFrom": "datasets_import_transforms",
+          "tableTo": "users",
+          "schemaTo": "payload",
+          "columnsFrom": ["added_by_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "datasets_import_transforms_parent_id_fk": {
+          "name": "datasets_import_transforms_parent_id_fk",
+          "tableFrom": "datasets_import_transforms",
+          "tableTo": "datasets",
+          "schemaTo": "payload",
+          "columnsFrom": ["_parent_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "payload.datasets": {
       "name": "datasets",
       "schema": "payload",
@@ -731,7 +881,7 @@
           "typeSchema": "payload",
           "primaryKey": false,
           "notNull": false,
-          "default": "'external'"
+          "default": "'auto'"
         },
         "id_strategy_external_id_path": {
           "name": "id_strategy_external_id_path",
@@ -880,6 +1030,24 @@
         },
         "field_mapping_overrides_timestamp_path": {
           "name": "field_mapping_overrides_timestamp_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "field_mapping_overrides_latitude_path": {
+          "name": "field_mapping_overrides_latitude_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "field_mapping_overrides_longitude_path": {
+          "name": "field_mapping_overrides_longitude_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "field_mapping_overrides_location_path": {
+          "name": "field_mapping_overrides_location_path",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
@@ -1228,6 +1396,162 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "payload._datasets_v_version_import_transforms": {
+      "name": "_datasets_v_version_import_transforms",
+      "schema": "payload",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "_uuid": {
+          "name": "_uuid",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "enum__datasets_v_version_import_transforms_type",
+          "typeSchema": "payload",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'rename'"
+        },
+        "from": {
+          "name": "from",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "to": {
+          "name": "to",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "added_at": {
+          "name": "added_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "added_by_id": {
+          "name": "added_by_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "auto_detected": {
+          "name": "auto_detected",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "_datasets_v_version_import_transforms_order_idx": {
+          "name": "_datasets_v_version_import_transforms_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "_datasets_v_version_import_transforms_parent_id_idx": {
+          "name": "_datasets_v_version_import_transforms_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "_datasets_v_version_import_transforms_added_by_idx": {
+          "name": "_datasets_v_version_import_transforms_added_by_idx",
+          "columns": [
+            {
+              "expression": "added_by_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "_datasets_v_version_import_transforms_added_by_id_users_id_fk": {
+          "name": "_datasets_v_version_import_transforms_added_by_id_users_id_fk",
+          "tableFrom": "_datasets_v_version_import_transforms",
+          "tableTo": "users",
+          "schemaTo": "payload",
+          "columnsFrom": ["added_by_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "_datasets_v_version_import_transforms_parent_id_fk": {
+          "name": "_datasets_v_version_import_transforms_parent_id_fk",
+          "tableFrom": "_datasets_v_version_import_transforms",
+          "tableTo": "_datasets_v",
+          "schemaTo": "payload",
+          "columnsFrom": ["_parent_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "payload._datasets_v": {
       "name": "_datasets_v",
       "schema": "payload",
@@ -1293,7 +1617,7 @@
           "typeSchema": "payload",
           "primaryKey": false,
           "notNull": false,
-          "default": "'external'"
+          "default": "'auto'"
         },
         "version_id_strategy_external_id_path": {
           "name": "version_id_strategy_external_id_path",
@@ -1442,6 +1766,24 @@
         },
         "version_field_mapping_overrides_timestamp_path": {
           "name": "version_field_mapping_overrides_timestamp_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_field_mapping_overrides_latitude_path": {
+          "name": "version_field_mapping_overrides_latitude_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_field_mapping_overrides_longitude_path": {
+          "name": "version_field_mapping_overrides_longitude_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_field_mapping_overrides_location_path": {
+          "name": "version_field_mapping_overrides_location_path",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
@@ -4317,6 +4659,24 @@
           "primaryKey": false,
           "notNull": false
         },
+        "detected_field_mappings_latitude_path": {
+          "name": "detected_field_mappings_latitude_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "detected_field_mappings_longitude_path": {
+          "name": "detected_field_mappings_longitude_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "detected_field_mappings_location_path": {
+          "name": "detected_field_mappings_location_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "schema_validation_is_compatible": {
           "name": "schema_validation_is_compatible",
           "type": "boolean",
@@ -4331,6 +4691,12 @@
         },
         "schema_validation_new_fields": {
           "name": "schema_validation_new_fields",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "schema_validation_transform_suggestions": {
+          "name": "schema_validation_transform_suggestions",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
@@ -4835,6 +5201,24 @@
           "primaryKey": false,
           "notNull": false
         },
+        "version_detected_field_mappings_latitude_path": {
+          "name": "version_detected_field_mappings_latitude_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_detected_field_mappings_longitude_path": {
+          "name": "version_detected_field_mappings_longitude_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_detected_field_mappings_location_path": {
+          "name": "version_detected_field_mappings_location_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "version_schema_validation_is_compatible": {
           "name": "version_schema_validation_is_compatible",
           "type": "boolean",
@@ -4849,6 +5233,12 @@
         },
         "version_schema_validation_new_fields": {
           "name": "version_schema_validation_new_fields",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_schema_validation_transform_suggestions": {
+          "name": "version_schema_validation_transform_suggestions",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
@@ -13171,6 +13561,11 @@
       "schema": "payload",
       "values": ["parse", "cast", "custom", "reject"]
     },
+    "payload.enum_datasets_import_transforms_type": {
+      "name": "enum_datasets_import_transforms_type",
+      "schema": "payload",
+      "values": ["rename"]
+    },
     "payload.enum_datasets_id_strategy_type": {
       "name": "enum_datasets_id_strategy_type",
       "schema": "payload",
@@ -13210,6 +13605,11 @@
       "name": "enum__transforms_v_to_type",
       "schema": "payload",
       "values": ["string", "number", "boolean", "date", "array", "object"]
+    },
+    "payload.enum__datasets_v_version_import_transforms_type": {
+      "name": "enum__datasets_v_version_import_transforms_type",
+      "schema": "payload",
+      "values": ["rename"]
     },
     "payload.enum__datasets_v_version_id_strategy_type": {
       "name": "enum__datasets_v_version_id_strategy_type",

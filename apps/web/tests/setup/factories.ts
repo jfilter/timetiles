@@ -344,6 +344,35 @@ export interface MockImportJobOptions {
 }
 
 export const createMockImportJob = (options: MockImportJobOptions = {}) => {
+  // Create a properly initialized stage progress structure
+  const createStageProgress = () => ({
+    status: "pending" as const,
+    startedAt: null,
+    completedAt: null,
+    rowsProcessed: 0,
+    rowsTotal: 0,
+    batchesProcessed: 0,
+    batchesTotal: 0,
+    currentBatchRows: 0,
+    currentBatchTotal: 0,
+    rowsPerSecond: null,
+    estimatedSecondsRemaining: null,
+  });
+
+  const defaultProgress = {
+    stages: {
+      "analyze-duplicates": createStageProgress(),
+      "detect-schema": createStageProgress(),
+      "validate-schema": createStageProgress(),
+      "await-approval": createStageProgress(),
+      "create-schema-version": createStageProgress(),
+      "geocode-batch": createStageProgress(),
+      "create-events": createStageProgress(),
+    },
+    overallPercentage: 0,
+    estimatedCompletionTime: null,
+  };
+
   return {
     id: options.id ?? TEST_IDS.IMPORT_JOB,
     dataset: options.dataset ?? TEST_IDS.DATASET,
@@ -355,12 +384,24 @@ export const createMockImportJob = (options: MockImportJobOptions = {}) => {
       ? {
           internal: [{ rowNumber: 1, uniqueId: "dup-1" }],
           external: [{ rowNumber: 2, uniqueId: "dup-2" }],
+          summary: {
+            totalRows: 3,
+            uniqueRows: 1,
+            internalDuplicates: 1,
+            externalDuplicates: 1,
+          },
         }
       : {
           internal: [],
           external: [],
+          summary: {
+            totalRows: 100,
+            uniqueRows: 100,
+            internalDuplicates: 0,
+            externalDuplicates: 0,
+          },
         },
-    progress: options.progress ?? { current: 0, total: 100 },
+    progress: options.progress ?? defaultProgress,
     errors: options.errors ?? [],
     schemaBuilderState: options.schemaBuilderState,
   };

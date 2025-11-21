@@ -10,11 +10,56 @@ import type { Payload, PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { createJobLogger, logError } from "@/lib/logger";
+import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { SchemaVersioningService } from "@/lib/services/schema-versioning";
 import { getFieldStats } from "@/lib/types/schema-detection";
 
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
+
+// Helper to check if schema version creation should be skipped
+const shouldSkipSchemaVersionCreation = (job: {
+  datasetSchemaVersion?: unknown;
+  schemaValidation?: { approved?: boolean | null };
+}): { skip: boolean; reason: string } => {
+  let result: { skip: boolean; reason: string } = { skip: false, reason: "" };
+
+  if (job.datasetSchemaVersion) {
+    result = { skip: true, reason: "Schema version already exists" };
+  } else if (!job.schemaValidation?.approved) {
+    result = { skip: true, reason: "Schema not approved" };
+  }
+
+  return result;
+};
+
+// Helper to get dataset from job
+const getDatasetFromJob = async (payload: Payload, job: { dataset: unknown }): Promise<{ id: number | string }> => {
+  const dataset =
+    typeof job.dataset === "object" && job.dataset
+      ? job.dataset
+      : await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: job.dataset as number | string });
+
+  if (!dataset) {
+    throw new Error("Dataset not found");
+  }
+
+  return dataset as { id: number | string };
+};
+
+// Helper to extract approvedBy user ID
+const getApprovedById = (approvedBy: unknown): number | null => {
+  // If it's a populated user object with an id property
+  if (typeof approvedBy === "object" && approvedBy && "id" in approvedBy) {
+    return approvedBy.id as number;
+  }
+  // If it's a direct user ID
+  if (typeof approvedBy === "number") {
+    return approvedBy;
+  }
+  // Otherwise null
+  return null;
+};
 
 export const createSchemaVersionJob = {
   slug: JOB_TYPES.CREATE_SCHEMA_VERSION,
@@ -38,35 +83,27 @@ export const createSchemaVersionJob = {
         throw new Error(`Import job not found: ${importJobId}`);
       }
 
-      // Skip if schema version already exists
-      if (job.datasetSchemaVersion) {
-        logger.info("Schema version already exists, skipping", {
-          importJobId,
-          schemaVersionId: job.datasetSchemaVersion,
-        });
+      // Start CREATE_SCHEMA_VERSION stage
+      const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
+      await ProgressTrackingService.startStage(
+        payload,
+        importJobId,
+        PROCESSING_STAGE.CREATE_SCHEMA_VERSION,
+        uniqueRows
+      );
+
+      // Check if we should skip
+      const skipCheck = shouldSkipSchemaVersionCreation(job);
+      if (skipCheck.skip) {
+        logger.info("Skipping schema version creation", { importJobId, reason: skipCheck.reason });
+        await ProgressTrackingService.skipStage(payload, importJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
         return { output: { skipped: true } };
       }
 
-      // Skip if not approved
-      if (!job.schemaValidation?.approved) {
-        logger.warn("Schema not approved, skipping version creation", { importJobId });
-        return { output: { skipped: true } };
-      }
-
-      // Get dataset
-      const dataset =
-        typeof job.dataset === "object"
-          ? job.dataset
-          : await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: job.dataset });
-
-      if (!dataset) {
-        throw new Error("Dataset not found");
-      }
-
-      // Create schema version
+      // Get dataset and prepare schema version data
+      const dataset = await getDatasetFromJob(payload, job);
       const fieldStats = getFieldStats(job);
-      const approvedBy = job.schemaValidation?.approvedBy;
-      const approvedById = typeof approvedBy === "object" && approvedBy ? approvedBy.id : approvedBy;
+      const approvedById = getApprovedById(job.schemaValidation?.approvedBy);
 
       logger.info("Creating schema version", {
         importJobId,
@@ -99,6 +136,9 @@ export const createSchemaVersionJob = {
         importJobId,
         schemaVersionId: schemaVersion.id,
       });
+
+      // Complete CREATE_SCHEMA_VERSION stage
+      await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
 
       // Transition to next stage
       await payload.update({

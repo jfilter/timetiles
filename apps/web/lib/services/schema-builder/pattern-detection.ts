@@ -178,12 +178,12 @@ const findCoordinateField = (
   return bestField ? { field: bestField, confidence: bestConfidence } : undefined;
 };
 
-const findAddressField = (fieldStats: Record<string, FieldStatistics>): string | undefined => {
+const findLocationField = (fieldStats: Record<string, FieldStatistics>): string | undefined => {
   for (const [fieldPath, stats] of Object.entries(fieldStats)) {
     const fieldName = fieldPath.split(".").pop() ?? "";
-    // Check if field name matches address patterns
+    // Check if field name matches address/location patterns
     const matchesPattern = ADDRESS_PATTERNS.some((pattern) => pattern.test(fieldName));
-    // Check if field has string type (addresses are strings)
+    // Check if field has string type (locations are strings)
     const hasStringType = (stats.typeDistribution["string"] ?? 0) > 0;
 
     if (matchesPattern && hasStringType) {
@@ -231,7 +231,7 @@ export const detectGeoFields = (
   longitude?: string;
   combinedField?: string;
   combinedFormat?: string;
-  addressField?: string;
+  locationField?: string;
   confidence: number;
 } => {
   // First, try to find separate lat/lon fields
@@ -240,37 +240,37 @@ export const detectGeoFields = (
 
   // If we found both lat and lon, use them
   if (latResult && lngResult) {
-    const addressField = findAddressField(state.fieldStats);
+    const locationField = findLocationField(state.fieldStats);
     // Average confidence of both fields
     const confidence = (latResult.confidence + lngResult.confidence) / 2;
 
-    return { latitude: latResult.field, longitude: lngResult.field, addressField, confidence };
+    return { latitude: latResult.field, longitude: lngResult.field, locationField, confidence };
   }
 
   // If we didn't find separate fields, try to find a combined field
   const combinedResult = findCombinedCoordinateField(state.fieldStats);
   if (combinedResult) {
-    const addressField = findAddressField(state.fieldStats);
+    const locationField = findLocationField(state.fieldStats);
     return {
       combinedField: combinedResult.field,
       combinedFormat: combinedResult.format,
-      addressField,
+      locationField,
       confidence: combinedResult.confidence,
     };
   }
 
   // If we found only one coordinate field, still return it with its confidence
   if (latResult ?? lngResult) {
-    const addressField = findAddressField(state.fieldStats);
+    const locationField = findLocationField(state.fieldStats);
     // Use the confidence of whichever field we found, but halve it since we're missing the other
     const confidence = (latResult?.confidence ?? lngResult?.confidence ?? 0) * 0.5;
 
-    return { latitude: latResult?.field, longitude: lngResult?.field, addressField, confidence };
+    return { latitude: latResult?.field, longitude: lngResult?.field, locationField, confidence };
   }
 
-  // No coordinate fields found, just check for address
-  const addressField = findAddressField(state.fieldStats);
-  return { addressField, confidence: 0 };
+  // No coordinate fields found, just check for location
+  const locationField = findLocationField(state.fieldStats);
+  return { locationField, confidence: 0 };
 };
 
 /**

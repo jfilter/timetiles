@@ -224,7 +224,7 @@ describe("ProgressiveSchemaBuilder", () => {
       builder.processBatch(records);
       const state = builder.getState();
 
-      expect(state.detectedGeoFields.addressField).toBe("address");
+      expect(state.detectedGeoFields.locationField).toBe("address");
       expect(state.detectedGeoFields.latitude).toBe("latitude");
       expect(state.detectedGeoFields.longitude).toBe("longitude");
       expect(state.detectedGeoFields.confidence).toBeGreaterThan(0.8); // High confidence for valid coordinate fields
@@ -240,8 +240,8 @@ describe("ProgressiveSchemaBuilder", () => {
       builder.processBatch(records);
       const state = builder.getState();
 
-      // Should detect street as address field (matches /^(address|addr|location|place|street|city|state|zip|postal|country)/i)
-      expect(state.detectedGeoFields.addressField).toBe("street");
+      // Should detect street as location field (matches /^(address|addr|location|place|street|city|state|zip|postal|country)/i)
+      expect(state.detectedGeoFields.locationField).toBe("street");
       // No coordinates detected
       expect(state.detectedGeoFields.latitude).toBeUndefined();
       expect(state.detectedGeoFields.longitude).toBeUndefined();

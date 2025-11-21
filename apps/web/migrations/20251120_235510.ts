@@ -1,5 +1,5 @@
-import type { MigrateUpArgs, MigrateDownArgs} from '@payloadcms/db-postgres';
-import { sql } from '@payloadcms/db-postgres'
+import type { MigrateUpArgs, MigrateDownArgs } from "@payloadcms/db-postgres";
+import { sql } from "@payloadcms/db-postgres";
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
@@ -45,7 +45,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "datasets_import_transforms_added_by_idx" ON "payload"."datasets_import_transforms" USING btree ("added_by_id");
   CREATE INDEX "_datasets_v_version_import_transforms_order_idx" ON "payload"."_datasets_v_version_import_transforms" USING btree ("_order");
   CREATE INDEX "_datasets_v_version_import_transforms_parent_id_idx" ON "payload"."_datasets_v_version_import_transforms" USING btree ("_parent_id");
-  CREATE INDEX "_datasets_v_version_import_transforms_added_by_idx" ON "payload"."_datasets_v_version_import_transforms" USING btree ("added_by_id");`)
+  CREATE INDEX "_datasets_v_version_import_transforms_added_by_idx" ON "payload"."_datasets_v_version_import_transforms" USING btree ("added_by_id");`);
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
@@ -55,5 +55,5 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   ALTER TABLE "payload"."import_jobs" DROP COLUMN "schema_validation_transform_suggestions";
   ALTER TABLE "payload"."_import_jobs_v" DROP COLUMN "version_schema_validation_transform_suggestions";
   DROP TYPE "payload"."enum_datasets_import_transforms_type";
-  DROP TYPE "payload"."enum__datasets_v_version_import_transforms_type";`)
+  DROP TYPE "payload"."enum__datasets_v_version_import_transforms_type";`);
 }

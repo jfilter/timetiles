@@ -20,7 +20,6 @@ import { read, utils } from "xlsx";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
-import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import type { Dataset } from "@/payload-types";
 
 import type { DatasetDetectionJobInput } from "../types/job-inputs";
@@ -99,7 +98,7 @@ const processExcelFile = (filePath: string): { sheets: SheetInfo[]; workbook: un
 const handleSingleSheet = async (
   payload: Payload,
   importFile: { id: string | number; originalName?: string | null; metadata?: unknown },
-  sheet: SheetInfo,
+  _sheet: SheetInfo,
   catalogId?: string,
   datasetMapping?: { mappingType: string; singleDataset?: unknown }
 ) => {
@@ -131,7 +130,11 @@ const handleSingleSheet = async (
       dataset: dataset.id,
       sheetIndex: 0,
       stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
-      progress: ProgressTrackingService.createInitialProgress(sheet.rowCount),
+      progress: {
+        stages: {},
+        overallPercentage: 0,
+        estimatedCompletionTime: null,
+      },
     },
   });
 };
@@ -212,7 +215,11 @@ const processSheetWithMapping = async (
       dataset: dataset.id,
       sheetIndex: sheet.index,
       stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
-      progress: ProgressTrackingService.createInitialProgress(sheet.rowCount),
+      progress: {
+        stages: {},
+        overallPercentage: 0,
+        estimatedCompletionTime: null,
+      },
     },
   });
 };

@@ -21,6 +21,10 @@ interface ReadBatchOptions {
   limit: number;
 }
 
+interface ReadAllOptions {
+  sheetIndex?: number;
+}
+
 /**
  * Read a batch of rows from a file (CSV or Excel).
  */
@@ -41,6 +45,26 @@ export const readBatchFromFile = (filePath: string, options: ReadBatchOptions): 
       filePath,
       startRow,
       limit,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+};
+
+/**
+ * Read all rows from a file (CSV or Excel).
+ * Uses batch reading internally but returns all rows at once.
+ */
+export const readAllRowsFromFile = (filePath: string, options: ReadAllOptions = {}): Record<string, unknown>[] => {
+  const { sheetIndex = 0 } = options;
+
+  try {
+    const totalRows = getFileRowCount(filePath, sheetIndex);
+    return readBatchFromFile(filePath, { sheetIndex, startRow: 0, limit: totalRows });
+  } catch (error) {
+    logger.error("Failed to read all rows from file", {
+      filePath,
+      sheetIndex,
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;

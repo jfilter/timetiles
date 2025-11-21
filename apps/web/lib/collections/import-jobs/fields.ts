@@ -65,26 +65,25 @@ export const importJobFields: Field[] = [
     type: "group",
     fields: [
       {
-        name: "current",
-        type: "number",
-        defaultValue: 0,
+        name: "stages",
+        type: "json",
         admin: {
-          description: "Total rows/records processed so far",
+          description: "Detailed progress information for each processing stage",
         },
       },
       {
-        name: "total",
-        type: "number",
-        admin: {
-          description: "Total rows/records to process",
-        },
-      },
-      {
-        name: "batchNumber",
+        name: "overallPercentage",
         type: "number",
         defaultValue: 0,
         admin: {
-          description: "Current batch being processed",
+          description: "Overall progress percentage (0-100), weighted by stage time estimates",
+        },
+      },
+      {
+        name: "estimatedCompletionTime",
+        type: "date",
+        admin: {
+          description: "Estimated completion time for the entire import",
         },
       },
     ],
@@ -145,6 +144,30 @@ export const importJobFields: Field[] = [
         type: "text",
         admin: {
           description: "Path to timestamp/date field in source data",
+          readOnly: true,
+        },
+      },
+      {
+        name: "latitudePath",
+        type: "text",
+        admin: {
+          description: "Path to latitude coordinate field in source data",
+          readOnly: true,
+        },
+      },
+      {
+        name: "longitudePath",
+        type: "text",
+        admin: {
+          description: "Path to longitude coordinate field in source data",
+          readOnly: true,
+        },
+      },
+      {
+        name: "locationPath",
+        type: "text",
+        admin: {
+          description: "Path to location/address field in source data (for geocoding)",
           readOnly: true,
         },
       },
@@ -328,38 +351,12 @@ export const importJobFields: Field[] = [
 
   // Geocoding
   {
-    name: "geocodingCandidates",
-    type: "json",
-    admin: {
-      description: "Fields identified for geocoding",
-      condition: (data) => data.geocodingCandidates,
-    },
-  },
-  {
     name: "geocodingResults",
     type: "json",
     admin: {
-      description: "Geocoding results by row number",
+      description: "Geocoding results by location string (locationString → coordinates)",
       condition: (data) => data.geocodingResults,
     },
-  },
-  {
-    name: "geocodingProgress",
-    type: "group",
-    admin: {
-      condition: (data) => data.stage === "geocode-batch",
-    },
-    fields: [
-      {
-        name: "current",
-        type: "number",
-        defaultValue: 0,
-      },
-      {
-        name: "total",
-        type: "number",
-      },
-    ],
   },
 
   // Results
