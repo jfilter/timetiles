@@ -9,7 +9,14 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ENV_FILE="$SCRIPT_DIR/.env.production"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.prod.yml"
-DC_CMD="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE"
+TEST_OVERRIDE="$SCRIPT_DIR/docker-compose.test.yml"
+
+# Use test override if it exists (for CI/testing)
+if [ -f "$TEST_OVERRIDE" ]; then
+    DC_CMD="docker compose -f $COMPOSE_FILE -f $TEST_OVERRIDE --env-file $ENV_FILE"
+else
+    DC_CMD="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE"
+fi
 
 # Change to project root for build context
 cd "$SCRIPT_DIR/.."
