@@ -67,10 +67,8 @@ export class TestEnvironmentBuilder {
    * Create a new test environment with the specified options.
    */
   async createTestEnvironment(options: TestEnvironmentOptions = {}): Promise<TestEnvironment> {
-    const {
-      collections = ["events", "catalogs", "datasets", "users"] as CollectionName[],
-      createTempDir = true,
-    } = options;
+    const { collections = ["events", "catalogs", "datasets", "users"] as CollectionName[], createTempDir = true } =
+      options;
 
     logger.info("Creating test environment", {
       collections,

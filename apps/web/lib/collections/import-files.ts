@@ -458,7 +458,11 @@ const ImportFiles: CollectionConfig = {
         const logger = createRequestLogger("import-files-beforechange");
 
         // Skip rate limiting for seed data or test environments
-        const isSeedData = data.metadata && typeof data.metadata === "object" && "source" in data.metadata && data.metadata.source === "seed-data";
+        const isSeedData =
+          data.metadata &&
+          typeof data.metadata === "object" &&
+          "source" in data.metadata &&
+          data.metadata.source === "seed-data";
         const isTestEnv = process.env.NODE_ENV === "test" || process.env.DATABASE_URL?.includes("_test");
 
         let clientId: string | undefined;
