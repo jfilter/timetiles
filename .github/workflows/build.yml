@@ -1,0 +1,69 @@
+name: Build & Quality Checks
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build & Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Generate API documentation
+        timeout-minutes: 3
+        run: pnpm docs:api
+        working-directory: apps/docs
+
+      - name: Lint code
+        timeout-minutes: 3
+        run: pnpm lint --filter=!docs
+
+      - name: Type check
+        timeout-minutes: 3
+        run: pnpm typecheck
+
+      - name: Lint infrastructure
+        timeout-minutes: 2
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          export PATH="$HOME/.local/bin:$PATH"
+
+          # Install linting tools
+          curl -sSfL https://github.com/rhysd/actionlint/releases/download/v1.7.4/actionlint_1.7.4_linux_amd64.tar.gz | tar xz -C "$HOME/.local/bin" actionlint
+          wget -q https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 -O "$HOME/.local/bin/hadolint"
+          curl -sSfL https://github.com/mrtazz/checkmake/releases/download/0.2.2/checkmake-0.2.2.linux.amd64 -o "$HOME/.local/bin/checkmake"
+          chmod +x "$HOME/.local/bin/hadolint" "$HOME/.local/bin/actionlint" "$HOME/.local/bin/checkmake"
+
+          pnpm lint:devops
+        continue-on-error: true
+
+      - name: Build web app
+        timeout-minutes: 10
+        run: pnpm build:compile
+        working-directory: apps/web
+        env:
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+          PAYLOAD_SECRET: test-secret-key
+          NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: apps/web/.next
+          include-hidden-files: true
+          retention-days: 1

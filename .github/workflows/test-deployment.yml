@@ -1,24 +1,7 @@
 name: Test Production Deployment
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'deployment/**'
-      - 'deploy.sh'
-      - 'docker compose.dev.yml'
-      - '.dockerignore'
-      - '.github/workflows/test-deployment.yml'
-
-  pull_request:
-    branches: [main]
-    paths:
-      - 'deployment/**'
-      - 'deploy.sh'
-      - 'docker compose.dev.yml'
-      - '.dockerignore'
-      - '.github/workflows/test-deployment.yml'
-      
+  workflow_call:
   workflow_dispatch:
     inputs:
       debug:
@@ -266,7 +249,7 @@ jobs:
           ./deploy.sh backup list
 
           # Get the latest backup file (filename only, deploy.sh prepends backup dir)
-          LATEST_BACKUP=$(ls -t backups/db-*.sql.gz | head -1 | xargs basename)
+          LATEST_BACKUP=$(find backups -name 'db-*.sql.gz' -type f -printf '%T@ %p\n' | sort -rn | head -1 | cut -d' ' -f2 | xargs basename)
           echo "Latest backup: $LATEST_BACKUP"
 
           # Delete test data

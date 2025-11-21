@@ -79,35 +79,43 @@ jobs:
       - name: Create summary
         if: always()
         run: |
-          echo "## 📦 Dependency Scan Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
+          {
+            echo "## 📦 Dependency Scan Results"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
           if [ -f trivy-deps-report.json ]; then
             # Extract vulnerability counts
             CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-deps-report.json)
             HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-deps-report.json)
             MEDIUM=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="MEDIUM")] | length' trivy-deps-report.json)
             LOW=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="LOW")] | length' trivy-deps-report.json)
-            
-            echo "### Vulnerability Summary" >> $GITHUB_STEP_SUMMARY
-            echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
-            echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-            echo "| 🔴 CRITICAL | ${CRITICAL:-0} |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🟠 HIGH | ${HIGH:-0} |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🟡 MEDIUM | ${MEDIUM:-0} |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🟢 LOW | ${LOW:-0} |" >> $GITHUB_STEP_SUMMARY
-            
+
+            {
+              echo "### Vulnerability Summary"
+              echo "| Severity | Count |"
+              echo "|----------|-------|"
+              echo "| 🔴 CRITICAL | ${CRITICAL:-0} |"
+              echo "| 🟠 HIGH | ${HIGH:-0} |"
+              echo "| 🟡 MEDIUM | ${MEDIUM:-0} |"
+              echo "| 🟢 LOW | ${LOW:-0} |"
+            } >> "$GITHUB_STEP_SUMMARY"
+
             # Check for license issues
             LICENSE_ISSUES=$(jq '[.Results[]?.Licenses[]? | select(.Severity=="CRITICAL" or .Severity=="HIGH")] | length' trivy-deps-report.json)
             if [ "${LICENSE_ISSUES:-0}" -gt 0 ]; then
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "⚠️ **License Issues Found:** $LICENSE_ISSUES" >> $GITHUB_STEP_SUMMARY
+              {
+                echo ""
+                echo "⚠️ **License Issues Found:** $LICENSE_ISSUES"
+              } >> "$GITHUB_STEP_SUMMARY"
             fi
-            
+
             # Fail if critical vulnerabilities found
             if [ "${CRITICAL:-0}" -gt 0 ]; then
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "❌ **Build failed due to $CRITICAL critical vulnerabilities**" >> $GITHUB_STEP_SUMMARY
+              {
+                echo ""
+                echo "❌ **Build failed due to $CRITICAL critical vulnerabilities**"
+              } >> "$GITHUB_STEP_SUMMARY"
               exit 1
             fi
           fi
@@ -174,53 +182,63 @@ jobs:
       - name: Create Docker scan summary
         if: always()
         run: |
-          echo "## 🐳 Docker Image Scan Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
+          {
+            echo "## 🐳 Docker Image Scan Results"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
           if [ -f trivy-docker-report.json ]; then
             # Extract OS package vulnerabilities
             OS_CRITICAL=$(jq '[.Results[]? | select(.Class=="os-pkgs") | .Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-docker-report.json)
             OS_HIGH=$(jq '[.Results[]? | select(.Class=="os-pkgs") | .Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-docker-report.json)
-            
+
             # Extract Node.js vulnerabilities
             NODE_CRITICAL=$(jq '[.Results[]? | select(.Class=="lang-pkgs") | .Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-docker-report.json)
             NODE_HIGH=$(jq '[.Results[]? | select(.Class=="lang-pkgs") | .Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-docker-report.json)
-            
+
             # Extract secrets
             SECRETS=$(jq '[.Results[]? | select(.Class=="secret") | .Secrets[]?] | length' trivy-docker-report.json)
-            
+
             # Extract misconfigurations
             MISCONFIGS=$(jq '[.Results[]? | select(.MisconfSummary) | .MisconfSummary.Failures] | add // 0' trivy-docker-report.json)
-            
-            echo "### Scan Summary" >> $GITHUB_STEP_SUMMARY
-            echo "| Component | Critical | High |" >> $GITHUB_STEP_SUMMARY
-            echo "|-----------|----------|------|" >> $GITHUB_STEP_SUMMARY
-            echo "| OS Packages | $OS_CRITICAL | $OS_HIGH |" >> $GITHUB_STEP_SUMMARY
-            echo "| Node Dependencies | $NODE_CRITICAL | $NODE_HIGH |" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            
+
+            {
+              echo "### Scan Summary"
+              echo "| Component | Critical | High |"
+              echo "|-----------|----------|------|"
+              echo "| OS Packages | $OS_CRITICAL | $OS_HIGH |"
+              echo "| Node Dependencies | $NODE_CRITICAL | $NODE_HIGH |"
+              echo ""
+            } >> "$GITHUB_STEP_SUMMARY"
+
             if [ "$SECRETS" -gt 0 ]; then
-              echo "🚨 **Secrets Found:** $SECRETS" >> $GITHUB_STEP_SUMMARY
-              echo "Please review and remove any exposed credentials!" >> $GITHUB_STEP_SUMMARY
+              {
+                echo "🚨 **Secrets Found:** $SECRETS"
+                echo "Please review and remove any exposed credentials!"
+              } >> "$GITHUB_STEP_SUMMARY"
               exit 1
             fi
-            
+
             if [ "$MISCONFIGS" -gt 0 ]; then
-              echo "⚠️ **Misconfigurations Found:** $MISCONFIGS" >> $GITHUB_STEP_SUMMARY
+              echo "⚠️ **Misconfigurations Found:** $MISCONFIGS" >> "$GITHUB_STEP_SUMMARY"
             fi
-            
+
             # Calculate total critical vulnerabilities
             TOTAL_CRITICAL=$((OS_CRITICAL + NODE_CRITICAL))
             if [ "$TOTAL_CRITICAL" -gt 0 ]; then
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "❌ **Build failed due to $TOTAL_CRITICAL critical vulnerabilities in Docker image**" >> $GITHUB_STEP_SUMMARY
+              {
+                echo ""
+                echo "❌ **Build failed due to $TOTAL_CRITICAL critical vulnerabilities in Docker image**"
+              } >> "$GITHUB_STEP_SUMMARY"
               exit 1
             fi
-            
+
             # Get image size
-            IMAGE_SIZE=$(docker images --format "{{.Size}}" ${{ env.DOCKER_IMAGE }})
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "📦 **Image Size:** $IMAGE_SIZE" >> $GITHUB_STEP_SUMMARY
+            IMAGE_SIZE=$(docker images --format "{{.Size}}" "${{ env.DOCKER_IMAGE }}")
+            {
+              echo ""
+              echo "📦 **Image Size:** $IMAGE_SIZE"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Upload Docker scan reports
@@ -273,34 +291,39 @@ jobs:
       - name: Create config scan summary
         if: always()
         run: |
-          echo "## ⚙️ Configuration Scan Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
+          {
+            echo "## ⚙️ Configuration Scan Results"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
           if [ -f trivy-config-report.json ]; then
             # Count misconfigurations by severity
             CRITICAL=$(jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="CRITICAL")] | length' trivy-config-report.json)
             HIGH=$(jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="HIGH")] | length' trivy-config-report.json)
             MEDIUM=$(jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="MEDIUM")] | length' trivy-config-report.json)
             LOW=$(jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="LOW")] | length' trivy-config-report.json)
-            
-            echo "### Misconfiguration Summary" >> $GITHUB_STEP_SUMMARY
-            echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
-            echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-            echo "| 🔴 CRITICAL | ${CRITICAL:-0} |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🟠 HIGH | ${HIGH:-0} |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🟡 MEDIUM | ${MEDIUM:-0} |" >> $GITHUB_STEP_SUMMARY
-            echo "| 🟢 LOW | ${LOW:-0} |" >> $GITHUB_STEP_SUMMARY
-            
-            # List affected files
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Affected Files" >> $GITHUB_STEP_SUMMARY
+
+            {
+              echo "### Misconfiguration Summary"
+              echo "| Severity | Count |"
+              echo "|----------|-------|"
+              echo "| 🔴 CRITICAL | ${CRITICAL:-0} |"
+              echo "| 🟠 HIGH | ${HIGH:-0} |"
+              echo "| 🟡 MEDIUM | ${MEDIUM:-0} |"
+              echo "| 🟢 LOW | ${LOW:-0} |"
+              echo ""
+              echo "### Affected Files"
+            } >> "$GITHUB_STEP_SUMMARY"
+
             jq -r '.Results[]? | select(.Misconfigurations) | .Target' trivy-config-report.json | while read -r file; do
-              echo "- \`$file\`" >> $GITHUB_STEP_SUMMARY
+              echo "- \`$file\`" >> "$GITHUB_STEP_SUMMARY"
             done
-            
+
             if [ "${CRITICAL:-0}" -gt 0 ]; then
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "❌ **Critical misconfigurations found**" >> $GITHUB_STEP_SUMMARY
+              {
+                echo ""
+                echo "❌ **Critical misconfigurations found**"
+              } >> "$GITHUB_STEP_SUMMARY"
               # Don't fail the build for config issues, just warn
             fi
           fi
@@ -359,30 +382,36 @@ jobs:
       - name: Create secret scan summary
         if: always()
         run: |
-          echo "## 🔐 Secret Scan Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
+          {
+            echo "## 🔐 Secret Scan Results"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
           if [ -f trivy-secrets-report.json ]; then
             # Count secrets found
             SECRET_COUNT=$(jq '[.Results[]?.Secrets[]?] | length' trivy-secrets-report.json)
-            
+
             if [ "$SECRET_COUNT" -eq 0 ]; then
-              echo "✅ **No secrets detected**" >> $GITHUB_STEP_SUMMARY
+              echo "✅ **No secrets detected**" >> "$GITHUB_STEP_SUMMARY"
             else
-              echo "🚨 **$SECRET_COUNT potential secrets found!**" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "### Detected Secrets" >> $GITHUB_STEP_SUMMARY
-              echo "| File | Line | Type |" >> $GITHUB_STEP_SUMMARY
-              echo "|------|------|------|" >> $GITHUB_STEP_SUMMARY
-              
+              {
+                echo "🚨 **$SECRET_COUNT potential secrets found!**"
+                echo ""
+                echo "### Detected Secrets"
+                echo "| File | Line | Type |"
+                echo "|------|------|------|"
+              } >> "$GITHUB_STEP_SUMMARY"
+
               # List secret locations (without exposing the actual secrets)
               jq -r '.Results[]? | select(.Secrets) | .Target as $file | .Secrets[]? | "\($file) | \(.StartLine) | \(.Title)"' trivy-secrets-report.json | while IFS='|' read -r file line type; do
-                echo "| \`$file\` | $line | $type |" >> $GITHUB_STEP_SUMMARY
+                echo "| \`$file\` | $line | $type |" >> "$GITHUB_STEP_SUMMARY"
               done
-              
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "⚠️ **Action Required:** Review and remove any exposed credentials immediately!" >> $GITHUB_STEP_SUMMARY
-              
+
+              {
+                echo ""
+                echo "⚠️ **Action Required:** Review and remove any exposed credentials immediately!"
+              } >> "$GITHUB_STEP_SUMMARY"
+
               # Fail the build if secrets are found
               exit 1
             fi
@@ -526,11 +555,13 @@ jobs:
     steps:
       - name: Create final summary
         run: |
-          echo "# 🛡️ Security Scan Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "All security scans have been completed. Check individual job summaries for details." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Quick Links" >> $GITHUB_STEP_SUMMARY
-          echo "- [View Security Alerts](../../security/code-scanning)" >> $GITHUB_STEP_SUMMARY
-          echo "- [View Dependency Graph](../../network/dependencies)" >> $GITHUB_STEP_SUMMARY
-          echo "- [View Security Policy](../../security/policy)" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "# 🛡️ Security Scan Complete"
+            echo ""
+            echo "All security scans have been completed. Check individual job summaries for details."
+            echo ""
+            echo "## Quick Links"
+            echo "- [View Security Alerts](../../security/code-scanning)"
+            echo "- [View Dependency Graph](../../network/dependencies)"
+            echo "- [View Security Policy](../../security/policy)"
+          } >> "$GITHUB_STEP_SUMMARY"

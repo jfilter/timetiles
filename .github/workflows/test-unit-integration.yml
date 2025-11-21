@@ -1,0 +1,88 @@
+name: Unit & Integration Tests
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: timetiles_user
+          POSTGRES_PASSWORD: timetiles_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+      PAYLOAD_SECRET: test-secret-key
+      PGPASSWORD: timetiles_password
+      NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0  # Fetch all history for SonarCloud
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Setup test databases
+        run: |
+          setup_db() {
+            psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE \"$1\";"
+            psql -h localhost -U timetiles_user -d "$1" -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE SCHEMA IF NOT EXISTS payload;"
+          }
+
+          setup_db timetiles
+          for i in {1..4}; do
+            setup_db "timetiles_test_$i"
+          done
+
+      - name: Run database migrations
+        timeout-minutes: 2
+        run: pnpm payload:migrate
+        working-directory: apps/web
+
+      - name: Run tests with coverage
+        id: test-coverage
+        run: pnpm test:coverage
+        working-directory: apps/web
+        continue-on-error: true
+
+      - name: Report coverage
+        if: steps.test-coverage.outcome == 'success' || steps.test-coverage.outcome == 'failure'
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            npx tsx scripts/coverage-summary.ts --details >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⚠️ Coverage report not generated" >> "$GITHUB_STEP_SUMMARY"
+          fi
+        working-directory: apps/web
+
+      - name: SonarCloud Scan
+        if: always() && github.actor != 'dependabot[bot]'
+        uses: SonarSource/sonarqube-scan-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Fail if tests failed
+        if: steps.test-coverage.outcome == 'failure'
+        run: exit 1

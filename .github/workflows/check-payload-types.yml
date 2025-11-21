@@ -1,0 +1,68 @@
+name: Check Payload Types
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  check-payload-types:
+    name: Check Payload Types
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: timetiles_user
+          POSTGRES_PASSWORD: timetiles_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+      PAYLOAD_SECRET: test-secret-key
+      PGPASSWORD: timetiles_password
+      NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Setup database
+        run: |
+          psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles;"
+          psql -h localhost -U timetiles_user -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE SCHEMA IF NOT EXISTS payload;"
+
+      - name: Run database migrations
+        timeout-minutes: 2
+        run: pnpm payload:migrate
+        working-directory: apps/web
+
+      - name: Validate Payload generated files
+        run: pnpm payload:validate
+        working-directory: apps/web
+
+      - name: Check for uncommitted changes
+        run: |
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "❌ Payload generated files are out of sync!"
+            echo "Please run 'pnpm payload:generate' and commit the changes."
+            git status
+            exit 1
+          else
+            echo "✅ Payload generated files are in sync!"
+          fi
