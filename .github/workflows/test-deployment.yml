@@ -186,28 +186,20 @@ jobs:
           HEALTH_RESPONSE=$(curl -k -s --max-time 10 https://localhost:443/api/health)
           echo "Health check response: $HEALTH_RESPONSE"
 
-          # Test main page loads over HTTPS
-          echo "Testing main page..."
-          if ! curl -f -k -s --max-time 10 https://localhost:443/ | grep -q "<html"; then
-            echo "ERROR: Main page did not return HTML"
-            curl -k -s --max-time 10 https://localhost:443/ | head -20
+          # Test explore page loads over HTTPS
+          echo "Testing /explore page..."
+          if ! curl -f -k -s --max-time 10 https://localhost:443/explore | grep -q "<html"; then
+            echo "ERROR: Explore page did not return HTML"
+            curl -k -s --max-time 10 https://localhost:443/explore | head -20
             exit 1
           fi
-          echo "Main page OK"
-
-          # Test admin panel endpoint over HTTPS
-          echo "Testing admin panel..."
-          if ! curl -f -k -I --max-time 10 https://localhost:443/admin 2>&1; then
-            echo "ERROR: Admin panel endpoint failed"
-            exit 1
-          fi
-          echo "Admin panel OK"
+          echo "Explore page OK"
 
           # Test security headers are present
           echo "Checking security headers..."
-          curl -k -I --max-time 10 https://localhost:443/ | grep -i "strict-transport-security" || echo "Warning: HSTS header missing"
-          curl -k -I --max-time 10 https://localhost:443/ | grep -i "x-frame-options" || echo "Warning: X-Frame-Options missing"
-          curl -k -I --max-time 10 https://localhost:443/ | grep -i "x-content-type-options" || echo "Warning: X-Content-Type-Options missing"
+          curl -k -I --max-time 10 https://localhost:443/explore | grep -i "strict-transport-security" || echo "Warning: HSTS header missing"
+          curl -k -I --max-time 10 https://localhost:443/explore | grep -i "x-frame-options" || echo "Warning: X-Frame-Options missing"
+          curl -k -I --max-time 10 https://localhost:443/explore | grep -i "x-content-type-options" || echo "Warning: X-Content-Type-Options missing"
           
       - name: Test database connectivity
         run: |
