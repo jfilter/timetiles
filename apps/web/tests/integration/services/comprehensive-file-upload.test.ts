@@ -111,9 +111,10 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 
   const simulateSchemaApproval = async (importJobId: string, approved: boolean) => {
     // Create a test user for approval if approved is true
+    let testUser = null;
     let testUserId = null;
     if (approved) {
-      const testUser = await payload.create({
+      testUser = await payload.create({
         collection: "users",
         data: {
           email: "test-approver@example.com",
@@ -146,6 +147,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       data: {
         schemaValidation: updatedSchemaValidation,
       },
+      user: testUser, // Pass user context for authentication
     });
 
     logger.debug(`✓ Schema ${approved ? "approved" : "rejected"} - approval fields updated`);

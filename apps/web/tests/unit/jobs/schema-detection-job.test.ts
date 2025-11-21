@@ -107,10 +107,15 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
       const mockState = {
         fieldStats: {
-          id: { occurrences: 3, uniqueValues: 3 },
-          title: { occurrences: 3, uniqueValues: 3 },
-          date: { occurrences: 3, uniqueValues: 3 },
-          status: { occurrences: 3, uniqueValues: 2, enumValues: ["active", "pending"] },
+          id: { occurrences: 3, uniqueValues: 3, typeDistribution: { string: 3 } },
+          title: { occurrences: 3, uniqueValues: 3, typeDistribution: { string: 3 } },
+          date: { occurrences: 3, uniqueValues: 3, typeDistribution: { string: 3 } },
+          status: {
+            occurrences: 3,
+            uniqueValues: 2,
+            enumValues: ["active", "pending"],
+            typeDistribution: { string: 3 },
+          },
         },
         recordCount: 3,
       };
@@ -329,6 +334,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       expect(result).toEqual({
         output: {
           completed: true,
+          batchNumber: 0,
+          rowsProcessed: 0,
+          hasMore: false,
         },
       });
 
@@ -369,8 +377,8 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
       const mockState = {
         fieldStats: {
-          id: { occurrences: 1, uniqueValues: 1 },
-          title: { occurrences: 1, uniqueValues: 1 },
+          id: { occurrences: 1, uniqueValues: 1, typeDistribution: { string: 1 } },
+          title: { occurrences: 1, uniqueValues: 1, typeDistribution: { string: 1 } },
         },
         recordCount: 1,
       };
@@ -475,7 +483,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       // Mock existing schema builder state
       const existingState = {
         fieldStats: {
-          id: { occurrences: 10, uniqueValues: 10 },
+          id: { occurrences: 10, uniqueValues: 10, typeDistribution: { string: 10 } },
         },
         recordCount: 10,
       };
@@ -491,8 +499,8 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
       const mockState = {
         fieldStats: {
-          id: { occurrences: 11, uniqueValues: 11 },
-          title: { occurrences: 1, uniqueValues: 1 },
+          id: { occurrences: 11, uniqueValues: 11, typeDistribution: { string: 11 } },
+          title: { occurrences: 1, uniqueValues: 1, typeDistribution: { string: 1 } },
         },
         recordCount: 11,
       };

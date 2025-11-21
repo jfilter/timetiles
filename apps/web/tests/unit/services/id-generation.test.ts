@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { IdGenerationService } from "../../../lib/services/id-generation";
+import { generateUniqueId, IdGenerationService } from "../../../lib/services/id-generation";
 import type { Dataset } from "../../../payload-types";
 
 describe("IdGenerationService", () => {
@@ -296,17 +296,15 @@ describe("IdGenerationService", () => {
     });
 
     describe("error handling", () => {
-      it("catches and returns exceptions", () => {
+      it("throws error when idStrategy is null or undefined", () => {
         const mockDataset: Partial<Dataset> = {
           id: mockDatasetId,
-          idStrategy: null as any, // Will cause error
+          idStrategy: null as any,
         };
 
-        const result = IdGenerationService.generateEventId({ id: 1 }, mockDataset as Dataset);
-
-        expect(result.uniqueId).toMatch(/^123:auto:\d+$/);
-        expect(result.strategy).toBe("auto");
-        expect(result.error).toBeUndefined();
+        expect(() => IdGenerationService.generateEventId({ id: 1 }, mockDataset as Dataset)).toThrow(
+          "Dataset idStrategy is required but was undefined"
+        );
       });
     });
   });
@@ -353,6 +351,83 @@ describe("IdGenerationService", () => {
       expect(IdGenerationService.generateEventId(data, mockDataset as Dataset)).toMatchObject({
         sourceId: "first",
       });
+    });
+  });
+
+  describe("generateUniqueId wrapper", () => {
+    it("throws error when external ID is missing", () => {
+      const data = { name: "Test Event" }; // Missing external ID field
+      const idStrategy = {
+        type: "external" as const,
+        externalIdPath: "id",
+        duplicateStrategy: "skip" as const,
+      };
+
+      expect(() => generateUniqueId(data, idStrategy)).toThrow(
+        "Failed to generate unique ID: Missing external ID at path: id"
+      );
+    });
+
+    it("throws error when external ID is empty string", () => {
+      const data = { id: "" }; // Empty string
+      const idStrategy = {
+        type: "external" as const,
+        externalIdPath: "id",
+        duplicateStrategy: "skip" as const,
+      };
+
+      expect(() => generateUniqueId(data, idStrategy)).toThrow(
+        "Failed to generate unique ID: Missing external ID at path: id"
+      );
+    });
+
+    it("throws error when external ID is null", () => {
+      const data = { id: null };
+      const idStrategy = {
+        type: "external" as const,
+        externalIdPath: "id",
+        duplicateStrategy: "skip" as const,
+      };
+
+      expect(() => generateUniqueId(data, idStrategy)).toThrow(
+        "Failed to generate unique ID: Missing external ID at path: id"
+      );
+    });
+
+    it("throws error when computed ID fields are missing", () => {
+      const data = { title: "Test" }; // Missing 'date' field
+      const idStrategy = {
+        type: "computed" as const,
+        computedIdFields: [{ fieldPath: "title" }, { fieldPath: "date" }],
+        duplicateStrategy: "skip" as const,
+      };
+
+      expect(() => generateUniqueId(data, idStrategy)).toThrow(
+        "Failed to generate unique ID: Missing required fields for computed ID: date"
+      );
+    });
+
+    it("succeeds when external ID is present", () => {
+      const data = { id: "test-123", name: "Test Event" };
+      const idStrategy = {
+        type: "external" as const,
+        externalIdPath: "id",
+        duplicateStrategy: "skip" as const,
+      };
+
+      const result = generateUniqueId(data, idStrategy);
+      expect(result).toMatch(/^undefined:ext:test-123$/);
+    });
+
+    it("succeeds with auto strategy", () => {
+      const data = { name: "Test Event" };
+      const idStrategy = {
+        type: "auto" as const,
+        duplicateStrategy: "skip" as const,
+      };
+
+      const result = generateUniqueId(data, idStrategy);
+      expect(result).toMatch(/^undefined:auto:\d+:[a-f0-9]{8}$/);
     });
   });
 });

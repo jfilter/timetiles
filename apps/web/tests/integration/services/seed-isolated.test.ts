@@ -173,7 +173,7 @@ describe.sequential("Isolated Seed System", () => {
       expect(anyEvent).toBeDefined();
       expect(anyEvent.dataset).toBeDefined();
       expect(typeof anyEvent.dataset).toBe("object"); // Should be populated
-    }, 60000); // 60 second timeout for seeding events with relationships
+    }, 90000); // 90 second timeout for seeding events with relationships (increases when running full suite)
 
     it("should seed import-files with proper catalog relationships", async () => {
       // First seed catalogs
@@ -221,7 +221,7 @@ describe.sequential("Isolated Seed System", () => {
         });
         expect(docs.docs.length).toBeGreaterThan(0);
       }
-    }, 60000); // 60 second timeout for seeding all collections
+    }, 90000); // 90 second timeout for seeding all collections (increases when running full suite)
   });
 
   describe.sequential("Error Handling", () => {

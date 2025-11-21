@@ -38,6 +38,7 @@ export class TestServer {
   private readonly host: string = "127.0.0.1";
   private readonly routes: Map<string, RouteHandler> = new Map();
   private defaultHandler?: RouteHandler;
+  private readonly connections: Set<any> = new Set();
 
   constructor(options: TestServerOptions = {}) {
     this.host = options.host ?? "127.0.0.1";
@@ -276,6 +277,14 @@ export class TestServer {
         }
       });
 
+      // Track connections for proper cleanup
+      this.server.on("connection", (socket) => {
+        this.connections.add(socket);
+        socket.on("close", () => {
+          this.connections.delete(socket);
+        });
+      });
+
       this.server.on("error", (err: any) => {
         if (err.code === "EADDRINUSE") {
           // Try another random port if the current one is in use
@@ -308,6 +317,12 @@ export class TestServer {
   async stop(): Promise<void> {
     return new Promise((resolve) => {
       if (this.server) {
+        // Force close all active connections
+        for (const socket of this.connections) {
+          socket.destroy();
+        }
+        this.connections.clear();
+
         this.server.close(() => {
           this.server = null;
           resolve();

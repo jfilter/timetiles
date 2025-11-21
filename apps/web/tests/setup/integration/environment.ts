@@ -317,15 +317,24 @@ export class TestEnvironmentBuilder {
       // NOTE: Upload directory is shared across all tests in this worker
       // Don't delete it here - it will be cleaned up in global-setup.ts afterAll
 
-      // Clean up seed manager
-      await testEnv.seedManager.cleanup();
-
-      // Truncate tables for next test - use the same database URL
-      const databaseUrl = process.env.DATABASE_URL;
-      if (!databaseUrl) {
-        throw new Error("DATABASE_URL not set during cleanup");
+      // Skip seedManager cleanup entirely - it's too slow (10+ seconds)
+      // Instead, just close the connection pool directly
+      if (testEnv.payload?.db?.pool) {
+        try {
+          await Promise.race([
+            testEnv.payload.db.pool.end(),
+            new Promise((_resolve, reject) => setTimeout(() => reject(new Error("Pool close timeout")), 2000)),
+          ]);
+        } catch (error) {
+          logger.warn("Failed to close pool cleanly", { error: (error as Error).message });
+        }
       }
-      await truncateAllTables(databaseUrl);
+
+      // NOTE: We do NOT truncate tables here in final cleanup because:
+      // 1. Each test file has isolated database (timetiles_test_1, timetiles_test_2, etc.)
+      // 2. Truncation in beforeEach is sufficient for test isolation
+      // 3. Truncating here with active Payload connections causes deadlocks
+      // 4. Tables are truncated in beforeEach anyway for the next test
 
       logger.debug("Test environment cleanup completed", {
         dbName: testEnv.dbName,
@@ -462,6 +471,8 @@ export const withDataset = async (
       duplicateStrategy?: string;
     };
     description?: any;
+    importTransforms?: any[];
+    typeTransformations?: any[];
   }
 ): Promise<TestEnvironment & { dataset: any }> => {
   const timestamp = Date.now();
@@ -481,6 +492,8 @@ export const withDataset = async (
       isPublic: options?.isPublic ?? false,
       idStrategy: options?.idStrategy,
       description: options?.description,
+      importTransforms: options?.importTransforms,
+      typeTransformations: options?.typeTransformations,
     },
   });
 

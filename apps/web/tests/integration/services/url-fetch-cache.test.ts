@@ -80,7 +80,7 @@ describe.sequential("HTTP Cache Integration", () => {
 
   afterAll(async () => {
     await cleanup();
-  });
+  }); // Default 10s timeout - should be plenty with direct pool.end()
 
   beforeEach(async () => {
     // Clear cache before each test

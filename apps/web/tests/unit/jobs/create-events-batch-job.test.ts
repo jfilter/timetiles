@@ -426,4 +426,345 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       });
     });
   });
+
+  describe("Type Transformations", () => {
+    it("should skip transformations when allowTransformations is false", async () => {
+      const mockImportJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        importFile: "file-789",
+        duplicates: { internal: [], external: [] },
+        progress: { current: 0 },
+      };
+
+      const mockDataset = {
+        id: "dataset-456",
+        idStrategy: { type: "external", externalIdPath: "id" },
+        schemaConfig: { allowTransformations: false },
+        typeTransformations: [
+          {
+            fieldPath: "age",
+            fromType: "string",
+            toType: "number",
+            transformStrategy: "parse",
+            enabled: true,
+          },
+        ],
+      };
+
+      const mockImportFile = createMockImportFile();
+
+      const mockFileData = [{ id: "1", name: "John", age: "25" }];
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockImportFile);
+
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
+      mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
+      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getGeocodingResultForRow.mockReturnValue(null);
+
+      mockPayload.create.mockResolvedValue({ id: "event-1" });
+      mockPayload.update.mockResolvedValueOnce({});
+      mockPayload.find.mockResolvedValue({ docs: [] });
+
+      await createEventsBatchJob.handler(mockContext);
+
+      // Verify age is still string (not transformed)
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "events",
+        data: expect.objectContaining({
+          data: expect.objectContaining({ age: "25" }), // Still string
+          validationStatus: "pending",
+          transformations: null,
+        }),
+      });
+    });
+
+    it("should apply type transformations and mark event as transformed", async () => {
+      const mockImportJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        importFile: "file-789",
+        duplicates: { internal: [], external: [] },
+        progress: { current: 0 },
+      };
+
+      const mockDataset = {
+        id: "dataset-456",
+        idStrategy: { type: "external", externalIdPath: "id" },
+        schemaConfig: { allowTransformations: true },
+        typeTransformations: [
+          {
+            fieldPath: "age",
+            fromType: "string",
+            toType: "number",
+            transformStrategy: "parse",
+            enabled: true,
+          },
+        ],
+      };
+
+      const mockImportFile = createMockImportFile();
+
+      const mockFileData = [{ id: "1", name: "John", age: "25" }];
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockImportFile);
+
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
+      mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
+      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getGeocodingResultForRow.mockReturnValue(null);
+
+      mockPayload.create.mockResolvedValue({ id: "event-1" });
+      mockPayload.update.mockResolvedValueOnce({});
+      mockPayload.find.mockResolvedValue({ docs: [] });
+
+      await createEventsBatchJob.handler(mockContext);
+
+      // Verify transformation was applied
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "events",
+        data: expect.objectContaining({
+          data: expect.objectContaining({
+            age: 25, // Transformed to number
+          }),
+          validationStatus: "transformed",
+          transformations: expect.arrayContaining([
+            expect.objectContaining({
+              path: "age",
+              oldValue: "25",
+              newValue: 25,
+            }),
+          ]),
+        }),
+      });
+    });
+
+    it("should handle empty transformations array", async () => {
+      const mockImportJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        importFile: "file-789",
+        duplicates: { internal: [], external: [] },
+        progress: { current: 0 },
+      };
+
+      const mockDataset = {
+        id: "dataset-456",
+        idStrategy: { type: "external", externalIdPath: "id" },
+        schemaConfig: { allowTransformations: true },
+        typeTransformations: [],
+      };
+
+      const mockImportFile = createMockImportFile();
+
+      const mockFileData = [{ id: "1", age: "25" }];
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockImportFile);
+
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
+      mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
+      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getGeocodingResultForRow.mockReturnValue(null);
+
+      mockPayload.create.mockResolvedValue({ id: "event-1" });
+      mockPayload.update.mockResolvedValueOnce({});
+      mockPayload.find.mockResolvedValue({ docs: [] });
+
+      await createEventsBatchJob.handler(mockContext);
+
+      // No transformations applied
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "events",
+        data: expect.objectContaining({
+          validationStatus: "pending",
+          transformations: null,
+        }),
+      });
+    });
+
+    it("should apply multiple transformations to different fields", async () => {
+      const mockImportJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        importFile: "file-789",
+        duplicates: { internal: [], external: [] },
+        progress: { current: 0 },
+      };
+
+      const mockDataset = {
+        id: "dataset-456",
+        idStrategy: { type: "external", externalIdPath: "id" },
+        schemaConfig: { allowTransformations: true },
+        typeTransformations: [
+          {
+            fieldPath: "age",
+            fromType: "string",
+            toType: "number",
+            transformStrategy: "parse",
+            enabled: true,
+          },
+          {
+            fieldPath: "active",
+            fromType: "string",
+            toType: "boolean",
+            transformStrategy: "parse",
+            enabled: true,
+          },
+        ],
+      };
+
+      const mockImportFile = createMockImportFile();
+
+      const mockFileData = [{ id: "1", age: "25", active: "true" }];
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockImportFile);
+
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
+      mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
+      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getGeocodingResultForRow.mockReturnValue(null);
+
+      mockPayload.create.mockResolvedValue({ id: "event-1" });
+      mockPayload.update.mockResolvedValueOnce({});
+      mockPayload.find.mockResolvedValue({ docs: [] });
+
+      await createEventsBatchJob.handler(mockContext);
+
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "events",
+        data: expect.objectContaining({
+          data: expect.objectContaining({
+            age: 25,
+            active: true,
+          }),
+          transformations: expect.arrayContaining([
+            expect.objectContaining({ path: "age" }),
+            expect.objectContaining({ path: "active" }),
+          ]),
+        }),
+      });
+    });
+
+    it("should skip disabled transformation rules", async () => {
+      const mockImportJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        importFile: "file-789",
+        duplicates: { internal: [], external: [] },
+        progress: { current: 0 },
+      };
+
+      const mockDataset = {
+        id: "dataset-456",
+        idStrategy: { type: "external", externalIdPath: "id" },
+        schemaConfig: { allowTransformations: true },
+        typeTransformations: [
+          {
+            fieldPath: "age",
+            fromType: "string",
+            toType: "number",
+            transformStrategy: "parse",
+            enabled: false, // Disabled
+          },
+        ],
+      };
+
+      const mockImportFile = createMockImportFile();
+
+      const mockFileData = [{ id: "1", age: "25" }];
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockImportFile);
+
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
+      mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
+      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getGeocodingResultForRow.mockReturnValue(null);
+
+      mockPayload.create.mockResolvedValue({ id: "event-1" });
+      mockPayload.update.mockResolvedValueOnce({});
+      mockPayload.find.mockResolvedValue({ docs: [] });
+
+      await createEventsBatchJob.handler(mockContext);
+
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "events",
+        data: expect.objectContaining({
+          data: expect.objectContaining({ age: "25" }), // Still string
+          validationStatus: "pending",
+        }),
+      });
+    });
+
+    it("should handle transformation errors gracefully", async () => {
+      const mockImportJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        importFile: "file-789",
+        duplicates: { internal: [], external: [] },
+        progress: { current: 0 },
+      };
+
+      const mockDataset = {
+        id: "dataset-456",
+        idStrategy: { type: "external", externalIdPath: "id" },
+        schemaConfig: { allowTransformations: true },
+        typeTransformations: [
+          {
+            fieldPath: "age",
+            fromType: "string",
+            toType: "number",
+            transformStrategy: "parse",
+            enabled: true,
+          },
+        ],
+      };
+
+      const mockImportFile = createMockImportFile();
+
+      // Invalid data that will fail transformation
+      const mockFileData = [{ id: "1", age: "not-a-number" }];
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockImportFile);
+
+      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
+      mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
+      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getGeocodingResultForRow.mockReturnValue(null);
+
+      mockPayload.create.mockResolvedValue({ id: "event-1" });
+      mockPayload.update.mockResolvedValueOnce({});
+      mockPayload.find.mockResolvedValue({ docs: [] });
+
+      await createEventsBatchJob.handler(mockContext);
+
+      // Event should still be created with original value
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "events",
+        data: expect.objectContaining({
+          data: expect.objectContaining({ age: "not-a-number" }), // Original value preserved
+          validationStatus: "pending", // Not transformed
+          transformations: null,
+        }),
+      });
+    });
+  });
 });
