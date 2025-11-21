@@ -208,7 +208,7 @@ jobs:
         working-directory: apps/web
 
       - name: SonarCloud Scan
-        if: always()
+        if: always() && github.actor != 'dependabot[bot]'
         uses: SonarSource/sonarqube-scan-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

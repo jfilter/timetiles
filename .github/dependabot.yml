@@ -34,7 +34,6 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
-      - "github-actions"
     # Group all GitHub Actions updates together
     groups:
       github-actions:
