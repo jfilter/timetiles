@@ -95,14 +95,17 @@ curl https://your-domain.com/api/health
 
 ### Database Migrations
 
-```bash
-# Check pending migrations
-docker-compose -f deployment/docker-compose.prod.yml exec web \
-  pnpm payload migrate:status
+Database migrations run automatically on container startup in production via Payload's `prodMigrations` feature.
 
-# Run migrations
-./deploy.sh migrate
+```bash
+# Check migration status in health endpoint
+curl https://your-domain.com/api/health | jq '.migrations'
+
+# View migration logs
+./deploy.sh logs | grep -i migrat
 ```
+
+**Note**: Migrations are applied automatically when the web container starts, so no manual intervention is needed.
 
 ## Performance Optimization
 

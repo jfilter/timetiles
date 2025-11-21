@@ -15,6 +15,7 @@ import {
   DEFAULT_TYPESCRIPT_CONFIG,
   DEFAULT_UPLOAD_CONFIG,
 } from "./lib/config/payload-shared-config";
+import { migrations } from "./migrations";
 
 const secret = process.env.PAYLOAD_SECRET;
 const serverURL = process.env.NEXT_PUBLIC_PAYLOAD_URL;
@@ -52,6 +53,8 @@ const dbConfig = isBuildPhase
       pool: {
         connectionString: connectionString!,
       },
+      // Only auto-run migrations in production
+      ...(process.env.NODE_ENV === "production" && { prodMigrations: migrations }),
     });
 
 export default buildConfig({

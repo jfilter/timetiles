@@ -31,12 +31,13 @@ print_usage() {
     echo "  down      - Stop all services"
     echo "  restart   - Restart all services"
     echo "  logs      - View logs (follow mode)"
-    echo "  migrate   - Run database migrations"
     echo "  backup    - Backup management (db|full|auto|list|clean)"
     echo "  restore   - Restore from backup"
     echo "  status    - Check service status"
     echo "  ssl       - Initialize Let's Encrypt SSL certificate"
     echo "  update    - Pull latest code and redeploy"
+    echo ""
+    echo "Note: Database migrations run automatically on container startup."
     echo ""
 }
 
@@ -142,19 +143,6 @@ case "$1" in
     logs)
         check_env
         $DC_CMD logs -f --tail=100
-        ;;
-        
-    migrate)
-        check_env
-        echo -e "${YELLOW}Checking migration status...${NC}"
-        # Migrations run automatically on server startup via prodMigrations config
-        # Just check if the web service is healthy
-        if $DC_CMD exec web node -e "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => { process.exit(1); })"; then
-            echo -e "${GREEN}Migrations have been applied automatically on startup!${NC}"
-        else
-            echo -e "${RED}Web service is not healthy. Check logs for migration errors.${NC}"
-            exit 1
-        fi
         ;;
         
     backup)
@@ -323,8 +311,8 @@ EOF
         git pull origin main
         $DC_CMD build web
         $DC_CMD up -d --no-deps web
-        $DC_CMD exec web pnpm payload:migrate
-        echo -e "${GREEN}Update complete!${NC}"
+        # Migrations run automatically on container startup via prodMigrations
+        echo -e "${GREEN}Update complete! Migrations will run automatically.${NC}"
         ;;
         
     *)

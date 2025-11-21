@@ -28,7 +28,7 @@ nano deployment/.env.production
 # 4. Build and deploy
 ./deploy.sh build
 ./deploy.sh up
-./deploy.sh migrate
+# Migrations run automatically on container startup
 
 # 5. Initialize SSL (after DNS is configured)
 ./deploy.sh ssl
@@ -100,12 +100,11 @@ Certificates auto-renew every 12 hours via Certbot.
 ./deploy.sh restart   # Restart services
 ./deploy.sh status    # Check service health
 
-# Database
-./deploy.sh migrate   # Run database migrations
-
 # Maintenance
 ./deploy.sh logs      # View logs
 ./deploy.sh update    # Pull updates and redeploy
+
+# Note: Database migrations run automatically on container startup
 ```
 
 ### Direct Docker Compose
@@ -213,7 +212,7 @@ git pull
 ./deploy.sh down
 ./deploy.sh build
 ./deploy.sh up
-./deploy.sh migrate
+# Migrations run automatically on container startup
 ```
 
 See [Maintenance Guide](/admin-guide/maintenance) for routine operations.

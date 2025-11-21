@@ -127,13 +127,8 @@ jobs:
           timeout 60 bash -c 'until docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production exec -T postgres pg_isready -U timetiles_user -d timetiles; do sleep 2; done'
 
           echo "Waiting for web app (checking HTTPS endpoint)..."
+          echo "Note: Migrations run automatically via prodMigrations on startup"
           timeout 60 bash -c 'until curl -f -k https://localhost:443/api/health 2>/dev/null; do sleep 2; done'
-          
-      - name: Run database migrations
-        run: |
-          echo "Running Payload migrations..."
-          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production exec -T web \
-            pnpm payload:migrate
 
       - name: Test nginx proxy (HTTP and HTTPS)
         run: |
@@ -277,18 +272,13 @@ jobs:
           sleep 20
           
           ./deploy.sh status
-      
-      - name: Run database migrations
-        run: |
-          cd deployment
-          ./deploy.sh migrate
-          
+
       - name: Check application health
         run: |
           cd deployment
           ./deploy.sh status
-          
-          # Test health endpoint
+
+          # Test health endpoint (migrations run automatically via prodMigrations)
           max_attempts=30
           attempt=0
           while [ $attempt -lt $max_attempts ]; do
