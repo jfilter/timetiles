@@ -203,6 +203,40 @@ const DatasetSchemas: CollectionConfig = {
         description: "Conflicts that require manual resolution",
       },
     },
+    {
+      name: "fieldMappings",
+      type: "group",
+      label: "Field Mappings",
+      admin: {
+        description: "Detected or configured field mappings for standard event properties",
+      },
+      fields: [
+        {
+          name: "titlePath",
+          type: "text",
+          admin: {
+            description: "Path to title/name field in source data",
+            readOnly: true,
+          },
+        },
+        {
+          name: "descriptionPath",
+          type: "text",
+          admin: {
+            description: "Path to description/details field in source data",
+            readOnly: true,
+          },
+        },
+        {
+          name: "timestampPath",
+          type: "text",
+          admin: {
+            description: "Path to timestamp/date field in source data",
+            readOnly: true,
+          },
+        },
+      ],
+    },
   ],
 };
 

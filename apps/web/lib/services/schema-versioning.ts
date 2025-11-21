@@ -60,6 +60,7 @@ export class SchemaVersioningService {
       dataset,
       schema,
       fieldMetadata = {},
+      fieldMappings,
       autoApproved = false,
       approvedBy,
       importSources = [],
@@ -68,6 +69,11 @@ export class SchemaVersioningService {
       dataset: Dataset | string | number;
       schema: unknown;
       fieldMetadata?: Record<string, unknown>;
+      fieldMappings?: {
+        titlePath?: string | null;
+        descriptionPath?: string | null;
+        timestampPath?: string | null;
+      };
       autoApproved?: boolean;
       approvedBy?: string | number | null;
       importSources?: Array<{
@@ -89,6 +95,7 @@ export class SchemaVersioningService {
         nextVersion,
         hasSchema: !!schema,
         hasFieldMetadata: !!fieldMetadata,
+        hasFieldMappings: !!fieldMappings,
         importSourcesCount: importSources.length,
       });
 
@@ -97,6 +104,7 @@ export class SchemaVersioningService {
         versionNumber: nextVersion,
         schema: schema as string | number | boolean | unknown[] | { [k: string]: unknown } | null,
         fieldMetadata,
+        fieldMappings,
         autoApproved,
         approvedBy: typeof approvedBy === "string" ? parseInt(approvedBy, 10) : approvedBy,
         importSources: importSources.map((source) => ({
