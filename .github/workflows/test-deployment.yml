@@ -81,6 +81,9 @@ jobs:
           # Create docker-compose override for testing with absolute paths
           cat > deployment/docker-compose.test.yml << EOF
           services:
+            web:
+              ports:
+                - "3000:3000"
             nginx:
               volumes:
                 - $(pwd)/deployment/nginx-test/nginx.conf:/etc/nginx/nginx.conf:ro
