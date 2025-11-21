@@ -53,8 +53,10 @@ RUN pnpm exec next build --experimental-build-mode compile
 FROM node:24-alpine AS runner
 WORKDIR /app
 
-# Install runtime dependencies and create user in one layer
+# Install runtime dependencies, pnpm, and create user in one layer
 RUN apk add --no-cache libc6-compat \
+    && corepack enable \
+    && corepack prepare pnpm@10.12.4 --activate \
     && addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
@@ -63,8 +65,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
-# Copy Payload migrations (required at runtime)
+# Copy Payload migrations and config (required at runtime)
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/migrations ./apps/web/migrations
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/payload.config.ts ./apps/web/payload.config.ts
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/package.json ./apps/web/package.json
+
+# Copy node_modules from builder (includes Payload CLI)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/node_modules ./apps/web/node_modules
 
 # Create uploads directory with proper ownership for volume mount
 RUN mkdir -p /app/apps/web/uploads \
