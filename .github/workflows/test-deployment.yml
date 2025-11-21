@@ -63,10 +63,10 @@ jobs:
 
           # Copy nginx configs to temp directory
           cp deployment/nginx/nginx.conf deployment/nginx-test/nginx.conf
-          cp deployment/nginx/sites-enabled/app.conf deployment/nginx-test/sites-enabled/app.conf
+          cp -r deployment/nginx/sites-enabled/* deployment/nginx-test/sites-enabled/
 
-          # Substitute DOMAIN_NAME in the temp config
-          sed -i 's/${DOMAIN_NAME}/localhost/g' deployment/nginx-test/sites-enabled/app.conf
+          # Substitute DOMAIN_NAME in ALL temp configs
+          find deployment/nginx-test/sites-enabled -type f -name "*.conf" -exec sed -i 's/${DOMAIN_NAME}/localhost/g' {} \;
 
           echo "Nginx config prepared with substitutions applied"
 
