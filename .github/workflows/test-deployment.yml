@@ -56,10 +56,50 @@ jobs:
 
       - name: Prepare nginx configuration
         run: |
-          echo "Substituting DOMAIN_NAME in nginx config..."
-          sed -i 's/${DOMAIN_NAME}/localhost/g' deployment/nginx/sites-enabled/app.conf
+          echo "Preparing nginx configuration for testing..."
 
-          echo "Nginx config prepared for testing"
+          # Create temporary nginx config directory
+          mkdir -p deployment/nginx-test/sites-enabled
+
+          # Copy nginx configs to temp directory
+          cp deployment/nginx/nginx.conf deployment/nginx-test/nginx.conf
+          cp deployment/nginx/sites-enabled/app.conf deployment/nginx-test/sites-enabled/app.conf
+
+          # Substitute DOMAIN_NAME in the temp config
+          sed -i 's/${DOMAIN_NAME}/localhost/g' deployment/nginx-test/sites-enabled/app.conf
+
+          echo "Nginx config prepared with substitutions applied"
+
+          # Create docker-compose override for testing
+          cat > deployment/docker-compose.test.yml << 'EOF'
+          services:
+            nginx:
+              volumes:
+                - ./nginx-test/nginx.conf:/etc/nginx/nginx.conf:ro
+                - ./nginx-test/sites-enabled:/etc/nginx/sites-enabled:ro
+                - ./ssl:/etc/letsencrypt:ro
+                - certbot-webroot:/var/www/certbot:ro
+
+          volumes:
+            certbot-webroot:
+          EOF
+
+          echo "Docker compose override created"
+
+      - name: Generate self-signed SSL certificate
+        run: |
+          echo "Generating self-signed certificate for testing..."
+
+          # Create directory for certificates
+          mkdir -p deployment/ssl/live/localhost
+
+          # Generate self-signed certificate
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout deployment/ssl/live/localhost/privkey.pem \
+            -out deployment/ssl/live/localhost/fullchain.pem \
+            -subj "/C=US/ST=Test/L=Test/O=Test/CN=localhost"
+
+          echo "SSL certificates generated"
 
       - name: Build Docker image
         run: |
@@ -72,53 +112,28 @@ jobs:
           
       - name: Start services
         run: |
-          echo "Starting all services..."
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production up -d
-          
+          echo "Starting all services with test configuration..."
+
+          # Start services using both prod compose and test override
+          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production up -d
+
           # Show running containers
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production ps
+          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production ps
           
       - name: Wait for services to be healthy
         run: |
           echo "Waiting for PostgreSQL..."
-          timeout 60 bash -c 'until docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T postgres pg_isready -U timetiles_user -d timetiles; do sleep 2; done'
-          
+          timeout 60 bash -c 'until docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production exec -T postgres pg_isready -U timetiles_user -d timetiles; do sleep 2; done'
+
           echo "Waiting for web app..."
           timeout 60 bash -c 'until curl -f http://localhost:80/api/health 2>/dev/null; do sleep 2; done'
           
       - name: Run database migrations
         run: |
           echo "Running Payload migrations..."
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T web \
+          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production exec -T web \
             pnpm payload:migrate
-            
-      - name: Generate self-signed SSL certificate
-        run: |
-          echo "Generating self-signed certificate for testing..."
-          
-          # Create directory for certificates
-          mkdir -p ssl
-          
-          # Generate self-signed certificate
-          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-            -keyout ssl/privkey.pem \
-            -out ssl/fullchain.pem \
-            -subj "/C=US/ST=Test/L=Test/O=Test/CN=localhost"
-          
-          # Create the certificate directory structure that matches Let's Encrypt
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T nginx \
-            mkdir -p /etc/letsencrypt/live/localhost
-          
-          # Copy certificates into nginx container
-          docker cp ssl/fullchain.pem timetiles-nginx:/etc/letsencrypt/live/localhost/fullchain.pem
-          docker cp ssl/privkey.pem timetiles-nginx:/etc/letsencrypt/live/localhost/privkey.pem
 
-          # Reload nginx to apply SSL config
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T nginx \
-            nginx -s reload
-          
-          sleep 5
-          
       - name: Test nginx proxy (HTTP and HTTPS)
         run: |
           echo "Testing nginx is proxying correctly..."
@@ -137,10 +152,10 @@ jobs:
           echo "HTTP to HTTPS redirect code: $REDIRECT_CODE"
           
           # Test Let's Encrypt challenge path (still works on HTTP)
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T nginx \
+          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production exec -T nginx \
             mkdir -p /var/www/certbot/.well-known/acme-challenge
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T nginx \
-            echo "test" > /var/www/certbot/.well-known/acme-challenge/test.txt
+          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production exec -T nginx \
+            sh -c 'echo "test" > /var/www/certbot/.well-known/acme-challenge/test.txt'
           curl -f http://localhost:80/.well-known/acme-challenge/test.txt || exit 1
           
       - name: Test application endpoints (HTTPS)
@@ -166,21 +181,21 @@ jobs:
       - name: Test database connectivity
         run: |
           echo "Testing database operations..."
-          
+
           # Check PostGIS is installed
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T postgres \
+          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production exec -T postgres \
             psql -U timetiles_user -d timetiles -c "SELECT PostGIS_Version();"
-            
+
           # Check Payload schema exists
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production exec -T postgres \
+          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production exec -T postgres \
             psql -U timetiles_user -d timetiles -c "\dn payload"
-            
+
       - name: Test container restart
         run: |
           echo "Testing container restart..."
-          
+
           # Restart web container
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production restart web
+          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production restart web
           
           # Wait for it to come back
           sleep 10
@@ -200,22 +215,22 @@ jobs:
         if: failure()
         run: |
           echo "=== Docker Compose Status ==="
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production ps
-          
+          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production ps
+
           echo "=== Web App Logs ==="
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production logs web
-          
+          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production logs web
+
           echo "=== Nginx Logs ==="
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production logs nginx
-          
+          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production logs nginx
+
           echo "=== PostgreSQL Logs ==="
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production logs postgres
-          
+          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production logs postgres
+
       - name: Cleanup
         if: always()
         run: |
           echo "Stopping and removing containers..."
-          docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production down -v
+          docker compose -f deployment/docker-compose.prod.yml -f deployment/docker-compose.test.yml --env-file deployment/.env.production down -v
           
           echo "Cleanup complete!"
 
