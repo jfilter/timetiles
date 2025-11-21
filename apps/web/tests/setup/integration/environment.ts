@@ -25,7 +25,6 @@ import type { CollectionName } from "@/lib/config/payload-config-factory";
 import { createTestConfig } from "@/lib/config/payload-config-factory";
 import { createLogger } from "@/lib/logger";
 import { SeedManager } from "@/lib/seed/index";
-import { RelationshipResolver } from "@/lib/seed/relationship-resolver";
 
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import { createTestDatabase, truncateAllTables } from "./database";
@@ -36,12 +35,6 @@ const logger = createLogger("test-env");
 export interface TestEnvironmentOptions {
   /** Collections to include in the test environment */
   collections?: CollectionName[];
-  /** Whether to seed data automatically */
-  seedData?: boolean;
-  /** Custom seed data to use instead of defaults */
-  customSeedData?: Record<string, any[]>;
-  /** Environment type for seeding */
-  environment?: "test" | "development";
   /** Whether to create a temporary directory */
   createTempDir?: boolean;
 }
@@ -76,15 +69,11 @@ export class TestEnvironmentBuilder {
   async createTestEnvironment(options: TestEnvironmentOptions = {}): Promise<TestEnvironment> {
     const {
       collections = ["events", "catalogs", "datasets", "users"] as CollectionName[],
-      seedData = false,
-      customSeedData = {},
-      environment = "test" as const,
       createTempDir = true,
     } = options;
 
     logger.info("Creating test environment", {
       collections,
-      seedData,
     });
 
     // Generate unique identifiers for temp directories only
@@ -147,12 +136,21 @@ export class TestEnvironmentBuilder {
 
     // Create and configure SeedManager
     const seedManager = new SeedManager();
-    await this.configureSeedManager(seedManager, payload);
+    // Override initialize to use our test payload
+    seedManager.initialize = async () => {
+      (seedManager as any).payload = payload;
 
-    // Seed data if requested
-    if (seedData || Object.keys(customSeedData).length > 0) {
-      await this.seedTestData(seedManager, customSeedData, environment, collections);
-    }
+      // SeedManager.seed() requires RelationshipResolver for the seeding system
+      const { RelationshipResolver } = await import("../../../lib/seed/relationship-resolver");
+      (seedManager as any).relationshipResolver = new RelationshipResolver(payload);
+
+      // Initialize database operations
+      const { DatabaseOperations } = await import("../../../lib/seed/database-operations");
+      (seedManager as any).databaseOperations = new DatabaseOperations(payload);
+
+      return payload;
+    };
+    await seedManager.initialize();
 
     // Create test environment
     const testEnv: TestEnvironment = {
@@ -173,7 +171,6 @@ export class TestEnvironmentBuilder {
     logger.info("Test environment created successfully", {
       workerId,
       tempDir: tempDir ? "created" : "none",
-      seeded: seedData || Object.keys(customSeedData).length > 0,
     });
 
     return testEnv;
@@ -182,7 +179,7 @@ export class TestEnvironmentBuilder {
   /**
    * Create a full integration test environment.
    */
-  async createIntegrationTestEnvironment(customData?: Record<string, any[]>): Promise<TestEnvironment> {
+  async createIntegrationTestEnvironment(): Promise<TestEnvironment> {
     return this.createTestEnvironment({
       collections: [
         "users",
@@ -198,9 +195,6 @@ export class TestEnvironmentBuilder {
         "geocoding-providers",
         "location-cache",
       ] as CollectionName[],
-      seedData: false, // Don't seed automatically to avoid relationship issues
-      customSeedData: customData ?? {},
-      environment: "test",
       createTempDir: true, // Enable temp directory for file operations
     });
   }
@@ -225,76 +219,6 @@ export class TestEnvironmentBuilder {
     TestEnvironmentBuilder.activeEnvironments.clear();
 
     logger.info("All test environments cleaned up");
-  }
-
-  /**
-   * Configure SeedManager for the test environment.
-   */
-  private async configureSeedManager(seedManager: SeedManager, payload: any): Promise<void> {
-    // Override initialize to use our test payload
-    seedManager.initialize = async () => {
-      (seedManager as any).payload = payload;
-      (seedManager as any).relationshipResolver = new RelationshipResolver(payload);
-
-      // Initialize database operations
-      const { DatabaseOperations } = await import("../../../lib/seed/database-operations");
-      (seedManager as any).databaseOperations = new DatabaseOperations(payload);
-
-      return payload;
-    };
-
-    await seedManager.initialize();
-  }
-
-  /**
-   * Seed test data using efficient methods.
-   */
-  private async seedTestData(
-    seedManager: SeedManager,
-    customData: Record<string, any[]>,
-    environment: string,
-    collections: string[]
-  ): Promise<void> {
-    if (Object.keys(customData).length === 0) {
-      // Use standard seeding
-      await seedManager.seed({
-        collections,
-        environment: environment as "production" | "development" | "test" | "staging",
-        truncate: false, // Already truncated
-      });
-      return;
-    }
-
-    // Use custom seed data
-    logger.debug("Seeding custom test data", {
-      collections: Object.keys(customData),
-    });
-
-    for (const [collection, data] of Object.entries(customData)) {
-      if (data.length === 0) continue;
-
-      await this.seedCollectionData(seedManager, collection, data);
-    }
-  }
-
-  private async seedCollectionData(seedManager: SeedManager, collection: string, data: any[]): Promise<void> {
-    // Use the RelationshipResolver to handle relationships
-    const resolver = (seedManager as any).relationshipResolver as RelationshipResolver;
-    const resolvedData = await resolver.resolveCollectionRelationships(data, collection);
-
-    // Create items efficiently
-    for (const item of resolvedData) {
-      try {
-        await (seedManager as any).payload.create({
-          collection,
-          data: item,
-        });
-      } catch (error) {
-        logger.warn(`Failed to create ${collection} item`, {
-          error: (error as any).message,
-        });
-      }
-    }
   }
 
   /**
@@ -362,7 +286,6 @@ export class TestEnvironmentBuilder {
  * - Use test data factories: `import { createEvent } from "@/tests/setup/factories"`
  * - Test logic, not infrastructure
  *
- * @param customData - Optional custom seed data for collections
  * @returns Test environment with full database and Payload setup
  *
  * @example
@@ -391,13 +314,11 @@ export class TestEnvironmentBuilder {
  * @see tests/integration/services/comprehensive-file-upload.test.ts for complete example
  * @see tests/unit/jobs/schema-detection-job.test.ts for unit test patterns (no database)
  */
-export const createIntegrationTestEnvironment = async (
-  customData?: Record<string, any[]>
-): Promise<TestEnvironment> => {
+export const createIntegrationTestEnvironment = async (): Promise<TestEnvironment> => {
   // Database setup is handled by the global setup in integration.ts
   // No need to check here as it causes a race condition
   const builder = new TestEnvironmentBuilder();
-  return builder.createIntegrationTestEnvironment(customData);
+  return builder.createIntegrationTestEnvironment();
 };
 
 /**
