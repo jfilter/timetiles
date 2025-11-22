@@ -12,7 +12,6 @@
  * @category Collections
  * @module
  */
-// Test comment for pre-commit hook verification
 import type { CollectionConfig } from "payload";
 
 import { QUOTA_ERROR_MESSAGES, QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";

@@ -353,6 +353,7 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum("enum_payload_jobs
   "url-fetch",
   "schedule-manager",
   "cleanup-stuck-scheduled-imports",
+  "process-pending-retries",
   "quota-reset",
   "cache-cleanup",
 ]);
@@ -370,6 +371,7 @@ export const enum_payload_jobs_task_slug = db_schema.enum("enum_payload_jobs_tas
   "url-fetch",
   "schedule-manager",
   "cleanup-stuck-scheduled-imports",
+  "process-pending-retries",
   "quota-reset",
   "cache-cleanup",
 ]);
