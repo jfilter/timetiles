@@ -10,7 +10,6 @@ export default [
       "content/reference/api/**/_meta.js",
       // Keep manual files
       "!content/reference/api/index.mdx",
-      "!content/reference/api/_meta.js",
     ],
   },
   // Apply MDX config to all MDX/MD files (except those ignored above)
