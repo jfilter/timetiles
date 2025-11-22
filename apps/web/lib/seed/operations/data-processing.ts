@@ -28,12 +28,8 @@ export class DataProcessing {
       if (typeof config.count === "number") {
         return config.count;
       }
-      if (typeof config.count === "object" && config.count !== null) {
-        const envCount = (config.count as Record<string, unknown>)[environment];
-        if (typeof envCount === "number") return envCount;
-        if (typeof (config.count as Record<string, unknown>).default === "number") {
-          return (config.count as Record<string, unknown>).default as number;
-        }
+      if (typeof config.count === "function") {
+        return config.count(environment);
       }
       logger.debug(`No count configured for environment "${environment}", using default count of ${DEFAULT_COUNT}`);
       return DEFAULT_COUNT;

@@ -176,7 +176,7 @@ export class RelationshipResolver {
     config: RelationshipConfig,
     collection: string
   ): { isValid: boolean; shouldContinue?: boolean; error?: Error } {
-    if (value == null || value == undefined) {
+    if (value == null) {
       if (config.required === true) {
         return {
           isValid: false,
@@ -424,60 +424,6 @@ export class RelationshipResolver {
   }
 
   /**
-   * Preload related items into cache for better performance.
-   */
-  async preloadCache(collections: string[]): Promise<void> {
-    logger.info("Preloading relationship cache", { collections });
-    const startTime = performance.now();
-
-    for (const collection of collections) {
-      try {
-        // Type assertion is necessary due to dynamic collection names
-        const collectionSlug = collection as keyof Config["collections"];
-
-        const result = await this.payload.find({
-          collection: collectionSlug,
-          limit: 10000, // Reasonable limit to avoid memory issues
-          depth: 0, // Minimal depth for performance
-        });
-
-        const collectionCache = new Map<string, unknown>();
-
-        result.docs.forEach((item: unknown) => {
-          // Cache by common search fields using type assertion for flexibility
-          const typedItem = item as Record<string, unknown> & {
-            id: string | number;
-          };
-          if (typedItem.name != null) {
-            const nameValue = this.convertToStringValue(typedItem.name);
-            collectionCache.set(`${collection}:name:${nameValue}`, typedItem);
-          }
-          if (typedItem.slug != null) {
-            const slugValue = this.convertToStringValue(typedItem.slug);
-            collectionCache.set(`${collection}:slug:${slugValue}`, typedItem);
-          }
-        });
-
-        this.cache.set(collection, collectionCache);
-        logger.debug(`Cached ${result.docs.length} items for ${collection}`);
-      } catch (error) {
-        logger.warn(`Failed to preload cache for ${collection}:`, error);
-      }
-    }
-
-    const duration = performance.now() - startTime;
-    logger.info(`Cache preload completed in ${duration.toFixed(2)}ms`);
-  }
-
-  /**
-   * Clear the cache.
-   */
-  clearCache(): void {
-    this.cache.clear();
-    logger.debug("Relationship cache cleared");
-  }
-
-  /**
    * Get resolution statistics.
    */
   getStats(): Map<string, ResolutionStats> {
@@ -485,35 +431,11 @@ export class RelationshipResolver {
   }
 
   /**
-   * Get cache statistics.
-   */
-  /**
    * Convert a value to string representation for cache keys.
    */
   private convertToStringValue(value: unknown): string {
     if (typeof value === "string") return value;
     if (typeof value === "number") return String(value);
     return JSON.stringify(value);
-  }
-
-  getCacheStats(): {
-    collections: number;
-    totalItems: number;
-    memoryUsage: string;
-  } {
-    let totalItems = 0;
-
-    this.cache.forEach((collectionCache) => {
-      totalItems += collectionCache.size;
-    });
-
-    // Rough memory usage estimation
-    const memoryUsage = `~${Math.round((totalItems * 200) / 1024)}KB`; // Rough estimate
-
-    return {
-      collections: this.cache.size,
-      totalItems,
-      memoryUsage,
-    };
   }
 }

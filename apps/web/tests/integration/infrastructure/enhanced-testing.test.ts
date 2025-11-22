@@ -24,7 +24,8 @@ import {
   validateDistribution,
 } from "../../setup/integration/geospatial-data";
 
-describe("Enhanced Testing Infrastructure", () => {
+// Force sequential execution to avoid database deadlocks during truncation
+describe.sequential("Enhanced Testing Infrastructure", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {

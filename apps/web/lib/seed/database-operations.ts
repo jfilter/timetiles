@@ -25,7 +25,7 @@ import { createLogger, logError, logPerformance } from "../logger";
 
 const logger = createLogger("db-operations");
 
-export interface BatchOperationResult {
+interface BatchOperationResult {
   success: boolean;
   itemsProcessed: number;
   duration: number;

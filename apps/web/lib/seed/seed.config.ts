@@ -25,11 +25,12 @@
  * - Configure custom data generators.
  */
 
+import { COLLECTION_GEOCODING_PROVIDERS, MAIN_MENU_SLUG } from "./constants";
 import type { RelationshipConfig } from "./relationship-config";
 import { RELATIONSHIP_CONFIG } from "./relationship-config";
 
-// Constants for collection names
-const GEOCODING_PROVIDERS_COLLECTION = "geocoding-providers";
+// Keep local constant for backward compatibility
+const GEOCODING_PROVIDERS_COLLECTION = COLLECTION_GEOCODING_PROVIDERS;
 
 const getLocationCacheCount = (env: string): number => {
   if (env === "development") return 50;
@@ -40,14 +41,6 @@ const getLocationCacheCount = (env: string): number => {
 export interface CollectionConfig {
   /** Number of items to create, or function returning count based on environment */
   count?: number | ((env: string) => number);
-  /** Number of items by volume preset (new approach, replaces count function) */
-  countByVolume?: {
-    minimal?: number;
-    small?: number;
-    medium?: number;
-    large?: number;
-    xlarge?: number;
-  };
   /** Collections that must be seeded before this one */
   dependencies?: string[];
   /** Custom generator to use for realistic data patterns */
@@ -224,7 +217,7 @@ export const SEED_CONFIG: SeedConfiguration = {
   // Globals configuration
   globals: {
     // Main Menu - global navigation
-    "main-menu": {
+    [MAIN_MENU_SLUG]: {
       count: 1, // Single global menu
       dependencies: [],
       options: {
@@ -300,7 +293,7 @@ export const SEED_CONFIG: SeedConfiguration = {
   presets: {
     minimal: {
       description: "Bare minimum data for production deployments",
-      enabled: ["users", "pages", "main-menu", GEOCODING_PROVIDERS_COLLECTION],
+      enabled: ["users", "pages", MAIN_MENU_SLUG, GEOCODING_PROVIDERS_COLLECTION],
       volume: "minimal",
       realism: "simple",
       performance: "fast",
@@ -321,7 +314,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         "datasets",
         "events",
         "pages",
-        "main-menu",
+        MAIN_MENU_SLUG,
         "location-cache",
         GEOCODING_PROVIDERS_COLLECTION,
       ],
@@ -346,7 +339,7 @@ export const SEED_CONFIG: SeedConfiguration = {
 
     e2e: {
       description: "Moderate, realistic data for E2E UI testing",
-      enabled: ["users", "catalogs", "datasets", "events", "pages", "main-menu"],
+      enabled: ["users", "catalogs", "datasets", "events", "pages", MAIN_MENU_SLUG],
       volume: "medium",
       realism: "realistic",
       performance: "balanced",
@@ -367,7 +360,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         "datasets",
         "events",
         "pages",
-        "main-menu",
+        MAIN_MENU_SLUG,
         "location-cache",
         GEOCODING_PROVIDERS_COLLECTION,
       ],
@@ -396,7 +389,7 @@ export const SEED_CONFIG: SeedConfiguration = {
 
     demo: {
       description: "Polished, realistic data for demos and staging",
-      enabled: ["users", "catalogs", "datasets", "events", "pages", "main-menu", GEOCODING_PROVIDERS_COLLECTION],
+      enabled: ["users", "catalogs", "datasets", "events", "pages", MAIN_MENU_SLUG, GEOCODING_PROVIDERS_COLLECTION],
       volume: "medium",
       realism: "production-like",
       performance: "balanced",
@@ -509,9 +502,3 @@ export const getEnabledCollections = (preset: string): string[] => {
 
   return ordered;
 };
-
-/**
- * Get generator configuration.
- */
-export const getGeneratorConfig = (generatorName: string): GeneratorConfig | null =>
-  SEED_CONFIG.generators[generatorName] ?? null;

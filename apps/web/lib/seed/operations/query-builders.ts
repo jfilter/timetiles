@@ -12,6 +12,10 @@
 import type { Where } from "payload";
 
 export class QueryBuilders {
+  /**
+   * Build a where clause for checking if an item exists in a collection.
+   * Uses collection-specific logic to determine the best uniqueness check.
+   */
   buildWhereClause(collection: string, item: Record<string, unknown>): Where {
     switch (collection) {
       case "users":
@@ -29,9 +33,12 @@ export class QueryBuilders {
     }
   }
 
+  /**
+   * Build where clause for users collection - checks by email.
+   */
   private buildUsersWhereClause(item: Record<string, unknown>): Where {
     const where: Where = {};
-    if (item.email != null && item.email != undefined) {
+    if (item.email != null) {
       where.email = {
         equals: item.email,
       };
@@ -39,13 +46,17 @@ export class QueryBuilders {
     return where;
   }
 
+  /**
+   * Build where clause using slug if available, falling back to name.
+   * Used for most collections (pages, etc.).
+   */
   private buildSlugOrNameWhereClause(item: Record<string, unknown>): Where {
     const where: Where = {};
-    if (item.slug != null && item.slug != undefined) {
+    if (item.slug != null) {
       where.slug = {
         equals: item.slug,
       };
-    } else if (item.name != null && item.name != undefined) {
+    } else if (item.name != null) {
       where.name = {
         equals: item.name,
       };
@@ -53,7 +64,24 @@ export class QueryBuilders {
     return where;
   }
 
-  private buildSlugWhereClause(item: Record<string, unknown>): Where {
+  /**
+   * Build where clause for catalogs collection - checks by slug only.
+   */
+  private buildCatalogsWhereClause(item: Record<string, unknown>): Where {
+    return this.buildSlugOnlyWhereClause(item);
+  }
+
+  /**
+   * Build where clause for datasets collection - checks by slug only.
+   */
+  private buildDatasetsWhereClause(item: Record<string, unknown>): Where {
+    return this.buildSlugOnlyWhereClause(item);
+  }
+
+  /**
+   * Helper to build where clause using only slug.
+   */
+  private buildSlugOnlyWhereClause(item: Record<string, unknown>): Where {
     return {
       slug: {
         equals: item.slug,
@@ -61,25 +89,14 @@ export class QueryBuilders {
     };
   }
 
-  private buildCatalogsWhereClause(item: Record<string, unknown>): Where {
-    return this.buildSlugWhereClause(item);
-  }
-
-  private buildDatasetsWhereClause(item: Record<string, unknown>): Where {
-    return this.buildSlugWhereClause(item);
-  }
-
+  /**
+   * Build where clause for events collection - checks by title AND date.
+   * Events are considered duplicates only if both title and date match.
+   */
   private buildEventsWhereClause(item: Record<string, unknown>): Where {
     const where: Where = {};
 
-    if (
-      item.title != null &&
-      item.title != undefined &&
-      item.title != "" &&
-      item.date != null &&
-      item.date != undefined &&
-      item.date != ""
-    ) {
+    if (item.title != null && item.title !== "" && item.date != null && item.date !== "") {
       where.and = [
         {
           title: {
@@ -97,6 +114,10 @@ export class QueryBuilders {
     return where;
   }
 
+  /**
+   * Extract a human-readable display name from an item for logging.
+   * Tries title, name, email, slug in order.
+   */
   getDisplayName(item: Record<string, unknown>): string {
     return (
       (item.title as string) || (item.name as string) || (item.email as string) || (item.slug as string) || "Unknown"

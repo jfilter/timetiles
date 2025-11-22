@@ -15,6 +15,7 @@
 import { createLogger, logError } from "@/lib/logger";
 import type { Config } from "@/payload-types";
 
+import { MAIN_MENU_SLUG } from "../constants";
 import type { CollectionConfig } from "../seed.config";
 import type { SeedManager } from "../seed-manager";
 import { catalogSeeds } from "../seeds/catalogs";
@@ -59,7 +60,6 @@ export class SeedingOperations {
     const transformedData = this.dataProcessing.applyDataTransformations(preparedData, config, collectionName);
 
     // Handle global collections
-    const MAIN_MENU_SLUG = "main-menu";
     if (collectionName === MAIN_MENU_SLUG) {
       await this.seedGlobalCollection(transformedData, collectionName);
       return;
@@ -84,7 +84,6 @@ export class SeedingOperations {
   }
 
   private async seedGlobalCollection(seedData: SeedData, collectionName: string): Promise<void> {
-    const MAIN_MENU_SLUG = "main-menu";
     if (collectionName === MAIN_MENU_SLUG) {
       try {
         const menuData = Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : seedData;
@@ -96,10 +95,10 @@ export class SeedingOperations {
           slug: MAIN_MENU_SLUG,
           data: menuData as Config["globals"]["main-menu"],
         });
-        logger.info("Seeded main-menu global successfully!");
+        logger.info(`Seeded ${MAIN_MENU_SLUG} global successfully!`);
       } catch (error) {
-        logError(error, "Failed to seed main-menu global", {
-          global: MAIN_MENU_SLUG,
+        logError(error, `Failed to seed ${MAIN_MENU_SLUG} global`, {
+          global: collectionName,
           data: Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : {},
         });
       }
@@ -217,13 +216,13 @@ export class SeedingOperations {
     environment: string
   ): Promise<void> {
     // For test environment, add timestamp to slug to ensure uniqueness
-    if (environment == "test" && resolvedItem.slug != null && resolvedItem.slug != undefined) {
+    if (environment === "test" && resolvedItem.slug != null) {
       resolvedItem.slug = this.dataProcessing.generateTestSlug(resolvedItem.slug);
     }
 
     // Check if item already exists to avoid duplicate key errors
     const existingItem = await this.findExistingItem(collectionName, resolvedItem);
-    if (existingItem != null && existingItem != undefined) {
+    if (existingItem != null) {
       const displayName = this.queryBuilders.getDisplayName(resolvedItem);
       logger.debug(
         { collection: collectionName, displayName },
@@ -272,7 +271,7 @@ export class SeedingOperations {
     const where = this.queryBuilders.buildWhereClause(collection, item);
 
     // Only query if we have a valid where clause
-    if (Object.keys(where).length == 0) {
+    if (Object.keys(where).length === 0) {
       return null;
     }
 
@@ -305,7 +304,7 @@ export class SeedingOperations {
         return datasetSeeds(environment);
       case "events":
         return eventSeeds(environment);
-      case "main-menu":
+      case MAIN_MENU_SLUG:
         return [mainMenuSeed];
       case "pages":
         return pagesSeed;
