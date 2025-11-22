@@ -344,7 +344,7 @@ test.describe("Access Control - Error Handling", () => {
     const url = page.url();
     console.log("Redirect URL after admin access attempt:", url);
 
-    // Should be on login page
+    // Should be on login page (accepts /login, /auth, or /admin/login)
     const isOnLogin = url.includes("/login") || url.includes("/auth");
     expect(isOnLogin).toBe(true);
 

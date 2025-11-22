@@ -25,7 +25,7 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.selectCatalog("Environmental Data");
 
     // Verify that datasets specific to this catalog are shown
-    await expect(explorePage.page.getByText("Air Quality Measurements")).toBeVisible();
+    await expect(explorePage.page.getByText("Air Quality Measurements", { exact: true })).toBeVisible();
 
     // Select a dataset
     await explorePage.selectDatasets(["Air Quality Measurements"]);
