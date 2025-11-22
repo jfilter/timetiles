@@ -11,6 +11,9 @@ updates:
     versioning-strategy: "increase"
     labels:
       - "dependencies"
+    # Cooldown: Wait 7 days for all releases to stabilize before creating PRs
+    cooldown:
+      default-days: 7
     # Group all minor and patch updates together to reduce PR volume
     groups:
       all-dependencies:

@@ -1,18 +1,20 @@
 /**
  * Defines the job handler for validating the detected schema against the dataset's existing schema.
  *
- * This job is responsible for schema management and versioning. Its main tasks are:
+ * This job is responsible for schema validation and determining the next processing stage. Its main tasks are:
  * - Finalizing the schema detection using the cached state from the schema detection stage.
  * - Comparing the newly detected schema with the current schema version of the target dataset.
  * - Identifying breaking changes (e.g., type changes, removed fields) and non-breaking changes (e.g., new optional fields).
  * - Determining whether the changes can be automatically approved based on the dataset's configuration.
  *
- * If changes require manual intervention, the job is paused at the `AWAITING_APPROVAL` stage.
- * If auto-approved, a new schema version is created, and the job proceeds to the `GEOCODING` stage.
+ * Next stage routing:
+ * - If changes require manual approval → `AWAIT_APPROVAL` stage
+ * - If changes are auto-approved → `CREATE_SCHEMA_VERSION` stage
+ * - If no schema changes → `GEOCODE_BATCH` stage
  *
  * @module
  */
-import type { Payload, PayloadRequest } from "payload";
+import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
@@ -21,7 +23,6 @@ import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { compareSchemas, detectTransforms } from "@/lib/services/schema-builder/schema-comparison";
-import { SchemaVersioningService } from "@/lib/services/schema-versioning";
 import type { SchemaComparison } from "@/lib/types/schema-detection";
 import { getSchemaBuilderState } from "@/lib/types/schema-detection";
 import type { ImportJob, User } from "@/payload-types";
@@ -118,52 +119,7 @@ const getApprovalReason = (hasHighConfidenceTransforms: boolean, isBreaking: boo
   return "Manual approval required by dataset configuration";
 };
 
-// Helper function to handle schema approval
-const handleSchemaApproval = async (options: {
-  payload: Payload;
-  requiresApproval: boolean;
-  comparison: SchemaComparison;
-  detectedSchema: Record<string, unknown>;
-  schemaBuilder: ProgressiveSchemaBuilder;
-  dataset: {
-    id: string | number;
-    schemaConfig?: { locked?: boolean | null; autoApproveNonBreaking?: boolean | null } | null;
-  };
-  importJobId: number | string;
-  fieldMappings?: {
-    titlePath?: string | null;
-    descriptionPath?: string | null;
-    timestampPath?: string | null;
-  };
-  req?: PayloadRequest;
-}) => {
-  const {
-    payload,
-    requiresApproval,
-    comparison,
-    detectedSchema,
-    schemaBuilder,
-    dataset,
-    importJobId,
-    fieldMappings,
-    req,
-  } = options;
-  const hasChanges = comparison.changes.length > 0;
-  if (!requiresApproval && hasChanges) {
-    const schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
-      dataset: dataset.id,
-      schema: detectedSchema,
-      fieldMetadata: schemaBuilder.getState().fieldStats,
-      fieldMappings,
-      autoApproved: true,
-      approvedBy: null, // No user for auto-approval
-      importSources: [],
-      req,
-    });
-
-    await SchemaVersioningService.linkImportToSchemaVersion(payload, importJobId, schemaVersion.id, req);
-  }
-};
+// Helper function removed - schema creation now happens in CREATE_SCHEMA_VERSION stage for both auto and manual approval
 
 /**
  * Check quota limits for the import
@@ -278,7 +234,7 @@ export const validateSchemaJob = {
       }
 
       // Get schema from cached builder state (no file reading needed)
-      const { schemaBuilder, detectedSchema } = await getSchemaFromCache({
+      const { detectedSchema } = await getSchemaFromCache({
         schemaBuilderState: job.schemaBuilderState,
       });
 
@@ -305,6 +261,17 @@ export const validateSchemaJob = {
       // Extract changes
       const { breakingChanges, newFields } = extractSchemaChanges(comparison, detectedSchema);
 
+      // Determine next stage based on approval requirement and whether schema changed
+      const hasChanges = comparison.changes.length > 0;
+      let nextStage: (typeof PROCESSING_STAGE)[keyof typeof PROCESSING_STAGE];
+      if (requiresApproval) {
+        nextStage = PROCESSING_STAGE.AWAIT_APPROVAL;
+      } else if (hasChanges) {
+        nextStage = PROCESSING_STAGE.CREATE_SCHEMA_VERSION;
+      } else {
+        nextStage = PROCESSING_STAGE.GEOCODE_BATCH;
+      }
+
       // Update job with validation results
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_JOBS,
@@ -319,27 +286,15 @@ export const validateSchemaJob = {
             requiresApproval,
             approvalReason: getApprovalReason(hasHighConfidenceTransforms, comparison.isBreaking),
           },
-          stage: requiresApproval ? PROCESSING_STAGE.AWAIT_APPROVAL : PROCESSING_STAGE.GEOCODE_BATCH,
+          stage: nextStage,
         },
       });
 
       // Complete VALIDATE_SCHEMA stage
       await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
 
-      // Handle schema approval if needed
-      await handleSchemaApproval({
-        payload,
-        requiresApproval,
-        comparison,
-        detectedSchema,
-        schemaBuilder,
-        dataset,
-        importJobId,
-        fieldMappings: job.detectedFieldMappings,
-        req: context.req as PayloadRequest | undefined,
-      });
-
-      // Stage transition to GEOCODE_BATCH automatically queues geocode-batch job via afterChange hook
+      // Stage transition to next stage (AWAIT_APPROVAL, CREATE_SCHEMA_VERSION, or GEOCODE_BATCH)
+      // automatically queues appropriate job via afterChange hook
       // No manual queueing needed here
 
       logPerformance("Schema validation", Date.now() - startTime, {
