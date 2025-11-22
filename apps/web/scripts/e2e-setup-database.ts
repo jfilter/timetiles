@@ -16,11 +16,6 @@
  * @category Scripts
  */
 
-import { config as loadEnv } from "dotenv";
-
-// Load environment variables from .env.local before accessing DATABASE_URL
-loadEnv({ path: ".env.local" });
-
 import { setupDatabase } from "../lib/database/setup";
 import { deriveE2eDatabaseUrl, getDatabaseUrl, parseDatabaseUrl } from "../lib/database/url";
 import { createLogger } from "../lib/logger";
