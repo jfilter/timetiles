@@ -34,16 +34,41 @@ test.describe("Explore Page - Real Data Tests", () => {
     const catalogOptions = await page.locator('[role="option"]').count();
     expect(catalogOptions).toBeGreaterThan(1); // Should have at least "All Catalogs" + actual catalogs
 
-    // Get the first real catalog (not "All Catalogs")
-    const firstCatalog = page.locator('[role="option"]:not(:has-text("All Catalogs"))').first();
-    const catalogName = await firstCatalog.textContent();
-    expect(catalogName?.trim()).toBeTruthy();
+    // Find a catalog that has datasets (loop through options)
+    const catalogOptionSelector = page.locator('[role="option"]:not(:has-text("All Catalogs"))');
+    const optionCount = await catalogOptionSelector.count();
+    let catalogWithDatasets: string | null = null;
 
-    // Select the first available catalog
-    await firstCatalog.click();
+    for (let i = 0; i < optionCount; i++) {
+      const option = catalogOptionSelector.nth(i);
+      const catalogName = await option.textContent();
 
-    // Wait for datasets section to update
-    await page.waitForSelector('input[type="checkbox"]', { timeout: 5000 });
+      // Select this catalog
+      await option.click();
+
+      // Wait a moment for UI to update
+      await page.waitForTimeout(500);
+
+      // Check if datasets appear
+      const hasDatasets = (await page.locator('input[type="checkbox"]').count()) > 0;
+
+      if (hasDatasets) {
+        catalogWithDatasets = catalogName;
+        break;
+      }
+
+      // If no datasets, open dropdown again for next iteration
+      if (i < optionCount - 1) {
+        await explorePage.catalogSelect.click();
+        await page.locator('[role="option"]').first().waitFor({ state: "visible" });
+      }
+    }
+
+    // Verify we found a catalog with datasets
+    expect(catalogWithDatasets?.trim()).toBeTruthy();
+
+    // Datasets should now be visible
+    await page.waitForSelector('input[type="checkbox"]', { timeout: 1000 });
 
     // Check that datasets are available
     const datasetCheckboxes = await page.locator('input[type="checkbox"]').count();

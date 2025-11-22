@@ -70,6 +70,7 @@ function getExpectedScopes(files) {
     'apps/web/lib/jobs/': 'jobs',
     'apps/web/migrations/': 'db',
     'apps/web/lib/seed/': 'seed',
+    'apps/web/tests/e2e/': 'e2e',
     'apps/web/tests/': 'test',
     'apps/web/app/api/': 'api',
     
@@ -218,7 +219,7 @@ export default {
               const validScopes = [
                 'web', 'docs', 'ui', 'assets', 'config',
                 'import', 'geocoding', 'events', 'schema', 'deploy',
-                'db', 'api', 'jobs', 'deps', 'seed', 'ci', 'build', 'test', 'infra'
+                'db', 'api', 'jobs', 'deps', 'seed', 'ci', 'build', 'test', 'e2e', 'infra'
               ];
               
               if (validScopes.includes(scope)) {
@@ -364,6 +365,7 @@ export default {
         'deps',       // Dependencies and package management
         'seed',       // Test and development data generation
         'test',       // Testing infrastructure and test files
+        'e2e',        // End-to-end tests
 
         // Infrastructure
         'ci',         // GitHub Actions, CI/CD pipelines
@@ -489,7 +491,8 @@ export default {
           deps: 'Dependencies',
           seed: 'Test data generation',
           test: 'Testing infrastructure',
-          
+          e2e: 'End-to-end tests',
+
           // Infrastructure
           ci: 'CI/CD pipelines',
           build: 'Build configuration',

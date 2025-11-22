@@ -337,21 +337,20 @@ test.describe("Access Control - Error Handling", () => {
     // Try to navigate to admin panel
     await page.goto("http://localhost:3002/admin");
 
-    // Should either redirect to login or show error
-    // Wait for navigation to complete
-    await page.waitForLoadState("networkidle");
+    // Should redirect to login page - wait for login form to appear
+    // instead of waiting for networkidle (which times out with admin panel JS bundles)
+    await page.locator('input[name="email"], input[type="email"]').waitFor({ timeout: 10000 });
 
     const url = page.url();
     console.log("Redirect URL after admin access attempt:", url);
 
-    // Should not be on admin page (should redirect or show error)
-    // Depending on implementation, might redirect to login or home
-    const isOnAdmin = url.includes("/admin");
+    // Should be on login page
     const isOnLogin = url.includes("/login") || url.includes("/auth");
-    const isOnHome = url === "http://localhost:3002/" || url === "http://localhost:3002/explore";
+    expect(isOnLogin).toBe(true);
 
-    // Should be redirected away from admin or shown login
-    expect(isOnAdmin || isOnLogin || isOnHome).toBe(true);
+    // Login form should be visible
+    await expect(page.locator('input[name="email"], input[type="email"]')).toBeVisible();
+    await expect(page.locator('input[name="password"], input[type="password"]')).toBeVisible();
   });
 
   test("should handle 403 responses gracefully", async ({ page }) => {

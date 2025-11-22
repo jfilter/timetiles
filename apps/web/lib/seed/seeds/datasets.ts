@@ -108,6 +108,23 @@ const DATASET_TEMPLATES = {
       slug: "exhibition-archive",
     },
   ],
+  government: [
+    {
+      name: "Public Records Database",
+      description: "Government public records and official documents",
+      slug: "public-records-database",
+    },
+    {
+      name: "Federal Grant Programs",
+      description: "Federal funding and grant program information",
+      slug: "federal-grant-programs",
+    },
+    {
+      name: "Legislative Data",
+      description: "Bills, laws, and legislative proceedings",
+      slug: "legislative-data",
+    },
+  ],
 };
 
 // Get catalog configurations
@@ -122,6 +139,7 @@ const getCatalogConfigs = (environment: string) => {
     baseCatalogs.push(
       { slug: "community-events-portal", type: "community" },
       { slug: "cultural-heritage-archives", type: "cultural" },
+      { slug: "government-data", type: "government" },
       { slug: "historical-records", type: "academic" } // Treat as academic for schema
     );
   }
