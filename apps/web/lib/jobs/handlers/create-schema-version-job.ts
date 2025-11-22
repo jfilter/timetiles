@@ -1,8 +1,8 @@
 /**
- * Job handler for creating schema versions after approval.
+ * Job handler for creating schema versions for both auto-approved and manually-approved schemas.
  *
- * This job is queued after schema approval to create the schema version
- * in a separate transaction, avoiding circular dependencies and deadlocks.
+ * This job is queued after schema validation (for auto-approved changes) or after manual approval
+ * to create the schema version in a separate transaction, avoiding circular dependencies and deadlocks.
  *
  * @module
  */
@@ -20,13 +20,18 @@ import type { JobHandlerContext } from "../utils/job-context";
 // Helper to check if schema version creation should be skipped
 const shouldSkipSchemaVersionCreation = (job: {
   datasetSchemaVersion?: unknown;
-  schemaValidation?: { approved?: boolean | null };
+  schemaValidation?: {
+    approved?: boolean | null;
+    requiresApproval?: boolean | null;
+  };
 }): { skip: boolean; reason: string } => {
   let result: { skip: boolean; reason: string } = { skip: false, reason: "" };
 
   if (job.datasetSchemaVersion) {
     result = { skip: true, reason: "Schema version already exists" };
-  } else if (!job.schemaValidation?.approved) {
+  } else if (job.schemaValidation?.requiresApproval && !job.schemaValidation?.approved) {
+    // Only skip if manual approval required but not yet approved
+    // Auto-approved cases have requiresApproval=false, so they proceed
     result = { skip: true, reason: "Schema not approved" };
   }
 
@@ -103,11 +108,15 @@ export const createSchemaVersionJob = {
       // Get dataset and prepare schema version data
       const dataset = await getDatasetFromJob(payload, job);
       const fieldStats = getFieldStats(job);
-      const approvedById = getApprovedById(job.schemaValidation?.approvedBy);
+
+      // Determine if this is auto-approved or manual-approved
+      const isAutoApproved = !job.schemaValidation?.requiresApproval;
+      const approvedById = isAutoApproved ? null : getApprovedById(job.schemaValidation?.approvedBy);
 
       logger.info("Creating schema version", {
         importJobId,
         datasetId: dataset.id,
+        isAutoApproved,
         approvedById,
       });
 
@@ -117,7 +126,7 @@ export const createSchemaVersionJob = {
         schema: job.schema,
         fieldMetadata: fieldStats || {},
         fieldMappings: job.detectedFieldMappings,
-        autoApproved: false,
+        autoApproved: isAutoApproved,
         approvedBy: approvedById,
         importSources: [],
         req: context.req as PayloadRequest | undefined,

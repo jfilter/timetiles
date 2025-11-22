@@ -1,9 +1,4 @@
 #!/usr/bin/env sh
 
-# This for Google's Jules
-if ! command -v pnpm >/dev/null 2>&1; then
-  exit 0
-fi
-
 # Run commitlint on the commit message
 pnpm exec commitlint --edit "$1"

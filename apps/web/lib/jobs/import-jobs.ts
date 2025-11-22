@@ -28,6 +28,9 @@ export { quotaResetJobConfig } from "./handlers/quota-reset-job";
 // Cache management job handlers
 export { cacheCleanupJob } from "./handlers/cache-cleanup-job";
 
+// Error recovery job handlers
+export { processPendingRetriesJob } from "./handlers/process-pending-retries-job";
+
 // Re-export utility types
 export type {
   AnalyzeDuplicatesJobInput,

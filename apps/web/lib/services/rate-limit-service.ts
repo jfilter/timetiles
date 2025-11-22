@@ -552,6 +552,25 @@ export const RATE_LIMITS = {
       { limit: 100, windowMs: 60 * 60 * 1000, name: "hourly" }, // 100 per hour
     ],
   },
+  IMPORT_RETRY: {
+    windows: [
+      { limit: 1, windowMs: 60 * 1000, name: "burst" }, // 1 per minute
+      { limit: 10, windowMs: 60 * 60 * 1000, name: "hourly" }, // 10 per hour
+      { limit: 50, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 50 per day
+    ],
+  },
+  ADMIN_IMPORT_RESET: {
+    windows: [
+      { limit: 5, windowMs: 60 * 1000, name: "burst" }, // 5 per minute (admins may need to reset multiple jobs)
+      { limit: 50, windowMs: 60 * 60 * 1000, name: "hourly" }, // 50 per hour
+    ],
+  },
+  RETRY_RECOMMENDATIONS: {
+    windows: [
+      { limit: 10, windowMs: 60 * 1000, name: "burst" }, // 10 per minute
+      { limit: 100, windowMs: 60 * 60 * 1000, name: "hourly" }, // 100 per hour
+    ],
+  },
   API_GENERAL: {
     windows: [
       { limit: 5, windowMs: 1000, name: "burst" }, // 5 per second

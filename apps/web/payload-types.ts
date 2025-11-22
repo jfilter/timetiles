@@ -131,6 +131,7 @@ export interface Config {
       'url-fetch': TaskUrlFetch;
       'schedule-manager': TaskScheduleManager;
       'cleanup-stuck-scheduled-imports': TaskCleanupStuckScheduledImports;
+      'process-pending-retries': TaskProcessPendingRetries;
       'quota-reset': TaskQuotaReset;
       'cache-cleanup': TaskCacheCleanup;
       inline: {
@@ -1873,6 +1874,7 @@ export interface PayloadJob {
           | 'url-fetch'
           | 'schedule-manager'
           | 'cleanup-stuck-scheduled-imports'
+          | 'process-pending-retries'
           | 'quota-reset'
           | 'cache-cleanup';
         taskID: string;
@@ -1921,6 +1923,7 @@ export interface PayloadJob {
         | 'url-fetch'
         | 'schedule-manager'
         | 'cleanup-stuck-scheduled-imports'
+        | 'process-pending-retries'
         | 'quota-reset'
         | 'cache-cleanup'
       )
@@ -2909,6 +2912,14 @@ export interface TaskScheduleManager {
  * via the `definition` "TaskCleanup-stuck-scheduled-imports".
  */
 export interface TaskCleanupStuckScheduledImports {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskProcess-pending-retries".
+ */
+export interface TaskProcessPendingRetries {
   input?: unknown;
   output?: unknown;
 }

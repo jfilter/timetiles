@@ -34,6 +34,7 @@ import {
   createSchemaVersionJob,
   datasetDetectionJob,
   geocodeBatchJob,
+  processPendingRetriesJob,
   quotaResetJobConfig,
   scheduleManagerJob,
   schemaDetectionJob,
@@ -93,6 +94,7 @@ export const ALL_JOBS = [
   urlFetchJob,
   scheduleManagerJob,
   cleanupStuckScheduledImportsJob,
+  processPendingRetriesJob,
   quotaResetJobConfig,
   cacheCleanupJob,
 ];
