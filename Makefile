@@ -1,4 +1,6 @@
-.PHONY: up down logs db-reset db-shell db-query clean setup seed dev kill-dev build lint typecheck format test test-e2e migrate migrate-create check help
+.PHONY: all up down logs db-reset db-shell db-query clean setup seed ensure-infra dev kill-dev build lint typecheck format test test-e2e migrate migrate-create check help
+
+all: help
 
 # Start the development environment
 up:
@@ -46,15 +48,15 @@ setup:
 	@echo "📦 Dependencies installed!"
 	@echo "🔧 Run 'make dev' to start development (infrastructure + server)"
 
-# Start development server (requires infrastructure)
-dev:
-	@echo "🔍 Checking if infrastructure is running..."
+# Ensure infrastructure is running
+ensure-infra:
 	@if ! docker compose -f docker-compose.dev.yml ps --services --filter status=running | grep -q postgres; then \
 		echo "❌ PostgreSQL not running. Starting infrastructure..."; \
-		$(MAKE) up; \
-		echo "⏳ Waiting for services to be ready..."; \
-		sleep 5; \
+		$(MAKE) up && sleep 5; \
 	fi
+
+# Start development server (requires infrastructure)
+dev: ensure-infra
 	@echo "🚀 Starting development server..."
 	pnpm dev
 
@@ -177,40 +179,36 @@ check:
 
 # Show help
 help:
-	@echo "📋 Available commands:"
-	@echo ""
-	@echo "🚀 Development:"
-	@echo "  setup       - Install dependencies and create .env file"
-	@echo "  dev         - Start development server (auto-starts infrastructure)"
-	@echo "  dev-full    - Start infrastructure and development server"
-	@echo "  kill-dev    - Stop all development servers and processes"
-	@echo "  build       - Build the project"
-	@echo ""
-	@echo "🔍 Code Quality:"
-	@echo "  lint        - Run ESLint"
-	@echo "  typecheck   - Run TypeScript type checking"
-	@echo "  check       - Run lint + typecheck combined"
-	@echo "  check-ai    - Run code quality checks with AI-friendly output"
-	@echo "                (usage: make check-ai [PACKAGE=web|docs|ui])"
-	@echo "  format      - Format code with Prettier"
-	@echo ""
-	@echo "🧪 Testing:"
-	@echo "  test          - Run tests"
-	@echo "  test-coverage - Run tests and generate coverage"
-	@echo "  coverage      - Show last coverage summary (quick)"
-	@echo "  coverage-check - Show files below 80% coverage threshold"
-	@echo "  test-e2e      - Run E2E tests with automatic database setup"
-	@echo ""
-	@echo "🌱 Database:"
-	@echo "  seed        - Seed database with sample data (usage: make seed ARGS='development users')"
-	@echo "  migrate     - Run pending database migrations"
-	@echo "  migrate-create - Create a new database migration"
-	@echo ""
-	@echo "🐳 Infrastructure:"
-	@echo "  up          - Start development environment"
-	@echo "  down        - Stop development environment"
-	@echo "  logs        - View container logs"
-	@echo "  db-reset    - Reset database (removes all data)"
-	@echo "  db-shell    - Open PostgreSQL shell"
-	@echo "  db-query    - Execute SQL query (usage: make db-query SQL='SELECT ...')"
-	@echo "  clean       - Clean up everything"
+	@printf '%s\n' \
+		'📋 Available commands:' '' \
+		'🚀 Development:' \
+		'  setup       - Install dependencies and create .env file' \
+		'  dev         - Start development server (auto-starts infrastructure)' \
+		'  dev-full    - Start infrastructure and development server' \
+		'  kill-dev    - Stop all development servers and processes' \
+		'  build       - Build the project' '' \
+		'🔍 Code Quality:' \
+		'  lint        - Run ESLint' \
+		'  typecheck   - Run TypeScript type checking' \
+		'  check       - Run lint + typecheck combined' \
+		'  check-ai    - Run code quality checks with AI-friendly output' \
+		'                (usage: make check-ai [PACKAGE=web|docs|ui])' \
+		'  format      - Format code with Prettier' '' \
+		'🧪 Testing:' \
+		'  test          - Run tests' \
+		'  test-coverage - Run tests and generate coverage' \
+		'  coverage      - Show last coverage summary (quick)' \
+		'  coverage-check - Show files below 80% coverage threshold' \
+		'  test-e2e      - Run E2E tests with automatic database setup' '' \
+		'🌱 Database:' \
+		'  seed        - Seed database with sample data (usage: make seed ARGS='"'"'development users'"'"')' \
+		'  migrate     - Run pending database migrations' \
+		'  migrate-create - Create a new database migration' '' \
+		'🐳 Infrastructure:' \
+		'  up          - Start development environment' \
+		'  down        - Stop development environment' \
+		'  logs        - View container logs' \
+		'  db-reset    - Reset database (removes all data)' \
+		'  db-shell    - Open PostgreSQL shell' \
+		'  db-query    - Execute SQL query (usage: make db-query SQL='"'"'SELECT ...'"'"')' \
+		'  clean       - Clean up everything'
