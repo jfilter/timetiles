@@ -87,9 +87,9 @@ describe.sequential("Isolated Seed System", () => {
 
   describe.sequential("Seeding Operations", () => {
     it("should seed users collection", async () => {
-      await testEnv.seedManager.seed({
+      await testEnv.seedManager.seedWithConfig({
         collections: ["users"],
-        environment: "development",
+        preset: "development",
         truncate: false,
       });
 
@@ -103,9 +103,9 @@ describe.sequential("Isolated Seed System", () => {
     });
 
     it("should seed catalogs collection", async () => {
-      await testEnv.seedManager.seed({
+      await testEnv.seedManager.seedWithConfig({
         collections: ["catalogs"],
-        environment: "development",
+        preset: "development",
         truncate: false,
       });
 
@@ -120,16 +120,16 @@ describe.sequential("Isolated Seed System", () => {
 
     it("should seed datasets with proper catalog relationships", async () => {
       // First seed catalogs
-      await testEnv.seedManager.seed({
+      await testEnv.seedManager.seedWithConfig({
         collections: ["catalogs"],
-        environment: "development",
+        preset: "development",
         truncate: false,
       });
 
       // Then seed datasets
-      await testEnv.seedManager.seed({
+      await testEnv.seedManager.seedWithConfig({
         collections: ["datasets"],
-        environment: "development",
+        preset: "development",
         truncate: false,
       });
 
@@ -149,16 +149,16 @@ describe.sequential("Isolated Seed System", () => {
 
     it("should seed events with proper dataset relationships", async () => {
       // Seed prerequisites
-      await testEnv.seedManager.seed({
+      await testEnv.seedManager.seedWithConfig({
         collections: ["catalogs", "datasets"],
-        environment: "development",
+        preset: "development",
         truncate: false,
       });
 
       // Then seed events
-      await testEnv.seedManager.seed({
+      await testEnv.seedManager.seedWithConfig({
         collections: ["events"],
-        environment: "development",
+        preset: "development",
         truncate: false,
       });
 
@@ -175,39 +175,9 @@ describe.sequential("Isolated Seed System", () => {
       expect(typeof anyEvent.dataset).toBe("object"); // Should be populated
     }, 90000); // 90 second timeout for seeding events with relationships (increases when running full suite)
 
-    it("should seed import-files with proper catalog relationships", async () => {
-      // First seed catalogs
-      await testEnv.seedManager.seed({
-        collections: ["catalogs"],
-        environment: "development",
-        truncate: false,
-      });
-
-      // Then seed import files
-      await testEnv.seedManager.seed({
-        collections: ["import-files"],
-        environment: "development",
-        truncate: false,
-      });
-
-      const importFiles = await testEnv.payload.find({
-        collection: "import-files",
-        limit: 100,
-        depth: 1,
-      });
-
-      expect(importFiles.docs.length).toBeGreaterThan(0);
-      const airQualityImport = importFiles.docs.find(
-        (imp: any) => imp.originalName === "Air Quality Monitoring - January 2024.csv"
-      );
-      expect(airQualityImport).toBeDefined();
-      expect(airQualityImport.catalog).toBeDefined();
-      expect(typeof airQualityImport.catalog).toBe("object"); // Should be populated
-    });
-
     it("should seed all collections in correct order", async () => {
-      await testEnv.seedManager.seed({
-        environment: "development",
+      await testEnv.seedManager.seedWithConfig({
+        preset: "development",
         truncate: false,
       });
 
@@ -228,9 +198,9 @@ describe.sequential("Isolated Seed System", () => {
     it("should handle missing relationships gracefully", async () => {
       // Try to seed datasets without catalogs - should complete without throwing
       await expect(
-        testEnv.seedManager.seed({
+        testEnv.seedManager.seedWithConfig({
           collections: ["datasets"],
-          environment: "development",
+          preset: "development",
           truncate: false,
         })
       ).resolves.toBeUndefined();
@@ -241,17 +211,17 @@ describe.sequential("Isolated Seed System", () => {
     });
 
     it("should handle missing datasets for events", async () => {
-      await testEnv.seedManager.seed({
+      await testEnv.seedManager.seedWithConfig({
         collections: ["catalogs"],
-        environment: "development",
+        preset: "development",
         truncate: false,
       });
 
       // Try to seed events without datasets - should complete without throwing
       await expect(
-        testEnv.seedManager.seed({
+        testEnv.seedManager.seedWithConfig({
           collections: ["events"],
-          environment: "development",
+          preset: "development",
           truncate: false,
         })
       ).resolves.toBeUndefined();
@@ -264,9 +234,9 @@ describe.sequential("Isolated Seed System", () => {
     it("should handle invalid collection names", async () => {
       // Invalid collection names should still complete without throwing
       await expect(
-        testEnv.seedManager.seed({
+        testEnv.seedManager.seedWithConfig({
           collections: ["invalid-collection"],
-          environment: "development",
+          preset: "development",
           truncate: false,
         })
       ).resolves.toBeUndefined(); // The method completes but logs the error

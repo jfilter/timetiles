@@ -40,6 +40,14 @@ const getLocationCacheCount = (env: string): number => {
 export interface CollectionConfig {
   /** Number of items to create, or function returning count based on environment */
   count?: number | ((env: string) => number);
+  /** Number of items by volume preset (new approach, replaces count function) */
+  countByVolume?: {
+    minimal?: number;
+    small?: number;
+    medium?: number;
+    large?: number;
+    xlarge?: number;
+  };
   /** Collections that must be seeded before this one */
   dependencies?: string[];
   /** Custom generator to use for realistic data patterns */
@@ -57,17 +65,24 @@ export interface GeneratorConfig {
   options: Record<string, unknown>;
 }
 
-export interface EnvironmentConfig {
-  /** Collections enabled for this environment */
+/**
+ * Preset configuration - bundles together related settings for a specific use case.
+ */
+export interface PresetConfig {
+  /** Human-readable description of this preset */
+  description: string;
+  /** Collections enabled for this preset */
   enabled: string[];
-  /** Environment-specific overrides for collection configurations */
+  /** How much data to generate */
+  volume: "minimal" | "small" | "medium" | "large" | "xlarge";
+  /** How realistic/complex the data should be */
+  realism: "simple" | "realistic" | "production-like";
+  /** Performance vs richness trade-off */
+  performance: "fast" | "balanced" | "rich";
+  /** Logging verbosity */
+  debugging: "quiet" | "normal" | "verbose";
+  /** Preset-specific overrides for collection configurations */
   overrides?: Record<string, Partial<CollectionConfig>>;
-  /** Global environment settings */
-  settings?: {
-    useRealisticData?: boolean;
-    performanceMode?: boolean;
-    debugLogging?: boolean;
-  };
 }
 
 export interface SeedConfiguration {
@@ -77,8 +92,8 @@ export interface SeedConfiguration {
   globals?: Record<string, CollectionConfig>;
   /** Relationship configurations (imported from existing system) */
   relationships: Record<string, RelationshipConfig[]>;
-  /** Environment-specific configurations */
-  environments: Record<string, EnvironmentConfig>;
+  /** Seeding presets */
+  presets: Record<string, PresetConfig>;
   /** Custom data generators */
   generators: Record<string, GeneratorConfig>;
 }
@@ -221,113 +236,6 @@ export const SEED_CONFIG: SeedConfiguration = {
   // Import existing relationship configurations
   relationships: RELATIONSHIP_CONFIG,
 
-  environments: {
-    development: {
-      enabled: [
-        "users",
-        "catalogs",
-        "datasets",
-        "events",
-        "pages",
-        "main-menu",
-        "location-cache",
-        GEOCODING_PROVIDERS_COLLECTION,
-      ],
-      overrides: {
-        events: {
-          customGenerator: "realistic-temporal-spatial-patterns",
-          options: {
-            useGeographicClustering: true,
-            temporalDistribution: "realistic",
-            includeGeocoding: true,
-            debugOutput: true,
-          },
-        },
-        datasets: {
-          options: {
-            includeArchivedDatasets: true,
-            generateExtendedSchemas: true,
-          },
-        },
-      },
-      settings: {
-        useRealisticData: true,
-        performanceMode: false,
-        debugLogging: true,
-      },
-    },
-
-    test: {
-      enabled: [
-        "users",
-        "catalogs",
-        "datasets",
-        "events",
-        "pages",
-        "main-menu",
-        "location-cache",
-        GEOCODING_PROVIDERS_COLLECTION,
-      ],
-      overrides: {
-        events: {
-          customGenerator: "simple-patterns",
-          options: {
-            useGeographicClustering: false,
-            temporalDistribution: "uniform",
-            includeGeocoding: false,
-          },
-        },
-        datasets: {
-          options: {
-            generateSchemas: false, // Faster test execution
-          },
-        },
-      },
-      settings: {
-        useRealisticData: false,
-        performanceMode: true,
-        debugLogging: false,
-      },
-    },
-
-    production: {
-      enabled: [
-        "users", // Admin users only
-        "pages", // Static content pages
-        "main-menu", // Navigation menu
-        GEOCODING_PROVIDERS_COLLECTION, // Service configuration
-      ],
-      overrides: {
-        users: {
-          count: 1, // Single admin user
-          options: {
-            includeTestUsers: false,
-            createAdminUser: true,
-          },
-        },
-      },
-      settings: {
-        useRealisticData: false,
-        performanceMode: true,
-        debugLogging: false,
-      },
-    },
-
-    staging: {
-      enabled: ["users", "catalogs", "datasets", "events", "pages", "main-menu", GEOCODING_PROVIDERS_COLLECTION],
-      overrides: {
-        events: {
-          count: 100, // Smaller dataset for staging
-        },
-      },
-      settings: {
-        useRealisticData: true,
-        performanceMode: false,
-        debugLogging: false,
-      },
-    },
-  },
-
   generators: {
     "realistic-temporal-spatial-patterns": {
       type: "temporal",
@@ -387,12 +295,138 @@ export const SEED_CONFIG: SeedConfiguration = {
       },
     },
   },
+
+  // Seeding presets
+  presets: {
+    minimal: {
+      description: "Bare minimum data for production deployments",
+      enabled: ["users", "pages", "main-menu", GEOCODING_PROVIDERS_COLLECTION],
+      volume: "minimal",
+      realism: "simple",
+      performance: "fast",
+      debugging: "quiet",
+      overrides: {
+        users: {
+          count: 1, // Single admin
+          options: { includeTestUsers: false, createAdminUser: true },
+        },
+      },
+    },
+
+    testing: {
+      description: "Fast, deterministic data for unit/integration tests",
+      enabled: [
+        "users",
+        "catalogs",
+        "datasets",
+        "events",
+        "pages",
+        "main-menu",
+        "location-cache",
+        GEOCODING_PROVIDERS_COLLECTION,
+      ],
+      volume: "small",
+      realism: "simple",
+      performance: "fast",
+      debugging: "quiet",
+      overrides: {
+        events: {
+          customGenerator: "simple-patterns",
+          options: {
+            useGeographicClustering: false,
+            temporalDistribution: "uniform",
+            includeGeocoding: false,
+          },
+        },
+        datasets: {
+          options: { generateSchemas: false }, // Faster test execution
+        },
+      },
+    },
+
+    e2e: {
+      description: "Moderate, realistic data for E2E UI testing",
+      enabled: ["users", "catalogs", "datasets", "events", "pages", "main-menu"],
+      volume: "medium",
+      realism: "realistic",
+      performance: "balanced",
+      debugging: "normal",
+      overrides: {
+        events: {
+          count: 100, // Enough to test UI, not too slow
+          customGenerator: "realistic-temporal-spatial-patterns",
+        },
+      },
+    },
+
+    development: {
+      description: "Rich, realistic data for local development",
+      enabled: [
+        "users",
+        "catalogs",
+        "datasets",
+        "events",
+        "pages",
+        "main-menu",
+        "location-cache",
+        GEOCODING_PROVIDERS_COLLECTION,
+      ],
+      volume: "large",
+      realism: "realistic",
+      performance: "rich",
+      debugging: "verbose",
+      overrides: {
+        events: {
+          customGenerator: "realistic-temporal-spatial-patterns",
+          options: {
+            useGeographicClustering: true,
+            temporalDistribution: "realistic",
+            includeGeocoding: true,
+            debugOutput: true,
+          },
+        },
+        datasets: {
+          options: {
+            includeArchivedDatasets: true,
+            generateExtendedSchemas: true,
+          },
+        },
+      },
+    },
+
+    demo: {
+      description: "Polished, realistic data for demos and staging",
+      enabled: ["users", "catalogs", "datasets", "events", "pages", "main-menu", GEOCODING_PROVIDERS_COLLECTION],
+      volume: "medium",
+      realism: "production-like",
+      performance: "balanced",
+      debugging: "quiet",
+      overrides: {
+        events: { count: 100 },
+      },
+    },
+
+    benchmark: {
+      description: "Large volumes for performance testing",
+      enabled: ["users", "catalogs", "datasets", "events"],
+      volume: "xlarge",
+      realism: "simple", // Fast generation
+      performance: "fast",
+      debugging: "quiet",
+      overrides: {
+        events: { count: 10000 },
+        datasets: { count: 50 },
+      },
+    },
+  },
 };
 
 /**
- * Get configuration for a specific collection or global and environment.
+ * Get configuration for a specific collection or global and preset.
+ * @param collection - Collection name
+ * @param preset - Preset name
  */
-export const getCollectionConfig = (collection: string, environment: string): CollectionConfig | null => {
+export const getCollectionConfig = (collection: string, preset: string): CollectionConfig | null => {
   // Check collections first, then globals
   let baseConfig: CollectionConfig | undefined;
   if (Object.hasOwn(SEED_CONFIG.collections, collection)) {
@@ -403,20 +437,23 @@ export const getCollectionConfig = (collection: string, environment: string): Co
 
   if (baseConfig == null) return null;
 
-  const envConfig = Object.hasOwn(SEED_CONFIG.environments, environment)
-    ? SEED_CONFIG.environments[environment]
-    : undefined;
-  if (envConfig?.enabled.includes(collection) !== true) {
-    // For disabled collections, still return the config but mark it as not enabled for this env
-    // This allows tests to inspect the collection configuration even if it's disabled
-    if (baseConfig.disabled === true) {
-      return baseConfig; // Return the disabled collection config
-    }
-    return null; // Collection not enabled for this environment
+  // Get preset configuration
+  const presetConfig = SEED_CONFIG.presets[preset];
+  if (!presetConfig) {
+    throw new Error(`Unknown preset: ${preset}`);
   }
 
-  // Apply environment-specific overrides
-  const overrides = envConfig.overrides?.[collection] ?? {};
+  // Check if collection is enabled
+  if (!presetConfig.enabled.includes(collection)) {
+    // For disabled collections, still return the config
+    if (baseConfig.disabled === true) {
+      return baseConfig;
+    }
+    return null;
+  }
+
+  // Apply overrides
+  const overrides = presetConfig.overrides?.[collection] ?? {};
 
   return {
     ...baseConfig,
@@ -429,17 +466,16 @@ export const getCollectionConfig = (collection: string, environment: string): Co
 };
 
 /**
- * Get all enabled collections for an environment in dependency order.
+ * Get all enabled collections for a preset in dependency order.
+ * @param preset - Preset name
  */
-export const getEnabledCollections = (environment: string): string[] => {
-  const envConfig = Object.hasOwn(SEED_CONFIG.environments, environment)
-    ? SEED_CONFIG.environments[environment]
-    : undefined;
-  if (!envConfig) {
-    throw new Error(`Unknown environment: ${environment}`);
+export const getEnabledCollections = (preset: string): string[] => {
+  const presetConfig = SEED_CONFIG.presets[preset];
+  if (!presetConfig) {
+    throw new Error(`Unknown preset: ${preset}`);
   }
 
-  const enabled = envConfig.enabled;
+  const enabled = presetConfig.enabled;
   const ordered: string[] = [];
   const visited = new Set<string>();
   const visiting = new Set<string>();
@@ -473,12 +509,6 @@ export const getEnabledCollections = (environment: string): string[] => {
 
   return ordered;
 };
-
-/**
- * Get environment settings.
- */
-export const getEnvironmentSettings = (environment: string): EnvironmentConfig["settings"] =>
-  SEED_CONFIG.environments[environment]?.settings ?? {};
 
 /**
  * Get generator configuration.

@@ -15,14 +15,11 @@
 import { createLogger, logError } from "@/lib/logger";
 import type { Config } from "@/payload-types";
 
-import { getDependencyOrder } from "../relationship-config";
 import type { CollectionConfig } from "../seed.config";
 import type { SeedManager } from "../seed-manager";
 import { catalogSeeds } from "../seeds/catalogs";
 import { datasetSeeds } from "../seeds/datasets";
 import { eventSeeds } from "../seeds/events";
-import { importFileSeeds } from "../seeds/import-files";
-import { importJobSeeds } from "../seeds/import-jobs";
 import { mainMenuSeed } from "../seeds/main-menu";
 import { pagesSeed } from "../seeds/pages";
 import { userSeeds } from "../seeds/users";
@@ -84,47 +81,6 @@ export class SeedingOperations {
     await this.createCollectionItems(resolvedSeedData, collectionName, environment, config);
 
     logger.info(`Completed seeding ${collectionName} with ${resolvedSeedData.length} items`);
-  }
-
-  async seedCollection(collectionOrGlobal: string, environment: string) {
-    const seedData = this.getSeedData(collectionOrGlobal, environment);
-
-    if (seedData == null || seedData == undefined || seedData.length == 0) {
-      logger.warn(`No seed data found for ${collectionOrGlobal}`);
-      return;
-    }
-
-    // Handle global collections
-    const MAIN_MENU_SLUG = "main-menu";
-    if (collectionOrGlobal === MAIN_MENU_SLUG) {
-      await this.seedGlobalCollection(seedData, collectionOrGlobal);
-      return;
-    }
-
-    const itemCount = Array.isArray(seedData) ? seedData.length : 1;
-    logger.debug(
-      { collection: collectionOrGlobal, count: itemCount },
-      `Found ${itemCount} items to seed for ${collectionOrGlobal}`
-    );
-
-    // Resolve relationships
-    const relationshipResolver = this.seedManager.relationshipResolverInstance;
-    if (!relationshipResolver) {
-      throw new Error("RelationshipResolver not initialized");
-    }
-    const resolvedSeedData = await relationshipResolver.resolveCollectionRelationships(
-      Array.isArray(seedData) ? (seedData as Record<string, unknown>[]) : [seedData as Record<string, unknown>],
-      collectionOrGlobal
-    );
-
-    // Create collection items (reuse helper with empty config)
-    await this.createCollectionItems(resolvedSeedData, collectionOrGlobal, environment, {});
-  }
-
-  getDependencyOrder(
-    collections: string[] = ["users", "catalogs", "datasets", "events", "import-files", "import-jobs"]
-  ) {
-    return getDependencyOrder(collections);
   }
 
   private async seedGlobalCollection(seedData: SeedData, collectionName: string): Promise<void> {
@@ -349,10 +305,6 @@ export class SeedingOperations {
         return datasetSeeds(environment);
       case "events":
         return eventSeeds(environment);
-      case "import-jobs":
-        return importJobSeeds(environment);
-      case "import-files":
-        return importFileSeeds(environment);
       case "main-menu":
         return [mainMenuSeed];
       case "pages":

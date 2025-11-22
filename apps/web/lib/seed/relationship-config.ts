@@ -97,53 +97,6 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
       },
     },
   ],
-
-  // Import catalogs reference catalogs
-  "import-files": [
-    {
-      field: "catalog",
-      targetCollection: "catalogs",
-      searchField: "name",
-      fallbackSearch: "slug",
-      required: true, // Imports must be associated with a catalog
-      transform: (value: string) => {
-        // Handle common catalog name variations for imports
-        const mappings: Record<string, string> = {
-          "environmental-data": "Environmental Data",
-          "economic-indicators": "Economic Indicators",
-          "academic-research-portal": "Academic Research Portal",
-          "cultural-events": "Cultural Events",
-          "government-data": "Government Data",
-        };
-        return mappings[value] ?? value;
-      },
-    },
-    {
-      field: "datasets",
-      targetCollection: "datasets",
-      searchField: "name",
-      fallbackSearch: "slug",
-      required: false, // Imports can exist without being associated to a dataset
-    },
-  ],
-
-  // Import jobs reference import files and datasets
-  "import-jobs": [
-    {
-      field: "importFile",
-      targetCollection: "import-files",
-      searchField: "filename",
-      fallbackSearch: "originalName",
-      required: true, // Jobs must be associated with an import file
-    },
-    {
-      field: "dataset",
-      targetCollection: "datasets",
-      searchField: "name",
-      fallbackSearch: "slug",
-      required: false, // Jobs can exist without being associated to a dataset initially
-    },
-  ],
 };
 
 /**
@@ -176,59 +129,4 @@ export const validateRelationshipConfig = (): void => {
   if (errors.length > 0) {
     throw new Error(`Invalid relationship configuration:\n${errors.join("\n")}`);
   }
-};
-
-/**
- * Get all collections that have relationship dependencies.
- */
-export const getCollectionsWithRelationships = (): string[] => Object.keys(RELATIONSHIP_CONFIG);
-
-/**
- * Get dependency order for collections
- * Returns collections in the order they should be seeded (dependencies first).
- */
-export const getDependencyOrder = (collections: string[]): string[] => {
-  const dependencies = new Map<string, string[]>();
-  const visited = new Set<string>();
-  const visiting = new Set<string>();
-  const result: string[] = [];
-
-  // Build dependency map
-  Object.entries(RELATIONSHIP_CONFIG).forEach(([collection, configs]) => {
-    const deps = configs.filter((config) => config.required === true).map((config) => config.targetCollection);
-    dependencies.set(collection, deps);
-  });
-
-  // Add collections without relationships
-  collections.forEach((collection) => {
-    if (dependencies.has(collection) === false) {
-      dependencies.set(collection, []);
-    }
-  });
-
-  // Topological sort
-  const visit = (collection: string) => {
-    if (visited.has(collection)) return;
-    if (visiting.has(collection)) {
-      throw new Error(`Circular dependency detected involving: ${collection}`);
-    }
-
-    visiting.add(collection);
-
-    const deps = dependencies.get(collection) ?? [];
-    deps.forEach((dep) => {
-      if (collections.includes(dep)) {
-        visit(dep);
-      }
-    });
-
-    visiting.delete(collection);
-    visited.add(collection);
-    if (collections.includes(collection)) {
-      result.push(collection);
-    }
-  };
-
-  collections.forEach((collection) => visit(collection));
-  return result;
 };

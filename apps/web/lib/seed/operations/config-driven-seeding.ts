@@ -17,7 +17,8 @@ import {
   type CollectionConfig,
   getCollectionConfig,
   getEnabledCollections,
-  getEnvironmentSettings,
+  type PresetConfig,
+  SEED_CONFIG,
 } from "../seed.config";
 import type { SeedManager } from "../seed-manager";
 import type { SeedOptions } from "../types";
@@ -29,37 +30,39 @@ export class ConfigDrivenSeeding {
 
   async seedWithConfig(options: SeedOptions = {}) {
     const {
-      environment = "development",
+      preset = "development",
       truncate = false,
       configOverrides = {},
       collections: requestedCollections,
     } = options;
 
     await this.seedManager.initialize();
-    const envSettings = getEnvironmentSettings(environment);
-    const startTime = this.logSeedStart(environment, envSettings);
+    const presetConfig = SEED_CONFIG.presets[preset];
 
-    const collectionsToSeed = this.determineCollectionsToSeed(environment, requestedCollections);
+    if (!presetConfig) {
+      throw new Error(`Unknown preset: ${preset}`);
+    }
+
+    const startTime = this.logSeedStart(preset, presetConfig);
+
+    const collectionsToSeed = this.determineCollectionsToSeed(preset, requestedCollections);
 
     if (truncate) {
       await this.seedManager.truncateCollections(collectionsToSeed);
     }
 
-    await this.processCollections(collectionsToSeed, configOverrides, environment);
+    await this.processCollections(collectionsToSeed, configOverrides, preset);
 
-    this.logSeedCompletion(startTime, collectionsToSeed, environment, envSettings);
+    this.logSeedCompletion(startTime, collectionsToSeed, preset, presetConfig);
   }
 
-  private logSeedStart(environment: string, envSettings: unknown): number {
-    logger.info(
-      { environment, settings: envSettings },
-      `Starting configuration-driven seed process for ${environment} environment`
-    );
+  private logSeedStart(preset: string, presetConfig: PresetConfig): number {
+    logger.info({ preset, config: presetConfig }, `Starting configuration-driven seed process for ${preset} preset`);
     return Date.now();
   }
 
-  private determineCollectionsToSeed(environment: string, requestedCollections?: string[]): string[] {
-    const enabledCollections = getEnabledCollections(environment);
+  private determineCollectionsToSeed(preset: string, requestedCollections?: string[]): string[] {
+    const enabledCollections = getEnabledCollections(preset);
     const collectionsToSeed = requestedCollections
       ? enabledCollections.filter((c) => requestedCollections.includes(c))
       : enabledCollections;
@@ -71,17 +74,17 @@ export class ConfigDrivenSeeding {
   private async processCollections(
     collectionsToSeed: string[],
     configOverrides: Record<string, Partial<CollectionConfig>>,
-    environment: string
+    preset: string
   ): Promise<void> {
     for (const collectionName of collectionsToSeed) {
-      const config = getCollectionConfig(collectionName, environment);
+      const config = getCollectionConfig(collectionName, preset);
       if (config == null || config == undefined || config.disabled === true) {
         logger.debug(`Skipping disabled collection: ${collectionName}`);
         continue;
       }
 
       const finalConfig = this.applyConfigOverrides(config, configOverrides, collectionName);
-      await this.seedManager.seedCollectionWithConfig(collectionName, finalConfig, environment);
+      await this.seedManager.seedCollectionWithConfig(collectionName, finalConfig, preset);
     }
   }
 
@@ -107,14 +110,14 @@ export class ConfigDrivenSeeding {
   private logSeedCompletion(
     startTime: number,
     collectionsToSeed: string[],
-    environment: string,
-    envSettings: unknown
+    preset: string,
+    presetConfig: PresetConfig
   ): void {
     const duration = Date.now() - startTime;
     logPerformance("Configuration-driven seed process", duration, {
-      environment,
+      preset,
       collections: collectionsToSeed.length,
-      settings: envSettings,
+      config: presetConfig,
     });
 
     logger.info(

@@ -13,6 +13,8 @@
  */
 import { createLogger } from "@/lib/logger";
 
+import { applyRealisticPatterns } from "../generators/realistic-patterns";
+import { applySimplePatterns } from "../generators/simple-patterns";
 import type { CollectionConfig } from "../seed.config";
 import type { SeedData } from "../types";
 
@@ -20,17 +22,27 @@ const logger = createLogger("seed");
 
 export class DataProcessing {
   determineCollectionCount(config: CollectionConfig, environment: string): number {
-    if (typeof config.count === "number") {
-      return config.count;
-    }
-    if (typeof config.count === "object" && config.count !== null) {
-      const envCount = (config.count as Record<string, unknown>)[environment];
-      if (typeof envCount === "number") return envCount;
-      if (typeof (config.count as Record<string, unknown>).default === "number") {
-        return (config.count as Record<string, unknown>).default as number;
+    const DEFAULT_COUNT = 5;
+
+    try {
+      if (typeof config.count === "number") {
+        return config.count;
       }
+      if (typeof config.count === "object" && config.count !== null) {
+        const envCount = (config.count as Record<string, unknown>)[environment];
+        if (typeof envCount === "number") return envCount;
+        if (typeof (config.count as Record<string, unknown>).default === "number") {
+          return (config.count as Record<string, unknown>).default as number;
+        }
+      }
+      logger.debug(`No count configured for environment "${environment}", using default count of ${DEFAULT_COUNT}`);
+      return DEFAULT_COUNT;
+    } catch (error) {
+      logger.warn(
+        `Error determining collection count for environment "${environment}": ${error instanceof Error ? error.message : String(error)}. Using default count of ${DEFAULT_COUNT}`
+      );
+      return DEFAULT_COUNT;
     }
-    return 5;
   }
 
   isValidCount(count: number, collectionName: string): boolean {
@@ -62,7 +74,7 @@ export class DataProcessing {
     if (Array.isArray(seedData) && seedData.length < count) {
       const needed = count - seedData.length;
       const additional = this.generateAdditionalItems(seedData, needed, collectionName);
-      seedData = [...seedData, ...additional];
+      seedData = [...seedData, ...additional] as SeedData;
       logger.debug(`Generated ${additional.length} additional ${collectionName} items`);
     }
 
@@ -74,7 +86,8 @@ export class DataProcessing {
 
     // Apply custom generator if specified
     if (config.customGenerator != null) {
-      transformedData = this.applyCustomGenerator(transformedData, config.customGenerator);
+      const randomSeed = config.options?.randomSeed as number | undefined;
+      transformedData = this.applyCustomGenerator(transformedData, config.customGenerator, randomSeed);
     }
 
     // Apply collection-specific options
@@ -116,13 +129,32 @@ export class DataProcessing {
     return additional;
   }
 
-  private applyCustomGenerator(seedData: SeedData, generatorName: string): SeedData {
+  private applyCustomGenerator(seedData: SeedData, generatorName: string, randomSeed?: number): SeedData {
     logger.debug(`Applying custom generator: ${generatorName}`);
 
-    // Custom generators would be implemented here
-    // For now, just return the original data
-    logger.warn(`Unknown custom generator: ${generatorName}`);
-    return seedData;
+    if (!Array.isArray(seedData)) {
+      return seedData;
+    }
+
+    switch (generatorName) {
+      case "simple-patterns": {
+        // Simple patterns for test data
+        return applySimplePatterns(seedData, { seed: randomSeed }) as SeedData;
+      }
+
+      case "realistic-temporal-spatial-patterns": {
+        // Realistic patterns for development/demo data
+        return applyRealisticPatterns(seedData, {
+          seed: randomSeed,
+          useGeographicClustering: true,
+          temporalDistribution: "realistic",
+        }) as SeedData;
+      }
+
+      default:
+        logger.warn(`Unknown custom generator: ${generatorName}`);
+        return seedData;
+    }
   }
 
   private applyCollectionOptions(data: SeedData, collectionName: string, options: Record<string, unknown>): SeedData {
@@ -157,7 +189,7 @@ export class DataProcessing {
 
     return data.map((item) => {
       const newItem =
-        typeof item === "object" && item !== null
+        typeof item === "object" && item != null
           ? { ...(item as Record<string, unknown>) }
           : ({} as Record<string, unknown>);
       // Simple geographic spreading logic for seed data
@@ -173,7 +205,7 @@ export class DataProcessing {
       }
 
       return newItem;
-    });
+    }) as SeedData;
   }
 
   private distributeEventsUniformly(data: SeedData): SeedData {
@@ -184,7 +216,7 @@ export class DataProcessing {
 
     return data.map((item) => {
       const newItem =
-        typeof item === "object" && item !== null
+        typeof item === "object" && item != null
           ? { ...(item as Record<string, unknown>) }
           : ({} as Record<string, unknown>);
       // Distribute events over the past 30 days
@@ -198,7 +230,7 @@ export class DataProcessing {
       }
 
       return newItem;
-    });
+    }) as SeedData;
   }
 
   private applyDatasetsOptions(data: SeedData, options: Record<string, unknown>): SeedData {
@@ -211,15 +243,38 @@ export class DataProcessing {
   private applyUsersOptions(data: SeedData, options: Record<string, unknown>): SeedData {
     if (options.includeTestUsers === false) {
       // Filter out test users
-      return Array.isArray(data)
-        ? data.filter((user: unknown) => {
-            const userObj = user as Record<string, unknown>;
-            const email = userObj.email as string | undefined;
-            return email != null ? !email.includes("test") : true;
-          })
-        : data;
+      return (
+        Array.isArray(data)
+          ? data.filter((user: unknown) => {
+              const userObj = user as Record<string, unknown>;
+              const email = userObj.email as string | undefined;
+              return email != null ? !email.includes("test") : true;
+            })
+          : data
+      ) as SeedData;
     }
     return data;
+  }
+
+  /**
+   * Helper to check if a field exists and is a string.
+   */
+  private isStringField(obj: Record<string, unknown>, field: string): boolean {
+    return obj[field] != null && typeof obj[field] === "string";
+  }
+
+  /**
+   * Helper to append an index to a string field with a given separator.
+   */
+  private appendIndexToField(
+    obj: Record<string, unknown>,
+    field: string,
+    index: number,
+    separator: string = " "
+  ): void {
+    if (this.isStringField(obj, field)) {
+      obj[field] = `${String(obj[field])}${separator}${index + 1}`;
+    }
   }
 
   private applyCollectionSpecificVariations(
@@ -244,43 +299,27 @@ export class DataProcessing {
   }
 
   private applyEventVariations(newItem: Record<string, unknown>, index: number): void {
-    const eventItem = newItem;
-    if (eventItem.data != null) {
-      const dataObj = eventItem.data as Record<string, unknown>;
-      if (dataObj.address !== null && dataObj.address !== undefined && typeof dataObj.address === "string") {
-        dataObj.address = `${dataObj.address} #${index + 1}`;
-      }
+    if (newItem.data != null) {
+      const dataObj = newItem.data as Record<string, unknown>;
+      this.appendIndexToField(dataObj, "address", index, " #");
     }
   }
 
   private applyDatasetVariations(newItem: Record<string, unknown>, index: number): void {
-    const datasetItem = newItem;
-    if (datasetItem.name !== null && datasetItem.name !== undefined) {
-      datasetItem.name = `${String(datasetItem.name as string)} ${index + 1}`;
-    }
-    if (datasetItem.slug !== null && datasetItem.slug !== undefined) {
-      datasetItem.slug = `${String(datasetItem.slug as string)}-${index + 1}`;
-    }
+    this.appendIndexToField(newItem, "name", index);
+    this.appendIndexToField(newItem, "slug", index, "-");
   }
 
   private applyCatalogVariations(newItem: Record<string, unknown>, index: number): void {
-    const catalogItem = newItem;
-    if (catalogItem.name !== null && catalogItem.name !== undefined) {
-      catalogItem.name = `${String(catalogItem.name as string)} ${index + 1}`;
-    }
-    if (catalogItem.slug !== null && catalogItem.slug !== undefined) {
-      catalogItem.slug = `${String(catalogItem.slug as string)}-${index + 1}`;
-    }
+    this.appendIndexToField(newItem, "name", index);
+    this.appendIndexToField(newItem, "slug", index, "-");
   }
 
   private applyUserVariations(newItem: Record<string, unknown>, index: number): void {
-    const userItem = newItem;
-    if (userItem.email != null && typeof userItem.email === "string") {
-      const emailParts = userItem.email.split("@");
-      userItem.email = `${emailParts[0]}+${index + 1}@${emailParts[1]}`;
+    if (this.isStringField(newItem, "email")) {
+      const emailParts = (newItem.email as string).split("@");
+      newItem.email = `${emailParts[0]}+${index + 1}@${emailParts[1]}`;
     }
-    if (userItem.firstName !== null && userItem.firstName !== undefined) {
-      userItem.firstName = `${String(userItem.firstName as string)} ${index + 1}`;
-    }
+    this.appendIndexToField(newItem, "firstName", index);
   }
 }

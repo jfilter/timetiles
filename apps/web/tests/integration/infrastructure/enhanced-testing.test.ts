@@ -409,9 +409,9 @@ describe("Enhanced Testing Infrastructure", () => {
       await testEnv.seedManager.truncate(["users"]);
 
       // Seed users collection
-      await testEnv.seedManager.seed({
+      await testEnv.seedManager.seedWithConfig({
         collections: ["users"],
-        environment: "test",
+        preset: "testing",
         truncate: true,
       });
 

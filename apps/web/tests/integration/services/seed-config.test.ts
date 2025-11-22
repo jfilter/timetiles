@@ -5,12 +5,7 @@
  * @module
  */
 
-import {
-  getCollectionConfig,
-  getEnabledCollections,
-  getEnvironmentSettings,
-  SEED_CONFIG,
-} from "../../../lib/seed/seed.config";
+import { getCollectionConfig, getEnabledCollections, SEED_CONFIG } from "../../../lib/seed/seed.config";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
 describe.sequential("Configuration-Driven Seeding", () => {
@@ -38,31 +33,31 @@ describe.sequential("Configuration-Driven Seeding", () => {
       expect(typeof devCatalogsConfig?.count).toBe("function");
       expect((devCatalogsConfig?.count as (...args: any[]) => any)("development")).toBe(6);
 
-      // Test test environment
-      const testCatalogsConfig = getCollectionConfig("catalogs", "test");
+      // Test testing preset
+      const testCatalogsConfig = getCollectionConfig("catalogs", "testing");
       expect(testCatalogsConfig).toBeDefined();
-      expect((testCatalogsConfig?.count as (...args: any[]) => any)("test")).toBe(3);
+      expect((testCatalogsConfig?.count as (...args: any[]) => any)("testing")).toBe(2);
 
-      // Test production environment (catalogs not enabled in production)
-      const prodCatalogsConfig = getCollectionConfig("catalogs", "production");
-      expect(prodCatalogsConfig).toBeNull(); // Catalogs not enabled in production
+      // Test minimal preset (catalogs not enabled in minimal)
+      const minimalCatalogsConfig = getCollectionConfig("catalogs", "minimal");
+      expect(minimalCatalogsConfig).toBeNull(); // Catalogs not enabled in minimal
 
-      // Test production environment with enabled collection
-      const prodUsersConfig = getCollectionConfig("users", "production");
-      expect(prodUsersConfig).toBeDefined();
-      // Production users config has a static count override, not a function
-      expect(prodUsersConfig?.count).toBe(1); // Overridden to 1 in production
+      // Test minimal preset with enabled collection
+      const minimalUsersConfig = getCollectionConfig("users", "minimal");
+      expect(minimalUsersConfig).toBeDefined();
+      // Minimal users config has a static count override, not a function
+      expect(minimalUsersConfig?.count).toBe(1); // Overridden to 1 in minimal
     });
 
     it("should return null for disabled collections", () => {
-      const mediaConfig = getCollectionConfig("media", "test");
+      const mediaConfig = getCollectionConfig("media", "testing");
       expect(mediaConfig).toBeDefined();
       expect(mediaConfig?.disabled).toBe(true);
     });
 
     it("should return null for collections not enabled in environment", () => {
-      const eventsConfig = getCollectionConfig("events", "production");
-      expect(eventsConfig).toBeNull(); // Events not enabled in production
+      const eventsConfig = getCollectionConfig("events", "minimal");
+      expect(eventsConfig).toBeNull(); // Events not enabled in minimal
     });
 
     it("should provide enabled collections in dependency order", () => {
@@ -86,29 +81,31 @@ describe.sequential("Configuration-Driven Seeding", () => {
     it("should handle circular dependency detection", () => {
       // This should not throw for our current configuration
       expect(() => getEnabledCollections("development")).not.toThrow();
-      expect(() => getEnabledCollections("test")).not.toThrow();
-      expect(() => getEnabledCollections("production")).not.toThrow();
+      expect(() => getEnabledCollections("testing")).not.toThrow();
+      expect(() => getEnabledCollections("minimal")).not.toThrow();
     });
 
-    it("should provide environment-specific settings", () => {
-      const devSettings = getEnvironmentSettings("development");
-      expect(devSettings?.useRealisticData).toBe(true);
-      expect(devSettings?.debugLogging).toBe(true);
+    it("should provide preset-specific settings", () => {
+      const devPreset = SEED_CONFIG.presets.development!;
+      expect(devPreset.volume).toBe("large");
+      expect(devPreset.realism).toBe("realistic");
+      expect(devPreset.debugging).toBe("verbose");
 
-      const testSettings = getEnvironmentSettings("test");
-      expect(testSettings?.useRealisticData).toBe(false);
-      expect(testSettings?.performanceMode).toBe(true);
+      const testPreset = SEED_CONFIG.presets.testing!;
+      expect(testPreset.volume).toBe("small");
+      expect(testPreset.realism).toBe("simple");
+      expect(testPreset.performance).toBe("fast");
 
-      const prodSettings = getEnvironmentSettings("production");
-      expect(prodSettings?.useRealisticData).toBe(false);
-      expect(prodSettings?.performanceMode).toBe(true);
+      const minimalPreset = SEED_CONFIG.presets.minimal!;
+      expect(minimalPreset.volume).toBe("minimal");
+      expect(minimalPreset.performance).toBe("fast");
     });
   });
 
   describe("Configuration-Driven Seeding", () => {
-    it("should seed using configuration for development environment", async () => {
+    it("should seed using configuration for development preset", async () => {
       await testEnv.seedManager.seedWithConfig({
-        environment: "development",
+        preset: "development",
         collections: ["users", "catalogs", "datasets"], // Subset for faster testing
       });
 
@@ -132,9 +129,9 @@ describe.sequential("Configuration-Driven Seeding", () => {
       expect(usersCount).toBeLessThanOrEqual(expectedUsersCount); // Less than or equal because we might have existing users
     });
 
-    it("should seed using configuration for test environment", async () => {
+    it("should seed using configuration for test preset", async () => {
       await testEnv.seedManager.seedWithConfig({
-        environment: "test",
+        preset: "testing",
         collections: ["users", "catalogs"],
       });
 
@@ -145,9 +142,9 @@ describe.sequential("Configuration-Driven Seeding", () => {
       expect(catalogsCount).toBeGreaterThan(0);
 
       // Test environment should have fewer items than development
-      const testUsersConfig = getCollectionConfig("users", "test");
+      const testUsersConfig = getCollectionConfig("users", "testing");
       const expectedUsersCount =
-        typeof testUsersConfig?.count === "function" ? testUsersConfig.count("test") : (testUsersConfig?.count ?? 0);
+        typeof testUsersConfig?.count === "function" ? testUsersConfig.count("testing") : (testUsersConfig?.count ?? 0);
 
       // Account for potential additional system users (admin, test users, etc.)
       // The seeding system may create more users than the base configuration specifies
@@ -158,7 +155,7 @@ describe.sequential("Configuration-Driven Seeding", () => {
     it("should respect collection dependencies", async () => {
       // Seed only datasets (which depend on catalogs)
       await testEnv.seedManager.seedWithConfig({
-        environment: "development",
+        preset: "development",
         collections: ["catalogs", "datasets"],
       });
 
@@ -187,7 +184,7 @@ describe.sequential("Configuration-Driven Seeding", () => {
 
     it("should apply configuration overrides", async () => {
       await testEnv.seedManager.seedWithConfig({
-        environment: "test",
+        preset: "testing",
         collections: ["users"],
         configOverrides: {
           users: {
@@ -208,7 +205,7 @@ describe.sequential("Configuration-Driven Seeding", () => {
 
     it("should skip disabled collections", async () => {
       await testEnv.seedManager.seedWithConfig({
-        environment: "development",
+        preset: "development",
         collections: ["media"], // Media is disabled in config
       });
 
@@ -216,20 +213,20 @@ describe.sequential("Configuration-Driven Seeding", () => {
       expect(mediaCount).toBe(0); // Should be 0 because it's disabled
     });
 
-    it("should handle collections not enabled for environment", async () => {
-      // Try to seed events in production (where they're not enabled)
+    it("should handle collections not enabled for preset", async () => {
+      // Try to seed events in minimal (where they're not enabled)
       await testEnv.seedManager.seedWithConfig({
-        environment: "production",
+        preset: "minimal",
         collections: ["events"],
       });
 
       const eventsCount = await testEnv.seedManager.getCollectionCount("events");
-      expect(eventsCount).toBe(0); // Should be 0 because events aren't enabled in production
+      expect(eventsCount).toBe(0); // Should be 0 because events aren't enabled in minimal
     });
 
     it("should seed main-menu global successfully", async () => {
       await testEnv.seedManager.seedWithConfig({
-        environment: "development",
+        preset: "development",
         collections: ["main-menu"],
       });
 
@@ -268,9 +265,9 @@ describe.sequential("Configuration-Driven Seeding", () => {
       expect(typeof SEED_CONFIG.collections).toBe("object");
       expect(Object.keys(SEED_CONFIG.collections).length).toBeGreaterThan(0);
 
-      // Verify environments is an object, not just defined
-      expect(SEED_CONFIG.environments).toBeDefined();
-      expect(typeof SEED_CONFIG.environments).toBe("object");
+      // Verify presets is an object, not just defined
+      expect(SEED_CONFIG.presets).toBeDefined();
+      expect(typeof SEED_CONFIG.presets).toBe("object");
 
       // Verify relationships is an object
       expect(SEED_CONFIG.relationships).toBeDefined();
@@ -281,39 +278,45 @@ describe.sequential("Configuration-Driven Seeding", () => {
       expect(typeof SEED_CONFIG.generators).toBe("object");
     });
 
-    it("should have all required environments with valid configurations", () => {
-      const requiredEnvironments = ["development", "test", "production", "staging"];
+    it("should have all required presets with valid configurations", () => {
+      const requiredPresets = ["minimal", "testing", "e2e", "development", "demo", "benchmark"];
 
-      requiredEnvironments.forEach((env) => {
-        expect(SEED_CONFIG.environments[env]).toBeDefined();
-        const envConfig = SEED_CONFIG.environments[env];
+      requiredPresets.forEach((preset) => {
+        expect(SEED_CONFIG.presets[preset]).toBeDefined();
+        const presetConfig = SEED_CONFIG.presets[preset];
 
-        if (!envConfig) {
-          throw new Error(`Environment config for ${env} is undefined`);
+        if (!presetConfig) {
+          throw new Error(`Preset config for ${preset} is undefined`);
         }
 
-        // Verify each environment has valid structure
-        expect(typeof envConfig).toBe("object");
+        // Verify each preset has valid structure
+        expect(typeof presetConfig).toBe("object");
 
-        // Each environment should have enabled collections
-        expect(envConfig).toHaveProperty("enabled");
-        expect(Array.isArray(envConfig.enabled)).toBe(true);
-        expect(envConfig.enabled.length).toBeGreaterThan(0);
+        // Each preset should have enabled collections
+        expect(presetConfig).toHaveProperty("enabled");
+        expect(Array.isArray(presetConfig.enabled)).toBe(true);
+        expect(presetConfig.enabled.length).toBeGreaterThan(0);
+
+        // Each preset should have volume, realism, performance, debugging
+        expect(presetConfig).toHaveProperty("volume");
+        expect(presetConfig).toHaveProperty("realism");
+        expect(presetConfig).toHaveProperty("performance");
+        expect(presetConfig).toHaveProperty("debugging");
       });
 
       // Verify development has comprehensive settings
-      const devEnv = SEED_CONFIG.environments.development;
-      if (!devEnv) {
-        throw new Error("Development environment is undefined");
+      const devPreset = SEED_CONFIG.presets.development;
+      if (!devPreset) {
+        throw new Error("Development preset is undefined");
       }
 
-      expect(devEnv.enabled).toContain("users");
-      expect(devEnv.enabled).toContain("catalogs");
-      expect(devEnv.enabled).toContain("events");
+      expect(devPreset.enabled).toContain("users");
+      expect(devPreset.enabled).toContain("catalogs");
+      expect(devPreset.enabled).toContain("events");
 
-      // Verify development has settings configured
-      expect(devEnv.settings).toBeDefined();
-      expect(devEnv.settings?.useRealisticData).toBe(true);
+      // Verify development has correct characteristics
+      expect(devPreset.volume).toBe("large");
+      expect(devPreset.realism).toBe("realistic");
     });
 
     it("should have valid collection configurations with proper counts", () => {
@@ -370,11 +373,11 @@ describe.sequential("Configuration-Driven Seeding", () => {
       });
     });
 
-    it("should include main-menu in all environments", () => {
-      const environments = ["development", "test", "production", "staging"];
+    it("should include main-menu in most presets", () => {
+      const presetsWithMainMenu = ["minimal", "testing", "e2e", "development", "demo"];
 
-      environments.forEach((env) => {
-        const enabledCollections = getEnabledCollections(env);
+      presetsWithMainMenu.forEach((preset) => {
+        const enabledCollections = getEnabledCollections(preset);
         expect(enabledCollections).toContain("main-menu");
       });
     });

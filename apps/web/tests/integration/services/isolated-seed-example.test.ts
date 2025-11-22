@@ -31,9 +31,9 @@ describe("Isolated Seed System Test Example", () => {
     });
 
     it("should seed users collection in isolation", async () => {
-      await testEnv.seedManager.seed({
+      await testEnv.seedManager.seedWithConfig({
         collections: ["users"],
-        environment: "test",
+        preset: "testing",
         truncate: false,
       });
 
@@ -49,14 +49,14 @@ describe("Isolated Seed System Test Example", () => {
     it("should handle concurrent operations within same test file", async () => {
       // These operations can run concurrently because they're isolated
       const [,] = await Promise.all([
-        testEnv.seedManager.seed({
+        testEnv.seedManager.seedWithConfig({
           collections: ["catalogs"],
-          environment: "test",
+          preset: "testing",
           truncate: false,
         }),
-        testEnv.seedManager.seed({
+        testEnv.seedManager.seedWithConfig({
           collections: ["users"],
-          environment: "test",
+          preset: "testing",
           truncate: false,
         }),
       ]);

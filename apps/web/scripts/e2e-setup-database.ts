@@ -159,9 +159,9 @@ const seedE2ETestData = async (): Promise<void> => {
 
     // Seed development environment data (same as CI: pnpm seed)
     // This creates the catalogs, datasets, and events that E2E tests expect
-    await seedManager.seed({
-      environment: "development",
-      collections: ["users", "catalogs", "datasets", "events", "import-files", "main-menu", "pages"],
+    await seedManager.seedWithConfig({
+      preset: "development",
+      collections: ["users", "catalogs", "datasets", "events", "pages"],
     });
 
     logger.info("✓ Seeded development data using seed manager");

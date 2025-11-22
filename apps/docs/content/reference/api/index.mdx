@@ -10,6 +10,7 @@
 
 - [app/api/events/aggregate/route](app/api/events/aggregate/route.md)
 - [app/api/events/cluster-stats/route](app/api/events/cluster-stats/route.md)
+- [app/api/import/\[importId\]/progress/route](app/api/import/[importId]/progress/route.md)
 - [app/api/webhooks/trigger/\[token\]/route](app/api/webhooks/trigger/[token]/route.md)
 
 ### API Routes
@@ -19,6 +20,8 @@
 ### Collections
 
 - [lib/collections/catalogs](lib/collections/catalogs.md)
+- [lib/collections/datasets/access](lib/collections/datasets/access.md)
+- [lib/collections/datasets/hooks](lib/collections/datasets/hooks.md)
 - [lib/collections/scheduled-imports/fields/auth-fields](lib/collections/scheduled-imports/fields/auth-fields.md)
 - [lib/collections/scheduled-imports/fields/basic-fields](lib/collections/scheduled-imports/fields/basic-fields.md)
 - [lib/collections/scheduled-imports/fields/execution-fields](lib/collections/scheduled-imports/fields/execution-fields.md)
@@ -31,6 +34,10 @@
 - [lib/collections/scheduled-imports/fields/webhook-fields](lib/collections/scheduled-imports/fields/webhook-fields.md)
 - [lib/collections/scheduled-imports/hooks](lib/collections/scheduled-imports/hooks.md)
 - [lib/collections/scheduled-imports/validation](lib/collections/scheduled-imports/validation.md)
+
+### Constants
+
+- [lib/constants/stage-time-weights](lib/constants/stage-time-weights.md)
 
 ### Hooks
 
@@ -47,6 +54,7 @@
 - [lib/jobs/handlers/schedule-manager-job](lib/jobs/handlers/schedule-manager-job.md)
 - [lib/jobs/handlers/url-fetch-job](lib/jobs/handlers/url-fetch-job.md)
 - [lib/jobs/handlers/url-fetch-job](lib/jobs/handlers/url-fetch-job-1.md)
+- [lib/jobs/utils/event-creation-helpers](lib/jobs/utils/event-creation-helpers.md)
 
 ### Jobs/UrlFetch
 
@@ -54,17 +62,21 @@
 - [lib/jobs/handlers/url-fetch-job/fetch-utils](lib/jobs/handlers/url-fetch-job/fetch-utils.md)
 - [lib/jobs/handlers/url-fetch-job/scheduled-import-utils](lib/jobs/handlers/url-fetch-job/scheduled-import-utils.md)
 
+### Jobs/Utils
+
+- [lib/jobs/utils/resource-loading](lib/jobs/utils/resource-loading.md)
+
 ### Other
 
 - [app/api/admin/schedule-service/route](app/api/admin/schedule-service/route.md)
 - [app/api/events/histogram/route](app/api/events/histogram/route.md)
 - [app/api/events/list/route](app/api/events/list/route.md)
 - [app/api/events/map-clusters/route](app/api/events/map-clusters/route.md)
-- [app/api/import/\[importId\]/progress/route](app/api/import/[importId]/progress/route.md)
 - [app/api/preview/route](app/api/preview/route.md)
 - [app/api/quotas/route](app/api/quotas/route.md)
 - [lib/collections/dataset-schemas](lib/collections/dataset-schemas.md)
 - [lib/collections/datasets](lib/collections/datasets.md)
+- [lib/collections/datasets/transformation-fields](lib/collections/datasets/transformation-fields.md)
 - [lib/collections/events](lib/collections/events.md)
 - [lib/collections/geocoding-providers](lib/collections/geocoding-providers.md)
 - [lib/collections/import-files](lib/collections/import-files.md)
@@ -104,7 +116,6 @@
 - [lib/services/geocoding/provider-manager](lib/services/geocoding/provider-manager.md)
 - [lib/services/geocoding/types](lib/services/geocoding/types.md)
 - [lib/services/id-generation](lib/services/id-generation.md)
-- [lib/services/progress-tracking](lib/services/progress-tracking.md)
 - [lib/services/schema-versioning](lib/services/schema-versioning.md)
 - [lib/services/stage-transition](lib/services/stage-transition.md)
 - [lib/services/type-transformation](lib/services/type-transformation.md)
@@ -122,6 +133,8 @@
 - [lib/services/access-control](lib/services/access-control.md)
 - [lib/services/aggregation-filters](lib/services/aggregation-filters.md)
 - [lib/services/audit-log](lib/services/audit-log.md)
+- [lib/services/import-transforms](lib/services/import-transforms.md)
+- [lib/services/progress-tracking](lib/services/progress-tracking.md)
 - [lib/services/quota-service](lib/services/quota-service.md)
 - [lib/services/rate-limit-service](lib/services/rate-limit-service.md)
 - [lib/services/schedule-service](lib/services/schedule-service.md)
@@ -146,6 +159,11 @@
 - [lib/services/schema-builder/field-statistics](lib/services/schema-builder/field-statistics.md)
 - [lib/services/schema-builder/pattern-detection](lib/services/schema-builder/pattern-detection.md)
 - [lib/services/schema-builder/schema-comparison](lib/services/schema-builder/schema-comparison.md)
+
+### Types
+
+- [lib/types/import-transforms](lib/types/import-transforms.md)
+- [lib/types/progress-tracking](lib/types/progress-tracking.md)
 
 ### Utilities
 

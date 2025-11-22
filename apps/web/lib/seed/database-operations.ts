@@ -350,8 +350,3 @@ export class DatabaseOperations {
     return { successful, errors };
   }
 }
-
-/**
- * Convenience function to create DatabaseOperations instance.
- */
-export const createDatabaseOperations = (payload: Payload): DatabaseOperations => new DatabaseOperations(payload);

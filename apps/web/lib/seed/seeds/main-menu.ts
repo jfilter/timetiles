@@ -10,7 +10,9 @@
  */
 import type { MainMenu } from "@/payload-types";
 
-export const mainMenuSeed: Partial<MainMenu> = {
+export type MainMenuSeed = Omit<MainMenu, "id" | "createdAt" | "updatedAt">;
+
+export const mainMenuSeed: MainMenuSeed = {
   navItems: [
     {
       label: "Home",

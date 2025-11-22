@@ -31,9 +31,8 @@ describe.sequential("Seed System", () => {
 
   // Add beforeEach cleanup for proper test isolation
   beforeEach(async () => {
-    // Explicitly truncate only the collections we're testing
-    // Skip media and import-files which have file upload dependencies
-    await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events", "pages", "import-jobs"]);
+    // Truncate only the collections we're testing for better performance
+    await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events", "pages"]);
   });
 
   describe.sequential("Seed Data Functions", () => {
@@ -88,9 +87,9 @@ describe.sequential("Seed System", () => {
     it("should seed all collections in correct order", async () => {
       // Don't truncate here - the beforeEach already does it
       // Use test environment for simpler data without file uploads
-      await testEnv.seedManager.seed({
-        environment: "test",
-        collections: ["users", "catalogs", "datasets", "events"], // Skip import-files which needs actual files
+      await testEnv.seedManager.seedWithConfig({
+        preset: "testing",
+        collections: ["users", "catalogs", "datasets", "events"],
       });
 
       // Check that collections have data (except import-files which we're skipping)
@@ -107,12 +106,12 @@ describe.sequential("Seed System", () => {
     }, 90000); // 90 second timeout for seeding all collections (increases when running full suite)
 
     it("should handle specific collection seeding", async () => {
-      // Explicitly truncate all collections to ensure clean state
-      await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events", "import-files"]);
+      // Explicitly truncate specific collections for better performance
+      await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events"]);
 
-      await testEnv.seedManager.seed({
+      await testEnv.seedManager.seedWithConfig({
         collections: ["users", "catalogs"],
-        environment: "test",
+        preset: "testing",
       });
 
       const users = await payload.find({
@@ -138,14 +137,14 @@ describe.sequential("Seed System", () => {
 
   describe.sequential("Truncation Operations", () => {
     it("should truncate all collections when no specific collections provided", async () => {
-      await testEnv.seedManager.seed({
-        environment: "test",
+      await testEnv.seedManager.seedWithConfig({
+        preset: "testing",
       });
 
       // Verify we have data before truncation
       let hasData = false;
       // Only check collections that are actually seeded
-      const collections = ["users", "catalogs", "datasets", "events", "import-files"];
+      const collections = ["users", "catalogs", "datasets", "events"];
 
       for (const collection of collections) {
         const result = await payload.find({
@@ -184,9 +183,9 @@ describe.sequential("Seed System", () => {
       await testEnv.seedManager.truncate();
       // Try to seed datasets without catalogs - should complete without throwing
       await expect(
-        testEnv.seedManager.seed({
+        testEnv.seedManager.seedWithConfig({
           collections: ["datasets"],
-          environment: "test",
+          preset: "testing",
         })
       ).resolves.toBeUndefined();
 
@@ -197,16 +196,16 @@ describe.sequential("Seed System", () => {
 
     it("should handle missing datasets for events", async () => {
       await testEnv.seedManager.truncate();
-      await testEnv.seedManager.seed({
+      await testEnv.seedManager.seedWithConfig({
         collections: ["catalogs"],
-        environment: "test",
+        preset: "testing",
       });
 
       // Try to seed events without datasets - should complete without throwing
       await expect(
-        testEnv.seedManager.seed({
+        testEnv.seedManager.seedWithConfig({
           collections: ["events"],
-          environment: "test",
+          preset: "testing",
         })
       ).resolves.toBeUndefined();
 

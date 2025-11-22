@@ -10,7 +10,9 @@
  */
 import type { Page } from "@/payload-types";
 
-export const pagesSeed: Partial<Page>[] = [
+export type PageSeed = Omit<Page, "id" | "createdAt" | "updatedAt">;
+
+export const pagesSeed: PageSeed[] = [
   {
     title: "Welcome to TimeTiles",
     slug: "home",
