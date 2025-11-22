@@ -31,7 +31,7 @@ describe.sequential("Configuration-Driven Seeding", () => {
       const devCatalogsConfig = getCollectionConfig("catalogs", "development");
       expect(devCatalogsConfig).toBeDefined();
       expect(typeof devCatalogsConfig?.count).toBe("function");
-      expect((devCatalogsConfig?.count as (...args: any[]) => any)("development")).toBe(6);
+      expect((devCatalogsConfig?.count as (...args: any[]) => any)("development")).toBe(8);
 
       // Test testing preset
       const testCatalogsConfig = getCollectionConfig("catalogs", "testing");

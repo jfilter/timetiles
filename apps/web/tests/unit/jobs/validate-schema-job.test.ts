@@ -172,17 +172,11 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         },
       });
 
-      // Verify schema version was created (auto-approved)
-      expect(mocks.createSchemaVersion).toHaveBeenCalledWith(mockPayload, {
-        dataset: "dataset-456",
-        schema: mockDetectedSchema,
-        fieldMetadata: mockSchemaBuilderState.fieldStats,
-        autoApproved: true,
-        approvedBy: null, // No user for auto-approval
-        importSources: [],
-      });
+      // Schema version creation now happens in CREATE_SCHEMA_VERSION stage, not inline
+      // So we should NOT expect createSchemaVersion to be called here
+      expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
 
-      // Verify job was updated to proceed to geocoding
+      // Verify job was updated to proceed to CREATE_SCHEMA_VERSION (for auto-approved changes)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: 123,
@@ -202,7 +196,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
             approvalReason: "Manual approval required by dataset configuration",
             transformSuggestions: [],
           },
-          stage: "geocode-batch",
+          stage: "create-schema-version", // Changed from geocode-batch
         },
       });
     });

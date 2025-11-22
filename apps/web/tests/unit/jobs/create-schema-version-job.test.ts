@@ -97,12 +97,13 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
   describe("Success Cases", () => {
     it("should create schema version successfully", async () => {
-      // Mock import job with approved schema
+      // Mock import job with manually approved schema
       const mockImportJob = {
         id: "import-123",
         dataset: "dataset-456",
         schemaValidation: {
-          approved: true,
+          requiresApproval: true, // Manual approval required
+          approved: true, // And it was approved
           approvedBy: 789, // Numeric ID
         },
         schema: {
@@ -238,12 +239,13 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
     });
 
     it("should skip when schema is not approved", async () => {
-      // Mock import job without approval
+      // Mock import job with manual approval required but not yet approved
       const mockImportJob = {
         id: "import-123",
         dataset: "dataset-456",
         schemaValidation: {
-          approved: false,
+          requiresApproval: true, // Manual approval required
+          approved: false, // But not yet approved
         },
         progress: {
           stages: {},
@@ -281,7 +283,8 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         id: "import-123",
         dataset: mockDataset, // Dataset as object instead of ID
         schemaValidation: {
-          approved: true,
+          requiresApproval: true, // Manual approval required
+          approved: true, // And it was approved
           approvedBy: "user-789",
         },
         schema: {
@@ -329,7 +332,8 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         schemaValidation: {
-          approved: true,
+          requiresApproval: true, // Manual approval required
+          approved: true, // And it was approved
           approvedBy: {
             id: "user-789",
             name: "Test User",

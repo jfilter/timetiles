@@ -11,6 +11,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { analyzeDuplicatesJob } from "@/lib/jobs/handlers/analyze-duplicates-job";
 import { createEventsBatchJob } from "@/lib/jobs/handlers/create-events-batch-job";
+import { createSchemaVersionJob } from "@/lib/jobs/handlers/create-schema-version-job";
 import { datasetDetectionJob } from "@/lib/jobs/handlers/dataset-detection-job";
 import { geocodeBatchJob } from "@/lib/jobs/handlers/geocode-batch-job";
 import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
@@ -170,14 +171,32 @@ Data Workshop,2024-05-10,Austin TX`;
         expect(validationResult.output.hasBreakingChanges).toBe(false);
         expect(validationResult.output.newFields).toBeGreaterThanOrEqual(0);
 
-        // Check job progressed to geocoding batch
+        // Check job progressed to create-schema-version (for auto-approved changes)
         const updatedJob3 = await payload.findByID({
           collection: "import-jobs",
           id: importJob.id,
         });
-        expect(updatedJob3.stage).toBe(PROCESSING_STAGE.GEOCODE_BATCH);
+        expect(updatedJob3.stage).toBe(PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
 
-        // 5. Run geocoding batch (should skip since no geocoding candidates)
+        // 5. Run create-schema-version (for auto-approved schema)
+        const createSchemaVersionContext = {
+          payload,
+          job: {
+            id: "create-schema-version-job",
+            input: { importJobId: importJob.id },
+          },
+        };
+
+        await createSchemaVersionJob.handler(createSchemaVersionContext);
+
+        // Check job progressed to geocoding batch
+        const updatedJob3b = await payload.findByID({
+          collection: "import-jobs",
+          id: importJob.id,
+        });
+        expect(updatedJob3b.stage).toBe(PROCESSING_STAGE.GEOCODE_BATCH);
+
+        // 6. Run geocoding batch (should skip since no geocoding candidates)
         const geocodingContext = {
           payload,
           job: {
