@@ -116,6 +116,18 @@ cd apps/docs
 pnpm docs:api
 ```
 
+#### Watch Mode (Development)
+
+For active development on API documentation:
+
+```bash
+# From docs directory
+cd apps/docs
+pnpm docs:api:watch
+```
+
+This watches `apps/web/lib/` for changes and automatically regenerates documentation.
+
 #### What Gets Generated
 
 The TypeDoc configuration (`apps/web/typedoc.json`) specifies:
@@ -130,9 +142,9 @@ The TypeDoc configuration (`apps/web/typedoc.json`) specifies:
 The `pnpm docs:api` command:
 
 1. Runs TypeDoc to generate markdown files
-2. Converts `.md` files to `.mdx`
+2. Converts `.md` files to `.mdx` (via `clean-typedoc-output.ts`)
 3. Cleans up problematic references
-4. Auto-generates `_meta.json` navigation files
+4. Navigation is derived from the file structure (Nextra auto-indexes without `_meta.json`)
 
 ## Git Configuration
 
@@ -153,8 +165,10 @@ This means:
 
 - ✅ Generated docs don't clutter git history
 - ✅ Can regenerate anytime from source
-- ✅ Navigation is auto-generated from file structure
+- ✅ Navigation is derived from file structure (Nextra auto-indexes directories)
 - ✅ Consistent with source code structure
+
+**Note**: The top-level `content/reference/_meta.json` IS manually maintained and tracked in git.
 
 ## Development Workflow
 

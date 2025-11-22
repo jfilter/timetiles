@@ -210,7 +210,7 @@ If you suspect a deadlock:
 
 ### Example 1: Scheduled Imports Collection
 
-See [`lib/collections/scheduled-imports/index.ts`](pathname:///Users/user/code/jf/timetiles/apps/web/lib/collections/scheduled-imports/index.ts) for a complete example of:
+See `apps/web/lib/collections/scheduled-imports/index.ts` for a complete example of:
 
 - Quota checking in `beforeChange`
 - Usage tracking in `afterChange`
@@ -219,7 +219,7 @@ See [`lib/collections/scheduled-imports/index.ts`](pathname:///Users/user/code/j
 
 ### Example 2: Quota Service
 
-See [`lib/services/quota-service.ts`](pathname:///Users/user/code/jf/timetiles/apps/web/lib/services/quota-service.ts) for:
+See `apps/web/lib/services/quota-service.ts` for:
 
 - `incrementUsage()` with `req` parameter
 - `decrementUsage()` with `req` parameter
@@ -227,7 +227,7 @@ See [`lib/services/quota-service.ts`](pathname:///Users/user/code/jf/timetiles/a
 
 ### Example 3: Import Files Collection
 
-See [`lib/collections/import-files.ts`](pathname:///Users/user/code/jf/timetiles/apps/web/lib/collections/import-files.ts) for:
+See `apps/web/lib/collections/import-files.ts` for:
 
 - Multiple nested `payload.update()` calls in `afterChange`
 - Context flags preventing hook recursion

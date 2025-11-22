@@ -8,7 +8,13 @@ The project includes a commit message template at `.gitmessage` that helps you w
 
 ### Local Setup
 
-The template is automatically configured for this repository. When you run `git commit` without the `-m` flag, your editor will open with the template.
+To configure the template for this repository, run:
+
+```bash
+pnpm run setup:git
+```
+
+This sets up the `.gitmessage` template so that when you run `git commit` without the `-m` flag, your editor will open with the template.
 
 ### Global Setup
 
@@ -33,7 +39,7 @@ The project uses commitlint to enforce commit message standards. Configuration i
 The project uses Husky to run checks before commits:
 
 - **commit-msg**: Validates commit messages against our guidelines
-- **pre-commit**: Runs linting and type checking (when configured)
+- **pre-commit**: Runs linting and type checking (`pnpm lint && pnpm typecheck`)
 
 These are automatically installed when you run `pnpm install`.
 
