@@ -1,0 +1,181 @@
+# HTTP Caching
+
+How TimeTiles implements HTTP caching for scheduled URL imports using RFC 7234 standards.
+
+## Purpose
+
+The URL fetch cache reduces redundant network requests when importing data from external APIs:
+
+- Avoids re-downloading unchanged data
+- Respects API rate limits
+- Saves bandwidth and improves performance
+- Reduces quota consumption
+
+## HTTP Caching Standards (RFC 7234)
+
+### ETag (Entity Tag)
+
+Server provides unique identifier for response version:
+
+```http
+Response: ETag: "abc123xyz"
+Next Request: If-None-Match: "abc123xyz"
+Server Response: 304 Not Modified (if unchanged)
+```
+
+### Last-Modified
+
+Server indicates when resource was last updated:
+
+```http
+Response: Last-Modified: Wed, 21 Oct 2025 07:28:00 GMT
+Next Request: If-Modified-Since: Wed, 21 Oct 2025 07:28:00 GMT
+Server Response: 304 Not Modified (if unchanged)
+```
+
+### Cache-Control Directives
+
+Server specifies caching behavior:
+
+- `max-age=N` - Cache for N seconds
+- `no-cache` - Revalidate before using cached response
+- `no-store` - Never cache
+- `private` - Do not cache (browser-only directive)
+
+## Cache Flow
+
+### Cache Hit
+
+```
+Request → Check cache → Found & valid → Return cached response ✓
+```
+
+### Cache Miss
+
+```
+Request → Check cache → Not found → Fetch from URL → Store → Return response
+```
+
+### Revalidation
+
+```
+Request → Check cache → Found but stale → Send conditional request with ETag
+  → 304 Not Modified → Update cache metadata → Return cached response ✓
+  → 200 OK with new data → Update cache → Return new response
+```
+
+## TTL Calculation
+
+The cache determines Time-To-Live using this priority order:
+
+1. **`Cache-Control: no-store`** → Don't cache (TTL = 0)
+2. **`Cache-Control: no-cache`** → Don't cache (TTL = 0)
+3. **`Cache-Control: max-age=N`** → Use N seconds
+4. **`Expires` header** → Calculate from expiration date
+5. **Default TTL** → Use `URL_FETCH_CACHE_TTL` environment variable
+
+## Cache Key Generation
+
+Cache keys are generated from normalized URLs to maximize hit rate:
+
+**Normalization steps:**
+
+1. Hostname lowercased (`API.Example.com` → `api.example.com`)
+2. Default ports removed (`:80` and `:443` stripped)
+3. Trailing slashes removed
+4. Query parameters sorted alphabetically
+5. Fragments removed (`#section`)
+
+**Example:**
+
+```
+Original: https://API.Example.com:443/events/?limit=100&format=json#top
+Normalized: https://api.example.com/events?format=json&limit=100
+```
+
+These URLs cache as the same entry:
+
+- `https://api.example.com/data`
+- `https://API.Example.com/data/`
+- `https://api.example.com:443/data`
+- `https://api.example.com/data?b=2&a=1`
+
+## Storage Architecture
+
+### File System Backend
+
+The cache uses **persistent disk storage**:
+
+**Structure:**
+
+```
+/var/cache/timetiles/http/
+├── index.json          # Cache metadata and key index
+└── entries/
+    ├── abc123.cache    # Individual cache entries
+    └── def456.cache
+```
+
+**Characteristics:**
+
+- Survives server restarts and deployments
+- Configurable size limits (`URL_FETCH_CACHE_MAX_SIZE`)
+- Automatic cleanup every 6 hours via background job
+- Lazy eviction (expired entries removed on next access)
+
+### Why Not Generic Cache?
+
+TimeTiles has a separate generic cache system (`CacheManager`) used by other components, but URL fetch cache is standalone because:
+
+- HTTP-specific features (ETags, 304 responses, Cache-Control)
+- Requires persistent storage (filesystem only)
+- Different configuration needs
+- Dedicated cleanup schedule
+
+## Cache Headers
+
+The cache adds `X-Cache` header for debugging:
+
+- `HIT` - Served from cache
+- `MISS` - Fetched from origin server
+- `STALE` - Cached but expired, fallback used
+- `REVALIDATED` - 304 response, cache metadata updated
+
+## Integration Points
+
+**Used by:**
+
+- `url-fetch-job` - Scheduled import URL fetching
+- Scheduled imports with `advancedOptions.useHttpCache: true`
+
+**Not used by:**
+
+- Manual file uploads (no URL involved)
+- Geocoding API calls (uses separate cache)
+- API endpoint responses (no caching layer)
+
+## Design Decisions
+
+### Why Filesystem Only?
+
+- Persistence required across deployments
+- Large response bodies don't fit well in memory
+- Disk space more scalable than RAM for caching
+
+### Why Separate from Generic Cache?
+
+- HTTP-specific features (conditional requests, 304 responses)
+- Different lifecycle management (cleanup schedule)
+- Configuration independence from generic caching
+
+### Why Not Use CDN?
+
+- Scheduled imports run server-side, not from client
+- Need control over revalidation logic
+- Privacy: API tokens shouldn't go through CDN
+
+## Related Documentation
+
+- [Usage Limits Configuration](/admin-guide/usage-limits) - HTTP cache environment variables
+- [Resource Protection](/developer-guide/architecture/resource-protection) - How caching affects quotas
+- [API Reference](/reference/api/lib/services/cache) - Cache service implementation

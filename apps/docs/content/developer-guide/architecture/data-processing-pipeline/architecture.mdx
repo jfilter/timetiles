@@ -1,0 +1,356 @@
+# Architecture & Design
+
+The TimeTiles data processing pipeline is built on several core architectural principles that ensure scalability, reliability, and maintainability.
+
+## Core Architectural Principles
+
+### Single Source of Truth
+
+The pipeline follows a **single source of truth** principle where uploaded files remain the authoritative data source throughout processing:
+
+- **Files stay on disk**: Raw data files are never moved or duplicated during processing
+- **Immutable source**: Original files remain unchanged from upload through completion
+- **Reproducible processing**: Any stage can be re-run from the original file
+- **Audit trail**: Complete history of what was processed and when
+
+### File-Based Processing Model
+
+Data flows through the system in a carefully controlled path:
+
+**File → Memory → Database**
+
+- **File reads**: Data is read in configurable batches from disk
+- **In-memory processing**: Transformations and analysis happen in memory
+- **Selective persistence**: Only final results and processing state are written to the database
+
+This approach provides several benefits:
+
+- **Memory efficiency**: Batch processing prevents memory exhaustion on large files
+- **Database efficiency**: Minimal database writes during processing
+- **Clean separation**: Processing logic is independent of storage
+- **Recovery support**: Processing can resume from any batch
+
+### Data Storage Strategy
+
+The system carefully distinguishes between what gets stored and what remains transient:
+
+**What IS Stored in Database**:
+
+- Processing state and current stage
+- Detected schemas and field statistics
+- Duplicate analysis results (row number mappings)
+- Geocoding results (location lookups by row number)
+- Progress tracking (current/total counts)
+- Schema version history
+- Final event records
+
+**What is NOT Stored**:
+
+- Raw row data from source files
+- Complete file contents
+- Intermediate processing results
+- Temporary calculations
+
+This selective storage ensures the database remains efficient while still supporting resumable operations and complete audit trails.
+
+## Core Collections
+
+The pipeline orchestrates processing across five main Payload CMS collections:
+
+### 1. import-files
+
+**Purpose**: File upload and metadata storage
+
+- Stores uploaded files on disk
+- Tracks file metadata (name, size, type, upload date)
+- Maintains overall import status
+- Links to all import-jobs created from the file
+
+**Multi-Sheet Handling**: A single Excel file can generate multiple import-jobs (one per sheet), all linked back to the parent import-file.
+
+### 2. import-jobs
+
+**Purpose**: Processing state and orchestration
+
+- Tracks current processing stage
+- Stores progress information (current/total rows)
+- Maintains duplicate analysis results
+- Caches geocoding lookups
+- Preserves schema builder state across batches
+- Links to associated dataset and import-file
+
+**Central Role**: This collection is the heart of the pipeline, coordinating all processing activity.
+
+### 3. datasets
+
+**Purpose**: Configuration and schema management
+
+- Defines ID strategies for deduplication
+- Configures schema behavior (locked, auto-grow, strict validation)
+- Specifies type transformations
+- Sets processing limits
+- Contains geographic field detection settings
+- Links to all events created for this dataset
+
+### 4. dataset-schemas
+
+**Purpose**: Schema versioning and history
+
+- Maintains complete version history of all schema changes
+- Stores field metadata and statistics for each version
+- Tracks who approved each schema change and when
+- Enables schema rollback and evolution tracking
+- Links schema versions to the imports that created them
+
+**Critical for Compliance**: This collection provides the audit trail needed for data governance and compliance requirements.
+
+### 5. events
+
+**Purpose**: Final processed data storage
+
+- Stores complete event records with all enrichments
+- Includes geocoded location data
+- References source dataset and import-job
+- Links to specific schema version used
+- Contains validation status and metadata
+
+## Event-Driven Architecture
+
+### Hook-Driven Orchestration
+
+The pipeline uses Payload CMS collection hooks for automatic stage progression:
+
+**afterChange Hook Pattern**:
+
+- Triggered automatically when an import-job's stage changes
+- Delegates to `StageTransitionService` for validation and queueing
+- Ensures exactly-once job execution per stage transition
+- Maintains state machine integrity
+
+**Key Benefit**: No manual orchestration code needed - hooks handle the entire workflow automatically.
+
+### StageTransitionService
+
+The `StageTransitionService` provides centralized, atomic stage transitions:
+
+**Responsibilities**:
+
+- Validates that transitions are legal according to the state machine
+- Prevents concurrent transitions with in-memory locking
+- Queues appropriate background jobs for the new stage
+- Ensures exactly-once job execution
+
+**Locking Mechanism**:
+
+- In-memory Set tracks currently-transitioning jobs
+- Atomic lock acquisition prevents race conditions
+- Locks released after job queuing completes
+- Prevents double-queueing during concurrent updates
+
+**Valid Transition Map**:
+
+The service enforces a strict state machine:
+
+- `analyze-duplicates` → `detect-schema`
+- `detect-schema` → `validate-schema`
+- `validate-schema` → `await-approval` OR `create-schema-version` (auto-approve path)
+- `await-approval` → `create-schema-version`
+- `create-schema-version` → `geocode-batch`
+- `geocode-batch` → `create-events`
+- `create-events` → `completed`
+- ANY stage → `failed` (error handling)
+
+**Auto-Approval Bypass**: When `autoApproveNonBreaking` is enabled and no breaking changes are detected, the pipeline skips `await-approval` and jumps directly from `validate-schema` to `create-schema-version`.
+
+### Background Job Lifecycle
+
+**Payload's Auto-Deletion**:
+
+Payload CMS automatically deletes completed jobs by default (configurable with `deleteJobOnComplete`). This has important implications:
+
+- **No Double-Queueing**: Jobs should only be queued by hooks, not by job handlers
+- **Hook-Based Queueing**: Collection hooks handle all job queueing automatically
+- **Job Handlers Focus on Work**: Each handler performs its task without queueing the next job
+- **Testing Implications**: Tests must check side effects (events created, data changed) rather than job history
+
+**Correct Pattern**: Use `StageTransitionService` to move between stages - it handles queueing via hooks.
+
+## Batch Processing Architecture
+
+### Configurable Batch Sizes
+
+Different stages use different batch sizes optimized for their specific needs:
+
+**Duplicate Analysis** (5,000 rows):
+
+- Memory-efficient for hash map operations
+- Balances throughput with memory usage
+- Allows pause/resume at batch boundaries
+
+**Schema Detection** (10,000 rows):
+
+- Larger batches for efficiency
+- Progressive schema building across batches
+- Builder state persisted between batches
+
+**Geocoding** (Unique locations, not batched):
+
+- Processes ALL unique locations in a single pass
+- Extracts unique location strings from entire file
+- Each unique value geocoded once
+- Results stored by row number for lookup during event creation
+- Small API batch sizes respect rate limits
+
+**Event Creation** (1,000 rows):
+
+- Avoids database transaction timeouts
+- Balances throughput with reliability
+- Individual row failures don't stop batch
+
+### Progressive Processing
+
+Many stages build up results progressively across batches:
+
+- **Schema detection**: Refines type understanding with each batch
+- **Duplicate analysis**: Builds complete duplicate map across all batches
+- **Event creation**: Processes file in manageable chunks
+
+This approach enables:
+
+- Processing files larger than available memory
+- Pause and resume at batch boundaries
+- Incremental progress tracking
+- Partial recovery from failures
+
+## Data Flow Principles
+
+### Metadata Tracking
+
+Throughout processing, the pipeline tracks comprehensive metadata:
+
+**Stage Progression**:
+
+- Current stage and previous stage
+- Stage transition timestamps
+- User who initiated transitions (for approvals)
+
+**Progress Information**:
+
+- Rows processed vs total rows
+- Batches completed vs total batches
+- Percentage completion
+
+**Processing Results**:
+
+- Duplicate row numbers (internal and external)
+- Geocoding results by row number
+- Schema builder state for resumption
+- Error details for failed rows
+
+### Version Tracking
+
+Payload's built-in versioning provides complete audit capability:
+
+- Each stage change creates a new version of the import-job
+- Full history of processing decisions
+- Ability to analyze bottlenecks and failures
+- Recovery information for debugging
+- Compliance and governance support
+
+## Performance Characteristics
+
+### Scalability
+
+The architecture scales effectively across multiple dimensions:
+
+**Memory Efficiency**:
+
+- Batch processing prevents memory exhaustion
+- Configurable batch sizes tune memory usage
+- Progressive processing reduces peak memory
+
+**Database Efficiency**:
+
+- Minimal writes during processing
+- Selective persistence of only essential data
+- Bulk operations where possible
+
+**API Friendliness**:
+
+- Geocoding respects rate limits
+- Exponential backoff on failures
+- Efficient handling of unique values
+
+**Parallelization**:
+
+- Multiple import-jobs can run concurrently
+- Different stages of different imports run simultaneously
+- Independent processing of Excel sheets
+
+### Monitoring Capabilities
+
+The pipeline provides extensive observability:
+
+**Progress Tracking**:
+
+- Real-time progress for each stage
+- Batch-level granularity
+- Overall import status
+
+**Performance Metrics**:
+
+- Processing times per stage
+- Throughput measurements
+- API usage and quota tracking
+
+**Error Logging**:
+
+- Detailed error information per row/batch
+- Stage-level failure tracking
+- Complete error context for debugging
+
+**Resource Usage**:
+
+- Memory consumption monitoring
+- Database query performance
+- API quota consumption
+
+## Design Trade-offs
+
+### File-Based vs Database-Based
+
+**Choice**: Keep raw data in files, not database
+
+**Trade-offs**:
+
+- ✅ Simpler database schema
+- ✅ Better performance for large datasets
+- ✅ Easier to re-process from source
+- ❌ Requires file system management
+- ❌ Files must remain accessible
+
+### Event-Driven vs Procedural
+
+**Choice**: Hook-driven automatic orchestration
+
+**Trade-offs**:
+
+- ✅ Automatic stage progression
+- ✅ Declarative pipeline definition
+- ✅ No manual orchestration code
+- ❌ Implicit control flow
+- ❌ Testing requires understanding hooks
+
+### Batch vs Stream Processing
+
+**Choice**: Batch processing with configurable sizes
+
+**Trade-offs**:
+
+- ✅ Memory-efficient for large files
+- ✅ Pause/resume capability
+- ✅ Tunable performance
+- ❌ Higher latency than streaming
+- ❌ Batch size tuning required
+
+These architectural decisions create a pipeline that is scalable, maintainable, and robust while leveraging Payload CMS's built-in capabilities for state management and orchestration.

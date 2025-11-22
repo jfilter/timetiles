@@ -76,6 +76,7 @@ scripts/gce/
 apps/docs/content/reference/api/**/*.md
 apps/docs/content/reference/api/**/*.mdx
 apps/docs/content/reference/api/**/_meta.json
+apps/docs/content/reference/api/**/_meta.js
 # Keep only the manual index file
 !apps/docs/content/reference/api/index.mdx
 .playwright-mcp

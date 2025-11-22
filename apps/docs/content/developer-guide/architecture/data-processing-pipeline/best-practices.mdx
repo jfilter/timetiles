@@ -1,0 +1,437 @@
+# Best Practices
+
+This guide provides recommendations for different stakeholders working with the TimeTiles data processing pipeline.
+
+## For Data Providers
+
+These practices help ensure smooth imports and high-quality event data.
+
+### Data Structure Consistency
+
+**Keep structure consistent across imports**:
+
+- Use the same field names in every import
+- Maintain consistent data types (don't switch between "123" and 123)
+- Keep nesting structure stable
+- Use consistent date formats
+
+**Why this matters**:
+
+- Reduces schema conflicts and approval friction
+- Enables auto-approval of imports
+- Makes data more queryable and reliable
+- Reduces processing time and errors
+
+### Meaningful Field Names
+
+**Use descriptive, standard field names**:
+
+- Prefer "event_name" over "n" or "title"
+- Use "event_date" over "d" or "when"
+- Follow common conventions (latitude, longitude, address)
+- Avoid abbreviations that aren't widely understood
+
+**Why this matters**:
+
+- Improves auto-detection of geocoding fields
+- Makes data self-documenting
+- Reduces need for manual field mappings
+- Easier for others to understand your data
+
+### Include Unique Identifiers
+
+**Provide stable, unique IDs when possible**:
+
+- Include explicit ID fields (uuid, event_id, external_id)
+- Ensure IDs are truly unique across all your data
+- Keep IDs stable (don't change them between imports)
+- Use standard ID formats (UUID, sequential numbers)
+
+**Why this matters**:
+
+- Enables efficient deduplication
+- Allows update workflows for changing data
+- Faster processing (external ID is fastest strategy)
+- Prevents duplicate events
+
+### Type Consistency
+
+**Keep field types consistent**:
+
+- Numbers should always be numbers, not sometimes strings
+- Dates should use consistent format
+- Booleans should be true/false, not yes/no or 1/0 (or use consistently)
+- Empty values should be null, not empty strings or "N/A"
+
+**Why this matters**:
+
+- Avoids transformation overhead
+- Reduces schema conflicts
+- Improves data quality
+- Faster processing
+
+### Geographic Data Standards
+
+**Use standard field names and formats**:
+
+- Use "latitude" and "longitude" for coordinates
+- Use "address" for full address strings
+- Include separate fields (street, city, state, country) when possible
+- Ensure coordinates are in decimal degrees (-90 to 90, -180 to 180)
+
+**Why this matters**:
+
+- Auto-detection works reliably
+- Geocoding succeeds more often
+- Reduces manual field mapping
+- Higher geocoding confidence
+
+### Data Validation
+
+**Validate data before importing**:
+
+- Check for required fields
+- Verify data types match expected schema
+- Remove obviously invalid rows
+- Test a small sample first
+
+**Why this matters**:
+
+- Reduces row-level errors
+- Faster approval process
+- Higher quality final events
+- Less troubleshooting needed
+
+---
+
+## For System Administrators
+
+These practices help maintain a healthy, performant pipeline.
+
+### Monitor Schema Changes
+
+**Check pending approvals regularly**:
+
+- Review pending approvals daily or weekly
+- Understand why schemas are changing
+- Communicate with data providers about changes
+- Document approval decisions for future reference
+
+**Why this matters**:
+
+- Prevents import backlogs
+- Catches data quality issues early
+- Maintains data governance
+- Builds institutional knowledge
+
+### Configure Transformations Proactively
+
+**Set up rules for known type mismatches**:
+
+- Add transformations for common patterns (European numbers, custom dates)
+- Document why transformations were added
+- Test transformations with sample data
+- Review transformation usage periodically
+
+**Why this matters**:
+
+- Reduces manual intervention
+- Enables auto-approval
+- Consistent handling of type variations
+- Faster imports
+
+### Monitor Field Growth
+
+**Watch for excessive field proliferation**:
+
+- Review new fields being added
+- Question fields with very low usage
+- Consolidate similar fields when possible
+- Set alerts for schemas exceeding 100 fields
+
+**Why this matters**:
+
+- Large schemas impact query performance
+- Too many fields indicate data quality issues
+- Schema complexity makes maintenance harder
+- Storage costs increase
+
+### Document Schema Decisions
+
+**Record why changes were approved or rejected**:
+
+- Note approval reason in import-job
+- Maintain change log for datasets
+- Communicate decisions to data providers
+- Review decisions periodically for patterns
+
+**Why this matters**:
+
+- Builds institutional knowledge
+- Helps train new administrators
+- Provides audit trail for compliance
+- Identifies systemic issues
+
+### Set Appropriate Batch Sizes
+
+**Tune batch sizes based on infrastructure**:
+
+- Monitor memory usage during imports
+- Test different batch sizes in staging
+- Adjust based on file sizes and complexity
+- Document why specific sizes were chosen
+
+**Why this matters**:
+
+- Prevents memory exhaustion
+- Optimizes throughput
+- Balances performance and reliability
+- System-specific (no one-size-fits-all)
+
+### Regular Maintenance
+
+**Keep the pipeline healthy**:
+
+- Archive old import-jobs periodically
+- Clean up failed imports
+- Review and update geocoding API keys
+- Monitor disk space for import files
+- Update dependencies and security patches
+
+**Why this matters**:
+
+- Prevents performance degradation
+- Reduces storage costs
+- Maintains security
+- Catches issues before they become critical
+
+---
+
+## For Large Datasets
+
+Special considerations when processing large files or high-volume imports.
+
+### Monitor Field Count
+
+**Datasets with >1000 fields may impact performance**:
+
+- Review schema regularly for bloat
+- Question fields with null rate >95%
+- Consider restructuring extremely wide datasets
+- Use nested objects to group related fields
+
+**Why this matters**:
+
+- Query performance degrades with field count
+- Storage efficiency decreases
+- Schema becomes unmanageable
+- Indicates possible data quality issues
+
+### Set Appropriate Thresholds
+
+**Configure enum detection for your data patterns**:
+
+- Use count mode for small datasets
+- Use percentage mode for large datasets
+- Test thresholds with sample data
+- Adjust based on actual field cardinality
+
+**Why this matters**:
+
+- Incorrect thresholds create unwieldy enums
+- Too strict: misses categorization opportunities
+- Too loose: creates enums with thousands of values
+- Impacts query performance and UX
+
+### Use Progressive Import
+
+**Let schema build incrementally for large files**:
+
+- Don't force immediate completion
+- Allow processing to pause between batches
+- Monitor memory during processing
+- Accept that large imports take time
+
+**Why this matters**:
+
+- Prevents memory exhaustion
+- Allows recovery from interruptions
+- More reliable for very large files
+- System remains responsive
+
+### Plan for Geocoding
+
+**Large address datasets have special considerations**:
+
+- Account for API rate limits (may take hours)
+- Budget for API costs (charges per request)
+- Consider caching geocoding results
+- Pre-geocode data when possible
+
+**Why this matters**:
+
+- Geocoding is slowest stage for large datasets
+- API costs can be significant
+- Rate limits may slow processing substantially
+- Caching saves money and time
+
+### Consider Partitioning
+
+**Very large datasets may benefit from splitting**:
+
+- Split by time period (yearly, quarterly)
+- Split by category or type
+- Split by geographic region
+- Maintain relationships with metadata
+
+**Why this matters**:
+
+- Smaller imports are more manageable
+- Failures affect smaller portions
+- Parallel processing of partitions
+- Easier to retry failed partitions
+
+### Performance Testing
+
+**Test at scale before production**:
+
+- Use production-sized files in staging
+- Measure processing time per stage
+- Monitor resource usage (memory, CPU, disk)
+- Identify bottlenecks before production
+
+**Why this matters**:
+
+- Surprises in production are costly
+- Can adjust configuration proactively
+- Identifies infrastructure needs
+- Builds confidence in system capacity
+
+---
+
+## For Development Teams
+
+Guidance for teams building on or extending the pipeline.
+
+### Respect Hook Architecture
+
+**Let hooks handle orchestration**:
+
+- Don't queue jobs manually from job handlers
+- Use StageTransitionService for stage changes
+- Trust the hook system to advance pipeline
+- Only queue jobs from hooks
+
+**Why this matters**:
+
+- Prevents double-queueing
+- Maintains exactly-once semantics
+- Reduces debugging complexity
+- Follows established patterns
+
+### Job Handler Focus
+
+**Keep job handlers focused**:
+
+- Each handler does one thing well
+- Don't queue next job from handler
+- Update stage, let hooks queue next job
+- Maintain separation of concerns
+
+**Why this matters**:
+
+- Easier to test and debug
+- Clear responsibilities
+- Simpler to extend
+- Reduces coupling
+
+### Testing Implications
+
+**Understand how jobs work in tests**:
+
+- Jobs are deleted after completion
+- Check side effects, not job history
+- Verify progress and state changes
+- Query actual results (events, data)
+
+**Why this matters**:
+
+- Test the right things
+- Avoid flaky tests
+- Matches production behavior
+- Tests remain valid
+
+### Error Handling
+
+**Handle errors at appropriate levels**:
+
+- Row-level errors: log and continue
+- Batch-level errors: retry batch
+- Stage-level errors: mark import failed
+- Preserve partial progress when possible
+
+**Why this matters**:
+
+- Resilient to transient failures
+- Doesn't lose work on errors
+- Clear error reporting
+- Enables recovery
+
+### Schema Versioning
+
+**Always create schema versions**:
+
+- Create version after approval
+- Link events to schema version
+- Maintain version history
+- Enable rollback capability
+
+**Why this matters**:
+
+- Audit trail for compliance
+- Understand schema evolution
+- Debug issues related to schema changes
+- Support for schema rollback
+
+---
+
+## Universal Principles
+
+Practices that apply to everyone working with the pipeline.
+
+### Start Conservative, Iterate
+
+- Begin with strict settings
+- Loosen based on actual needs
+- Test configuration changes in staging
+- Monitor impact of changes
+
+### Document Everything
+
+- Why configuration was chosen
+- Why approval was given/denied
+- What went wrong in failures
+- How issues were resolved
+
+### Monitor Continuously
+
+- Set up alerts for problems
+- Review metrics regularly
+- Track trends over time
+- Act on warnings early
+
+### Communicate
+
+- Data providers inform admins of upcoming changes
+- Admins communicate policies to providers
+- Developers document behavior changes
+- Everyone shares knowledge
+
+### Learn from Failures
+
+- Analyze what went wrong
+- Document root cause
+- Implement preventive measures
+- Share lessons learned
+
+These best practices will help you run a smooth, efficient, and reliable data processing pipeline.

@@ -1,3 +1,7 @@
+---
+asIndexPage: true
+---
+
 # Development Setup
 
 Welcome to TimeTiles development! This guide covers contributor-specific setup and workflows.
@@ -43,6 +47,7 @@ The application will be available at:
 
 ```bash
 make dev          # Start all apps with database
+make dev-full     # Start infrastructure and dev server in one step
 make check-ai     # Run lint and typecheck (ALWAYS run after changes)
 make test-ai      # Run all tests (AI-friendly output)
 ```

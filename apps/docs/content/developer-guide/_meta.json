@@ -1,9 +1,0 @@
-{
-  "architecture": "Architecture & Tech Stack",
-  "development": "Development Setup",
-  "packages": "Packages",
-  "rest-api": "REST API",
-  "url-fetch-cache": "URL Fetch Cache",
-  "quotas": "Quotas & Resource Limits",
-  "rate-limiting": "Rate Limiting"
-}

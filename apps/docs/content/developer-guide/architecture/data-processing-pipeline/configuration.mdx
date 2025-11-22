@@ -1,0 +1,544 @@
+# Configuration
+
+The TimeTiles data processing pipeline provides extensive configuration options at both the dataset and system levels. This document explains all available configuration options and their effects on pipeline behavior.
+
+## Dataset Configuration
+
+Each dataset can configure its processing behavior independently. Configuration is stored in the `datasets` collection and affects all imports for that dataset.
+
+### ID Strategy Configuration
+
+Controls how unique identifiers are generated and how duplicates are detected.
+
+**Strategy Types**:
+
+**External ID**:
+
+- Uses a specific field from the data as the unique identifier
+- Best for data with explicit, reliable IDs (UUID, database ID, etc.)
+- Requires specifying the field path (e.g., "event_id", "data.uuid")
+- Fastest strategy for duplicate detection
+
+**Computed Hash**:
+
+- Generates ID by hashing a combination of specified fields
+- Best for data without explicit IDs but with identifying field combinations
+- Requires specifying which fields to include in hash
+- More flexible than external ID, but slightly slower
+
+**Auto-Increment**:
+
+- Automatically generates sequential IDs
+- Best for datasets where uniqueness isn't critical
+- Simplest strategy, no configuration needed
+- Cannot detect duplicates (all rows considered unique)
+
+**Hybrid**:
+
+- Tries external ID first, falls back to computed hash if external ID is missing
+- Best for datasets with partial ID coverage
+- Combines reliability of external ID with flexibility of computed hash
+- Requires configuring both strategies
+
+**Duplicate Strategy**:
+
+Controls what happens when duplicates are detected:
+
+- **Skip**: Ignore duplicate rows (most common)
+- **Update**: Update existing event with new data
+- **Version**: Create new version of existing event
+
+### Deduplication Configuration
+
+Controls early duplicate detection in Stage 2 (Analyze Duplicates).
+
+**Enabled/Disabled**:
+
+- Enable to reduce processing volume and prevent duplicate events
+- Disable for datasets where every row should create an event
+
+**Strategy**:
+
+- Same options as ID strategy (external-id, computed-hash, content-hash, hybrid)
+- Should typically match ID strategy for consistency
+- Can differ if deduplication logic differs from ID generation
+
+**Field Specification**:
+
+- For computed-hash: specify which fields constitute a duplicate
+- Can include nested field paths (e.g., "data.event.id")
+- Order doesn't matter (hashing is deterministic)
+
+### Schema Configuration
+
+Controls schema behavior, validation, and evolution.
+
+**Locked**:
+
+- When true: Require approval for ALL schema changes (even non-breaking)
+- When false: Allow auto-approval based on change classification
+- Use for production datasets with strict governance requirements
+
+**Auto-Grow**:
+
+- When true: Allow schema to grow with new optional fields automatically
+- When false: Require approval for any schema changes
+- Prerequisite for auto-approval of non-breaking changes
+
+**Auto-Approve Non-Breaking**:
+
+- When true: Non-breaking changes skip manual approval
+- When false: All changes require manual approval
+- Only effective when auto-grow is also enabled
+- Requires locked to be false
+
+**Strict Validation**:
+
+- When true: Block imports that don't match schema exactly
+- When false: Allow type transformations and best-effort parsing
+- Use strict mode for high-quality, well-structured data
+
+**Allow Transformations**:
+
+- When true: Apply configured type transformations automatically
+- When false: Reject type mismatches without attempting transformation
+- Enables flexible handling of common type variations
+
+**Max Schema Depth**:
+
+- Maximum nesting depth for nested objects in data
+- Prevents excessively deep schemas that impact performance
+- Typical values: 3-5 levels
+- Higher values increase schema complexity and query costs
+
+### Type Transformations
+
+Automatic conversions between data types to handle common mismatches.
+
+**Transformation Configuration**:
+
+Each transformation specifies:
+
+- **Field Path**: Which field to transform (supports nested paths)
+- **From Type**: Expected incoming type
+- **To Type**: Desired target type
+- **Strategy**: How to perform the transformation
+- **Enabled**: Whether this transformation is active
+
+**Transformation Strategies**:
+
+**Parse**:
+
+- Smart parsing with type inference
+- Examples: "123" → 123, "true" → true, "2024-01-15" → Date
+- Best for well-formatted data with predictable patterns
+- Most commonly used strategy
+
+**Cast**:
+
+- Simple type coercion
+- Examples: 123 → "123", true → "true"
+- Best for simple type conversions
+- Faster than parsing but less intelligent
+
+**Custom**:
+
+- User-defined transformation function
+- Handles complex cases (e.g., European number formats, custom date formats)
+- Most flexible but requires custom code
+- Use when parse/cast aren't sufficient
+
+**Reject**:
+
+- Fail validation on type mismatch
+- Strict type checking with no forgiveness
+- Use for high-quality data where mismatches indicate errors
+
+### Import Transforms
+
+Field renaming and restructuring during import.
+
+**Transform Configuration**:
+
+Each transform specifies:
+
+- **Source Field**: Original field name in import file
+- **Target Field**: Desired field name in events
+- **Transform Type**: Rename, restructure, or extract
+
+**Use Cases**:
+
+- Standardizing field names across different data sources
+- Extracting nested fields to top level
+- Combining multiple source fields into one
+- Splitting single field into multiple fields
+
+**Example Scenarios**:
+
+- Rename "EventName" to "name" for consistency
+- Extract "address.city" to "city"
+- Combine "firstName" + "lastName" to "fullName"
+
+### Field Mapping Overrides
+
+Manual specification of field mappings when auto-detection isn't sufficient.
+
+**Override Types**:
+
+**Geocoding Field Overrides**:
+
+- Manually specify which field contains addresses
+- Manually specify latitude and longitude field pairs
+- Override auto-detection when field names are non-standard
+
+**Timestamp Field Overrides**:
+
+- Manually specify which field contains the event timestamp
+- Override default priority (timestamp, date, datetime, etc.)
+- Handle custom timestamp field names
+
+**Required Field Overrides**:
+
+- Force specific fields to be required
+- Mark optional fields as required for validation
+- Enforce data quality standards
+
+### Enum Detection Configuration
+
+Controls how the system identifies enumerated (categorical) fields.
+
+**Detection Mode**:
+
+**Count**:
+
+- Field is enum if unique values ≤ threshold
+- Example: threshold=50 means fields with ≤50 unique values become enums
+- Best for small datasets or when you know the expected enum size
+
+**Percentage**:
+
+- Field is enum if (unique values / total values) ≤ threshold
+- Example: threshold=0.05 means fields with ≤5% unique values become enums
+- Best for large datasets where absolute counts are misleading
+
+**Threshold Values**:
+
+- Count mode: Typical values 20-100 unique values
+- Percentage mode: Typical values 0.01-0.10 (1%-10%)
+- Higher values create more enums (more permissive)
+- Lower values create fewer enums (more strict)
+
+### Geographic Field Detection
+
+Controls automatic detection of location fields for geocoding.
+
+**Auto-Detect**:
+
+- When true: Automatically identify address and coordinate fields
+- When false: Only use manual field mappings
+- Recommended: true for initial imports, false after field verification
+
+**Manual Overrides**:
+
+**Latitude Path**:
+
+- Specify exact field containing latitude values
+- Overrides auto-detection
+- Use when field name doesn't match common patterns
+
+**Longitude Path**:
+
+- Specify exact field containing longitude values
+- Must be specified if latitude path is specified
+- Use when field name doesn't match common patterns
+
+**Address Path**:
+
+- Specify exact field containing full address strings
+- Overrides auto-detection
+- Use when field name doesn't match common patterns ("venue", "place", etc.)
+
+### Processing Limits
+
+Controls resource usage and prevents runaway processing.
+
+**Max Concurrent Jobs**:
+
+- Maximum number of import-jobs for this dataset running simultaneously
+- Prevents resource exhaustion when processing multiple files
+- Typical values: 1-5 depending on dataset complexity and size
+
+**Processing Timeout**:
+
+- Maximum time (milliseconds) for entire import to complete
+- Timeout stops processing and marks import as failed
+- Prevents hung imports from consuming resources indefinitely
+- Typical values: 3600000 (1 hour) to 86400000 (24 hours)
+
+**Max File Size**:
+
+- Maximum file size (bytes) for imports to this dataset
+- Files exceeding limit are rejected at upload
+- Prevents memory exhaustion from extremely large files
+- Typical values: 104857600 (100MB) to 1073741824 (1GB)
+
+---
+
+## System Configuration
+
+Global pipeline settings that affect all datasets and imports.
+
+### File Processing Configuration
+
+**Supported Formats**:
+
+- List of allowed file extensions (e.g., .csv, .xlsx, .xls)
+- Files with other extensions are rejected at upload
+- Standard configuration: .csv, .xlsx, .xls
+
+**Max File Size**:
+
+- Global maximum file size (can be overridden per dataset)
+- System-wide safety limit
+- Typical value: 100MB to 1GB depending on infrastructure
+
+### Batch Size Configuration
+
+Controls how many rows are processed in each batch for various stages.
+
+**Duplicate Analysis Batch Size**:
+
+- Default: 5,000 rows
+- Environment variable: `BATCH_SIZE_DUPLICATE_ANALYSIS`
+- Memory-efficient for hash map operations
+- Larger values: faster but more memory
+- Smaller values: slower but less memory
+
+**Schema Detection Batch Size**:
+
+- Default: 10,000 rows
+- Environment variable: `BATCH_SIZE_SCHEMA_DETECTION`
+- Larger batches for schema building efficiency
+- Larger values: faster schema convergence
+- Smaller values: more batches, slower convergence
+
+**Event Creation Batch Size**:
+
+- Default: 1,000 rows
+- Environment variable: `BATCH_SIZE_EVENT_CREATION`
+- Balances throughput with transaction reliability
+- Larger values: faster but higher transaction timeout risk
+- Smaller values: slower but more reliable
+
+**Database Chunk Size**:
+
+- Default: 1,000 records
+- Environment variable: `BATCH_SIZE_DATABASE_CHUNK`
+- Batch size for bulk database operations
+- Affects memory and transaction duration
+
+**Geocoding Processing**:
+
+- Processes ALL unique locations in one pass (not batched by rows)
+- API batch size configured separately (typically 100 requests/minute)
+- Extracts unique addresses/coordinates from entire file first
+- Results cached in lookup map for all rows
+
+### Concurrency Configuration
+
+**Max Concurrent Imports**:
+
+- Maximum number of import files processing simultaneously across all datasets
+- Prevents system overload from too many concurrent operations
+- Typical values: 10-50 depending on infrastructure
+
+**Job Worker Count**:
+
+- Number of background job workers processing pipeline stages
+- Higher values: more parallelism, more resource usage
+- Lower values: less parallelism, more queuing
+- Typical values: 4-16 workers
+
+### Retry Configuration
+
+**Retry Attempts**:
+
+- Number of times to retry failed operations
+- Applies to transient failures (network errors, temporary database issues)
+- Typical values: 3-5 retries
+
+**Retry Backoff**:
+
+- Strategy for delaying retries
+- **Exponential**: Delay doubles each retry (1s, 2s, 4s, 8s, ...)
+- **Linear**: Delay increases linearly (1s, 2s, 3s, 4s, ...)
+- **Constant**: Same delay each retry
+- Recommended: Exponential for most scenarios
+
+### Geocoding API Configuration
+
+**API Provider**:
+
+- Which geocoding service to use (Nominatim, Google Maps, etc.)
+- Affects accuracy, cost, and rate limits
+
+**API Key**:
+
+- Authentication key for geocoding service
+- Required for most commercial providers
+- Free services (Nominatim) may not require key
+
+**Rate Limit**:
+
+- Maximum requests per minute/second
+- Must match API provider's limit
+- Typical values: 50-2500 requests/minute depending on plan
+
+**Timeout**:
+
+- Maximum time to wait for geocoding response
+- Longer timeout: more patient, slower on failures
+- Shorter timeout: faster failure detection, may miss slow responses
+- Typical values: 5000-30000 milliseconds (5-30 seconds)
+
+### Storage Configuration
+
+**Import File Directory**:
+
+- Path where uploaded files are stored
+- Must be persistent across deployments
+- Should be backed up regularly
+
+**Temp Directory**:
+
+- Path for temporary files during processing
+- Can be ephemeral (cleared on restart)
+- Should have ample space for largest expected file
+
+### Monitoring Configuration
+
+**Log Level**:
+
+- Verbosity of logging (error, warn, info, debug, trace)
+- Higher levels: more detail, more storage/performance impact
+- Production: info or warn
+- Development: debug or trace
+
+**Metrics Collection**:
+
+- Enable/disable performance metrics collection
+- Tracks processing times, throughput, success rates
+- Minimal performance impact when enabled
+
+**Error Reporting**:
+
+- Integration with error tracking services (Sentry, etc.)
+- Automatic error notification and aggregation
+- Helps identify systemic issues quickly
+
+---
+
+## Configuration Best Practices
+
+### Development Environment
+
+- Stricter validation to catch issues early
+- Smaller batch sizes for faster iteration
+- Verbose logging for debugging
+- Shorter timeouts to fail fast
+- Lower concurrency to avoid resource competition
+
+### Staging Environment
+
+- Production-like configuration
+- Medium batch sizes
+- Moderate logging
+- Production timeouts
+- Production concurrency levels
+- Test auto-approval and transformations
+
+### Production Environment
+
+- Optimized batch sizes for your infrastructure
+- Error-level logging only
+- Conservative timeouts (allow completion)
+- Appropriate concurrency (based on capacity testing)
+- Enable metrics and monitoring
+- Careful approval settings (prefer manual review initially)
+
+### Per-Dataset Tuning
+
+**High-Volume Datasets**:
+
+- Larger batch sizes for throughput
+- Higher concurrency limits
+- Longer processing timeouts
+- Auto-approval for non-breaking changes
+
+**High-Quality Datasets**:
+
+- Strict validation enabled
+- Locked schemas
+- Manual approval required
+- Reject transformation strategy
+
+**Experimental Datasets**:
+
+- Auto-grow enabled
+- Allow transformations
+- Parse transformation strategy
+- Auto-approve non-breaking
+
+---
+
+## Configuration Changes
+
+### Runtime Changes
+
+Most dataset configuration changes take effect immediately for new imports:
+
+- ID strategy changes
+- Schema configuration changes
+- Type transformation changes
+- Field mapping overrides
+
+### Requires Restart
+
+Some system configuration changes require application restart:
+
+- Batch size environment variables
+- Worker count changes
+- API keys and credentials
+- Storage paths
+
+### Migration Required
+
+Some configuration changes may require data migration:
+
+- Changing ID strategy on datasets with existing events
+- Modifying schema depth limits
+- Changing deduplication strategy significantly
+
+---
+
+## Recommended Starting Configuration
+
+For new TimeTiles installations, start with these conservative settings:
+
+**Dataset Defaults**:
+
+- ID Strategy: External (with hybrid fallback)
+- Schema: Unlocked, Auto-grow enabled, Auto-approve non-breaking
+- Validation: Non-strict, Allow transformations
+- Transformations: Parse strategy
+- Max Schema Depth: 3
+
+**System Defaults**:
+
+- Batch Sizes: Default values (5k, 10k, 1k)
+- Max Concurrent Imports: 10
+- Job Workers: 8
+- Retry Attempts: 3
+- Retry Backoff: Exponential
+
+Adjust these settings based on your specific needs, infrastructure capacity, and data quality requirements.

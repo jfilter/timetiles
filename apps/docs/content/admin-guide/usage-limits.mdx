@@ -1,0 +1,246 @@
+# Usage Limits & Resource Management
+
+Configuration for quotas, rate limiting, and HTTP caching.
+
+## Trust Levels
+
+Users are assigned trust levels that determine their resource quotas and rate limits.
+
+| Level | Name       | Description                                    |
+| ----- | ---------- | ---------------------------------------------- |
+| 0     | Untrusted  | New or unverified accounts with minimal access |
+| 1     | Basic      | Basic users with conservative limits           |
+| 2     | Regular    | Standard users with normal operational limits  |
+| 3     | Trusted    | Trusted users with enhanced access             |
+| 4     | Power User | Advanced users with generous allowances        |
+| 5     | Unlimited  | Administrators with no restrictions            |
+
+## Quotas
+
+### Default Quotas by Trust Level
+
+#### Untrusted (Level 0)
+
+| Quota Type        | Limit |
+| ----------------- | ----- |
+| Active Schedules  | 0     |
+| URL Fetches/Day   | 0     |
+| File Uploads/Day  | 1     |
+| Events per Import | 100   |
+| Total Events      | 100   |
+| Import Jobs/Day   | 1     |
+| Max File Size     | 1 MB  |
+
+#### Basic (Level 1)
+
+| Quota Type        | Limit |
+| ----------------- | ----- |
+| Active Schedules  | 1     |
+| URL Fetches/Day   | 5     |
+| File Uploads/Day  | 3     |
+| Events per Import | 1,000 |
+| Total Events      | 5,000 |
+| Import Jobs/Day   | 5     |
+| Max File Size     | 10 MB |
+
+#### Regular (Level 2)
+
+| Quota Type        | Limit  |
+| ----------------- | ------ |
+| Active Schedules  | 5      |
+| URL Fetches/Day   | 20     |
+| File Uploads/Day  | 10     |
+| Events per Import | 10,000 |
+| Total Events      | 50,000 |
+| Import Jobs/Day   | 20     |
+| Max File Size     | 50 MB  |
+
+#### Trusted (Level 3)
+
+| Quota Type        | Limit   |
+| ----------------- | ------- |
+| Active Schedules  | 20      |
+| URL Fetches/Day   | 100     |
+| File Uploads/Day  | 50      |
+| Events per Import | 50,000  |
+| Total Events      | 500,000 |
+| Import Jobs/Day   | 100     |
+| Max File Size     | 100 MB  |
+
+#### Power User (Level 4)
+
+| Quota Type        | Limit     |
+| ----------------- | --------- |
+| Active Schedules  | 100       |
+| URL Fetches/Day   | 500       |
+| File Uploads/Day  | 200       |
+| Events per Import | 200,000   |
+| Total Events      | 2,000,000 |
+| Import Jobs/Day   | 500       |
+| Max File Size     | 500 MB    |
+
+#### Unlimited (Level 5)
+
+| Quota Type        | Limit          |
+| ----------------- | -------------- |
+| Active Schedules  | Unlimited (-1) |
+| URL Fetches/Day   | Unlimited (-1) |
+| File Uploads/Day  | Unlimited (-1) |
+| Events per Import | Unlimited (-1) |
+| Total Events      | Unlimited (-1) |
+| Import Jobs/Day   | Unlimited (-1) |
+| Max File Size     | 1000 MB        |
+
+### Custom Quotas
+
+Set user-specific overrides in the admin panel (`/admin/users`):
+
+```json
+{
+  "quotas": {
+    "maxActiveSchedules": 50,
+    "maxFileUploadsPerDay": 100,
+    "maxTotalEvents": 1000000
+  }
+}
+```
+
+Custom quotas override trust level defaults.
+
+### Monitoring Usage
+
+View usage in:
+
+- Admin panel: `/admin/users`
+- API endpoint: `GET /api/quotas`
+- Response headers on quota-enforced operations
+
+## Rate Limiting
+
+### File Upload Rate Limits by Trust Level
+
+| Trust Level        | Burst      | Hourly    | Daily          |
+| ------------------ | ---------- | --------- | -------------- |
+| **Untrusted (0)**  | 1 per min  | 1/hour    | 1/day          |
+| **Basic (1)**      | 1 per 10s  | 3/hour    | 3/day          |
+| **Regular (2)**    | 1 per 5s   | 5/hour    | 20/day         |
+| **Trusted (3)**    | 2 per 5s   | 20/hour   | 50/day         |
+| **Power User (4)** | 5 per 5s   | 100/hour  | 200/day        |
+| **Unlimited (5)**  | 10 per sec | 1000/hour | No daily limit |
+
+### API General Rate Limits by Trust Level
+
+| Trust Level        | Burst       | Hourly     |
+| ------------------ | ----------- | ---------- |
+| **Untrusted (0)**  | 1 per sec   | 10/hour    |
+| **Basic (1)**      | 2 per sec   | 30/hour    |
+| **Regular (2)**    | 5 per sec   | 50/hour    |
+| **Trusted (3)**    | 10 per sec  | 200/hour   |
+| **Power User (4)** | 20 per sec  | 1000/hour  |
+| **Unlimited (5)**  | 100 per sec | 10000/hour |
+
+### Troubleshooting Rate Limits
+
+**429 Errors:**
+
+- Check which window failed (burst/hourly/daily)
+- Verify user's trust level
+- Wait for reset time in response
+
+**Debugging:**
+
+```bash
+# Check logs for rate limit info
+grep "Rate limit" /var/log/timetiles/app.log
+
+# Response headers show limits
+X-RateLimit-Limit: 10
+X-RateLimit-Remaining: 7
+X-RateLimit-Reset: 2025-10-06T15:30:00.000Z
+```
+
+## HTTP Caching
+
+### Environment Variables
+
+```bash
+# Cache directory (persistent location)
+URL_FETCH_CACHE_DIR=/var/cache/timetiles/http
+
+# Maximum cache size in bytes (default: 100MB)
+URL_FETCH_CACHE_MAX_SIZE=104857600
+
+# Default TTL in seconds (default: 1 hour)
+URL_FETCH_CACHE_TTL=3600
+
+# Respect server Cache-Control headers (default: true)
+URL_FETCH_CACHE_RESPECT_CACHE_CONTROL=true
+```
+
+### Production Settings
+
+```bash
+# Recommended for production
+URL_FETCH_CACHE_DIR=/var/cache/timetiles/http
+URL_FETCH_CACHE_MAX_SIZE=524288000    # 500MB
+URL_FETCH_CACHE_TTL=3600              # 1 hour
+URL_FETCH_CACHE_RESPECT_CACHE_CONTROL=true
+```
+
+### Development Settings
+
+```bash
+# Recommended for development
+URL_FETCH_CACHE_DIR=.cache/http
+URL_FETCH_CACHE_MAX_SIZE=52428800     # 50MB
+URL_FETCH_CACHE_TTL=300               # 5 minutes
+```
+
+### Cache Management
+
+**Check cache size:**
+
+```bash
+du -sh /var/cache/timetiles/http/
+```
+
+**Clear cache:**
+
+```bash
+rm -rf /var/cache/timetiles/http/*
+```
+
+**Monitor cache:**
+
+```bash
+# View cache entries
+ls -lh /var/cache/timetiles/http/entries/
+
+# Check cache metadata
+cat /var/cache/timetiles/http/index.json | jq .
+```
+
+### Troubleshooting
+
+**High cache misses:**
+
+- Increase TTL: `URL_FETCH_CACHE_TTL=86400` (24 hours)
+- Increase size: `URL_FETCH_CACHE_MAX_SIZE=524288000` (500MB)
+- Check if server sends `Cache-Control: no-cache`
+
+**Stale data:**
+
+- Reduce TTL: `URL_FETCH_CACHE_TTL=1800` (30 minutes)
+- Enable bypass on manual triggers in scheduled import settings
+- Clear cache: `rm -rf /var/cache/timetiles/http/*`
+
+**Disk space issues:**
+
+- Reduce max size: `URL_FETCH_CACHE_MAX_SIZE=52428800` (50MB)
+- Reduce TTL: `URL_FETCH_CACHE_TTL=1800` (30 minutes)
+- Clear cache manually
+
+## Related Documentation
+
+- [Resource Protection Architecture](/developer-guide/architecture/resource-protection) - How quotas and rate limiting work
+- [HTTP Caching Architecture](/developer-guide/architecture/http-caching) - Cache system design

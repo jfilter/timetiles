@@ -1,0 +1,592 @@
+# Troubleshooting
+
+This guide helps you diagnose and resolve common issues with the TimeTiles data processing pipeline.
+
+## Common Issues
+
+### Import Stuck in Processing
+
+**Symptoms**:
+
+- Import status shows "processing" for extended period
+- Progress hasn't updated in hours/days
+- No error messages visible in UI
+
+**Possible Causes**:
+
+1. **Background job worker not running**
+2. **Job queue backlog**
+3. **Memory exhaustion**
+4. **Disk space full**
+5. **Database connection issues**
+6. **File access permissions**
+
+**Diagnosis Steps**:
+
+1. Check job queue status in admin interface
+2. Review error logs for recent errors
+3. Verify background workers are running
+4. Check system resources (memory, disk, CPU)
+5. Verify database connectivity
+6. Check file system permissions
+
+**Resolution**:
+
+- Restart background job workers if stopped
+- Clear job queue backlog by adding workers
+- Increase memory allocation if exhausted
+- Free up disk space if full
+- Restore database connection
+- Fix file permissions (typically need read access)
+
+---
+
+### Schema Approval Needed
+
+**Symptoms**:
+
+- Import pauses at "await-approval" stage
+- Notification about schema changes
+- Admin interface shows pending approvals
+
+**Possible Causes**:
+
+1. **Breaking schema changes detected**
+2. **Dataset schema is locked**
+3. **Auto-approval disabled**
+4. **Manual approval required by policy**
+
+**Diagnosis Steps**:
+
+1. Check import-job for schemaValidation.breakingChanges
+2. Review dataset schemaConfig.locked setting
+3. Verify schemaConfig.autoApproveNonBreaking setting
+4. Review list of breaking changes
+
+**Understanding Change Types**:
+
+**Breaking Changes (Require Approval)**:
+
+- Field type changes (string → number)
+- Required fields removed
+- Constraint narrowing (smaller max length)
+- Format changes (date format modifications)
+- Enum value restrictions
+
+**Non-Breaking Changes (Can Auto-Approve)**:
+
+- New optional fields
+- Constraint expansion (larger max length)
+- Enum value additions
+- Type generalization (number → string)
+
+**Resolution Options**:
+
+1. **Approve Changes**: Review and approve via admin interface
+2. **Enable Auto-Grow**: Set autoGrow=true for future auto-approval
+3. **Add Transformations**: Configure type transformations to handle mismatches
+4. **Fix Source Data**: Correct data to match existing schema
+5. **Reject and Re-Import**: Reject changes and prepare corrected file
+
+---
+
+### Duplicate Events Appearing
+
+**Symptoms**:
+
+- Same event appears multiple times
+- Expected duplicates not being detected
+- Deduplication not working as expected
+
+**Possible Causes**:
+
+1. **Incorrect ID strategy configuration**
+2. **External ID field path wrong**
+3. **Computed hash fields insufficient**
+4. **Deduplication disabled**
+5. **ID generation inconsistent**
+
+**Diagnosis Steps**:
+
+1. Check dataset.idStrategy.type configuration
+2. Verify external ID field path exists in data
+3. Review computed hash field selection
+4. Check dataset.deduplicationConfig.enabled
+5. Examine import-job.duplicates summary
+
+**ID Strategy Troubleshooting**:
+
+**External ID Issues**:
+
+- Verify field path is correct (case-sensitive)
+- Check that field exists in all rows
+- Ensure field values are truly unique
+- Verify field contains stable identifiers
+
+**Computed Hash Issues**:
+
+- Include enough fields to ensure uniqueness
+- Avoid fields that change (timestamps, counters)
+- Use stable, meaningful fields (name, date, location)
+- Test field combination creates unique hashes
+
+**Resolution**:
+
+1. **Fix ID Strategy**: Update configuration to correct strategy
+2. **Add Missing Fields**: Include more fields in computed hash
+3. **Enable Deduplication**: Set deduplicationConfig.enabled=true
+4. **Clean Up Duplicates**: Manually delete duplicate events
+5. **Re-Import with Correct Config**: Delete events and re-import
+
+---
+
+### Geocoding Failures
+
+**Symptoms**:
+
+- Events created without coordinates
+- Geocoding stage shows errors
+- "Geocoding failed" messages in logs
+
+**Possible Causes**:
+
+1. **Invalid API key**
+2. **Rate limit exceeded**
+3. **Malformed addresses**
+4. **API service down**
+5. **Network connectivity issues**
+6. **Incorrect field detection**
+
+**Diagnosis Steps**:
+
+1. Check API key configuration and validity
+2. Review rate limit status and quotas
+3. Examine sample addresses for formatting
+4. Test API service manually
+5. Verify network connectivity
+6. Check geocodingCandidates in import-job
+
+**Geocoding Field Detection Issues**:
+
+**Address Not Detected**:
+
+- Field name doesn't match common patterns
+- Add manual field mapping override
+- Verify field contains actual addresses
+
+**Coordinates Not Detected**:
+
+- Latitude/longitude field names non-standard
+- Values outside valid ranges (-90 to 90, -180 to 180)
+- Fields contain non-numeric data
+- Add manual coordinate field mappings
+
+**Resolution**:
+
+1. **Fix API Configuration**: Update/renew API key
+2. **Increase Rate Limits**: Upgrade API plan or slow down processing
+3. **Clean Address Data**: Standardize address formatting
+4. **Manual Field Mapping**: Override auto-detection with explicit paths
+5. **Retry Failed Geocoding**: Re-run geocoding stage after fixes
+6. **Switch Providers**: Use different geocoding service
+
+---
+
+### Schema Conflicts
+
+**Symptoms**:
+
+- Schema validation errors
+- Type mismatch errors
+- "Schema conflict" messages
+
+**Possible Causes**:
+
+1. **Type changes in source data**
+2. **Strict validation enabled**
+3. **Transformations not configured**
+4. **Data quality issues**
+5. **Schema locked**
+
+**Diagnosis Steps**:
+
+1. Check schemaValidation details in import-job
+2. Review dataset.schemaConfig.strictValidation
+3. Examine dataset.typeTransformations configuration
+4. Sample source data for type inconsistencies
+5. Check dataset.schemaConfig.locked
+
+**Common Schema Conflicts**:
+
+**Type Mismatches**:
+
+- Previous imports had numeric field, new import has strings
+- Previous imports had required field, new import missing it
+- Date format changed between imports
+
+**Field Additions**:
+
+- New fields in data that don't exist in schema
+- Auto-grow disabled, blocking new fields
+
+**Constraint Violations**:
+
+- Values exceed existing min/max constraints
+- Enum values outside allowed set
+- String lengths exceed maxLength
+
+**Resolution**:
+
+1. **Add Transformations**: Configure type transformations for known mismatches
+2. **Enable Auto-Grow**: Allow schema to grow with new optional fields
+3. **Disable Strict Validation**: Allow best-effort parsing
+4. **Approve Changes**: Manually approve schema changes
+5. **Clean Source Data**: Fix data quality issues at source
+6. **Reset Schema**: Delete schema versions and start fresh (destructive)
+
+---
+
+### Memory Issues
+
+**Symptoms**:
+
+- Out of memory errors
+- Process crashes during import
+- Slow performance, swapping
+
+**Possible Causes**:
+
+1. **Batch sizes too large**
+2. **Too many concurrent imports**
+3. **Memory leak**
+4. **Insufficient system memory**
+5. **Large file processing**
+
+**Diagnosis Steps**:
+
+1. Monitor memory usage during imports
+2. Check batch size configuration
+3. Review concurrent import count
+4. Check for memory growth over time (leaks)
+5. Review file sizes being processed
+
+**Resolution**:
+
+1. **Reduce Batch Sizes**: Lower BATCH*SIZE*\* environment variables
+2. **Limit Concurrency**: Reduce max concurrent imports
+3. **Increase System Memory**: Add more RAM to server
+4. **Process Files in Chunks**: Split large files before import
+5. **Restart Workers Periodically**: Mitigate potential memory leaks
+6. **Optimize Transformations**: Simplify custom transformation functions
+
+---
+
+### Performance Degradation
+
+**Symptoms**:
+
+- Imports taking much longer than before
+- Slow batch processing
+- High database CPU usage
+- API timeouts
+
+**Possible Causes**:
+
+1. **Database performance issues**
+2. **Too many concurrent operations**
+3. **Geocoding API slow/rate-limited**
+4. **Large schema complexity**
+5. **Network latency**
+6. **Disk I/O bottleneck**
+
+**Diagnosis Steps**:
+
+1. Monitor batch processing times per stage
+2. Check database query performance and indexes
+3. Review geocoding API response times
+4. Measure network latency to external services
+5. Check disk I/O wait times
+6. Review schema depth and field counts
+
+**Resolution**:
+
+1. **Optimize Database**: Add indexes, optimize queries, increase connection pool
+2. **Scale Workers**: Add more background job workers
+3. **Upgrade API Plan**: Increase geocoding rate limits
+4. **Simplify Schema**: Reduce max schema depth, limit field proliferation
+5. **Improve Network**: Use CDN, closer regions for APIs
+6. **Faster Storage**: Use SSD instead of HDD, increase IOPS
+
+---
+
+### Row-Level Errors
+
+**Symptoms**:
+
+- Import completes but with errors
+- Some rows missing from final events
+- Error details in import-job
+
+**Possible Causes**:
+
+1. **Data validation failures**
+2. **Required fields missing**
+3. **Type conversion failures**
+4. **Constraint violations**
+5. **Malformed data**
+
+**Diagnosis Steps**:
+
+1. Review import-job errors array
+2. Check which rows failed
+3. Examine error messages
+4. Sample failed rows from source file
+5. Review schema requirements
+
+**Common Row Errors**:
+
+**Missing Required Fields**:
+
+- Row missing fields marked as required in schema
+- Empty strings or null values in required fields
+
+**Type Conversion Failures**:
+
+- Cannot parse string to expected type
+- Invalid date formats
+- Non-numeric values in number fields
+
+**Constraint Violations**:
+
+- Values outside min/max ranges
+- String length exceeds maxLength
+- Values not in enum set
+
+**Resolution**:
+
+1. **Fix Source Data**: Correct problematic rows at source
+2. **Make Fields Optional**: Adjust schema to allow null values
+3. **Add Transformations**: Configure parsing for known patterns
+4. **Relax Constraints**: Expand min/max ranges, maxLength values
+5. **Filter Invalid Rows**: Pre-process file to remove invalid rows
+6. **Manual Event Creation**: Create events manually for failed rows
+
+---
+
+## Debugging Tools
+
+### Version History
+
+**Purpose**: Review complete processing progression
+
+**How to Use**:
+
+1. Open import-job record in admin interface
+2. Navigate to "Versions" tab
+3. Review each stage transition
+4. Check timestamps to identify bottlenecks
+5. Examine state changes between versions
+
+**What to Look For**:
+
+- Long gaps between stage transitions (bottlenecks)
+- Stage transitions that failed and retried
+- Data changes (progress, errors, validation results)
+
+### Error Logs
+
+**Purpose**: Detailed error information
+
+**How to Use**:
+
+1. Check import-job.errors array for row-level errors
+2. Review application logs for system-level errors
+3. Filter by import-job ID for relevant entries
+4. Look for stack traces and error context
+
+**Error Types**:
+
+- Row-level: Individual row processing failures
+- Batch-level: Entire batch failed
+- Stage-level: Stage failed to complete
+- System-level: Infrastructure failures
+
+### Performance Metrics
+
+**Purpose**: Identify performance bottlenecks
+
+**How to Use**:
+
+1. Review processing times per stage in import-job
+2. Check batch processing durations
+3. Monitor API response times
+4. Track database query performance
+
+**Key Metrics**:
+
+- Time per stage
+- Rows processed per second
+- API requests per minute
+- Database query duration
+
+### Manual Intervention
+
+**Purpose**: Resume or modify processing manually
+
+**How to Use**:
+
+1. Update import-job stage via admin interface
+2. Queue specific job manually via API
+3. Modify configuration and retry
+4. Reset to previous stage if needed
+
+**When to Use**:
+
+- Automated recovery failed
+- Need to skip problematic stage
+- Testing configuration changes
+- Recovering from corruption
+
+### Database Queries
+
+**Purpose**: Direct inspection of processing state
+
+**How to Use**:
+
+1. Query import-jobs collection for detailed state
+2. Check import-files for overall status
+3. Review dataset-schemas for schema history
+4. Examine events for final results
+
+**Useful Queries**:
+
+- Find all stuck imports
+- Get imports in specific stage
+- Check schema versions by dataset
+- Count events per import
+
+---
+
+## Recovery Procedures
+
+### Stage-Level Recovery
+
+**When to Use**: Entire stage failed, need to retry from beginning of that stage
+
+**Steps**:
+
+1. Identify last successful stage from import-job record
+2. Review error logs to understand failure cause
+3. Fix underlying issue (API key, permissions, etc.)
+4. Reset stage to previous successful state via admin interface
+5. Queue appropriate job to resume processing
+6. Monitor for successful completion
+
+**Cautions**:
+
+- May re-process data (ensure idempotency)
+- Previous stage results should be intact
+- Verify fix before resuming
+
+### Batch-Level Recovery
+
+**When to Use**: Partial batch completed, need to resume from interruption point
+
+**Steps**:
+
+1. Check progress.current vs progress.total in import-job
+2. Identify last successfully processed batch number
+3. Verify data integrity of partial results
+4. Queue job with correct batch number to resume
+5. Monitor progress to ensure continuous processing
+6. Verify final counts match expected
+
+**Cautions**:
+
+- Batch boundaries must align correctly
+- Partial results may exist in database
+- Check for duplicate processing
+
+### Complete Restart
+
+**When to Use**: Import is corrupted beyond repair, need fresh start
+
+**Steps**:
+
+1. Mark current import-job as failed
+2. Document what went wrong for postmortem
+3. Delete any partially created events (if needed)
+4. Apply lessons learned (fix config, transformations, etc.)
+5. Create new import-job from same file
+6. Monitor new import for successful completion
+
+**Cautions**:
+
+- May lose progress (starts from beginning)
+- Duplicate events possible if not cleaned up
+- Ensure underlying issue is fixed first
+
+### Data Integrity Recovery
+
+**When to Use**: Corruption detected, need to validate/repair data
+
+**Steps**:
+
+1. Identify scope of corruption (which events affected)
+2. Export affected events for backup
+3. Delete corrupted events
+4. Re-import from original file with corrected configuration
+5. Verify event counts and data integrity
+6. Compare before/after to ensure correctness
+
+**Cautions**:
+
+- Very destructive operation
+- Always backup before deletion
+- Test on staging first
+
+---
+
+## Automatic Error Recovery
+
+TimeTiles includes an automatic error recovery system for failed imports. See the [Error Recovery](./error-recovery) documentation for complete details on:
+
+- Error classification (recoverable, permanent, user-action-required)
+- Automatic retry with exponential backoff
+- Recovery API endpoints (`/retry`, `/reset`, `/recommendations`)
+- Integration with scheduled imports
+- Best practices for error recovery
+
+---
+
+## Prevention Best Practices
+
+### Monitoring
+
+- Set up alerts for stuck imports (>1 hour in same stage)
+- Monitor error rates and investigate spikes
+- Track performance metrics over time
+- Regular review of pending approvals
+
+### Configuration
+
+- Start with conservative settings
+- Test configuration changes in staging first
+- Document configuration decisions
+- Version control configuration files
+
+### Data Quality
+
+- Validate data before import when possible
+- Maintain consistent data formats
+- Communicate schema changes in advance
+- Pre-process problematic data
+
+### Capacity Planning
+
+- Monitor resource usage trends
+- Scale before hitting limits
+- Plan for peak import periods
+- Test with production-scale data
+
+These troubleshooting techniques and recovery procedures should help you diagnose and resolve most common pipeline issues effectively.

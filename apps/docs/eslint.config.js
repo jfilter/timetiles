@@ -7,9 +7,10 @@ export default [
     ignores: [
       "content/reference/api/**/*.md",
       "content/reference/api/**/*.mdx",
+      "content/reference/api/**/_meta.js",
       // Keep manual files
       "!content/reference/api/index.mdx",
-      "!content/reference/api/_meta.json",
+      "!content/reference/api/_meta.js",
     ],
   },
   // Apply MDX config to all MDX/MD files (except those ignored above)
@@ -21,6 +22,13 @@ export default [
       "@typescript-eslint/no-unused-vars": "off", // MDX imports are used in JSX
       "no-unused-vars": "off", // MDX imports are used in JSX
       "sonarjs/max-lines": ["error", { maximum: 1000 }], // Documentation files can be longer
+    },
+  },
+  // Override for _meta.js files - simple config files don't need JSDoc
+  {
+    files: ["**/_meta.js"],
+    rules: {
+      "jsdoc/require-file-overview": "off",
     },
   },
   // Scripts configuration - Node.js environment with relaxed rules (TypeScript only)

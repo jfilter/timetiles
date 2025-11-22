@@ -42,6 +42,33 @@ const findBracketDirectories = (dir: string, result: string[] = []): string[] =>
 };
 
 /**
+ * Remove empty directories recursively
+ */
+const removeEmptyDirectories = (dir: string): void => {
+  if (!fs.existsSync(dir)) return;
+
+  const items = fs.readdirSync(dir);
+
+  // First recursively process subdirectories
+  for (const item of items) {
+    const fullPath = path.join(dir, item);
+    if (fs.statSync(fullPath).isDirectory()) {
+      removeEmptyDirectories(fullPath);
+    }
+  }
+
+  // Now check if this directory is empty (or only contains hidden files)
+  const remainingItems = fs.readdirSync(dir);
+  const hasContent = remainingItems.some((item) => !item.startsWith("."));
+
+  if (!hasContent && dir !== API_DIR) {
+    // Don't remove the API_DIR itself
+    console.log(`Removing empty directory: ${path.relative(API_DIR, dir)}`);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+};
+
+/**
  * Remove directories with brackets in their names
  */
 const removeBracketDirectories = (): void => {
@@ -55,6 +82,10 @@ const removeBracketDirectories = (): void => {
   if (dirsToRemove.length > 0) {
     console.log(`Removed ${dirsToRemove.length} directories with brackets`);
   }
+
+  // After removing bracket directories, clean up any empty parent directories
+  console.log("Removing empty directories...");
+  removeEmptyDirectories(API_DIR);
 };
 
 /**
@@ -298,4 +329,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }
 
-export { cleanupAllFiles, convertMdToMdx, fixFunctionSignatures, removeBracketDirectories };
+export { cleanupAllFiles, convertMdToMdx, fixFunctionSignatures, removeBracketDirectories, removeEmptyDirectories };

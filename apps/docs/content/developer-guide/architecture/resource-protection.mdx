@@ -1,0 +1,148 @@
+# Resource Protection
+
+How TimeTiles uses quotas and rate limiting to prevent abuse and ensure fair resource allocation.
+
+## Two-Layer Protection
+
+TimeTiles uses **two complementary systems** that work together:
+
+### Quotas (Long-Term)
+
+**Purpose:** Fair resource allocation
+
+- **Storage:** Database (persistent across restarts)
+- **Scope:** Per user ID (requires authentication)
+- **Time Windows:** Hours to lifetime
+- **Reset:** Fixed times (midnight UTC for daily quotas)
+- **Example:** 10 file uploads per day, 50,000 total events
+
+### Rate Limiting (Short-Term)
+
+**Purpose:** Abuse prevention, burst protection
+
+- **Storage:** In-memory cache (fast, ephemeral)
+- **Scope:** Per IP address or identifier (works for unauthenticated)
+- **Time Windows:** Seconds to hours
+- **Reset:** Sliding windows
+- **Example:** 1 upload per 5 seconds, 5 per hour
+
+## Why Both Exist
+
+**Rate limiting alone** isn't enough:
+
+- Lost on restart (in-memory only)
+- Can't track lifetime limits
+- Doesn't prevent resource exhaustion over days
+
+**Quotas alone** isn't enough:
+
+- Slower (database query)
+- Doesn't prevent rapid bursts
+- Can't stop DDoS attacks
+
+**Together they provide:**
+
+1. **Instant rejection** of burst attacks (rate limiting)
+2. **Accurate tracking** of long-term usage (quotas)
+3. **Fair allocation** across all users
+
+## Execution Flow
+
+Both checks run on every operation:
+
+```
+Request
+  ↓
+Rate Limit Check (in-memory, instant)
+  ↓ pass
+Quota Check (database query)
+  ↓ pass
+Process Request
+```
+
+If either fails, request is rejected with HTTP 429.
+
+## When Each Triggers
+
+### Rate Limiting Triggers
+
+**Scenario:** Rapid repeated requests
+
+- User uploads 3 files in 10 seconds
+- Rate limit blocks after first (1 per 5 seconds for Regular users)
+- Quota not yet reached (still at 1/10 daily limit)
+
+### Quota Triggers
+
+**Scenario:** Daily limit exhausted
+
+- User uploads 10 files throughout the day (within rate limits)
+- 11th upload blocked by quota (10/day limit)
+- Rate limit would allow it (enough time passed)
+
+### Both Trigger
+
+**Scenario:** Sustained abuse
+
+- Attacker slowly uploads files every 6 seconds (bypasses burst rate limit)
+- After 10 uploads, quota blocks further attempts
+- Rate limiting prevented bursts, quota prevented exhaustion
+
+## Trust Level Scaling
+
+Both systems automatically adjust limits based on user trust level (0-5):
+
+- **Untrusted (0):** Minimal access, strict limits
+- **Regular (2):** Standard operational limits
+- **Unlimited (5):** No restrictions (admins)
+
+Higher trust = more generous limits without manual configuration.
+
+## Daily Resets
+
+**Quota Counters Reset:**
+
+- Daily quotas reset at midnight UTC via background job
+- Lifetime quotas (total events, active schedules) never reset
+- User's usage counters return to zero
+
+**Rate Limits Reset:**
+
+- Sliding windows (no fixed reset time)
+- After window expires, requests allowed again
+- No background jobs needed
+
+## Storage Differences
+
+| Aspect       | Quotas            | Rate Limiting     |
+| ------------ | ----------------- | ----------------- |
+| Storage      | PostgreSQL        | In-memory Map     |
+| Persistence  | Survives restarts | Lost on restart   |
+| Performance  | Slower (DB query) | Faster (memory)   |
+| Accuracy     | Exact counts      | Approximate       |
+| Scalability  | Limited by DB     | Limited by memory |
+| Unauth Users | No (needs user)   | Yes (uses IP)     |
+
+## Implementation
+
+**Services:**
+
+- `QuotaService` - Database-backed quota enforcement
+- `RateLimitService` - In-memory rate limiting
+
+**Collections Using Protection:**
+
+- `import-files` - File uploads
+- `import-jobs` - Import processing
+- `events` - Event creation
+- `scheduled-imports` - Active schedules
+
+**Background Jobs:**
+
+- `quota-reset-job` - Daily quota counter reset (midnight UTC)
+- `url-fetch-cache-cleanup-job` - Cache cleanup (every 6 hours)
+
+## Related Documentation
+
+- [Usage Limits Configuration](/admin-guide/usage-limits) - Quotas, rate limits, and cache settings
+- [API Reference](/reference/api/lib/services) - QuotaService and RateLimitService APIs

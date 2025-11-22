@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Increase sidebar width for long API documentation names */
+@media (min-width: 1024px) {
+  .nextra-sidebar-container {
+    width: 320px !important;
+    max-width: 320px !important;
+  }
+
+  /* Adjust main content to account for wider sidebar */
+  .nextra-content {
+    margin-left: 320px !important;
+  }
+}
