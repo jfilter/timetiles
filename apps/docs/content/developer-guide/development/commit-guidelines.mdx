@@ -1,10 +1,20 @@
-# Commit Guidelines
+# Git & Commit Guidelines
 
-This guide outlines the commit message conventions for the TimeTiles project. Following these guidelines ensures consistency, improves readability, and helps with automated tooling.
+This guide covers Git setup and commit message conventions for TimeTiles.
+
+## Quick Setup
+
+```bash
+make setup       # Configures commit template and hooks
+```
+
+This automatically sets up:
+
+- Commit message template (`.gitmessage`)
+- Pre-commit hooks (lint, typecheck via Husky)
+- Commit message validation (commitlint)
 
 ## Commit Message Format
-
-Each commit message consists of a **title** and an optional **body**:
 
 ```
 <type>(<scope>): <subject>
@@ -444,15 +454,9 @@ The commitlint rules intelligently handle redundant type/scope combinations:
 10. **Reference Issues**: Include issue numbers when applicable (e.g., "fixes #123")
 11. **Keep Bullets Focused**: One concept per bullet point for clarity
 
-## Commit Message Template
-
-This project includes a commit message template at `.gitmessage` that is automatically configured for use. When you run `git commit` without the `-m` flag, your editor will open with a helpful template.
-
-For setup instructions and additional tooling options, see the [Git Configuration Guide](./git-configuration).
-
 ## Enforcement and Validation
 
-The project uses Husky and commitlint to enforce commit message standards. If your commit doesn't meet the guidelines, it will be rejected with a helpful error message explaining what needs to be fixed.
+The project uses Husky and commitlint to enforce commit message standards. If your commit doesn't meet the guidelines, it will be rejected with a helpful error message.
 
 ### Automatic Scope Validation
 
@@ -650,3 +654,32 @@ format(config): fix TypeScript config formatting  # Code formatting
 ```
 
 Remember: Good commit messages help future maintainers (including yourself) understand why changes were made, not just what changed. Focus on business value and user impact rather than technical implementation details.
+
+## Troubleshooting
+
+### Commit Rejected
+
+Read the error message carefully. Common issues:
+
+- Subject too short (minimum 10 characters)
+- Invalid type or scope
+- Vague terms like "stuff" or "things"
+- Missing format `type(scope): subject`
+
+### Editor Not Opening
+
+Set your preferred editor:
+
+```bash
+git config --global core.editor "code --wait"  # VS Code
+git config --global core.editor "vim"          # Vim
+git config --global core.editor "nano"         # Nano
+```
+
+### Bypassing Hooks (Emergency Only)
+
+```bash
+git commit --no-verify -m "emergency: fix critical issue"
+```
+
+**Use sparingly** - hooks maintain code quality.

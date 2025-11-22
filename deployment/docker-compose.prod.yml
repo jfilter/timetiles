@@ -27,7 +27,7 @@ services:
       -c log_statement=${PG_LOG_STATEMENT:-none}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-timetiles_user} -d ${DB_NAME:-timetiles}"]
       interval: 10s
