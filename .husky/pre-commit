@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
-# Run linting and TypeScript checking sequentially to ensure proper exit codes
+# Regenerate Payload types if migrations or collections changed
+./scripts/pre-commit-payload-types.sh
 
+# Run linting and TypeScript checking sequentially to ensure proper exit codes
 pnpm lint && pnpm typecheck
