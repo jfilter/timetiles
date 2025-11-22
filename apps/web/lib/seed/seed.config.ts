@@ -73,6 +73,8 @@ export interface EnvironmentConfig {
 export interface SeedConfiguration {
   /** Configuration for each collection */
   collections: Record<string, CollectionConfig>;
+  /** Configuration for globals */
+  globals?: Record<string, CollectionConfig>;
   /** Relationship configurations (imported from existing system) */
   relationships: Record<string, RelationshipConfig[]>;
   /** Environment-specific configurations */
@@ -169,44 +171,12 @@ export const SEED_CONFIG: SeedConfiguration = {
       },
     },
 
-    // Import Files - depend on catalogs, operational data
-    "import-files": {
-      count: (env) => {
-        switch (env) {
-          case "development":
-            return 12; // 2 per catalog
-          case "test":
-            return 6; // 2 per base catalog
-          case "production":
-            return 0; // No seed import files
-          default:
-            return 2;
-        }
-      },
-      dependencies: ["catalogs"],
+    // Pages - static content (home, about, contact)
+    pages: {
+      count: 3, // Static: home, about, contact pages
+      dependencies: [],
       options: {
-        generateSampleFiles: true,
-        includeFailedImports: true,
-      },
-    },
-
-    // Import Jobs - depend on import files and datasets
-    "import-jobs": {
-      count: (env) => {
-        switch (env) {
-          case "development":
-            return 12; // 1 per import file
-          case "test":
-            return 6; // 1 per import file
-          case "production":
-            return 0; // No seed import jobs
-          default:
-            return 2;
-        }
-      },
-      dependencies: ["import-files", "datasets"],
-      options: {
-        generateProgressData: true,
+        staticContent: true,
       },
     },
 
@@ -236,6 +206,18 @@ export const SEED_CONFIG: SeedConfiguration = {
     },
   },
 
+  // Globals configuration
+  globals: {
+    // Main Menu - global navigation
+    "main-menu": {
+      count: 1, // Single global menu
+      dependencies: [],
+      options: {
+        staticContent: true,
+      },
+    },
+  },
+
   // Import existing relationship configurations
   relationships: RELATIONSHIP_CONFIG,
 
@@ -246,8 +228,8 @@ export const SEED_CONFIG: SeedConfiguration = {
         "catalogs",
         "datasets",
         "events",
-        "import-files",
-        "import-jobs",
+        "pages",
+        "main-menu",
         "location-cache",
         GEOCODING_PROVIDERS_COLLECTION,
       ],
@@ -281,8 +263,8 @@ export const SEED_CONFIG: SeedConfiguration = {
         "catalogs",
         "datasets",
         "events",
-        "import-files",
-        "import-jobs",
+        "pages",
+        "main-menu",
         "location-cache",
         GEOCODING_PROVIDERS_COLLECTION,
       ],
@@ -311,6 +293,8 @@ export const SEED_CONFIG: SeedConfiguration = {
     production: {
       enabled: [
         "users", // Admin users only
+        "pages", // Static content pages
+        "main-menu", // Navigation menu
         GEOCODING_PROVIDERS_COLLECTION, // Service configuration
       ],
       overrides: {
@@ -330,7 +314,7 @@ export const SEED_CONFIG: SeedConfiguration = {
     },
 
     staging: {
-      enabled: ["users", "catalogs", "datasets", "events", GEOCODING_PROVIDERS_COLLECTION],
+      enabled: ["users", "catalogs", "datasets", "events", "pages", "main-menu", GEOCODING_PROVIDERS_COLLECTION],
       overrides: {
         events: {
           count: 100, // Smaller dataset for staging
@@ -406,13 +390,18 @@ export const SEED_CONFIG: SeedConfiguration = {
 };
 
 /**
- * Get configuration for a specific collection and environment.
+ * Get configuration for a specific collection or global and environment.
  */
 export const getCollectionConfig = (collection: string, environment: string): CollectionConfig | null => {
-  const baseConfig = Object.hasOwn(SEED_CONFIG.collections, collection)
-    ? SEED_CONFIG.collections[collection]
-    : undefined;
-  if (baseConfig == null || baseConfig == undefined) return null;
+  // Check collections first, then globals
+  let baseConfig: CollectionConfig | undefined;
+  if (Object.hasOwn(SEED_CONFIG.collections, collection)) {
+    baseConfig = SEED_CONFIG.collections[collection];
+  } else if (SEED_CONFIG.globals && Object.hasOwn(SEED_CONFIG.globals, collection)) {
+    baseConfig = SEED_CONFIG.globals[collection];
+  }
+
+  if (baseConfig == null) return null;
 
   const envConfig = Object.hasOwn(SEED_CONFIG.environments, environment)
     ? SEED_CONFIG.environments[environment]

@@ -226,32 +226,35 @@ describe.sequential("Configuration-Driven Seeding", () => {
       const eventsCount = await testEnv.seedManager.getCollectionCount("events");
       expect(eventsCount).toBe(0); // Should be 0 because events aren't enabled in production
     });
-  });
 
-  describe("Legacy Compatibility", () => {
-    it("should maintain backward compatibility with existing seed method", async () => {
-      // Test that the old method still works
-      await testEnv.seedManager.seed({
-        environment: "test",
-        collections: ["users", "catalogs"],
+    it("should seed main-menu global successfully", async () => {
+      await testEnv.seedManager.seedWithConfig({
+        environment: "development",
+        collections: ["main-menu"],
       });
 
-      const usersCount = await testEnv.seedManager.getCollectionCount("users");
-      const catalogsCount = await testEnv.seedManager.getCollectionCount("catalogs");
-
-      expect(usersCount).toBeGreaterThan(0);
-      expect(catalogsCount).toBeGreaterThan(0);
-    });
-
-    it("should delegate to configuration-driven method when useConfig is true", async () => {
-      await testEnv.seedManager.seed({
-        environment: "test",
-        collections: ["users"],
-        useConfig: true, // This should trigger the new configuration-driven method
+      // Verify main-menu was seeded by querying the global
+      const mainMenu = await testEnv.payload.findGlobal({
+        slug: "main-menu",
       });
 
-      const usersCount = await testEnv.seedManager.getCollectionCount("users");
-      expect(usersCount).toBeGreaterThan(0);
+      expect(mainMenu).toBeDefined();
+      expect(mainMenu.navItems).toBeDefined();
+      expect(Array.isArray(mainMenu.navItems)).toBe(true);
+      expect(mainMenu.navItems.length).toBeGreaterThan(0);
+
+      // Verify navigation items have the expected structure
+      mainMenu.navItems.forEach((item: any) => {
+        expect(item).toHaveProperty("label");
+        expect(item).toHaveProperty("url");
+        expect(typeof item.label).toBe("string");
+        expect(typeof item.url).toBe("string");
+      });
+
+      // Verify expected navigation items exist
+      const labels = mainMenu.navItems.map((item: any) => item.label);
+      expect(labels).toContain("Home");
+      expect(labels).toContain("Explore");
     });
   });
 
@@ -350,13 +353,13 @@ describe.sequential("Configuration-Driven Seeding", () => {
     });
 
     it("should have valid collection names that match Payload collections", () => {
+      // Note: main-menu is a Payload global (not a collection), so it's in SEED_CONFIG.globals
       const validCollections = [
         "users",
         "catalogs",
         "datasets",
         "events",
-        "import-jobs",
-        "import-files", // This is what the config actually uses
+        "pages",
         "media",
         "location-cache",
         "geocoding-providers",
@@ -365,6 +368,24 @@ describe.sequential("Configuration-Driven Seeding", () => {
       Object.keys(SEED_CONFIG.collections).forEach((collectionName) => {
         expect(validCollections).toContain(collectionName);
       });
+    });
+
+    it("should include main-menu in all environments", () => {
+      const environments = ["development", "test", "production", "staging"];
+
+      environments.forEach((env) => {
+        const enabledCollections = getEnabledCollections(env);
+        expect(enabledCollections).toContain("main-menu");
+      });
+    });
+
+    it("should configure main-menu as a static global with count of 1", () => {
+      const mainMenuConfig = getCollectionConfig("main-menu", "development");
+
+      expect(mainMenuConfig).toBeDefined();
+      expect(mainMenuConfig?.count).toBe(1);
+      expect(mainMenuConfig?.dependencies).toEqual([]);
+      expect(mainMenuConfig?.options?.staticContent).toBe(true);
     });
 
     it("should have valid dependency graph without circular dependencies", () => {

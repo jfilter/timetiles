@@ -19,7 +19,7 @@
     "payload:migrate": "payload migrate",
     "payload:migrate:create": "payload migrate:create",
     "payload:validate": "tsx scripts/validate-types.ts",
-    "seed": "tsx scripts/seed.ts development users catalogs datasets events imports main-menu pages",
+    "seed": "tsx scripts/seed.ts",
     "test": "vitest run",
     "test:ai": "tsx scripts/test-ai.ts",
     "test:silent": "vitest run --reporter=basic --silent",
