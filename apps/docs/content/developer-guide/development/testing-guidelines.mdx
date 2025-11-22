@@ -70,6 +70,13 @@ vi.mock("node-geocoder", () => ({ default: mockGeocoder }));
 ```bash
 make test         # Run all tests across all packages
 make test-ai      # AI-friendly output (silent, JSON results)
+
+# Filter tests for faster iteration (24-120x faster)
+make test-ai FILTER=date.test           # Run specific test file
+make test-ai FILTER=tests/unit          # Run unit tests directory
+make test-ai FILTER=store.test          # Run store tests
+make test-ai FILTER=tests/unit/lib      # Run specific directory
+make test-ai FILTER="date|store|geo"    # Multiple patterns (pipe-separated)
 ```
 
 **From `apps/web`** (package-specific commands):
@@ -95,6 +102,54 @@ LOG_LEVEL=debug pnpm test tests/integration/services/seed-config.test.ts
 ```
 
 **AI Output:** Results saved to `.test-results.json`, `.lint-results.json`, `.typecheck-results.json`
+
+### Analyzing Test Results
+
+When tests fail, use `jq` to extract detailed information from the JSON results:
+
+```bash
+# See specific failed test names
+cat apps/web/.test-results.json | jq '.testResults[] | select(.status=="failed") | .name'
+
+# See assertion details for failures
+cat apps/web/.test-results.json | jq '.testResults[] | select(.status=="failed") | .assertionResults[] | select(.status=="failed")'
+
+# Count total failures
+cat apps/web/.test-results.json | jq '[.testResults[] | select(.status=="failed")] | length'
+```
+
+### Analyzing Lint Results
+
+Extract lint errors and top violations:
+
+```bash
+# Files with errors
+cat apps/web/.lint-results.json | jq '.[] | select(.errorCount > 0) | .filePath'
+
+# Specific error messages
+cat apps/web/.lint-results.json | jq '.[] | select(.errorCount > 0) | .messages[] | select(.severity == 2)'
+
+# Full error details with location
+cat apps/web/.lint-results.json | jq '[.[] | select(.errorCount > 0) | {file: .filePath, errors: [.messages[] | select(.severity == 2) | {line, column, message, ruleId}]}]'
+```
+
+### Analyzing TypeScript Errors
+
+Extract type errors from typecheck results:
+
+```bash
+# All type errors
+cat apps/web/.typecheck-results.json | jq '.errors'
+
+# Errors by file
+cat apps/web/.typecheck-results.json | jq '.summary.byFile'
+
+# Errors by error code
+cat apps/web/.typecheck-results.json | jq '.summary.byCode'
+
+# Specific error details
+cat apps/web/.typecheck-results.json | jq '.errors[] | {file, line, code, message}'
+```
 
 ## Test Setup Patterns
 

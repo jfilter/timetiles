@@ -64,6 +64,51 @@ cd apps/web && pnpm payload:migrate         # Run migrations
 make db-reset                               # Reset database
 ```
 
+### Database Seeding
+
+Populate your database with test data. You can use either the Makefile command (from project root) or the pnpm command (from `apps/web`):
+
+```bash
+# From project root (recommended)
+make seed ARGS="development"                # Seed with development preset
+make seed ARGS="testing --truncate"         # Seed with testing preset, clear first
+
+# From apps/web directory
+pnpm seed [preset] [collections...] [options]
+```
+
+**Presets** (controls data characteristics):
+
+- `minimal` - Bare minimum for production
+- `testing` - Fast, deterministic data for tests (default in CI)
+- `e2e` - Moderate data for E2E testing
+- `development` - Rich, realistic data (default)
+- `demo` - Polished data for demos
+- `benchmark` - Large volumes for performance testing
+
+**Key Options**:
+
+- `--truncate` - Clear existing data before seeding
+- `--volume <level>` - Control data volume (minimal|small|medium|large|xlarge)
+- `--random` - Use random seed for different data each run
+- `--seed <number>` - Use specific seed for deterministic randomness
+
+**Examples**:
+
+```bash
+# Using Makefile (from project root)
+make seed ARGS="development"                # Seed with development preset
+make seed ARGS="testing --truncate"         # Seed testing data, clear first
+make seed ARGS="users events"               # Seed only specific collections
+
+# Using pnpm (from apps/web)
+pnpm seed                                   # Seed with development preset
+pnpm seed testing                           # Seed with testing preset
+pnpm seed users events                      # Seed only specific collections
+pnpm seed --truncate                        # Clear data and re-seed
+pnpm seed help                              # Show all options
+```
+
 ## Development Workflow
 
 ### Making Changes
