@@ -113,8 +113,24 @@ test-ai:
 	fi
 
 # Run combined code quality checks with AI-friendly output (lint + typecheck)
+# Usage:
+#   make check-ai              # Check all packages with consistent summary
+#   make check-ai PACKAGE=web  # Check only apps/web with detailed output
+#   make check-ai PACKAGE=docs # Check only apps/docs
 check-ai:
-	cd apps/web && pnpm check:ai
+	@if [ -z "$(PACKAGE)" ]; then \
+		pnpm exec tsx scripts/check-ai.ts; \
+	elif [ "$(PACKAGE)" = "web" ]; then \
+		cd apps/web && pnpm check:ai; \
+	elif [ "$(PACKAGE)" = "docs" ]; then \
+		pnpm --filter docs lint typecheck; \
+	elif [ "$(PACKAGE)" = "ui" ]; then \
+		pnpm --filter ui lint typecheck; \
+	else \
+		echo "❌ Unknown package: $(PACKAGE)"; \
+		echo "Available packages: web, docs, ui"; \
+		exit 1; \
+	fi
 
 # Run tests with coverage report
 test-coverage:
@@ -174,7 +190,8 @@ help:
 	@echo "  lint        - Run ESLint"
 	@echo "  typecheck   - Run TypeScript type checking"
 	@echo "  check       - Run lint + typecheck combined"
-	@echo "  check-ai    - Run all code quality checks (lint + typecheck) with AI-friendly output"
+	@echo "  check-ai    - Run code quality checks with AI-friendly output"
+	@echo "                (usage: make check-ai [PACKAGE=web|docs|ui])"
 	@echo "  format      - Format code with Prettier"
 	@echo ""
 	@echo "🧪 Testing:"

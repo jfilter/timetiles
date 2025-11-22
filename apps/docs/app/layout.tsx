@@ -4,6 +4,7 @@
  */
 import "nextra-theme-docs/style.css";
 
+import faviconPng from "@timetiles/assets/logos/static/logo-256.png";
 import logoHorizontal from "@timetiles/assets/logos/static/logo-with-text-horizontal-tight.svg";
 import { Banner, Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
@@ -45,47 +46,15 @@ const banner = (
   </Banner>
 );
 
-// Function to filter out dynamic routes from the page map
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const filterPageMap = (pageMap: any): any => {
-  if (Array.isArray(pageMap)) {
-    return pageMap
-      .filter((item) => {
-        // Filter out items with dynamic segments in the route
-        return !item.route?.includes("[");
-      })
-      .map((item) => {
-        if (item.children) {
-          return {
-            ...item,
-            children: filterPageMap(item.children),
-          };
-        }
-        return item;
-      });
-  }
-  return pageMap;
-};
-
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  let pageMap = [];
-
-  try {
-    const rawPageMap = await getPageMap();
-    if (rawPageMap) {
-      pageMap = filterPageMap(rawPageMap) || [];
-    }
-  } catch {
-    // Silently handle error - pageMap will be empty
-    pageMap = [];
-  }
-
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning>
-      <Head faviconGlyph="📍" />
-      <body suppressHydrationWarning>
+      <Head>
+        <link rel="icon" href={faviconPng.src} />
+      </Head>
+      <body>
         <Layout
-          pageMap={pageMap}
+          pageMap={await getPageMap()}
           navbar={navbar}
           footer={footer}
           banner={banner}

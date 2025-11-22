@@ -6,9 +6,9 @@
   "scripts": {
     "build": "tsc --build",
     "build:watch": "tsc --build --watch",
-    "lint": "eslint . --cache",
+    "lint": "eslint . --cache --format json --output-file .lint-results.json; eslint . --cache",
     "format": "eslint . --fix --quiet --cache && prettier --write . --log-level error",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
   },

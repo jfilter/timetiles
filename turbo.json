@@ -53,13 +53,15 @@
     },
     "lint": {
       "dependsOn": ["^lint"],
-      "inputs": ["**/*.{ts,tsx,js,jsx}", "content/**/*.{md,mdx}", "scripts/**/*.ts"]
+      "inputs": ["**/*.{ts,tsx,js,jsx}", "content/**/*.{md,mdx}", "scripts/**/*.ts"],
+      "outputs": [".lint-results.json"]
     },
     "format": {
       "inputs": ["**/*.{ts,tsx,js,jsx,md,json,yml,yaml}"]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"]
+      "dependsOn": ["^typecheck"],
+      "outputs": [".typecheck-results.json"]
     },
     "dev": {
       "cache": false,
