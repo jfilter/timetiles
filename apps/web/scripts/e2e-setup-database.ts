@@ -157,14 +157,14 @@ const seedE2ETestData = async (): Promise<void> => {
     // Truncate first to ensure clean state
     await seedManager.truncate();
 
-    // Seed development environment data (same as CI: pnpm seed)
+    // Seed e2e environment data (same as CI: pnpm seed e2e)
     // This creates the catalogs, datasets, and events that E2E tests expect
     await seedManager.seedWithConfig({
-      preset: "development",
+      preset: "e2e",
       collections: ["users", "catalogs", "datasets", "events", "pages"],
     });
 
-    logger.info("✓ Seeded development data using seed manager");
+    logger.info("✓ Seeded e2e data using seed manager");
   } finally {
     // Restore original DATABASE_URL
     if (originalDatabaseUrl) {

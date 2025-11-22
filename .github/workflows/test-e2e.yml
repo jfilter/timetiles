@@ -60,7 +60,7 @@ jobs:
         run: |
           pnpm playwright install chromium --with-deps
           pnpm payload:migrate
-          pnpm seed
+          pnpm seed e2e
           mkdir -p uploads
         working-directory: apps/web
 
