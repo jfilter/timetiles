@@ -64,6 +64,16 @@ export const unauthorized = (message: string = "Unauthorized", code?: string): N
   apiError(message, 401, code ?? "UNAUTHORIZED");
 
 /**
+ * Create a 403 Forbidden error response.
+ *
+ * @param message - Error message describing the authorization failure
+ * @param code - Optional error code
+ * @returns NextResponse with 403 status
+ */
+export const forbidden = (message: string = "Forbidden", code?: string): NextResponse<ErrorResponse> =>
+  apiError(message, 403, code ?? "FORBIDDEN");
+
+/**
  * Create a 404 Not Found error response.
  *
  * @param message - Error message describing what was not found
