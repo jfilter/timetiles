@@ -119,7 +119,9 @@ export const SEED_CONFIG: SeedConfiguration = {
       count: (env) => {
         switch (env) {
           case "development":
-            return 8; // All catalog types (including cultural-heritage-archives and historical-records)
+            return 12; // Expanded for local development
+          case "e2e":
+            return 8; // All catalog types for E2E tests
           case "test":
             return 3; // Base catalogs only
           case "production":
@@ -139,7 +141,9 @@ export const SEED_CONFIG: SeedConfiguration = {
       count: (env) => {
         switch (env) {
           case "development":
-            return 18; // 3 per catalog
+            return 30; // Expanded for local development (2-3 per catalog)
+          case "e2e":
+            return 18; // 2-3 per catalog for E2E tests
           case "test":
             return 9; // 3 per base catalog
           case "production":
@@ -161,7 +165,9 @@ export const SEED_CONFIG: SeedConfiguration = {
       count: (env) => {
         switch (env) {
           case "development":
-            return 500; // Rich dataset for development
+            return 1000; // Rich dataset for development
+          case "e2e":
+            return 500; // Moderate dataset for E2E tests
           case "test":
             return 50; // Sufficient for testing
           case "production":

@@ -135,12 +135,27 @@ const getCatalogConfigs = (environment: string) => {
     { slug: "academic-research-portal", type: "academic" },
   ];
 
+  // E2E uses the same catalog structure for consistency
+  if (environment === "e2e") {
+    baseCatalogs.push(
+      { slug: "community-events-portal", type: "community" },
+      { slug: "cultural-heritage-archives", type: "cultural" },
+      { slug: "government-data", type: "government" },
+      { slug: "historical-records", type: "academic" }
+    );
+  }
+
+  // Development has expanded catalogs
   if (environment === "development") {
     baseCatalogs.push(
       { slug: "community-events-portal", type: "community" },
       { slug: "cultural-heritage-archives", type: "cultural" },
       { slug: "government-data", type: "government" },
-      { slug: "historical-records", type: "academic" } // Treat as academic for schema
+      { slug: "historical-records", type: "academic" },
+      { slug: "health-medical-data", type: "academic" },
+      { slug: "transportation-data", type: "government" },
+      { slug: "education-statistics", type: "government" },
+      { slug: "urban-planning", type: "government" }
     );
   }
 
