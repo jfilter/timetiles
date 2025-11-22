@@ -119,7 +119,7 @@ export const SEED_CONFIG: SeedConfiguration = {
       count: (env) => {
         switch (env) {
           case "development":
-            return 6; // All catalog types
+            return 8; // All catalog types (including cultural-heritage-archives and historical-records)
           case "test":
             return 3; // Base catalogs only
           case "production":
