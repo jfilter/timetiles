@@ -18,7 +18,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "eslint": "^9.19.0"
+    "eslint": "^9.39.1"
   },
   "peerDependencies": {
     "prettier": "^3.6.2",
