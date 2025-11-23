@@ -29,6 +29,7 @@ FAILED → [] (terminal state)
 **Purpose:** Tests error handling transitions (ANY_STAGE → FAILED)
 
 **Coverage:**
+
 - ✅ Dataset detection failures (empty files, malformed files)
 - ✅ Duplicate analysis failures (missing jobs)
 - ✅ Schema detection failures (missing jobs)
@@ -38,6 +39,7 @@ FAILED → [] (terminal state)
 - ✅ Verification that failed jobs don't queue additional jobs
 
 **Key Scenarios:**
+
 - File has no data rows → FAILED
 - Malformed CSV → FAILED
 - Missing import job → FAILED
@@ -49,6 +51,7 @@ FAILED → [] (terminal state)
 **Purpose:** Tests that COMPLETED and FAILED states are terminal
 
 **Coverage:**
+
 - ✅ Reaching COMPLETED state after successful pipeline
 - ✅ Preventing transitions from COMPLETED to other stages
 - ✅ Preventing transitions from FAILED to processing stages
@@ -56,6 +59,7 @@ FAILED → [] (terminal state)
 - ✅ Import file status reflects terminal state
 
 **Key Scenarios:**
+
 - Complete pipeline reaches COMPLETED
 - Cannot transition from COMPLETED
 - Cannot transition from FAILED
@@ -66,12 +70,14 @@ FAILED → [] (terminal state)
 **Purpose:** Tests VALIDATE_SCHEMA → GEOCODE_BATCH direct skip transition
 
 **Coverage:**
+
 - ✅ Skipping CREATE_SCHEMA_VERSION when schema unchanged
 - ✅ Proceeding to CREATE_SCHEMA_VERSION when schema has changes
 - ✅ Data integrity when skipping schema version creation
 - ✅ Verification of job queueing for skip path
 
 **Key Scenarios:**
+
 - Second import with identical schema → skip to GEOCODE_BATCH
 - New schema → proceed to CREATE_SCHEMA_VERSION
 - Schema data preserved during transition
@@ -82,12 +88,14 @@ FAILED → [] (terminal state)
 **Purpose:** Tests manual approval workflow transitions
 
 **Coverage:**
+
 - ✅ VALIDATE_SCHEMA → AWAIT_APPROVAL (breaking changes detected)
 - ✅ AWAIT_APPROVAL → CREATE_SCHEMA_VERSION (after approval)
 - ✅ Schema rejection handling
 - ✅ Cannot transition from AWAIT_APPROVAL without approval
 
 **Key Scenarios:**
+
 - Breaking changes trigger AWAIT_APPROVAL
 - User approval triggers CREATE_SCHEMA_VERSION
 - User rejection handled gracefully
@@ -95,21 +103,21 @@ FAILED → [] (terminal state)
 
 ## Coverage Matrix
 
-| From Stage | To Stage | Test File | Status |
-|------------|----------|-----------|--------|
-| **ANALYZE_DUPLICATES** | **DETECT_SCHEMA** | (see parent integration tests) | ✅ COVERED |
-| **DETECT_SCHEMA** | **VALIDATE_SCHEMA** | (see parent integration tests) | ✅ COVERED |
-| **VALIDATE_SCHEMA** | **AWAIT_APPROVAL** | approval-workflow.test.ts | ✅ COVERED |
-| **VALIDATE_SCHEMA** | **CREATE_SCHEMA_VERSION** | (see parent integration tests) | ✅ COVERED |
-| **VALIDATE_SCHEMA** | **GEOCODE_BATCH** | direct-skip.test.ts | ✅ COVERED |
-| **AWAIT_APPROVAL** | **CREATE_SCHEMA_VERSION** | approval-workflow.test.ts | ✅ COVERED |
-| **CREATE_SCHEMA_VERSION** | **GEOCODE_BATCH** | (see parent integration tests) | ✅ COVERED |
-| **GEOCODE_BATCH** | **CREATE_EVENTS** | (see parent integration tests) | ✅ COVERED |
-| **CREATE_EVENTS** | **COMPLETED** | (see parent integration tests) | ✅ COVERED |
-| **ANY_STAGE** | **FAILED** | failure-transitions.test.ts | ✅ COVERED |
-| **ANY_STAGE** | **SAME_STAGE** | (implicit in update operations) | ⚠️ IMPLICIT |
-| **COMPLETED** | **(terminal)** | terminal-states.test.ts | ✅ COVERED |
-| **FAILED** | **(terminal)** | terminal-states.test.ts | ✅ COVERED |
+| From Stage                | To Stage                  | Test File                       | Status      |
+| ------------------------- | ------------------------- | ------------------------------- | ----------- |
+| **ANALYZE_DUPLICATES**    | **DETECT_SCHEMA**         | (see parent integration tests)  | ✅ COVERED  |
+| **DETECT_SCHEMA**         | **VALIDATE_SCHEMA**       | (see parent integration tests)  | ✅ COVERED  |
+| **VALIDATE_SCHEMA**       | **AWAIT_APPROVAL**        | approval-workflow.test.ts       | ✅ COVERED  |
+| **VALIDATE_SCHEMA**       | **CREATE_SCHEMA_VERSION** | (see parent integration tests)  | ✅ COVERED  |
+| **VALIDATE_SCHEMA**       | **GEOCODE_BATCH**         | direct-skip.test.ts             | ✅ COVERED  |
+| **AWAIT_APPROVAL**        | **CREATE_SCHEMA_VERSION** | approval-workflow.test.ts       | ✅ COVERED  |
+| **CREATE_SCHEMA_VERSION** | **GEOCODE_BATCH**         | (see parent integration tests)  | ✅ COVERED  |
+| **GEOCODE_BATCH**         | **CREATE_EVENTS**         | (see parent integration tests)  | ✅ COVERED  |
+| **CREATE_EVENTS**         | **COMPLETED**             | (see parent integration tests)  | ✅ COVERED  |
+| **ANY_STAGE**             | **FAILED**                | failure-transitions.test.ts     | ✅ COVERED  |
+| **ANY_STAGE**             | **SAME_STAGE**            | (implicit in update operations) | ⚠️ IMPLICIT |
+| **COMPLETED**             | **(terminal)**            | terminal-states.test.ts         | ✅ COVERED  |
+| **FAILED**                | **(terminal)**            | terminal-states.test.ts         | ✅ COVERED  |
 
 ### Overall Coverage: 100% ✅
 
@@ -118,18 +126,24 @@ All valid stage transitions are now covered by integration tests!
 ## Test Organization
 
 ### Happy Path Tests
+
 Located in parent directory (`../`):
+
 - `job-processing-flow.test.ts` - Complete pipeline flow
 - `job-queueing.test.ts` - Job queueing verification
 - `end-to-end-manual-execution.test.ts` - Manual job execution
 
 ### Error Path Tests
+
 Located in this directory:
+
 - `failure-transitions.test.ts` - Error handling
 - `terminal-states.test.ts` - Terminal state enforcement
 
 ### Edge Case Tests
+
 Located in this directory:
+
 - `direct-skip.test.ts` - Schema skip optimization
 - `approval-workflow.test.ts` - Manual approval flow
 
