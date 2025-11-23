@@ -5,6 +5,14 @@
 
 @import "tw-animate-css";
 
+@utility animate-in {
+  animation: var(--animate-in);
+}
+
+@utility animate-out {
+  animation: var(--animate-out);
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -155,7 +163,101 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+    /* Subtle paper texture overlay for vintage map feel */
+    background-image:
+      radial-gradient(circle at 20% 50%, oklch(0.97 0.01 80 / 0.4) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, oklch(0.58 0.11 220 / 0.08) 0%, transparent 50%),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        oklch(0.25 0 0 / 0.01) 2px,
+        oklch(0.25 0 0 / 0.01) 4px
+      );
+    background-attachment: fixed;
+  }
+
+  .dark body {
+    background-image:
+      radial-gradient(circle at 20% 50%, oklch(0.18 0.01 250 / 0.3) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, oklch(0.62 0.12 210 / 0.06) 0%, transparent 50%),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        oklch(0.88 0.01 80 / 0.01) 2px,
+        oklch(0.88 0.01 80 / 0.01) 4px
+      );
+  }
+}
+
+/* Custom keyframes for animations */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes plot-point {
+  0% {
+    opacity: 0;
+    transform: scale(0) translateY(10px);
+  }
+  50% {
+    transform: scale(1.1) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes compass-wobble {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(3deg);
+  }
+  75% {
+    transform: rotate(-3deg);
+  }
+}
+
+@keyframes draw-line {
+  from {
+    stroke-dashoffset: 1000;
+  }
+  to {
+    stroke-dashoffset: 0;
   }
 }
