@@ -1,4 +1,4 @@
-# @workspace/prettier-config
+# @timetiles/prettier-config
 
 Shared Prettier configuration for the TimeTiles monorepo.
 

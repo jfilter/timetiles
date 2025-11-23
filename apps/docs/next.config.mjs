@@ -12,7 +12,7 @@ const withNextra = nextra({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@workspace/ui", "@timetiles/assets"],
+  transpilePackages: ["@timetiles/ui", "@timetiles/assets"],
   output: "export",
   trailingSlash: true,
   images: {

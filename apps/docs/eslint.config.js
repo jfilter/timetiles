@@ -1,4 +1,4 @@
-import mdxConfig from "@workspace/eslint-config/mdx";
+import mdxConfig from "@timetiles/eslint-config/mdx";
 
 /** @type {import("eslint").Linter.Config[]} */
 export default [

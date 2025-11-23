@@ -5,7 +5,7 @@
     "paths": {
       "@/*": ["../web/*"],
       "@/components/*": ["../web/components/*"],
-      "@workspace/ui/*": ["../../packages/ui/src/*"],
+      "@timetiles/ui/*": ["../../packages/ui/src/*"],
       "@payload-config": ["../web/payload.config.ts"]
     },
     "skipLibCheck": true,

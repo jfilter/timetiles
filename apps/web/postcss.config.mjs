@@ -6,4 +6,4 @@
  *
  * @module
  */
-export { config as default } from "@workspace/ui/postcss.config";
+export { config as default } from "@timetiles/ui/postcss.config";

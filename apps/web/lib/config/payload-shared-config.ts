@@ -25,6 +25,7 @@ import Users from "@/lib/collections/users";
 // Import globals
 import { Footer } from "@/lib/globals/footer";
 import { MainMenu } from "@/lib/globals/main-menu";
+import { Settings } from "@/lib/globals/settings";
 // Import jobs
 import {
   analyzeDuplicatesJob,
@@ -80,7 +81,7 @@ export const ALL_COLLECTIONS = [
 ];
 
 // All globals
-export const ALL_GLOBALS = [MainMenu, Footer];
+export const ALL_GLOBALS = [MainMenu, Footer, Settings];
 
 // All jobs
 export const ALL_JOBS = [

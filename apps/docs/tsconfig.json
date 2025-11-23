@@ -1,10 +1,10 @@
 {
-  "extends": "@workspace/typescript-config/nextjs.json",
+  "extends": "@timetiles/typescript-config/nextjs.json",
   "compilerOptions": {
     "baseUrl": ".",
     "moduleResolution": "bundler",
     "paths": {
-      "@workspace/ui/*": ["../../packages/ui/src/*"]
+      "@timetiles/ui/*": ["../../packages/ui/src/*"]
     },
     "plugins": [
       {

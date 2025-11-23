@@ -16,8 +16,8 @@
     "format": "next lint --dir app --dir content --dir scripts --fix --quiet && prettier --write . --ignore-path ../../.prettierignore --log-level error"
   },
   "dependencies": {
-    "@workspace/assets": "workspace:*",
-    "@workspace/ui": "workspace:*",
+    "@timetiles/assets": "workspace:*",
+    "@timetiles/ui": "workspace:*",
     "next": "^15.2.3",
     "nextra": "^4.3.0",
     "nextra-theme-docs": "^4.3.0",
@@ -29,8 +29,8 @@
     "@types/node": "^20",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@workspace/eslint-config": "workspace:*",
-    "@workspace/typescript-config": "workspace:*",
+    "@timetiles/eslint-config": "workspace:*",
+    "@timetiles/typescript-config": "workspace:*",
     "eslint": "^9.20.1",
     "glob": "^11.0.3",
     "nodemon": "^3.1.10",

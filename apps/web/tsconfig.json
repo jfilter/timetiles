@@ -1,12 +1,12 @@
 {
-  "extends": "@workspace/typescript-config/nextjs.json",
+  "extends": "@timetiles/typescript-config/nextjs.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
       "@/components/*": ["./components/*"],
-      "@workspace/ui/*": ["../../packages/ui/src/*"],
-      "@workspace/assets/*": ["../../packages/assets/*"],
+      "@timetiles/ui/*": ["../../packages/ui/src/*"],
+      "@timetiles/assets/*": ["../../packages/assets/*"],
       "@payload-config": ["./payload.config.ts"]
     },
     "plugins": [

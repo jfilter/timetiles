@@ -455,8 +455,8 @@ packages/ui/src/
 ### Creating a Landing Page
 
 ```tsx
-import { Hero, Features, Stats, CallToAction, Footer } from "@workspace/ui/components";
-import { Button } from "@workspace/ui/components/button";
+import { Hero, Features, Stats, CallToAction, Footer } from "@timetiles/ui/components";
+import { Button } from "@timetiles/ui/components/button";
 
 export default function LandingPage() {
   return (
@@ -493,11 +493,11 @@ export default function LandingPage() {
 ### Form with Cartographic Components
 
 ```tsx
-import { Card, CardContent } from "@workspace/ui/components/card";
-import { Input } from "@workspace/ui/components/input";
-import { Textarea } from "@workspace/ui/components/textarea";
-import { Button } from "@workspace/ui/components/button";
-import { Label } from "@workspace/ui/components/label";
+import { Card, CardContent } from "@timetiles/ui/components/card";
+import { Input } from "@timetiles/ui/components/input";
+import { Textarea } from "@timetiles/ui/components/textarea";
+import { Button } from "@timetiles/ui/components/button";
+import { Label } from "@timetiles/ui/components/label";
 
 export function ContactForm() {
   return (

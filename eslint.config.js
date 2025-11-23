@@ -1,4 +1,4 @@
-import baseConfig from "@workspace/eslint-config/base";
+import baseConfig from "@timetiles/eslint-config/base";
 
 /**
  * ESLint configuration for root-level files
