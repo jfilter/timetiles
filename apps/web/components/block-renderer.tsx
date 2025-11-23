@@ -12,6 +12,11 @@
 
 import {
   Button,
+  DetailsGrid,
+  DetailsIcon,
+  DetailsItem,
+  DetailsLabel,
+  DetailsValue,
   Feature,
   FeatureDescription,
   FeatureIcon,
@@ -25,7 +30,20 @@ import {
   HeroActions,
   HeroHeadline,
   HeroSubheadline,
-} from "@workspace/ui";
+  NewsletterCTA,
+  NewsletterForm,
+  TestimonialAuthor,
+  TestimonialAvatar,
+  TestimonialCard,
+  TestimonialMeta,
+  TestimonialQuote,
+  Testimonials,
+  Timeline,
+  TimelineDate,
+  TimelineDescription,
+  TimelineItem,
+  TimelineTitle,
+} from "@timetiles/ui";
 import React from "react";
 
 import { IconMapper } from "./icon-mapper";
@@ -80,7 +98,7 @@ interface StatsBlock {
   blockName?: string | null;
 }
 
-interface ContactMethodItem {
+interface DetailsGridItem {
   icon: string;
   label: string;
   value: string;
@@ -88,9 +106,44 @@ interface ContactMethodItem {
   id?: string | null;
 }
 
-interface ContactMethodsBlock {
-  blockType: "contactMethods";
-  methods: ContactMethodItem[];
+interface DetailsGridBlock {
+  blockType: "detailsGrid";
+  sectionTitle?: string | null;
+  variant?: "grid-2" | "grid-3" | "grid-4" | "compact" | null;
+  items: DetailsGridItem[];
+  id?: string | null;
+  blockName?: string | null;
+}
+
+interface TimelineItem {
+  date: string;
+  title: string;
+  description: string;
+  id?: string | null;
+}
+
+interface TimelineBlock {
+  blockType: "timeline";
+  sectionTitle?: string | null;
+  variant?: "vertical" | "compact" | null;
+  items: TimelineItem[];
+  id?: string | null;
+  blockName?: string | null;
+}
+
+interface TestimonialItem {
+  quote: string;
+  author: string;
+  role?: string | null;
+  avatar?: string | null;
+  id?: string | null;
+}
+
+interface TestimonialsBlock {
+  blockType: "testimonials";
+  sectionTitle?: string | null;
+  variant?: "grid" | "single" | "masonry" | null;
+  items: TestimonialItem[];
   id?: string | null;
   blockName?: string | null;
 }
@@ -112,7 +165,38 @@ interface CTABlock {
   blockName?: string | null;
 }
 
-type Block = HeroBlock | FeaturesBlock | StatsBlock | ContactMethodsBlock | RichTextBlock | CTABlock;
+interface NewsletterFormBlock {
+  blockType: "newsletterForm";
+  headline?: string | null;
+  placeholder?: string | null;
+  buttonText?: string | null;
+  id?: string | null;
+  blockName?: string | null;
+}
+
+interface NewsletterCTABlock {
+  blockType: "newsletterCTA";
+  headline?: string | null;
+  description?: string | null;
+  placeholder?: string | null;
+  buttonText?: string | null;
+  variant?: "default" | "elevated" | "centered" | null;
+  size?: "default" | "lg" | "xl" | null;
+  id?: string | null;
+  blockName?: string | null;
+}
+
+type Block =
+  | HeroBlock
+  | FeaturesBlock
+  | StatsBlock
+  | DetailsGridBlock
+  | TimelineBlock
+  | TestimonialsBlock
+  | RichTextBlock
+  | CTABlock
+  | NewsletterFormBlock
+  | NewsletterCTABlock;
 
 interface BlockRendererProps {
   blocks: Block[];
@@ -125,7 +209,7 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => {
 
   return (
     <>
-      {/* eslint-disable-next-line sonarjs/max-lines-per-function -- Block renderer requires large switch statement for all block types */}
+      {/* eslint-disable-next-line sonarjs/max-lines-per-function, complexity -- Block renderer requires large switch statement for all block types */}
       {blocks.map((block, index) => {
         const key = block.id ?? `${block.blockType}-${index}`;
 
@@ -200,28 +284,78 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => {
               </div>
             );
 
-          case "contactMethods":
+          case "detailsGrid":
             return (
-              <div key={key} className="container mx-auto max-w-4xl px-6 py-12">
-                <div className="space-y-6">
-                  {block.methods.map((method, methodIndex) => (
-                    <div key={method.id ?? `method-${methodIndex}`} className="flex items-start gap-4">
-                      <div className="text-primary mt-1">
-                        <IconMapper name={method.icon} size={24} />
-                      </div>
-                      <div>
-                        <div className="text-foreground mb-1 font-semibold">{method.label}</div>
-                        {method.link ? (
-                          <a href={method.link} className="text-primary hover:underline">
-                            {method.value}
+              <div key={key} className="container mx-auto max-w-6xl px-6 py-12">
+                {block.sectionTitle && (
+                  <h2 className="text-foreground mb-8 font-serif text-3xl font-bold md:text-4xl">
+                    {block.sectionTitle}
+                  </h2>
+                )}
+                <DetailsGrid variant={block.variant ?? "grid-3"}>
+                  {block.items.map((item, itemIndex) => (
+                    <DetailsItem key={item.id ?? `item-${itemIndex}`} index={itemIndex}>
+                      <DetailsIcon>
+                        <IconMapper name={item.icon} size={20} />
+                      </DetailsIcon>
+                      <DetailsLabel>{item.label}</DetailsLabel>
+                      <DetailsValue>
+                        {item.link ? (
+                          <a href={item.link} className="text-accent hover:underline">
+                            {item.value}
                           </a>
                         ) : (
-                          <div className="text-muted-foreground">{method.value}</div>
+                          item.value
                         )}
-                      </div>
-                    </div>
+                      </DetailsValue>
+                    </DetailsItem>
                   ))}
-                </div>
+                </DetailsGrid>
+              </div>
+            );
+
+          case "timeline":
+            return (
+              <div key={key} className="container mx-auto max-w-6xl px-6 py-12">
+                {block.sectionTitle && (
+                  <h2 className="text-foreground mb-12 font-serif text-3xl font-bold md:text-4xl">
+                    {block.sectionTitle}
+                  </h2>
+                )}
+                <Timeline variant={block.variant ?? "vertical"}>
+                  {block.items.map((item, itemIndex) => (
+                    <TimelineItem key={item.id ?? `timeline-${itemIndex}`} index={itemIndex}>
+                      <TimelineDate>{item.date}</TimelineDate>
+                      <TimelineTitle>{item.title}</TimelineTitle>
+                      <TimelineDescription>{item.description}</TimelineDescription>
+                    </TimelineItem>
+                  ))}
+                </Timeline>
+              </div>
+            );
+
+          case "testimonials":
+            return (
+              <div key={key} className="container mx-auto max-w-6xl px-6 py-12">
+                {block.sectionTitle && (
+                  <h2 className="text-foreground mb-12 font-serif text-3xl font-bold md:text-4xl">
+                    {block.sectionTitle}
+                  </h2>
+                )}
+                <Testimonials variant={block.variant ?? "grid"}>
+                  {block.items.map((item, itemIndex) => (
+                    <TestimonialCard key={item.id ?? `testimonial-${itemIndex}`} index={itemIndex}>
+                      {item.avatar && (
+                        <TestimonialAvatar>
+                          <IconMapper name={item.avatar} size={20} />
+                        </TestimonialAvatar>
+                      )}
+                      <TestimonialQuote>{item.quote}</TestimonialQuote>
+                      <TestimonialAuthor>{item.author}</TestimonialAuthor>
+                      {item.role && <TestimonialMeta>{item.role}</TestimonialMeta>}
+                    </TestimonialCard>
+                  ))}
+                </Testimonials>
               </div>
             );
 
@@ -243,6 +377,30 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => {
                   </Button>
                 </div>
               </div>
+            );
+
+          case "newsletterForm":
+            return (
+              <div key={key} className="container mx-auto max-w-xl px-6 py-8">
+                <NewsletterForm
+                  headline={block.headline ?? undefined}
+                  placeholder={block.placeholder ?? undefined}
+                  buttonText={block.buttonText ?? undefined}
+                />
+              </div>
+            );
+
+          case "newsletterCTA":
+            return (
+              <NewsletterCTA
+                key={key}
+                headline={block.headline ?? undefined}
+                description={block.description ?? undefined}
+                placeholder={block.placeholder ?? undefined}
+                buttonText={block.buttonText ?? undefined}
+                variant={block.variant ?? undefined}
+                size={block.size ?? undefined}
+              />
             );
 
           default:

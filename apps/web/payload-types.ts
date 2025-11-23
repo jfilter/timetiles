@@ -109,11 +109,13 @@ export interface Config {
   globals: {
     'main-menu': MainMenu;
     footer: Footer;
+    settings: Setting;
     'payload-jobs-stats': PayloadJobsStat;
   };
   globalsSelect: {
     'main-menu': MainMenuSelect<false> | MainMenuSelect<true>;
     footer: FooterSelect<false> | FooterSelect<true>;
+    settings: SettingsSelect<false> | SettingsSelect<true>;
     'payload-jobs-stats': PayloadJobsStatsSelect<false> | PayloadJobsStatsSelect<true>;
   };
   locale: null;
@@ -1814,7 +1816,22 @@ export interface Page {
         sectionDescription?: string | null;
         columns?: ('1' | '2' | '3' | '4') | null;
         features: {
-          icon: 'email' | 'business' | 'support' | 'location' | 'map' | 'timeline' | 'insights';
+          icon:
+            | 'email'
+            | 'business'
+            | 'support'
+            | 'location'
+            | 'map'
+            | 'timeline'
+            | 'insights'
+            | 'github'
+            | 'bluesky'
+            | 'mastodon'
+            | 'linkedin'
+            | 'facebook'
+            | 'instagram'
+            | 'youtube'
+            | 'x';
           title: string;
           description: string;
           accent?: ('none' | 'primary' | 'secondary' | 'accent' | 'muted') | null;
@@ -1828,7 +1845,25 @@ export interface Page {
         stats: {
           value: string;
           label: string;
-          icon?: ('email' | 'business' | 'support' | 'location' | 'map' | 'timeline' | 'insights') | null;
+          icon?:
+            | (
+                | 'email'
+                | 'business'
+                | 'support'
+                | 'location'
+                | 'map'
+                | 'timeline'
+                | 'insights'
+                | 'github'
+                | 'bluesky'
+                | 'mastodon'
+                | 'linkedin'
+                | 'facebook'
+                | 'instagram'
+                | 'youtube'
+                | 'x'
+              )
+            | null;
           id?: string | null;
         }[];
         id?: string | null;
@@ -1836,8 +1871,25 @@ export interface Page {
         blockType: 'stats';
       }
     | {
-        methods: {
-          icon: 'email' | 'business' | 'support' | 'location' | 'map' | 'timeline' | 'insights';
+        sectionTitle?: string | null;
+        variant?: ('grid-2' | 'grid-3' | 'grid-4' | 'compact') | null;
+        items: {
+          icon:
+            | 'email'
+            | 'business'
+            | 'support'
+            | 'location'
+            | 'map'
+            | 'timeline'
+            | 'insights'
+            | 'github'
+            | 'bluesky'
+            | 'mastodon'
+            | 'linkedin'
+            | 'facebook'
+            | 'instagram'
+            | 'youtube'
+            | 'x';
           label: string;
           value: string;
           link?: string | null;
@@ -1845,7 +1897,61 @@ export interface Page {
         }[];
         id?: string | null;
         blockName?: string | null;
-        blockType: 'contactMethods';
+        blockType: 'detailsGrid';
+      }
+    | {
+        sectionTitle?: string | null;
+        variant?: ('vertical' | 'compact') | null;
+        items: {
+          /**
+           * Display date (e.g., '2024', 'March 2024', 'Q1 2024')
+           */
+          date: string;
+          title: string;
+          description: string;
+          id?: string | null;
+        }[];
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'timeline';
+      }
+    | {
+        sectionTitle?: string | null;
+        variant?: ('grid' | 'single' | 'masonry') | null;
+        items: {
+          quote: string;
+          author: string;
+          /**
+           * Optional role or title (e.g., 'Open Source Contributor')
+           */
+          role?: string | null;
+          /**
+           * Optional icon to display as avatar
+           */
+          avatar?:
+            | (
+                | 'email'
+                | 'business'
+                | 'support'
+                | 'location'
+                | 'map'
+                | 'timeline'
+                | 'insights'
+                | 'github'
+                | 'bluesky'
+                | 'mastodon'
+                | 'linkedin'
+                | 'facebook'
+                | 'instagram'
+                | 'youtube'
+                | 'x'
+              )
+            | null;
+          id?: string | null;
+        }[];
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'testimonials';
       }
     | {
         content: {
@@ -1875,6 +1981,46 @@ export interface Page {
         id?: string | null;
         blockName?: string | null;
         blockType: 'cta';
+      }
+    | {
+        /**
+         * Optional headline text (default: 'Stay Mapped In')
+         */
+        headline?: string | null;
+        /**
+         * Email input placeholder text
+         */
+        placeholder?: string | null;
+        /**
+         * Submit button text
+         */
+        buttonText?: string | null;
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'newsletterForm';
+      }
+    | {
+        /**
+         * Main headline text
+         */
+        headline?: string | null;
+        /**
+         * Supporting description text
+         */
+        description?: string | null;
+        /**
+         * Email input placeholder text
+         */
+        placeholder?: string | null;
+        /**
+         * Submit button text
+         */
+        buttonText?: string | null;
+        variant?: ('default' | 'elevated' | 'centered') | null;
+        size?: ('default' | 'lg' | 'xl') | null;
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'newsletterCTA';
       }
   )[];
   updatedAt: string;
@@ -2821,16 +2967,51 @@ export interface PagesSelect<T extends boolean = true> {
               id?: T;
               blockName?: T;
             };
-        contactMethods?:
+        detailsGrid?:
           | T
           | {
-              methods?:
+              sectionTitle?: T;
+              variant?: T;
+              items?:
                 | T
                 | {
                     icon?: T;
                     label?: T;
                     value?: T;
                     link?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        timeline?:
+          | T
+          | {
+              sectionTitle?: T;
+              variant?: T;
+              items?:
+                | T
+                | {
+                    date?: T;
+                    title?: T;
+                    description?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        testimonials?:
+          | T
+          | {
+              sectionTitle?: T;
+              variant?: T;
+              items?:
+                | T
+                | {
+                    quote?: T;
+                    author?: T;
+                    role?: T;
+                    avatar?: T;
                     id?: T;
                   };
               id?: T;
@@ -2850,6 +3031,27 @@ export interface PagesSelect<T extends boolean = true> {
               description?: T;
               buttonText?: T;
               buttonLink?: T;
+              id?: T;
+              blockName?: T;
+            };
+        newsletterForm?:
+          | T
+          | {
+              headline?: T;
+              placeholder?: T;
+              buttonText?: T;
+              id?: T;
+              blockName?: T;
+            };
+        newsletterCTA?:
+          | T
+          | {
+              headline?: T;
+              description?: T;
+              placeholder?: T;
+              buttonText?: T;
+              variant?: T;
+              size?: T;
               id?: T;
               blockName?: T;
             };
@@ -2987,6 +3189,25 @@ export interface Footer {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "settings".
+ */
+export interface Setting {
+  id: number;
+  newsletter?: {
+    /**
+     * External newsletter service endpoint to POST email subscriptions (e.g., Listmonk: http://localhost:9000/api/subscribers, Mailchimp API, etc.)
+     */
+    serviceUrl?: string | null;
+    /**
+     * Optional: Authorization header for the newsletter service (e.g., 'Bearer YOUR_TOKEN' or 'Basic BASE64_CREDENTIALS'). Leave empty if not required.
+     */
+    authHeader?: string | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs-stats".
  */
 export interface PayloadJobsStat {
@@ -3049,6 +3270,21 @@ export interface FooterSelect<T extends boolean = true> {
   copyright?: T;
   credits?: T;
   _status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "settings_select".
+ */
+export interface SettingsSelect<T extends boolean = true> {
+  newsletter?:
+    | T
+    | {
+        serviceUrl?: T;
+        authHeader?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

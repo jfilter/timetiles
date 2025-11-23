@@ -82,7 +82,7 @@ export const pagesSeed: PageSeed[] = [
       {
         blockType: "hero",
         title: "About TimeTiles",
-        subtitle: "Making spatial and temporal data analysis accessible to everyone",
+        subtitle: "An open source platform for geospatial event management",
         background: "grid",
       },
       {
@@ -97,7 +97,7 @@ export const pagesSeed: PageSeed[] = [
                 children: [
                   {
                     type: "text",
-                    text: "TimeTiles was founded in 2023 with a simple mission: to make spatial and temporal data analysis accessible to everyone. We believe that location data holds incredible insights, but traditional tools are often too complex, expensive, or limited for most users.",
+                    text: "TimeTiles is an open source project built to solve a real problem: managing and visualizing events with both location and time components. Whether you're tracking community events, analyzing historical data, or building a timeline of geolocated activities, TimeTiles provides the tools you need.",
                   },
                 ],
               },
@@ -107,7 +107,7 @@ export const pagesSeed: PageSeed[] = [
                 children: [
                   {
                     type: "text",
-                    text: "Our team of geospatial experts, data scientists, and software engineers has decades of combined experience working with everything from GPS tracking data to satellite imagery. We've seen firsthand how powerful geographic analysis can be, and we've also experienced the frustration of tools that are hard to use or don't scale.",
+                    text: "As a solo developer project, TimeTiles prioritizes practical features over enterprise complexity. The platform combines modern web technologies (Next.js, Payload CMS, PostGIS) with a focus on developer experience and extensibility.",
                   },
                 ],
               },
@@ -117,27 +117,7 @@ export const pagesSeed: PageSeed[] = [
                 children: [
                   {
                     type: "text",
-                    text: "That's why we built TimeTiles - to bridge the gap between powerful geospatial analysis and everyday usability. Whether you're a researcher studying migration patterns, a business owner optimizing delivery routes, or a city planner analyzing traffic flow, TimeTiles gives you the tools to visualize, analyze, and understand your data.",
-                  },
-                ],
-              },
-              {
-                type: "paragraph",
-                version: 1,
-                children: [
-                  {
-                    type: "text",
-                    text: "Our platform handles the complexity behind the scenes - automatic geocoding, spatial indexing, temporal aggregation, and interactive visualization - so you can focus on what matters most: discovering insights in your data.",
-                  },
-                ],
-              },
-              {
-                type: "paragraph",
-                version: 1,
-                children: [
-                  {
-                    type: "text",
-                    text: "We're committed to building tools that are not just powerful, but also intuitive, fast, and reliable. Every feature we add is designed with real users in mind, solving real problems we've encountered in our own work with geodata.",
+                    text: "The project is completely open source and welcomes contributions. Whether you're fixing bugs, adding features, improving documentation, or suggesting new ideas, your input helps make TimeTiles better for everyone.",
                   },
                 ],
               },
@@ -149,6 +129,96 @@ export const pagesSeed: PageSeed[] = [
           },
         },
       },
+      {
+        blockType: "features",
+        sectionTitle: "Core Capabilities",
+        columns: "3",
+        features: [
+          {
+            icon: "map",
+            title: "Flexible Import",
+            description:
+              "Import events from CSV/Excel files or set up automated imports from URLs. Smart schema detection and geocoding make data ingestion seamless.",
+            accent: "primary",
+          },
+          {
+            icon: "timeline",
+            title: "Spatial & Temporal",
+            description:
+              "Interactive maps with clustering, timeline visualization with histograms, and powerful filtering to explore events across both space and time.",
+            accent: "secondary",
+          },
+          {
+            icon: "insights",
+            title: "Modern Stack",
+            description:
+              "Built with Next.js 15, Payload CMS 3, PostGIS, and MapLibre GL JS. Self-hostable with Docker, fully typed with TypeScript.",
+            accent: "accent",
+          },
+        ],
+      },
+      {
+        blockType: "timeline",
+        sectionTitle: "Project Journey",
+        items: [
+          {
+            date: "2024",
+            title: "Initial Development",
+            description:
+              "Started as a solution for managing location-based events. Built core import system, geocoding, and map visualization.",
+          },
+          {
+            date: "2024",
+            title: "PostGIS Integration",
+            description:
+              "Added PostGIS for efficient spatial queries, server-side clustering, and geospatial analysis capabilities.",
+          },
+          {
+            date: "2024",
+            title: "Temporal Features",
+            description:
+              "Implemented timeline visualization, histogram aggregation, and temporal filtering to explore events over time.",
+          },
+          {
+            date: "2025",
+            title: "Open Source Release",
+            description:
+              "Released under open source license. Community contributions welcome for features, documentation, and testing.",
+          },
+        ],
+      },
+      {
+        blockType: "testimonials",
+        sectionTitle: "What Makes It Different",
+        variant: "grid",
+        items: [
+          {
+            quote:
+              "A practical platform for managing events with geospatial and temporal components, without enterprise complexity.",
+            author: "Design Philosophy",
+            role: "Core Principle",
+          },
+          {
+            quote:
+              "Built with modern technologies and best practices. Fully typed, well-tested, and designed for self-hosting.",
+            author: "Technical Foundation",
+            role: "Architecture",
+          },
+          {
+            quote:
+              "Open source and community-driven. Contributions, feedback, and ideas welcome from developers and users alike.",
+            author: "Open Development",
+            role: "Community",
+          },
+        ],
+      },
+      {
+        blockType: "cta",
+        headline: "Want to contribute or learn more?",
+        description: "Check out the GitHub repository for code, documentation, and contribution guidelines",
+        buttonText: "View on GitHub",
+        buttonLink: "https://github.com/jfilter/timetiles",
+      },
     ],
   },
   {
@@ -157,35 +227,31 @@ export const pagesSeed: PageSeed[] = [
     pageBuilder: [
       {
         blockType: "hero",
-        title: "Contact Us",
-        subtitle: "We'd love to hear from you",
+        title: "Get in Touch",
+        subtitle: "Questions, ideas, or contributions welcome",
         background: "grid",
       },
       {
-        blockType: "contactMethods",
-        methods: [
+        blockType: "detailsGrid",
+        variant: "grid-3",
+        items: [
+          {
+            icon: "github",
+            label: "GitHub Issues",
+            value: "Best for bug reports, feature requests, and technical questions",
+            link: "https://github.com/jfilter/timetiles/issues",
+          },
+          {
+            icon: "github",
+            label: "GitHub Discussions",
+            value: "Community chat, ideas, and general questions",
+            link: "https://github.com/jfilter/timetiles/discussions",
+          },
           {
             icon: "email",
-            label: "General Inquiries",
-            value: "hello@timetiles.com",
-            link: "mailto:hello@timetiles.com",
-          },
-          {
-            icon: "business",
-            label: "Business & Partnerships",
-            value: "business@timetiles.com",
-            link: "mailto:business@timetiles.com",
-          },
-          {
-            icon: "support",
-            label: "Technical Support",
-            value: "support@timetiles.com",
-            link: "mailto:support@timetiles.com",
-          },
-          {
-            icon: "location",
-            label: "Office Address",
-            value: "TimeTiles, Inc.\n1234 Geospatial Way, Suite 500\nSan Francisco, CA 94107",
+            label: "Email",
+            value: "hello@timetiles.io",
+            link: "mailto:hello@timetiles.io",
           },
         ],
       },
@@ -201,7 +267,7 @@ export const pagesSeed: PageSeed[] = [
                 children: [
                   {
                     type: "text",
-                    text: "Our support team typically responds within 24 hours during business days. For urgent technical issues, please include your account details and a detailed description of the problem you're experiencing.",
+                    text: "TimeTiles is an open source project maintained by a solo developer. For the fastest response and to help others with similar questions, please use GitHub Issues or Discussions.",
                   },
                 ],
               },
@@ -211,7 +277,7 @@ export const pagesSeed: PageSeed[] = [
                 children: [
                   {
                     type: "text",
-                    text: "Interested in a demo or have questions about enterprise features? We offer personalized consultations to help you understand how TimeTiles can fit into your workflow and maximize the value of your geospatial data.",
+                    text: "Found a bug? Have an idea for a feature? Want to contribute code or documentation? The GitHub repository is the place to collaborate. All contributions are welcome, whether it's code, documentation, testing, or design.",
                   },
                 ],
               },
@@ -222,6 +288,13 @@ export const pagesSeed: PageSeed[] = [
             version: 1,
           },
         },
+      },
+      {
+        blockType: "cta",
+        headline: "Ready to dive in?",
+        description: "Star the repository, fork it, or open your first issue",
+        buttonText: "View on GitHub",
+        buttonLink: "https://github.com/jfilter/timetiles",
       },
     ],
   },

@@ -19,6 +19,14 @@ const iconOptions = [
   { label: "Map", value: "map" },
   { label: "Timeline", value: "timeline" },
   { label: "Insights", value: "insights" },
+  { label: "GitHub", value: "github" },
+  { label: "Bluesky", value: "bluesky" },
+  { label: "Mastodon", value: "mastodon" },
+  { label: "LinkedIn", value: "linkedin" },
+  { label: "Facebook", value: "facebook" },
+  { label: "Instagram", value: "instagram" },
+  { label: "YouTube", value: "youtube" },
+  { label: "X/Twitter", value: "x" },
 ];
 
 const accentOptions = [
@@ -203,14 +211,30 @@ export const Pages: CollectionConfig = {
           ],
         },
         {
-          slug: "contactMethods",
+          slug: "detailsGrid",
           labels: {
-            singular: "Contact Methods Section",
-            plural: "Contact Methods Sections",
+            singular: "Details Grid Section",
+            plural: "Details Grid Sections",
           },
           fields: [
             {
-              name: "methods",
+              name: "sectionTitle",
+              type: "text",
+              label: "Section Title (optional)",
+            },
+            {
+              name: "variant",
+              type: "select",
+              defaultValue: "grid-3",
+              options: [
+                { label: "2 Columns", value: "grid-2" },
+                { label: "3 Columns", value: "grid-3" },
+                { label: "4 Columns", value: "grid-4" },
+                { label: "Compact", value: "compact" },
+              ],
+            },
+            {
+              name: "items",
               type: "array",
               required: true,
               minRows: 1,
@@ -234,6 +258,112 @@ export const Pages: CollectionConfig = {
                 {
                   name: "link",
                   type: "text",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          slug: "timeline",
+          labels: {
+            singular: "Timeline Section",
+            plural: "Timeline Sections",
+          },
+          fields: [
+            {
+              name: "sectionTitle",
+              type: "text",
+              label: "Section Title (optional)",
+            },
+            {
+              name: "variant",
+              type: "select",
+              defaultValue: "vertical",
+              options: [
+                { label: "Vertical", value: "vertical" },
+                { label: "Compact", value: "compact" },
+              ],
+            },
+            {
+              name: "items",
+              type: "array",
+              required: true,
+              minRows: 1,
+              fields: [
+                {
+                  name: "date",
+                  type: "text",
+                  required: true,
+                  admin: {
+                    description: "Display date (e.g., '2024', 'March 2024', 'Q1 2024')",
+                  },
+                },
+                {
+                  name: "title",
+                  type: "text",
+                  required: true,
+                },
+                {
+                  name: "description",
+                  type: "textarea",
+                  required: true,
+                },
+              ],
+            },
+          ],
+        },
+        {
+          slug: "testimonials",
+          labels: {
+            singular: "Testimonials Section",
+            plural: "Testimonials Sections",
+          },
+          fields: [
+            {
+              name: "sectionTitle",
+              type: "text",
+              label: "Section Title (optional)",
+            },
+            {
+              name: "variant",
+              type: "select",
+              defaultValue: "grid",
+              options: [
+                { label: "Grid", value: "grid" },
+                { label: "Single", value: "single" },
+                { label: "Masonry", value: "masonry" },
+              ],
+            },
+            {
+              name: "items",
+              type: "array",
+              required: true,
+              minRows: 1,
+              fields: [
+                {
+                  name: "quote",
+                  type: "textarea",
+                  required: true,
+                },
+                {
+                  name: "author",
+                  type: "text",
+                  required: true,
+                },
+                {
+                  name: "role",
+                  type: "text",
+                  admin: {
+                    description: "Optional role or title (e.g., 'Open Source Contributor')",
+                  },
+                },
+                {
+                  name: "avatar",
+                  type: "select",
+                  options: iconOptions,
+                  admin: {
+                    description: "Optional icon to display as avatar",
+                  },
                 },
               ],
             },
@@ -278,6 +408,101 @@ export const Pages: CollectionConfig = {
               name: "buttonLink",
               type: "text",
               required: true,
+            },
+          ],
+        },
+        {
+          slug: "newsletterForm",
+          labels: {
+            singular: "Newsletter Form (Compact)",
+            plural: "Newsletter Forms (Compact)",
+          },
+          fields: [
+            {
+              name: "headline",
+              type: "text",
+              defaultValue: "Stay Mapped In",
+              admin: {
+                description: "Optional headline text (default: 'Stay Mapped In')",
+              },
+            },
+            {
+              name: "placeholder",
+              type: "text",
+              defaultValue: "your@email.address",
+              admin: {
+                description: "Email input placeholder text",
+              },
+            },
+            {
+              name: "buttonText",
+              type: "text",
+              defaultValue: "Subscribe",
+              admin: {
+                description: "Submit button text",
+              },
+            },
+          ],
+        },
+        {
+          slug: "newsletterCTA",
+          labels: {
+            singular: "Newsletter CTA (Large)",
+            plural: "Newsletter CTAs (Large)",
+          },
+          fields: [
+            {
+              name: "headline",
+              type: "text",
+              defaultValue: "Never Miss a Discovery",
+              admin: {
+                description: "Main headline text",
+              },
+            },
+            {
+              name: "description",
+              type: "textarea",
+              defaultValue:
+                "Join our community of explorers. Get curated event highlights, spatial insights, and new dataset releases delivered to your inbox.",
+              admin: {
+                description: "Supporting description text",
+              },
+            },
+            {
+              name: "placeholder",
+              type: "text",
+              defaultValue: "your@email.address",
+              admin: {
+                description: "Email input placeholder text",
+              },
+            },
+            {
+              name: "buttonText",
+              type: "text",
+              defaultValue: "Subscribe to Updates",
+              admin: {
+                description: "Submit button text",
+              },
+            },
+            {
+              name: "variant",
+              type: "select",
+              defaultValue: "default",
+              options: [
+                { label: "Default (Gradient)", value: "default" },
+                { label: "Elevated (Card)", value: "elevated" },
+                { label: "Centered (Minimal)", value: "centered" },
+              ],
+            },
+            {
+              name: "size",
+              type: "select",
+              defaultValue: "default",
+              options: [
+                { label: "Default", value: "default" },
+                { label: "Large", value: "lg" },
+                { label: "Extra Large", value: "xl" },
+              ],
             },
           ],
         },
