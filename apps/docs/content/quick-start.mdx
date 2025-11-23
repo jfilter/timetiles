@@ -6,6 +6,10 @@ Get TimeTiles up and running in minutes. This guide is for developers and admini
 
 ## Prerequisites
 
+- Bash
+- Git
+- Git LFS
+- Make
 - Node.js 24+
 - pnpm 10.12.4+
 - Docker and Docker Compose
@@ -17,23 +21,13 @@ Get TimeTiles up and running in minutes. This guide is for developers and admini
 git clone https://github.com/jfilter/timetiles.git
 cd timetiles
 
-# Install dependencies
-pnpm install
-
-# Set up git commit template (optional but recommended)
-pnpm setup:git
-
-# Start PostgreSQL database
-make up
-
-# Run database migrations
-make migrate
-
-# Start development server
-pnpm dev
+# Single command: setup + database + seed + start dev server
+make init
 ```
 
 Open http://localhost:3000 to see the application running!
+
+> **💡 Tip:** `make init` does everything - setup, database initialization, seeding, and starts the dev server. Run `make status` anytime to check your environment health.
 
 > **✅ Next Steps:** See the [Getting Started Guide](/user-guide/getting-started) to learn how to import and explore data.
 
