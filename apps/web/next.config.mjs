@@ -22,6 +22,12 @@ const nextConfig = {
       "*.svg": {
         loaders: ["@svgr/webpack"],
         as: "*.js",
+        options: {
+          icon: true,
+          svgProps: {
+            role: "img",
+          },
+        },
       },
     },
   },
