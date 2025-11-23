@@ -14,32 +14,19 @@ See [Installation Guide](/admin-guide/installation) for system requirements. Add
 
 ## Quick Start
 
-1. Follow the [Quick Start Guide](/quick-start) for basic setup
+Single command to get started:
 
-2. **Setup Git LFS** (developer-specific):
-
-   ```bash
-   # Install Git LFS if not already installed
-   git lfs install
-
-   # Pull image assets
-   git lfs pull
-   ```
-
-3. **Configure development environment**:
-
-   ```bash
-   # Copy environment configuration
-   cp apps/web/.env.example apps/web/.env.local
-
-   # Start development servers
-   make dev
-   ```
+```bash
+# Complete initialization: setup + database + seed + start dev server
+make init
+```
 
 The application will be available at:
 
 - **Main App**: http://localhost:3000
 - **Documentation**: http://localhost:3001
+
+> **💡 Note:** `make init` handles everything - dependencies, .env files, Git LFS, database setup, seeding, and starts the dev server.
 
 ## Essential Commands
 

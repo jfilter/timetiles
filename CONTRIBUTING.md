@@ -2,45 +2,45 @@
 
 Thank you for your interest in contributing to TimeTiles!
 
-## Getting Started
-
-See our documentation for:
-- [Development Setup](apps/docs/pages/developers/setup/local-development.mdx)
-- [Project Structure](apps/docs/pages/developers/architecture/project-structure.mdx)
-- [Commit Guidelines](apps/docs/pages/developers/development/commit-guidelines.mdx)
-- [Code Standards](apps/docs/pages/developers/development/code-standards.mdx)
-- [Testing Guide](apps/docs/pages/developers/development/testing-guide.mdx)
-
-## Quick Reference
+## Quick Start
 
 ```bash
-# Setup
-make setup            # One-time setup
-make dev              # Start development
+# Clone and initialize
+git clone https://github.com/jfilter/timetiles.git
+cd timetiles
+make init             # Complete setup + start dev server
 
 # Before committing
-pnpm lint            # Fix linting issues
-pnpm typecheck       # Check types
-pnpm test            # Run tests
-
-# Testing
-make test-ai         # AI-friendly test output
-make test-e2e        # E2E tests
+make check-ai         # Linting & typecheck (AI-friendly)
+make test-ai          # Run tests (AI-friendly)
+make test-e2e         # Run E2E tests
 ```
 
-## Pull Requests
+## Documentation
 
-1. Fork the repo
-2. Create feature branch from `main`
-3. Make your changes
-4. Run `pnpm lint && pnpm typecheck`
-5. Submit PR with clear description
+See our full documentation at **[docs.timetiles.io](https://docs.timetiles.io)**:
+
+- [Development Guide](https://docs.timetiles.io/developer-guide/development)
+- [Architecture](https://docs.timetiles.io/developer-guide/architecture)
+- [Commit Guidelines](https://docs.timetiles.io/developer-guide/development/commit-guidelines)
+- [Testing Guidelines](https://docs.timetiles.io/developer-guide/development/testing-guidelines)
+
+## Pull Request Process
+
+1. Fork the repository
+2. Create a feature branch from `main`
+3. Make your changes following our code standards
+4. Run `make check-ai` and fix any issues
+5. Run `make test-ai` to ensure tests pass
+6. Submit a PR with a clear description
+
+We use [Conventional Commits](https://docs.timetiles.io/developer-guide/development/commit-guidelines) for commit messages.
 
 ## Need Help?
 
-- Check [GitHub Issues](https://github.com/jfilter/timetiles/issues)
-- Read package-specific `CLAUDE.md` files
-- See full [documentation](https://docs.timetiles.io)
+- [GitHub Issues](https://github.com/jfilter/timetiles/issues) - Bug reports and feature requests
+- [GitHub Discussions](https://github.com/jfilter/timetiles/discussions) - Questions and community
+- [Documentation](https://docs.timetiles.io) - Full guides and references
 
 ## License
 
