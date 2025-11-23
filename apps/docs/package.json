@@ -16,7 +16,7 @@
     "format": "next lint --dir app --dir content --dir scripts --fix --quiet && prettier --write . --ignore-path ../../.prettierignore --log-level error"
   },
   "dependencies": {
-    "@timetiles/assets": "workspace:*",
+    "@workspace/assets": "workspace:*",
     "@workspace/ui": "workspace:*",
     "next": "^15.2.3",
     "nextra": "^4.3.0",
