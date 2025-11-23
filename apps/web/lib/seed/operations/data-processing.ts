@@ -49,12 +49,8 @@ export class DataProcessing {
     return true;
   }
 
-  isValidSeedData(baseSeedData: SeedData | null, collectionName: string): boolean {
-    if (baseSeedData == null || baseSeedData.length === 0) {
-      logger.warn(`No seed data available for ${collectionName}`);
-      return false;
-    }
-    return true;
+  isValidSeedData(baseSeedData: SeedData | null, _collectionName: string): boolean {
+    return baseSeedData != null && baseSeedData.length > 0;
   }
 
   prepareSeedData(baseSeedData: SeedData, count: number, collectionName: string): SeedData {

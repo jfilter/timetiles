@@ -11,6 +11,7 @@ playwright-report/
 # Generated files
 payload-generated-schema.ts
 payload-types.ts
+migrations/
 
 # Uploads directory
 uploads/
