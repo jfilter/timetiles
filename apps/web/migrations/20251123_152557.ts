@@ -1,5 +1,5 @@
-import type { MigrateUpArgs, MigrateDownArgs} from '@payloadcms/db-postgres';
-import { sql } from '@payloadcms/db-postgres'
+import type { MigrateUpArgs, MigrateDownArgs } from "@payloadcms/db-postgres";
+import { sql } from "@payloadcms/db-postgres";
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
@@ -27,7 +27,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "footer_social_links_order_idx" ON "payload"."footer_social_links" USING btree ("_order");
   CREATE INDEX "footer_social_links_parent_id_idx" ON "payload"."footer_social_links" USING btree ("_parent_id");
   CREATE INDEX "_footer_v_version_social_links_order_idx" ON "payload"."_footer_v_version_social_links" USING btree ("_order");
-  CREATE INDEX "_footer_v_version_social_links_parent_id_idx" ON "payload"."_footer_v_version_social_links" USING btree ("_parent_id");`)
+  CREATE INDEX "_footer_v_version_social_links_parent_id_idx" ON "payload"."_footer_v_version_social_links" USING btree ("_parent_id");`);
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
@@ -35,5 +35,5 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
    DROP TABLE "payload"."footer_social_links" CASCADE;
   DROP TABLE "payload"."_footer_v_version_social_links" CASCADE;
   DROP TYPE "payload"."enum_footer_social_links_platform";
-  DROP TYPE "payload"."enum__footer_v_version_social_links_platform";`)
+  DROP TYPE "payload"."enum__footer_v_version_social_links_platform";`);
 }

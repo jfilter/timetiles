@@ -1,5 +1,5 @@
-import type { MigrateUpArgs, MigrateDownArgs} from '@payloadcms/db-postgres';
-import { sql } from '@payloadcms/db-postgres'
+import type { MigrateUpArgs, MigrateDownArgs } from "@payloadcms/db-postgres";
+import { sql } from "@payloadcms/db-postgres";
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
@@ -78,7 +78,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "_footer_v_created_at_idx" ON "payload"."_footer_v" USING btree ("created_at");
   CREATE INDEX "_footer_v_updated_at_idx" ON "payload"."_footer_v" USING btree ("updated_at");
   CREATE INDEX "_footer_v_latest_idx" ON "payload"."_footer_v" USING btree ("latest");
-  CREATE INDEX "_footer_v_autosave_idx" ON "payload"."_footer_v" USING btree ("autosave");`)
+  CREATE INDEX "_footer_v_autosave_idx" ON "payload"."_footer_v" USING btree ("autosave");`);
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
@@ -90,5 +90,5 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   DROP TABLE "payload"."_footer_v_version_columns" CASCADE;
   DROP TABLE "payload"."_footer_v" CASCADE;
   DROP TYPE "payload"."enum_footer_status";
-  DROP TYPE "payload"."enum__footer_v_version_status";`)
+  DROP TYPE "payload"."enum__footer_v_version_status";`);
 }

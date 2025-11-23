@@ -1,5 +1,5 @@
-import type { MigrateUpArgs, MigrateDownArgs} from '@payloadcms/db-postgres';
-import { sql } from '@payloadcms/db-postgres'
+import type { MigrateUpArgs, MigrateDownArgs } from "@payloadcms/db-postgres";
+import { sql } from "@payloadcms/db-postgres";
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
@@ -296,7 +296,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "_pages_v_blocks_cta_parent_id_idx" ON "payload"."_pages_v_blocks_cta" USING btree ("_parent_id");
   CREATE INDEX "_pages_v_blocks_cta_path_idx" ON "payload"."_pages_v_blocks_cta" USING btree ("_path");
   ALTER TABLE "payload"."pages" DROP COLUMN IF EXISTS "content";
-  ALTER TABLE "payload"."_pages_v" DROP COLUMN IF EXISTS "version_content";`)
+  ALTER TABLE "payload"."_pages_v" DROP COLUMN IF EXISTS "version_content";`);
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
@@ -344,5 +344,5 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   DROP TYPE "payload"."enum__pages_v_blocks_features_features_accent";
   DROP TYPE "payload"."enum__pages_v_blocks_features_columns";
   DROP TYPE "payload"."enum__pages_v_blocks_stats_stats_icon";
-  DROP TYPE "payload"."enum__pages_v_blocks_contact_methods_methods_icon";`)
+  DROP TYPE "payload"."enum__pages_v_blocks_contact_methods_methods_icon";`);
 }
