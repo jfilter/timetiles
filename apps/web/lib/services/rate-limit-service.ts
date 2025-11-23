@@ -131,9 +131,12 @@ export class RateLimitService {
   private readonly cache: Map<string, RateLimitEntry> = new Map();
   private readonly payload: Payload;
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private readonly instanceId: string;
 
   constructor(payload: Payload) {
     this.payload = payload;
+    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for debug instance IDs
+    this.instanceId = Math.random().toString(36).substring(7);
 
     // Clean up expired entries every 5 minutes (skip in test environment)
     if (process.env.NODE_ENV !== "test") {
@@ -501,17 +504,23 @@ export class RateLimitService {
   }
 }
 
-// Singleton instance - but allow per-test isolation
+// Singleton instance
 let rateLimitService: RateLimitService | null = null;
 
 export const getRateLimitService = (payload: Payload): RateLimitService => {
-  // In test environment, always create a new instance for isolation
-  if (process.env.NODE_ENV === "test") {
-    return new RateLimitService(payload);
-  }
-
   rateLimitService ??= new RateLimitService(payload);
   return rateLimitService;
+};
+
+/**
+ * Reset the rate limit service singleton (for testing).
+ * Call this in afterEach/afterAll to ensure clean state between tests.
+ */
+export const resetRateLimitService = (): void => {
+  if (rateLimitService) {
+    rateLimitService.destroy();
+    rateLimitService = null;
+  }
 };
 
 // Helper function to get client identifier
@@ -581,6 +590,13 @@ export const RATE_LIMITS = {
     windows: [
       { limit: 1, windowMs: 10 * 1000, name: "burst" }, // 1 per 10 seconds (prevents race conditions)
       { limit: 5, windowMs: 60 * 60 * 1000, name: "hourly" }, // 5 per hour (prevents abuse)
+    ],
+  },
+  NEWSLETTER_SUBSCRIBE: {
+    windows: [
+      { limit: 1, windowMs: 10 * 1000, name: "burst" }, // 1 per 10 seconds (prevents spam)
+      { limit: 3, windowMs: 60 * 60 * 1000, name: "hourly" }, // 3 per hour (allows retry if typo/error)
+      { limit: 10, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 10 per day (generous but prevents abuse)
     ],
   },
 } as const;
