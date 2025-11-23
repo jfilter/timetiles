@@ -23,6 +23,10 @@ interface UIState {
     east: number;
     west: number;
   } | null;
+  mapStats: {
+    visibleEvents: number;
+    totalEvents: number;
+  } | null;
   selectedEvent: string | null;
   theme: "light" | "dark" | "system";
 }
@@ -35,6 +39,7 @@ interface UIStore {
   setFilterDrawerOpen: (isOpen: boolean) => void;
   toggleFilterDrawer: () => void;
   setMapBounds: (bounds: UIState["mapBounds"]) => void;
+  setMapStats: (stats: UIState["mapStats"]) => void;
   setSelectedEvent: (eventId: string | null) => void;
   setTheme: (theme: "light" | "dark" | "system") => void;
 }
@@ -59,6 +64,7 @@ export const useUIStore = create<UIStore>()(
         ui: {
           isFilterDrawerOpen: true,
           mapBounds: null,
+          mapStats: null,
           selectedEvent: null,
           theme: "system",
         },
@@ -76,6 +82,7 @@ export const useUIStore = create<UIStore>()(
           })),
 
         setMapBounds: createUIStateSetter(set, "mapBounds"),
+        setMapStats: createUIStateSetter(set, "mapStats"),
         setSelectedEvent: createUIStateSetter(set, "selectedEvent"),
         setTheme: createUIStateSetter(set, "theme"),
       }),

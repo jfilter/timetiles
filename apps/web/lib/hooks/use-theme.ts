@@ -18,6 +18,18 @@ export const useTheme = () => {
   const theme = useUIStore((state) => state.ui.theme);
   const setTheme = useUIStore((state) => state.setTheme);
 
+  // Resolve "system" theme to actual "light" or "dark"
+  const resolvedTheme: "light" | "dark" = (() => {
+    if (theme === "system") {
+      if (typeof window !== "undefined") {
+        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        return mediaQuery.matches ? "dark" : "light";
+      }
+      return "light"; // Default to light during SSR
+    }
+    return theme;
+  })();
+
   useEffect(() => {
     // Apply theme to <html> element
     const root = window.document.documentElement;
@@ -54,5 +66,6 @@ export const useTheme = () => {
   return {
     theme,
     setTheme,
+    resolvedTheme,
   };
 };
