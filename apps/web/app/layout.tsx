@@ -8,7 +8,7 @@
  * suggesting that the main navigation is part of this root layout.
  * @module
  */
-import "@workspace/ui/globals.css";
+import "@timetiles/ui/globals.css";
 
 import {
   Footer,
@@ -24,7 +24,7 @@ import {
   FooterSection,
   FooterSectionTitle,
   FooterTagline,
-} from "@workspace/ui";
+} from "@timetiles/ui";
 import { DM_Sans, Playfair_Display, Space_Mono } from "next/font/google";
 import Link from "next/link";
 import { getPayload } from "payload";

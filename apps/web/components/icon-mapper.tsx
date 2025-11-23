@@ -8,7 +8,7 @@
  * @module
  * @category Components
  */
-import type { IconProps } from "@workspace/ui/icons";
+import type { IconProps } from "@timetiles/ui/icons";
 import {
   BlueskyIcon,
   BusinessIcon,
@@ -25,7 +25,7 @@ import {
   TimelineIcon,
   XIcon,
   YouTubeIcon,
-} from "@workspace/ui/icons";
+} from "@timetiles/ui/icons";
 import React from "react";
 
 const iconMap = {

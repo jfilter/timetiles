@@ -13,7 +13,7 @@
  */
 "use client";
 
-import { TimeHistogram, useChartTheme } from "@workspace/ui/charts";
+import { TimeHistogram, useChartTheme } from "@timetiles/ui/charts";
 
 import { useFilters } from "@/lib/filters";
 import { useChartFilters } from "@/lib/hooks/use-chart-filters";

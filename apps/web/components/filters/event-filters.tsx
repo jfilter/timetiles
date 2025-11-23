@@ -10,8 +10,8 @@
  */
 "use client";
 
-import { Label } from "@workspace/ui/components/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
+import { Label } from "@timetiles/ui/components/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { type ChangeEvent, useCallback } from "react";
 
 import { useFilters } from "@/lib/filters";

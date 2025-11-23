@@ -11,7 +11,7 @@
  *
  * @module
  */
-import type { BarChartDataItem } from "@workspace/ui/components/charts";
+import type { BarChartDataItem } from "@timetiles/ui/components/charts";
 import { useMemo } from "react";
 
 import type { Catalog, Dataset, Event } from "@/payload-types";

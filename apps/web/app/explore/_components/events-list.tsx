@@ -17,7 +17,7 @@ import {
   CardSpecItem,
   CardTitle,
   CardVersion,
-} from "@workspace/ui";
+} from "@timetiles/ui";
 
 import type { Event } from "@/payload-types";
 
@@ -62,10 +62,6 @@ const getEventData = (event: Event): EventData => {
     : {};
 };
 
-const getEventTitle = (eventData: EventData, eventId: string): string => {
-  return safeToString(eventData.title) ?? safeToString(eventData.name) ?? `Event ${eventId}`;
-};
-
 const getDatasetName = (dataset: unknown): string | null => {
   if (typeof dataset === "object" && dataset != null && "name" in dataset) {
     return String(dataset.name);
@@ -89,10 +85,10 @@ const formatDateRange = (startDate: unknown, endDate: unknown): string => {
 
   const parts: string[] = [];
   if (hasStart) {
-    parts.push(new Date(safeToString(startDate)).toLocaleDateString());
+    parts.push(new Date(safeToString(startDate)).toLocaleDateString("en-US"));
   }
   if (hasEnd) {
-    parts.push(new Date(safeToString(endDate)).toLocaleDateString());
+    parts.push(new Date(safeToString(endDate)).toLocaleDateString("en-US"));
   }
 
   return parts.join(" - ");
@@ -100,7 +96,7 @@ const formatDateRange = (startDate: unknown, endDate: unknown): string => {
 
 const EventItem = ({ event, index }: { event: Event; index: number }) => {
   const eventData = getEventData(event);
-  const title = getEventTitle(eventData, String(event.id));
+  const title = safeToString(eventData.title);
   const datasetName = getDatasetName(event.dataset);
   const locationDisplay = getLocationDisplay(event, eventData);
 

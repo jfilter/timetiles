@@ -129,6 +129,6 @@ export const formatEventCount = (visible: number | undefined, total: number | un
   if (visible == null || total == null || typeof visible !== "number" || typeof total !== "number") {
     return null;
   }
-  const formattedTotal = total.toLocaleString();
+  const formattedTotal = total.toLocaleString("en-US");
   return `${visible} / ${formattedTotal}`;
 };

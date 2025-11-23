@@ -10,25 +10,24 @@
  * @module
  */
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useUIStore } from "../store";
 
 export const useTheme = () => {
   const theme = useUIStore((state) => state.ui.theme);
   const setTheme = useUIStore((state) => state.setTheme);
+  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
 
-  // Resolve "system" theme to actual "light" or "dark"
-  const resolvedTheme: "light" | "dark" = (() => {
+  // Resolve "system" theme to actual "light" or "dark" after hydration
+  useEffect(() => {
     if (theme === "system") {
-      if (typeof window !== "undefined") {
-        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-        return mediaQuery.matches ? "dark" : "light";
-      }
-      return "light"; // Default to light during SSR
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      setResolvedTheme(mediaQuery.matches ? "dark" : "light");
+    } else {
+      setResolvedTheme(theme);
     }
-    return theme;
-  })();
+  }, [theme]);
 
   useEffect(() => {
     // Apply theme to <html> element

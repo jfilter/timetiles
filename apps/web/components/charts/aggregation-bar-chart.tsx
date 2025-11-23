@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { BarChart, type BarChartDataItem, useChartTheme } from "@workspace/ui/charts";
+import { BarChart, type BarChartDataItem, useChartTheme } from "@timetiles/ui/charts";
 import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 

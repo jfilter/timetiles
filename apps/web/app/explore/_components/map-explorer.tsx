@@ -127,8 +127,8 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
       return undefined;
     }
 
-    const start = hasStartDate ? new Date(filters.startDate!).toLocaleDateString() : "Start";
-    const end = hasEndDate ? new Date(filters.endDate!).toLocaleDateString() : "End";
+    const start = hasStartDate ? new Date(filters.startDate!).toLocaleDateString("en-US") : "Start";
+    const end = hasEndDate ? new Date(filters.endDate!).toLocaleDateString("en-US") : "End";
 
     if (hasStartDate && hasEndDate) {
       return `${start} - ${end}`;

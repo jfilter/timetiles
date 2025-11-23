@@ -33,6 +33,7 @@ export default async function Page({ params }: Readonly<PageProps>) {
         equals: slug,
       },
     },
+    depth: 2, // Populate nested arrays (timeline items, testimonials items, etc.)
   });
 
   if (!pages.docs.length) {

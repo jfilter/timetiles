@@ -9,7 +9,7 @@
  * @category Components
  */
 "use client";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@workspace/ui";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@timetiles/ui";
 import { ChevronDownIcon, Monitor, Moon, Sun } from "lucide-react";
 import { useCallback } from "react";
 

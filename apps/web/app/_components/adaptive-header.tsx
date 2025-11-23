@@ -10,9 +10,9 @@
  */
 "use client";
 
-import LogoDark from "@workspace/assets/logos/final/dark/logo-128.png";
-import LogoLight from "@workspace/assets/logos/final/light/logo-128.png";
-import { Header, HeaderActions, HeaderBrand, HeaderNav, HeaderNavItem } from "@workspace/ui";
+import LogoDark from "@timetiles/assets/logos/final/dark/logo-128.png";
+import LogoLight from "@timetiles/assets/logos/final/light/logo-128.png";
+import { Header, HeaderActions, HeaderBrand, HeaderNav, HeaderNavItem } from "@timetiles/ui";
 import { ArrowLeft, Download, Filter, Menu, Settings } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";

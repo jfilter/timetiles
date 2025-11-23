@@ -49,7 +49,7 @@ vi.mock("../../../lib/hooks/use-chart-filters", () => ({
   }),
 }));
 
-vi.mock("@workspace/ui/charts", () => ({
+vi.mock("@timetiles/ui/charts", () => ({
   useChartTheme: () => ({
     backgroundColor: "#ffffff",
     textColor: "#000000",

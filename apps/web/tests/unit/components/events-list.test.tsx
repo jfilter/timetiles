@@ -41,12 +41,12 @@ describe("EventsList", () => {
     expect(screen.getByText("No events found")).toBeInTheDocument();
   });
 
-  test("renders events with extracted data fields", () => {
+  test("renders events with enriched data from backend", () => {
     const events = [
       createMockEvent({
         id: 1,
         data: {
-          title: "Environmental Conference",
+          title: "Environmental Conference", // Backend provides enriched title
           description: "Climate change discussion",
           date: "2024-06-15",
           city: "Copenhagen",
@@ -56,9 +56,9 @@ describe("EventsList", () => {
       createMockEvent({
         id: 2,
         data: {
-          name: "Economic Summit", // Different field name
+          title: "Economic Summit", // Backend provides enriched title
           venue: "Convention Center",
-          city: "Zurich", // Component only looks for city/country, not location_city/location_country
+          city: "Zurich",
           country: "Switzerland",
         },
       }),
@@ -66,7 +66,7 @@ describe("EventsList", () => {
 
     renderWithProviders(<EventsList events={events} />);
 
-    // Should extract and display titles/names correctly
+    // Should display backend-provided titles
     expect(screen.getByText("Environmental Conference")).toBeInTheDocument();
     expect(screen.getByText("Economic Summit")).toBeInTheDocument();
 
@@ -75,46 +75,12 @@ describe("EventsList", () => {
     expect(screen.getByText("Zurich, Switzerland")).toBeInTheDocument();
   });
 
-  test("handles events with missing or incomplete data gracefully", () => {
-    const events = [
-      createMockEvent({
-        id: 1,
-        data: {
-          // Only title, missing other fields
-          title: "Minimal Event",
-        },
-        location: {
-          longitude: 0,
-          latitude: 0,
-        },
-      }),
-      createMockEvent({
-        id: 2,
-        data: {
-          // No title, should fallback to Event ID
-        },
-        location: {
-          longitude: 10,
-          latitude: 20,
-        },
-      }),
-    ];
-
-    renderWithProviders(<EventsList events={events} />);
-
-    // Should display the title
-    expect(screen.getByText("Minimal Event")).toBeInTheDocument();
-
-    // Should fallback to "Event {id}" when no title
-    expect(screen.getByText("Event 2")).toBeInTheDocument();
-  });
-
   test("displays formatted dates correctly", () => {
     const events = [
       createMockEvent({
         id: 1,
         data: {
-          title: "Single Start Date Event",
+          title: "Single Start Date Event", // Backend enriches with title
           startDate: "2024-06-15",
         },
         eventTimestamp: "2024-06-15T10:00:00Z",
@@ -122,7 +88,7 @@ describe("EventsList", () => {
       createMockEvent({
         id: 2,
         data: {
-          title: "Multi-day Event",
+          title: "Multi-day Event", // Backend enriches with title
           startDate: "2024-06-26",
           endDate: "2024-06-30",
         },
@@ -134,9 +100,8 @@ describe("EventsList", () => {
     // Should display single start date
     expect(screen.getByText("6/15/2024")).toBeInTheDocument();
 
-    // Should display date range parts
-    expect(screen.getByText("6/26/2024")).toBeInTheDocument();
-    expect(screen.getByText("6/30/2024")).toBeInTheDocument();
+    // Should display date range (formatted as "start - end")
+    expect(screen.getByText("6/26/2024 - 6/30/2024")).toBeInTheDocument();
   });
 
   test("extracts location from various field patterns", () => {
@@ -182,33 +147,6 @@ describe("EventsList", () => {
 
     // Should prioritize geocoded address when available
     expect(screen.getByText("4 Pennsylvania Plaza, New York, NY 10001, USA")).toBeInTheDocument();
-  });
-
-  test("handles events with non-object data field", () => {
-    const events = [
-      {
-        ...createMockEvent(),
-        id: 1,
-        data: "string data instead of object", // Invalid data format
-      } as Event,
-      {
-        ...createMockEvent(),
-        id: 2,
-        data: null, // Null data
-      } as Event,
-      {
-        ...createMockEvent(),
-        id: 3,
-        data: ["array", "data"], // Array instead of object
-      } as Event,
-    ];
-
-    renderWithProviders(<EventsList events={events} />);
-
-    // Should fallback to Event ID for all invalid data formats
-    expect(screen.getByText("Event 1")).toBeInTheDocument();
-    expect(screen.getByText("Event 2")).toBeInTheDocument();
-    expect(screen.getByText("Event 3")).toBeInTheDocument();
   });
 
   test("handles events with complex nested data", () => {

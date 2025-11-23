@@ -11,8 +11,8 @@ import { renderWithProviders } from "../../setup/unit/react-render";
 // Mock next-themes is handled by ThemeProvider in test-utils
 
 // Mock the UI charts package
-vi.mock("@workspace/ui/charts", async () => {
-  const actual = await vi.importActual("@workspace/ui/charts");
+vi.mock("@timetiles/ui/charts", async () => {
+  const actual = await vi.importActual("@timetiles/ui/charts");
   return {
     ...(actual as any),
     useChartTheme: () => ({ backgroundColor: "#ffffff", textColor: "#000000" }),

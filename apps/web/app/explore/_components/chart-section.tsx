@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { useCallback, useState } from "react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";

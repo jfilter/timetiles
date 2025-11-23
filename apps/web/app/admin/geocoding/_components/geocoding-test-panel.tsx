@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { Button } from "@workspace/ui/components/button";
+import { Button } from "@timetiles/ui/components/button";
 import React, { useCallback, useState } from "react";
 
 import { logger } from "@/lib/logger";

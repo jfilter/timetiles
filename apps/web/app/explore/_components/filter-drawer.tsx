@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { cn } from "@workspace/ui/lib/utils";
+import { cn } from "@timetiles/ui/lib/utils";
 
 import { EventFilters } from "@/components/filters/event-filters";
 import type { Catalog, Dataset } from "@/payload-types";
