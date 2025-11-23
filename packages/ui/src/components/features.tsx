@@ -9,7 +9,7 @@
  * @module
  * @category Components
  */
-import { cn } from "@workspace/ui/lib/utils";
+import { cn } from "@timetiles/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
@@ -32,7 +32,7 @@ const Features = React.forwardRef<
 >(({ className, layout, children, ...props }, ref) => {
   return (
     <section ref={ref} className={cn(featuresVariants({ layout, className }))} {...props}>
-      <div className="container mx-auto max-w-6xl px-6">{children}</div>
+      <div className="container mx-auto px-6">{children}</div>
     </section>
   );
 });
@@ -89,20 +89,30 @@ const FeaturesGrid = React.forwardRef<
 ));
 FeaturesGrid.displayName = "FeaturesGrid";
 
-const featureVariants = cva("group text-center", {
-  variants: {
-    accent: {
-      primary: "",
-      secondary: "",
-      accent: "",
-      muted: "",
-      none: "",
+const featureVariants = cva(
+  [
+    "group relative text-center",
+    "p-8 rounded-sm",
+    "bg-card border-2 border-accent/20",
+    "transition-all duration-500",
+    "hover:shadow-xl hover:border-accent/40 hover:-translate-y-1",
+    "hover:bg-accent/[0.02]",
+  ],
+  {
+    variants: {
+      accent: {
+        primary: "",
+        secondary: "",
+        accent: "",
+        muted: "",
+        none: "",
+      },
     },
-  },
-  defaultVariants: {
-    accent: "none",
-  },
-});
+    defaultVariants: {
+      accent: "none",
+    },
+  }
+);
 
 const accentColors = {
   primary: "text-primary",
@@ -174,6 +184,7 @@ const FeatureWithContext = React.forwardRef<
 >(({ accent = "none", children, ...props }, ref) => {
   const resolvedAccent = accent ?? "none";
   const memoizedContext = React.useMemo(() => ({ accent: resolvedAccent }), [resolvedAccent]);
+
   return (
     <FeatureContext.Provider value={memoizedContext}>
       <Feature ref={ref} accent={resolvedAccent} {...props}>

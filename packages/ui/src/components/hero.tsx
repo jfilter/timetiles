@@ -7,7 +7,7 @@
  * @module
  * @category Components
  */
-import { cn } from "@workspace/ui/lib/utils";
+import { cn } from "@timetiles/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
@@ -77,7 +77,9 @@ const HeroHeadline = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<H
     <h1
       ref={ref}
       className={cn(
-        "text-foreground mb-6 font-serif text-5xl font-bold leading-tight tracking-tight md:text-7xl",
+        "text-foreground mb-8 font-serif text-6xl font-bold leading-[1.1] tracking-tight md:text-8xl",
+        "drop-shadow-sm",
+        "animate-in fade-in slide-in-from-bottom-6 duration-700",
         className
       )}
       {...props}
@@ -92,7 +94,11 @@ const HeroSubheadline = React.forwardRef<HTMLParagraphElement, React.HTMLAttribu
   ({ className, children, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn("text-muted-foreground mx-auto max-w-3xl text-xl leading-relaxed md:text-2xl", className)}
+      className={cn(
+        "text-muted-foreground mx-auto max-w-3xl text-xl leading-relaxed md:text-2xl",
+        "animate-in fade-in slide-in-from-bottom-4 delay-150 duration-700",
+        className
+      )}
       {...props}
     >
       {children}

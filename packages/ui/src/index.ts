@@ -70,3 +70,25 @@ export { HeaderBrand } from "./components/header-brand";
 export { HeaderDecorative } from "./components/header-decorative";
 export { HeaderNav, HeaderNavItem } from "./components/header-nav";
 export { Hero, HeroActions, HeroHeadline, HeroSubheadline } from "./components/hero";
+
+// Page blocks - generic CMS components
+export {
+  CallToAction,
+  CallToActionActions,
+  CallToActionDescription,
+  CallToActionFootnote,
+  CallToActionHeadline,
+} from "./components/call-to-action";
+export { DetailsGrid, DetailsIcon, DetailsItem, DetailsLabel, DetailsValue } from "./components/details-grid";
+export { NewsletterCTA, newsletterCtaVariants } from "./components/newsletter-cta";
+export { NewsletterForm } from "./components/newsletter-form";
+export { Stat, StatLabel, Stats, StatsGrid, StatValue } from "./components/stats";
+export {
+  TestimonialAuthor,
+  TestimonialAvatar,
+  TestimonialCard,
+  TestimonialMeta,
+  TestimonialQuote,
+  Testimonials,
+} from "./components/testimonials";
+export { Timeline, TimelineDate, TimelineDescription, TimelineItem, TimelineTitle } from "./components/timeline";

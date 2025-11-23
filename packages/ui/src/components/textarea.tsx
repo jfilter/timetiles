@@ -7,7 +7,7 @@
  * @module
  * @category Components
  */
-import { cn } from "@workspace/ui/lib/utils";
+import { cn } from "@timetiles/ui/lib/utils";
 import * as React from "react";
 
 export type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>;
