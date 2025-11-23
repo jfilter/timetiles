@@ -12,12 +12,20 @@ import type { CollectionConfig } from "./seed.config";
 import type { CatalogSeed } from "./seeds/catalogs";
 import type { DatasetSeed } from "./seeds/datasets";
 import type { EventSeed } from "./seeds/events";
+import type { FooterSeed } from "./seeds/footer";
 import type { MainMenuSeed } from "./seeds/main-menu";
 import type { PageSeed } from "./seeds/pages";
 // ImportSeed removed - import jobs are created dynamically, not seeded
 import type { UserSeed } from "./seeds/users";
 
-export type SeedData = UserSeed[] | CatalogSeed[] | DatasetSeed[] | EventSeed[] | PageSeed[] | MainMenuSeed[];
+export type SeedData =
+  | UserSeed[]
+  | CatalogSeed[]
+  | DatasetSeed[]
+  | EventSeed[]
+  | PageSeed[]
+  | MainMenuSeed[]
+  | FooterSeed[];
 
 export interface SeedOptions {
   collections?: string[];

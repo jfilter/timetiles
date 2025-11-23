@@ -8,6 +8,7 @@
  * Global collection slugs
  */
 export const MAIN_MENU_SLUG = "main-menu";
+export const FOOTER_SLUG = "footer";
 
 /**
  * Collection names

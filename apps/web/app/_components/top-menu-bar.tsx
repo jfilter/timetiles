@@ -8,6 +8,9 @@
  * @module
  * @category Components
  */
+"use client";
+
+import LogoWithText from "@workspace/assets/logos/static/logo-with-text-horizontal.svg";
 import Link from "next/link";
 import React from "react";
 
@@ -21,7 +24,9 @@ interface TopMenuBarProps {
 
 export const TopMenuBar = ({ mainMenu }: Readonly<TopMenuBarProps>) => (
   <nav className="fixed left-1/2 top-6 z-50 flex h-14 w-[700px] -translate-x-1/2 items-center justify-between rounded-2xl border border-neutral-200/60 bg-white/50 px-8 shadow-lg backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-900/50">
-    <div className="select-none text-lg font-bold tracking-widest">Logo</div>
+    <Link href="/" className="flex items-center">
+      <LogoWithText className="h-8 w-auto dark:invert" />
+    </Link>
     <ul className="m-0 flex list-none gap-8 p-0">
       {mainMenu.navItems?.map((item) => (
         <li

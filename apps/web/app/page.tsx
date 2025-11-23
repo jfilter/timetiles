@@ -1,18 +1,16 @@
 /**
- * This file defines the home page of the application.
+ * Homepage for TimeTiles - rendered from Payload CMS.
  *
- * It fetches the content for the page with the slug "home" from the Payload CMS.
- * If the page is found, it renders the title and its rich text content using the
- * `PageLayout` and `RichText` components. If the home page is not found in the CMS,
- * it will trigger a 404 error.
+ * Fetches page content from Payload with slug "/" and renders
+ * using the BlockRenderer system for maximum flexibility.
+ *
  * @module
  */
 import { notFound } from "next/navigation";
 import { getPayload } from "payload";
 import React from "react";
 
-import { PageLayout } from "@/components/layout/page-layout";
-import { RichText } from "@/components/layout/rich-text";
+import { BlockRenderer } from "@/components/block-renderer";
 import config from "@/payload.config";
 
 export default async function Page() {
@@ -35,9 +33,5 @@ export default async function Page() {
 
   const page = pages.docs[0]!;
 
-  return (
-    <PageLayout title={page.title}>
-      <RichText content={page.content} />
-    </PageLayout>
-  );
+  return <BlockRenderer blocks={page.pageBuilder} />;
 }

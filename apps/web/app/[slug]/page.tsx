@@ -1,9 +1,8 @@
 /**
- * This file defines the page for displaying a single, dynamically-routed page.
+ * Dynamic page route for Payload CMS pages.
  *
- * It fetches the content for a page from the Payload CMS based on the slug provided in the
- * URL. If the page is found, it renders the title and content using the `PageLayout` and
- * `RichText` components. If no page is found for the given slug, it displays a 404 error.
+ * Fetches page content from Payload CMS by slug and renders using the
+ * BlockRenderer system for flexible, StreamField-like content.
  *
  * @module
  */
@@ -11,8 +10,8 @@ import { notFound } from "next/navigation";
 import { getPayload } from "payload";
 import React from "react";
 
+import { BlockRenderer } from "@/components/block-renderer";
 import { PageLayout } from "@/components/layout/page-layout";
-import { RichText } from "@/components/layout/rich-text";
 import config from "@/payload.config";
 
 interface PageProps {
@@ -44,7 +43,7 @@ export default async function Page({ params }: Readonly<PageProps>) {
 
   return (
     <PageLayout title={page.title}>
-      <RichText content={page.content} />
+      <BlockRenderer blocks={page.pageBuilder} />
     </PageLayout>
   );
 }

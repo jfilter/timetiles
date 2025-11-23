@@ -1,5 +1,0 @@
-{
-  "id": "20251121_190327_detailed_progress_tracking",
-  "name": "detailed_progress_tracking",
-  "description": "Replace simple progress tracking with detailed per-stage tracking including batch info, rates, and ETAs"
-}

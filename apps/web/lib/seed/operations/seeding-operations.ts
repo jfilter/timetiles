@@ -15,12 +15,13 @@
 import { createLogger, logError } from "@/lib/logger";
 import type { Config } from "@/payload-types";
 
-import { MAIN_MENU_SLUG } from "../constants";
+import { FOOTER_SLUG, MAIN_MENU_SLUG } from "../constants";
 import type { CollectionConfig } from "../seed.config";
 import type { SeedManager } from "../seed-manager";
 import { catalogSeeds } from "../seeds/catalogs";
 import { datasetSeeds } from "../seeds/datasets";
 import { eventSeeds } from "../seeds/events";
+import { footerSeed } from "../seeds/footer";
 import { mainMenuSeed } from "../seeds/main-menu";
 import { pagesSeed } from "../seeds/pages";
 import { userSeeds } from "../seeds/users";
@@ -60,7 +61,7 @@ export class SeedingOperations {
     const transformedData = this.dataProcessing.applyDataTransformations(preparedData, config, collectionName);
 
     // Handle global collections
-    if (collectionName === MAIN_MENU_SLUG) {
+    if (collectionName === MAIN_MENU_SLUG || collectionName === FOOTER_SLUG) {
       await this.seedGlobalCollection(transformedData, collectionName);
       return;
     }
@@ -83,6 +84,7 @@ export class SeedingOperations {
     logger.info(`Completed seeding ${collectionName} with ${resolvedSeedData.length} items`);
   }
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- Global seeding requires handling multiple conditional paths
   private async seedGlobalCollection(seedData: SeedData, collectionName: string): Promise<void> {
     if (collectionName === MAIN_MENU_SLUG) {
       try {
@@ -98,6 +100,24 @@ export class SeedingOperations {
         logger.info(`Seeded ${MAIN_MENU_SLUG} global successfully!`);
       } catch (error) {
         logError(error, `Failed to seed ${MAIN_MENU_SLUG} global`, {
+          global: collectionName,
+          data: Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : {},
+        });
+      }
+    } else if (collectionName === FOOTER_SLUG) {
+      try {
+        const footerData = Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : seedData;
+        const payload = this.seedManager.payloadInstance;
+        if (!payload) {
+          throw new Error(PAYLOAD_NOT_INITIALIZED_ERROR);
+        }
+        await payload.updateGlobal({
+          slug: FOOTER_SLUG,
+          data: footerData as Config["globals"]["footer"],
+        });
+        logger.info(`Seeded ${FOOTER_SLUG} global successfully!`);
+      } catch (error) {
+        logError(error, `Failed to seed ${FOOTER_SLUG} global`, {
           global: collectionName,
           data: Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : {},
         });
@@ -306,6 +326,8 @@ export class SeedingOperations {
         return eventSeeds(environment);
       case MAIN_MENU_SLUG:
         return [mainMenuSeed];
+      case FOOTER_SLUG:
+        return [footerSeed];
       case "pages":
         return pagesSeed;
       default:

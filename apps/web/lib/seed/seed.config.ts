@@ -25,7 +25,7 @@
  * - Configure custom data generators.
  */
 
-import { COLLECTION_GEOCODING_PROVIDERS, MAIN_MENU_SLUG } from "./constants";
+import { COLLECTION_GEOCODING_PROVIDERS, FOOTER_SLUG, MAIN_MENU_SLUG } from "./constants";
 import type { RelationshipConfig } from "./relationship-config";
 import { RELATIONSHIP_CONFIG } from "./relationship-config";
 
@@ -230,6 +230,14 @@ export const SEED_CONFIG: SeedConfiguration = {
         staticContent: true,
       },
     },
+    // Footer - global footer content
+    [FOOTER_SLUG]: {
+      count: 1, // Single global footer
+      dependencies: [],
+      options: {
+        staticContent: true,
+      },
+    },
   },
 
   // Import existing relationship configurations
@@ -299,7 +307,7 @@ export const SEED_CONFIG: SeedConfiguration = {
   presets: {
     minimal: {
       description: "Bare minimum data for production deployments",
-      enabled: ["users", "pages", MAIN_MENU_SLUG, GEOCODING_PROVIDERS_COLLECTION],
+      enabled: ["users", "pages", MAIN_MENU_SLUG, FOOTER_SLUG, GEOCODING_PROVIDERS_COLLECTION],
       volume: "minimal",
       realism: "simple",
       performance: "fast",
@@ -321,6 +329,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         "events",
         "pages",
         MAIN_MENU_SLUG,
+        FOOTER_SLUG,
         "location-cache",
         GEOCODING_PROVIDERS_COLLECTION,
       ],
@@ -345,7 +354,7 @@ export const SEED_CONFIG: SeedConfiguration = {
 
     e2e: {
       description: "Moderate, realistic data for E2E UI testing",
-      enabled: ["users", "catalogs", "datasets", "events", "pages", MAIN_MENU_SLUG],
+      enabled: ["users", "catalogs", "datasets", "events", "pages", MAIN_MENU_SLUG, FOOTER_SLUG],
       volume: "medium",
       realism: "realistic",
       performance: "balanced",
@@ -367,6 +376,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         "events",
         "pages",
         MAIN_MENU_SLUG,
+        FOOTER_SLUG,
         "location-cache",
         GEOCODING_PROVIDERS_COLLECTION,
       ],
@@ -395,7 +405,16 @@ export const SEED_CONFIG: SeedConfiguration = {
 
     demo: {
       description: "Polished, realistic data for demos and staging",
-      enabled: ["users", "catalogs", "datasets", "events", "pages", MAIN_MENU_SLUG, GEOCODING_PROVIDERS_COLLECTION],
+      enabled: [
+        "users",
+        "catalogs",
+        "datasets",
+        "events",
+        "pages",
+        MAIN_MENU_SLUG,
+        FOOTER_SLUG,
+        GEOCODING_PROVIDERS_COLLECTION,
+      ],
       volume: "medium",
       realism: "production-like",
       performance: "balanced",

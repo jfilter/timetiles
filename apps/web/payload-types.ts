@@ -108,10 +108,12 @@ export interface Config {
   };
   globals: {
     'main-menu': MainMenu;
+    footer: Footer;
     'payload-jobs-stats': PayloadJobsStat;
   };
   globalsSelect: {
     'main-menu': MainMenuSelect<false> | MainMenuSelect<true>;
+    footer: FooterSelect<false> | FooterSelect<true>;
     'payload-jobs-stats': PayloadJobsStatsSelect<false> | PayloadJobsStatsSelect<true>;
   };
   locale: null;
@@ -1789,21 +1791,92 @@ export interface Page {
    * URL-friendly identifier (auto-generated from name if not provided)
    */
   slug?: string | null;
-  content?: {
-    root: {
-      type: string;
-      children: {
-        type: string;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
+  pageBuilder: (
+    | {
+        title: string;
+        subtitle?: string | null;
+        description?: string | null;
+        background?: ('gradient' | 'grid') | null;
+        buttons?:
+          | {
+              text: string;
+              link: string;
+              variant?: ('default' | 'outline') | null;
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'hero';
+      }
+    | {
+        sectionTitle?: string | null;
+        sectionDescription?: string | null;
+        columns?: ('1' | '2' | '3' | '4') | null;
+        features: {
+          icon: 'email' | 'business' | 'support' | 'location' | 'map' | 'timeline' | 'insights';
+          title: string;
+          description: string;
+          accent?: ('none' | 'primary' | 'secondary' | 'accent' | 'muted') | null;
+          id?: string | null;
+        }[];
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'features';
+      }
+    | {
+        stats: {
+          value: string;
+          label: string;
+          icon?: ('email' | 'business' | 'support' | 'location' | 'map' | 'timeline' | 'insights') | null;
+          id?: string | null;
+        }[];
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'stats';
+      }
+    | {
+        methods: {
+          icon: 'email' | 'business' | 'support' | 'location' | 'map' | 'timeline' | 'insights';
+          label: string;
+          value: string;
+          link?: string | null;
+          id?: string | null;
+        }[];
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'contactMethods';
+      }
+    | {
+        content: {
+          root: {
+            type: string;
+            children: {
+              type: string;
+              version: number;
+              [k: string]: unknown;
+            }[];
+            direction: ('ltr' | 'rtl') | null;
+            format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+            indent: number;
+            version: number;
+          };
+          [k: string]: unknown;
+        };
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'richText';
+      }
+    | {
+        headline: string;
+        description?: string | null;
+        buttonText: string;
+        buttonLink: string;
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'cta';
+      }
+  )[];
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -2695,7 +2768,92 @@ export interface GeocodingProvidersSelect<T extends boolean = true> {
 export interface PagesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
-  content?: T;
+  pageBuilder?:
+    | T
+    | {
+        hero?:
+          | T
+          | {
+              title?: T;
+              subtitle?: T;
+              description?: T;
+              background?: T;
+              buttons?:
+                | T
+                | {
+                    text?: T;
+                    link?: T;
+                    variant?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        features?:
+          | T
+          | {
+              sectionTitle?: T;
+              sectionDescription?: T;
+              columns?: T;
+              features?:
+                | T
+                | {
+                    icon?: T;
+                    title?: T;
+                    description?: T;
+                    accent?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        stats?:
+          | T
+          | {
+              stats?:
+                | T
+                | {
+                    value?: T;
+                    label?: T;
+                    icon?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        contactMethods?:
+          | T
+          | {
+              methods?:
+                | T
+                | {
+                    icon?: T;
+                    label?: T;
+                    value?: T;
+                    link?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        richText?:
+          | T
+          | {
+              content?: T;
+              id?: T;
+              blockName?: T;
+            };
+        cta?:
+          | T
+          | {
+              headline?: T;
+              description?: T;
+              buttonText?: T;
+              buttonLink?: T;
+              id?: T;
+              blockName?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
@@ -2784,6 +2942,51 @@ export interface MainMenu {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "footer".
+ */
+export interface Footer {
+  id: number;
+  /**
+   * Brief tagline or description for your brand
+   */
+  tagline: string;
+  /**
+   * Social media links (e.g., Twitter, GitHub, LinkedIn)
+   */
+  socialLinks?:
+    | {
+        platform: 'x' | 'bluesky' | 'mastodon' | 'github' | 'linkedin' | 'facebook' | 'instagram' | 'youtube';
+        url: string;
+        id?: string | null;
+      }[]
+    | null;
+  columns?:
+    | {
+        title: string;
+        links?:
+          | {
+              label: string;
+              url: string;
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Copyright text (e.g., © 2024 TimeTiles. All rights reserved.)
+   */
+  copyright: string;
+  /**
+   * Optional credits or attribution text
+   */
+  credits?: string | null;
+  _status?: ('draft' | 'published') | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs-stats".
  */
 export interface PayloadJobsStat {
@@ -2812,6 +3015,39 @@ export interface MainMenuSelect<T extends boolean = true> {
         url?: T;
         id?: T;
       };
+  _status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "footer_select".
+ */
+export interface FooterSelect<T extends boolean = true> {
+  tagline?: T;
+  socialLinks?:
+    | T
+    | {
+        platform?: T;
+        url?: T;
+        id?: T;
+      };
+  columns?:
+    | T
+    | {
+        title?: T;
+        links?:
+          | T
+          | {
+              label?: T;
+              url?: T;
+              id?: T;
+            };
+        id?: T;
+      };
+  copyright?: T;
+  credits?: T;
   _status?: T;
   updatedAt?: T;
   createdAt?: T;

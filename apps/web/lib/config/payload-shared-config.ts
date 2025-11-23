@@ -23,6 +23,7 @@ import { Pages } from "@/lib/collections/pages";
 import ScheduledImports from "@/lib/collections/scheduled-imports/index";
 import Users from "@/lib/collections/users";
 // Import globals
+import { Footer } from "@/lib/globals/footer";
 import { MainMenu } from "@/lib/globals/main-menu";
 // Import jobs
 import {
@@ -79,7 +80,7 @@ export const ALL_COLLECTIONS = [
 ];
 
 // All globals
-export const ALL_GLOBALS = [MainMenu];
+export const ALL_GLOBALS = [MainMenu, Footer];
 
 // All jobs
 export const ALL_JOBS = [
