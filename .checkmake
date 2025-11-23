@@ -1,0 +1,4 @@
+[maxbodylength]
+# Disable maxbodylength rule - workflow orchestration and help text
+# legitimately require longer target bodies
+disabled = true

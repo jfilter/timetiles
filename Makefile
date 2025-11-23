@@ -1,6 +1,13 @@
-.PHONY: all up down logs db-reset db-shell db-query clean setup seed ensure-infra dev kill-dev build lint typecheck format test test-e2e migrate migrate-create check help
+# TimeTiles Development & Testing Commands
+# This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
+
+.PHONY: all selftest status up down logs db-reset db-shell db-query db-logs clean setup seed init ensure-infra dev kill-dev fresh reset build lint typecheck format test test-ai test-e2e test-coverage coverage coverage-check migrate migrate-create check check-ai help
 
 all: help
+
+# Validate environment prerequisites and setup completion
+selftest:
+	@./scripts/selftest.sh
 
 # Start the development environment
 up:
@@ -36,17 +43,43 @@ db-query:
 	fi
 	@docker exec timetiles-postgres psql -U timetiles_user -d $(if $(DB_NAME),$(DB_NAME),timetiles) -c "$(SQL)"
 
+# View PostgreSQL logs
+db-logs:
+	docker compose -f docker-compose.dev.yml logs postgres -f --tail=100
+
 # Clean up everything (containers, volumes, networks)
 clean:
 	docker compose -f docker-compose.dev.yml down -v --remove-orphans
 	docker system prune -f
 
-# Install dependencies and setup environment
+# Complete first-time development setup
+# Runs comprehensive setup: env files, dependencies, Git LFS, Git config
 setup:
-	@if [ ! -f .env ]; then cp .env.example .env; echo "📝 Created .env file from template"; fi
-	pnpm install
-	@echo "📦 Dependencies installed!"
-	@echo "🔧 Run 'make dev' to start development (infrastructure + server)"
+	@./scripts/setup.sh
+
+# Complete fresh start (clean slate)
+fresh: clean up
+	@echo "⏳ Waiting for services to be ready..."
+	@sleep 5
+	@echo "🔄 Running migrations..."
+	@$(MAKE) migrate
+	@echo "🌱 Seeding database..."
+	@$(MAKE) seed ARGS="development"
+	@echo ""
+	@echo "✅ Fresh environment ready!"
+	@echo "🚀 Run 'make dev' to start development server"
+
+# Quick reset (preserves Docker images)
+reset: kill-dev db-reset
+	@echo "⏳ Waiting for database to be ready..."
+	@sleep 3
+	@echo "🔄 Running migrations..."
+	@$(MAKE) migrate
+	@echo "🌱 Seeding database..."
+	@$(MAKE) seed ARGS="development"
+	@echo ""
+	@echo "✅ Environment reset complete!"
+	@echo "🚀 Run 'make dev' to start development server"
 
 # Ensure infrastructure is running
 ensure-infra:
@@ -54,6 +87,10 @@ ensure-infra:
 		echo "❌ PostgreSQL not running. Starting infrastructure..."; \
 		$(MAKE) up && sleep 5; \
 	fi
+
+# Check development environment status
+status:
+	@./scripts/status.sh
 
 # Start development server (requires infrastructure)
 dev: ensure-infra
@@ -151,12 +188,19 @@ coverage-check:
 seed:
 	pnpm --filter web seed $(ARGS)
 
-# Full development setup (infrastructure + dev server)
-dev-full: up
-	@echo "⏳ Waiting for services to be ready..."
+# Complete first-time initialization (setup + database + seed + start dev)
+init: setup up
+	@echo "⏳ Waiting for database to be ready..."
 	@sleep 5
+	@echo "🔄 Running migrations..."
+	@$(MAKE) migrate
+	@echo "🌱 Seeding development data..."
+	@$(MAKE) seed ARGS="development"
+	@echo ""
+	@echo "✅ Initialization complete!"
 	@echo "🚀 Starting development server..."
-	pnpm dev
+	@echo ""
+	@$(MAKE) dev
 
 # Run E2E tests (handles database setup automatically) - web-specific, bypasses turbo
 test-e2e:
@@ -180,35 +224,66 @@ check:
 # Show help
 help:
 	@printf '%s\n' \
-		'📋 Available commands:' '' \
-		'🚀 Development:' \
-		'  setup       - Install dependencies and create .env file' \
+		'📋 TimeTiles Makefile Commands' \
+		'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' '' \
+		'🏁 Getting Started:' \
+		'  selftest    - Validate environment (prerequisites + setup completion)' \
+		'  setup       - First-time setup (deps, .env files, Git LFS, Git config)' \
+		'  init        - Complete initialization (setup + db + seed + start dev)' \
+		'  fresh       - Nuclear reset (wipes everything + rebuild)' '' \
+		'🚀 Daily Development:' \
 		'  dev         - Start development server (auto-starts infrastructure)' \
-		'  dev-full    - Start infrastructure and development server' \
+		'  status      - Check development environment health' \
 		'  kill-dev    - Stop all development servers and processes' \
+		'  reset       - Reset database (wipe db + migrate + seed)' \
 		'  build       - Build the project' '' \
 		'🔍 Code Quality:' \
 		'  lint        - Run ESLint' \
 		'  typecheck   - Run TypeScript type checking' \
 		'  check       - Run lint + typecheck combined' \
 		'  check-ai    - Run code quality checks with AI-friendly output' \
-		'                (usage: make check-ai [PACKAGE=web|docs|ui])' \
+		'                Usage: make check-ai [PACKAGE=web|docs|ui]' \
 		'  format      - Format code with Prettier' '' \
 		'🧪 Testing:' \
-		'  test          - Run tests' \
-		'  test-coverage - Run tests and generate coverage' \
+		'  test        - Run tests (standard output)' \
+		'  test-ai     - Run tests with AI-friendly output (web app only)' \
+		'                Usage: make test-ai [FILTER=pattern]' \
+		'                Examples:' \
+		'                  make test-ai                    # All tests' \
+		'                  make test-ai FILTER=date.test   # Pattern match (fastest)' \
+		'                  make test-ai FILTER=tests/unit  # Directory' \
+		'  test-e2e      - Run E2E tests with automatic database setup' \
+		'  test-coverage - Run tests and generate coverage report' \
 		'  coverage      - Show last coverage summary (quick)' \
-		'  coverage-check - Show files below 80% coverage threshold' \
-		'  test-e2e      - Run E2E tests with automatic database setup' '' \
+		'  coverage-check - Show files below 80% coverage threshold' '' \
 		'🌱 Database:' \
-		'  seed        - Seed database with sample data (usage: make seed ARGS='"'"'development users'"'"')' \
-		'  migrate     - Run pending database migrations' \
-		'  migrate-create - Create a new database migration' '' \
+		'  seed          - Seed database with sample data' \
+		'                  Usage: make seed ARGS='"'"'development users'"'"'' \
+		'  migrate       - Run pending database migrations' \
+		'  migrate-create - Create a new database migration' \
+		'  db-shell      - Open PostgreSQL shell (interactive)' \
+		'  db-query      - Execute SQL query (non-interactive)' \
+		'                  Usage: make db-query SQL='"'"'SELECT ...'"'"' [DB_NAME=database_name]' \
+		'  db-logs       - View PostgreSQL logs (live tail)' \
+		'  db-reset      - Reset database (removes all data)' '' \
 		'🐳 Infrastructure:' \
-		'  up          - Start development environment' \
+		'  up          - Start development environment (docker compose)' \
 		'  down        - Stop development environment' \
-		'  logs        - View container logs' \
-		'  db-reset    - Reset database (removes all data)' \
-		'  db-shell    - Open PostgreSQL shell' \
-		'  db-query    - Execute SQL query (usage: make db-query SQL='"'"'SELECT ...'"'"')' \
-		'  clean       - Clean up everything'
+		'  logs        - View all container logs' \
+		'  clean       - Clean up everything (containers, volumes, networks)' '' \
+		'📖 Parameters:' \
+		'  FILTER=pattern   - Filter tests by pattern (use with test-ai)' \
+		'                     Examples: FILTER=date.test, FILTER=tests/unit' \
+		'  PACKAGE=name     - Target specific package (use with check-ai)' \
+		'                     Options: web, docs, ui' \
+		'  SQL=query        - SQL query to execute (use with db-query)' \
+		'                     Example: SQL='"'"'SELECT COUNT(*) FROM events'"'"'' \
+		'  DB_NAME=name     - Database name (use with db-query)' \
+		'                     Default: timetiles' \
+		'  ARGS=args        - Arguments for command (use with seed)' \
+		'                     Example: ARGS='"'"'development users catalogs'"'"'' '' \
+		'💡 Quick Start:' \
+		'  make selftest   # Validate environment readiness' \
+		'  make init       # Complete initialization + start dev' \
+		'  make status     # Check running services' '' \
+		'ℹ️  This Makefile is for LOCAL DEVELOPMENT AND TESTING ONLY'
