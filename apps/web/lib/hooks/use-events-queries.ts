@@ -207,7 +207,17 @@ const fetchEvents = async (
     throw new Error(`Failed to fetch events: ${response.statusText}`);
   }
 
-  return response.json() as Promise<EventsListResponse>;
+  const data = await response.json();
+
+  // Transform API response to match EventsListResponse interface
+  return {
+    events: data.events,
+    total: data.pagination.totalDocs,
+    page: data.pagination.page,
+    limit: data.pagination.limit,
+    hasNextPage: data.pagination.hasNextPage,
+    hasPrevPage: data.pagination.hasPrevPage,
+  };
 };
 
 const fetchMapClusters = async (
@@ -374,6 +384,17 @@ export const useEventsListQuery = (
     gcTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData, // Show previous data while loading new
+  });
+
+// Hook to get total count without bounds filter (for global statistics)
+export const useEventsTotalQuery = (filters: FilterState, enabled: boolean = true) =>
+  useQuery({
+    queryKey: eventsQueryKeys.list(filters, null, 1), // bounds=null, limit=1 (we only need the total)
+    queryFn: ({ signal }) => fetchEvents(filters, null, 1, signal),
+    enabled,
+    staleTime: 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
   });
 
 export const useMapClustersQuery = (filters: FilterState, bounds: BoundsType, zoom: number, enabled: boolean = true) =>

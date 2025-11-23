@@ -11,19 +11,23 @@
 "use client";
 
 import type { LngLatBounds } from "maplibre-gl";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ClusteredMap } from "@/components/maps/clustered-map";
 import { useFilters } from "@/lib/filters";
 import { useDebounce } from "@/lib/hooks/use-debounce";
-import { useClusterStatsQuery, useEventsListQuery, useMapClustersQuery } from "@/lib/hooks/use-events-queries";
+import {
+  useClusterStatsQuery,
+  useEventsListQuery,
+  useEventsTotalQuery,
+  useMapClustersQuery,
+} from "@/lib/hooks/use-events-queries";
 import { useUIStore } from "@/lib/store";
 import type { Catalog, Dataset } from "@/payload-types";
 
 import { ActiveFilters } from "./active-filters";
 import { ChartSection } from "./chart-section";
 import { EventsList } from "./events-list";
-import { ExploreHeader } from "./explore-header";
 import { FilterDrawer } from "./filter-drawer";
 
 interface MapExplorerProps {
@@ -45,6 +49,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
   const setMapBounds = useUIStore((state) => state.setMapBounds);
+  const setMapStats = useUIStore((state) => state.setMapStats);
 
   // Convert mapBounds to simple object format for React Query compatibility
   // React Query needs serializable objects for proper cache key comparison
@@ -70,6 +75,9 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
     mapZoom
   );
 
+  // Fetch total count without bounds filter for global statistics
+  const { data: totalEventsData } = useEventsTotalQuery(filters);
+
   // Fetch global cluster statistics (independent of viewport)
   const { data: clusterStats } = useClusterStatsQuery(filters);
 
@@ -86,6 +94,17 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
   if (!isLoading && !hasLoadedOnce && (events.length > 0 || clusters.length > 0)) {
     setHasLoadedOnce(true);
   }
+
+  // Update map stats in Zustand store when data changes
+  // Use totalEventsData.total for absolute count (not viewport-bounded)
+  useEffect(() => {
+    if (eventsData != null && totalEventsData != null) {
+      setMapStats({
+        visibleEvents: events.length,
+        totalEvents: totalEventsData.total,
+      });
+    }
+  }, [events.length, eventsData, totalEventsData, setMapStats]);
 
   // Helper function to get catalog name by ID
   const getCatalogName = (catalogId: string): string => {
@@ -153,22 +172,15 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
   );
 
   return (
-    <div className="flex h-screen">
-      {/* Map - Left Side (Full Height) */}
-      <div className="h-full w-1/2 lg:w-2/5">
-        <ClusteredMap clusters={clusters} clusterStats={clusterStats} onBoundsChange={handleBoundsChange} />
-      </div>
+    <div className="flex h-screen flex-col">
+      {/* Content Container - Below adaptive header from root layout */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Map - Left Side (Full Height) */}
+        <div className="h-full w-1/2 lg:w-2/5">
+          <ClusteredMap clusters={clusters} clusterStats={clusterStats} onBoundsChange={handleBoundsChange} />
+        </div>
 
-      {/* Right Side Container */}
-      <div className="flex flex-1 flex-col">
-        {/* Header - Above Content and Filter */}
-        <ExploreHeader
-          filterCount={activeFilterCount}
-          isFilterOpen={isFilterDrawerOpen}
-          onFilterToggle={toggleFilterDrawer}
-        />
-
-        {/* Content and Filter Container */}
+        {/* Right Side Container - Content and Filter */}
         <div className="flex flex-1 overflow-hidden">
           {/* Content Area */}
           <div className="flex-1 overflow-y-auto border-l">

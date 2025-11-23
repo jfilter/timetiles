@@ -8,6 +8,17 @@
  * @module
  * @category Components
  */
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardSpec,
+  CardSpecItem,
+  CardTitle,
+  CardVersion,
+} from "@workspace/ui";
+
 import type { Event } from "@/payload-types";
 
 interface EventsListProps {
@@ -52,67 +63,85 @@ const getEventData = (event: Event): EventData => {
 };
 
 const getEventTitle = (eventData: EventData, eventId: string): string => {
-  return safeToString(eventData.title) || safeToString(eventData.name) || `Event ${eventId}`;
+  return safeToString(eventData.title) ?? safeToString(eventData.name) ?? `Event ${eventId}`;
 };
 
-const EventDescription = ({ description }: { description?: unknown }) => {
-  if (description == null || description === "") return null;
-  return <p className="text-muted-foreground mt-1 text-sm">{safeToString(description)}</p>;
+const getDatasetName = (dataset: unknown): string | null => {
+  if (typeof dataset === "object" && dataset != null && "name" in dataset) {
+    return String(dataset.name);
+  }
+  return null;
 };
 
-const EventDateRange = ({ startDate, endDate }: { startDate?: unknown; endDate?: unknown }) => {
-  const hasStartDate = startDate != null;
-  const hasEndDate = endDate != null;
-  const hasBothDates = hasStartDate && hasEndDate;
-
-  if (!hasStartDate && !hasEndDate) return null;
-
-  return (
-    <div className="text-muted-foreground mt-2 text-sm">
-      {hasStartDate && <span>{new Date(safeToString(startDate)).toLocaleDateString()}</span>}
-      {hasBothDates && <span> - </span>}
-      {hasEndDate && <span>{new Date(safeToString(endDate)).toLocaleDateString()}</span>}
-    </div>
-  );
+const getLocationDisplay = (event: Event, eventData: EventData): string | null => {
+  if (event.geocodingInfo?.normalizedAddress) {
+    return event.geocodingInfo.normalizedAddress;
+  }
+  const cityCountry = [safeToString(eventData.city), safeToString(eventData.country)].filter(Boolean);
+  return cityCountry.length > 0 ? cityCountry.join(", ") : null;
 };
 
-const EventLocation = ({ event, eventData }: { event: Event; eventData: EventData }) => {
-  const hasNormalizedAddress =
-    event.geocodingInfo?.normalizedAddress != null && event.geocodingInfo.normalizedAddress !== "";
-  const hasLocationData = eventData.city != null || eventData.country != null;
+const formatDateRange = (startDate: unknown, endDate: unknown): string => {
+  const hasStart = startDate != null;
+  const hasEnd = endDate != null;
 
-  if (!hasNormalizedAddress && !hasLocationData) return null;
+  if (!hasStart && !hasEnd) return "";
 
-  const displayAddress = hasNormalizedAddress
-    ? event.geocodingInfo?.normalizedAddress
-    : [safeToString(eventData.city), safeToString(eventData.country)].filter(Boolean).join(", ");
+  const parts: string[] = [];
+  if (hasStart) {
+    parts.push(new Date(safeToString(startDate)).toLocaleDateString());
+  }
+  if (hasEnd) {
+    parts.push(new Date(safeToString(endDate)).toLocaleDateString());
+  }
 
-  return <div className="text-muted-foreground mt-1 text-sm">{displayAddress}</div>;
+  return parts.join(" - ");
 };
 
-const EventCoordinates = ({ location }: { location?: { latitude?: number | null; longitude?: number | null } }) => {
-  if (location?.latitude == null || location.latitude === 0 || location?.longitude == null || location.longitude === 0)
-    return null;
-
-  return (
-    <div className="text-muted-foreground mt-1 text-xs">
-      {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
-    </div>
-  );
-};
-
-const EventItem = ({ event }: { event: Event }) => {
+const EventItem = ({ event, index }: { event: Event; index: number }) => {
   const eventData = getEventData(event);
   const title = getEventTitle(eventData, String(event.id));
+  const datasetName = getDatasetName(event.dataset);
+  const locationDisplay = getLocationDisplay(event, eventData);
+
+  const hasDateRange = eventData.startDate != null || eventData.endDate != null;
+  const hasCoordinates =
+    event.location?.latitude != null &&
+    event.location.latitude !== 0 &&
+    event.location?.longitude != null &&
+    event.location.longitude !== 0;
 
   return (
-    <div key={event.id} className="hover:bg-accent/50 rounded-lg border p-4 transition-colors">
-      <h3 className="text-lg font-semibold">{title}</h3>
-      <EventDescription description={eventData.description} />
-      <EventDateRange startDate={eventData.startDate} endDate={eventData.endDate} />
-      <EventLocation event={event} eventData={eventData} />
-      <EventCoordinates location={event.location} />
-    </div>
+    <Card variant="showcase" padding="lg">
+      <CardVersion>Event #{index + 1}</CardVersion>
+
+      <CardHeader>
+        <CardTitle className="text-xl">{title}</CardTitle>
+        {eventData.description && (
+          <CardDescription className="line-clamp-3">{safeToString(eventData.description)}</CardDescription>
+        )}
+      </CardHeader>
+
+      <CardContent>
+        <CardSpec>
+          {hasDateRange && (
+            <CardSpecItem label="Date">{formatDateRange(eventData.startDate, eventData.endDate)}</CardSpecItem>
+          )}
+
+          {locationDisplay && <CardSpecItem label="Location">{locationDisplay}</CardSpecItem>}
+
+          {hasCoordinates && (
+            <CardSpecItem label="Coordinates">
+              <span className="font-mono text-xs">
+                {event.location!.latitude!.toFixed(4)}, {event.location!.longitude!.toFixed(4)}
+              </span>
+            </CardSpecItem>
+          )}
+
+          {datasetName && <CardSpecItem label="Dataset">{datasetName}</CardSpecItem>}
+        </CardSpec>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -145,9 +174,9 @@ export const EventsList = ({ events, isInitialLoad = false, isUpdating = false }
           </div>
         </div>
       )}
-      <div className={`space-y-2 transition-opacity ${isUpdating ? "opacity-90" : "opacity-100"}`}>
-        {events.map((event) => (
-          <EventItem key={event.id} event={event} />
+      <div className={`space-y-4 transition-opacity ${isUpdating ? "opacity-90" : "opacity-100"}`}>
+        {events.map((event, index) => (
+          <EventItem key={event.id} event={event} index={index} />
         ))}
       </div>
     </div>
