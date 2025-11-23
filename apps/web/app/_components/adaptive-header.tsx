@@ -19,7 +19,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
 
-import { useActiveFiltersCount } from "@/lib/hooks/use-active-filters-count";
+import { useFilters } from "@/lib/filters";
 import { useTheme } from "@/lib/hooks/use-theme";
 import { useUIStore } from "@/lib/store";
 import { formatCenterCoordinates, formatEventCount } from "@/lib/utils/coordinates";
@@ -64,7 +64,7 @@ const ExploreBrand = () => (
  * Shows map statistics, "Event Explorer" title, and active filter count badge.
  */
 const ExploreNavigation = () => {
-  const filterCount = useActiveFiltersCount();
+  const { activeFilterCount } = useFilters();
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
   const mapStats = useUIStore((state) => state.ui.mapStats);
 
@@ -103,9 +103,9 @@ const ExploreNavigation = () => {
       </span>
 
       {/* Active Filter Badge */}
-      {filterCount > 0 && (
+      {activeFilterCount > 0 && (
         <span className="bg-cartographic-blue/10 text-cartographic-blue dark:bg-cartographic-blue/20 rounded-sm px-2 py-0.5 font-sans text-xs">
-          {filterCount} filter{filterCount > 1 ? "s" : ""} active
+          {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""} active
         </span>
       )}
     </div>
