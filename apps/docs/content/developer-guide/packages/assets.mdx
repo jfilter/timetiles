@@ -4,28 +4,36 @@ Shared logos and visual assets for the TimeTiles monorepo. All assets are automa
 
 ## Available Assets
 
-### Static SVG Logos
+### Final Logo Versions
 
-- `logo-static.svg` - Base logo
-- `logo-with-text-horizontal.svg` / `logo-with-text-horizontal-tight.svg` - Horizontal layouts
-- `logo-with-text-vertical.svg` / `logo-with-text-vertical-tight.svg` - Vertical layouts
+The recommended logos are in the `final/` directory:
 
-### Animated SVG Logos
+**Light theme:**
 
-- `logo-1.svg` through `logo-10.svg` - 10 animation variants (fade-ins, rotations, pulses, waves)
+- `logo.svg` - Base logo
+- `logo-horizontal.svg` - Horizontal layout with text
+- `logo-vertical.svg` - Vertical layout with text
+- `logo-{16,32,48,64,128,256,512,1024,2048}.png` - Raster versions
 
-### Raster Exports (PNG/JPEG)
+**Dark theme:**
 
-Available in 256px, 512px, 1024px, 2048px, and 4096px resolutions. Stored via Git LFS.
+- `logo.svg` - Base logo (dark variant)
+- `logo-horizontal-dark.svg` - Horizontal layout with text
+- `logo-vertical-dark.svg` - Vertical layout with text
+- `logo-{16,32,48,64,128,256,512,1024,2048}.png` - Raster versions
+
+### Legacy Logo Versions
+
+Historical logo versions are available in `v1/` and `v2/` directories for backwards compatibility.
 
 ## Usage
 
 Import assets directly in your code:
 
 ```typescript
-import logo from "@timetiles/assets/logos/static/logo-static.svg";
-import logoWithText from "@timetiles/assets/logos/static/logo-with-text-horizontal.svg";
-import favicon from "@timetiles/assets/logos/static/logo-256.png";
+import logo from "@timetiles/assets/logos/final/light/logo.svg";
+import logoHorizontal from "@timetiles/assets/logos/final/light/logo-horizontal.svg";
+import favicon from "@timetiles/assets/logos/final/light/logo-256.png";
 
 // Use in React components
 <img src={logo} alt="TimeTiles" />

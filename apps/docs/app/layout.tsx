@@ -4,8 +4,8 @@
  */
 import "nextra-theme-docs/style.css";
 
-import faviconPng from "@timetiles/assets/logos/static/logo-256.png";
-import logoHorizontal from "@timetiles/assets/logos/static/logo-with-text-horizontal-tight.svg";
+import faviconPng from "@timetiles/assets/logos/final/light/logo-256.png";
+import logoHorizontal from "@timetiles/assets/logos/final/light/logo-horizontal.svg";
 import { Banner, Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import { Footer, Layout, Navbar } from "nextra-theme-docs";
@@ -19,17 +19,45 @@ const navbar = (
   <Navbar
     logo={
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <img src={logoHorizontal} alt="TimeTiles" style={{ height: "32px" }} />
+        <img src={logoHorizontal} alt="TimeTiles" style={{ height: "64px" }} />
       </div>
     }
     projectLink="https://github.com/jfilter/timetiles"
-  />
+  >
+    <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", marginLeft: "auto" }}>
+      <a href="/overview" style={{ textDecoration: "none", color: "inherit", fontWeight: 500 }}>
+        Docs
+      </a>
+      <a href="/reference/api" style={{ textDecoration: "none", color: "inherit", fontWeight: 500 }}>
+        API Reference
+      </a>
+      <a
+        href="https://github.com/jfilter/timetiles"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ textDecoration: "none", color: "inherit", fontWeight: 500 }}
+      >
+        GitHub
+      </a>
+    </div>
+  </Navbar>
 );
 
 const footer = (
   <Footer>
     <div style={{ textAlign: "center", padding: "2rem 0" }}>
-      <p>© {new Date().getFullYear()} TimeTiles. All rights reserved.</p>
+      <p>
+        © {new Date().getFullYear()} TimeTiles. Licensed under{" "}
+        <a
+          href="https://github.com/jfilter/timetiles/blob/main/LICENSE"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ textDecoration: "underline" }}
+        >
+          AGPL-3.0
+        </a>
+        .
+      </p>
     </div>
   </Footer>
 );
