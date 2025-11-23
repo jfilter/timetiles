@@ -7,7 +7,7 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
-    "lint:devops": "actionlint -shellcheck= && find . -name 'Dockerfile*' -type f | grep -v node_modules | xargs hadolint && find . \\( -name 'Makefile' -o -name '*.mk' \\) -type f | grep -v node_modules | xargs checkmake && find . -name '*.sh' -type f | grep -v node_modules | xargs shellcheck",
+    "lint:devops": "actionlint -shellcheck= && find . -name 'Dockerfile*' -type f | grep -v node_modules | xargs hadolint && find . \\( -name 'Makefile' -o -name '*.mk' \\) -type f | grep -v node_modules | xargs checkmake --config=.checkmake && find . -name '*.sh' -type f | grep -v node_modules | xargs shellcheck",
     "test": "turbo test",
     "test:coverage": "turbo test:coverage",
     "test:coverage:merge": "tsx scripts/merge-coverage.ts",
