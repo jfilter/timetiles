@@ -1,3 +1,7 @@
+/**
+ * @module
+ */
+
 import type { EChartsOption } from "echarts";
 
 export interface ChartTheme {
@@ -26,17 +30,14 @@ export interface EChartsFormatterParams {
 }
 
 // Type guards for ECharts parameters
-export function isValidEventParams(params: unknown): params is EChartsEventParams {
-  return typeof params === "object" && params !== null && "componentType" in params;
-}
+export const isValidEventParams = (params: unknown): params is EChartsEventParams =>
+  typeof params === "object" && params !== null && "componentType" in params;
 
-export function isValidFormatterParams(params: unknown): params is EChartsFormatterParams {
-  return typeof params === "object" && params !== null && "dataIndex" in params;
-}
+export const isValidFormatterParams = (params: unknown): params is EChartsFormatterParams =>
+  typeof params === "object" && params !== null && "dataIndex" in params;
 
-export function isValidDataIndex(value: unknown): value is number {
-  return typeof value === "number" && value >= 0 && Number.isInteger(value);
-}
+export const isValidDataIndex = (value: unknown): value is number =>
+  typeof value === "number" && value >= 0 && Number.isInteger(value);
 
 export interface EChartsInstance {
   resize: () => void;

@@ -162,9 +162,9 @@ check-ai:
 	elif [ "$(PACKAGE)" = "web" ]; then \
 		cd apps/web && pnpm check:ai; \
 	elif [ "$(PACKAGE)" = "docs" ]; then \
-		pnpm --filter docs lint typecheck; \
+		pnpm --filter docs lint && pnpm --filter docs typecheck; \
 	elif [ "$(PACKAGE)" = "ui" ]; then \
-		pnpm --filter ui lint typecheck; \
+		pnpm --filter ui lint && pnpm --filter ui typecheck; \
 	else \
 		echo "❌ Unknown package: $(PACKAGE)"; \
 		echo "Available packages: web, docs, ui"; \

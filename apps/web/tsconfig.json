@@ -6,6 +6,7 @@
       "@/*": ["./*"],
       "@/components/*": ["./components/*"],
       "@workspace/ui/*": ["../../packages/ui/src/*"],
+      "@workspace/assets/*": ["../../packages/assets/*"],
       "@payload-config": ["./payload.config.ts"]
     },
     "plugins": [

@@ -8,77 +8,110 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Cartographic Base Palette (Light Mode) */
+  --cartographic-parchment: oklch(0.96 0.01 80);
+  --cartographic-charcoal: oklch(0.25 0 0);
+  --cartographic-navy: oklch(0.35 0.06 250);
+  --cartographic-blue: oklch(0.58 0.11 220);
+  --cartographic-terracotta: oklch(0.56 0.14 35);
+  --cartographic-forest: oklch(0.42 0.08 145);
+  --cartographic-cream: oklch(0.88 0.01 80);
+
+  /* Semantic Tokens (Cartographic Theme - Light Mode) */
+  --background: var(--cartographic-parchment);
+  --foreground: var(--cartographic-charcoal);
+  --card: var(--cartographic-cream);
+  --card-foreground: var(--cartographic-charcoal);
+  --popover: var(--cartographic-cream);
+  --popover-foreground: var(--cartographic-charcoal);
+  --primary: var(--cartographic-navy);
+  --primary-foreground: var(--cartographic-parchment);
+  --secondary: var(--cartographic-terracotta);
+  --secondary-foreground: var(--cartographic-parchment);
+  --muted: oklch(0.93 0.01 80);
+  --muted-foreground: oklch(0.45 0.04 250);
+  --accent: var(--cartographic-forest);
+  --accent-foreground: var(--cartographic-parchment);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: var(--cartographic-parchment);
+  --border: oklch(0.88 0.01 250);
+  --input: oklch(0.88 0.01 250);
+  --ring: var(--cartographic-blue);
+  --chart-1: var(--cartographic-blue);
+  --chart-2: var(--cartographic-terracotta);
+  --chart-3: var(--cartographic-forest);
+  --chart-4: var(--cartographic-navy);
+  --chart-5: oklch(0.65 0.12 300);
+  --radius: 0.125rem;
+  --sidebar: var(--cartographic-cream);
+  --sidebar-foreground: var(--cartographic-charcoal);
+  --sidebar-primary: var(--cartographic-navy);
+  --sidebar-primary-foreground: var(--cartographic-parchment);
+  --sidebar-accent: var(--cartographic-blue);
+  --sidebar-accent-foreground: var(--cartographic-parchment);
+  --sidebar-border: oklch(0.88 0.01 250);
+  --sidebar-ring: var(--cartographic-blue);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  /* Cartographic Base Palette (Dark Mode) */
+  --cartographic-parchment: oklch(0.15 0.01 250);
+  --cartographic-charcoal: oklch(0.88 0.01 80);
+  --cartographic-navy: oklch(0.52 0.09 230);
+  --cartographic-blue: oklch(0.62 0.12 210);
+  --cartographic-terracotta: oklch(0.62 0.16 30);
+  --cartographic-forest: oklch(0.55 0.1 145);
+  --cartographic-cream: oklch(0.28 0.01 250);
+
+  /* Semantic Tokens (Cartographic Theme - Dark Mode) */
+  --background: var(--cartographic-parchment);
+  --foreground: var(--cartographic-charcoal);
+  --card: var(--cartographic-cream);
+  --card-foreground: var(--cartographic-charcoal);
+  --popover: var(--cartographic-cream);
+  --popover-foreground: var(--cartographic-charcoal);
+  --primary: var(--cartographic-navy);
+  --primary-foreground: var(--cartographic-parchment);
+  --secondary: var(--cartographic-terracotta);
+  --secondary-foreground: var(--cartographic-parchment);
+  --muted: oklch(0.22 0.01 250);
+  --muted-foreground: oklch(0.65 0.04 230);
+  --accent: var(--cartographic-forest);
+  --accent-foreground: var(--cartographic-parchment);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: var(--cartographic-parchment);
+  --border: oklch(0.28 0.01 250);
+  --input: oklch(0.28 0.01 250);
+  --ring: var(--cartographic-blue);
+  --chart-1: var(--cartographic-blue);
+  --chart-2: var(--cartographic-terracotta);
+  --chart-3: var(--cartographic-forest);
+  --chart-4: var(--cartographic-navy);
+  --chart-5: oklch(0.65 0.12 300);
+  --sidebar: var(--cartographic-cream);
+  --sidebar-foreground: var(--cartographic-charcoal);
+  --sidebar-primary: var(--cartographic-navy);
+  --sidebar-primary-foreground: var(--cartographic-parchment);
+  --sidebar-accent: var(--cartographic-blue);
+  --sidebar-accent-foreground: var(--cartographic-parchment);
+  --sidebar-border: oklch(0.28 0.01 250);
+  --sidebar-ring: var(--cartographic-blue);
 }
 
 @theme inline {
+  /* Cartographic Colors for Tailwind */
+  --color-cartographic-parchment: var(--cartographic-parchment);
+  --color-cartographic-charcoal: var(--cartographic-charcoal);
+  --color-cartographic-navy: var(--cartographic-navy);
+  --color-cartographic-blue: var(--cartographic-blue);
+  --color-cartographic-terracotta: var(--cartographic-terracotta);
+  --color-cartographic-forest: var(--cartographic-forest);
+  --color-cartographic-cream: var(--cartographic-cream);
+
+  /* Font Family Variables */
+  --font-family-serif: var(--font-serif);
+
+  /* Original Design System */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -103,6 +136,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

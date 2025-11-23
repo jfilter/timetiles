@@ -1,8 +1,13 @@
+/**
+ * @module
+ */
+
 "use client";
 
 import { useTheme } from "next-themes";
-import { defaultDarkTheme, defaultLightTheme } from "../lib/chart-themes";
+
 import type { ChartTheme } from "../components/charts/types";
+import { defaultDarkTheme, defaultLightTheme } from "../lib/chart-themes";
 
 /**
  * Hook that returns the appropriate chart theme based on the current theme mode.
@@ -17,7 +22,7 @@ import type { ChartTheme } from "../components/charts/types";
  * }
  * ```
  */
-export function useChartTheme(): ChartTheme {
+export const useChartTheme = (): ChartTheme => {
   const { theme } = useTheme();
   return theme === "dark" ? defaultDarkTheme : defaultLightTheme;
-}
+};

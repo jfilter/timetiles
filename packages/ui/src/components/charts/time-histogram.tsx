@@ -10,9 +10,10 @@
  */
 "use client";
 
-import { useCallback, useMemo } from "react";
 import type { EChartsOption } from "echarts";
-import { BaseChart } from "./BaseChart";
+import { useCallback, useMemo } from "react";
+
+import { BaseChart } from "./base-chart";
 import type { ChartTheme, EChartsEventParams } from "./types";
 
 export interface TimeHistogramDataItem {
@@ -54,17 +55,18 @@ export interface TimeHistogramProps {
  * />
  * ```
  */
-export function TimeHistogram({
-  data = [],
+const defaultData: TimeHistogramDataItem[] = [];
+
+export const TimeHistogram = ({
+  data = defaultData,
   onBarClick,
   theme,
   height = 200,
   className,
   isInitialLoad = false,
   isUpdating = false,
-  loadingMessage = "Loading histogram...",
   emptyMessage = "No data available",
-}: TimeHistogramProps) {
+}: TimeHistogramProps) => {
   // Determine if dark theme based on theme prop
   const isDark = useMemo(() => {
     if (!theme) return false;
@@ -190,12 +192,15 @@ export function TimeHistogram({
 
   const handleChartClick = useCallback(
     (params: EChartsEventParams) => {
-      if (onBarClick && params.data != null) {
-        // Type guard for chart data format [timestamp, count]
-        if (Array.isArray(params.data) && params.data.length >= 2 && typeof params.data[0] === "number") {
-          const date = new Date(params.data[0]);
-          onBarClick(date);
-        }
+      if (
+        onBarClick &&
+        params.data != null &&
+        Array.isArray(params.data) &&
+        params.data.length >= 2 &&
+        typeof params.data[0] === "number"
+      ) {
+        const date = new Date(params.data[0]);
+        onBarClick(date);
       }
     },
     [onBarClick]
@@ -204,14 +209,20 @@ export function TimeHistogram({
   const chartEvents = useMemo(() => ({ click: handleChartClick }), [handleChartClick]);
 
   // Handle empty state
+  const containerHeight = useMemo(() => (typeof height === "number" ? `${height}px` : height), [height]);
+  const emptyStateStyle = useMemo(
+    () => ({ height: containerHeight, display: "flex", alignItems: "center", justifyContent: "center" }),
+    [containerHeight]
+  );
+  const emptyTextStyle = useMemo(
+    () => ({ color: theme?.textColor ?? "#6b7280", fontSize: "14px" }),
+    [theme?.textColor]
+  );
+
   if (data.length === 0 && !isInitialLoad && !isUpdating) {
-    const containerHeight = typeof height === "number" ? `${height}px` : height;
     return (
-      <div
-        className={className}
-        style={{ height: containerHeight, display: "flex", alignItems: "center", justifyContent: "center" }}
-      >
-        <div style={{ color: theme?.textColor || "#6b7280", fontSize: "14px" }}>{emptyMessage}</div>
+      <div className={className} style={emptyStateStyle}>
+        <div style={emptyTextStyle}>{emptyMessage}</div>
       </div>
     );
   }
@@ -227,4 +238,4 @@ export function TimeHistogram({
       onEvents={chartEvents}
     />
   );
-}
+};

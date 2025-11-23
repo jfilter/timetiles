@@ -12,13 +12,12 @@
 import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
-import { BaseChart } from "./BaseChart";
+import { BaseChart } from "./base-chart";
 import type { BarChartDataItem, ChartTheme } from "./types";
 
 // Helper to check if click params are valid
-function isValidClickParams(params: unknown): params is { dataIndex?: number; componentType?: string } {
-  return typeof params === "object" && params !== null && "dataIndex" in params;
-}
+const isValidClickParams = (params: unknown): params is { dataIndex?: number; componentType?: string } =>
+  typeof params === "object" && params !== null && "dataIndex" in params;
 
 export interface BarChartProps {
   /** Chart data */
@@ -55,16 +54,10 @@ export const BarChart = ({
   isUpdating,
   onBarClick,
 }: BarChartProps) => {
-  console.log(`[BarChart] Rendering with ${data.length} items`);
-
   const chartOption: EChartsOption = useMemo(() => {
     // Extract labels and values
     const labels = data.map((item) => item.label);
     const values = data.map((item) => item.value);
-
-    console.log(`[BarChart] chartOption useMemo`);
-    console.log(`  Labels:`, labels);
-    console.log(`  Values:`, values);
 
     return {
       // Animation config
@@ -111,8 +104,14 @@ export const BarChart = ({
           label: {
             show: true,
             position: "right",
-            formatter: (params: any) => {
-              return params.value?.toString() || "0";
+            formatter: (params: unknown) => {
+              if (typeof params === "object" && params !== null && "value" in params) {
+                const value = (params as { value?: unknown }).value;
+                if (typeof value === "number" || typeof value === "string") {
+                  return value.toString();
+                }
+              }
+              return "0";
             },
           },
         },
@@ -121,7 +120,7 @@ export const BarChart = ({
   }, [data]);
 
   // Create event handlers
-  // Very important to depeond on data to enable animation on data change.
+  // Very important to depend on data to enable animation on data change.
   // Otherwise the chart will be re-rendered without animation on data updates.
   const onEventsHandler = useMemo(() => {
     if (!onBarClick) return undefined;
@@ -139,7 +138,7 @@ export const BarChart = ({
         }
       },
     };
-  }, [onBarClick]);
+  }, [onBarClick, data]);
 
   return (
     <BaseChart

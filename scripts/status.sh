@@ -84,3 +84,61 @@ if docker compose -f docker-compose.dev.yml ps --services --filter status=runnin
 fi
 
 echo ""
+
+# ============================================================================
+# Migration Status
+# ============================================================================
+echo "🔄 Migration Status:"
+
+if docker compose -f docker-compose.dev.yml ps --services --filter status=running 2>/dev/null | grep -q postgres; then
+    # Check if all migrations are applied
+    cd apps/web 2>/dev/null || { print_warning "Could not find apps/web directory"; echo ""; exit 0; }
+
+    # Check migration status using Payload
+    MIGRATION_OUTPUT=$(pnpm --silent payload migrate:status 2>&1)
+    MIGRATION_EXIT=$?
+
+    # Count total migrations and check for pending
+    TOTAL_MIGRATIONS=$(echo "$MIGRATION_OUTPUT" | grep "│.*Yes" | wc -l | tr -d ' ' || echo "0")
+    PENDING_COUNT=$(echo "$MIGRATION_OUTPUT" | grep "│.*No" | wc -l | tr -d ' ' || echo "0")
+
+    if [ "$MIGRATION_EXIT" -eq 0 ]; then
+        if [ "$PENDING_COUNT" -eq 0 ] && [ "$TOTAL_MIGRATIONS" -gt 0 ]; then
+            print_success "All migrations applied ($TOTAL_MIGRATIONS total)"
+        elif [ "$PENDING_COUNT" -gt 0 ]; then
+            print_warning "$PENDING_COUNT pending migration(s) (run 'pnpm --filter web payload migrate')"
+        else
+            print_info "Migration status checked"
+        fi
+    else
+        print_warning "Could not check migration status"
+    fi
+
+    # Check for schema drift (need to create new migration)
+    DRIFT_OUTPUT=$(echo "n" | timeout 10s pnpm --silent payload migrate:create --name drift_check 2>&1 || true)
+
+    if echo "$DRIFT_OUTPUT" | grep -q "No schema changes detected"; then
+        print_success "Schema is up-to-date (no drift detected)"
+    elif echo "$DRIFT_OUTPUT" | grep -q "schema changes detected" || echo "$DRIFT_OUTPUT" | grep -q "The following changes"; then
+        print_warning "Schema changes detected (run 'pnpm --filter web payload migrate:create')"
+    fi
+
+    # Check if payload-types.ts needs regeneration
+    TYPES_BEFORE=$(md5 -q payload-types.ts 2>/dev/null || echo "missing")
+    pnpm --silent payload generate:types >/dev/null 2>&1 || true
+    TYPES_AFTER=$(md5 -q payload-types.ts 2>/dev/null || echo "missing")
+
+    if [ "$TYPES_BEFORE" = "$TYPES_AFTER" ]; then
+        print_success "TypeScript types are up-to-date"
+    else
+        print_warning "TypeScript types need regeneration (run 'pnpm --filter web payload generate:types')"
+        # Restore original file to avoid uncommitted changes
+        git checkout payload-types.ts 2>/dev/null || true
+    fi
+
+    cd ../.. 2>/dev/null || true
+else
+    print_missing "Database not running (cannot check migrations)"
+fi
+
+echo ""

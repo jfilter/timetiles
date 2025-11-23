@@ -43,11 +43,11 @@
     "vitest": "^2.1.8"
   },
   "exports": {
+    ".": "./src/index.ts",
     "./globals.css": "./src/styles/globals.css",
     "./postcss.config": "./postcss.config.mjs",
-    "./lib/*": "./src/lib/*.ts",
-    "./components/*": "./src/components/*.tsx",
-    "./hooks/*": "./src/hooks/*.ts",
-    "./charts": "./src/components/charts/index.ts"
+    "./design-system": "./DESIGN_SYSTEM.md",
+    "./charts": "./src/components/charts/index.ts",
+    "./icons": "./src/components/icons/index.ts"
   }
 }

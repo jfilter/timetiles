@@ -53,7 +53,14 @@
     },
     "lint": {
       "dependsOn": ["^lint"],
-      "inputs": ["**/*.{ts,tsx,js,jsx}", "content/**/*.{md,mdx}", "scripts/**/*.ts"],
+      "inputs": [
+        "**/*.{ts,tsx,js,jsx}",
+        "content/**/*.{md,mdx}",
+        "scripts/**/*.ts",
+        "eslint.config.js",
+        ".eslintrc*",
+        ".eslintignore"
+      ],
       "outputs": [".lint-results.json"]
     },
     "format": {
@@ -61,6 +68,11 @@
     },
     "typecheck": {
       "dependsOn": ["^typecheck"],
+      "inputs": [
+        "**/*.{ts,tsx}",
+        "tsconfig.json",
+        "tsconfig.*.json"
+      ],
       "outputs": [".typecheck-results.json"]
     },
     "dev": {

@@ -14,7 +14,9 @@ describe("cn", () => {
   });
 
   it("handles conditional class names", () => {
-    const result = cn("base-class", true && "conditional-class", false && "hidden-class");
+    const shouldShow = true;
+    const shouldHide = false;
+    const result = cn("base-class", shouldShow && "conditional-class", shouldHide && "hidden-class");
     expect(result).toBe("base-class conditional-class");
   });
 
