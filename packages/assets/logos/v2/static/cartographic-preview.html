@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TimeTiles Cartographic Logo Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: linear-gradient(135deg, #f8f5f0 0%, #e8e4dd 100%);
+      min-height: 100vh;
+      padding: 3rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 3rem;
+      font-weight: 700;
+      color: #404040;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 1.125rem;
+      color: #4a5568;
+      text-align: center;
+      margin-bottom: 3rem;
+      letter-spacing: 0.5px;
+    }
+
+    .design-notes {
+      background: white;
+      border: 1px solid rgba(74, 85, 104, 0.2);
+      border-radius: 4px;
+      padding: 2rem;
+      margin-bottom: 3rem;
+    }
+
+    .design-notes h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      color: #404040;
+      margin-bottom: 1rem;
+    }
+
+    .design-notes ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .design-notes li {
+      padding: 0.5rem 0;
+      padding-left: 1.5rem;
+      position: relative;
+      color: #4a5568;
+      line-height: 1.6;
+    }
+
+    .design-notes li::before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: #cd853f;
+      font-weight: 700;
+    }
+
+    .logo-grid {
+      display: grid;
+      gap: 3rem;
+    }
+
+    .logo-section {
+      background: white;
+      border: 1px solid rgba(74, 85, 104, 0.2);
+      border-radius: 4px;
+      padding: 2rem;
+    }
+
+    .logo-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #404040;
+      margin-bottom: 0.5rem;
+    }
+
+    .logo-description {
+      font-size: 0.875rem;
+      color: #4a5568;
+      margin-bottom: 2rem;
+      opacity: 0.8;
+    }
+
+    .logo-display {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+      background: linear-gradient(135deg, #f8f5f0 0%, #ffffff 100%);
+      border: 1px solid rgba(74, 85, 104, 0.1);
+      border-radius: 2px;
+      margin-bottom: 1rem;
+    }
+
+    .logo-display.dark {
+      background: linear-gradient(135deg, #404040 0%, #4a5568 100%);
+    }
+
+    .logo-display img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .logo-specs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      font-size: 0.75rem;
+      color: #4a5568;
+      margin-top: 1rem;
+    }
+
+    .logo-spec {
+      padding: 0.75rem;
+      background: #f8f5f0;
+      border-radius: 2px;
+    }
+
+    .logo-spec strong {
+      display: block;
+      color: #404040;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 0.625rem;
+    }
+
+    .color-palette {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .color-swatch {
+      flex: 1;
+      min-width: 100px;
+      text-align: center;
+    }
+
+    .color-box {
+      width: 100%;
+      height: 80px;
+      border-radius: 2px;
+      margin-bottom: 0.5rem;
+      border: 1px solid rgba(74, 85, 104, 0.2);
+    }
+
+    .color-name {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #404040;
+      margin-bottom: 0.25rem;
+    }
+
+    .color-value {
+      font-size: 0.625rem;
+      color: #4a5568;
+      font-family: 'Space Mono', monospace;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1.5rem;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>TimeTiles Cartographic Logo</h1>
+    <p class="subtitle">Refined earth-tone design following the Cartographic Design System</p>
+
+    <div class="design-notes">
+      <h2>Design Philosophy</h2>
+      <ul>
+        <li><strong>Earth-Tone Palette:</strong> Navy, terracotta, forest green, and cream replace generic blue gradients</li>
+        <li><strong>Layered Geometry:</strong> Rectangular tiles suggest temporal map slices and geospatial data layers</li>
+        <li><strong>Cartographic Details:</strong> Subtle coordinate grid, compass rose, and location markers evoke vintage maps</li>
+        <li><strong>Editorial Typography:</strong> Playfair Display serif brings authority and sophistication</li>
+        <li><strong>Sharp Precision:</strong> 2px border radius maintains cartographic accuracy</li>
+        <li><strong>OKLCH Colors:</strong> Perceptual uniformity ensures consistent appearance across displays</li>
+      </ul>
+    </div>
+
+    <div class="color-palette">
+      <div class="color-swatch">
+        <div class="color-box" style="background: #4a5568;"></div>
+        <div class="color-name">Navy</div>
+        <div class="color-value">oklch(0.35 0.06 250)</div>
+      </div>
+      <div class="color-swatch">
+        <div class="color-box" style="background: #cd853f;"></div>
+        <div class="color-name">Terracotta</div>
+        <div class="color-value">oklch(0.56 0.14 35)</div>
+      </div>
+      <div class="color-swatch">
+        <div class="color-box" style="background: #5f9e6e;"></div>
+        <div class="color-name">Forest</div>
+        <div class="color-value">oklch(0.42 0.08 145)</div>
+      </div>
+      <div class="color-swatch">
+        <div class="color-box" style="background: #404040;"></div>
+        <div class="color-name">Charcoal</div>
+        <div class="color-value">oklch(0.25 0 0)</div>
+      </div>
+      <div class="color-swatch">
+        <div class="color-box" style="background: #e8e4dd; border: 1px solid #4a5568;"></div>
+        <div class="color-name">Cream</div>
+        <div class="color-value">oklch(0.88 0.01 80)</div>
+      </div>
+    </div>
+
+    <div class="logo-grid">
+      <!-- Icon Only -->
+      <div class="logo-section">
+        <h3 class="logo-title">Icon Only</h3>
+        <p class="logo-description">Square format for favicons, app icons, and social media profiles</p>
+
+        <div class="logo-display">
+          <img src="static/logo-cartographic.svg" alt="TimeTiles Logo Icon" width="120">
+        </div>
+
+        <div class="logo-display dark">
+          <img src="static/logo-cartographic.svg" alt="TimeTiles Logo Icon (Dark)" width="120">
+        </div>
+
+        <div class="logo-specs">
+          <div class="logo-spec">
+            <strong>Dimensions</strong>
+            120×120px
+          </div>
+          <div class="logo-spec">
+            <strong>Format</strong>
+            Square, centered
+          </div>
+          <div class="logo-spec">
+            <strong>Use Case</strong>
+            Favicons, icons
+          </div>
+        </div>
+      </div>
+
+      <!-- Horizontal Layout -->
+      <div class="logo-section">
+        <h3 class="logo-title">Horizontal Layout</h3>
+        <p class="logo-description">Full lockup for headers, marketing materials, and wide spaces</p>
+
+        <div class="logo-display">
+          <img src="static/logo-cartographic-horizontal.svg" alt="TimeTiles Logo Horizontal" style="max-width: 420px;">
+        </div>
+
+        <div class="logo-display dark">
+          <img src="static/logo-cartographic-horizontal.svg" alt="TimeTiles Logo Horizontal (Dark)" style="max-width: 420px;">
+        </div>
+
+        <div class="logo-specs">
+          <div class="logo-spec">
+            <strong>Dimensions</strong>
+            420×120px
+          </div>
+          <div class="logo-spec">
+            <strong>Format</strong>
+            Landscape, left-aligned
+          </div>
+          <div class="logo-spec">
+            <strong>Use Case</strong>
+            Headers, banners
+          </div>
+          <div class="logo-spec">
+            <strong>Typography</strong>
+            Playfair Display 52pt
+          </div>
+        </div>
+      </div>
+
+      <!-- Vertical Layout -->
+      <div class="logo-section">
+        <h3 class="logo-title">Vertical Layout</h3>
+        <p class="logo-description">Stacked format for narrow spaces, mobile apps, and vertical compositions</p>
+
+        <div class="logo-display">
+          <img src="static/logo-cartographic-vertical.svg" alt="TimeTiles Logo Vertical" width="200">
+        </div>
+
+        <div class="logo-display dark">
+          <img src="static/logo-cartographic-vertical.svg" alt="TimeTiles Logo Vertical (Dark)" width="200">
+        </div>
+
+        <div class="logo-specs">
+          <div class="logo-spec">
+            <strong>Dimensions</strong>
+            200×240px
+          </div>
+          <div class="logo-spec">
+            <strong>Format</strong>
+            Portrait, center-aligned
+          </div>
+          <div class="logo-spec">
+            <strong>Use Case</strong>
+            Mobile, posters
+          </div>
+          <div class="logo-spec">
+            <strong>Typography</strong>
+            Playfair Display 42pt
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="design-notes" style="margin-top: 3rem;">
+      <h2>Comparison with Previous Design</h2>
+      <ul>
+        <li><strong>Color Evolution:</strong> Blue gradients (#0ea5e9, #0284c7) → Earth tones (navy, terracotta, forest)</li>
+        <li><strong>Typography Shift:</strong> Generic sans-serif → Playfair Display (editorial authority)</li>
+        <li><strong>Conceptual Change:</strong> Abstract data tiles → Structured cartographic layers</li>
+        <li><strong>Visual Identity:</strong> Tech startup aesthetic → Surveyor's seal / map institution</li>
+        <li><strong>Design System Alignment:</strong> Now perfectly matches DESIGN_SYSTEM.md principles</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

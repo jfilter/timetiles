@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TimeTiles Grid Blue Logo Iterations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: linear-gradient(135deg, #f8f5f0 0%, #e8e4dd 100%);
+      min-height: 100vh;
+      padding: 3rem;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 3.5rem;
+      font-weight: 700;
+      color: #404040;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 1.25rem;
+      color: #4a5568;
+      text-align: center;
+      margin-bottom: 1rem;
+      letter-spacing: 0.5px;
+    }
+
+    .theme-tag {
+      display: inline-block;
+      background: linear-gradient(135deg, #6495ed, #4a5568);
+      color: white;
+      padding: 0.5rem 1.5rem;
+      border-radius: 2px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin: 0 auto 3rem;
+      display: block;
+      width: fit-content;
+    }
+
+    .design-notes {
+      background: white;
+      border: 2px solid #4a5568;
+      border-radius: 2px;
+      padding: 2.5rem;
+      margin-bottom: 3rem;
+      box-shadow: 0 4px 12px rgba(74, 85, 104, 0.1);
+    }
+
+    .design-notes h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.75rem;
+      color: #404040;
+      margin-bottom: 1.5rem;
+    }
+
+    .design-notes p {
+      color: #4a5568;
+      line-height: 1.8;
+      margin-bottom: 1rem;
+      font-size: 1.05rem;
+    }
+
+    .design-notes ul {
+      list-style: none;
+      padding-left: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .design-notes li {
+      padding: 1rem;
+      background: linear-gradient(135deg, #f8f5f0, #e8e4dd);
+      border-left: 3px solid #6495ed;
+      border-radius: 2px;
+      color: #4a5568;
+      line-height: 1.6;
+    }
+
+    .design-notes li strong {
+      color: #404040;
+      display: block;
+      margin-bottom: 0.25rem;
+      font-size: 0.95rem;
+    }
+
+    .logo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 2.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .logo-card {
+      background: white;
+      border: 2px solid #4a5568;
+      border-radius: 2px;
+      padding: 2rem;
+      box-shadow: 0 4px 12px rgba(74, 85, 104, 0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .logo-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(74, 85, 104, 0.15);
+    }
+
+    .logo-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #404040;
+      margin-bottom: 0.5rem;
+    }
+
+    .logo-version {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: #6495ed;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 1rem;
+    }
+
+    .logo-description {
+      font-size: 0.95rem;
+      color: #4a5568;
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+
+    .logo-display {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+      background: linear-gradient(135deg, #f8f5f0 0%, #ffffff 100%);
+      border: 1px solid #d8d4cd;
+      border-radius: 2px;
+      margin-bottom: 1rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logo-display::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background:
+        linear-gradient(to right, rgba(74, 85, 104, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(74, 85, 104, 0.03) 1px, transparent 1px);
+      background-size: 20px 20px;
+      pointer-events: none;
+    }
+
+    .logo-display.dark {
+      background: linear-gradient(135deg, #404040 0%, #4a5568 100%);
+    }
+
+    .logo-display img {
+      max-width: 100%;
+      height: auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo-label {
+      font-size: 0.7rem;
+      color: #a0a09a;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .logo-specs {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .logo-spec {
+      padding: 1rem;
+      background: linear-gradient(135deg, #f8f5f0, #e8e4dd);
+      border-radius: 2px;
+      border-left: 2px solid #6495ed;
+    }
+
+    .logo-spec strong {
+      display: block;
+      color: #404040;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 0.7rem;
+    }
+
+    .logo-spec span {
+      color: #4a5568;
+      font-size: 0.9rem;
+    }
+
+    .color-palette {
+      background: white;
+      border: 2px solid #4a5568;
+      border-radius: 2px;
+      padding: 2.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .color-palette h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.75rem;
+      color: #404040;
+      margin-bottom: 2rem;
+    }
+
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .color-swatch {
+      text-align: center;
+    }
+
+    .color-box {
+      width: 100%;
+      height: 100px;
+      border-radius: 2px;
+      margin-bottom: 0.75rem;
+      border: 2px solid #4a5568;
+      box-shadow: 0 2px 8px rgba(74, 85, 104, 0.15);
+    }
+
+    .color-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #404040;
+      margin-bottom: 0.25rem;
+    }
+
+    .color-value {
+      font-size: 0.7rem;
+      color: #4a5568;
+      font-family: 'Space Mono', monospace;
+    }
+
+    .comparison {
+      background: white;
+      border: 2px solid #4a5568;
+      border-radius: 2px;
+      padding: 2.5rem;
+      margin-top: 3rem;
+    }
+
+    .comparison h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.75rem;
+      color: #404040;
+      margin-bottom: 2rem;
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 2rem;
+    }
+
+    .comparison-item {
+      padding: 1.5rem;
+      border-radius: 2px;
+    }
+
+    .comparison-item.old {
+      background: linear-gradient(135deg, #0ea5e9, #0284c7);
+      color: white;
+    }
+
+    .comparison-item.new {
+      background: linear-gradient(135deg, #6495ed, #4a5568);
+      color: white;
+    }
+
+    .comparison-item h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .comparison-item ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .comparison-item li {
+      padding: 0.5rem 0;
+      padding-left: 1.5rem;
+      position: relative;
+      opacity: 0.95;
+    }
+
+    .comparison-item li::before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      font-weight: 700;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1.5rem;
+      }
+
+      h1 {
+        font-size: 2.5rem;
+      }
+
+      .logo-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .comparison-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>TimeTiles Logo Iterations</h1>
+    <p class="subtitle">Blue & Beige Grid Variations</p>
+    <div class="theme-tag">Grid-Focused • Cartographic Design System</div>
+
+    <div class="design-notes">
+      <h2>Design Direction</h2>
+      <p>These iterations explore the <strong>grid-like aesthetic</strong> using <strong>blue shades and beige/gray tones</strong> from the Cartographic Design System, eliminating all green colors. Each variation emphasizes different aspects of geospatial mapping and temporal data visualization.</p>
+
+      <ul>
+        <li>
+          <strong>Blue Palette</strong>
+          Cartographic blue (#6495ed), navy (#4a5568), charcoal (#404040) for data and temporal emphasis
+        </li>
+        <li>
+          <strong>Beige/Gray Palette</strong>
+          Parchment (#f8f5f0), cream (#e8e4dd), gray tones for neutral base and subtle structure
+        </li>
+        <li>
+          <strong>Grid Emphasis</strong>
+          Strong horizontal and vertical lines, coordinate systems, and technical precision
+        </li>
+        <li>
+          <strong>Temporal Layers</strong>
+          Overlapping tiles suggest time slices and historical data depth
+        </li>
+        <li>
+          <strong>Cartographic Details</strong>
+          Coordinate markers, compass elements, measurement indicators, and blueprint styling
+        </li>
+        <li>
+          <strong>No Green</strong>
+          Forest green completely removed in favor of blue/gray/beige harmony
+        </li>
+      </ul>
+    </div>
+
+    <div class="color-palette">
+      <h2>Color Palette</h2>
+      <div class="color-grid">
+        <div class="color-swatch">
+          <div class="color-box" style="background: #6495ed;"></div>
+          <div class="color-name">Cartographic Blue</div>
+          <div class="color-value">oklch(0.58 0.11 220)</div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-box" style="background: #4a5568;"></div>
+          <div class="color-name">Navy</div>
+          <div class="color-value">oklch(0.35 0.06 250)</div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-box" style="background: #404040;"></div>
+          <div class="color-name">Charcoal</div>
+          <div class="color-value">oklch(0.25 0 0)</div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-box" style="background: #f8f5f0; border-color: #4a5568;"></div>
+          <div class="color-name">Parchment</div>
+          <div class="color-value">oklch(0.96 0.01 80)</div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-box" style="background: #e8e4dd; border-color: #4a5568;"></div>
+          <div class="color-name">Cream</div>
+          <div class="color-value">oklch(0.88 0.01 80)</div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-box" style="background: #b8b4ad;"></div>
+          <div class="color-name">Gray</div>
+          <div class="color-value">~oklch(0.72 0.01 60)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="logo-grid">
+      <!-- Version 1 -->
+      <div class="logo-card">
+        <div class="logo-version">Version 1</div>
+        <h3 class="logo-title">Clean Grid with Blue Accents</h3>
+        <p class="logo-description">Structured grid foundation with beige cells and strategic blue highlights forming a cross pattern. Emphasizes coordinate precision and spatial organization.</p>
+
+        <div class="logo-label">Light Background</div>
+        <div class="logo-display">
+          <img src="static/logo-grid-blue-v1.svg" alt="Grid Blue V1" width="120">
+        </div>
+
+        <div class="logo-label">Dark Background</div>
+        <div class="logo-display dark">
+          <img src="static/logo-grid-blue-v1.svg" alt="Grid Blue V1 Dark" width="120">
+        </div>
+
+        <div class="logo-specs">
+          <div class="logo-spec">
+            <strong>Grid Style</strong>
+            <span>Regular matrix</span>
+          </div>
+          <div class="logo-spec">
+            <strong>Accent Pattern</strong>
+            <span>Center cross</span>
+          </div>
+          <div class="logo-spec">
+            <strong>Complexity</strong>
+            <span>Simple, clear</span>
+          </div>
+          <div class="logo-spec">
+            <strong>Best For</strong>
+            <span>Clean, modern look</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Version 2 -->
+      <div class="logo-card">
+        <div class="logo-version">Version 2</div>
+        <h3 class="logo-title">Layered Temporal Tiles</h3>
+        <p class="logo-description">Horizontal layers showing temporal progression from gray (past) to beige (middle) to blue (present). Grid overlay connects all time periods.</p>
+
+        <div class="logo-label">Light Background</div>
+        <div class="logo-display">
+          <img src="static/logo-grid-blue-v2.svg" alt="Grid Blue V2" width="120">
+        </div>
+
+        <div class="logo-label">Dark Background</div>
+        <div class="logo-display dark">
+          <img src="static/logo-grid-blue-v2.svg" alt="Grid Blue V2 Dark" width="120">
+        </div>
+
+        <div class="logo-specs">
+          <div class="logo-spec">
+            <strong>Grid Style</strong>
+            <span>Layered horizontal</span>
+          </div>
+          <div class="logo-spec">
+            <strong>Accent Pattern</strong>
+            <span>Bottom row focus</span>
+          </div>
+          <div class="logo-spec">
+            <strong>Complexity</strong>
+            <span>Medium depth</span>
+          </div>
+          <div class="logo-spec">
+            <strong>Best For</strong>
+            <span>Temporal emphasis</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Version 3 -->
+      <div class="logo-card">
+        <div class="logo-version">Version 3</div>
+        <h3 class="logo-title">Map Grid Mosaic</h3>
+        <p class="logo-description">Dense mosaic of small tiles resembling a detailed survey map. Blue tiles scattered like data points on a cartographic grid. Includes grid coordinate labels (A-D, 1-4).</p>
+
+        <div class="logo-label">Light Background</div>
+        <div class="logo-display">
+          <img src="static/logo-grid-blue-v3.svg" alt="Grid Blue V3" width="120">
+        </div>
+
+        <div class="logo-label">Dark Background</div>
+        <div class="logo-display dark">
+          <img src="static/logo-grid-blue-v3.svg" alt="Grid Blue V3 Dark" width="120">
+        </div>
+
+        <div class="logo-specs">
+          <div class="logo-spec">
+            <strong>Grid Style</strong>
+            <span>Dense mosaic</span>
+          </div>
+          <div class="logo-spec">
+            <strong>Accent Pattern</strong>
+            <span>Scattered data points</span>
+          </div>
+          <div class="logo-spec">
+            <strong>Complexity</strong>
+            <span>High detail</span>
+          </div>
+          <div class="logo-spec">
+            <strong>Best For</strong>
+            <span>Technical, detailed</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Version 4 -->
+      <div class="logo-card">
+        <div class="logo-version">Version 4</div>
+        <h3 class="logo-title">Technical Blueprint Style</h3>
+        <p class="logo-description">Engineering/architectural aesthetic with construction lines, dimension markers, and technical annotations. Blue cross pattern on precise grid. Corner registration marks and measurement indicators.</p>
+
+        <div class="logo-label">Light Background</div>
+        <div class="logo-display">
+          <img src="static/logo-grid-blue-v4.svg" alt="Grid Blue V4" width="120">
+        </div>
+
+        <div class="logo-label">Dark Background</div>
+        <div class="logo-display dark">
+          <img src="static/logo-grid-blue-v4.svg" alt="Grid Blue V4 Dark" width="120">
+        </div>
+
+        <div class="logo-specs">
+          <div class="logo-spec">
+            <strong>Grid Style</strong>
+            <span>Blueprint/technical</span>
+          </div>
+          <div class="logo-spec">
+            <strong>Accent Pattern</strong>
+            <span>Cross + corners</span>
+          </div>
+          <div class="logo-spec">
+            <strong>Complexity</strong>
+            <span>High precision</span>
+          </div>
+          <div class="logo-spec">
+            <strong>Best For</strong>
+            <span>Professional, technical</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="comparison">
+      <h2>Evolution from Original Design</h2>
+      <div class="comparison-grid">
+        <div class="comparison-item old">
+          <h3>Original Blue Gradient Logo</h3>
+          <ul>
+            <li>Cyan/sky blue gradients (#0ea5e9 → #0284c7)</li>
+            <li>Abstract mosaic tiles</li>
+            <li>Generic tech aesthetic</li>
+            <li>Scattered circular accents</li>
+            <li>Light grid overlay</li>
+          </ul>
+        </div>
+        <div class="comparison-item new">
+          <h3>New Grid Blue Iterations</h3>
+          <ul>
+            <li>Cartographic blue + navy + beige (#6495ed, #4a5568)</li>
+            <li>Structured grid-first design</li>
+            <li>Technical/surveyor aesthetic</li>
+            <li>Coordinate systems and markers</li>
+            <li>Bold, prominent grid lines</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="design-notes" style="margin-top: 3rem;">
+      <h2>Recommendations</h2>
+      <ul>
+        <li>
+          <strong>Version 1 - Clean Grid</strong>
+          Best for modern, approachable branding. Simple enough to work at small sizes while maintaining visual interest.
+        </li>
+        <li>
+          <strong>Version 2 - Temporal Layers</strong>
+          Strongest conceptual alignment with "TimeTiles" name. Clearly shows temporal progression and data history.
+        </li>
+        <li>
+          <strong>Version 3 - Map Mosaic</strong>
+          Most cartographically authentic. Excellent for geospatial/mapping contexts but may be too detailed at small sizes.
+        </li>
+        <li>
+          <strong>Version 4 - Blueprint</strong>
+          Most distinctive and memorable. Technical precision aesthetic perfect for professional GIS/mapping tools.
+        </li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Blue variations for mosaic tiles -->
+    <linearGradient id="gb3-blue1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6495ed"/>
+      <stop offset="100%" style="stop-color:#5078c7"/>
+    </linearGradient>
+    <linearGradient id="gb3-blue2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5078c7"/>
+      <stop offset="100%" style="stop-color:#4a5568"/>
+    </linearGradient>
+    <linearGradient id="gb3-blue3" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#6495ed"/>
+      <stop offset="100%" style="stop-color:#4a5568"/>
+    </linearGradient>
+    <!-- Beige/gray mosaic tiles -->
+    <linearGradient id="gb3-beige1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8f5f0"/>
+      <stop offset="100%" style="stop-color:#e8e4dd"/>
+    </linearGradient>
+    <linearGradient id="gb3-beige2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8e4dd"/>
+      <stop offset="100%" style="stop-color:#d0ccc5"/>
+    </linearGradient>
+    <linearGradient id="gb3-gray" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#b8b4ad"/>
+      <stop offset="100%" style="stop-color:#a0a09a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="120" height="120" fill="#f8f5f0" rx="2"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Dense map grid mosaic - like a detailed survey map -->
+
+    <!-- Grid structure - beige base tiles (background) -->
+    <g opacity="0.8">
+      <!-- Top row -->
+      <rect x="-42" y="-42" width="12" height="12" fill="url(#gb3-beige1)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+      <rect x="-28" y="-42" width="12" height="12" fill="url(#gb3-beige2)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+      <rect x="-14" y="-42" width="12" height="12" fill="url(#gb3-gray)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+      <rect x="2" y="-42" width="12" height="12" fill="url(#gb3-beige1)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+      <rect x="16" y="-42" width="12" height="12" fill="url(#gb3-beige2)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+      <rect x="30" y="-42" width="12" height="12" fill="url(#gb3-gray)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+
+      <!-- Second row -->
+      <rect x="-42" y="-28" width="12" height="12" fill="url(#gb3-beige2)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+      <rect x="-28" y="-28" width="12" height="12" fill="url(#gb3-gray)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+      <rect x="16" y="-28" width="12" height="12" fill="url(#gb3-beige1)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+      <rect x="30" y="-28" width="12" height="12" fill="url(#gb3-beige2)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+
+      <!-- Bottom half sparse beige -->
+      <rect x="-42" y="16" width="12" height="12" fill="url(#gb3-gray)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+      <rect x="-28" y="16" width="12" height="12" fill="url(#gb3-beige2)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+      <rect x="30" y="16" width="12" height="12" fill="url(#gb3-beige1)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+
+      <rect x="-42" y="30" width="12" height="12" fill="url(#gb3-beige1)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+      <rect x="16" y="30" width="12" height="12" fill="url(#gb3-gray)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+      <rect x="30" y="30" width="12" height="12" fill="url(#gb3-beige2)" stroke="#b8b4ad" stroke-width="0.4" rx="1"/>
+    </g>
+
+    <!-- Blue accent tiles - temporal/data highlights -->
+    <g opacity="0.95">
+      <!-- Center cluster - main focus -->
+      <rect x="-14" y="-28" width="26" height="26" fill="url(#gb3-blue1)" stroke="#404040" stroke-width="0.8" rx="1"/>
+
+      <!-- Scattered blue tiles suggesting data points -->
+      <rect x="2" y="-28" width="12" height="12" fill="url(#gb3-blue2)" stroke="#404040" stroke-width="0.6" rx="1"/>
+
+      <rect x="-14" y="2" width="12" height="12" fill="url(#gb3-blue3)" stroke="#404040" stroke-width="0.6" rx="1"/>
+      <rect x="2" y="2" width="12" height="12" fill="url(#gb3-blue2)" stroke="#404040" stroke-width="0.6" rx="1"/>
+
+      <rect x="-28" y="30" width="12" height="12" fill="url(#gb3-blue3)" stroke="#404040" stroke-width="0.6" rx="1"/>
+      <rect x="2" y="30" width="12" height="12" fill="url(#gb3-blue1)" stroke="#404040" stroke-width="0.6" rx="1"/>
+
+      <rect x="-14" y="16" width="12" height="12" fill="url(#gb3-blue2)" stroke="#404040" stroke-width="0.6" rx="1"/>
+      <rect x="16" y="16" width="12" height="12" fill="url(#gb3-blue3)" stroke="#404040" stroke-width="0.6" rx="1"/>
+    </g>
+
+    <!-- Strong grid overlay - cartographic precision -->
+    <g stroke="#4a5568" stroke-width="0.6" fill="none" opacity="0.5">
+      <!-- Vertical lines -->
+      <line x1="-42" y1="-42" x2="-42" y2="42"/>
+      <line x1="-28" y1="-42" x2="-28" y2="42"/>
+      <line x1="-14" y1="-42" x2="-14" y2="42"/>
+      <line x1="2" y1="-42" x2="2" y2="42"/>
+      <line x1="16" y1="-42" x2="16" y2="42"/>
+      <line x1="30" y1="-42" x2="30" y2="42"/>
+      <line x1="42" y1="-42" x2="42" y2="42"/>
+
+      <!-- Horizontal lines -->
+      <line x1="-42" y1="-42" x2="42" y2="-42"/>
+      <line x1="-42" y1="-28" x2="42" y2="-28"/>
+      <line x1="-42" y1="-14" x2="42" y2="-14"/>
+      <line x1="-42" y1="2" x2="42" y2="2"/>
+      <line x1="-42" y1="16" x2="42" y2="16"/>
+      <line x1="-42" y1="30" x2="42" y2="30"/>
+      <line x1="-42" y1="42" x2="42" y2="42"/>
+    </g>
+
+    <!-- Grid coordinate numbers (decorative) -->
+    <g opacity="0.25" fill="#404040" font-family="monospace" font-size="3" font-weight="bold">
+      <text x="-40" y="-38">1</text>
+      <text x="-12" y="-38">2</text>
+      <text x="4" y="-38">3</text>
+      <text x="32" y="-38">4</text>
+
+      <text x="-45" y="-26">A</text>
+      <text x="-45" y="-12">B</text>
+      <text x="-45" y="4">C</text>
+      <text x="-45" y="18">D</text>
+    </g>
+
+    <!-- Intersection markers at blue tile corners -->
+    <g fill="#6495ed" opacity="0.5">
+      <circle cx="-14" cy="-28" r="1"/>
+      <circle cx="14" cy="-28" r="1"/>
+      <circle cx="-14" cy="2" r="1"/>
+      <circle cx="14" cy="2" r="1"/>
+    </g>
+  </g>
+</svg>

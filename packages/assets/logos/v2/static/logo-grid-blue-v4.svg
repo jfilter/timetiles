@@ -1,0 +1,123 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Blueprint blue gradients -->
+    <linearGradient id="gb4-blue1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6495ed"/>
+      <stop offset="100%" style="stop-color:#4876d6"/>
+    </linearGradient>
+    <linearGradient id="gb4-blue2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4a5568"/>
+      <stop offset="100%" style="stop-color:#3a4555"/>
+    </linearGradient>
+    <linearGradient id="gb4-blue3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#5a7bc7"/>
+      <stop offset="100%" style="stop-color:#4a5568"/>
+    </linearGradient>
+    <!-- Gray technical tones -->
+    <linearGradient id="gb4-gray1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#c8c4bd"/>
+      <stop offset="100%" style="stop-color:#b0ada8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Blueprint-style background -->
+  <rect width="120" height="120" fill="#f8f5f0" rx="2"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Technical drawing grid with precise measurements -->
+
+    <!-- Background construction lines - very light -->
+    <g stroke="#d8d4cd" stroke-width="0.3" fill="none" opacity="0.5">
+      <!-- Fine grid -->
+      <line x1="-48" y1="-36" x2="48" y2="-36"/>
+      <line x1="-48" y1="-24" x2="48" y2="-24"/>
+      <line x1="-48" y1="-12" x2="48" y2="-12"/>
+      <line x1="-48" y1="0" x2="48" y2="0"/>
+      <line x1="-48" y1="12" x2="48" y2="12"/>
+      <line x1="-48" y1="24" x2="48" y2="24"/>
+      <line x1="-48" y1="36" x2="48" y2="36"/>
+
+      <line x1="-36" y1="-48" x2="-36" y2="48"/>
+      <line x1="-24" y1="-48" x2="-24" y2="48"/>
+      <line x1="-12" y1="-48" x2="-12" y2="48"/>
+      <line x1="0" y1="-48" x2="0" y2="48"/>
+      <line x1="12" y1="-48" x2="12" y2="48"/>
+      <line x1="24" y1="-48" x2="24" y2="48"/>
+      <line x1="36" y1="-48" x2="36" y2="48"/>
+    </g>
+
+    <!-- Gray structural tiles - blueprint base -->
+    <g opacity="0.4">
+      <rect x="-36" y="-36" width="20" height="20" fill="url(#gb4-gray1)" stroke="#a0a09a" stroke-width="0.5" rx="1"/>
+      <rect x="16" y="-36" width="20" height="20" fill="url(#gb4-gray1)" stroke="#a0a09a" stroke-width="0.5" rx="1"/>
+      <rect x="-36" y="16" width="20" height="20" fill="url(#gb4-gray1)" stroke="#a0a09a" stroke-width="0.5" rx="1"/>
+      <rect x="16" y="16" width="20" height="20" fill="url(#gb4-gray1)" stroke="#a0a09a" stroke-width="0.5" rx="1"/>
+    </g>
+
+    <!-- Blue technical elements - main design -->
+    <g opacity="0.9">
+      <!-- Central cross pattern - like a technical diagram -->
+      <rect x="-30" y="-6" width="60" height="12" fill="url(#gb4-blue3)" stroke="#404040" stroke-width="0.8" rx="1"/>
+      <rect x="-6" y="-30" width="12" height="60" fill="url(#gb4-blue3)" stroke="#404040" stroke-width="0.8" rx="1"/>
+
+      <!-- Corner technical blocks -->
+      <rect x="-38" y="-38" width="14" height="14" fill="url(#gb4-blue1)" stroke="#404040" stroke-width="0.7" rx="1"/>
+      <rect x="24" y="-38" width="14" height="14" fill="url(#gb4-blue2)" stroke="#404040" stroke-width="0.7" rx="1"/>
+      <rect x="-38" y="24" width="14" height="14" fill="url(#gb4-blue2)" stroke="#404040" stroke-width="0.7" rx="1"/>
+      <rect x="24" y="24" width="14" height="14" fill="url(#gb4-blue1)" stroke="#404040" stroke-width="0.7" rx="1"/>
+
+      <!-- Center focus square -->
+      <rect x="-8" y="-8" width="16" height="16" fill="url(#gb4-blue1)" stroke="#404040" stroke-width="0.9" rx="1"/>
+    </g>
+
+    <!-- Bold grid overlay - technical drawing lines -->
+    <g stroke="#4a5568" stroke-width="0.8" fill="none" opacity="0.6">
+      <!-- Major axes -->
+      <line x1="-48" y1="0" x2="48" y2="0" stroke-width="1"/>
+      <line x1="0" y1="-48" x2="0" y2="48" stroke-width="1"/>
+
+      <!-- Frame -->
+      <rect x="-42" y="-42" width="84" height="84" rx="1"/>
+    </g>
+
+    <!-- Technical callout lines -->
+    <g stroke="#6495ed" stroke-width="0.5" fill="none" opacity="0.4">
+      <!-- Dimension lines -->
+      <line x1="-38" y1="-44" x2="38" y2="-44"/>
+      <line x1="-38" y1="-44" x2="-38" y2="-42"/>
+      <line x1="38" y1="-44" x2="38" y2="-42"/>
+
+      <line x1="-44" y1="-38" x2="-44" y2="38"/>
+      <line x1="-44" y1="-38" x2="-42" y2="-38"/>
+      <line x1="-44" y1="38" x2="-42" y2="38"/>
+    </g>
+
+    <!-- Measurement markers -->
+    <g fill="#6495ed" opacity="0.5">
+      <!-- Corner registration marks -->
+      <circle cx="-42" cy="-42" r="1.5"/>
+      <circle cx="42" cy="-42" r="1.5"/>
+      <circle cx="-42" cy="42" r="1.5"/>
+      <circle cx="42" cy="42" r="1.5"/>
+
+      <!-- Center cross registration -->
+      <circle cx="0" cy="0" r="2" fill="#404040" opacity="0.8"/>
+    </g>
+
+    <!-- Technical labels (tiny, decorative) -->
+    <g opacity="0.3" fill="#404040" font-family="monospace" font-size="3.5" font-weight="bold">
+      <text x="-2" y="-46" text-anchor="middle">T</text>
+      <text x="-46" y="2" text-anchor="middle">0</text>
+      <text x="46" y="2" text-anchor="middle">1</text>
+      <text x="-2" y="48" text-anchor="middle">Δ</text>
+    </g>
+
+    <!-- Corner detail ornaments (blueprint style) -->
+    <g stroke="#4a5568" stroke-width="0.4" fill="none" opacity="0.3">
+      <polyline points="-48,-44 -44,-44 -44,-48"/>
+      <polyline points="48,-44 44,-44 44,-48"/>
+      <polyline points="-48,44 -44,44 -44,48"/>
+      <polyline points="48,44 44,44 44,48"/>
+    </g>
+  </g>
+</svg>

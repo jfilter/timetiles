@@ -1,0 +1,106 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="m7-blue1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6495ed"/>
+      <stop offset="100%" style="stop-color:#5078c7"/>
+    </linearGradient>
+    <linearGradient id="m7-blue2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5078c7"/>
+      <stop offset="100%" style="stop-color:#4a5568"/>
+    </linearGradient>
+    <linearGradient id="m7-beige1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8f5f0"/>
+      <stop offset="100%" style="stop-color:#e8e4dd"/>
+    </linearGradient>
+    <linearGradient id="m7-beige2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8e4dd"/>
+      <stop offset="100%" style="stop-color:#d0ccc5"/>
+    </linearGradient>
+
+    <!-- Shadow filters for depth -->
+    <filter id="shadow1" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.3"/>
+    </filter>
+    <filter id="shadow2" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="1" dy="1" stdDeviation="1" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <rect width="120" height="120" fill="#f8f5f0" rx="2"/>
+
+  <g transform="translate(60, 60)">
+    <!-- BOLD: Layered complexity with depth and shadows -->
+
+    <!-- Layer 1 (bottom): Grid foundation -->
+    <g opacity="0.4">
+      <rect x="-35" y="-35" width="14" height="14" fill="url(#m7-beige2)" stroke="#a0a09a" stroke-width="0.4" rx="1"/>
+      <rect x="-19" y="-35" width="14" height="14" fill="url(#m7-beige1)" stroke="#a0a09a" stroke-width="0.4" rx="1"/>
+      <rect x="-3" y="-35" width="14" height="14" fill="url(#m7-beige2)" stroke="#a0a09a" stroke-width="0.4" rx="1"/>
+      <rect x="13" y="-35" width="14" height="14" fill="url(#m7-beige1)" stroke="#a0a09a" stroke-width="0.4" rx="1"/>
+
+      <rect x="-35" y="-19" width="14" height="14" fill="url(#m7-beige1)" stroke="#a0a09a" stroke-width="0.4" rx="1"/>
+      <rect x="-35" y="-3" width="14" height="14" fill="url(#m7-beige2)" stroke="#a0a09a" stroke-width="0.4" rx="1"/>
+      <rect x="-35" y="13" width="14" height="14" fill="url(#m7-beige1)" stroke="#a0a09a" stroke-width="0.4" rx="1"/>
+
+      <rect x="13" y="-19" width="14" height="14" fill="url(#m7-beige2)" stroke="#a0a09a" stroke-width="0.4" rx="1"/>
+      <rect x="13" y="-3" width="14" height="14" fill="url(#m7-beige1)" stroke="#a0a09a" stroke-width="0.4" rx="1"/>
+      <rect x="13" y="13" width="14" height="14" fill="url(#m7-beige2)" stroke="#a0a09a" stroke-width="0.4" rx="1"/>
+    </g>
+
+    <!-- Layer 2 (middle): Organic beige tiles with shadows -->
+    <g filter="url(#shadow1)">
+      <rect x="-28" y="-28" width="18" height="18" fill="url(#m7-beige2)" stroke="#a0a09a" stroke-width="0.6" rx="1.5" opacity="0.9"/>
+      <rect x="10" y="-30" width="22" height="22" fill="url(#m7-beige1)" stroke="#a0a09a" stroke-width="0.6" rx="1.5" opacity="0.9"/>
+      <rect x="-30" y="10" width="20" height="20" fill="url(#m7-beige2)" stroke="#a0a09a" stroke-width="0.6" rx="1.5" opacity="0.9"/>
+      <rect x="8" y="12" width="24" height="24" fill="url(#m7-beige1)" stroke="#a0a09a" stroke-width="0.6" rx="1.5" opacity="0.9"/>
+    </g>
+
+    <!-- Layer 3 (top): Blue accent tiles with stronger shadows -->
+    <g filter="url(#shadow2)">
+      <rect x="-22" y="-20" width="16" height="16" fill="url(#m7-blue1)" stroke="#404040" stroke-width="0.9" rx="1.5" opacity="0.95"/>
+      <rect x="6" y="-24" width="18" height="18" fill="url(#m7-blue2)" stroke="#404040" stroke-width="0.9" rx="1.5" opacity="0.95"/>
+      <rect x="-24" y="6" width="17" height="17" fill="url(#m7-blue2)" stroke="#404040" stroke-width="0.9" rx="1.5" opacity="0.95"/>
+      <rect x="4" y="8" width="20" height="20" fill="url(#m7-blue1)" stroke="#404040" stroke-width="0.9" rx="1.5" opacity="0.95"/>
+    </g>
+
+    <!-- Layer 4: Small accent tiles on top -->
+    <g filter="url(#shadow2)">
+      <rect x="-8" y="-28" width="10" height="10" fill="url(#m7-blue1)" stroke="#404040" stroke-width="0.7" rx="1" opacity="0.95"/>
+      <rect x="-28" y="-8" width="10" height="10" fill="url(#m7-blue2)" stroke="#404040" stroke-width="0.7" rx="1" opacity="0.95"/>
+      <rect x="18" y="-8" width="10" height="10" fill="url(#m7-beige2)" stroke="#a0a09a" stroke-width="0.5" rx="1" opacity="0.85"/>
+      <rect x="-8" y="18" width="10" height="10" fill="url(#m7-beige1)" stroke="#a0a09a" stroke-width="0.5" rx="1" opacity="0.85"/>
+    </g>
+
+    <!-- Multi-level grid overlay -->
+    <g stroke="#4a5568" fill="none">
+      <!-- Deep layer grid -->
+      <g stroke-width="0.3" opacity="0.3">
+        <line x1="-38" y1="-24" x2="38" y2="-24"/>
+        <line x1="-38" y1="-12" x2="38" y2="-12"/>
+        <line x1="-38" y1="0" x2="38" y2="0"/>
+        <line x1="-38" y1="12" x2="38" y2="12"/>
+        <line x1="-38" y1="24" x2="38" y2="24"/>
+        <line x1="-24" y1="-38" x2="-24" y2="38"/>
+        <line x1="-12" y1="-38" x2="-12" y2="38"/>
+        <line x1="0" y1="-38" x2="0" y2="38"/>
+        <line x1="12" y1="-38" x2="12" y2="38"/>
+        <line x1="24" y1="-38" x2="24" y2="38"/>
+      </g>
+
+      <!-- Top layer grid -->
+      <g stroke-width="0.6" opacity="0.6">
+        <line x1="-40" y1="-18" x2="40" y2="-18"/>
+        <line x1="-40" y1="18" x2="40" y2="18"/>
+        <line x1="-18" y1="-40" x2="-18" y2="40"/>
+        <line x1="18" y1="-40" x2="18" y2="40"/>
+      </g>
+    </g>
+
+    <!-- 3D-style center marker -->
+    <g>
+      <circle cx="1" cy="1" r="3" fill="#404040" opacity="0.3"/>
+      <circle cx="0" cy="0" r="3" fill="#6495ed"/>
+      <circle cx="0" cy="0" r="1.5" fill="white" opacity="0.8"/>
+    </g>
+  </g>
+</svg>

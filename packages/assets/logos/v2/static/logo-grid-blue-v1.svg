@@ -1,0 +1,91 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Blue gradients - cartographic blues -->
+    <linearGradient id="gb1-blue1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6495ed"/><!-- cartographic blue -->
+      <stop offset="100%" style="stop-color:#4a5568"/><!-- navy -->
+    </linearGradient>
+    <linearGradient id="gb1-blue2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4a5568"/><!-- navy -->
+      <stop offset="100%" style="stop-color:#404040"/><!-- charcoal -->
+    </linearGradient>
+    <!-- Beige/gray gradients -->
+    <linearGradient id="gb1-beige1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8e4dd"/><!-- cream -->
+      <stop offset="100%" style="stop-color:#d8d4cd"/>
+    </linearGradient>
+    <linearGradient id="gb1-beige2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8f5f0"/><!-- parchment -->
+      <stop offset="100%" style="stop-color:#e8e4dd"/><!-- cream -->
+    </linearGradient>
+  </defs>
+
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0" rx="2"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Primary grid structure - strong horizontal/vertical emphasis -->
+
+    <!-- Background grid cells (beige tones) -->
+    <g opacity="0.7">
+      <rect x="-45" y="-45" width="28" height="28" fill="url(#gb1-beige1)" stroke="#4a5568" stroke-width="0.5" rx="2"/>
+      <rect x="-15" y="-45" width="28" height="28" fill="url(#gb1-beige2)" stroke="#4a5568" stroke-width="0.5" rx="2"/>
+      <rect x="15" y="-45" width="30" height="28" fill="url(#gb1-beige1)" stroke="#4a5568" stroke-width="0.5" rx="2"/>
+
+      <rect x="-45" y="-15" width="28" height="28" fill="url(#gb1-beige2)" stroke="#4a5568" stroke-width="0.5" rx="2"/>
+      <rect x="15" y="-15" width="30" height="28" fill="url(#gb1-beige1)" stroke="#4a5568" stroke-width="0.5" rx="2"/>
+
+      <rect x="-45" y="15" width="28" height="30" fill="url(#gb1-beige1)" stroke="#4a5568" stroke-width="0.5" rx="2"/>
+      <rect x="-15" y="15" width="28" height="30" fill="url(#gb1-beige2)" stroke="#4a5568" stroke-width="0.5" rx="2"/>
+      <rect x="15" y="15" width="30" height="30" fill="url(#gb1-beige1)" stroke="#4a5568" stroke-width="0.5" rx="2"/>
+    </g>
+
+    <!-- Accent blue tiles - temporal highlights -->
+    <g opacity="0.95">
+      <!-- Center cross pattern -->
+      <rect x="-15" y="-15" width="28" height="28" fill="url(#gb1-blue1)" stroke="#404040" stroke-width="0.8" rx="2"/>
+
+      <!-- Top accent -->
+      <rect x="-8" y="-38" width="14" height="8" fill="url(#gb1-blue2)" stroke="#404040" stroke-width="0.6" rx="2"/>
+
+      <!-- Right accent -->
+      <rect x="30" y="-8" width="8" height="14" fill="url(#gb1-blue1)" stroke="#404040" stroke-width="0.6" rx="2"/>
+
+      <!-- Bottom accent -->
+      <rect x="-8" y="30" width="14" height="8" fill="url(#gb1-blue2)" stroke="#404040" stroke-width="0.6" rx="2"/>
+
+      <!-- Left accent -->
+      <rect x="-38" y="-8" width="8" height="14" fill="url(#gb1-blue1)" stroke="#404040" stroke-width="0.6" rx="2"/>
+    </g>
+
+    <!-- Grid overlay - precise cartographic lines -->
+    <g stroke="#4a5568" stroke-width="0.4" fill="none" opacity="0.4">
+      <!-- Major grid lines -->
+      <line x1="-45" y1="-15" x2="45" y2="-15"/>
+      <line x1="-45" y1="15" x2="45" y2="15"/>
+      <line x1="-15" y1="-45" x2="-15" y2="45"/>
+      <line x1="15" y1="-45" x2="15" y2="45"/>
+
+      <!-- Minor grid lines -->
+      <line x1="-45" y1="-45" x2="45" y2="-45" stroke-dasharray="2,2" opacity="0.5"/>
+      <line x1="-45" y1="45" x2="45" y2="45" stroke-dasharray="2,2" opacity="0.5"/>
+      <line x1="-45" y1="-45" x2="-45" y2="45" stroke-dasharray="2,2" opacity="0.5"/>
+      <line x1="45" y1="-45" x2="45" y2="45" stroke-dasharray="2,2" opacity="0.5"/>
+    </g>
+
+    <!-- Coordinate markers at grid intersections -->
+    <g fill="#6495ed" opacity="0.6">
+      <circle cx="-15" cy="-15" r="1.5"/>
+      <circle cx="15" cy="-15" r="1.5"/>
+      <circle cx="-15" cy="15" r="1.5"/>
+      <circle cx="15" cy="15" r="1.5"/>
+      <circle cx="0" cy="0" r="2" fill="#404040"/>
+    </g>
+
+    <!-- Subtle compass rose in corner -->
+    <g transform="translate(35, -35)" opacity="0.35">
+      <path d="M 0,-5 L 2,3 L 0,1.5 L -2,3 Z" fill="#404040"/>
+      <circle cx="0" cy="0" r="1" fill="none" stroke="#4a5568" stroke-width="0.4"/>
+    </g>
+  </g>
+</svg>

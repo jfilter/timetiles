@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TimeTiles Logo Mix Variations Preview</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;600&family=Space+Mono:wght@600&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: linear-gradient(to bottom right, #f8f5f0, #e8e4dd);
+      padding: 3rem;
+      color: #404040;
+      line-height: 1.6;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 3rem;
+      color: #4a5568;
+      margin-bottom: 0.5rem;
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      color: #6b7280;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: white;
+      border: 2px solid #4a5568;
+      border-radius: 4px;
+      padding: 2rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-version {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #6495ed;
+      margin-bottom: 1rem;
+    }
+
+    .card-header {
+      margin-bottom: 1.5rem;
+    }
+
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.75rem;
+      color: #404040;
+      margin-bottom: 0.75rem;
+    }
+
+    .card-description {
+      font-size: 0.95rem;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+
+    .card-content {
+      margin-bottom: 1.5rem;
+    }
+
+    .card-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #6b7280;
+      margin-bottom: 0.75rem;
+    }
+
+    .preview-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(to bottom right, #f8f5f0, white);
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .preview-container img {
+      max-width: 120px;
+      height: auto;
+    }
+
+    .specs {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    .spec-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .spec-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #9ca3af;
+    }
+
+    .spec-value {
+      font-size: 0.9rem;
+      color: #404040;
+    }
+
+    .category-header {
+      text-align: center;
+      margin: 3rem 0 2rem;
+      padding: 1rem;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      max-width: 1400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .category-header h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      color: #4a5568;
+      margin-bottom: 0.5rem;
+    }
+
+    .category-header p {
+      color: #6b7280;
+      font-size: 1rem;
+    }
+
+    .source-link {
+      text-align: center;
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .source-link p {
+      color: #6b7280;
+      font-size: 0.9rem;
+    }
+
+    .source-link code {
+      font-family: 'Space Mono', monospace;
+      background: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 3px;
+      border: 1px solid #e5e7eb;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>TimeTiles Logo Mix Variations</h1>
+    <p>10 variations mixing grid-blue-v3 (dense grid mosaic) with logo-static (organic varied tiles). Progression from conservative to experimental designs.</p>
+  </div>
+
+  <!-- Conservative Variations -->
+  <div class="category-header">
+    <h2>Conservative: Grid Meets Organic</h2>
+    <p>Gentle blending of structured grid and organic tile placement</p>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-version">Mix Version 1</div>
+      <div class="card-header">
+        <h2 class="card-title">Organic with Grid Palette</h2>
+        <p class="card-description">
+          Static's organic layout using grid-blue color palette. Medium-strength grid overlay creates gentle structure without overwhelming the organic tiles.
+        </p>
+      </div>
+      <div class="card-content">
+        <div class="card-label">Preview</div>
+        <div class="preview-container">
+          <img src="logo-mix-v1.svg" alt="Logo Mix V1">
+        </div>
+        <div class="specs">
+          <div class="spec-item">
+            <div class="spec-label">Approach</div>
+            <div class="spec-value">Color palette swap</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Grid Strength</div>
+            <div class="spec-value">Medium (0.45 opacity)</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Tile Layout</div>
+            <div class="spec-value">Organic, varied sizes</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Complexity</div>
+            <div class="spec-value">Low, familiar</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-version">Mix Version 2</div>
+      <div class="card-header">
+        <h2 class="card-title">Three Tile Sizes</h2>
+        <p class="card-description">
+          Grid structure with three distinct tile sizes (8×8, 14×14, 20×20). Large blue tiles scattered, medium and small beige tiles fill gaps. Organized hierarchy.
+        </p>
+      </div>
+      <div class="card-content">
+        <div class="card-label">Preview</div>
+        <div class="preview-container">
+          <img src="logo-mix-v2.svg" alt="Logo Mix V2">
+        </div>
+        <div class="specs">
+          <div class="spec-item">
+            <div class="spec-label">Approach</div>
+            <div class="spec-value">Size-based hierarchy</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Grid Strength</div>
+            <div class="spec-value">Visible structure</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Tile Layout</div>
+            <div class="spec-value">3 sizes, organized</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Complexity</div>
+            <div class="spec-value">Low-medium</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-version">Mix Version 3</div>
+      <div class="card-header">
+        <h2 class="card-title">Organic on Grid Points</h2>
+        <p class="card-description">
+          Organic tiles placed at grid intersections with coordinate labels. Balances free-form placement with cartographic precision markers (A-D, 1-4).
+        </p>
+      </div>
+      <div class="card-content">
+        <div class="card-label">Preview</div>
+        <div class="preview-container">
+          <img src="logo-mix-v3.svg" alt="Logo Mix V3">
+        </div>
+        <div class="specs">
+          <div class="spec-item">
+            <div class="spec-label">Approach</div>
+            <div class="spec-value">Grid-guided organic</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Grid Strength</div>
+            <div class="spec-value">Light (0.3 opacity)</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Tile Layout</div>
+            <div class="spec-value">Snap to grid points</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Complexity</div>
+            <div class="spec-value">Medium</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Medium Complexity -->
+  <div class="category-header">
+    <h2>Medium: Structured Chaos</h2>
+    <p>Breaking grid rules while maintaining visual coherence</p>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-version">Mix Version 4</div>
+      <div class="card-header">
+        <h2 class="card-title">Breaking Free</h2>
+        <p class="card-description">
+          Grid cells escaping their boundaries with rotations. Structured foundation with rebellious blue tiles. Broken/dashed grid lines suggest disruption.
+        </p>
+      </div>
+      <div class="card-content">
+        <div class="card-label">Preview</div>
+        <div class="preview-container">
+          <img src="logo-mix-v4.svg" alt="Logo Mix V4">
+        </div>
+        <div class="specs">
+          <div class="spec-item">
+            <div class="spec-label">Approach</div>
+            <div class="spec-value">Rotated escape</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Grid Strength</div>
+            <div class="spec-value">Fragmented</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Tile Layout</div>
+            <div class="spec-value">12-15° rotations</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Complexity</div>
+            <div class="spec-value">Medium</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-version">Mix Version 5</div>
+      <div class="card-header">
+        <h2 class="card-title">Grid vs Organic Tension</h2>
+        <p class="card-description">
+          Strong grid overlay imposed on freely-placed organic tiles. Dense grid with coordinate labels creates visual conflict with chaotic tile placement.
+        </p>
+      </div>
+      <div class="card-content">
+        <div class="card-label">Preview</div>
+        <div class="preview-container">
+          <img src="logo-mix-v5.svg" alt="Logo Mix V5">
+        </div>
+        <div class="specs">
+          <div class="spec-item">
+            <div class="spec-label">Approach</div>
+            <div class="spec-value">Forced conflict</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Grid Strength</div>
+            <div class="spec-value">Strong (0.65 opacity)</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Tile Layout</div>
+            <div class="spec-value">Ignores grid</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Complexity</div>
+            <div class="spec-value">Medium-high</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-version">Mix Version 6</div>
+      <div class="card-header">
+        <h2 class="card-title">Multi-Scale Grid</h2>
+        <p class="card-description">
+          Variable grid cell sizes (6×6, 10×10, 15×15, 20×20) with matching tile sizes. Dense center, sparse edges. Controlled chaos through scale variation.
+        </p>
+      </div>
+      <div class="card-content">
+        <div class="card-label">Preview</div>
+        <div class="preview-container">
+          <img src="logo-mix-v6.svg" alt="Logo Mix V6">
+        </div>
+        <div class="specs">
+          <div class="spec-item">
+            <div class="spec-label">Approach</div>
+            <div class="spec-value">Variable scale</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Grid Strength</div>
+            <div class="spec-value">Multi-level</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Tile Layout</div>
+            <div class="spec-value">4 distinct sizes</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Complexity</div>
+            <div class="spec-value">Medium-high</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bold Designs -->
+  <div class="category-header">
+    <h2>Bold: Layered Complexity</h2>
+    <p>Depth, shadows, and overlapping elements create visual richness</p>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-version">Mix Version 7</div>
+      <div class="card-header">
+        <h2 class="card-title">Layered Depth</h2>
+        <p class="card-description">
+          Four distinct layers with drop shadows creating 3D depth. Bottom grid foundation, middle beige tiles, top blue accents. Multi-level grid overlay.
+        </p>
+      </div>
+      <div class="card-content">
+        <div class="card-label">Preview</div>
+        <div class="preview-container">
+          <img src="logo-mix-v7.svg" alt="Logo Mix V7">
+        </div>
+        <div class="specs">
+          <div class="spec-item">
+            <div class="spec-label">Approach</div>
+            <div class="spec-value">Z-axis layering</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Grid Strength</div>
+            <div class="spec-value">Multi-depth</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Tile Layout</div>
+            <div class="spec-value">4 layers, shadows</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Complexity</div>
+            <div class="spec-value">High</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-version">Mix Version 8</div>
+      <div class="card-header">
+        <h2 class="card-title">Transparent Overlays</h2>
+        <p class="card-description">
+          Six layers with varying transparency (0.25-0.9) creating depth through overlap. Dense coverage with emergent patterns from accumulated transparency.
+        </p>
+      </div>
+      <div class="card-content">
+        <div class="card-label">Preview</div>
+        <div class="preview-container">
+          <img src="logo-mix-v8.svg" alt="Logo Mix V8">
+        </div>
+        <div class="specs">
+          <div class="spec-item">
+            <div class="spec-label">Approach</div>
+            <div class="spec-value">Transparency layers</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Grid Strength</div>
+            <div class="spec-value">3-level overlay</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Tile Layout</div>
+            <div class="spec-value">6 layers, dense</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Complexity</div>
+            <div class="spec-value">High</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Experimental Variations -->
+  <div class="category-header">
+    <h2>Experimental: Radical Departures</h2>
+    <p>Breaking conventions with unexpected compositions and coordinate systems</p>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-version">Mix Version 9</div>
+      <div class="card-header">
+        <h2 class="card-title">Diagonal Chaos</h2>
+        <p class="card-description">
+          Dual rotated grids (45° and -30°) with wildly rotated tiles (12-82°). Tilted coordinate system (X, Y, Z). Rotation indicators and dynamic center.
+        </p>
+      </div>
+      <div class="card-content">
+        <div class="card-label">Preview</div>
+        <div class="preview-container">
+          <img src="logo-mix-v9.svg" alt="Logo Mix V9">
+        </div>
+        <div class="specs">
+          <div class="spec-item">
+            <div class="spec-label">Approach</div>
+            <div class="spec-value">Multi-angle grids</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Grid Strength</div>
+            <div class="spec-value">Rotated overlays</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Tile Layout</div>
+            <div class="spec-value">12-82° rotations</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Complexity</div>
+            <div class="spec-value">Very high</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-version">Mix Version 10</div>
+      <div class="card-header">
+        <h2 class="card-title">Radial Orbit</h2>
+        <p class="card-description">
+          Complete departure from cartesian grid. Circular concentric rings (5 orbits) with radial spokes (12 angles). Tiles orbit in circular pattern. Angular coordinates (0°-270°).
+        </p>
+      </div>
+      <div class="card-content">
+        <div class="card-label">Preview</div>
+        <div class="preview-container">
+          <img src="logo-mix-v10.svg" alt="Logo Mix V10">
+        </div>
+        <div class="specs">
+          <div class="spec-item">
+            <div class="spec-label">Approach</div>
+            <div class="spec-value">Polar coordinates</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Grid Strength</div>
+            <div class="spec-value">Radial spokes</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Tile Layout</div>
+            <div class="spec-value">3 orbital rings</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-label">Complexity</div>
+            <div class="spec-value">Radical</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="source-link">
+    <p>Source files: <code>packages/assets/logos/static/logo-mix-v{1-10}.svg</code></p>
+  </div>
+</body>
+</html>

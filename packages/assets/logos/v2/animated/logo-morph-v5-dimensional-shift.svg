@@ -1,0 +1,424 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="d-blue1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6495ed"/>
+      <stop offset="100%" style="stop-color:#5078c7"/>
+    </linearGradient>
+    <linearGradient id="d-blue2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5078c7"/>
+      <stop offset="100%" style="stop-color:#4a5568"/>
+    </linearGradient>
+    <linearGradient id="d-beige1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8f5f0"/>
+      <stop offset="100%" style="stop-color:#e8e4dd"/>
+    </linearGradient>
+    <linearGradient id="d-beige2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8e4dd"/>
+      <stop offset="100%" style="stop-color:#d0ccc5"/>
+    </linearGradient>
+
+    <filter id="depth-shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dx="2" dy="4" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.5"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="120" height="120" fill="#f8f5f0" rx="2"/>
+
+  <!-- VARIANT 5: Dimensional Shift - 3D perspective rotation with depth -->
+  <g transform="translate(60, 60)">
+
+    <!-- Layer 1 (Far back) - Smaller scale, faded -->
+    <g opacity="0.4" filter="url(#depth-shadow)">
+      <rect x="-35" y="-35" width="16" height="16" fill="url(#d-beige2)" stroke="#a0a09a" stroke-width="0.3" rx="1">
+        <animateTransform
+          attributeName="transform"
+          type="scale"
+          values="0.7;0.8;0.7;0.85;0.7;0.75"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animate
+          attributeName="opacity"
+          values="0.3;0.4;0.3;0.45;0.3;0.35"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+      </rect>
+    </g>
+
+    <!-- Layer 2 (Mid-back) -->
+    <g opacity="0.6">
+      <rect x="-32" y="-32" width="18" height="18" fill="url(#d-beige1)" stroke="#a0a09a" stroke-width="0.4" rx="1.2">
+        <animateTransform
+          attributeName="transform"
+          type="translate"
+          values="0,0; -2,-3; 0,0; -4,-5; 0,0; -3,-4"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animateTransform
+          attributeName="transform"
+          type="scale"
+          values="0.85;0.9;0.85;0.95;0.85;0.88"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animateTransform
+          attributeName="transform"
+          type="skewX"
+          values="0;5;0;8;0;6"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+      </rect>
+    </g>
+
+    <!-- Layer 3 (Foreground) - Blue accent tiles with 3D rotation -->
+    <g>
+      <rect x="-40" y="-40" width="20" height="20" fill="url(#d-blue1)" stroke="#404040" stroke-width="0.9" rx="1.5" opacity="0.9">
+        <animateTransform
+          attributeName="transform"
+          type="translate"
+          values="0,0; 2,-2; 0,0; 4,-3; 0,0; 3,-2"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animateTransform
+          attributeName="transform"
+          type="rotate"
+          values="0 -30 -30; 15 -30 -30; 0 -30 -30; 25 -30 -30; 0 -30 -30; 20 -30 -30"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animateTransform
+          attributeName="transform"
+          type="scale"
+          values="1;1.1;1;1.15;1;1.08"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animate
+          attributeName="width"
+          values="20;22;18;24;20;22"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+        <animate
+          attributeName="height"
+          values="20;22;18;24;20;22"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+      </rect>
+
+      <rect x="20" y="-20" width="20" height="20" fill="url(#d-blue2)" stroke="#404040" stroke-width="0.9" rx="1.5" opacity="0.9">
+        <animateTransform
+          attributeName="transform"
+          type="translate"
+          values="0,0; 3,-1; 0,0; 5,-2; 0,0; 4,-1"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animateTransform
+          attributeName="transform"
+          type="rotate"
+          values="0 30 -10; -12 30 -10; 0 30 -10; -20 30 -10; 0 30 -10; -15 30 -10"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animateTransform
+          attributeName="transform"
+          type="scale"
+          values="1;1.08;1;1.12;1;1.05"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animate
+          attributeName="width"
+          values="20;22;20;26;22;24"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+        <animate
+          attributeName="height"
+          values="20;22;20;26;22;24"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+      </rect>
+
+      <rect x="-20" y="20" width="20" height="20" fill="url(#d-blue2)" stroke="#404040" stroke-width="0.9" rx="1.5" opacity="0.9">
+        <animateTransform
+          attributeName="transform"
+          type="translate"
+          values="0,0; -1,3; 0,0; -2,5; 0,0; -1,4"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animateTransform
+          attributeName="transform"
+          type="rotate"
+          values="0 -10 30; 18 -10 30; 0 -10 30; 28 -10 30; 0 -10 30; 22 -10 30"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animateTransform
+          attributeName="transform"
+          type="scale"
+          values="1;1.06;1;1.1;1;1.04"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animate
+          attributeName="width"
+          values="20;20;18;22;20;20"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+        <animate
+          attributeName="height"
+          values="20;20;18;22;20;20"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+      </rect>
+
+      <rect x="20" y="8" width="20" height="24" fill="url(#d-blue1)" stroke="#404040" stroke-width="0.9" rx="1.5" opacity="0.9">
+        <animateTransform
+          attributeName="transform"
+          type="translate"
+          values="0,0; 2,2; 0,0; 3,4; 0,0; 2,3"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animateTransform
+          attributeName="transform"
+          type="rotate"
+          values="0 30 20; -10 30 20; 0 30 20; -18 30 20; 0 30 20; -14 30 20"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animateTransform
+          attributeName="transform"
+          type="scale"
+          values="1;1.05;1;1.08;1;1.03"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animate
+          attributeName="width"
+          values="20;20;18;24;22;20"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+        <animate
+          attributeName="height"
+          values="24;20;18;28;24;22"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+      </rect>
+    </g>
+
+    <!-- Medium tiles with parallax movement -->
+    <g opacity="0.85">
+      <rect x="-18" y="-28" width="15" height="15" fill="url(#d-beige1)" stroke="#a0a09a" stroke-width="0.5" rx="1">
+        <animateTransform
+          attributeName="transform"
+          type="translate"
+          values="0,0; 1,-1; 0,0; 2,-2; 0,0; 1,-1"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animateTransform
+          attributeName="transform"
+          type="scale"
+          values="1;1.03;1;1.05;1;1.02"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+      </rect>
+
+      <rect x="5" y="-28" width="14" height="14" fill="url(#d-beige2)" stroke="#a0a09a" stroke-width="0.5" rx="1">
+        <animateTransform
+          attributeName="transform"
+          type="translate"
+          values="0,0; 1.5,-0.5; 0,0; 2.5,-1; 0,0; 2,-0.7"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+        <animateTransform
+          attributeName="transform"
+          type="scale"
+          values="1;1.04;1;1.06;1;1.03"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"
+          additive="sum"/>
+      </rect>
+    </g>
+
+    <!-- Grid lines with perspective distortion -->
+    <g stroke="#4a5568" fill="none">
+      <line x1="-42" y1="-20" x2="42" y2="-20" stroke-width="0.5">
+        <animate
+          attributeName="opacity"
+          values="0.45;0.5;0.3;0.6;0.5;0.55"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+        <animate
+          attributeName="y1"
+          values="-20;-21;-20;-22;-20;-21"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+        <animate
+          attributeName="y2"
+          values="-20;-19;-20;-18;-20;-19"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+      </line>
+
+      <line x1="-42" y1="0" x2="42" y2="0" stroke-width="0.5">
+        <animate
+          attributeName="opacity"
+          values="0.45;0.5;0.3;0.6;0.5;0.55"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+      </line>
+
+      <line x1="-20" y1="-42" x2="-20" y2="42" stroke-width="0.5">
+        <animate
+          attributeName="opacity"
+          values="0.45;0.5;0.3;0.6;0.5;0.55"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+        <animate
+          attributeName="x1"
+          values="-20;-21;-20;-22;-20;-21"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+        <animate
+          attributeName="x2"
+          values="-20;-19;-20;-18;-20;-19"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+      </line>
+
+      <line x1="0" y1="-42" x2="0" y2="42" stroke-width="0.5">
+        <animate
+          attributeName="opacity"
+          values="0.45;0.5;0.3;0.6;0.5;0.55"
+          dur="60s"
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+      </line>
+    </g>
+
+    <!-- Center marker with 3D pulsing -->
+    <circle cx="0" cy="0" r="2" fill="#404040" filter="url(#depth-shadow)">
+      <animate
+        attributeName="r"
+        values="2;3.5;2;4;2;3.2"
+        dur="60s"
+        repeatCount="indefinite"
+        calcMode="spline"
+        keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+      <animate
+        attributeName="fill"
+        values="#404040;#6495ed;#404040;#5078c7;#404040;#6495ed"
+        dur="60s"
+        repeatCount="indefinite"
+        calcMode="spline"
+        keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+    </circle>
+
+    <!-- Outer glow ring for depth effect -->
+    <circle cx="0" cy="0" r="15" fill="none" stroke="#6495ed" stroke-width="0.5">
+      <animate
+        attributeName="r"
+        values="15;18;15;20;15;17"
+        dur="60s"
+        repeatCount="indefinite"
+        calcMode="spline"
+        keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+      <animate
+        attributeName="opacity"
+        values="0.2;0.35;0.2;0.4;0.2;0.3"
+        dur="60s"
+        repeatCount="indefinite"
+        calcMode="spline"
+        keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1"/>
+    </circle>
+  </g>
+</svg>
