@@ -1,9 +1,9 @@
 /**
- * Server component wrapper for conditional top menu bar.
+ * Server component wrapper for adaptive header.
  *
- * Fetches main menu data from Payload CMS and passes it to the client-side
- * conditional menu bar component. Handles server-side data fetching and
- * error handling for menu configuration.
+ * Fetches main menu data from Payload CMS and renders the adaptive header
+ * which automatically shows marketing navigation or app controls based on
+ * the current route.
  *
  * @module
  * @category Components
@@ -13,7 +13,7 @@ import { getPayload } from "payload";
 import config from "@/payload.config";
 import type { MainMenu } from "@/payload-types";
 
-import { ClientConditionalTopMenuBar } from "./client-conditional-top-menu-bar";
+import { AdaptiveHeader } from "./adaptive-header";
 
 const getMainMenu = async (): Promise<MainMenu> => {
   const payload = await getPayload({ config });
@@ -25,5 +25,5 @@ const getMainMenu = async (): Promise<MainMenu> => {
 export const ConditionalTopMenuBar = async () => {
   const mainMenu = await getMainMenu();
 
-  return <ClientConditionalTopMenuBar mainMenu={mainMenu} />;
+  return <AdaptiveHeader mainMenu={mainMenu} />;
 };

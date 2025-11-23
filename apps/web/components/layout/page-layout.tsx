@@ -56,7 +56,7 @@ export const PageLayout = ({
   };
 
   return (
-    <div className="min-h-screen pb-12 pt-32">
+    <div className="min-h-screen pb-12 pt-20">
       <div className="container mx-auto max-w-4xl px-6">
         {centered ? (
           <div className="flex justify-center">
