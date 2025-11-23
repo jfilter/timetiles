@@ -92,6 +92,34 @@ const extractFieldFromData = (data: unknown, path: string | null | undefined): s
   return null;
 };
 
+const getDatasetInfo = (dataset: Event["dataset"]) => {
+  if (typeof dataset !== "object" || dataset == null) {
+    return { id: dataset, title: undefined, catalog: undefined };
+  }
+
+  const catalogName = typeof dataset.catalog === "object" && dataset.catalog != null ? dataset.catalog.name : undefined;
+
+  return {
+    id: dataset.id,
+    title: dataset.name,
+    catalog: catalogName,
+  };
+};
+
+const enrichEventData = (
+  eventData: Event["data"],
+  title: string | null,
+  description: string | null,
+  id: string | null
+): { [k: string]: unknown } => {
+  // Event data should always be an object from CSV/Excel import
+  if (typeof eventData !== "object" || eventData == null || Array.isArray(eventData)) {
+    throw new Error(`Invalid event data: expected object, got ${typeof eventData}`);
+  }
+
+  return { ...eventData, title, description, id };
+};
+
 const transformEvent = (event: Event) => {
   // Extract field mappings from dataset
   const fieldMappings =
@@ -102,31 +130,19 @@ const transformEvent = (event: Event) => {
   const title =
     extractFieldFromData(eventData, fieldMappings?.titlePath) ??
     extractFieldFromData(eventData, "title") ??
-    extractFieldFromData(eventData, "name");
+    extractFieldFromData(eventData, "name") ??
+    `Event ${event.id}`;
   const description =
     extractFieldFromData(eventData, fieldMappings?.descriptionPath) ?? extractFieldFromData(eventData, "description");
   const id = extractFieldFromData(eventData, "id");
 
   // Enrich data with extracted fields so UI can always access title/description/id
   // regardless of original field names (e.g., "titel" in German data becomes "title")
-  const enrichedData =
-    typeof eventData === "object" && eventData !== null && !Array.isArray(eventData)
-      ? { ...eventData, title, description, id }
-      : eventData;
+  const enrichedData = enrichEventData(eventData, title, description, id);
 
   return {
     id: event.id,
-    dataset: {
-      id: typeof event.dataset === "object" && event.dataset != null ? event.dataset.id : event.dataset,
-      title: typeof event.dataset === "object" && event.dataset != null ? event.dataset.name : undefined,
-      catalog:
-        typeof event.dataset === "object" &&
-        event.dataset != null &&
-        typeof event.dataset.catalog === "object" &&
-        event.dataset.catalog != null
-          ? event.dataset.catalog.name
-          : undefined,
-    },
+    dataset: getDatasetInfo(event.dataset),
     data: enrichedData,
     location: event.location
       ? {
