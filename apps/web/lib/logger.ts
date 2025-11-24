@@ -50,6 +50,7 @@ const developmentConfig: pino.LoggerOptions = {
       ignore: "pid,hostname",
       translateTime: "yyyy-mm-dd HH:MM:ss",
       messageFormat: "{msg}",
+      hideObject: true, // Hide metadata objects to avoid duplication (error objects still shown)
     },
   },
 };
