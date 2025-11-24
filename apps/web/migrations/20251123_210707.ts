@@ -1,5 +1,5 @@
-import type { MigrateUpArgs, MigrateDownArgs } from '@payloadcms/db-postgres'
-import { sql } from '@payloadcms/db-postgres'
+import type { MigrateUpArgs, MigrateDownArgs } from "@payloadcms/db-postgres";
+import { sql } from "@payloadcms/db-postgres";
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
@@ -82,7 +82,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "_pages_v_blocks_newsletter_form_path_idx" ON "payload"."_pages_v_blocks_newsletter_form" USING btree ("_path");
   CREATE INDEX "_pages_v_blocks_newsletter_c_t_a_order_idx" ON "payload"."_pages_v_blocks_newsletter_c_t_a" USING btree ("_order");
   CREATE INDEX "_pages_v_blocks_newsletter_c_t_a_parent_id_idx" ON "payload"."_pages_v_blocks_newsletter_c_t_a" USING btree ("_parent_id");
-  CREATE INDEX "_pages_v_blocks_newsletter_c_t_a_path_idx" ON "payload"."_pages_v_blocks_newsletter_c_t_a" USING btree ("_path");`)
+  CREATE INDEX "_pages_v_blocks_newsletter_c_t_a_path_idx" ON "payload"."_pages_v_blocks_newsletter_c_t_a" USING btree ("_path");`);
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
@@ -95,5 +95,5 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   DROP TYPE "payload"."enum_pages_blocks_newsletter_c_t_a_variant";
   DROP TYPE "payload"."enum_pages_blocks_newsletter_c_t_a_size";
   DROP TYPE "payload"."enum__pages_v_blocks_newsletter_c_t_a_variant";
-  DROP TYPE "payload"."enum__pages_v_blocks_newsletter_c_t_a_size";`)
+  DROP TYPE "payload"."enum__pages_v_blocks_newsletter_c_t_a_size";`);
 }
