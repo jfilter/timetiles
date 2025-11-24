@@ -70,14 +70,27 @@ export const ClusteredMap = ({
 
   // Global stats for consistent size/color across all views
   const globalStats = useMemo(() => {
-    if (globalClusterStats) {
-      logger.debug("Using global cluster stats for size/color", globalClusterStats);
-      return globalClusterStats;
-    }
+    const rawStats = globalClusterStats ?? { p20: 2, p40: 5, p60: 10, p80: 20, p100: 50 };
 
-    // Fallback to defaults if no global stats available
-    logger.debug("Using default cluster stats (no global stats available)");
-    return { p20: 2, p40: 5, p60: 10, p80: 20, p100: 50 };
+    // Ensure strictly ascending order for MapLibre step expressions
+    const stats = {
+      p20: rawStats.p20,
+      p40: 0,
+      p60: 0,
+      p80: 0,
+      p100: 0,
+    };
+    stats.p40 = Math.max(rawStats.p40, stats.p20 + 1);
+    stats.p60 = Math.max(rawStats.p60, stats.p40 + 1);
+    stats.p80 = Math.max(rawStats.p80, stats.p60 + 1);
+    stats.p100 = Math.max(rawStats.p100, stats.p80 + 1);
+
+    logger.debug("Global cluster stats for size/color", {
+      rawStats,
+      stats,
+    });
+
+    return stats;
   }, [globalClusterStats]);
 
   // Viewport-relative stats for opacity (shows density within current view)
@@ -109,23 +122,17 @@ export const ClusteredMap = ({
     };
 
     // Ensure strictly ascending order for MapLibre step expressions
-    // If percentiles are equal, add small increments to maintain order
     const stats = {
       p20: rawStats.p20 ?? 2,
-      p40: Math.max(rawStats.p40 ?? 5, (rawStats.p20 ?? 2) + 1),
-      p60: Math.max(rawStats.p60 ?? 10, Math.max(rawStats.p40 ?? 5, (rawStats.p20 ?? 2) + 1) + 1),
-      p80: Math.max(
-        rawStats.p80 ?? 20,
-        Math.max(rawStats.p60 ?? 10, Math.max(rawStats.p40 ?? 5, (rawStats.p20 ?? 2) + 1) + 1) + 1
-      ),
-      p100: Math.max(
-        rawStats.p100 ?? 50,
-        Math.max(
-          rawStats.p80 ?? 20,
-          Math.max(rawStats.p60 ?? 10, Math.max(rawStats.p40 ?? 5, (rawStats.p20 ?? 2) + 1) + 1) + 1
-        ) + 1
-      ),
+      p40: 0,
+      p60: 0,
+      p80: 0,
+      p100: 0,
     };
+    stats.p40 = Math.max(rawStats.p40 ?? 5, stats.p20 + 1);
+    stats.p60 = Math.max(rawStats.p60 ?? 10, stats.p40 + 1);
+    stats.p80 = Math.max(rawStats.p80 ?? 20, stats.p60 + 1);
+    stats.p100 = Math.max(rawStats.p100 ?? 50, stats.p80 + 1);
 
     logger.debug("Viewport cluster percentiles for opacity", {
       totalClusters: clusters.length,
