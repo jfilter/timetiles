@@ -1,397 +1,401 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Logo Morph V1: Organic Flow</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&display=swap');
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Logo Morph V1: Organic Flow</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&display=swap");
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-    body {
-      min-height: 100vh;
-      background: linear-gradient(135deg, #f8f5f0 0%, #e8e4dd 50%, #d0ccc5 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'Cormorant Garamond', serif;
-      overflow: hidden;
-    }
+      body {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f8f5f0 0%, #e8e4dd 50%, #d0ccc5 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Cormorant Garamond", serif;
+        overflow: hidden;
+      }
 
-    .container {
-      position: relative;
-      width: 600px;
-      height: 600px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+      .container {
+        position: relative;
+        width: 600px;
+        height: 600px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-    #canvas {
-      width: 400px;
-      height: 400px;
-      position: relative;
-    }
+      #canvas {
+        width: 400px;
+        height: 400px;
+        position: relative;
+      }
 
-    .tile {
-      position: absolute;
-      border-radius: 2px;
-      will-change: transform, opacity, background;
-    }
+      .tile {
+        position: absolute;
+        border-radius: 2px;
+        will-change: transform, opacity, background;
+      }
 
-    .grid-line {
-      position: absolute;
-      background: #4a5568;
-      will-change: transform, opacity;
-    }
+      .grid-line {
+        position: absolute;
+        background: #4a5568;
+        will-change: transform, opacity;
+      }
 
-    .marker {
-      position: absolute;
-      border-radius: 50%;
-      background: #6495ed;
-      will-change: transform, opacity;
-    }
+      .marker {
+        position: absolute;
+        border-radius: 50%;
+        background: #6495ed;
+        will-change: transform, opacity;
+      }
 
-    .label {
-      position: absolute;
-      font-family: 'Space Mono', monospace;
-      font-size: 10px;
-      font-weight: 700;
-      color: #4a5568;
-      will-change: transform, opacity;
-    }
+      .label {
+        position: absolute;
+        font-family: "Space Mono", monospace;
+        font-size: 10px;
+        font-weight: 700;
+        color: #4a5568;
+        will-change: transform, opacity;
+      }
 
-    .info {
-      position: absolute;
-      bottom: 40px;
-      left: 50%;
-      transform: translateX(-50%);
-      text-align: center;
-      color: #6b7280;
-      font-size: 18px;
-      letter-spacing: 0.05em;
-    }
+      .info {
+        position: absolute;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        text-align: center;
+        color: #6b7280;
+        font-size: 18px;
+        letter-spacing: 0.05em;
+      }
 
-    .info-variant {
-      font-weight: 400;
-      color: #6495ed;
-      margin-bottom: 5px;
-      font-size: 14px;
-      text-transform: uppercase;
-      letter-spacing: 0.15em;
-    }
+      .info-variant {
+        font-weight: 400;
+        color: #6495ed;
+        margin-bottom: 5px;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+      }
 
-    .info-current {
-      font-weight: 300;
-      font-size: 24px;
-      opacity: 0.7;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div id="canvas"></div>
-    <div class="info">
-      <div class="info-variant">Organic Flow</div>
-      <div class="info-current" id="currentLogo">Mix V1</div>
+      .info-current {
+        font-weight: 300;
+        font-size: 24px;
+        opacity: 0.7;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="canvas"></div>
+      <div class="info">
+        <div class="info-variant">Organic Flow</div>
+        <div class="info-current" id="currentLogo">Mix V1</div>
+      </div>
     </div>
-  </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-  <script>
-    // Logo state definitions - simplified representation
-    const logoStates = {
-      v1: {
-        name: 'Mix V1',
-        tiles: [
-          // Large blue tiles
-          { x: 100, y: 100, w: 65, h: 65, color: '#6495ed', opacity: 0.9, rotation: 0 },
-          { x: 235, y: 100, w: 65, h: 65, color: '#5078c7', opacity: 0.9, rotation: 0 },
-          { x: 100, y: 235, w: 65, h: 65, color: '#5078c7', opacity: 0.9, rotation: 0 },
-          { x: 235, y: 235, w: 65, h: 65, color: '#6495ed', opacity: 0.9, rotation: 0 },
-          // Medium beige tiles
-          { x: 130, y: 130, w: 50, h: 50, color: '#e8e4dd', opacity: 0.8, rotation: 0 },
-          { x: 220, y: 130, w: 50, h: 50, color: '#f8f5f0', opacity: 0.8, rotation: 0 },
-          { x: 130, y: 220, w: 50, h: 50, color: '#f8f5f0', opacity: 0.8, rotation: 0 },
-          { x: 220, y: 220, w: 50, h: 50, color: '#e8e4dd', opacity: 0.8, rotation: 0 },
-          // Small tiles
-          { x: 165, y: 95, w: 30, h: 30, color: '#d0ccc5', opacity: 0.75, rotation: 0 },
-          { x: 95, y: 165, w: 30, h: 30, color: '#d0ccc5', opacity: 0.75, rotation: 0 },
-          { x: 275, y: 165, w: 30, h: 30, color: '#f8f5f0', opacity: 0.75, rotation: 0 },
-          { x: 165, y: 275, w: 30, h: 30, color: '#e8e4dd', opacity: 0.75, rotation: 0 },
-        ],
-        gridLines: [
-          { x1: 50, y1: 150, x2: 350, y2: 150, opacity: 0.45 },
-          { x1: 50, y1: 250, x2: 350, y2: 250, opacity: 0.45 },
-          { x1: 150, y1: 50, x2: 150, y2: 350, opacity: 0.45 },
-          { x1: 250, y1: 50, x2: 250, y2: 350, opacity: 0.45 },
-        ]
-      },
-      v2: {
-        name: 'Mix V2',
-        tiles: [
-          // Large 20x20 tiles
-          { x: 80, y: 80, w: 70, h: 70, color: '#6495ed', opacity: 0.9, rotation: 0 },
-          { x: 240, y: 100, w: 70, h: 70, color: '#5078c7', opacity: 0.9, rotation: 0 },
-          { x: 100, y: 240, w: 70, h: 70, color: '#6495ed', opacity: 0.9, rotation: 0 },
-          // Medium 14x14 tiles
-          { x: 102, y: 80, w: 52, h: 52, color: '#f8f5f0', opacity: 0.8, rotation: 0 },
-          { x: 164, y: 80, w: 52, h: 52, color: '#e8e4dd', opacity: 0.8, rotation: 0 },
-          { x: 80, y: 102, w: 52, h: 52, color: '#e8e4dd', opacity: 0.8, rotation: 0 },
-          { x: 80, y: 164, w: 52, h: 52, color: '#f8f5f0', opacity: 0.8, rotation: 0 },
-          { x: 246, y: 182, w: 52, h: 52, color: '#e8e4dd', opacity: 0.8, rotation: 0 },
-          { x: 246, y: 238, w: 52, h: 52, color: '#f8f5f0', opacity: 0.8, rotation: 0 },
-          { x: 164, y: 246, w: 52, h: 52, color: '#e8e4dd', opacity: 0.8, rotation: 0 },
-          // Small 8x8 tiles
-          { x: 136, y: 136, w: 28, h: 28, color: '#5078c7', opacity: 0.75, rotation: 0 },
-          { x: 146, y: 136, w: 28, h: 28, color: '#f8f5f0', opacity: 0.75, rotation: 0 },
-        ],
-        gridLines: [
-          { x1: 60, y1: 163, x2: 340, y2: 163, opacity: 0.5 },
-          { x1: 60, y1: 209, x2: 340, y2: 209, opacity: 0.5 },
-          { x1: 163, y1: 60, x2: 163, y2: 340, opacity: 0.5 },
-          { x1: 209, y1: 60, x2: 209, y2: 340, opacity: 0.5 },
-        ]
-      },
-      v3: {
-        name: 'Mix V3',
-        tiles: [
-          // Blue tiles at grid intersections
-          { x: 85, y: 85, w: 64, h: 64, color: '#6495ed', opacity: 0.9, rotation: 0 },
-          { x: 237, y: 85, w: 64, h: 64, color: '#5078c7', opacity: 0.9, rotation: 0 },
-          { x: 85, y: 237, w: 64, h: 64, color: '#5078c7', opacity: 0.9, rotation: 0 },
-          { x: 237, y: 237, w: 64, h: 64, color: '#6495ed', opacity: 0.9, rotation: 0 },
-          // Medium beige tiles
-          { x: 120, y: 112, w: 54, h: 54, color: '#f8f5f0', opacity: 0.8, rotation: 0 },
-          { x: 185, y: 112, w: 54, h: 54, color: '#e8e4dd', opacity: 0.8, rotation: 0 },
-          { x: 112, y: 177, w: 54, h: 54, color: '#e8e4dd', opacity: 0.8, rotation: 0 },
-          { x: 193, y: 177, w: 54, h: 54, color: '#f8f5f0', opacity: 0.8, rotation: 0 },
-          { x: 112, y: 244, w: 54, h: 54, color: '#f8f5f0', opacity: 0.8, rotation: 0 },
-          { x: 193, y: 244, w: 54, h: 54, color: '#e8e4dd', opacity: 0.8, rotation: 0 },
-          // Small tiles
-          { x: 177, y: 85, w: 36, h: 36, color: '#f8f5f0', opacity: 0.75, rotation: 0 },
-          { x: 177, y: 143, w: 36, h: 36, color: '#5078c7', opacity: 0.75, rotation: 0 },
-        ],
-        gridLines: [
-          { x1: 60, y1: 163, x2: 340, y2: 163, opacity: 0.3 },
-          { x1: 60, y1: 209, x2: 340, y2: 209, opacity: 0.3 },
-          { x1: 60, y1: 255, x2: 340, y2: 255, opacity: 0.3 },
-          { x1: 163, y1: 60, x2: 163, y2: 340, opacity: 0.3 },
-          { x1: 209, y1: 60, x2: 209, y2: 340, opacity: 0.3 },
-          { x1: 255, y1: 60, x2: 255, y2: 340, opacity: 0.3 },
-        ]
-      },
-      v5: {
-        name: 'Mix V5',
-        tiles: [
-          // Large organic tiles
-          { x: 82, y: 114, w: 78, h: 78, color: '#6495ed', opacity: 0.9, rotation: 0 },
-          { x: 188, y: 82, w: 92, h: 92, color: '#e8e4dd', opacity: 0.9, rotation: 0 },
-          { x: 88, y: 234, w: 72, h: 72, color: '#f8f5f0', opacity: 0.9, rotation: 0 },
-          { x: 232, y: 208, w: 86, h: 86, color: '#5078c7', opacity: 0.9, rotation: 0 },
-          // Medium tiles
-          { x: 172, y: 88, w: 50, h: 50, color: '#e8e4dd', opacity: 0.85, rotation: 0 },
-          { x: 144, y: 172, w: 58, h: 58, color: '#f8f5f0', opacity: 0.85, rotation: 0 },
-          { x: 184, y: 168, w: 44, h: 44, color: '#6495ed', opacity: 0.85, rotation: 0 },
-          // Small tiles
-          { x: 112, y: 182, w: 32, h: 32, color: '#5078c7', opacity: 0.8, rotation: 0 },
-          { x: 156, y: 232, w: 36, h: 36, color: '#e8e4dd', opacity: 0.8, rotation: 0 },
-        ],
-        gridLines: [
-          // Dense grid
-          { x1: 58, y1: 108, x2: 342, y2: 108, opacity: 0.65 },
-          { x1: 58, y1: 150, x2: 342, y2: 150, opacity: 0.65 },
-          { x1: 58, y1: 200, x2: 342, y2: 200, opacity: 0.65 },
-          { x1: 58, y1: 250, x2: 342, y2: 250, opacity: 0.65 },
-          { x1: 58, y1: 292, x2: 342, y2: 292, opacity: 0.65 },
-          { x1: 108, y1: 58, x2: 108, y2: 342, opacity: 0.65 },
-          { x1: 150, y1: 58, x2: 150, y2: 342, opacity: 0.65 },
-          { x1: 200, y1: 58, x2: 200, y2: 342, opacity: 0.65 },
-          { x1: 250, y1: 58, x2: 250, y2: 342, opacity: 0.65 },
-          { x1: 292, y1: 58, x2: 292, y2: 342, opacity: 0.65 },
-        ]
-      },
-      v6: {
-        name: 'Mix V6',
-        tiles: [
-          // Large cells (20x20)
-          { x: 80, y: 80, w: 72, h: 72, color: '#6495ed', opacity: 0.9, rotation: 0 },
-          { x: 240, y: 240, w: 72, h: 72, color: '#5078c7', opacity: 0.9, rotation: 0 },
-          // Medium cells (15x15)
-          { x: 102, y: 80, w: 54, h: 54, color: '#e8e4dd', opacity: 0.85, rotation: 0 },
-          { x: 163, y: 80, w: 54, h: 54, color: '#f8f5f0', opacity: 0.85, rotation: 0 },
-          { x: 80, y: 102, w: 54, h: 54, color: '#f8f5f0', opacity: 0.85, rotation: 0 },
-          { x: 80, y: 163, w: 54, h: 54, color: '#e8e4dd', opacity: 0.85, rotation: 0 },
-          { x: 245, y: 105, w: 54, h: 54, color: '#5078c7', opacity: 0.85, rotation: 0 },
-          { x: 245, y: 163, w: 54, h: 54, color: '#f8f5f0', opacity: 0.85, rotation: 0 },
-          { x: 105, y: 245, w: 54, h: 54, color: '#e8e4dd', opacity: 0.85, rotation: 0 },
-          { x: 163, y: 245, w: 54, h: 54, color: '#f8f5f0', opacity: 0.85, rotation: 0 },
-          // Small cells (10x10)
-          { x: 102, y: 143, w: 36, h: 36, color: '#6495ed', opacity: 0.8, rotation: 0 },
-          { x: 154, y: 143, w: 36, h: 36, color: '#e8e4dd', opacity: 0.8, rotation: 0 },
-        ],
-        gridLines: [
-          { x1: 60, y1: 180, x2: 340, y2: 180, opacity: 0.5 },
-          { x1: 60, y1: 220, x2: 340, y2: 220, opacity: 0.5 },
-          { x1: 180, y1: 60, x2: 180, y2: 340, opacity: 0.5 },
-          { x1: 220, y1: 60, x2: 220, y2: 340, opacity: 0.5 },
-          // Medium grid
-          { x1: 125, y1: 190, x2: 275, y2: 190, opacity: 0.3 },
-          { x1: 125, y1: 210, x2: 275, y2: 210, opacity: 0.3 },
-          { x1: 190, y1: 125, x2: 190, y2: 275, opacity: 0.3 },
-          { x1: 210, y1: 125, x2: 210, y2: 275, opacity: 0.3 },
-        ]
-      },
-      v7: {
-        name: 'Mix V7',
-        tiles: [
-          // Layer 1 - bottom grid (very faint)
-          { x: 85, y: 85, w: 50, h: 50, color: '#e8e4dd', opacity: 0.4, rotation: 0 },
-          { x: 101, y: 85, w: 50, h: 50, color: '#f8f5f0', opacity: 0.4, rotation: 0 },
-          { x: 85, y: 101, w: 50, h: 50, color: '#f8f5f0', opacity: 0.4, rotation: 0 },
-          { x: 85, y: 117, w: 50, h: 50, color: '#e8e4dd', opacity: 0.4, rotation: 0 },
-          // Layer 2 - beige tiles with shadow effect
-          { x: 88, y: 88, w: 64, h: 64, color: '#e8e4dd', opacity: 0.75, rotation: 0 },
-          { x: 210, y: 90, w: 78, h: 78, color: '#f8f5f0', opacity: 0.75, rotation: 0 },
-          { x: 90, y: 210, w: 72, h: 72, color: '#e8e4dd', opacity: 0.75, rotation: 0 },
-          { x: 208, y: 212, w: 86, h: 86, color: '#f8f5f0', opacity: 0.75, rotation: 0 },
-          // Layer 3 - blue accent tiles
-          { x: 98, y: 100, w: 58, h: 58, color: '#6495ed', opacity: 0.9, rotation: 0 },
-          { x: 186, y: 96, w: 64, h: 64, color: '#5078c7', opacity: 0.9, rotation: 0 },
-          { x: 96, y: 186, w: 62, h: 62, color: '#5078c7', opacity: 0.9, rotation: 0 },
-          { x: 184, y: 188, w: 72, h: 72, color: '#6495ed', opacity: 0.9, rotation: 0 },
-          // Layer 4 - small top accents
-          { x: 172, y: 92, w: 36, h: 36, color: '#6495ed', opacity: 0.85, rotation: 0 },
-          { x: 92, y: 172, w: 36, h: 36, color: '#5078c7', opacity: 0.85, rotation: 0 },
-        ],
-        gridLines: [
-          // Deep layer
-          { x1: 62, y1: 136, x2: 338, y2: 136, opacity: 0.3 },
-          { x1: 62, y1: 168, x2: 338, y2: 168, opacity: 0.3 },
-          { x1: 62, y1: 200, x2: 338, y2: 200, opacity: 0.3 },
-          { x1: 62, y1: 232, x2: 338, y2: 232, opacity: 0.3 },
-          { x1: 62, y1: 264, x2: 338, y2: 264, opacity: 0.3 },
-          { x1: 136, y1: 62, x2: 136, y2: 338, opacity: 0.3 },
-          { x1: 168, y1: 62, x2: 168, y2: 338, opacity: 0.3 },
-          { x1: 200, y1: 62, x2: 200, y2: 338, opacity: 0.3 },
-          { x1: 232, y1: 62, x2: 232, y2: 338, opacity: 0.3 },
-          { x1: 264, y1: 62, x2: 264, y2: 338, opacity: 0.3 },
-          // Top layer
-          { x1: 60, y1: 162, x2: 340, y2: 162, opacity: 0.6 },
-          { x1: 60, y1: 238, x2: 340, y2: 238, opacity: 0.6 },
-          { x1: 162, y1: 60, x2: 162, y2: 340, opacity: 0.6 },
-          { x1: 238, y1: 60, x2: 238, y2: 340, opacity: 0.6 },
-        ]
-      }
-    };
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script>
+      // Logo state definitions - simplified representation
+      const logoStates = {
+        v1: {
+          name: "Mix V1",
+          tiles: [
+            // Large blue tiles
+            { x: 100, y: 100, w: 65, h: 65, color: "#6495ed", opacity: 0.9, rotation: 0 },
+            { x: 235, y: 100, w: 65, h: 65, color: "#5078c7", opacity: 0.9, rotation: 0 },
+            { x: 100, y: 235, w: 65, h: 65, color: "#5078c7", opacity: 0.9, rotation: 0 },
+            { x: 235, y: 235, w: 65, h: 65, color: "#6495ed", opacity: 0.9, rotation: 0 },
+            // Medium beige tiles
+            { x: 130, y: 130, w: 50, h: 50, color: "#e8e4dd", opacity: 0.8, rotation: 0 },
+            { x: 220, y: 130, w: 50, h: 50, color: "#f8f5f0", opacity: 0.8, rotation: 0 },
+            { x: 130, y: 220, w: 50, h: 50, color: "#f8f5f0", opacity: 0.8, rotation: 0 },
+            { x: 220, y: 220, w: 50, h: 50, color: "#e8e4dd", opacity: 0.8, rotation: 0 },
+            // Small tiles
+            { x: 165, y: 95, w: 30, h: 30, color: "#d0ccc5", opacity: 0.75, rotation: 0 },
+            { x: 95, y: 165, w: 30, h: 30, color: "#d0ccc5", opacity: 0.75, rotation: 0 },
+            { x: 275, y: 165, w: 30, h: 30, color: "#f8f5f0", opacity: 0.75, rotation: 0 },
+            { x: 165, y: 275, w: 30, h: 30, color: "#e8e4dd", opacity: 0.75, rotation: 0 },
+          ],
+          gridLines: [
+            { x1: 50, y1: 150, x2: 350, y2: 150, opacity: 0.45 },
+            { x1: 50, y1: 250, x2: 350, y2: 250, opacity: 0.45 },
+            { x1: 150, y1: 50, x2: 150, y2: 350, opacity: 0.45 },
+            { x1: 250, y1: 50, x2: 250, y2: 350, opacity: 0.45 },
+          ],
+        },
+        v2: {
+          name: "Mix V2",
+          tiles: [
+            // Large 20x20 tiles
+            { x: 80, y: 80, w: 70, h: 70, color: "#6495ed", opacity: 0.9, rotation: 0 },
+            { x: 240, y: 100, w: 70, h: 70, color: "#5078c7", opacity: 0.9, rotation: 0 },
+            { x: 100, y: 240, w: 70, h: 70, color: "#6495ed", opacity: 0.9, rotation: 0 },
+            // Medium 14x14 tiles
+            { x: 102, y: 80, w: 52, h: 52, color: "#f8f5f0", opacity: 0.8, rotation: 0 },
+            { x: 164, y: 80, w: 52, h: 52, color: "#e8e4dd", opacity: 0.8, rotation: 0 },
+            { x: 80, y: 102, w: 52, h: 52, color: "#e8e4dd", opacity: 0.8, rotation: 0 },
+            { x: 80, y: 164, w: 52, h: 52, color: "#f8f5f0", opacity: 0.8, rotation: 0 },
+            { x: 246, y: 182, w: 52, h: 52, color: "#e8e4dd", opacity: 0.8, rotation: 0 },
+            { x: 246, y: 238, w: 52, h: 52, color: "#f8f5f0", opacity: 0.8, rotation: 0 },
+            { x: 164, y: 246, w: 52, h: 52, color: "#e8e4dd", opacity: 0.8, rotation: 0 },
+            // Small 8x8 tiles
+            { x: 136, y: 136, w: 28, h: 28, color: "#5078c7", opacity: 0.75, rotation: 0 },
+            { x: 146, y: 136, w: 28, h: 28, color: "#f8f5f0", opacity: 0.75, rotation: 0 },
+          ],
+          gridLines: [
+            { x1: 60, y1: 163, x2: 340, y2: 163, opacity: 0.5 },
+            { x1: 60, y1: 209, x2: 340, y2: 209, opacity: 0.5 },
+            { x1: 163, y1: 60, x2: 163, y2: 340, opacity: 0.5 },
+            { x1: 209, y1: 60, x2: 209, y2: 340, opacity: 0.5 },
+          ],
+        },
+        v3: {
+          name: "Mix V3",
+          tiles: [
+            // Blue tiles at grid intersections
+            { x: 85, y: 85, w: 64, h: 64, color: "#6495ed", opacity: 0.9, rotation: 0 },
+            { x: 237, y: 85, w: 64, h: 64, color: "#5078c7", opacity: 0.9, rotation: 0 },
+            { x: 85, y: 237, w: 64, h: 64, color: "#5078c7", opacity: 0.9, rotation: 0 },
+            { x: 237, y: 237, w: 64, h: 64, color: "#6495ed", opacity: 0.9, rotation: 0 },
+            // Medium beige tiles
+            { x: 120, y: 112, w: 54, h: 54, color: "#f8f5f0", opacity: 0.8, rotation: 0 },
+            { x: 185, y: 112, w: 54, h: 54, color: "#e8e4dd", opacity: 0.8, rotation: 0 },
+            { x: 112, y: 177, w: 54, h: 54, color: "#e8e4dd", opacity: 0.8, rotation: 0 },
+            { x: 193, y: 177, w: 54, h: 54, color: "#f8f5f0", opacity: 0.8, rotation: 0 },
+            { x: 112, y: 244, w: 54, h: 54, color: "#f8f5f0", opacity: 0.8, rotation: 0 },
+            { x: 193, y: 244, w: 54, h: 54, color: "#e8e4dd", opacity: 0.8, rotation: 0 },
+            // Small tiles
+            { x: 177, y: 85, w: 36, h: 36, color: "#f8f5f0", opacity: 0.75, rotation: 0 },
+            { x: 177, y: 143, w: 36, h: 36, color: "#5078c7", opacity: 0.75, rotation: 0 },
+          ],
+          gridLines: [
+            { x1: 60, y1: 163, x2: 340, y2: 163, opacity: 0.3 },
+            { x1: 60, y1: 209, x2: 340, y2: 209, opacity: 0.3 },
+            { x1: 60, y1: 255, x2: 340, y2: 255, opacity: 0.3 },
+            { x1: 163, y1: 60, x2: 163, y2: 340, opacity: 0.3 },
+            { x1: 209, y1: 60, x2: 209, y2: 340, opacity: 0.3 },
+            { x1: 255, y1: 60, x2: 255, y2: 340, opacity: 0.3 },
+          ],
+        },
+        v5: {
+          name: "Mix V5",
+          tiles: [
+            // Large organic tiles
+            { x: 82, y: 114, w: 78, h: 78, color: "#6495ed", opacity: 0.9, rotation: 0 },
+            { x: 188, y: 82, w: 92, h: 92, color: "#e8e4dd", opacity: 0.9, rotation: 0 },
+            { x: 88, y: 234, w: 72, h: 72, color: "#f8f5f0", opacity: 0.9, rotation: 0 },
+            { x: 232, y: 208, w: 86, h: 86, color: "#5078c7", opacity: 0.9, rotation: 0 },
+            // Medium tiles
+            { x: 172, y: 88, w: 50, h: 50, color: "#e8e4dd", opacity: 0.85, rotation: 0 },
+            { x: 144, y: 172, w: 58, h: 58, color: "#f8f5f0", opacity: 0.85, rotation: 0 },
+            { x: 184, y: 168, w: 44, h: 44, color: "#6495ed", opacity: 0.85, rotation: 0 },
+            // Small tiles
+            { x: 112, y: 182, w: 32, h: 32, color: "#5078c7", opacity: 0.8, rotation: 0 },
+            { x: 156, y: 232, w: 36, h: 36, color: "#e8e4dd", opacity: 0.8, rotation: 0 },
+          ],
+          gridLines: [
+            // Dense grid
+            { x1: 58, y1: 108, x2: 342, y2: 108, opacity: 0.65 },
+            { x1: 58, y1: 150, x2: 342, y2: 150, opacity: 0.65 },
+            { x1: 58, y1: 200, x2: 342, y2: 200, opacity: 0.65 },
+            { x1: 58, y1: 250, x2: 342, y2: 250, opacity: 0.65 },
+            { x1: 58, y1: 292, x2: 342, y2: 292, opacity: 0.65 },
+            { x1: 108, y1: 58, x2: 108, y2: 342, opacity: 0.65 },
+            { x1: 150, y1: 58, x2: 150, y2: 342, opacity: 0.65 },
+            { x1: 200, y1: 58, x2: 200, y2: 342, opacity: 0.65 },
+            { x1: 250, y1: 58, x2: 250, y2: 342, opacity: 0.65 },
+            { x1: 292, y1: 58, x2: 292, y2: 342, opacity: 0.65 },
+          ],
+        },
+        v6: {
+          name: "Mix V6",
+          tiles: [
+            // Large cells (20x20)
+            { x: 80, y: 80, w: 72, h: 72, color: "#6495ed", opacity: 0.9, rotation: 0 },
+            { x: 240, y: 240, w: 72, h: 72, color: "#5078c7", opacity: 0.9, rotation: 0 },
+            // Medium cells (15x15)
+            { x: 102, y: 80, w: 54, h: 54, color: "#e8e4dd", opacity: 0.85, rotation: 0 },
+            { x: 163, y: 80, w: 54, h: 54, color: "#f8f5f0", opacity: 0.85, rotation: 0 },
+            { x: 80, y: 102, w: 54, h: 54, color: "#f8f5f0", opacity: 0.85, rotation: 0 },
+            { x: 80, y: 163, w: 54, h: 54, color: "#e8e4dd", opacity: 0.85, rotation: 0 },
+            { x: 245, y: 105, w: 54, h: 54, color: "#5078c7", opacity: 0.85, rotation: 0 },
+            { x: 245, y: 163, w: 54, h: 54, color: "#f8f5f0", opacity: 0.85, rotation: 0 },
+            { x: 105, y: 245, w: 54, h: 54, color: "#e8e4dd", opacity: 0.85, rotation: 0 },
+            { x: 163, y: 245, w: 54, h: 54, color: "#f8f5f0", opacity: 0.85, rotation: 0 },
+            // Small cells (10x10)
+            { x: 102, y: 143, w: 36, h: 36, color: "#6495ed", opacity: 0.8, rotation: 0 },
+            { x: 154, y: 143, w: 36, h: 36, color: "#e8e4dd", opacity: 0.8, rotation: 0 },
+          ],
+          gridLines: [
+            { x1: 60, y1: 180, x2: 340, y2: 180, opacity: 0.5 },
+            { x1: 60, y1: 220, x2: 340, y2: 220, opacity: 0.5 },
+            { x1: 180, y1: 60, x2: 180, y2: 340, opacity: 0.5 },
+            { x1: 220, y1: 60, x2: 220, y2: 340, opacity: 0.5 },
+            // Medium grid
+            { x1: 125, y1: 190, x2: 275, y2: 190, opacity: 0.3 },
+            { x1: 125, y1: 210, x2: 275, y2: 210, opacity: 0.3 },
+            { x1: 190, y1: 125, x2: 190, y2: 275, opacity: 0.3 },
+            { x1: 210, y1: 125, x2: 210, y2: 275, opacity: 0.3 },
+          ],
+        },
+        v7: {
+          name: "Mix V7",
+          tiles: [
+            // Layer 1 - bottom grid (very faint)
+            { x: 85, y: 85, w: 50, h: 50, color: "#e8e4dd", opacity: 0.4, rotation: 0 },
+            { x: 101, y: 85, w: 50, h: 50, color: "#f8f5f0", opacity: 0.4, rotation: 0 },
+            { x: 85, y: 101, w: 50, h: 50, color: "#f8f5f0", opacity: 0.4, rotation: 0 },
+            { x: 85, y: 117, w: 50, h: 50, color: "#e8e4dd", opacity: 0.4, rotation: 0 },
+            // Layer 2 - beige tiles with shadow effect
+            { x: 88, y: 88, w: 64, h: 64, color: "#e8e4dd", opacity: 0.75, rotation: 0 },
+            { x: 210, y: 90, w: 78, h: 78, color: "#f8f5f0", opacity: 0.75, rotation: 0 },
+            { x: 90, y: 210, w: 72, h: 72, color: "#e8e4dd", opacity: 0.75, rotation: 0 },
+            { x: 208, y: 212, w: 86, h: 86, color: "#f8f5f0", opacity: 0.75, rotation: 0 },
+            // Layer 3 - blue accent tiles
+            { x: 98, y: 100, w: 58, h: 58, color: "#6495ed", opacity: 0.9, rotation: 0 },
+            { x: 186, y: 96, w: 64, h: 64, color: "#5078c7", opacity: 0.9, rotation: 0 },
+            { x: 96, y: 186, w: 62, h: 62, color: "#5078c7", opacity: 0.9, rotation: 0 },
+            { x: 184, y: 188, w: 72, h: 72, color: "#6495ed", opacity: 0.9, rotation: 0 },
+            // Layer 4 - small top accents
+            { x: 172, y: 92, w: 36, h: 36, color: "#6495ed", opacity: 0.85, rotation: 0 },
+            { x: 92, y: 172, w: 36, h: 36, color: "#5078c7", opacity: 0.85, rotation: 0 },
+          ],
+          gridLines: [
+            // Deep layer
+            { x1: 62, y1: 136, x2: 338, y2: 136, opacity: 0.3 },
+            { x1: 62, y1: 168, x2: 338, y2: 168, opacity: 0.3 },
+            { x1: 62, y1: 200, x2: 338, y2: 200, opacity: 0.3 },
+            { x1: 62, y1: 232, x2: 338, y2: 232, opacity: 0.3 },
+            { x1: 62, y1: 264, x2: 338, y2: 264, opacity: 0.3 },
+            { x1: 136, y1: 62, x2: 136, y2: 338, opacity: 0.3 },
+            { x1: 168, y1: 62, x2: 168, y2: 338, opacity: 0.3 },
+            { x1: 200, y1: 62, x2: 200, y2: 338, opacity: 0.3 },
+            { x1: 232, y1: 62, x2: 232, y2: 338, opacity: 0.3 },
+            { x1: 264, y1: 62, x2: 264, y2: 338, opacity: 0.3 },
+            // Top layer
+            { x1: 60, y1: 162, x2: 340, y2: 162, opacity: 0.6 },
+            { x1: 60, y1: 238, x2: 340, y2: 238, opacity: 0.6 },
+            { x1: 162, y1: 60, x2: 162, y2: 340, opacity: 0.6 },
+            { x1: 238, y1: 60, x2: 238, y2: 340, opacity: 0.6 },
+          ],
+        },
+      };
 
-    const canvas = document.getElementById('canvas');
-    const currentLogoEl = document.getElementById('currentLogo');
+      const canvas = document.getElementById("canvas");
+      const currentLogoEl = document.getElementById("currentLogo");
 
-    // Create tile elements
-    const maxTiles = Math.max(...Object.values(logoStates).map(s => s.tiles.length));
-    const tiles = [];
-    for (let i = 0; i < maxTiles; i++) {
-      const tile = document.createElement('div');
-      tile.className = 'tile';
-      canvas.appendChild(tile);
-      tiles.push(tile);
-    }
-
-    // Create grid line elements
-    const maxGridLines = Math.max(...Object.values(logoStates).map(s => s.gridLines.length));
-    const gridLines = [];
-    for (let i = 0; i < maxGridLines; i++) {
-      const line = document.createElement('div');
-      line.className = 'grid-line';
-      canvas.appendChild(line);
-      gridLines.push(line);
-    }
-
-    // Animation sequence
-    const sequence = ['v1', 'v2', 'v3', 'v5', 'v6', 'v7'];
-    let currentIndex = 0;
-
-    function morphToState(stateKey, duration = 8) {
-      const state = logoStates[stateKey];
-      currentLogoEl.textContent = state.name;
-
-      // Morph tiles
-      state.tiles.forEach((tileData, i) => {
-        if (!tiles[i]) return;
-
-        gsap.to(tiles[i], {
-          duration: duration,
-          left: tileData.x + 'px',
-          top: tileData.y + 'px',
-          width: tileData.w + 'px',
-          height: tileData.h + 'px',
-          background: tileData.color,
-          opacity: tileData.opacity,
-          rotation: tileData.rotation,
-          ease: 'power2.inOut',
-          borderRadius: '2px'
-        });
-      });
-
-      // Hide extra tiles
-      for (let i = state.tiles.length; i < tiles.length; i++) {
-        gsap.to(tiles[i], {
-          duration: duration * 0.3,
-          opacity: 0,
-          scale: 0.5,
-          ease: 'power2.in'
-        });
+      // Create tile elements
+      const maxTiles = Math.max(...Object.values(logoStates).map((s) => s.tiles.length));
+      const tiles = [];
+      for (let i = 0; i < maxTiles; i++) {
+        const tile = document.createElement("div");
+        tile.className = "tile";
+        canvas.appendChild(tile);
+        tiles.push(tile);
       }
 
-      // Morph grid lines
-      state.gridLines.forEach((lineData, i) => {
-        if (!gridLines[i]) return;
+      // Create grid line elements
+      const maxGridLines = Math.max(...Object.values(logoStates).map((s) => s.gridLines.length));
+      const gridLines = [];
+      for (let i = 0; i < maxGridLines; i++) {
+        const line = document.createElement("div");
+        line.className = "grid-line";
+        canvas.appendChild(line);
+        gridLines.push(line);
+      }
 
-        const isHorizontal = lineData.y1 === lineData.y2;
+      // Animation sequence
+      const sequence = ["v1", "v2", "v3", "v5", "v6", "v7"];
+      let currentIndex = 0;
 
-        gsap.to(gridLines[i], {
-          duration: duration,
-          left: lineData.x1 + 'px',
-          top: lineData.y1 + 'px',
-          width: isHorizontal ? (lineData.x2 - lineData.x1) + 'px' : '1px',
-          height: isHorizontal ? '1px' : (lineData.y2 - lineData.y1) + 'px',
-          opacity: lineData.opacity,
-          ease: 'power2.inOut'
+      function morphToState(stateKey, duration = 8) {
+        const state = logoStates[stateKey];
+        currentLogoEl.textContent = state.name;
+
+        // Morph tiles
+        state.tiles.forEach((tileData, i) => {
+          if (!tiles[i]) return;
+
+          gsap.to(tiles[i], {
+            duration: duration,
+            left: tileData.x + "px",
+            top: tileData.y + "px",
+            width: tileData.w + "px",
+            height: tileData.h + "px",
+            background: tileData.color,
+            opacity: tileData.opacity,
+            rotation: tileData.rotation,
+            ease: "power2.inOut",
+            borderRadius: "2px",
+          });
         });
-      });
 
-      // Hide extra grid lines
-      for (let i = state.gridLines.length; i < gridLines.length; i++) {
-        gsap.to(gridLines[i], {
-          duration: duration * 0.3,
-          opacity: 0,
-          ease: 'power2.in'
+        // Hide extra tiles
+        for (let i = state.tiles.length; i < tiles.length; i++) {
+          gsap.to(tiles[i], {
+            duration: duration * 0.3,
+            opacity: 0,
+            scale: 0.5,
+            ease: "power2.in",
+          });
+        }
+
+        // Morph grid lines
+        state.gridLines.forEach((lineData, i) => {
+          if (!gridLines[i]) return;
+
+          const isHorizontal = lineData.y1 === lineData.y2;
+
+          gsap.to(gridLines[i], {
+            duration: duration,
+            left: lineData.x1 + "px",
+            top: lineData.y1 + "px",
+            width: isHorizontal ? lineData.x2 - lineData.x1 + "px" : "1px",
+            height: isHorizontal ? "1px" : lineData.y2 - lineData.y1 + "px",
+            opacity: lineData.opacity,
+            ease: "power2.inOut",
+          });
+        });
+
+        // Hide extra grid lines
+        for (let i = state.gridLines.length; i < gridLines.length; i++) {
+          gsap.to(gridLines[i], {
+            duration: duration * 0.3,
+            opacity: 0,
+            ease: "power2.in",
+          });
+        }
+      }
+
+      // Start animation loop
+      function animateLoop() {
+        const tl = gsap.timeline({ repeat: -1 });
+
+        sequence.forEach((stateKey, index) => {
+          tl.call(
+            () => {
+              morphToState(stateKey, 8);
+            },
+            [],
+            index * 10
+          ); // 8s morph + 2s hold
         });
       }
-    }
 
-    // Start animation loop
-    function animateLoop() {
-      const tl = gsap.timeline({ repeat: -1 });
+      // Initialize with first state
+      morphToState("v1", 0);
 
-      sequence.forEach((stateKey, index) => {
-        tl.call(() => {
-          morphToState(stateKey, 8);
-        }, [], index * 10); // 8s morph + 2s hold
-      });
-    }
-
-    // Initialize with first state
-    morphToState('v1', 0);
-
-    // Start loop after brief delay
-    setTimeout(animateLoop, 1000);
-  </script>
-</body>
+      // Start loop after brief delay
+      setTimeout(animateLoop, 1000);
+    </script>
+  </body>
 </html>
