@@ -20,7 +20,7 @@ import { getDatabaseUrl } from "../database/url";
 import { createLogger } from "../logger";
 import { SeedManagerBase } from "./core/seed-manager-base";
 import { ConfigDrivenSeeding } from "./operations/config-driven-seeding";
-import { SeedingOperations } from "./operations/seeding-operations";
+import { SeedingOperations, type SeedResult } from "./operations/seeding-operations";
 import type { CollectionConfig } from "./seed.config";
 import type { SeedOptions } from "./types";
 
@@ -29,6 +29,7 @@ const logger = createLogger("seed");
 export class SeedManager extends SeedManagerBase {
   private readonly configDrivenSeeding: ConfigDrivenSeeding;
   private readonly seedingOperations: SeedingOperations;
+  private currentOptions: SeedOptions = {};
 
   constructor() {
     super();
@@ -41,7 +42,15 @@ export class SeedManager extends SeedManagerBase {
    * Uses the seed.config.ts to determine what to seed and how.
    */
   async seedWithConfig(options: SeedOptions = {}) {
+    this.currentOptions = options;
     return this.configDrivenSeeding.seedWithConfig(options);
+  }
+
+  /**
+   * Get current seeding options.
+   */
+  get options(): SeedOptions {
+    return this.currentOptions;
   }
 
   /**
@@ -102,7 +111,11 @@ export class SeedManager extends SeedManagerBase {
     return this.truncate(collections);
   }
 
-  async seedCollectionWithConfig(collectionName: string, config: CollectionConfig, environment: string) {
+  async seedCollectionWithConfig(
+    collectionName: string,
+    config: CollectionConfig,
+    environment: string
+  ): Promise<SeedResult | null> {
     return this.seedingOperations.seedCollectionWithConfig(collectionName, config, environment);
   }
 }

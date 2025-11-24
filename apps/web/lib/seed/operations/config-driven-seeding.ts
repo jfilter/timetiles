@@ -11,7 +11,7 @@
  *
  * @module
  */
-import { createLogger, logPerformance } from "@/lib/logger";
+import { createLogger } from "@/lib/logger";
 
 import {
   type CollectionConfig,
@@ -25,6 +25,14 @@ import type { SeedOptions } from "../types";
 
 const logger = createLogger("seed");
 
+interface OverallSeedResults {
+  totalCreated: number;
+  totalSkipped: number;
+  totalFailed: number;
+  collectionsProcessed: number;
+  collectionsFailed: string[];
+}
+
 export class ConfigDrivenSeeding {
   constructor(private readonly seedManager: SeedManager) {}
 
@@ -34,6 +42,7 @@ export class ConfigDrivenSeeding {
       truncate = false,
       configOverrides = {},
       collections: requestedCollections,
+      exitOnFailure = true,
     } = options;
 
     await this.seedManager.initialize();
@@ -51,13 +60,25 @@ export class ConfigDrivenSeeding {
       await this.seedManager.truncateCollections(collectionsToSeed);
     }
 
-    await this.processCollections(collectionsToSeed, configOverrides, preset);
+    const overallResults = await this.processCollections(collectionsToSeed, configOverrides, preset);
 
-    this.logSeedCompletion(startTime, collectionsToSeed, preset, presetConfig);
+    this.logSeedCompletion(startTime, collectionsToSeed, preset, presetConfig, overallResults);
+
+    // Exit with error code if there were failures
+    if (overallResults.totalFailed > 0 || overallResults.collectionsFailed.length > 0) {
+      const errorMessage = `Seeding failed: ${overallResults.totalFailed} items failed, ${overallResults.collectionsFailed.length} collections failed: ${overallResults.collectionsFailed.join(", ")}`;
+      logger.error("Seeding completed with failures");
+
+      if (exitOnFailure) {
+        process.exit(1);
+      }
+
+      throw new Error(errorMessage);
+    }
   }
 
-  private logSeedStart(preset: string, presetConfig: PresetConfig): number {
-    logger.info({ preset, config: presetConfig }, `Starting configuration-driven seed process for ${preset} preset`);
+  private logSeedStart(preset: string, _presetConfig: PresetConfig): number {
+    logger.info({ preset }, `Starting seed process for ${preset} preset`);
     return Date.now();
   }
 
@@ -67,7 +88,7 @@ export class ConfigDrivenSeeding {
       ? enabledCollections.filter((c) => requestedCollections.includes(c))
       : enabledCollections;
 
-    logger.info({ enabled: enabledCollections, seeding: collectionsToSeed }, `Collections determined by configuration`);
+    logger.info(`Seeding ${collectionsToSeed.length} collections: ${collectionsToSeed.join(", ")}`);
     return collectionsToSeed;
   }
 
@@ -75,7 +96,15 @@ export class ConfigDrivenSeeding {
     collectionsToSeed: string[],
     configOverrides: Record<string, Partial<CollectionConfig>>,
     preset: string
-  ): Promise<void> {
+  ): Promise<OverallSeedResults> {
+    const overallResults: OverallSeedResults = {
+      totalCreated: 0,
+      totalSkipped: 0,
+      totalFailed: 0,
+      collectionsProcessed: 0,
+      collectionsFailed: [],
+    };
+
     for (const collectionName of collectionsToSeed) {
       const config = getCollectionConfig(collectionName, preset);
       if (config == null || config == undefined || config.disabled === true) {
@@ -84,8 +113,30 @@ export class ConfigDrivenSeeding {
       }
 
       const finalConfig = this.applyConfigOverrides(config, configOverrides, collectionName);
-      await this.seedManager.seedCollectionWithConfig(collectionName, finalConfig, preset);
+
+      try {
+        const result = await this.seedManager.seedCollectionWithConfig(collectionName, finalConfig, preset);
+
+        // Track results (null means global collection or invalid config)
+        if (result) {
+          overallResults.totalCreated += result.created;
+          overallResults.totalSkipped += result.skipped;
+          overallResults.totalFailed += result.failed;
+          overallResults.collectionsProcessed++;
+
+          // Track collections with failures
+          if (result.failed > 0) {
+            overallResults.collectionsFailed.push(collectionName);
+          }
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logger.error({ collection: collectionName }, `Failed to seed collection ${collectionName}: ${errorMsg}`);
+        overallResults.collectionsFailed.push(collectionName);
+      }
     }
+
+    return overallResults;
   }
 
   private applyConfigOverrides(
@@ -110,19 +161,31 @@ export class ConfigDrivenSeeding {
   private logSeedCompletion(
     startTime: number,
     collectionsToSeed: string[],
-    preset: string,
-    presetConfig: PresetConfig
+    _preset: string,
+    _presetConfig: PresetConfig,
+    overallResults: OverallSeedResults
   ): void {
     const duration = Date.now() - startTime;
-    logPerformance("Configuration-driven seed process", duration, {
-      preset,
-      collections: collectionsToSeed.length,
-      config: presetConfig,
-    });
 
+    // Log overall summary
     logger.info(
-      { duration, collections: collectionsToSeed.length },
-      `Configuration-driven seed process completed successfully`
+      {
+        duration,
+        collections: collectionsToSeed.length,
+        created: overallResults.totalCreated,
+        skipped: overallResults.totalSkipped,
+        failed: overallResults.totalFailed,
+        processed: overallResults.collectionsProcessed,
+      },
+      `Seed completed in ${(duration / 1000).toFixed(1)}s: ${overallResults.totalCreated} created, ${overallResults.totalSkipped} skipped, ${overallResults.totalFailed} failed`
     );
+
+    // Warn about collections with failures
+    if (overallResults.collectionsFailed.length > 0) {
+      logger.warn(
+        { failedCollections: overallResults.collectionsFailed },
+        `${overallResults.collectionsFailed.length} collection(s) had failures: ${overallResults.collectionsFailed.join(", ")}`
+      );
+    }
   }
 }

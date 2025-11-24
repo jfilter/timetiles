@@ -79,7 +79,9 @@ reset: kill-dev db-reset
 	@$(MAKE) seed ARGS="development"
 	@echo ""
 	@echo "✅ Environment reset complete!"
-	@echo "🚀 Run 'make dev' to start development server"
+	@echo "🚀 Starting development server..."
+	@echo ""
+	@$(MAKE) dev
 
 # Ensure infrastructure is running
 ensure-infra:
@@ -185,8 +187,9 @@ coverage-check:
 
 # Seed database (web-specific with arguments)
 # Usage: make seed ARGS="development users catalogs"
+# Set LOG_LEVEL=info by default for cleaner output (use LOG_LEVEL=debug for verbose)
 seed:
-	pnpm --filter web seed $(ARGS)
+	@LOG_LEVEL=info pnpm --filter web seed $(ARGS)
 
 # Complete first-time initialization (setup + database + seed + start dev)
 init: setup up

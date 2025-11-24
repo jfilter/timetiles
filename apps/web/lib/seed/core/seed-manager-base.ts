@@ -112,7 +112,8 @@ export abstract class SeedManagerBase {
         }
         logger.debug("PostgreSQL connection pool closed");
       } catch (error: unknown) {
-        logger.warn("Error closing PostgreSQL connection pool", { error });
+        // Connection pool will be cleaned up on process exit, so this is not critical
+        logger.debug("PostgreSQL connection pool close error (non-critical)", { error });
       }
     }
   }

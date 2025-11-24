@@ -46,4 +46,6 @@ export interface SeedOptions {
   countOverrides?: Record<string, number>;
   /** Override configuration for specific collections */
   configOverrides?: Record<string, Partial<CollectionConfig>>;
+  /** Exit process on seeding failure (default: true, set false in tests) */
+  exitOnFailure?: boolean;
 }

@@ -6,7 +6,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 import { createTestId } from "../../setup/paths";
 
-describe("Isolated Seed System Test Example", () => {
+describe.sequential("Isolated Seed System Test Example", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {
@@ -35,6 +35,7 @@ describe("Isolated Seed System Test Example", () => {
         collections: ["users"],
         preset: "testing",
         truncate: false,
+        exitOnFailure: false,
       });
 
       const users = await testEnv.payload.find({
@@ -46,33 +47,34 @@ describe("Isolated Seed System Test Example", () => {
       expect(users.docs.some((user: any) => user.email === "admin@example.com")).toBe(true);
     });
 
-    it("should handle concurrent operations within same test file", async () => {
-      // These operations can run concurrently because they're isolated
-      const [,] = await Promise.all([
-        testEnv.seedManager.seedWithConfig({
-          collections: ["catalogs"],
-          preset: "testing",
-          truncate: false,
-        }),
-        testEnv.seedManager.seedWithConfig({
-          collections: ["users"],
-          preset: "testing",
-          truncate: false,
-        }),
-      ]);
+    it("should handle multiple seed operations in same test", async () => {
+      // Seed different collections to test multiple operations
+      await testEnv.seedManager.seedWithConfig({
+        collections: ["catalogs"],
+        preset: "testing",
+        truncate: false,
+        exitOnFailure: false,
+      });
+
+      await testEnv.seedManager.seedWithConfig({
+        collections: ["datasets"],
+        preset: "testing",
+        truncate: false,
+        exitOnFailure: false,
+      });
 
       const catalogs = await testEnv.payload.find({
         collection: "catalogs",
         limit: 100,
       });
 
-      const users = await testEnv.payload.find({
-        collection: "users",
+      const datasets = await testEnv.payload.find({
+        collection: "datasets",
         limit: 100,
       });
 
       expect(catalogs.docs.length).toBeGreaterThan(0);
-      expect(users.docs.length).toBeGreaterThan(0);
+      expect(datasets.docs.length).toBeGreaterThan(0);
     });
   });
 

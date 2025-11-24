@@ -153,7 +153,6 @@ export const SEED_CONFIG: SeedConfiguration = {
         }
       },
       dependencies: ["catalogs"],
-      customGenerator: "realistic-dataset-distribution",
       options: {
         includeArchivedDatasets: false,
         generateSchemas: true,
@@ -278,16 +277,6 @@ export const SEED_CONFIG: SeedConfiguration = {
       },
     },
 
-    "realistic-dataset-distribution": {
-      type: "realistic",
-      options: {
-        // Ensure datasets are evenly distributed across catalogs
-        evenDistribution: true,
-        includeVariability: true, // Some catalogs have more datasets
-        schemaComplexity: "varied", // Mix of simple and complex schemas
-      },
-    },
-
     "geographic-clustering": {
       type: "spatial",
       options: {
@@ -322,17 +311,7 @@ export const SEED_CONFIG: SeedConfiguration = {
 
     testing: {
       description: "Fast, deterministic data for unit/integration tests",
-      enabled: [
-        "users",
-        "catalogs",
-        "datasets",
-        "events",
-        "pages",
-        MAIN_MENU_SLUG,
-        FOOTER_SLUG,
-        "location-cache",
-        GEOCODING_PROVIDERS_COLLECTION,
-      ],
+      enabled: ["users", "catalogs", "datasets", "events", "pages", MAIN_MENU_SLUG, FOOTER_SLUG],
       volume: "small",
       realism: "simple",
       performance: "fast",
@@ -377,7 +356,6 @@ export const SEED_CONFIG: SeedConfiguration = {
         "pages",
         MAIN_MENU_SLUG,
         FOOTER_SLUG,
-        "location-cache",
         GEOCODING_PROVIDERS_COLLECTION,
       ],
       volume: "large",

@@ -12,16 +12,17 @@
  *
  * @module
  */
-import { createLogger, logError } from "@/lib/logger";
+import { createLogger } from "@/lib/logger";
 import type { Config } from "@/payload-types";
 
-import { FOOTER_SLUG, MAIN_MENU_SLUG } from "../constants";
+import { COLLECTION_GEOCODING_PROVIDERS, FOOTER_SLUG, MAIN_MENU_SLUG } from "../constants";
 import type { CollectionConfig } from "../seed.config";
 import type { SeedManager } from "../seed-manager";
 import { catalogSeeds } from "../seeds/catalogs";
 import { datasetSeeds } from "../seeds/datasets";
 import { eventSeeds } from "../seeds/events";
 import { footerSeed } from "../seeds/footer";
+import { geocodingProviderSeeds } from "../seeds/geocoding-providers";
 import { mainMenuSeed } from "../seeds/main-menu";
 import { pagesSeed } from "../seeds/pages";
 import { userSeeds } from "../seeds/users";
@@ -32,26 +33,45 @@ import { QueryBuilders } from "./query-builders";
 const logger = createLogger("seed");
 const PAYLOAD_NOT_INITIALIZED_ERROR = "Payload not initialized";
 
+export interface SeedItemError {
+  item: string;
+  error: string;
+  type: "validation" | "duplicate" | "database" | "timeout" | "unknown";
+}
+
+export interface SeedResult {
+  created: number;
+  skipped: number;
+  failed: number;
+  errors: SeedItemError[];
+}
+
+type SeedItemResult = "created" | "skipped" | "failed";
+
 export class SeedingOperations {
   private readonly dataProcessing = new DataProcessing();
   private readonly queryBuilders = new QueryBuilders();
 
   constructor(private readonly seedManager: SeedManager) {}
 
-  async seedCollectionWithConfig(collectionName: string, config: CollectionConfig, environment: string) {
+  async seedCollectionWithConfig(
+    collectionName: string,
+    config: CollectionConfig,
+    environment: string
+  ): Promise<SeedResult | null> {
     logger.debug({ collection: collectionName, config }, `Starting configuration-driven seeding for ${collectionName}`);
 
     // Validate configuration and get count
     const count = this.dataProcessing.determineCollectionCount(config, environment);
     if (!this.dataProcessing.isValidCount(count, collectionName)) {
-      return;
+      return null;
     }
 
     // Get base seed data
     const baseSeedData = this.getSeedData(collectionName, environment);
     if (!this.dataProcessing.isValidSeedData(baseSeedData, collectionName)) {
       logger.warn(`No seed data available for ${collectionName}`);
-      return;
+      return null;
     }
 
     // Prepare seed data according to configuration
@@ -63,7 +83,7 @@ export class SeedingOperations {
     // Handle global collections
     if (collectionName === MAIN_MENU_SLUG || collectionName === FOOTER_SLUG) {
       await this.seedGlobalCollection(transformedData, collectionName);
-      return;
+      return null;
     }
 
     // Resolve relationships for regular collections
@@ -79,9 +99,12 @@ export class SeedingOperations {
     );
 
     // Create collection items
-    await this.createCollectionItems(resolvedSeedData, collectionName, environment, config);
+    const result = await this.createCollectionItems(resolvedSeedData, collectionName, environment, config);
 
-    logger.info(`Completed seeding ${collectionName} with ${resolvedSeedData.length} items`);
+    // Log summary
+    this.logCollectionSummary(collectionName, result, resolvedSeedData.length);
+
+    return result;
   }
 
   // eslint-disable-next-line sonarjs/cognitive-complexity -- Global seeding requires handling multiple conditional paths
@@ -99,10 +122,8 @@ export class SeedingOperations {
         });
         logger.info(`Seeded ${MAIN_MENU_SLUG} global successfully!`);
       } catch (error) {
-        logError(error, `Failed to seed ${MAIN_MENU_SLUG} global`, {
-          global: collectionName,
-          data: Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : {},
-        });
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logger.error({ global: collectionName }, `Failed to seed ${MAIN_MENU_SLUG} global: ${errorMsg}`);
       }
     } else if (collectionName === FOOTER_SLUG) {
       try {
@@ -117,10 +138,8 @@ export class SeedingOperations {
         });
         logger.info(`Seeded ${FOOTER_SLUG} global successfully!`);
       } catch (error) {
-        logError(error, `Failed to seed ${FOOTER_SLUG} global`, {
-          global: collectionName,
-          data: Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : {},
-        });
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logger.error({ global: collectionName }, `Failed to seed ${FOOTER_SLUG} global: ${errorMsg}`);
       }
     }
   }
@@ -130,18 +149,34 @@ export class SeedingOperations {
     collectionName: string,
     environment: string,
     config: CollectionConfig
-  ): Promise<void> {
+  ): Promise<SeedResult> {
     const BATCH_SIZE = 10; // Process in smaller batches
     const isCI = process.env.CI === "true";
+
+    const result: SeedResult = {
+      created: 0,
+      skipped: 0,
+      failed: 0,
+      errors: [],
+    };
 
     // Process in batches to prevent overwhelming the database
     for (let i = 0; i < resolvedSeedData.length; i += BATCH_SIZE) {
       const batch = resolvedSeedData.slice(i, i + BATCH_SIZE);
       this.logBatchProgress(collectionName, i, batch.length, resolvedSeedData.length, BATCH_SIZE);
 
-      await this.processBatch(batch, collectionName, environment, config, isCI);
+      const batchResult = await this.processBatch(batch, collectionName, environment, config, isCI);
+
+      // Accumulate results
+      result.created += batchResult.created;
+      result.skipped += batchResult.skipped;
+      result.failed += batchResult.failed;
+      result.errors.push(...batchResult.errors);
+
       await this.delayBetweenBatches(i, BATCH_SIZE, resolvedSeedData.length, isCI);
     }
+
+    return result;
   }
 
   private logBatchProgress(
@@ -157,16 +192,77 @@ export class SeedingOperations {
     );
   }
 
+  private logCollectionSummary(collectionName: string, result: SeedResult, totalAttempted: number): void {
+    const { created, skipped, failed, errors } = result;
+
+    // Always log summary at info level for visibility
+    logger.info(
+      { collection: collectionName, created, skipped, failed, total: totalAttempted },
+      `Seeded ${collectionName}: ${created} created, ${skipped} skipped, ${failed} failed (${totalAttempted} total)`
+    );
+
+    // Log error summary if there are failures
+    if (errors.length > 0) {
+      // Group errors by type
+      const errorsByType = errors.reduce(
+        (acc, error) => {
+          acc[error.type] = (acc[error.type] ?? 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
+
+      const summary = Object.entries(errorsByType)
+        .map(([type, count]) => `${count} ${type}`)
+        .join(", ");
+
+      logger.warn({ collection: collectionName, errorsByType }, `${collectionName} errors: ${summary}`);
+
+      // Show first 3 unique errors as examples
+      const uniqueErrors = Array.from(new Set(errors.map((e) => e.error))).slice(0, 3);
+      if (uniqueErrors.length > 0) {
+        logger.warn({ collection: collectionName }, `Example errors:\n  - ${uniqueErrors.join("\n  - ")}`);
+      }
+    }
+  }
+
   private async processBatch(
     batch: Record<string, unknown>[],
     collectionName: string,
     environment: string,
     config: CollectionConfig,
     isCI: boolean
-  ): Promise<void> {
+  ): Promise<SeedResult> {
+    const result: SeedResult = {
+      created: 0,
+      skipped: 0,
+      failed: 0,
+      errors: [],
+    };
+
+    // Process items sequentially to avoid overwhelming the database
     for (const resolvedItem of batch) {
-      await this.createItemWithErrorHandling(resolvedItem, collectionName, environment, config, isCI);
+      const itemResult = await this.createItemWithErrorHandling(
+        resolvedItem,
+        collectionName,
+        environment,
+        config,
+        isCI
+      );
+
+      if (itemResult.result === "created") {
+        result.created++;
+      } else if (itemResult.result === "skipped") {
+        result.skipped++;
+      } else {
+        result.failed++;
+        if (itemResult.error) {
+          result.errors.push(itemResult.error);
+        }
+      }
     }
+
+    return result;
   }
 
   private async createItemWithErrorHandling(
@@ -175,27 +271,30 @@ export class SeedingOperations {
     environment: string,
     config: CollectionConfig,
     isCI: boolean
-  ): Promise<void> {
+  ): Promise<{ result: SeedItemResult; error?: SeedItemError }> {
     const OPERATION_TIMEOUT = 30000; // 30 second timeout per item
 
     try {
       const createItemPromise = this.createSingleItem(resolvedItem, collectionName, environment);
 
       if (isCI) {
-        await Promise.race([
+        const result = await Promise.race([
           createItemPromise,
-          new Promise((_resolve, reject) =>
+          new Promise<SeedItemResult>((_resolve, reject) =>
             setTimeout(
               () => reject(new Error(`Timeout creating ${collectionName} item after ${OPERATION_TIMEOUT}ms`)),
               OPERATION_TIMEOUT
             )
           ),
         ]);
+        return { result };
       } else {
-        await createItemPromise;
+        const result = await createItemPromise;
+        return { result };
       }
     } catch (error) {
-      this.handleCreateItemError(error, collectionName, resolvedItem, config, isCI);
+      const seedError = this.handleCreateItemError(error, collectionName, resolvedItem, config, isCI);
+      return { result: "failed", error: seedError };
     }
   }
 
@@ -203,20 +302,42 @@ export class SeedingOperations {
     error: unknown,
     collectionName: string,
     resolvedItem: Record<string, unknown>,
-    config: CollectionConfig,
+    _config: CollectionConfig,
     isCI: boolean
-  ): void {
-    logError(error, `Failed to create ${collectionName} item`, {
-      collection: collectionName,
-      item: resolvedItem,
-      config,
-    });
+  ): SeedItemError {
+    const itemName = this.queryBuilders.getDisplayName(resolvedItem);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Log concisely - only essential info
+    logger.debug(
+      { collection: collectionName, item: itemName },
+      `Failed to create ${collectionName} item "${itemName}": ${errorMessage}`
+    );
 
     // In CI, fail fast on persistent errors
-    if (isCI && error instanceof Error && error.message.includes("Timeout")) {
+    if (isCI && errorMessage.includes("Timeout")) {
       logger.error(`CI timeout detected, aborting ${collectionName} seeding`);
       throw error;
     }
+
+    // Categorize error type
+    let errorType: SeedItemError["type"] = "unknown";
+
+    if (errorMessage.includes("Timeout")) {
+      errorType = "timeout";
+    } else if (errorMessage.includes("duplicate") || errorMessage.includes("unique constraint")) {
+      errorType = "duplicate";
+    } else if (errorMessage.includes("validation") || errorMessage.includes("invalid")) {
+      errorType = "validation";
+    } else if (errorMessage.includes("database") || errorMessage.includes("query")) {
+      errorType = "database";
+    }
+
+    return {
+      item: itemName,
+      error: errorMessage,
+      type: errorType,
+    };
   }
 
   private async delayBetweenBatches(
@@ -234,7 +355,7 @@ export class SeedingOperations {
     resolvedItem: Record<string, unknown>,
     collectionName: string,
     environment: string
-  ): Promise<void> {
+  ): Promise<SeedItemResult> {
     // For test environment, add timestamp to slug to ensure uniqueness
     if (environment === "test" && resolvedItem.slug != null) {
       resolvedItem.slug = this.dataProcessing.generateTestSlug(resolvedItem.slug);
@@ -248,7 +369,7 @@ export class SeedingOperations {
         { collection: collectionName, displayName },
         `Skipping existing ${collectionName} item: ${displayName}`
       );
-      return;
+      return "skipped";
     }
 
     const payload = this.seedManager.payloadInstance;
@@ -285,6 +406,7 @@ export class SeedingOperations {
 
     const displayName = this.queryBuilders.getDisplayName(resolvedItem);
     logger.debug({ collection: collectionName, displayName }, `Created ${collectionName} item: ${displayName}`);
+    return "created";
   }
 
   private async findExistingItem(collection: string, item: Record<string, unknown>) {
@@ -324,6 +446,8 @@ export class SeedingOperations {
         return datasetSeeds(environment);
       case "events":
         return eventSeeds(environment);
+      case COLLECTION_GEOCODING_PROVIDERS:
+        return geocodingProviderSeeds(environment);
       case MAIN_MENU_SLUG:
         return [mainMenuSeed];
       case FOOTER_SLUG:

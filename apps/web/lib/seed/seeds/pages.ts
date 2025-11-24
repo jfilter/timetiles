@@ -20,7 +20,7 @@ export const pagesSeed: PageSeed[] = [
       {
         blockType: "hero",
         title: "Explore Your Geodata with TimeTiles",
-        subtitle: "Visualize, analyze, and interact with spatial and temporal data",
+        subtitle: "An open source platform to visualize, analyze, and interact with spatial and temporal data",
         description:
           "TimeTiles lets you map, filter, and discover patterns in your geodata, making it easy to turn raw location data into actionable insights.",
         background: "grid",
@@ -67,6 +67,36 @@ export const pagesSeed: PageSeed[] = [
         ],
       },
       {
+        blockType: "stats",
+        stats: [
+          {
+            value: "10,000+",
+            label: "Events Mapped",
+            icon: "map",
+          },
+          {
+            value: "500+",
+            label: "Datasets Imported",
+            icon: "timeline",
+          },
+          {
+            value: "100%",
+            label: "Open Source",
+            icon: "github",
+          },
+        ],
+      },
+      {
+        blockType: "newsletterCTA",
+        headline: "Never Miss a Discovery",
+        description:
+          "Join our community of explorers. Get curated event highlights, spatial insights, and new dataset releases delivered to your inbox.",
+        placeholder: "your@email.address",
+        buttonText: "Subscribe to Updates",
+        variant: "default",
+        size: "default",
+      },
+      {
         blockType: "cta",
         headline: "Ready to explore your data?",
         description: "Start visualizing and analyzing your geospatial data today",
@@ -77,7 +107,7 @@ export const pagesSeed: PageSeed[] = [
   },
   {
     title: "About",
-    slug: "/about",
+    slug: "about",
     pageBuilder: [
       {
         blockType: "hero",
@@ -223,7 +253,7 @@ export const pagesSeed: PageSeed[] = [
   },
   {
     title: "Contact",
-    slug: "/contact",
+    slug: "contact",
     pageBuilder: [
       {
         blockType: "hero",
@@ -288,6 +318,12 @@ export const pagesSeed: PageSeed[] = [
             version: 1,
           },
         },
+      },
+      {
+        blockType: "newsletterForm",
+        headline: "Stay Updated",
+        placeholder: "your@email.address",
+        buttonText: "Subscribe",
       },
       {
         blockType: "cta",

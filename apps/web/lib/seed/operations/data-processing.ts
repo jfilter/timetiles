@@ -291,6 +291,11 @@ export class DataProcessing {
   }
 
   private applyEventVariations(newItem: Record<string, unknown>, index: number): void {
+    // Update uniqueId to ensure uniqueness for generated items
+    if (typeof newItem.uniqueId === "string") {
+      newItem.uniqueId = `${newItem.uniqueId}-gen-${index}`;
+    }
+
     if (newItem.data != null) {
       const dataObj = newItem.data as Record<string, unknown>;
       this.appendIndexToField(dataObj, "address", index, " #");

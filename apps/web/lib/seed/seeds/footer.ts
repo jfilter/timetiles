@@ -33,54 +33,50 @@ export const footerSeed: FooterSeed = {
   ],
   columns: [
     {
-      title: "Product",
+      title: "Project",
       links: [
         {
           label: "Features",
           url: "/features",
         },
         {
-          label: "Pricing",
-          url: "/pricing",
+          label: "Get Started",
+          url: "https://docs.timetiles.io",
         },
         {
           label: "Documentation",
-          url: "/docs",
+          url: "https://docs.timetiles.io",
         },
         {
           label: "API Reference",
-          url: "/api-docs",
+          url: "https://docs.timetiles.io/reference/api",
         },
       ],
     },
     {
-      title: "Company",
+      title: "Community",
       links: [
         {
           label: "About",
           url: "/about",
         },
         {
+          label: "Contributing",
+          url: "https://github.com/timetiles/timetiles/blob/main/CONTRIBUTING.md",
+        },
+        {
+          label: "GitHub Discussions",
+          url: "https://github.com/timetiles/timetiles/discussions",
+        },
+        {
           label: "Blog",
           url: "/blog",
-        },
-        {
-          label: "Careers",
-          url: "/careers",
-        },
-        {
-          label: "Contact",
-          url: "/contact",
         },
       ],
     },
     {
       title: "Resources",
       links: [
-        {
-          label: "Community",
-          url: "/community",
-        },
         {
           label: "Tutorials",
           url: "/tutorials",
@@ -90,8 +86,12 @@ export const footerSeed: FooterSeed = {
           url: "/use-cases",
         },
         {
+          label: "Roadmap",
+          url: "/roadmap",
+        },
+        {
           label: "Support",
-          url: "/support",
+          url: "https://github.com/timetiles/timetiles/issues",
         },
         {
           label: "Privacy Policy",
@@ -104,6 +104,12 @@ export const footerSeed: FooterSeed = {
       ],
     },
   ],
+  newsletter: {
+    enabled: true,
+    headline: "Stay Mapped In",
+    placeholder: "your@email.address",
+    buttonText: "Subscribe",
+  },
   copyright: "© 2024 TimeTiles. All rights reserved.",
   credits: "Built with Payload CMS and Next.js",
 };

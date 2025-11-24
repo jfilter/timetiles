@@ -26,6 +26,7 @@ interface ParsedArgs {
   randomSeed?: number;
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 const parseArguments = (args: string[]): ParsedArgs => {
   const validPresets = ["minimal", "testing", "e2e", "development", "demo", "benchmark"];
   let preset = "development";
@@ -109,6 +110,7 @@ Examples:
   pnpm seed development users events  # Seed only users and events
   pnpm seed --volume large --random   # Development with large volume, random data
   pnpm seed benchmark --seed 12345    # Benchmark preset with specific seed
+  pnpm seed --truncate                # Truncate and seed
   pnpm seed truncate                  # Truncate all collections
 `);
     process.exit(0);
@@ -149,21 +151,7 @@ Examples:
       const { preset, collections, truncate, volume, realism, performance, debugging, randomSeed } =
         parseArguments(args);
 
-      logger.info(
-        {
-          preset,
-          collections,
-          truncate,
-          volume,
-          realism,
-          performance,
-          debugging,
-          randomSeed,
-          isCI,
-          timeout: `${TOTAL_TIMEOUT}ms`,
-        },
-        "Starting seed operation"
-      );
+      logger.info({ preset, truncate }, `Starting seed: preset=${preset}${truncate ? " (truncate)" : ""}`);
 
       // Add timeout protection for seed operations
       await Promise.race([
