@@ -24,6 +24,7 @@ import {
   FooterSection,
   FooterSectionTitle,
   FooterTagline,
+  NewsletterForm,
 } from "@timetiles/ui";
 import { DM_Sans, Playfair_Display, Space_Mono } from "next/font/google";
 import Link from "next/link";
@@ -75,7 +76,9 @@ export default async function RootLayout({
           <ConditionalTopMenuBar />
           {children}
           <Footer>
-            <FooterContent className="mb-12 grid grid-cols-1 gap-12 md:grid-cols-5">
+            <FooterContent
+              className={`mb-12 grid grid-cols-1 gap-12 ${footerData.newsletter?.enabled ? "md:grid-cols-6" : "md:grid-cols-5"}`}
+            >
               <FooterBrand className="md:col-span-2">
                 <FooterLogo>
                   <Link href="/" className="text-foreground font-serif text-2xl font-bold">
@@ -100,7 +103,7 @@ export default async function RootLayout({
                   </div>
                 )}
               </FooterBrand>
-              {footerData.columns?.slice(0, 3).map((column) => (
+              {footerData.columns?.slice(0, footerData.newsletter?.enabled ? 2 : 3).map((column) => (
                 <FooterColumn key={column.id}>
                   <FooterSection>
                     <FooterSectionTitle>{column.title}</FooterSectionTitle>
@@ -114,6 +117,15 @@ export default async function RootLayout({
                   </FooterSection>
                 </FooterColumn>
               ))}
+              {footerData.newsletter?.enabled && (
+                <FooterColumn className="md:col-span-2">
+                  <NewsletterForm
+                    headline={footerData.newsletter.headline ?? "Stay Mapped In"}
+                    placeholder={footerData.newsletter.placeholder ?? "your@email.address"}
+                    buttonText={footerData.newsletter.buttonText ?? "Subscribe"}
+                  />
+                </FooterColumn>
+              )}
             </FooterContent>
             <FooterBottom>
               <FooterBottomContent>

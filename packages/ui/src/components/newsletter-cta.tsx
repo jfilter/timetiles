@@ -104,9 +104,10 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
           setStatus("error");
           setMessage(data.error || "Subscription failed. Please try again.");
         }
-      } catch {
+      } catch (error) {
         setStatus("error");
-        setMessage("Network error. Please try again.");
+        const errorMessage = error instanceof Error ? error.message : "Network error. Please try again.";
+        setMessage(errorMessage);
       }
 
       // Reset status after 8 seconds

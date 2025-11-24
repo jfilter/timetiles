@@ -89,6 +89,50 @@ export const Footer: GlobalConfig = {
       ],
     },
     {
+      name: "newsletter",
+      type: "group",
+      admin: {
+        description: "Newsletter subscription form settings",
+      },
+      fields: [
+        {
+          name: "enabled",
+          type: "checkbox",
+          defaultValue: true,
+          admin: {
+            description: "Show newsletter signup in footer",
+          },
+        },
+        {
+          name: "headline",
+          type: "text",
+          defaultValue: "Stay Mapped In",
+          admin: {
+            description: "Newsletter section headline",
+            condition: (data) => data.newsletter?.enabled,
+          },
+        },
+        {
+          name: "placeholder",
+          type: "text",
+          defaultValue: "your@email.address",
+          admin: {
+            description: "Email input placeholder text",
+            condition: (data) => data.newsletter?.enabled,
+          },
+        },
+        {
+          name: "buttonText",
+          type: "text",
+          defaultValue: "Subscribe",
+          admin: {
+            description: "Submit button text",
+            condition: (data) => data.newsletter?.enabled,
+          },
+        },
+      ],
+    },
+    {
       name: "copyright",
       type: "text",
       required: true,
