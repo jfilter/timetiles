@@ -86,49 +86,9 @@ export class ProviderManager {
   }
 
   private buildDefaultProviderConfigs(): ProviderConfig[] {
-    const configs: ProviderConfig[] = [];
-
-    if (this.isGoogleApiKeyAvailable()) {
-      configs.push(this.createGoogleProviderConfig());
-    }
-
-    if (this.isOpenCageApiKeyAvailable()) {
-      configs.push(this.createOpenCageProviderConfig());
-    }
-
-    // Always add Nominatim as fallback
-    configs.push(this.createNominatimProviderConfig());
-
-    return configs;
-  }
-
-  private isGoogleApiKeyAvailable(): boolean {
-    return (
-      process.env.GEOCODING_GOOGLE_MAPS_API_KEY != null &&
-      process.env.GEOCODING_GOOGLE_MAPS_API_KEY != undefined &&
-      process.env.GEOCODING_GOOGLE_MAPS_API_KEY.trim() !== ""
-    );
-  }
-
-  private isOpenCageApiKeyAvailable(): boolean {
-    return (
-      process.env.GEOCODING_OPENCAGE_API_KEY != null &&
-      process.env.GEOCODING_OPENCAGE_API_KEY != undefined &&
-      process.env.GEOCODING_OPENCAGE_API_KEY.trim() !== ""
-    );
-  }
-
-  private createGoogleProviderConfig(): ProviderConfig {
-    return {
-      name: "google",
-      geocoder: NodeGeocoder({
-        provider: "google",
-        apiKey: process.env.GEOCODING_GOOGLE_MAPS_API_KEY,
-        formatter: null,
-      }),
-      priority: 1,
-      enabled: true,
-    };
+    // Return only Nominatim as default fallback
+    // Providers should be configured through the Payload admin panel
+    return [this.createNominatimProviderConfig()];
   }
 
   private createNominatimProviderConfig(): ProviderConfig {
@@ -142,19 +102,6 @@ export class ProviderManager {
         // extraQueryParams removed due to type conflicts
       }),
       priority: 10,
-      enabled: true,
-    };
-  }
-
-  private createOpenCageProviderConfig(): ProviderConfig {
-    return {
-      name: "opencage",
-      geocoder: NodeGeocoder({
-        provider: "opencage",
-        apiKey: process.env.GEOCODING_OPENCAGE_API_KEY,
-        formatter: null,
-      }),
-      priority: 5,
       enabled: true,
     };
   }

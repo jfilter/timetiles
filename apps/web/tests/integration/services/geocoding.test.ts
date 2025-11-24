@@ -107,10 +107,7 @@ describe("GeocodingService", () => {
     mockGoogleGeocode.mockReset();
     mockNominatimGeocode.mockReset();
 
-    // Reset environment variables - let each test set its own
-    delete process.env.GEOCODING_GOOGLE_MAPS_API_KEY;
-
-    // Don't create the service here - let each test create it after setting up environment
+    // Don't create the service here - let each test create it after setting up providers
     // This ensures clean state for each test
     geocodingService = null as any;
   });
@@ -120,9 +117,7 @@ describe("GeocodingService", () => {
   });
 
   describe.sequential("initialization", () => {
-    it("should successfully initialize with Google geocoder when API key is available and provider exists", async () => {
-      process.env.GEOCODING_GOOGLE_MAPS_API_KEY = TEST_CREDENTIALS.apiKey.key;
-
+    it("should successfully initialize with Google geocoder when provider exists in database", async () => {
       // Create Google provider in database
       await payload.create({
         collection: "geocoding-providers",
@@ -157,9 +152,7 @@ describe("GeocodingService", () => {
       expect(config).toHaveProperty("Google Maps (Init Test)");
     });
 
-    it("should successfully initialize with only Nominatim when Google API key is not available", async () => {
-      delete process.env.GEOCODING_GOOGLE_MAPS_API_KEY;
-
+    it("should successfully initialize with only Nominatim when no other providers exist", async () => {
       // Create only Nominatim provider
       await payload.create({
         collection: "geocoding-providers",
@@ -205,7 +198,6 @@ describe("GeocodingService", () => {
     };
 
     if (withGoogleApi) {
-      process.env.GEOCODING_GOOGLE_MAPS_API_KEY = TEST_CREDENTIALS.apiKey.key;
       const googleName = `Google Maps (Test ${uniqueId})`;
       await payload.create({
         collection: "geocoding-providers",
@@ -225,8 +217,6 @@ describe("GeocodingService", () => {
         },
       });
       providerNames.google = googleName;
-    } else {
-      delete process.env.GEOCODING_GOOGLE_MAPS_API_KEY;
     }
 
     // Always create Nominatim provider for tests

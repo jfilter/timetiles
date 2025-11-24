@@ -44,7 +44,7 @@ export class GeocodingService {
 
     try {
       // Load settings from database
-      this.loadSettings();
+      await this.loadSettings();
       logger.info("Settings loaded successfully");
 
       // Update components with settings
@@ -96,42 +96,44 @@ export class GeocodingService {
     await this.cacheManager.cleanupCache();
   }
 
-  private loadSettings(): void {
-    // Default settings - in a real implementation, these would be loaded from database
-    this.settings = {
-      enabled: true,
-      fallbackEnabled: true,
-      providerSelection: {
-        strategy: "priority",
-        requiredTags: [],
-      },
-      caching: {
+  private async loadSettings(): Promise<void> {
+    try {
+      const settingsGlobal = await this.payload.findGlobal({
+        slug: "settings",
+      });
+
+      const geocodingSettings = settingsGlobal.geocoding;
+
+      this.settings = {
+        enabled: geocodingSettings?.enabled ?? true,
+        fallbackEnabled: geocodingSettings?.fallbackEnabled ?? true,
+        providerSelection: {
+          strategy: geocodingSettings?.providerSelection?.strategy ?? "priority",
+          requiredTags: geocodingSettings?.providerSelection?.requiredTags ?? [],
+        },
+        caching: {
+          enabled: geocodingSettings?.caching?.enabled ?? true,
+          ttlDays: geocodingSettings?.caching?.ttlDays ?? 30,
+        },
+      };
+
+      logger.debug("Geocoding settings loaded from database", { settings: this.settings });
+    } catch (error) {
+      // Fallback to defaults if settings global doesn't exist or has errors
+      logger.warn("Failed to load geocoding settings from database, using defaults", { error });
+      this.settings = {
         enabled: true,
-        ttlDays: 30,
-      },
-    };
-
-    // Override with environment variables if present
-    if (process.env.GEOCODING_ENABLED === "false") {
-      this.settings.enabled = false;
+        fallbackEnabled: true,
+        providerSelection: {
+          strategy: "priority",
+          requiredTags: [],
+        },
+        caching: {
+          enabled: true,
+          ttlDays: 30,
+        },
+      };
     }
-
-    if (process.env.GEOCODING_FALLBACK_ENABLED === "false") {
-      this.settings.fallbackEnabled = false;
-    }
-
-    if (process.env.GEOCODING_CACHE_ENABLED === "false") {
-      this.settings.caching.enabled = false;
-    }
-
-    if (process.env.GEOCODING_CACHE_TTL_DAYS != null && process.env.GEOCODING_CACHE_TTL_DAYS.length > 0) {
-      const ttl = parseInt(process.env.GEOCODING_CACHE_TTL_DAYS, 10);
-      if (!Number.isNaN(ttl) && ttl > 0) {
-        this.settings.caching.ttlDays = ttl;
-      }
-    }
-
-    logger.debug("Geocoding settings loaded", { settings: this.settings });
   }
 }
 

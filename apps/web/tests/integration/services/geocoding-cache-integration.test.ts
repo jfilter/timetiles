@@ -155,9 +155,6 @@ describe.sequential("Geocoding Cache Integration", () => {
       return Promise.resolve([result]);
     });
 
-    // Set up environment for geocoding
-    process.env.GEOCODING_GOOGLE_MAPS_API_KEY = "test-api-key-for-geocoding";
-
     // Create geocoding provider in database with unique name
     await payload.create({
       collection: "geocoding-providers",
