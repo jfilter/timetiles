@@ -100,6 +100,22 @@ check_prerequisites() {
         print_missing "docker compose not found"
     fi
 
+    # jq (JSON processor for scripts)
+    if command -v jq >/dev/null 2>&1; then
+        VERSION=$(jq --version | cut -d'-' -f2)
+        print_success "jq ($VERSION)"
+    else
+        print_missing "jq not found (install: brew install jq / apt install jq)"
+    fi
+
+    # curl (for API calls and health checks)
+    if command -v curl >/dev/null 2>&1; then
+        VERSION=$(curl --version | head -n1 | cut -d' ' -f2)
+        print_success "curl ($VERSION)"
+    else
+        print_missing "curl not found (install: brew install curl / apt install curl)"
+    fi
+
     echo ""
 }
 

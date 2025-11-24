@@ -101,6 +101,8 @@ Full documentation at **[docs.timetiles.io](https://docs.timetiles.io)**
 - Node.js 24+
 - pnpm 10.12.4+
 - Docker & Docker Compose
+- jq (JSON processor for scripts)
+- curl (for API calls and health checks)
 
 ### Installation
 
