@@ -202,19 +202,6 @@ export default {
           // If scope is provided, check if it matches expected scopes
           if (scope && expectedScopes.length > 0) {
             if (!expectedScopes.includes(scope)) {
-              // Special case: 'config' scope should only be used for package configs
-              if (scope === 'config') {
-                const configFiles = changedFiles.filter(f => 
-                  f.includes('packages/') && f.includes('config/')
-                );
-                if (configFiles.length === 0) {
-                  return [
-                    false,
-                    `Scope "config" should only be used for package configuration changes. Based on your changes, consider: ${expectedScopes.join(', ')}`
-                  ];
-                }
-              }
-              
               // Allow the scope if it's in our enum, but provide a suggestion
               const validScopes = [
                 'web', 'docs', 'ui', 'assets', 'config',
@@ -268,15 +255,9 @@ export default {
               message: 'For CI/build configuration fixes, use "fix(ci)" or "fix(build)" instead of "fix(config)"'
             },
             {
-              condition: type === 'chore' && scope === 'config' && 
+              condition: type === 'chore' && scope === 'config' &&
                         changedFiles.some(f => f.includes('.github/') || f.includes('ci/')),
               message: 'For CI/build configuration updates, use "chore(ci)" or "chore(build)" instead of "chore(config)"'
-            },
-            // Config scope should only be used for package configurations
-            {
-              condition: scope === 'config' && 
-                        !changedFiles.some(f => f.includes('packages/') && f.includes('config')),
-              message: 'Scope "config" should only be used for configuration package changes (packages/*-config/)'
             },
             // Dependencies should use deps scope
             {
@@ -340,7 +321,7 @@ export default {
         'docs',       // Documentation site (apps/docs)
         'ui',         // Shared UI components package
         'assets',     // Shared assets package (logos, images)
-        'config',     // Configuration packages (ESLint, TypeScript, Prettier) - ONLY for packages/*-config/
+        'config',     // Configuration changes (Payload, ESLint, TypeScript, Prettier packages, etc.)
 
         // Core features
         'import',     // File import system (manual, scheduled, webhook)
@@ -466,7 +447,7 @@ export default {
           docs: 'Documentation site',
           ui: 'Shared UI components',
           assets: 'Shared assets (logos, images)',
-          config: 'Package configurations (ESLint, TypeScript, Prettier)',
+          config: 'Configuration changes (Payload, ESLint, TypeScript, Prettier)',
           
           // Features
           import: 'File import system',
