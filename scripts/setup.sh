@@ -68,7 +68,24 @@ setup_env_files() {
 }
 
 # ============================================================================
-# Step 2: Dependencies
+# Step 2: Upload Directories
+# ============================================================================
+create_upload_directories() {
+    echo "📁 Upload Directories"
+
+    # Create uploads directory in web app
+    if [ ! -d apps/web/uploads ]; then
+        mkdir -p apps/web/uploads
+        print_success "Created apps/web/uploads"
+    else
+        print_exists "apps/web/uploads already exists"
+    fi
+
+    echo ""
+}
+
+# ============================================================================
+# Step 3: Dependencies
 # ============================================================================
 install_dependencies() {
     echo "📦 Dependencies"
@@ -90,7 +107,7 @@ install_dependencies() {
 }
 
 # ============================================================================
-# Step 3: Git LFS (Required)
+# Step 4: Git LFS (Required)
 # ============================================================================
 setup_git_lfs() {
     echo "🗂️  Git LFS"
@@ -122,7 +139,7 @@ setup_git_lfs() {
 }
 
 # ============================================================================
-# Step 4: Git Commit Template (Optional - for conventional commits)
+# Step 5: Git Commit Template (Optional - for conventional commits)
 # ============================================================================
 setup_git_config() {
     echo "🔧 Git Configuration"
@@ -155,6 +172,7 @@ setup_git_config() {
 # Main Setup Flow
 # ============================================================================
 setup_env_files
+create_upload_directories
 install_dependencies
 setup_git_lfs
 setup_git_config

@@ -3176,6 +3176,27 @@ export interface Footer {
       }[]
     | null;
   /**
+   * Newsletter subscription form settings
+   */
+  newsletter?: {
+    /**
+     * Show newsletter signup in footer
+     */
+    enabled?: boolean | null;
+    /**
+     * Newsletter section headline
+     */
+    headline?: string | null;
+    /**
+     * Email input placeholder text
+     */
+    placeholder?: string | null;
+    /**
+     * Submit button text
+     */
+    buttonText?: string | null;
+  };
+  /**
    * Copyright text (e.g., © 2024 TimeTiles. All rights reserved.)
    */
   copyright: string;
@@ -3202,6 +3223,36 @@ export interface Setting {
      * Optional: Authorization header for the newsletter service (e.g., 'Bearer YOUR_TOKEN' or 'Basic BASE64_CREDENTIALS'). Leave empty if not required.
      */
     authHeader?: string | null;
+  };
+  geocoding?: {
+    /**
+     * Enable or disable geocoding globally for event imports
+     */
+    enabled?: boolean | null;
+    /**
+     * When enabled, will try alternative providers if the primary provider fails
+     */
+    fallbackEnabled?: boolean | null;
+    providerSelection?: {
+      /**
+       * How to select which geocoding provider to use
+       */
+      strategy?: ('priority' | 'tag-based') | null;
+      /**
+       * Only use providers with these tags (for tag-based strategy)
+       */
+      requiredTags?: ('production' | 'development' | 'testing' | 'primary' | 'secondary' | 'backup')[] | null;
+    };
+    caching?: {
+      /**
+       * Cache geocoding results to reduce API calls and improve performance
+       */
+      enabled?: boolean | null;
+      /**
+       * How long to keep cached geocoding results (in days)
+       */
+      ttlDays?: number | null;
+    };
   };
   updatedAt?: string | null;
   createdAt?: string | null;
@@ -3267,6 +3318,14 @@ export interface FooterSelect<T extends boolean = true> {
             };
         id?: T;
       };
+  newsletter?:
+    | T
+    | {
+        enabled?: T;
+        headline?: T;
+        placeholder?: T;
+        buttonText?: T;
+      };
   copyright?: T;
   credits?: T;
   _status?: T;
@@ -3284,6 +3343,24 @@ export interface SettingsSelect<T extends boolean = true> {
     | {
         serviceUrl?: T;
         authHeader?: T;
+      };
+  geocoding?:
+    | T
+    | {
+        enabled?: T;
+        fallbackEnabled?: T;
+        providerSelection?:
+          | T
+          | {
+              strategy?: T;
+              requiredTags?: T;
+            };
+        caching?:
+          | T
+          | {
+              enabled?: T;
+              ttlDays?: T;
+            };
       };
   updatedAt?: T;
   createdAt?: T;

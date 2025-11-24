@@ -15,9 +15,8 @@ import { sql } from "@payloadcms/db-postgres";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
-import { checkDatabaseFunction } from "@/lib/database/functions";
 import { type MapBounds, parseBoundsParameter } from "@/lib/geospatial";
-import { logError, logger } from "@/lib/logger";
+import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { internalError } from "@/lib/utils/api-response";
@@ -77,11 +76,6 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
     // Get accessible catalog IDs for this user
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, request.user);
 
-    const functionExists = await checkDatabaseFunction(payload, "calculate_event_histogram");
-    if (!functionExists) {
-      return createFunctionNotFoundResponse();
-    }
-
     const histogramResult = await executeHistogramQuery(payload, parameters, bounds, accessibleCatalogIds);
     const response = buildHistogramResponse(histogramResult.rows);
 
@@ -103,17 +97,6 @@ const extractHistogramParameters = (searchParams: URLSearchParams) => ({
   minBuckets: parseInt(searchParams.get("minBuckets") ?? "20", 10),
   maxBuckets: parseInt(searchParams.get("maxBuckets") ?? "50", 10),
 });
-
-const createFunctionNotFoundResponse = (): NextResponse => {
-  logger.error("Required calculate_event_histogram function not found in database");
-  return NextResponse.json(
-    {
-      error: "Database function calculate_event_histogram not found. Please ensure migrations are run.",
-      code: "MISSING_DB_FUNCTION",
-    },
-    { status: 500 }
-  );
-};
 
 const executeHistogramQuery = async (
   payload: Awaited<ReturnType<typeof getPayload>>,

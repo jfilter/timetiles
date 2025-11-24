@@ -35,14 +35,7 @@ echo ""
 echo "🐳 Docker Infrastructure:"
 
 if docker compose -f docker-compose.dev.yml ps --services --filter status=running 2>/dev/null | grep -q postgres; then
-    print_success "PostgreSQL is running"
-
-    # Check database connectivity
-    if docker exec timetiles-postgres pg_isready -U timetiles_user >/dev/null 2>&1; then
-        print_success "Database is accepting connections"
-    else
-        print_warning "Database not ready yet"
-    fi
+    print_success "PostgreSQL container is running"
 else
     print_missing "PostgreSQL is not running (run 'make up')"
 fi
@@ -69,76 +62,66 @@ fi
 echo ""
 
 # ============================================================================
-# Database Information
+# Application Health Checks (via API)
 # ============================================================================
-echo "💾 Database Info:"
+echo "🏥 Application Health:"
 
-if docker compose -f docker-compose.dev.yml ps --services --filter status=running 2>/dev/null | grep -q postgres; then
-    SIZE=$(docker exec timetiles-postgres psql -U timetiles_user -d timetiles -t -c "SELECT pg_size_pretty(pg_database_size('timetiles')) as size;" 2>/dev/null | xargs)
-
-    if [ -n "$SIZE" ]; then
-        echo -e "  📦 Database size: $SIZE"
-    else
-        print_warning "Could not retrieve database size"
-    fi
+# Check if dev server is running (prerequisite for API call)
+if ! pgrep -f "next dev" >/dev/null 2>&1; then
+    print_info "Dev server not running (run 'make dev' to see health checks)"
+    echo ""
+    exit 0
 fi
 
-echo ""
+# Check if jq is installed
+if ! command -v jq >/dev/null 2>&1; then
+    print_warning "jq not installed (install with: brew install jq)"
+    echo ""
+    exit 0
+fi
 
-# ============================================================================
-# Migration Status
-# ============================================================================
-echo "🔄 Migration Status:"
+# Call health endpoint
+HEALTH_JSON=$(curl -s http://localhost:3000/api/health 2>/dev/null)
+CURL_EXIT=$?
 
-if docker compose -f docker-compose.dev.yml ps --services --filter status=running 2>/dev/null | grep -q postgres; then
-    # Check if all migrations are applied
-    cd apps/web 2>/dev/null || { print_warning "Could not find apps/web directory"; echo ""; exit 0; }
+if [ "$CURL_EXIT" -ne 0 ] || [ -z "$HEALTH_JSON" ]; then
+    print_warning "Could not reach health endpoint at http://localhost:3000/api/health"
+    echo ""
+    exit 0
+fi
 
-    # Check migration status using Payload
-    MIGRATION_OUTPUT=$(pnpm --silent payload migrate:status 2>&1)
-    MIGRATION_EXIT=$?
+# Helper function to display health check result
+display_health_check() {
+    local CHECK_NAME="$1"
+    local JSON_KEY="$2"
 
-    # Count total migrations and check for pending
-    TOTAL_MIGRATIONS=$(echo "$MIGRATION_OUTPUT" | grep "│.*Yes" | wc -l | tr -d ' ' || echo "0")
-    PENDING_COUNT=$(echo "$MIGRATION_OUTPUT" | grep "│.*No" | wc -l | tr -d ' ' || echo "0")
+    STATUS=$(echo "$HEALTH_JSON" | jq -r ".$JSON_KEY.status" 2>/dev/null)
+    MESSAGE=$(echo "$HEALTH_JSON" | jq -r ".$JSON_KEY.message" 2>/dev/null)
 
-    if [ "$MIGRATION_EXIT" -eq 0 ]; then
-        if [ "$PENDING_COUNT" -eq 0 ] && [ "$TOTAL_MIGRATIONS" -gt 0 ]; then
-            print_success "All migrations applied ($TOTAL_MIGRATIONS total)"
-        elif [ "$PENDING_COUNT" -gt 0 ]; then
-            print_warning "$PENDING_COUNT pending migration(s) (run 'pnpm --filter web payload migrate')"
-        else
-            print_info "Migration status checked"
-        fi
+    if [ "$STATUS" = "healthy" ]; then
+        print_success "$CHECK_NAME: $MESSAGE"
+    elif [ "$STATUS" = "degraded" ]; then
+        print_warning "$CHECK_NAME: $MESSAGE"
+    elif [ "$STATUS" = "error" ]; then
+        print_missing "$CHECK_NAME: $MESSAGE"
     else
-        print_warning "Could not check migration status"
+        print_info "$CHECK_NAME: Status unknown"
     fi
+}
 
-    # Check for schema drift (need to create new migration)
-    DRIFT_OUTPUT=$(echo "n" | timeout 10s pnpm --silent payload migrate:create --name drift_check 2>&1 || true)
+# Display all health checks
+display_health_check "Environment variables" "env"
+display_health_check "Uploads directory" "uploads"
+display_health_check "Geocoding service" "geocoding"
+display_health_check "Payload CMS" "cms"
+display_health_check "Migrations" "migrations"
+display_health_check "PostGIS extension" "postgis"
+display_health_check "Database functions" "dbFunctions"
 
-    if echo "$DRIFT_OUTPUT" | grep -q "No schema changes detected"; then
-        print_success "Schema is up-to-date (no drift detected)"
-    elif echo "$DRIFT_OUTPUT" | grep -q "schema changes detected" || echo "$DRIFT_OUTPUT" | grep -q "The following changes"; then
-        print_warning "Schema changes detected (run 'pnpm --filter web payload migrate:create')"
-    fi
-
-    # Check if payload-types.ts needs regeneration
-    TYPES_BEFORE=$(md5 -q payload-types.ts 2>/dev/null || echo "missing")
-    pnpm --silent payload generate:types >/dev/null 2>&1 || true
-    TYPES_AFTER=$(md5 -q payload-types.ts 2>/dev/null || echo "missing")
-
-    if [ "$TYPES_BEFORE" = "$TYPES_AFTER" ]; then
-        print_success "TypeScript types are up-to-date"
-    else
-        print_warning "TypeScript types need regeneration (run 'pnpm --filter web payload generate:types')"
-        # Restore original file to avoid uncommitted changes
-        git checkout payload-types.ts 2>/dev/null || true
-    fi
-
-    cd ../.. 2>/dev/null || true
-else
-    print_missing "Database not running (cannot check migrations)"
+# Special handling for database size (show the size value)
+DB_SIZE=$(echo "$HEALTH_JSON" | jq -r '.dbSize.message' 2>/dev/null)
+if [ -n "$DB_SIZE" ] && [ "$DB_SIZE" != "null" ]; then
+    echo -e "  📦 Database size: $DB_SIZE"
 fi
 
 echo ""

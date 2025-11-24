@@ -12,7 +12,6 @@ import { sql } from "@payloadcms/db-postgres";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
-import { checkDatabaseFunction } from "@/lib/database/functions";
 import { isValidBounds, type MapBounds } from "@/lib/geospatial";
 import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
@@ -54,11 +53,6 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
     }
 
     const filters = buildFilters(parameters, accessibleCatalogIds);
-    const functionExists = await checkDatabaseFunction(payload, "cluster_events");
-
-    if (!functionExists) {
-      return createFunctionNotFoundResponse();
-    }
 
     const result = await executeClusteringQuery(payload, boundsResult.bounds, parameters.zoom, filters);
     const clusters = transformResultToClusters(result.rows);
@@ -133,17 +127,6 @@ const buildFilters = (
   return filters;
 };
 
-const createFunctionNotFoundResponse = (): NextResponse => {
-  logger.error("Required cluster_events function not found in database");
-  return NextResponse.json(
-    {
-      error: "Database function cluster_events not found. Please ensure migrations are run.",
-      code: "MISSING_DB_FUNCTION",
-    },
-    { status: 500 }
-  );
-};
-
 const executeClusteringQuery = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   bounds: MapBounds,
@@ -177,10 +160,6 @@ const transformResultToClusters = (rows: Array<Record<string, unknown>>) =>
   rows.map((row: Record<string, unknown>) => {
     const isCluster = Number(row.event_count) > 1;
     const featureId = row.cluster_id ?? row.event_id;
-
-    if (isCluster) {
-      logger.debug("Cluster found:", { row });
-    }
 
     return {
       type: "Feature",

@@ -264,6 +264,80 @@ const checkPostGIS = async (): Promise<HealthCheckResult> => {
   }
 };
 
+const checkDatabaseFunctions = async (): Promise<HealthCheckResult> => {
+  logger.debug("Checking database functions");
+
+  try {
+    logger.debug("Getting Payload instance for database functions check");
+    const payload = await getPayload({ config });
+
+    const requiredFunctions = ["cluster_events", "calculate_event_histogram"];
+    const missingFunctions: string[] = [];
+
+    for (const functionName of requiredFunctions) {
+      logger.debug(`Checking for function: ${functionName}`);
+      const functionCheck = (await payload.db.drizzle.execute(sql`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_proc
+          WHERE proname = ${functionName}
+        ) as exists
+      `)) as { rows: Array<{ exists: boolean }> };
+
+      const exists = functionCheck.rows[0]?.exists ?? false;
+      if (!exists) {
+        missingFunctions.push(functionName);
+      }
+    }
+
+    logger.debug("Database functions check complete", {
+      total: requiredFunctions.length,
+      missing: missingFunctions.length,
+    });
+
+    return {
+      status: missingFunctions.length > 0 ? "error" : "healthy",
+      message:
+        missingFunctions.length > 0
+          ? `Missing required database functions: ${missingFunctions.join(", ")}`
+          : "All required database functions are present",
+    };
+  } catch (error) {
+    logger.error("Database functions check failed", {
+      error: (error as Error).message,
+      stack: (error as Error).stack,
+    });
+    return { status: "error", message: (error as Error).message };
+  }
+};
+
+const checkDatabaseSize = async (): Promise<HealthCheckResult> => {
+  logger.debug("Checking database size");
+
+  try {
+    logger.debug("Getting Payload instance for database size check");
+    const payload = await getPayload({ config });
+
+    logger.debug("Querying database size");
+    const sizeCheck = (await payload.db.drizzle.execute(sql`
+      SELECT pg_size_pretty(pg_database_size('timetiles')) as size
+    `)) as { rows: Array<{ size: string }> };
+
+    const size = sizeCheck.rows[0]?.size ?? "Unknown";
+    logger.debug("Database size check complete", { size });
+
+    return {
+      status: "healthy",
+      message: size,
+    };
+  } catch (error) {
+    logger.error("Database size check failed", {
+      error: (error as Error).message,
+      stack: (error as Error).stack,
+    });
+    return { status: "error", message: (error as Error).message };
+  }
+};
+
 const wrapHealthCheck = async (
   checkFn: () => Promise<HealthCheckResult>,
   checkName: string
@@ -287,6 +361,8 @@ const createHealthSummary = (results: {
   cms: HealthCheckResult;
   migrations: HealthCheckResult;
   postgis: HealthCheckResult;
+  dbFunctions: HealthCheckResult;
+  dbSize: HealthCheckResult;
 }) => ({
   env: results.env.status,
   uploads: results.uploads.status,
@@ -294,22 +370,26 @@ const createHealthSummary = (results: {
   cms: results.cms.status,
   migrations: results.migrations.status,
   postgis: results.postgis.status,
+  dbFunctions: results.dbFunctions.status,
+  dbSize: results.dbSize.status,
 });
 
 export const runHealthChecks = async () => {
   logger.info("Starting health checks");
   const startTime = Date.now();
 
-  const [env, uploads, geocoding, cms, migrations, postgis] = await Promise.all([
+  const [env, uploads, geocoding, cms, migrations, postgis, dbFunctions, dbSize] = await Promise.all([
     wrapHealthCheck(() => Promise.resolve(checkEnvironmentVariables()), "Environment"),
     wrapHealthCheck(checkUploadsDirectory, "Uploads directory"),
     wrapHealthCheck(checkGeocodingService, "Geocoding service"),
     wrapHealthCheck(checkPayloadCMS, "Payload CMS"),
     wrapHealthCheck(checkMigrations, "Migrations"),
     wrapHealthCheck(checkPostGIS, "PostGIS"),
+    wrapHealthCheck(checkDatabaseFunctions, "Database functions"),
+    wrapHealthCheck(checkDatabaseSize, "Database size"),
   ]);
 
-  const results = { env, uploads, geocoding, cms, migrations, postgis };
+  const results = { env, uploads, geocoding, cms, migrations, postgis, dbFunctions, dbSize };
   const duration = Date.now() - startTime;
 
   logger.info("Health checks completed", {
