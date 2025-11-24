@@ -32,43 +32,40 @@ LOG_LEVEL=info|debug|warn|error
 
 ### Geocoding Configuration
 
-TimeTiles supports multiple geocoding providers that can be configured in two ways:
+TimeTiles supports multiple geocoding providers configured through the admin panel:
 
-#### Option 1: Admin Panel (Recommended)
+#### Geocoding Providers
 
 Configure providers directly in the admin interface at `/admin/collections/geocoding-providers`:
 
-- Add multiple providers with different priorities
-- Enable/disable providers without restart
-- Set API keys securely
-- Configure rate limits per provider
+- **Add multiple providers** with different priorities
+- **Enable/disable providers** without restart
+- **Set API keys securely** in the admin UI
+- **Configure rate limits** per provider
+- **Tag providers** for environment-specific selection (production, development, testing)
 
-#### Option 2: Environment Variables (Fallback)
+**Default Setup (Development Seeding):**
 
-If no providers are configured in the admin panel, TimeTiles falls back to environment variables:
-
-```env
-# Google Maps (Priority 1 - most accurate)
-GEOCODING_GOOGLE_MAPS_API_KEY=your-api-key
-
-# OpenCage (Priority 5 - good alternative)
-GEOCODING_OPENCAGE_API_KEY=your-api-key
-
-# Nominatim/OpenStreetMap (Priority 10 - free fallback, always enabled)
-# No API key required - uses public servers by default
-
-# Rate limiting for all providers
-GEOCODING_RATE_LIMIT=10  # requests per second
-GEOCODING_BATCH_SIZE=100
-```
+- **Nominatim (OpenStreetMap)**: Enabled by default, free public instance, no API key required
+- **Google Maps**: Disabled by default, configure API key in admin panel to enable
+- **OpenCage**: Disabled by default, configure API key in admin panel to enable
 
 **Supported Providers:**
 
 - **Google Maps**: Most accurate, requires API key
 - **OpenCage**: Good alternative, requires API key
-- **Nominatim/OpenStreetMap**: Free, no API key needed, automatic fallback
+- **Nominatim/OpenStreetMap**: Free, no API key needed
 
 Providers are tried in priority order (lower number = higher priority).
+
+#### Geocoding Settings
+
+Configure geocoding behavior at `/admin/globals/settings`:
+
+- **Enable/Disable Geocoding**: Toggle geocoding globally
+- **Provider Fallback**: Enable fallback to alternative providers on failure
+- **Selection Strategy**: Priority-based or tag-based provider selection
+- **Caching**: Enable/disable geocoding cache and set TTL (days)
 
 ### File Upload Configuration
 
@@ -227,9 +224,19 @@ psql $DATABASE_URL -c "SELECT 1"
 
 ### Geocoding Issues
 
+Check geocoding provider configuration in the admin panel at `/admin/collections/geocoding-providers`.
+
+To test a provider's API key directly:
+
 ```bash
-# Test Google Maps API
-curl "https://maps.googleapis.com/maps/api/geocode/json?address=Paris&key=$GEOCODING_GOOGLE_MAPS_API_KEY"
+# Test Google Maps API (replace YOUR_API_KEY with the key from admin panel)
+curl "https://maps.googleapis.com/maps/api/geocode/json?address=Paris&key=YOUR_API_KEY"
+
+# Test OpenCage API
+curl "https://api.opencagedata.com/geocode/v1/json?q=Paris&key=YOUR_API_KEY"
+
+# Test Nominatim (no key required)
+curl "https://nominatim.openstreetmap.org/search?q=Paris&format=json"
 ```
 
 ## Next Steps
