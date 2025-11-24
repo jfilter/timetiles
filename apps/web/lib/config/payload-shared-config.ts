@@ -101,25 +101,6 @@ export const ALL_JOBS = [
   cacheCleanupJob,
 ];
 
-// Default collections for different environments
-export const DEFAULT_COLLECTIONS: Record<string, CollectionName[]> = {
-  production: Object.keys(COLLECTIONS) as CollectionName[],
-  test: [
-    "users",
-    "catalogs",
-    "datasets",
-    "events",
-    "import-files",
-    "import-jobs",
-    "scheduled-imports",
-    "dataset-schemas",
-    "geocoding-providers",
-    "location-cache",
-    "media",
-  ] as CollectionName[],
-  minimal: ["users"] as CollectionName[],
-};
-
 // Common upload configuration
 export const DEFAULT_UPLOAD_CONFIG = {
   limits: {
