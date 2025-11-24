@@ -11,7 +11,6 @@
  * @module
  * @category Test Setup
  */
-import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -47,10 +46,6 @@ const workerId = process.env.VITEST_WORKER_ID ?? "1";
 const dbUrl = getTestDatabaseUrl();
 const testDbName = parseDatabaseUrl(dbUrl).database;
 process.env.DATABASE_URL = dbUrl;
-
-// Create unique temp directory for each test worker
-const tempDir = `/tmp/timetiles-test-${workerId}-${randomUUID()}`;
-process.env.TEMP_DIR = tempDir;
 
 // Use worker-specific upload directories for test isolation
 process.env.UPLOAD_DIR_MEDIA = `/tmp/media-${workerId}`;
@@ -101,11 +96,6 @@ beforeAll(async () => {
       isIntegrationTest,
       ci: process.env.CI,
     });
-  }
-
-  // Ensure temp directory exists
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir, { recursive: true });
   }
 
   // Ensure upload directories exist
@@ -174,11 +164,6 @@ beforeAll(async () => {
 
 // Global teardown to clean up
 afterAll(() => {
-  // Clean up temp directory
-  if (fs.existsSync(tempDir)) {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  }
-
   // Clean up upload directories
   const uploadDirs = [
     process.env.UPLOAD_DIR_MEDIA!,
