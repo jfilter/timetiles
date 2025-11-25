@@ -37,6 +37,7 @@ export const EventHistogram = ({ height = 200, className, bounds }: Readonly<Bas
   const { data: histogramData, isInitialLoad, isUpdating } = useChartQuery(histogramQuery);
 
   const histogram = histogramData?.histogram ?? [];
+  const bucketSizeSeconds = histogramData?.metadata?.bucketSizeSeconds ?? null;
 
   return (
     <TimeHistogram
@@ -47,6 +48,7 @@ export const EventHistogram = ({ height = 200, className, bounds }: Readonly<Bas
       className={className}
       isInitialLoad={isInitialLoad}
       isUpdating={isUpdating}
+      bucketSizeSeconds={bucketSizeSeconds}
     />
   );
 };

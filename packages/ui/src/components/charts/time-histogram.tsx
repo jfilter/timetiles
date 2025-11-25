@@ -13,12 +13,14 @@
 import type { EChartsOption } from "echarts";
 import { useCallback, useMemo } from "react";
 
-import { cartographicColors } from "../../lib/chart-themes";
+import { cartographicColors, defaultDarkTheme, defaultLightTheme } from "../../lib/chart-themes";
 import { BaseChart } from "./base-chart";
 import type { ChartTheme, EChartsEventParams } from "./types";
 
 export interface TimeHistogramDataItem {
   date: string | Date | number;
+  /** End date of the bucket (for adaptive tooltips showing date ranges) */
+  dateEnd?: string | Date | number;
   count: number;
 }
 
@@ -41,6 +43,8 @@ export interface TimeHistogramProps {
   loadingMessage?: string;
   /** Custom empty message */
   emptyMessage?: string;
+  /** Bucket size in seconds (for adaptive tooltip formatting) */
+  bucketSizeSeconds?: number | null;
 }
 
 /**
@@ -58,6 +62,128 @@ export interface TimeHistogramProps {
  */
 const defaultData: TimeHistogramDataItem[] = [];
 
+// Time constants for bucket size comparisons (exported for testing)
+export const MINUTE_SECONDS = 60;
+export const HOUR_SECONDS = 3600;
+export const DAY_SECONDS = 86400;
+export const MONTH_SECONDS = 30 * DAY_SECONDS;
+export const YEAR_SECONDS = 365 * DAY_SECONDS;
+
+/**
+ * Format time portion of a date.
+ * @param date - The date to format
+ * @param includeSeconds - Whether to include seconds in the output
+ * @returns Formatted time string (e.g., "10:30" or "10:30:45")
+ */
+export const formatTime = (date: Date, includeSeconds: boolean): string => {
+  return date.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    ...(includeSeconds ? { second: "2-digit" } : {}),
+  });
+};
+
+/**
+ * Format date with time portion.
+ * @param date - The date to format
+ * @param includeSeconds - Whether to include seconds in the time portion
+ * @returns Formatted datetime string (e.g., "Nov 25, 2025 10:30")
+ */
+export const formatDateTime = (date: Date, includeSeconds: boolean): string => {
+  const datePart = date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  return `${datePart} ${formatTime(date, includeSeconds)}`;
+};
+
+/**
+ * Format date range based on bucket size for adaptive tooltips.
+ *
+ * Formats dates appropriately based on the time granularity:
+ * - Seconds (<60s): "Nov 25, 2025 10:30:45"
+ * - Minutes (<1hr): "Nov 25, 2025 10:30"
+ * - Hours (<1 day): "Nov 25, 2025 10:00 - 11:00"
+ * - Daily (1 day): "Nov 25, 2025"
+ * - Weekly (multi-day): "Jan 1 - 7, 2024"
+ * - Monthly (≥30 days): "January 2025"
+ * - Yearly (≥365 days): "2025"
+ *
+ * @param startDate - Start date of the bucket
+ * @param endDate - End date of the bucket
+ * @param bucketSeconds - Size of the bucket in seconds (null for default daily format)
+ * @returns Formatted date range string
+ */
+export const formatDateRange = (startDate: Date, endDate: Date, bucketSeconds: number | null | undefined): string => {
+  // For sub-minute buckets (seconds), show full datetime with seconds
+  if (bucketSeconds && bucketSeconds < MINUTE_SECONDS) {
+    return formatDateTime(startDate, true);
+  }
+
+  // For sub-hour buckets (minutes), show datetime with minutes
+  if (bucketSeconds && bucketSeconds < HOUR_SECONDS) {
+    return formatDateTime(startDate, false);
+  }
+
+  // For sub-day buckets (hours), show date and hour range
+  if (bucketSeconds && bucketSeconds < DAY_SECONDS) {
+    const sameDay =
+      startDate.getDate() === endDate.getDate() &&
+      startDate.getMonth() === endDate.getMonth() &&
+      startDate.getFullYear() === endDate.getFullYear();
+
+    if (sameDay) {
+      // Same day: "Nov 25, 2025 10:00 - 11:00"
+      const datePart = startDate.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      return `${datePart} ${formatTime(startDate, false)} - ${formatTime(endDate, false)}`;
+    }
+    // Different days: show full range
+    return `${formatDateTime(startDate, false)} - ${formatDateTime(endDate, false)}`;
+  }
+
+  // If no bucket size or single day bucket, show single date
+  if (!bucketSeconds || bucketSeconds <= DAY_SECONDS) {
+    return startDate.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  }
+
+  // For yearly buckets, show just the year
+  if (bucketSeconds >= YEAR_SECONDS) {
+    return startDate.getFullYear().toString();
+  }
+
+  // For monthly buckets, show month and year
+  if (bucketSeconds >= MONTH_SECONDS) {
+    return startDate.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+    });
+  }
+
+  // For weekly or multi-day buckets, show date range
+  const sameMonth = startDate.getMonth() === endDate.getMonth();
+  const sameYear = startDate.getFullYear() === endDate.getFullYear();
+
+  if (sameMonth && sameYear) {
+    // Same month: "Jan 1 - 7, 2024"
+    return `${startDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${endDate.getDate()}, ${startDate.getFullYear()}`;
+  } else if (sameYear) {
+    // Same year, different months: "Jan 1 - Feb 7, 2024"
+    return `${startDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${endDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })}, ${startDate.getFullYear()}`;
+  } else {
+    // Different years: "Dec 25, 2023 - Jan 1, 2024"
+    return `${startDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} - ${endDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+  }
+};
+
 export const TimeHistogram = ({
   data = defaultData,
   onBarClick,
@@ -67,27 +193,35 @@ export const TimeHistogram = ({
   isInitialLoad = false,
   isUpdating = false,
   emptyMessage = "No data available",
+  bucketSizeSeconds,
 }: TimeHistogramProps) => {
   // Determine if dark theme based on theme prop
   const isDark = useMemo(() => {
     if (!theme) return false;
-    // Check if the theme has dark colors
-    return theme.backgroundColor === "#1f2937" || theme.textColor === "#e5e7eb";
+    // Check axisLineColor which differs between light/dark themes
+    // (textColor is the same in both themes, so can't be used for detection)
+    return theme.axisLineColor === defaultDarkTheme.axisLineColor;
   }, [theme]);
 
-  // Helper functions for chart configuration
+  // Get the effective theme, falling back to defaults
+  const effectiveTheme = useMemo(() => {
+    if (theme) return theme;
+    return isDark ? defaultDarkTheme : defaultLightTheme;
+  }, [theme, isDark]);
+
+  // Helper functions for chart configuration - now uses theme colors
   const getAxisConfig = useCallback(
-    (isDark: boolean) => ({
+    (chartTheme: ChartTheme) => ({
       xAxis: {
         type: "time",
         boundaryGap: false,
         axisLabel: {
-          color: isDark ? "#9ca3af" : "#6b7280",
+          color: chartTheme.textColor,
           fontSize: 11,
         },
         axisLine: {
           lineStyle: {
-            color: isDark ? "#374151" : "#e5e7eb",
+            color: chartTheme.axisLineColor,
           },
         },
         splitLine: {
@@ -97,7 +231,7 @@ export const TimeHistogram = ({
       yAxis: {
         type: "value",
         axisLabel: {
-          color: isDark ? "#9ca3af" : "#6b7280",
+          color: chartTheme.textColor,
           fontSize: 11,
         },
         axisLine: {
@@ -108,7 +242,7 @@ export const TimeHistogram = ({
         },
         splitLine: {
           lineStyle: {
-            color: isDark ? "#374151" : "#f3f4f6",
+            color: chartTheme.splitLineColor,
             type: "dashed",
           },
         },
@@ -118,29 +252,32 @@ export const TimeHistogram = ({
   );
 
   const getTooltipConfig = useCallback(
-    (isDark: boolean) => ({
+    (chartTheme: ChartTheme, darkMode: boolean, bucketSeconds: number | null | undefined) => ({
       trigger: "axis",
-      backgroundColor: isDark ? "#1f2937" : "#ffffff",
-      borderColor: isDark ? "#374151" : "#e5e7eb",
+      backgroundColor: darkMode ? cartographicColors.charcoal : cartographicColors.parchment,
+      borderColor: chartTheme.axisLineColor,
       textStyle: {
-        color: isDark ? "#f9fafb" : "#111827",
+        // Use contrasting text color: light text on dark background, dark text on light background
+        color: darkMode ? cartographicColors.parchment : chartTheme.textColor,
       },
       formatter: (
         params: Array<{
-          value: [number, number];
-          data: [number, number];
+          value: [number, number, number];
+          data: [number, number, number];
           marker: string;
           seriesName: string;
         }>
       ) => {
         const point = params[0];
         if (!point) return "";
-        const date = new Date(point.data[0]);
+        const startDate = new Date(point.data[0]);
+        const endDate = new Date(point.data[2]);
         const count = point.data[1];
+
         return `
           <div style="padding: 4px 8px;">
-            <div style="font-weight: 600;">${date.toLocaleDateString()}</div>
-            <div>Events: ${count}</div>
+            <div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds)}</div>
+            <div>Events: ${count.toLocaleString()}</div>
           </div>
         `;
       },
@@ -149,12 +286,13 @@ export const TimeHistogram = ({
   );
 
   const getSeriesConfig = useCallback(
-    (_isDark: boolean, histogramData: TimeHistogramDataItem[]) => [
+    (chartTheme: ChartTheme, histogramData: TimeHistogramDataItem[]) => [
       {
         type: "bar",
-        data: histogramData.map((item) => [item.date, item.count]),
+        // Include dateEnd as third element for tooltip access: [date, count, dateEnd]
+        data: histogramData.map((item) => [item.date, item.count, item.dateEnd ?? item.date]),
         itemStyle: {
-          color: cartographicColors.blue,
+          color: Array.isArray(chartTheme.itemColor) ? chartTheme.itemColor[0] : chartTheme.itemColor,
           borderRadius: [2, 2, 0, 0],
         },
         emphasis: {
@@ -169,12 +307,12 @@ export const TimeHistogram = ({
 
   // Create ECharts option for the histogram
   const chartOption = useMemo(() => {
-    const axisConfig = getAxisConfig(isDark);
+    const axisConfig = getAxisConfig(effectiveTheme);
 
     return {
       backgroundColor: "transparent",
       textStyle: {
-        color: isDark ? "#e5e7eb" : "#374151",
+        color: effectiveTheme.textColor,
       },
       grid: {
         left: "3%",
@@ -184,12 +322,12 @@ export const TimeHistogram = ({
         containLabel: true,
       },
       ...axisConfig,
-      tooltip: getTooltipConfig(isDark),
-      series: getSeriesConfig(isDark, data),
+      tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds),
+      series: getSeriesConfig(effectiveTheme, data),
       animation: true,
       animationDuration: 300,
     };
-  }, [isDark, data, getAxisConfig, getTooltipConfig, getSeriesConfig]);
+  }, [isDark, effectiveTheme, data, bucketSizeSeconds, getAxisConfig, getTooltipConfig, getSeriesConfig]);
 
   const handleChartClick = useCallback(
     (params: EChartsEventParams) => {
@@ -216,7 +354,7 @@ export const TimeHistogram = ({
     [containerHeight]
   );
   const emptyTextStyle = useMemo(
-    () => ({ color: theme?.textColor ?? "#6b7280", fontSize: "14px" }),
+    () => ({ color: theme?.textColor ?? cartographicColors.navy, fontSize: "14px" }),
     [theme?.textColor]
   );
 
