@@ -19,6 +19,7 @@ import {
   boolean,
   timestamp,
   numeric,
+  text,
 } from "@payloadcms/db-postgres/drizzle/pg-core";
 import { sql, relations } from "@payloadcms/db-postgres/drizzle";
 export const db_schema = pgSchema("payload");
@@ -269,18 +270,8 @@ export const enum__events_v_version_validation_status = db_schema.enum("enum__ev
 ]);
 export const enum__events_v_version_status = db_schema.enum("enum__events_v_version_status", ["draft", "published"]);
 export const enum_users_role = db_schema.enum("enum_users_role", ["user", "admin", "editor"]);
+export const enum_users_registration_source = db_schema.enum("enum_users_registration_source", ["admin", "self"]);
 export const enum_users_trust_level = db_schema.enum("enum_users_trust_level", ["0", "1", "2", "3", "4", "5"]);
-export const enum_users_status = db_schema.enum("enum_users_status", ["draft", "published"]);
-export const enum__users_v_version_role = db_schema.enum("enum__users_v_version_role", ["user", "admin", "editor"]);
-export const enum__users_v_version_trust_level = db_schema.enum("enum__users_v_version_trust_level", [
-  "0",
-  "1",
-  "2",
-  "3",
-  "4",
-  "5",
-]);
-export const enum__users_v_version_status = db_schema.enum("enum__users_v_version_status", ["draft", "published"]);
 export const enum_media_status = db_schema.enum("enum_media_status", ["draft", "published"]);
 export const enum__media_v_version_status = db_schema.enum("enum__media_v_version_status", ["draft", "published"]);
 export const enum_location_cache_status = db_schema.enum("enum_location_cache_status", ["draft", "published"]);
@@ -338,7 +329,243 @@ export const enum__geocoding_providers_v_version_status = db_schema.enum("enum__
   "draft",
   "published",
 ]);
+export const enum_pages_blocks_hero_buttons_variant = db_schema.enum("enum_pages_blocks_hero_buttons_variant", [
+  "default",
+  "outline",
+]);
+export const enum_pages_blocks_hero_background = db_schema.enum("enum_pages_blocks_hero_background", [
+  "gradient",
+  "grid",
+]);
+export const enum_pages_blocks_features_features_icon = db_schema.enum("enum_pages_blocks_features_features_icon", [
+  "email",
+  "business",
+  "support",
+  "location",
+  "map",
+  "timeline",
+  "insights",
+  "github",
+  "bluesky",
+  "mastodon",
+  "linkedin",
+  "facebook",
+  "instagram",
+  "youtube",
+  "x",
+]);
+export const enum_pages_blocks_features_features_accent = db_schema.enum("enum_pages_blocks_features_features_accent", [
+  "none",
+  "primary",
+  "secondary",
+  "accent",
+  "muted",
+]);
+export const enum_pages_blocks_features_columns = db_schema.enum("enum_pages_blocks_features_columns", [
+  "1",
+  "2",
+  "3",
+  "4",
+]);
+export const enum_pages_blocks_stats_stats_icon = db_schema.enum("enum_pages_blocks_stats_stats_icon", [
+  "email",
+  "business",
+  "support",
+  "location",
+  "map",
+  "timeline",
+  "insights",
+  "github",
+  "bluesky",
+  "mastodon",
+  "linkedin",
+  "facebook",
+  "instagram",
+  "youtube",
+  "x",
+]);
+export const enum_pages_blocks_details_grid_items_icon = db_schema.enum("enum_pages_blocks_details_grid_items_icon", [
+  "email",
+  "business",
+  "support",
+  "location",
+  "map",
+  "timeline",
+  "insights",
+  "github",
+  "bluesky",
+  "mastodon",
+  "linkedin",
+  "facebook",
+  "instagram",
+  "youtube",
+  "x",
+]);
+export const enum_pages_blocks_details_grid_variant = db_schema.enum("enum_pages_blocks_details_grid_variant", [
+  "grid-2",
+  "grid-3",
+  "grid-4",
+  "compact",
+]);
+export const enum_pages_blocks_timeline_variant = db_schema.enum("enum_pages_blocks_timeline_variant", [
+  "vertical",
+  "compact",
+]);
+export const enum_pages_blocks_testimonials_items_avatar = db_schema.enum(
+  "enum_pages_blocks_testimonials_items_avatar",
+  [
+    "email",
+    "business",
+    "support",
+    "location",
+    "map",
+    "timeline",
+    "insights",
+    "github",
+    "bluesky",
+    "mastodon",
+    "linkedin",
+    "facebook",
+    "instagram",
+    "youtube",
+    "x",
+  ]
+);
+export const enum_pages_blocks_testimonials_variant = db_schema.enum("enum_pages_blocks_testimonials_variant", [
+  "grid",
+  "single",
+  "masonry",
+]);
+export const enum_pages_blocks_newsletter_c_t_a_variant = db_schema.enum("enum_pages_blocks_newsletter_c_t_a_variant", [
+  "default",
+  "elevated",
+  "centered",
+]);
+export const enum_pages_blocks_newsletter_c_t_a_size = db_schema.enum("enum_pages_blocks_newsletter_c_t_a_size", [
+  "default",
+  "lg",
+  "xl",
+]);
 export const enum_pages_status = db_schema.enum("enum_pages_status", ["draft", "published"]);
+export const enum__pages_v_blocks_hero_buttons_variant = db_schema.enum("enum__pages_v_blocks_hero_buttons_variant", [
+  "default",
+  "outline",
+]);
+export const enum__pages_v_blocks_hero_background = db_schema.enum("enum__pages_v_blocks_hero_background", [
+  "gradient",
+  "grid",
+]);
+export const enum__pages_v_blocks_features_features_icon = db_schema.enum(
+  "enum__pages_v_blocks_features_features_icon",
+  [
+    "email",
+    "business",
+    "support",
+    "location",
+    "map",
+    "timeline",
+    "insights",
+    "github",
+    "bluesky",
+    "mastodon",
+    "linkedin",
+    "facebook",
+    "instagram",
+    "youtube",
+    "x",
+  ]
+);
+export const enum__pages_v_blocks_features_features_accent = db_schema.enum(
+  "enum__pages_v_blocks_features_features_accent",
+  ["none", "primary", "secondary", "accent", "muted"]
+);
+export const enum__pages_v_blocks_features_columns = db_schema.enum("enum__pages_v_blocks_features_columns", [
+  "1",
+  "2",
+  "3",
+  "4",
+]);
+export const enum__pages_v_blocks_stats_stats_icon = db_schema.enum("enum__pages_v_blocks_stats_stats_icon", [
+  "email",
+  "business",
+  "support",
+  "location",
+  "map",
+  "timeline",
+  "insights",
+  "github",
+  "bluesky",
+  "mastodon",
+  "linkedin",
+  "facebook",
+  "instagram",
+  "youtube",
+  "x",
+]);
+export const enum__pages_v_blocks_details_grid_items_icon = db_schema.enum(
+  "enum__pages_v_blocks_details_grid_items_icon",
+  [
+    "email",
+    "business",
+    "support",
+    "location",
+    "map",
+    "timeline",
+    "insights",
+    "github",
+    "bluesky",
+    "mastodon",
+    "linkedin",
+    "facebook",
+    "instagram",
+    "youtube",
+    "x",
+  ]
+);
+export const enum__pages_v_blocks_details_grid_variant = db_schema.enum("enum__pages_v_blocks_details_grid_variant", [
+  "grid-2",
+  "grid-3",
+  "grid-4",
+  "compact",
+]);
+export const enum__pages_v_blocks_timeline_variant = db_schema.enum("enum__pages_v_blocks_timeline_variant", [
+  "vertical",
+  "compact",
+]);
+export const enum__pages_v_blocks_testimonials_items_avatar = db_schema.enum(
+  "enum__pages_v_blocks_testimonials_items_avatar",
+  [
+    "email",
+    "business",
+    "support",
+    "location",
+    "map",
+    "timeline",
+    "insights",
+    "github",
+    "bluesky",
+    "mastodon",
+    "linkedin",
+    "facebook",
+    "instagram",
+    "youtube",
+    "x",
+  ]
+);
+export const enum__pages_v_blocks_testimonials_variant = db_schema.enum("enum__pages_v_blocks_testimonials_variant", [
+  "grid",
+  "single",
+  "masonry",
+]);
+export const enum__pages_v_blocks_newsletter_c_t_a_variant = db_schema.enum(
+  "enum__pages_v_blocks_newsletter_c_t_a_variant",
+  ["default", "elevated", "centered"]
+);
+export const enum__pages_v_blocks_newsletter_c_t_a_size = db_schema.enum("enum__pages_v_blocks_newsletter_c_t_a_size", [
+  "default",
+  "lg",
+  "xl",
+]);
 export const enum__pages_v_version_status = db_schema.enum("enum__pages_v_version_status", ["draft", "published"]);
 export const enum_payload_jobs_log_task_slug = db_schema.enum("enum_payload_jobs_log_task_slug", [
   "inline",
@@ -380,6 +607,30 @@ export const enum__main_menu_v_version_status = db_schema.enum("enum__main_menu_
   "draft",
   "published",
 ]);
+export const enum_footer_social_links_platform = db_schema.enum("enum_footer_social_links_platform", [
+  "x",
+  "bluesky",
+  "mastodon",
+  "github",
+  "linkedin",
+  "facebook",
+  "instagram",
+  "youtube",
+]);
+export const enum_footer_status = db_schema.enum("enum_footer_status", ["draft", "published"]);
+export const enum__footer_v_version_social_links_platform = db_schema.enum(
+  "enum__footer_v_version_social_links_platform",
+  ["x", "bluesky", "mastodon", "github", "linkedin", "facebook", "instagram", "youtube"]
+);
+export const enum__footer_v_version_status = db_schema.enum("enum__footer_v_version_status", ["draft", "published"]);
+export const enum_settings_geocoding_provider_selection_required_tags = db_schema.enum(
+  "enum_settings_geocoding_provider_selection_required_tags",
+  ["production", "development", "testing", "primary", "secondary", "backup"]
+);
+export const enum_settings_geocoding_provider_selection_strategy = db_schema.enum(
+  "enum_settings_geocoding_provider_selection_strategy",
+  ["priority", "tag-based"]
+);
 
 export const catalogs = db_schema.table(
   "catalogs",
@@ -1068,10 +1319,11 @@ export const import_files = db_schema.table(
     catalog: integer("catalog_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
-    user: integer("user_id").references(() => users.id, {
-      onDelete: "set null",
-    }),
-    sessionId: varchar("session_id"),
+    user: integer("user_id")
+      .notNull()
+      .references(() => users.id, {
+        onDelete: "set null",
+      }),
     status: enum_import_files_status("status").default("pending"),
     datasetsCount: numeric("datasets_count").default("0"),
     datasetsProcessed: numeric("datasets_processed").default("0"),
@@ -1143,10 +1395,11 @@ export const _import_files_v = db_schema.table(
     version_catalog: integer("version_catalog_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
-    version_user: integer("version_user_id").references(() => users.id, {
-      onDelete: "set null",
-    }),
-    version_sessionId: varchar("version_session_id"),
+    version_user: integer("version_user_id")
+      .notNull()
+      .references(() => users.id, {
+        onDelete: "set null",
+      }),
     version_status: enum__import_files_v_version_status("version_status").default("pending"),
     version_datasetsCount: numeric("version_datasets_count").default("0"),
     version_datasetsProcessed: numeric("version_datasets_processed").default("0"),
@@ -1901,7 +2154,7 @@ export const users_sessions = db_schema.table(
     _parentID: integer("_parent_id").notNull(),
     id: varchar("id").primaryKey(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
-    expiresAt: timestamp("expires_at", { mode: "string", withTimezone: true, precision: 3 }),
+    expiresAt: timestamp("expires_at", { mode: "string", withTimezone: true, precision: 3 }).notNull(),
   },
   (columns) => ({
     _orderIdx: index("users_sessions_order_idx").on(columns._order),
@@ -1923,7 +2176,8 @@ export const users = db_schema.table(
     role: enum_users_role("role").default("user"),
     isActive: boolean("is_active").default(true),
     lastLoginAt: timestamp("last_login_at", { mode: "string", withTimezone: true, precision: 3 }),
-    trustLevel: enum_users_trust_level("trust_level").default("2"),
+    registrationSource: enum_users_registration_source("registration_source").default("admin"),
+    trustLevel: enum_users_trust_level("trust_level").notNull().default("2"),
     quotas_maxActiveSchedules: numeric("quotas_max_active_schedules"),
     quotas_maxUrlFetchesPerDay: numeric("quotas_max_url_fetches_per_day"),
     quotas_maxFileUploadsPerDay: numeric("quotas_max_file_uploads_per_day"),
@@ -1932,19 +2186,11 @@ export const users = db_schema.table(
     quotas_maxImportJobsPerDay: numeric("quotas_max_import_jobs_per_day"),
     quotas_maxFileSizeMB: numeric("quotas_max_file_size_m_b"),
     quotas_maxCatalogsPerUser: numeric("quotas_max_catalogs_per_user"),
-    usage_currentActiveSchedules: numeric("usage_current_active_schedules"),
-    usage_urlFetchesToday: numeric("usage_url_fetches_today"),
-    usage_fileUploadsToday: numeric("usage_file_uploads_today"),
-    usage_importJobsToday: numeric("usage_import_jobs_today"),
-    usage_totalEventsCreated: numeric("usage_total_events_created"),
-    usage_currentCatalogs: numeric("usage_current_catalogs"),
-    usage_lastResetDate: timestamp("usage_last_reset_date", { mode: "string", withTimezone: true, precision: 3 }),
     customQuotas: jsonb("custom_quotas"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
-    _status: enum_users_status("_status").default("draft"),
-    email: varchar("email"),
+    email: varchar("email").notNull(),
     resetPasswordToken: varchar("reset_password_token"),
     resetPasswordExpiration: timestamp("reset_password_expiration", {
       mode: "string",
@@ -1953,6 +2199,8 @@ export const users = db_schema.table(
     }),
     salt: varchar("salt"),
     hash: varchar("hash"),
+    _verified: boolean("_verified"),
+    _verificationToken: varchar("_verificationtoken"),
     loginAttempts: numeric("login_attempts").default("0"),
     lockUntil: timestamp("lock_until", { mode: "string", withTimezone: true, precision: 3 }),
   },
@@ -1960,102 +2208,36 @@ export const users = db_schema.table(
     users_updated_at_idx: index("users_updated_at_idx").on(columns.updatedAt),
     users_created_at_idx: index("users_created_at_idx").on(columns.createdAt),
     users_deleted_at_idx: index("users_deleted_at_idx").on(columns.deletedAt),
-    users__status_idx: index("users__status_idx").on(columns._status),
     users_email_idx: uniqueIndex("users_email_idx").on(columns.email),
   })
 );
 
-export const _users_v_version_sessions = db_schema.table(
-  "_users_v_version_sessions",
-  {
-    _order: integer("_order").notNull(),
-    _parentID: integer("_parent_id").notNull(),
-    id: serial("id").primaryKey(),
-    _uuid: varchar("_uuid"),
-    createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
-    expiresAt: timestamp("expires_at", { mode: "string", withTimezone: true, precision: 3 }),
-  },
-  (columns) => ({
-    _orderIdx: index("_users_v_version_sessions_order_idx").on(columns._order),
-    _parentIDIdx: index("_users_v_version_sessions_parent_id_idx").on(columns._parentID),
-    _parentIDFk: foreignKey({
-      columns: [columns["_parentID"]],
-      foreignColumns: [_users_v.id],
-      name: "_users_v_version_sessions_parent_id_fk",
-    }).onDelete("cascade"),
-  })
-);
-
-export const _users_v = db_schema.table(
-  "_users_v",
+export const user_usage = db_schema.table(
+  "user_usage",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => users.id, {
-      onDelete: "set null",
-    }),
-    version_firstName: varchar("version_first_name"),
-    version_lastName: varchar("version_last_name"),
-    version_role: enum__users_v_version_role("version_role").default("user"),
-    version_isActive: boolean("version_is_active").default(true),
-    version_lastLoginAt: timestamp("version_last_login_at", { mode: "string", withTimezone: true, precision: 3 }),
-    version_trustLevel: enum__users_v_version_trust_level("version_trust_level").default("2"),
-    version_quotas_maxActiveSchedules: numeric("version_quotas_max_active_schedules"),
-    version_quotas_maxUrlFetchesPerDay: numeric("version_quotas_max_url_fetches_per_day"),
-    version_quotas_maxFileUploadsPerDay: numeric("version_quotas_max_file_uploads_per_day"),
-    version_quotas_maxEventsPerImport: numeric("version_quotas_max_events_per_import"),
-    version_quotas_maxTotalEvents: numeric("version_quotas_max_total_events"),
-    version_quotas_maxImportJobsPerDay: numeric("version_quotas_max_import_jobs_per_day"),
-    version_quotas_maxFileSizeMB: numeric("version_quotas_max_file_size_m_b"),
-    version_quotas_maxCatalogsPerUser: numeric("version_quotas_max_catalogs_per_user"),
-    version_usage_currentActiveSchedules: numeric("version_usage_current_active_schedules"),
-    version_usage_urlFetchesToday: numeric("version_usage_url_fetches_today"),
-    version_usage_fileUploadsToday: numeric("version_usage_file_uploads_today"),
-    version_usage_importJobsToday: numeric("version_usage_import_jobs_today"),
-    version_usage_totalEventsCreated: numeric("version_usage_total_events_created"),
-    version_usage_currentCatalogs: numeric("version_usage_current_catalogs"),
-    version_usage_lastResetDate: timestamp("version_usage_last_reset_date", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    }),
-    version_customQuotas: jsonb("version_custom_quotas"),
-    version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
-    version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
-    version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
-    version__status: enum__users_v_version_status("version__status").default("draft"),
-    version_email: varchar("version_email"),
-    version_resetPasswordToken: varchar("version_reset_password_token"),
-    version_resetPasswordExpiration: timestamp("version_reset_password_expiration", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    }),
-    version_salt: varchar("version_salt"),
-    version_hash: varchar("version_hash"),
-    version_loginAttempts: numeric("version_login_attempts").default("0"),
-    version_lockUntil: timestamp("version_lock_until", { mode: "string", withTimezone: true, precision: 3 }),
-    createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    user: integer("user_id")
+      .notNull()
+      .references(() => users.id, {
+        onDelete: "set null",
+      }),
+    urlFetchesToday: numeric("url_fetches_today").default("0"),
+    fileUploadsToday: numeric("file_uploads_today").default("0"),
+    importJobsToday: numeric("import_jobs_today").default("0"),
+    currentActiveSchedules: numeric("current_active_schedules").default("0"),
+    totalEventsCreated: numeric("total_events_created").default("0"),
+    currentCatalogs: numeric("current_catalogs").default("0"),
+    lastResetDate: timestamp("last_reset_date", { mode: "string", withTimezone: true, precision: 3 }),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
-    latest: boolean("latest"),
-    autosave: boolean("autosave"),
+    createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
   },
   (columns) => ({
-    _users_v_parent_idx: index("_users_v_parent_idx").on(columns.parent),
-    _users_v_version_version_updated_at_idx: index("_users_v_version_version_updated_at_idx").on(
-      columns.version_updatedAt
-    ),
-    _users_v_version_version_created_at_idx: index("_users_v_version_version_created_at_idx").on(
-      columns.version_createdAt
-    ),
-    _users_v_version_version_deleted_at_idx: index("_users_v_version_version_deleted_at_idx").on(
-      columns.version_deletedAt
-    ),
-    _users_v_version_version__status_idx: index("_users_v_version_version__status_idx").on(columns.version__status),
-    _users_v_version_version_email_idx: index("_users_v_version_version_email_idx").on(columns.version_email),
-    _users_v_created_at_idx: index("_users_v_created_at_idx").on(columns.createdAt),
-    _users_v_updated_at_idx: index("_users_v_updated_at_idx").on(columns.updatedAt),
-    _users_v_latest_idx: index("_users_v_latest_idx").on(columns.latest),
-    _users_v_autosave_idx: index("_users_v_autosave_idx").on(columns.autosave),
+    user_usage_user_idx: uniqueIndex("user_usage_user_idx").on(columns.user),
+    user_usage_last_reset_date_idx: index("user_usage_last_reset_date_idx").on(columns.lastResetDate),
+    user_usage_updated_at_idx: index("user_usage_updated_at_idx").on(columns.updatedAt),
+    user_usage_created_at_idx: index("user_usage_created_at_idx").on(columns.createdAt),
+    user_usage_deleted_at_idx: index("user_usage_deleted_at_idx").on(columns.deletedAt),
   })
 );
 
@@ -2451,13 +2633,380 @@ export const _geocoding_providers_v = db_schema.table(
   })
 );
 
+export const pages_blocks_hero_buttons = db_schema.table(
+  "pages_blocks_hero_buttons",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: varchar("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    text: varchar("text"),
+    link: varchar("link"),
+    variant: enum_pages_blocks_hero_buttons_variant("variant").default("default"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_hero_buttons_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_hero_buttons_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages_blocks_hero.id],
+      name: "pages_blocks_hero_buttons_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_hero = db_schema.table(
+  "pages_blocks_hero",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: varchar("id").primaryKey(),
+    title: varchar("title"),
+    subtitle: varchar("subtitle"),
+    description: varchar("description"),
+    background: enum_pages_blocks_hero_background("background").default("gradient"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_hero_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_hero_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("pages_blocks_hero_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages.id],
+      name: "pages_blocks_hero_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_features_features = db_schema.table(
+  "pages_blocks_features_features",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: varchar("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    icon: enum_pages_blocks_features_features_icon("icon"),
+    title: varchar("title"),
+    description: varchar("description"),
+    accent: enum_pages_blocks_features_features_accent("accent").default("none"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_features_features_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_features_features_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages_blocks_features.id],
+      name: "pages_blocks_features_features_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_features = db_schema.table(
+  "pages_blocks_features",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: varchar("id").primaryKey(),
+    sectionTitle: varchar("section_title"),
+    sectionDescription: varchar("section_description"),
+    columns: enum_pages_blocks_features_columns("columns").default(3),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_features_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_features_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("pages_blocks_features_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages.id],
+      name: "pages_blocks_features_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_stats_stats = db_schema.table(
+  "pages_blocks_stats_stats",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: varchar("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    value: varchar("value"),
+    label: varchar("label"),
+    icon: enum_pages_blocks_stats_stats_icon("icon"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_stats_stats_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_stats_stats_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages_blocks_stats.id],
+      name: "pages_blocks_stats_stats_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_stats = db_schema.table(
+  "pages_blocks_stats",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: varchar("id").primaryKey(),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_stats_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_stats_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("pages_blocks_stats_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages.id],
+      name: "pages_blocks_stats_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_details_grid_items = db_schema.table(
+  "pages_blocks_details_grid_items",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: varchar("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    icon: enum_pages_blocks_details_grid_items_icon("icon"),
+    label: varchar("label"),
+    value: varchar("value"),
+    link: varchar("link"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_details_grid_items_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_details_grid_items_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages_blocks_details_grid.id],
+      name: "pages_blocks_details_grid_items_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_details_grid = db_schema.table(
+  "pages_blocks_details_grid",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: varchar("id").primaryKey(),
+    sectionTitle: varchar("section_title"),
+    variant: enum_pages_blocks_details_grid_variant("variant").default("grid-3"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_details_grid_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_details_grid_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("pages_blocks_details_grid_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages.id],
+      name: "pages_blocks_details_grid_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_timeline_items = db_schema.table(
+  "pages_blocks_timeline_items",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: varchar("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    date: varchar("date"),
+    title: varchar("title"),
+    description: varchar("description"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_timeline_items_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_timeline_items_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages_blocks_timeline.id],
+      name: "pages_blocks_timeline_items_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_timeline = db_schema.table(
+  "pages_blocks_timeline",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: varchar("id").primaryKey(),
+    sectionTitle: varchar("section_title"),
+    variant: enum_pages_blocks_timeline_variant("variant").default("vertical"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_timeline_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_timeline_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("pages_blocks_timeline_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages.id],
+      name: "pages_blocks_timeline_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_testimonials_items = db_schema.table(
+  "pages_blocks_testimonials_items",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: varchar("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    quote: varchar("quote"),
+    author: varchar("author"),
+    role: varchar("role"),
+    avatar: enum_pages_blocks_testimonials_items_avatar("avatar"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_testimonials_items_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_testimonials_items_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages_blocks_testimonials.id],
+      name: "pages_blocks_testimonials_items_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_testimonials = db_schema.table(
+  "pages_blocks_testimonials",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: varchar("id").primaryKey(),
+    sectionTitle: varchar("section_title"),
+    variant: enum_pages_blocks_testimonials_variant("variant").default("grid"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_testimonials_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_testimonials_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("pages_blocks_testimonials_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages.id],
+      name: "pages_blocks_testimonials_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_rich_text = db_schema.table(
+  "pages_blocks_rich_text",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: varchar("id").primaryKey(),
+    content: jsonb("content"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_rich_text_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_rich_text_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("pages_blocks_rich_text_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages.id],
+      name: "pages_blocks_rich_text_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_cta = db_schema.table(
+  "pages_blocks_cta",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: varchar("id").primaryKey(),
+    headline: varchar("headline"),
+    description: varchar("description"),
+    buttonText: varchar("button_text"),
+    buttonLink: varchar("button_link"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_cta_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_cta_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("pages_blocks_cta_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages.id],
+      name: "pages_blocks_cta_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_newsletter_form = db_schema.table(
+  "pages_blocks_newsletter_form",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: varchar("id").primaryKey(),
+    headline: varchar("headline").default("Stay Mapped In"),
+    placeholder: varchar("placeholder").default("your@email.address"),
+    buttonText: varchar("button_text").default("Subscribe"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_newsletter_form_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_newsletter_form_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("pages_blocks_newsletter_form_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages.id],
+      name: "pages_blocks_newsletter_form_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const pages_blocks_newsletter_c_t_a = db_schema.table(
+  "pages_blocks_newsletter_c_t_a",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: varchar("id").primaryKey(),
+    headline: varchar("headline").default("Never Miss a Discovery"),
+    description: varchar("description").default(
+      "Join our community of explorers. Get curated event highlights, spatial insights, and new dataset releases delivered to your inbox."
+    ),
+    placeholder: varchar("placeholder").default("your@email.address"),
+    buttonText: varchar("button_text").default("Subscribe to Updates"),
+    variant: enum_pages_blocks_newsletter_c_t_a_variant("variant").default("default"),
+    size: enum_pages_blocks_newsletter_c_t_a_size("size").default("default"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("pages_blocks_newsletter_c_t_a_order_idx").on(columns._order),
+    _parentIDIdx: index("pages_blocks_newsletter_c_t_a_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("pages_blocks_newsletter_c_t_a_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [pages.id],
+      name: "pages_blocks_newsletter_c_t_a_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
 export const pages = db_schema.table(
   "pages",
   {
     id: serial("id").primaryKey(),
     title: varchar("title"),
     slug: varchar("slug"),
-    content: jsonb("content"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
@@ -2472,6 +3021,390 @@ export const pages = db_schema.table(
   })
 );
 
+export const _pages_v_blocks_hero_buttons = db_schema.table(
+  "_pages_v_blocks_hero_buttons",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    text: varchar("text"),
+    link: varchar("link"),
+    variant: enum__pages_v_blocks_hero_buttons_variant("variant").default("default"),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_hero_buttons_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_hero_buttons_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v_blocks_hero.id],
+      name: "_pages_v_blocks_hero_buttons_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_hero = db_schema.table(
+  "_pages_v_blocks_hero",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: serial("id").primaryKey(),
+    title: varchar("title"),
+    subtitle: varchar("subtitle"),
+    description: varchar("description"),
+    background: enum__pages_v_blocks_hero_background("background").default("gradient"),
+    _uuid: varchar("_uuid"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_hero_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_hero_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("_pages_v_blocks_hero_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v.id],
+      name: "_pages_v_blocks_hero_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_features_features = db_schema.table(
+  "_pages_v_blocks_features_features",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    icon: enum__pages_v_blocks_features_features_icon("icon"),
+    title: varchar("title"),
+    description: varchar("description"),
+    accent: enum__pages_v_blocks_features_features_accent("accent").default("none"),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_features_features_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_features_features_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v_blocks_features.id],
+      name: "_pages_v_blocks_features_features_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_features = db_schema.table(
+  "_pages_v_blocks_features",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: serial("id").primaryKey(),
+    sectionTitle: varchar("section_title"),
+    sectionDescription: varchar("section_description"),
+    columns: enum__pages_v_blocks_features_columns("columns").default(3),
+    _uuid: varchar("_uuid"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_features_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_features_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("_pages_v_blocks_features_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v.id],
+      name: "_pages_v_blocks_features_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_stats_stats = db_schema.table(
+  "_pages_v_blocks_stats_stats",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    value: varchar("value"),
+    label: varchar("label"),
+    icon: enum__pages_v_blocks_stats_stats_icon("icon"),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_stats_stats_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_stats_stats_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v_blocks_stats.id],
+      name: "_pages_v_blocks_stats_stats_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_stats = db_schema.table(
+  "_pages_v_blocks_stats",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: serial("id").primaryKey(),
+    _uuid: varchar("_uuid"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_stats_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_stats_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("_pages_v_blocks_stats_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v.id],
+      name: "_pages_v_blocks_stats_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_details_grid_items = db_schema.table(
+  "_pages_v_blocks_details_grid_items",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    icon: enum__pages_v_blocks_details_grid_items_icon("icon"),
+    label: varchar("label"),
+    value: varchar("value"),
+    link: varchar("link"),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_details_grid_items_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_details_grid_items_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v_blocks_details_grid.id],
+      name: "_pages_v_blocks_details_grid_items_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_details_grid = db_schema.table(
+  "_pages_v_blocks_details_grid",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: serial("id").primaryKey(),
+    sectionTitle: varchar("section_title"),
+    variant: enum__pages_v_blocks_details_grid_variant("variant").default("grid-3"),
+    _uuid: varchar("_uuid"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_details_grid_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_details_grid_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("_pages_v_blocks_details_grid_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v.id],
+      name: "_pages_v_blocks_details_grid_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_timeline_items = db_schema.table(
+  "_pages_v_blocks_timeline_items",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    date: varchar("date"),
+    title: varchar("title"),
+    description: varchar("description"),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_timeline_items_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_timeline_items_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v_blocks_timeline.id],
+      name: "_pages_v_blocks_timeline_items_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_timeline = db_schema.table(
+  "_pages_v_blocks_timeline",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: serial("id").primaryKey(),
+    sectionTitle: varchar("section_title"),
+    variant: enum__pages_v_blocks_timeline_variant("variant").default("vertical"),
+    _uuid: varchar("_uuid"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_timeline_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_timeline_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("_pages_v_blocks_timeline_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v.id],
+      name: "_pages_v_blocks_timeline_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_testimonials_items = db_schema.table(
+  "_pages_v_blocks_testimonials_items",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    quote: varchar("quote"),
+    author: varchar("author"),
+    role: varchar("role"),
+    avatar: enum__pages_v_blocks_testimonials_items_avatar("avatar"),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_testimonials_items_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_testimonials_items_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v_blocks_testimonials.id],
+      name: "_pages_v_blocks_testimonials_items_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_testimonials = db_schema.table(
+  "_pages_v_blocks_testimonials",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: serial("id").primaryKey(),
+    sectionTitle: varchar("section_title"),
+    variant: enum__pages_v_blocks_testimonials_variant("variant").default("grid"),
+    _uuid: varchar("_uuid"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_testimonials_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_testimonials_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("_pages_v_blocks_testimonials_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v.id],
+      name: "_pages_v_blocks_testimonials_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_rich_text = db_schema.table(
+  "_pages_v_blocks_rich_text",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: serial("id").primaryKey(),
+    content: jsonb("content"),
+    _uuid: varchar("_uuid"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_rich_text_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_rich_text_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("_pages_v_blocks_rich_text_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v.id],
+      name: "_pages_v_blocks_rich_text_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_cta = db_schema.table(
+  "_pages_v_blocks_cta",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: serial("id").primaryKey(),
+    headline: varchar("headline"),
+    description: varchar("description"),
+    buttonText: varchar("button_text"),
+    buttonLink: varchar("button_link"),
+    _uuid: varchar("_uuid"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_cta_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_cta_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("_pages_v_blocks_cta_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v.id],
+      name: "_pages_v_blocks_cta_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_newsletter_form = db_schema.table(
+  "_pages_v_blocks_newsletter_form",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: serial("id").primaryKey(),
+    headline: varchar("headline").default("Stay Mapped In"),
+    placeholder: varchar("placeholder").default("your@email.address"),
+    buttonText: varchar("button_text").default("Subscribe"),
+    _uuid: varchar("_uuid"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_newsletter_form_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_newsletter_form_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("_pages_v_blocks_newsletter_form_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v.id],
+      name: "_pages_v_blocks_newsletter_form_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _pages_v_blocks_newsletter_c_t_a = db_schema.table(
+  "_pages_v_blocks_newsletter_c_t_a",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    _path: text("_path").notNull(),
+    id: serial("id").primaryKey(),
+    headline: varchar("headline").default("Never Miss a Discovery"),
+    description: varchar("description").default(
+      "Join our community of explorers. Get curated event highlights, spatial insights, and new dataset releases delivered to your inbox."
+    ),
+    placeholder: varchar("placeholder").default("your@email.address"),
+    buttonText: varchar("button_text").default("Subscribe to Updates"),
+    variant: enum__pages_v_blocks_newsletter_c_t_a_variant("variant").default("default"),
+    size: enum__pages_v_blocks_newsletter_c_t_a_size("size").default("default"),
+    _uuid: varchar("_uuid"),
+    blockName: varchar("block_name"),
+  },
+  (columns) => ({
+    _orderIdx: index("_pages_v_blocks_newsletter_c_t_a_order_idx").on(columns._order),
+    _parentIDIdx: index("_pages_v_blocks_newsletter_c_t_a_parent_id_idx").on(columns._parentID),
+    _pathIdx: index("_pages_v_blocks_newsletter_c_t_a_path_idx").on(columns._path),
+    _parentIdFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_pages_v.id],
+      name: "_pages_v_blocks_newsletter_c_t_a_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
 export const _pages_v = db_schema.table(
   "_pages_v",
   {
@@ -2481,7 +3414,6 @@ export const _pages_v = db_schema.table(
     }),
     version_title: varchar("version_title"),
     version_slug: varchar("version_slug"),
-    version_content: jsonb("version_content"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
@@ -2597,6 +3529,7 @@ export const payload_locked_documents_rels = db_schema.table(
     "scheduled-importsID": integer("scheduled_imports_id"),
     eventsID: integer("events_id"),
     usersID: integer("users_id"),
+    "user-usageID": integer("user_usage_id"),
     mediaID: integer("media_id"),
     "location-cacheID": integer("location_cache_id"),
     "geocoding-providersID": integer("geocoding_providers_id"),
@@ -2629,6 +3562,9 @@ export const payload_locked_documents_rels = db_schema.table(
       columns.eventsID
     ),
     payload_locked_documents_rels_users_id_idx: index("payload_locked_documents_rels_users_id_idx").on(columns.usersID),
+    payload_locked_documents_rels_user_usage_id_idx: index("payload_locked_documents_rels_user_usage_id_idx").on(
+      columns["user-usageID"]
+    ),
     payload_locked_documents_rels_media_id_idx: index("payload_locked_documents_rels_media_id_idx").on(columns.mediaID),
     payload_locked_documents_rels_location_cache_id_idx: index(
       "payload_locked_documents_rels_location_cache_id_idx"
@@ -2684,6 +3620,11 @@ export const payload_locked_documents_rels = db_schema.table(
       columns: [columns["usersID"]],
       foreignColumns: [users.id],
       name: "payload_locked_documents_rels_users_fk",
+    }).onDelete("cascade"),
+    "user-usageIdFk": foreignKey({
+      columns: [columns["user-usageID"]],
+      foreignColumns: [user_usage.id],
+      name: "payload_locked_documents_rels_user_usage_fk",
     }).onDelete("cascade"),
     mediaIdFk: foreignKey({
       columns: [columns["mediaID"]],
@@ -2847,6 +3788,209 @@ export const _main_menu_v = db_schema.table(
     _main_menu_v_autosave_idx: index("_main_menu_v_autosave_idx").on(columns.autosave),
   })
 );
+
+export const footer_social_links = db_schema.table(
+  "footer_social_links",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    platform: enum_footer_social_links_platform("platform"),
+    url: varchar("url"),
+  },
+  (columns) => ({
+    _orderIdx: index("footer_social_links_order_idx").on(columns._order),
+    _parentIDIdx: index("footer_social_links_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [footer.id],
+      name: "footer_social_links_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const footer_columns_links = db_schema.table(
+  "footer_columns_links",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: varchar("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    label: varchar("label"),
+    url: varchar("url"),
+  },
+  (columns) => ({
+    _orderIdx: index("footer_columns_links_order_idx").on(columns._order),
+    _parentIDIdx: index("footer_columns_links_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [footer_columns.id],
+      name: "footer_columns_links_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const footer_columns = db_schema.table(
+  "footer_columns",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    title: varchar("title"),
+  },
+  (columns) => ({
+    _orderIdx: index("footer_columns_order_idx").on(columns._order),
+    _parentIDIdx: index("footer_columns_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [footer.id],
+      name: "footer_columns_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const footer = db_schema.table(
+  "footer",
+  {
+    id: serial("id").primaryKey(),
+    tagline: varchar("tagline"),
+    newsletter_enabled: boolean("newsletter_enabled").default(true),
+    newsletter_headline: varchar("newsletter_headline").default("Stay Mapped In"),
+    newsletter_placeholder: varchar("newsletter_placeholder").default("your@email.address"),
+    newsletter_buttonText: varchar("newsletter_button_text").default("Subscribe"),
+    copyright: varchar("copyright"),
+    credits: varchar("credits"),
+    _status: enum_footer_status("_status").default("draft"),
+    updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }),
+    createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
+  },
+  (columns) => ({
+    footer__status_idx: index("footer__status_idx").on(columns._status),
+  })
+);
+
+export const _footer_v_version_social_links = db_schema.table(
+  "_footer_v_version_social_links",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    platform: enum__footer_v_version_social_links_platform("platform"),
+    url: varchar("url"),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => ({
+    _orderIdx: index("_footer_v_version_social_links_order_idx").on(columns._order),
+    _parentIDIdx: index("_footer_v_version_social_links_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_footer_v.id],
+      name: "_footer_v_version_social_links_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _footer_v_version_columns_links = db_schema.table(
+  "_footer_v_version_columns_links",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    label: varchar("label"),
+    url: varchar("url"),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => ({
+    _orderIdx: index("_footer_v_version_columns_links_order_idx").on(columns._order),
+    _parentIDIdx: index("_footer_v_version_columns_links_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_footer_v_version_columns.id],
+      name: "_footer_v_version_columns_links_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _footer_v_version_columns = db_schema.table(
+  "_footer_v_version_columns",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    title: varchar("title"),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => ({
+    _orderIdx: index("_footer_v_version_columns_order_idx").on(columns._order),
+    _parentIDIdx: index("_footer_v_version_columns_parent_id_idx").on(columns._parentID),
+    _parentIDFk: foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_footer_v.id],
+      name: "_footer_v_version_columns_parent_id_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const _footer_v = db_schema.table(
+  "_footer_v",
+  {
+    id: serial("id").primaryKey(),
+    version_tagline: varchar("version_tagline"),
+    version_newsletter_enabled: boolean("version_newsletter_enabled").default(true),
+    version_newsletter_headline: varchar("version_newsletter_headline").default("Stay Mapped In"),
+    version_newsletter_placeholder: varchar("version_newsletter_placeholder").default("your@email.address"),
+    version_newsletter_buttonText: varchar("version_newsletter_button_text").default("Subscribe"),
+    version_copyright: varchar("version_copyright"),
+    version_credits: varchar("version_credits"),
+    version__status: enum__footer_v_version_status("version__status").default("draft"),
+    version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
+    version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
+    createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    latest: boolean("latest"),
+    autosave: boolean("autosave"),
+  },
+  (columns) => ({
+    _footer_v_version_version__status_idx: index("_footer_v_version_version__status_idx").on(columns.version__status),
+    _footer_v_created_at_idx: index("_footer_v_created_at_idx").on(columns.createdAt),
+    _footer_v_updated_at_idx: index("_footer_v_updated_at_idx").on(columns.updatedAt),
+    _footer_v_latest_idx: index("_footer_v_latest_idx").on(columns.latest),
+    _footer_v_autosave_idx: index("_footer_v_autosave_idx").on(columns.autosave),
+  })
+);
+
+export const settings_geocoding_provider_selection_required_tags = db_schema.table(
+  "settings_geocoding_provider_selection_required_tags",
+  {
+    order: integer("order").notNull(),
+    parent: integer("parent_id").notNull(),
+    value: enum_settings_geocoding_provider_selection_required_tags("value"),
+    id: serial("id").primaryKey(),
+  },
+  (columns) => ({
+    orderIdx: index("settings_geocoding_provider_selection_required_tags_order_idx").on(columns.order),
+    parentIdx: index("settings_geocoding_provider_selection_required_tags_parent_idx").on(columns.parent),
+    parentFk: foreignKey({
+      columns: [columns["parent"]],
+      foreignColumns: [settings.id],
+      name: "settings_geocoding_provider_selection_required_tags_parent_fk",
+    }).onDelete("cascade"),
+  })
+);
+
+export const settings = db_schema.table("settings", {
+  id: serial("id").primaryKey(),
+  newsletter_serviceUrl: varchar("newsletter_service_url"),
+  newsletter_authHeader: varchar("newsletter_auth_header"),
+  geocoding_enabled: boolean("geocoding_enabled").default(true),
+  geocoding_fallbackEnabled: boolean("geocoding_fallback_enabled").default(true),
+  geocoding_providerSelection_strategy: enum_settings_geocoding_provider_selection_strategy(
+    "geocoding_provider_selection_strategy"
+  ).default("priority"),
+  geocoding_caching_enabled: boolean("geocoding_caching_enabled").default(true),
+  geocoding_caching_ttlDays: numeric("geocoding_caching_ttl_days").default("30"),
+  updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }),
+  createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
+});
 
 export const payload_jobs_stats = db_schema.table("payload_jobs_stats", {
   id: serial("id").primaryKey(),
@@ -3408,21 +4552,11 @@ export const relations_users = relations(users, ({ many }) => ({
     relationName: "sessions",
   }),
 }));
-export const relations__users_v_version_sessions = relations(_users_v_version_sessions, ({ one }) => ({
-  _parentID: one(_users_v, {
-    fields: [_users_v_version_sessions._parentID],
-    references: [_users_v.id],
-    relationName: "version_sessions",
-  }),
-}));
-export const relations__users_v = relations(_users_v, ({ one, many }) => ({
-  parent: one(users, {
-    fields: [_users_v.parent],
+export const relations_user_usage = relations(user_usage, ({ one }) => ({
+  user: one(users, {
+    fields: [user_usage.user],
     references: [users.id],
-    relationName: "parent",
-  }),
-  version_sessions: many(_users_v_version_sessions, {
-    relationName: "version_sessions",
+    relationName: "user",
   }),
 }));
 export const relations_media = relations(media, ({ one }) => ({
@@ -3484,12 +4618,339 @@ export const relations__geocoding_providers_v = relations(_geocoding_providers_v
     relationName: "version_tags",
   }),
 }));
-export const relations_pages = relations(pages, () => ({}));
-export const relations__pages_v = relations(_pages_v, ({ one }) => ({
+export const relations_pages_blocks_hero_buttons = relations(pages_blocks_hero_buttons, ({ one }) => ({
+  _parentID: one(pages_blocks_hero, {
+    fields: [pages_blocks_hero_buttons._parentID],
+    references: [pages_blocks_hero.id],
+    relationName: "buttons",
+  }),
+}));
+export const relations_pages_blocks_hero = relations(pages_blocks_hero, ({ one, many }) => ({
+  _parentID: one(pages, {
+    fields: [pages_blocks_hero._parentID],
+    references: [pages.id],
+    relationName: "_blocks_hero",
+  }),
+  buttons: many(pages_blocks_hero_buttons, {
+    relationName: "buttons",
+  }),
+}));
+export const relations_pages_blocks_features_features = relations(pages_blocks_features_features, ({ one }) => ({
+  _parentID: one(pages_blocks_features, {
+    fields: [pages_blocks_features_features._parentID],
+    references: [pages_blocks_features.id],
+    relationName: "features",
+  }),
+}));
+export const relations_pages_blocks_features = relations(pages_blocks_features, ({ one, many }) => ({
+  _parentID: one(pages, {
+    fields: [pages_blocks_features._parentID],
+    references: [pages.id],
+    relationName: "_blocks_features",
+  }),
+  features: many(pages_blocks_features_features, {
+    relationName: "features",
+  }),
+}));
+export const relations_pages_blocks_stats_stats = relations(pages_blocks_stats_stats, ({ one }) => ({
+  _parentID: one(pages_blocks_stats, {
+    fields: [pages_blocks_stats_stats._parentID],
+    references: [pages_blocks_stats.id],
+    relationName: "stats",
+  }),
+}));
+export const relations_pages_blocks_stats = relations(pages_blocks_stats, ({ one, many }) => ({
+  _parentID: one(pages, {
+    fields: [pages_blocks_stats._parentID],
+    references: [pages.id],
+    relationName: "_blocks_stats",
+  }),
+  stats: many(pages_blocks_stats_stats, {
+    relationName: "stats",
+  }),
+}));
+export const relations_pages_blocks_details_grid_items = relations(pages_blocks_details_grid_items, ({ one }) => ({
+  _parentID: one(pages_blocks_details_grid, {
+    fields: [pages_blocks_details_grid_items._parentID],
+    references: [pages_blocks_details_grid.id],
+    relationName: "items",
+  }),
+}));
+export const relations_pages_blocks_details_grid = relations(pages_blocks_details_grid, ({ one, many }) => ({
+  _parentID: one(pages, {
+    fields: [pages_blocks_details_grid._parentID],
+    references: [pages.id],
+    relationName: "_blocks_detailsGrid",
+  }),
+  items: many(pages_blocks_details_grid_items, {
+    relationName: "items",
+  }),
+}));
+export const relations_pages_blocks_timeline_items = relations(pages_blocks_timeline_items, ({ one }) => ({
+  _parentID: one(pages_blocks_timeline, {
+    fields: [pages_blocks_timeline_items._parentID],
+    references: [pages_blocks_timeline.id],
+    relationName: "items",
+  }),
+}));
+export const relations_pages_blocks_timeline = relations(pages_blocks_timeline, ({ one, many }) => ({
+  _parentID: one(pages, {
+    fields: [pages_blocks_timeline._parentID],
+    references: [pages.id],
+    relationName: "_blocks_timeline",
+  }),
+  items: many(pages_blocks_timeline_items, {
+    relationName: "items",
+  }),
+}));
+export const relations_pages_blocks_testimonials_items = relations(pages_blocks_testimonials_items, ({ one }) => ({
+  _parentID: one(pages_blocks_testimonials, {
+    fields: [pages_blocks_testimonials_items._parentID],
+    references: [pages_blocks_testimonials.id],
+    relationName: "items",
+  }),
+}));
+export const relations_pages_blocks_testimonials = relations(pages_blocks_testimonials, ({ one, many }) => ({
+  _parentID: one(pages, {
+    fields: [pages_blocks_testimonials._parentID],
+    references: [pages.id],
+    relationName: "_blocks_testimonials",
+  }),
+  items: many(pages_blocks_testimonials_items, {
+    relationName: "items",
+  }),
+}));
+export const relations_pages_blocks_rich_text = relations(pages_blocks_rich_text, ({ one }) => ({
+  _parentID: one(pages, {
+    fields: [pages_blocks_rich_text._parentID],
+    references: [pages.id],
+    relationName: "_blocks_richText",
+  }),
+}));
+export const relations_pages_blocks_cta = relations(pages_blocks_cta, ({ one }) => ({
+  _parentID: one(pages, {
+    fields: [pages_blocks_cta._parentID],
+    references: [pages.id],
+    relationName: "_blocks_cta",
+  }),
+}));
+export const relations_pages_blocks_newsletter_form = relations(pages_blocks_newsletter_form, ({ one }) => ({
+  _parentID: one(pages, {
+    fields: [pages_blocks_newsletter_form._parentID],
+    references: [pages.id],
+    relationName: "_blocks_newsletterForm",
+  }),
+}));
+export const relations_pages_blocks_newsletter_c_t_a = relations(pages_blocks_newsletter_c_t_a, ({ one }) => ({
+  _parentID: one(pages, {
+    fields: [pages_blocks_newsletter_c_t_a._parentID],
+    references: [pages.id],
+    relationName: "_blocks_newsletterCTA",
+  }),
+}));
+export const relations_pages = relations(pages, ({ many }) => ({
+  _blocks_hero: many(pages_blocks_hero, {
+    relationName: "_blocks_hero",
+  }),
+  _blocks_features: many(pages_blocks_features, {
+    relationName: "_blocks_features",
+  }),
+  _blocks_stats: many(pages_blocks_stats, {
+    relationName: "_blocks_stats",
+  }),
+  _blocks_detailsGrid: many(pages_blocks_details_grid, {
+    relationName: "_blocks_detailsGrid",
+  }),
+  _blocks_timeline: many(pages_blocks_timeline, {
+    relationName: "_blocks_timeline",
+  }),
+  _blocks_testimonials: many(pages_blocks_testimonials, {
+    relationName: "_blocks_testimonials",
+  }),
+  _blocks_richText: many(pages_blocks_rich_text, {
+    relationName: "_blocks_richText",
+  }),
+  _blocks_cta: many(pages_blocks_cta, {
+    relationName: "_blocks_cta",
+  }),
+  _blocks_newsletterForm: many(pages_blocks_newsletter_form, {
+    relationName: "_blocks_newsletterForm",
+  }),
+  _blocks_newsletterCTA: many(pages_blocks_newsletter_c_t_a, {
+    relationName: "_blocks_newsletterCTA",
+  }),
+}));
+export const relations__pages_v_blocks_hero_buttons = relations(_pages_v_blocks_hero_buttons, ({ one }) => ({
+  _parentID: one(_pages_v_blocks_hero, {
+    fields: [_pages_v_blocks_hero_buttons._parentID],
+    references: [_pages_v_blocks_hero.id],
+    relationName: "buttons",
+  }),
+}));
+export const relations__pages_v_blocks_hero = relations(_pages_v_blocks_hero, ({ one, many }) => ({
+  _parentID: one(_pages_v, {
+    fields: [_pages_v_blocks_hero._parentID],
+    references: [_pages_v.id],
+    relationName: "_blocks_hero",
+  }),
+  buttons: many(_pages_v_blocks_hero_buttons, {
+    relationName: "buttons",
+  }),
+}));
+export const relations__pages_v_blocks_features_features = relations(_pages_v_blocks_features_features, ({ one }) => ({
+  _parentID: one(_pages_v_blocks_features, {
+    fields: [_pages_v_blocks_features_features._parentID],
+    references: [_pages_v_blocks_features.id],
+    relationName: "features",
+  }),
+}));
+export const relations__pages_v_blocks_features = relations(_pages_v_blocks_features, ({ one, many }) => ({
+  _parentID: one(_pages_v, {
+    fields: [_pages_v_blocks_features._parentID],
+    references: [_pages_v.id],
+    relationName: "_blocks_features",
+  }),
+  features: many(_pages_v_blocks_features_features, {
+    relationName: "features",
+  }),
+}));
+export const relations__pages_v_blocks_stats_stats = relations(_pages_v_blocks_stats_stats, ({ one }) => ({
+  _parentID: one(_pages_v_blocks_stats, {
+    fields: [_pages_v_blocks_stats_stats._parentID],
+    references: [_pages_v_blocks_stats.id],
+    relationName: "stats",
+  }),
+}));
+export const relations__pages_v_blocks_stats = relations(_pages_v_blocks_stats, ({ one, many }) => ({
+  _parentID: one(_pages_v, {
+    fields: [_pages_v_blocks_stats._parentID],
+    references: [_pages_v.id],
+    relationName: "_blocks_stats",
+  }),
+  stats: many(_pages_v_blocks_stats_stats, {
+    relationName: "stats",
+  }),
+}));
+export const relations__pages_v_blocks_details_grid_items = relations(
+  _pages_v_blocks_details_grid_items,
+  ({ one }) => ({
+    _parentID: one(_pages_v_blocks_details_grid, {
+      fields: [_pages_v_blocks_details_grid_items._parentID],
+      references: [_pages_v_blocks_details_grid.id],
+      relationName: "items",
+    }),
+  })
+);
+export const relations__pages_v_blocks_details_grid = relations(_pages_v_blocks_details_grid, ({ one, many }) => ({
+  _parentID: one(_pages_v, {
+    fields: [_pages_v_blocks_details_grid._parentID],
+    references: [_pages_v.id],
+    relationName: "_blocks_detailsGrid",
+  }),
+  items: many(_pages_v_blocks_details_grid_items, {
+    relationName: "items",
+  }),
+}));
+export const relations__pages_v_blocks_timeline_items = relations(_pages_v_blocks_timeline_items, ({ one }) => ({
+  _parentID: one(_pages_v_blocks_timeline, {
+    fields: [_pages_v_blocks_timeline_items._parentID],
+    references: [_pages_v_blocks_timeline.id],
+    relationName: "items",
+  }),
+}));
+export const relations__pages_v_blocks_timeline = relations(_pages_v_blocks_timeline, ({ one, many }) => ({
+  _parentID: one(_pages_v, {
+    fields: [_pages_v_blocks_timeline._parentID],
+    references: [_pages_v.id],
+    relationName: "_blocks_timeline",
+  }),
+  items: many(_pages_v_blocks_timeline_items, {
+    relationName: "items",
+  }),
+}));
+export const relations__pages_v_blocks_testimonials_items = relations(
+  _pages_v_blocks_testimonials_items,
+  ({ one }) => ({
+    _parentID: one(_pages_v_blocks_testimonials, {
+      fields: [_pages_v_blocks_testimonials_items._parentID],
+      references: [_pages_v_blocks_testimonials.id],
+      relationName: "items",
+    }),
+  })
+);
+export const relations__pages_v_blocks_testimonials = relations(_pages_v_blocks_testimonials, ({ one, many }) => ({
+  _parentID: one(_pages_v, {
+    fields: [_pages_v_blocks_testimonials._parentID],
+    references: [_pages_v.id],
+    relationName: "_blocks_testimonials",
+  }),
+  items: many(_pages_v_blocks_testimonials_items, {
+    relationName: "items",
+  }),
+}));
+export const relations__pages_v_blocks_rich_text = relations(_pages_v_blocks_rich_text, ({ one }) => ({
+  _parentID: one(_pages_v, {
+    fields: [_pages_v_blocks_rich_text._parentID],
+    references: [_pages_v.id],
+    relationName: "_blocks_richText",
+  }),
+}));
+export const relations__pages_v_blocks_cta = relations(_pages_v_blocks_cta, ({ one }) => ({
+  _parentID: one(_pages_v, {
+    fields: [_pages_v_blocks_cta._parentID],
+    references: [_pages_v.id],
+    relationName: "_blocks_cta",
+  }),
+}));
+export const relations__pages_v_blocks_newsletter_form = relations(_pages_v_blocks_newsletter_form, ({ one }) => ({
+  _parentID: one(_pages_v, {
+    fields: [_pages_v_blocks_newsletter_form._parentID],
+    references: [_pages_v.id],
+    relationName: "_blocks_newsletterForm",
+  }),
+}));
+export const relations__pages_v_blocks_newsletter_c_t_a = relations(_pages_v_blocks_newsletter_c_t_a, ({ one }) => ({
+  _parentID: one(_pages_v, {
+    fields: [_pages_v_blocks_newsletter_c_t_a._parentID],
+    references: [_pages_v.id],
+    relationName: "_blocks_newsletterCTA",
+  }),
+}));
+export const relations__pages_v = relations(_pages_v, ({ one, many }) => ({
   parent: one(pages, {
     fields: [_pages_v.parent],
     references: [pages.id],
     relationName: "parent",
+  }),
+  _blocks_hero: many(_pages_v_blocks_hero, {
+    relationName: "_blocks_hero",
+  }),
+  _blocks_features: many(_pages_v_blocks_features, {
+    relationName: "_blocks_features",
+  }),
+  _blocks_stats: many(_pages_v_blocks_stats, {
+    relationName: "_blocks_stats",
+  }),
+  _blocks_detailsGrid: many(_pages_v_blocks_details_grid, {
+    relationName: "_blocks_detailsGrid",
+  }),
+  _blocks_timeline: many(_pages_v_blocks_timeline, {
+    relationName: "_blocks_timeline",
+  }),
+  _blocks_testimonials: many(_pages_v_blocks_testimonials, {
+    relationName: "_blocks_testimonials",
+  }),
+  _blocks_richText: many(_pages_v_blocks_rich_text, {
+    relationName: "_blocks_richText",
+  }),
+  _blocks_cta: many(_pages_v_blocks_cta, {
+    relationName: "_blocks_cta",
+  }),
+  _blocks_newsletterForm: many(_pages_v_blocks_newsletter_form, {
+    relationName: "_blocks_newsletterForm",
+  }),
+  _blocks_newsletterCTA: many(_pages_v_blocks_newsletter_c_t_a, {
+    relationName: "_blocks_newsletterCTA",
   }),
 }));
 export const relations_payload_jobs_log = relations(payload_jobs_log, ({ one }) => ({
@@ -3549,6 +5010,11 @@ export const relations_payload_locked_documents_rels = relations(payload_locked_
     fields: [payload_locked_documents_rels.usersID],
     references: [users.id],
     relationName: "users",
+  }),
+  "user-usageID": one(user_usage, {
+    fields: [payload_locked_documents_rels["user-usageID"]],
+    references: [user_usage.id],
+    relationName: "user-usage",
   }),
   mediaID: one(media, {
     fields: [payload_locked_documents_rels.mediaID],
@@ -3623,6 +5089,85 @@ export const relations__main_menu_v = relations(_main_menu_v, ({ many }) => ({
     relationName: "version_navItems",
   }),
 }));
+export const relations_footer_social_links = relations(footer_social_links, ({ one }) => ({
+  _parentID: one(footer, {
+    fields: [footer_social_links._parentID],
+    references: [footer.id],
+    relationName: "socialLinks",
+  }),
+}));
+export const relations_footer_columns_links = relations(footer_columns_links, ({ one }) => ({
+  _parentID: one(footer_columns, {
+    fields: [footer_columns_links._parentID],
+    references: [footer_columns.id],
+    relationName: "links",
+  }),
+}));
+export const relations_footer_columns = relations(footer_columns, ({ one, many }) => ({
+  _parentID: one(footer, {
+    fields: [footer_columns._parentID],
+    references: [footer.id],
+    relationName: "columns",
+  }),
+  links: many(footer_columns_links, {
+    relationName: "links",
+  }),
+}));
+export const relations_footer = relations(footer, ({ many }) => ({
+  socialLinks: many(footer_social_links, {
+    relationName: "socialLinks",
+  }),
+  columns: many(footer_columns, {
+    relationName: "columns",
+  }),
+}));
+export const relations__footer_v_version_social_links = relations(_footer_v_version_social_links, ({ one }) => ({
+  _parentID: one(_footer_v, {
+    fields: [_footer_v_version_social_links._parentID],
+    references: [_footer_v.id],
+    relationName: "version_socialLinks",
+  }),
+}));
+export const relations__footer_v_version_columns_links = relations(_footer_v_version_columns_links, ({ one }) => ({
+  _parentID: one(_footer_v_version_columns, {
+    fields: [_footer_v_version_columns_links._parentID],
+    references: [_footer_v_version_columns.id],
+    relationName: "links",
+  }),
+}));
+export const relations__footer_v_version_columns = relations(_footer_v_version_columns, ({ one, many }) => ({
+  _parentID: one(_footer_v, {
+    fields: [_footer_v_version_columns._parentID],
+    references: [_footer_v.id],
+    relationName: "version_columns",
+  }),
+  links: many(_footer_v_version_columns_links, {
+    relationName: "links",
+  }),
+}));
+export const relations__footer_v = relations(_footer_v, ({ many }) => ({
+  version_socialLinks: many(_footer_v_version_social_links, {
+    relationName: "version_socialLinks",
+  }),
+  version_columns: many(_footer_v_version_columns, {
+    relationName: "version_columns",
+  }),
+}));
+export const relations_settings_geocoding_provider_selection_required_tags = relations(
+  settings_geocoding_provider_selection_required_tags,
+  ({ one }) => ({
+    parent: one(settings, {
+      fields: [settings_geocoding_provider_selection_required_tags.parent],
+      references: [settings.id],
+      relationName: "geocoding_providerSelection_requiredTags",
+    }),
+  })
+);
+export const relations_settings = relations(settings, ({ many }) => ({
+  geocoding_providerSelection_requiredTags: many(settings_geocoding_provider_selection_required_tags, {
+    relationName: "geocoding_providerSelection_requiredTags",
+  }),
+}));
 export const relations_payload_jobs_stats = relations(payload_jobs_stats, () => ({}));
 
 type DatabaseSchema = {
@@ -3682,11 +5227,8 @@ type DatabaseSchema = {
   enum__events_v_version_validation_status: typeof enum__events_v_version_validation_status;
   enum__events_v_version_status: typeof enum__events_v_version_status;
   enum_users_role: typeof enum_users_role;
+  enum_users_registration_source: typeof enum_users_registration_source;
   enum_users_trust_level: typeof enum_users_trust_level;
-  enum_users_status: typeof enum_users_status;
-  enum__users_v_version_role: typeof enum__users_v_version_role;
-  enum__users_v_version_trust_level: typeof enum__users_v_version_trust_level;
-  enum__users_v_version_status: typeof enum__users_v_version_status;
   enum_media_status: typeof enum_media_status;
   enum__media_v_version_status: typeof enum__media_v_version_status;
   enum_location_cache_status: typeof enum_location_cache_status;
@@ -3697,13 +5239,45 @@ type DatabaseSchema = {
   enum__geocoding_providers_v_version_tags: typeof enum__geocoding_providers_v_version_tags;
   enum__geocoding_providers_v_version_type: typeof enum__geocoding_providers_v_version_type;
   enum__geocoding_providers_v_version_status: typeof enum__geocoding_providers_v_version_status;
+  enum_pages_blocks_hero_buttons_variant: typeof enum_pages_blocks_hero_buttons_variant;
+  enum_pages_blocks_hero_background: typeof enum_pages_blocks_hero_background;
+  enum_pages_blocks_features_features_icon: typeof enum_pages_blocks_features_features_icon;
+  enum_pages_blocks_features_features_accent: typeof enum_pages_blocks_features_features_accent;
+  enum_pages_blocks_features_columns: typeof enum_pages_blocks_features_columns;
+  enum_pages_blocks_stats_stats_icon: typeof enum_pages_blocks_stats_stats_icon;
+  enum_pages_blocks_details_grid_items_icon: typeof enum_pages_blocks_details_grid_items_icon;
+  enum_pages_blocks_details_grid_variant: typeof enum_pages_blocks_details_grid_variant;
+  enum_pages_blocks_timeline_variant: typeof enum_pages_blocks_timeline_variant;
+  enum_pages_blocks_testimonials_items_avatar: typeof enum_pages_blocks_testimonials_items_avatar;
+  enum_pages_blocks_testimonials_variant: typeof enum_pages_blocks_testimonials_variant;
+  enum_pages_blocks_newsletter_c_t_a_variant: typeof enum_pages_blocks_newsletter_c_t_a_variant;
+  enum_pages_blocks_newsletter_c_t_a_size: typeof enum_pages_blocks_newsletter_c_t_a_size;
   enum_pages_status: typeof enum_pages_status;
+  enum__pages_v_blocks_hero_buttons_variant: typeof enum__pages_v_blocks_hero_buttons_variant;
+  enum__pages_v_blocks_hero_background: typeof enum__pages_v_blocks_hero_background;
+  enum__pages_v_blocks_features_features_icon: typeof enum__pages_v_blocks_features_features_icon;
+  enum__pages_v_blocks_features_features_accent: typeof enum__pages_v_blocks_features_features_accent;
+  enum__pages_v_blocks_features_columns: typeof enum__pages_v_blocks_features_columns;
+  enum__pages_v_blocks_stats_stats_icon: typeof enum__pages_v_blocks_stats_stats_icon;
+  enum__pages_v_blocks_details_grid_items_icon: typeof enum__pages_v_blocks_details_grid_items_icon;
+  enum__pages_v_blocks_details_grid_variant: typeof enum__pages_v_blocks_details_grid_variant;
+  enum__pages_v_blocks_timeline_variant: typeof enum__pages_v_blocks_timeline_variant;
+  enum__pages_v_blocks_testimonials_items_avatar: typeof enum__pages_v_blocks_testimonials_items_avatar;
+  enum__pages_v_blocks_testimonials_variant: typeof enum__pages_v_blocks_testimonials_variant;
+  enum__pages_v_blocks_newsletter_c_t_a_variant: typeof enum__pages_v_blocks_newsletter_c_t_a_variant;
+  enum__pages_v_blocks_newsletter_c_t_a_size: typeof enum__pages_v_blocks_newsletter_c_t_a_size;
   enum__pages_v_version_status: typeof enum__pages_v_version_status;
   enum_payload_jobs_log_task_slug: typeof enum_payload_jobs_log_task_slug;
   enum_payload_jobs_log_state: typeof enum_payload_jobs_log_state;
   enum_payload_jobs_task_slug: typeof enum_payload_jobs_task_slug;
   enum_main_menu_status: typeof enum_main_menu_status;
   enum__main_menu_v_version_status: typeof enum__main_menu_v_version_status;
+  enum_footer_social_links_platform: typeof enum_footer_social_links_platform;
+  enum_footer_status: typeof enum_footer_status;
+  enum__footer_v_version_social_links_platform: typeof enum__footer_v_version_social_links_platform;
+  enum__footer_v_version_status: typeof enum__footer_v_version_status;
+  enum_settings_geocoding_provider_selection_required_tags: typeof enum_settings_geocoding_provider_selection_required_tags;
+  enum_settings_geocoding_provider_selection_strategy: typeof enum_settings_geocoding_provider_selection_strategy;
   catalogs: typeof catalogs;
   _catalogs_v: typeof _catalogs_v;
   datasets_id_strategy_computed_id_fields: typeof datasets_id_strategy_computed_id_fields;
@@ -3744,8 +5318,7 @@ type DatabaseSchema = {
   _events_v: typeof _events_v;
   users_sessions: typeof users_sessions;
   users: typeof users;
-  _users_v_version_sessions: typeof _users_v_version_sessions;
-  _users_v: typeof _users_v;
+  user_usage: typeof user_usage;
   media: typeof media;
   _media_v: typeof _media_v;
   location_cache: typeof location_cache;
@@ -3754,7 +5327,39 @@ type DatabaseSchema = {
   geocoding_providers: typeof geocoding_providers;
   _geocoding_providers_v_version_tags: typeof _geocoding_providers_v_version_tags;
   _geocoding_providers_v: typeof _geocoding_providers_v;
+  pages_blocks_hero_buttons: typeof pages_blocks_hero_buttons;
+  pages_blocks_hero: typeof pages_blocks_hero;
+  pages_blocks_features_features: typeof pages_blocks_features_features;
+  pages_blocks_features: typeof pages_blocks_features;
+  pages_blocks_stats_stats: typeof pages_blocks_stats_stats;
+  pages_blocks_stats: typeof pages_blocks_stats;
+  pages_blocks_details_grid_items: typeof pages_blocks_details_grid_items;
+  pages_blocks_details_grid: typeof pages_blocks_details_grid;
+  pages_blocks_timeline_items: typeof pages_blocks_timeline_items;
+  pages_blocks_timeline: typeof pages_blocks_timeline;
+  pages_blocks_testimonials_items: typeof pages_blocks_testimonials_items;
+  pages_blocks_testimonials: typeof pages_blocks_testimonials;
+  pages_blocks_rich_text: typeof pages_blocks_rich_text;
+  pages_blocks_cta: typeof pages_blocks_cta;
+  pages_blocks_newsletter_form: typeof pages_blocks_newsletter_form;
+  pages_blocks_newsletter_c_t_a: typeof pages_blocks_newsletter_c_t_a;
   pages: typeof pages;
+  _pages_v_blocks_hero_buttons: typeof _pages_v_blocks_hero_buttons;
+  _pages_v_blocks_hero: typeof _pages_v_blocks_hero;
+  _pages_v_blocks_features_features: typeof _pages_v_blocks_features_features;
+  _pages_v_blocks_features: typeof _pages_v_blocks_features;
+  _pages_v_blocks_stats_stats: typeof _pages_v_blocks_stats_stats;
+  _pages_v_blocks_stats: typeof _pages_v_blocks_stats;
+  _pages_v_blocks_details_grid_items: typeof _pages_v_blocks_details_grid_items;
+  _pages_v_blocks_details_grid: typeof _pages_v_blocks_details_grid;
+  _pages_v_blocks_timeline_items: typeof _pages_v_blocks_timeline_items;
+  _pages_v_blocks_timeline: typeof _pages_v_blocks_timeline;
+  _pages_v_blocks_testimonials_items: typeof _pages_v_blocks_testimonials_items;
+  _pages_v_blocks_testimonials: typeof _pages_v_blocks_testimonials;
+  _pages_v_blocks_rich_text: typeof _pages_v_blocks_rich_text;
+  _pages_v_blocks_cta: typeof _pages_v_blocks_cta;
+  _pages_v_blocks_newsletter_form: typeof _pages_v_blocks_newsletter_form;
+  _pages_v_blocks_newsletter_c_t_a: typeof _pages_v_blocks_newsletter_c_t_a;
   _pages_v: typeof _pages_v;
   payload_jobs_log: typeof payload_jobs_log;
   payload_jobs: typeof payload_jobs;
@@ -3767,6 +5372,16 @@ type DatabaseSchema = {
   main_menu: typeof main_menu;
   _main_menu_v_version_nav_items: typeof _main_menu_v_version_nav_items;
   _main_menu_v: typeof _main_menu_v;
+  footer_social_links: typeof footer_social_links;
+  footer_columns_links: typeof footer_columns_links;
+  footer_columns: typeof footer_columns;
+  footer: typeof footer;
+  _footer_v_version_social_links: typeof _footer_v_version_social_links;
+  _footer_v_version_columns_links: typeof _footer_v_version_columns_links;
+  _footer_v_version_columns: typeof _footer_v_version_columns;
+  _footer_v: typeof _footer_v;
+  settings_geocoding_provider_selection_required_tags: typeof settings_geocoding_provider_selection_required_tags;
+  settings: typeof settings;
   payload_jobs_stats: typeof payload_jobs_stats;
   relations_catalogs: typeof relations_catalogs;
   relations__catalogs_v: typeof relations__catalogs_v;
@@ -3808,8 +5423,7 @@ type DatabaseSchema = {
   relations__events_v: typeof relations__events_v;
   relations_users_sessions: typeof relations_users_sessions;
   relations_users: typeof relations_users;
-  relations__users_v_version_sessions: typeof relations__users_v_version_sessions;
-  relations__users_v: typeof relations__users_v;
+  relations_user_usage: typeof relations_user_usage;
   relations_media: typeof relations_media;
   relations__media_v: typeof relations__media_v;
   relations_location_cache: typeof relations_location_cache;
@@ -3818,7 +5432,39 @@ type DatabaseSchema = {
   relations_geocoding_providers: typeof relations_geocoding_providers;
   relations__geocoding_providers_v_version_tags: typeof relations__geocoding_providers_v_version_tags;
   relations__geocoding_providers_v: typeof relations__geocoding_providers_v;
+  relations_pages_blocks_hero_buttons: typeof relations_pages_blocks_hero_buttons;
+  relations_pages_blocks_hero: typeof relations_pages_blocks_hero;
+  relations_pages_blocks_features_features: typeof relations_pages_blocks_features_features;
+  relations_pages_blocks_features: typeof relations_pages_blocks_features;
+  relations_pages_blocks_stats_stats: typeof relations_pages_blocks_stats_stats;
+  relations_pages_blocks_stats: typeof relations_pages_blocks_stats;
+  relations_pages_blocks_details_grid_items: typeof relations_pages_blocks_details_grid_items;
+  relations_pages_blocks_details_grid: typeof relations_pages_blocks_details_grid;
+  relations_pages_blocks_timeline_items: typeof relations_pages_blocks_timeline_items;
+  relations_pages_blocks_timeline: typeof relations_pages_blocks_timeline;
+  relations_pages_blocks_testimonials_items: typeof relations_pages_blocks_testimonials_items;
+  relations_pages_blocks_testimonials: typeof relations_pages_blocks_testimonials;
+  relations_pages_blocks_rich_text: typeof relations_pages_blocks_rich_text;
+  relations_pages_blocks_cta: typeof relations_pages_blocks_cta;
+  relations_pages_blocks_newsletter_form: typeof relations_pages_blocks_newsletter_form;
+  relations_pages_blocks_newsletter_c_t_a: typeof relations_pages_blocks_newsletter_c_t_a;
   relations_pages: typeof relations_pages;
+  relations__pages_v_blocks_hero_buttons: typeof relations__pages_v_blocks_hero_buttons;
+  relations__pages_v_blocks_hero: typeof relations__pages_v_blocks_hero;
+  relations__pages_v_blocks_features_features: typeof relations__pages_v_blocks_features_features;
+  relations__pages_v_blocks_features: typeof relations__pages_v_blocks_features;
+  relations__pages_v_blocks_stats_stats: typeof relations__pages_v_blocks_stats_stats;
+  relations__pages_v_blocks_stats: typeof relations__pages_v_blocks_stats;
+  relations__pages_v_blocks_details_grid_items: typeof relations__pages_v_blocks_details_grid_items;
+  relations__pages_v_blocks_details_grid: typeof relations__pages_v_blocks_details_grid;
+  relations__pages_v_blocks_timeline_items: typeof relations__pages_v_blocks_timeline_items;
+  relations__pages_v_blocks_timeline: typeof relations__pages_v_blocks_timeline;
+  relations__pages_v_blocks_testimonials_items: typeof relations__pages_v_blocks_testimonials_items;
+  relations__pages_v_blocks_testimonials: typeof relations__pages_v_blocks_testimonials;
+  relations__pages_v_blocks_rich_text: typeof relations__pages_v_blocks_rich_text;
+  relations__pages_v_blocks_cta: typeof relations__pages_v_blocks_cta;
+  relations__pages_v_blocks_newsletter_form: typeof relations__pages_v_blocks_newsletter_form;
+  relations__pages_v_blocks_newsletter_c_t_a: typeof relations__pages_v_blocks_newsletter_c_t_a;
   relations__pages_v: typeof relations__pages_v;
   relations_payload_jobs_log: typeof relations_payload_jobs_log;
   relations_payload_jobs: typeof relations_payload_jobs;
@@ -3831,6 +5477,16 @@ type DatabaseSchema = {
   relations_main_menu: typeof relations_main_menu;
   relations__main_menu_v_version_nav_items: typeof relations__main_menu_v_version_nav_items;
   relations__main_menu_v: typeof relations__main_menu_v;
+  relations_footer_social_links: typeof relations_footer_social_links;
+  relations_footer_columns_links: typeof relations_footer_columns_links;
+  relations_footer_columns: typeof relations_footer_columns;
+  relations_footer: typeof relations_footer;
+  relations__footer_v_version_social_links: typeof relations__footer_v_version_social_links;
+  relations__footer_v_version_columns_links: typeof relations__footer_v_version_columns_links;
+  relations__footer_v_version_columns: typeof relations__footer_v_version_columns;
+  relations__footer_v: typeof relations__footer_v;
+  relations_settings_geocoding_provider_selection_required_tags: typeof relations_settings_geocoding_provider_selection_required_tags;
+  relations_settings: typeof relations_settings;
   relations_payload_jobs_stats: typeof relations_payload_jobs_stats;
 };
 

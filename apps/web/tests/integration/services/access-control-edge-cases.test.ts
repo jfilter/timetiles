@@ -69,6 +69,8 @@ describe.sequential("Access Control Edge Cases", () => {
       await payload.delete({ collection: "datasets", where: {}, overrideAccess: true });
       await payload.delete({ collection: "catalogs", where: {}, overrideAccess: true });
       await payload.delete({ collection: "scheduled-imports", where: {}, overrideAccess: true });
+      // Clean up user-usage to reset quota counters
+      await payload.delete({ collection: "user-usage", where: {}, overrideAccess: true });
     } catch {
       // Ignore errors if collections are empty
     }
@@ -594,38 +596,8 @@ describe.sequential("Access Control Edge Cases", () => {
       }
     });
 
-    it("should handle import file with null user (session-based)", async () => {
-      // Create import file without user (unauthenticated upload) using helper
-      const csvContent = "name,date\nSession Event,2024-01-01";
-      const { importFile } = await withImportFile(testEnv, null, csvContent, {
-        filename: "unauthenticated-upload.csv",
-        sessionId: "test-session-123",
-        // No user field
-      });
-
-      // Wait for hooks to complete and process jobs
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      await payload.jobs.run({ allQueues: true });
-
-      // Access should be restricted (no user, no access via admin panel)
-      await expect(
-        payload.findByID({
-          collection: "import-files",
-          id: importFile.id,
-          user: otherUser,
-          overrideAccess: false,
-        })
-      ).rejects.toThrow();
-
-      // Admin should be able to access
-      const adminFile = await payload.findByID({
-        collection: "import-files",
-        id: importFile.id,
-        user: adminUser,
-        overrideAccess: false,
-      });
-      expect(adminFile.id).toBe(importFile.id);
-    });
+    // Note: Session-based unauthenticated uploads are no longer supported.
+    // All import files now require an authenticated user (withImportFile creates one automatically).
   });
 
   describe("Complex Relationship Chains", () => {

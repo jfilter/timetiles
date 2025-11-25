@@ -18,8 +18,9 @@ loadEnv({ path: ".env.local" });
 const TEST_ENV = {
   DATABASE_URL: E2E_DATABASE_URL,
   // Note: This is a test-only secret, not a real credential.
-  // Kept inline as Playwright config needs to be self-contained and loads before test setup
-  PAYLOAD_SECRET: process.env.PAYLOAD_SECRET || "test-secret-key",
+  // IMPORTANT: Force the test secret - don't use .env.local value since E2E tests
+  // expect a consistent secret for JWT signing/validation
+  PAYLOAD_SECRET: "test-secret-key",
   NEXT_PUBLIC_PAYLOAD_URL: "http://localhost:3002",
   NODE_ENV: "test",
   // Ensure database setup errors are visible even in test mode
@@ -112,7 +113,7 @@ export default defineConfig({
       : {
           command: "pnpm setup:e2e-db && pnpm dev --port 3002",
           url: "http://localhost:3002/explore", // Test against the explore page
-          reuseExistingServer: true,
+          reuseExistingServer: false,
           timeout: 120 * 1000, // 2 minutes for database setup, migrations, and server start
           env: {
             ...process.env, // Inherit all current environment variables

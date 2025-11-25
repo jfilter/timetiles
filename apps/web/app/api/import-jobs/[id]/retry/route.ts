@@ -74,7 +74,7 @@ export const POST = withRateLimit(
           });
 
           const quotaService = getQuotaService(payload);
-          const quotaCheck = quotaService.checkQuota(user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY, 1);
+          const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY, 1);
 
           if (!quotaCheck.allowed) {
             return forbidden("Quota exceeded. Cannot retry import at this time. Please try again tomorrow.");

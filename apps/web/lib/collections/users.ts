@@ -20,13 +20,79 @@ import {
   TRUST_LEVEL_LABELS,
   TRUST_LEVELS,
 } from "@/lib/constants/quota-constants";
+import { logError } from "@/lib/logger";
 
 import { createCommonConfig } from "./shared-fields";
 
 const Users: CollectionConfig = {
   slug: "users",
-  ...createCommonConfig(),
-  auth: true,
+  // Disable versioning for users to avoid session clearing issues during user updates
+  ...createCommonConfig({ versions: false, drafts: false }),
+  auth: {
+    // Enable email verification using Payload's built-in feature
+    // This auto-adds _verified and _verificationToken fields
+    verify: {
+      generateEmailHTML: (args) => {
+        const token = args?.token ?? "";
+        const user = args?.user;
+        const firstName = user?.firstName ?? "";
+        const verifyUrl = `${process.env.NEXT_PUBLIC_PAYLOAD_URL}/verify-email?token=${token}`;
+        return `
+          <!DOCTYPE html>
+          <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+              <h1>Verify your TimeTiles account</h1>
+              <p>Hello${firstName ? ` ${firstName}` : ""},</p>
+              <p>Thank you for registering with TimeTiles. Please verify your email address by clicking the link below:</p>
+              <p style="margin: 20px 0;">
+                <a href="${verifyUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
+                  Verify Email
+                </a>
+              </p>
+              <p>Or copy and paste this link into your browser:</p>
+              <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+              <p>This link will expire in 24 hours.</p>
+              <p>If you didn't create an account, you can safely ignore this email.</p>
+            </body>
+          </html>
+        `;
+      },
+      generateEmailSubject: () => {
+        return "Verify your TimeTiles account";
+      },
+    },
+    // Configure forgot password emails
+    forgotPassword: {
+      generateEmailHTML: (args) => {
+        const token = args?.token ?? "";
+        const user = args?.user;
+        const firstName = user?.firstName ?? "";
+        const resetUrl = `${process.env.NEXT_PUBLIC_PAYLOAD_URL}/reset-password?token=${token}`;
+        return `
+          <!DOCTYPE html>
+          <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+              <h1>Reset your password</h1>
+              <p>Hello${firstName ? ` ${firstName}` : ""},</p>
+              <p>You requested to reset your password. Click the link below to set a new password:</p>
+              <p style="margin: 20px 0;">
+                <a href="${resetUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
+                  Reset Password
+                </a>
+              </p>
+              <p>Or copy and paste this link into your browser:</p>
+              <p><a href="${resetUrl}">${resetUrl}</a></p>
+              <p>This link will expire in 1 hour.</p>
+              <p>If you didn't request a password reset, you can safely ignore this email.</p>
+            </body>
+          </html>
+        `;
+      },
+      generateEmailSubject: () => {
+        return "Reset your TimeTiles password";
+      },
+    },
+  },
   admin: {
     useAsTitle: "email",
     defaultColumns: ["email", "firstName", "lastName", "role", "trustLevel", "isActive"],
@@ -40,12 +106,10 @@ const Users: CollectionConfig = {
       return { id: { equals: user.id } };
     },
 
-    // Only admins can create users
-    // Note: For public registration, modify this to allow unauthenticated
-    // creation but force role to 'user' via beforeChange hook
-    create: ({ req: { user } }) => {
-      return user?.role === "admin";
-    },
+    // Allow self-registration for unauthenticated users
+    // Security: beforeChange hook forces role='user' and trustLevel='BASIC' for self-registrants
+    // Admins can always create, unauthenticated can self-register, authenticated non-admins cannot
+    create: ({ req: { user } }) => user?.role === "admin" || !user,
 
     // Users can update their own profile (except role), admins can update anyone
     // eslint-disable-next-line sonarjs/function-return-type
@@ -121,6 +185,20 @@ const Users: CollectionConfig = {
         },
         position: "sidebar",
         readOnly: true,
+      },
+    },
+    {
+      name: "registrationSource",
+      type: "select",
+      options: [
+        { label: "Admin Created", value: "admin" },
+        { label: "Self-Registration", value: "self" },
+      ],
+      defaultValue: "admin",
+      admin: {
+        position: "sidebar",
+        readOnly: true,
+        description: "How this user account was created",
       },
     },
     // Permission and Quota Fields
@@ -217,72 +295,8 @@ const Users: CollectionConfig = {
         },
       ],
     },
-    {
-      name: "usage",
-      type: "group",
-      admin: {
-        description: "Current resource usage tracking",
-        readOnly: true,
-      },
-      fields: [
-        {
-          name: "currentActiveSchedules",
-          type: "number",
-          admin: {
-            description: "Currently active scheduled imports",
-            readOnly: true,
-          },
-        },
-        {
-          name: "urlFetchesToday",
-          type: "number",
-          admin: {
-            description: "URL fetches performed today",
-            readOnly: true,
-          },
-        },
-        {
-          name: "fileUploadsToday",
-          type: "number",
-          admin: {
-            description: "Files uploaded today",
-            readOnly: true,
-          },
-        },
-        {
-          name: "importJobsToday",
-          type: "number",
-          admin: {
-            description: "Import jobs created today",
-            readOnly: true,
-          },
-        },
-        {
-          name: "totalEventsCreated",
-          type: "number",
-          admin: {
-            description: "Total events created by this user",
-            readOnly: true,
-          },
-        },
-        {
-          name: "currentCatalogs",
-          type: "number",
-          admin: {
-            description: "Current number of catalogs owned by this user",
-            readOnly: true,
-          },
-        },
-        {
-          name: "lastResetDate",
-          type: "date",
-          admin: {
-            description: "Last time daily counters were reset",
-            readOnly: true,
-          },
-        },
-      ],
-    },
+    // Note: usage tracking has been moved to the separate 'user-usage' collection
+    // to avoid session-clearing issues when updating user records
     {
       name: "customQuotas",
       type: "json",
@@ -297,7 +311,30 @@ const Users: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      ({ data, operation, req: _req, originalDoc }) => {
+      // eslint-disable-next-line sonarjs/cognitive-complexity -- Pre-existing quota logic requires multiple conditions
+      ({ data, operation, req, originalDoc }) => {
+        // SECURITY: Handle self-registration (unauthenticated user creation)
+        // Force safe defaults to prevent privilege escalation
+        //
+        // We check req.payloadAPI === "REST" to distinguish between:
+        // - Public API requests (REST): Users self-registering via HTTP endpoints
+        // - Local API calls (payload.create()): Tests, seeding scripts, system operations
+        //
+        // Only public API self-registration should be restricted. Local API calls
+        // (which have req.payloadAPI === "local" or undefined) need to create
+        // admin users for testing and seeding purposes.
+        const isPublicApiRequest = req.payloadAPI === "REST";
+        if (operation === "create" && !req.user && isPublicApiRequest) {
+          // Force user role - prevent self-registrants from becoming admin/editor
+          data.role = "user";
+          // Force BASIC trust level - lowest quotas for new self-registered users
+          data.trustLevel = String(TRUST_LEVELS.BASIC);
+          // Mark as self-registered
+          data.registrationSource = "self";
+          // Ensure account is active
+          data.isActive = true;
+        }
+
         // Auto-set quotas based on trust level ONLY when trust level actually changes
         if (operation === "update" && data?.trustLevel !== undefined && originalDoc?.trustLevel !== data.trustLevel) {
           const trustLevel = Number(data.trustLevel);
@@ -321,7 +358,8 @@ const Users: CollectionConfig = {
           }
         }
 
-        // Initialize quotas and usage on user creation
+        // Initialize quotas on user creation
+        // Note: usage tracking is handled via user-usage collection (created in afterChange hook)
         if (operation === "create") {
           const trustLevel = Number(data?.trustLevel || TRUST_LEVELS.REGULAR);
           const defaultQuotas = DEFAULT_QUOTAS[trustLevel as keyof typeof DEFAULT_QUOTAS];
@@ -341,24 +379,15 @@ const Users: CollectionConfig = {
             ...defaultQuotas,
             ...filteredProvidedQuotas,
           };
-
-          // Initialize usage if not provided
-          if (!data.usage) {
-            data.usage = {
-              currentActiveSchedules: 0,
-              urlFetchesToday: 0,
-              fileUploadsToday: 0,
-              importJobsToday: 0,
-              totalEventsCreated: 0,
-              currentCatalogs: 0,
-              lastResetDate: new Date().toISOString(),
-            };
-          }
         }
 
         return data;
       },
     ],
+    // Note: User-usage records are created lazily via QuotaService.getOrCreateUsageRecord()
+    // on first quota check. This avoids FK constraint issues that occur when trying to
+    // create them in afterChange hooks (the user transaction hasn't committed yet).
+    afterChange: [],
   },
 };
 

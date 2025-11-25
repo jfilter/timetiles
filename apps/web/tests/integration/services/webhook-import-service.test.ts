@@ -499,6 +499,7 @@ describe.sequential("Webhook Import Service Integration", () => {
         data: {
           originalName: "Old Import",
           catalog: testCatalog.id,
+          user: testUser.id,
           status: "completed",
           metadata: {
             urlFetch: {
@@ -512,6 +513,7 @@ describe.sequential("Webhook Import Service Integration", () => {
           name: "old-import.csv",
           size: differentContent.length,
         },
+        user: testUser,
       });
 
       // New import with different content should not be detected as duplicate

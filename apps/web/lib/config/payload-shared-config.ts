@@ -21,6 +21,7 @@ import LocationCache from "@/lib/collections/location-cache";
 import Media from "@/lib/collections/media";
 import { Pages } from "@/lib/collections/pages";
 import ScheduledImports from "@/lib/collections/scheduled-imports/index";
+import UserUsage from "@/lib/collections/user-usage";
 import Users from "@/lib/collections/users";
 // Import globals
 import { Footer } from "@/lib/globals/footer";
@@ -56,6 +57,7 @@ export const COLLECTIONS = {
   "scheduled-imports": ScheduledImports,
   events: Events,
   users: Users,
+  "user-usage": UserUsage,
   media: Media,
   "location-cache": LocationCache,
   "geocoding-providers": GeocodingProviders,
@@ -74,6 +76,7 @@ export const ALL_COLLECTIONS = [
   ScheduledImports,
   Events,
   Users,
+  UserUsage,
   Media,
   LocationCache,
   GeocodingProviders,

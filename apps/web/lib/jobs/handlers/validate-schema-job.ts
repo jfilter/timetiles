@@ -134,7 +134,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   const eventsToImport = totalRows - internalDuplicates - externalDuplicates;
 
   // Check maxEventsPerImport quota
-  const eventQuotaCheck = quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, eventsToImport);
+  const eventQuotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, eventsToImport);
 
   if (!eventQuotaCheck.allowed) {
     const errorMessage = `This import would create ${eventsToImport} events, exceeding your limit of ${eventQuotaCheck.limit} events per import.`;
@@ -152,7 +152,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   }
 
   // Check total events quota
-  const totalEventsCheck = quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS, eventsToImport);
+  const totalEventsCheck = await quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS, eventsToImport);
 
   if (!totalEventsCheck.allowed) {
     const errorMessage = `Creating ${eventsToImport} events would exceed your total events limit (${totalEventsCheck.current}/${totalEventsCheck.limit}).`;

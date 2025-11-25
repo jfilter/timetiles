@@ -378,7 +378,7 @@ const checkEventQuotaForFirstBatch = async (
   const totalRows = createEventsStage?.rowsTotal ?? 0;
 
   // Check if this import would exceed the per-import limit
-  const quotaCheck = quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, totalRows);
+  const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, totalRows);
 
   if (!quotaCheck.allowed) {
     throw new Error(

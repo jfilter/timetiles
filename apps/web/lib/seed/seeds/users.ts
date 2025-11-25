@@ -40,6 +40,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
       role: "admin",
       trustLevel: "5", // UNLIMITED
       isActive: true,
+      _verified: true, // Pre-verified for testing
     },
     {
       email: "editor@example.com",
@@ -50,6 +51,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
       role: "editor",
       trustLevel: "3", // TRUSTED
       isActive: true,
+      _verified: true, // Pre-verified for testing
     },
   ];
 
@@ -65,6 +67,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
         role: "user",
         trustLevel: "2", // REGULAR
         isActive: true,
+        _verified: true, // Pre-verified for testing
       },
       {
         email: "jane.smith@example.com",
@@ -75,6 +78,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
         role: "user",
         trustLevel: "2", // REGULAR
         isActive: true,
+        _verified: true, // Pre-verified for testing
       },
       {
         email: "inactive.user@example.com",
@@ -85,6 +89,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
         role: "user",
         trustLevel: "1", // BASIC
         isActive: false,
+        _verified: true, // Pre-verified for testing
       },
     ];
   }

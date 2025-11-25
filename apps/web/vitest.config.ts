@@ -12,9 +12,12 @@ import { defineConfig } from "vitest/config";
 
 import baseConfig from "./vitest.config.base";
 
-// Detect if we're running unit tests based on the command arguments
+// Detect test type based on command arguments or include patterns
+// Note: When filtering by test name (-t), argv may not contain the path,
+// so we default to "node" environment which is safer for integration tests
+// that use Payload/jose (avoids Uint8Array instanceof mismatch with jsdom)
 const isUnitTest = process.argv.some((arg) => arg.includes("tests/unit"));
-const isIntegrationTest = process.argv.some((arg) => arg.includes("tests/integration"));
+const isComponentTest = process.argv.some((arg) => arg.includes("tests/unit/components"));
 
 export default defineConfig({
   ...baseConfig,
@@ -22,7 +25,8 @@ export default defineConfig({
   cacheDir: "node_modules/.vite",
   test: {
     globals: true,
-    environment: isIntegrationTest ? "node" : "jsdom",
+    // Default to "node" for safety with Payload/jose; only use jsdom for component tests
+    environment: isComponentTest ? "jsdom" : "node",
     exclude: ["**/node_modules/**"],
     setupFiles: ["tests/setup/integration/global-setup.ts"],
     testTimeout: isUnitTest ? 10000 : 30000, // Shorter timeout for unit tests

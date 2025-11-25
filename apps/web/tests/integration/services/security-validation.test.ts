@@ -524,6 +524,11 @@ describe.sequential("Security Validation Tests", () => {
 
     it("should enforce import file access through user ownership", async () => {
       // Create import file as adminUser with actual file data
+      // Need to get full admin user object for context
+      const adminUser = await payload.findByID({
+        collection: "users",
+        id: adminUserId,
+      });
       const csvContent = "name,date\nAdmin Event,2024-01-01";
       const fileBuffer = new Uint8Array(Buffer.from(csvContent, "utf8"));
       const adminImportFile = await payload.create({
@@ -538,6 +543,7 @@ describe.sequential("Security Validation Tests", () => {
           size: fileBuffer.length,
           mimetype: "text/csv",
         },
+        user: adminUser, // Provide user context for access control hooks
       });
 
       // regularUser should not be able to access adminUser's import file
@@ -560,43 +566,8 @@ describe.sequential("Security Validation Tests", () => {
       expect(adminFile.id).toBe(adminImportFile.id);
     });
 
-    it("should enforce import file access through session for unauthenticated users", async () => {
-      // Create import file with session ID (unauthenticated upload) with actual file data
-      const csvContent = "name,date\nSession Event,2024-01-01";
-      const fileBuffer = new Uint8Array(Buffer.from(csvContent, "utf8"));
-      const sessionImportFile = await payload.create({
-        collection: "import-files",
-        data: {
-          sessionId: "test-session-abc123",
-          status: "pending",
-        },
-        file: {
-          data: fileBuffer,
-          name: "session-based-file.csv",
-          size: fileBuffer.length,
-          mimetype: "text/csv",
-        },
-      });
-
-      // Regular authenticated user should not be able to access session-based file
-      await expect(
-        payload.findByID({
-          collection: "import-files",
-          id: sessionImportFile.id,
-          user: { id: regularUserId, role: "user" },
-          overrideAccess: false,
-        })
-      ).rejects.toThrow();
-
-      // Admin should be able to access
-      const adminFile = await payload.findByID({
-        collection: "import-files",
-        id: sessionImportFile.id,
-        user: { id: adminUserId, role: "admin" },
-        overrideAccess: false,
-      });
-      expect(adminFile.id).toBe(sessionImportFile.id);
-    });
+    // Note: Session-based unauthenticated uploads are no longer supported.
+    // All import files now require an authenticated user.
 
     it("should prevent cross-user scheduled import modification", async () => {
       // Create scheduled import as regularUser

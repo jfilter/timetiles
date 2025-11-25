@@ -185,25 +185,17 @@ test.describe("Access Control - User Perspective", () => {
       expect([401, 403, 404]).toContain(response.status());
     });
 
-    test("should allow creating import file with session ID (unauthenticated upload)", async ({ request }) => {
-      // This tests the unauthenticated upload flow
-      // Note: This might require proper form-data handling
-      // For now, we test that the endpoint exists
-
+    test("should require authentication for import file creation", async ({ request }) => {
+      // Unauthenticated uploads are no longer supported - all imports require authentication
       const response = await request.post("http://localhost:3002/api/import-files", {
         data: {
           originalName: "test-unauthenticated.csv",
-          sessionId: "test-session-123",
           status: "pending",
         },
       });
 
-      // Should either succeed or return validation error
-      // 401 would indicate authentication is required
-      console.log("Unauthenticated upload status:", response.status());
-
-      // Document the behavior
-      expect([200, 201, 400, 401, 403]).toContain(response.status());
+      // Should be unauthorized - authentication is required
+      expect([401, 403]).toContain(response.status());
     });
   });
 

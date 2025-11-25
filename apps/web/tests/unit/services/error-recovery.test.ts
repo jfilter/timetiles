@@ -25,7 +25,7 @@ const mockPayload = {
 // Mock quota service
 vi.mock("@/lib/services/quota-service", () => ({
   getQuotaService: () => ({
-    checkQuota: vi.fn().mockReturnValue({ allowed: true, current: 0, limit: 5 }),
+    checkQuota: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 5 }),
   }),
 }));
 

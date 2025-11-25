@@ -52,6 +52,7 @@ interface ImportContext {
 /**
  * Handles successful fetch and creates import file.
  */
+/* eslint-disable sonarjs/max-lines-per-function -- Complex import file creation logic */
 const handleFetchSuccess = async (
   payload: Payload,
   data: Buffer,
@@ -97,11 +98,22 @@ const handleFetchSuccess = async (
   const timestamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
   const filename = `url-import-${timestamp}-${uuidv4()}${fileExtension}`;
 
+  // Validate user - required for all imports
+  if (!userId) {
+    throw new Error("User ID is required to create import files");
+  }
+
+  // Load the full user object for the create operation
+  const user = await loadUser(payload, userId);
+  if (!user) {
+    throw new Error(`User not found: ${userId}`);
+  }
+
   // Create import-files record with file upload
   const importFileData: Record<string, unknown> = {
     originalName,
     catalog: catalogId,
-    user: userId ?? undefined,
+    user: userId,
     status: "pending",
     metadata: {
       urlFetch: {
@@ -139,13 +151,16 @@ const handleFetchSuccess = async (
 
   const importFile = await payload.create({
     collection: COLLECTION_NAMES.IMPORT_FILES,
-    data: importFileData,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Dynamic data building
+    data: importFileData as any,
     file: {
       data,
       mimetype: mimeType,
       name: filename,
       size: data.length,
     },
+    // Pass user context for proper access control and audit trail
+    user,
   });
 
   // Queue dataset detection job
@@ -171,6 +186,7 @@ const handleFetchSuccess = async (
     isDuplicate: false,
   };
 };
+/* eslint-enable sonarjs/max-lines-per-function */
 
 const prepareFetchOptions = (scheduledImport: ScheduledImport | null) => {
   // Determine timeout from config
@@ -251,7 +267,7 @@ const checkAndTrackQuota = async (
   if (!user) return;
 
   const quotaService = getQuotaService(payload);
-  const quotaCheck = quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY, 1);
+  const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY, 1);
 
   if (!quotaCheck.allowed) {
     const errorMessage = `Daily URL fetch limit reached (${quotaCheck.current}/${quotaCheck.limit}). Resets at midnight UTC.`;

@@ -8,9 +8,20 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService } from "@/lib/services/quota-service";
+import type { UserUsage } from "@/payload-types";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
+
+// Helper to get user usage record
+const getUserUsage = async (payload: any, userId: number): Promise<UserUsage | null> => {
+  const result = await payload.find({
+    collection: "user-usage",
+    where: { user: { equals: userId } },
+    limit: 1,
+  });
+  return result.docs[0] ?? null;
+};
 
 // Force sequential execution to avoid database state conflicts
 describe.sequential("Basic Quota Test", () => {
@@ -73,7 +84,7 @@ describe.sequential("Basic Quota Test", () => {
     const quotaService = getQuotaService(payload);
 
     // First check - should be allowed
-    const check1 = quotaService.checkQuota(updatedUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+    const check1 = await quotaService.checkQuota(updatedUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
 
     console.log("First check:", check1);
     expect(check1.allowed).toBe(true);
@@ -83,17 +94,18 @@ describe.sequential("Basic Quota Test", () => {
     // Track usage
     await quotaService.incrementUsage(user.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
 
-    // Get fresh user
+    // Get fresh user and usage
     const freshUser = await payload.findByID({
       collection: "users",
       id: user.id,
     });
+    const usage = await getUserUsage(payload, user.id);
 
     console.log("User quotas:", freshUser.quotas);
-    console.log("User usage:", freshUser.usage);
+    console.log("User usage (from user-usage collection):", usage);
 
     // Second check - should be blocked
-    const check2 = quotaService.checkQuota(freshUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+    const check2 = await quotaService.checkQuota(freshUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
 
     console.log("Second check:", check2);
     expect(check2.allowed).toBe(false);

@@ -25,6 +25,9 @@ export default defineWorkspace([
     test: {
       name: "integration",
       include: ["tests/integration/**/*.test.ts"],
+      // Must use "node" environment for integration tests to avoid jose/Uint8Array
+      // instanceof mismatch issue with jsdom (see https://github.com/panva/jose/issues/671)
+      environment: "node",
     },
   },
   {

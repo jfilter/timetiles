@@ -71,6 +71,9 @@ export { HeaderBrand } from "./components/header-brand";
 export { HeaderDecorative } from "./components/header-decorative";
 export { HeaderNav, HeaderNavItem } from "./components/header-nav";
 export { Hero, HeroActions, HeroHeadline, HeroSubheadline } from "./components/hero";
+export { Input } from "./components/input";
+export { Label, labelVariants } from "./components/label";
+export { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/tabs";
 
 // Page blocks - generic CMS components
 export {

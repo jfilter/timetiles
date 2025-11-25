@@ -125,9 +125,19 @@ export class TestEnvironmentBuilder {
     });
     logger.info("Test config created", { dbName });
 
-    logger.info("Getting Payload instance", { dbName });
+    logger.info("Getting Payload instance", { dbName, workerId });
     const payload = await getPayload({ config: testConfig });
-    logger.info("Payload instance created", { dbName });
+
+    // Log Payload singleton state for debugging
+    const poolState = (payload.db as any)?.pool ? "active" : "no-pool";
+    const drizzleState = (payload.db as any)?.drizzle ? "active" : "no-drizzle";
+    logger.info("Payload instance acquired", {
+      dbName,
+      workerId,
+      poolState,
+      drizzleState,
+      payloadId: (payload as any)._id ?? "no-id",
+    });
 
     // prodMigrations automatically runs migrations on initialization
     // No need to call payload.db.migrate() explicitly
@@ -181,6 +191,7 @@ export class TestEnvironmentBuilder {
     return this.createTestEnvironment({
       collections: [
         "users",
+        "user-usage",
         "media",
         "pages",
         "catalogs",
@@ -223,7 +234,8 @@ export class TestEnvironmentBuilder {
    * Cleanup test environment.
    */
   private async cleanup(testEnv: TestEnvironment): Promise<void> {
-    logger.debug("Cleaning up test environment", { dbName: testEnv.dbName });
+    const workerId = process.env.VITEST_WORKER_ID ?? "unknown";
+    logger.info("Cleaning up test environment", { dbName: testEnv.dbName, workerId });
 
     try {
       // Remove from active environments
@@ -239,18 +251,15 @@ export class TestEnvironmentBuilder {
       // NOTE: Upload directory is shared across all tests in this worker
       // Don't delete it here - it will be cleaned up in global-setup.ts afterAll
 
-      // Skip seedManager cleanup entirely - it's too slow (10+ seconds)
-      // Instead, just close the connection pool directly
-      if (testEnv.payload?.db?.pool) {
-        try {
-          await Promise.race([
-            testEnv.payload.db.pool.end(),
-            new Promise((_resolve, reject) => setTimeout(() => reject(new Error("Pool close timeout")), 2000)),
-          ]);
-        } catch (error) {
-          logger.warn("Failed to close pool cleanly", { error: (error as Error).message });
-        }
-      }
+      // IMPORTANT: Do NOT close the Payload connection pool here!
+      // Payload's getPayload() returns a cached singleton instance. If we close the pool,
+      // subsequent test files in the same worker will get the SAME Payload instance but
+      // with a closed pool, causing all database operations to fail with
+      // "ValidationError: The following field is invalid: User" or similar errors.
+      //
+      // The pool will be cleaned up automatically when the worker process exits.
+      // Each worker has its own isolated database (timetiles_test_1, etc.) so there's
+      // no cross-worker contamination.
 
       // NOTE: We do NOT truncate tables here in final cleanup because:
       // 1. Each test file has isolated database (timetiles_test_1, timetiles_test_2, etc.)
@@ -643,7 +652,8 @@ const createImportFileWithUpload = async (
   data: any,
   fileContent: string | Buffer,
   fileName: string,
-  mimeType: string
+  mimeType: string,
+  user?: any
 ) => {
   // Convert to Uint8Array which is what Payload's file-type checker expects
   const fileBuffer =
@@ -658,10 +668,14 @@ const createImportFileWithUpload = async (
   };
 
   // Use Payload's Local API with file parameter
+  // If user is provided, pass it to make req.user available in hooks
+  // Otherwise use overrideAccess to bypass authentication requirements
   return await payload.create({
     collection: "import-files",
     data,
     file,
+    user,
+    overrideAccess: !user, // Only override when no user is provided
   });
 };
 
@@ -675,28 +689,21 @@ const createImportFileWithUpload = async (
  * @param options.filename - Custom filename (default: auto-generated)
  * @param options.mimeType - MIME type (default: "text/csv")
  * @param options.status - Import status (default: "pending")
- * @param options.user - User ID to associate with the import
- * @param options.sessionId - Session ID for unauthenticated uploads
+ * @param options.user - User ID to associate with the import (auto-creates temp user if not provided)
  * @param options.datasetsCount - Number of datasets (for state tracking)
  * @param options.datasetsProcessed - Number of datasets processed
  * @param options.additionalData - Any additional fields to include in the import file data
  *
  * @example
  * ```typescript
- * // Basic usage
+ * // Basic usage (auto-creates a temp user)
  * const csvContent = "title,date\\nTest Event,2024-01-01";
  * const { importFile } = await withImportFile(testEnv, catalogId, csvContent);
  *
- * // With user and session
+ * // With specific user
  * const { importFile } = await withImportFile(testEnv, catalogId, csvContent, {
  *   filename: "test.csv",
  *   user: userId,
- *   sessionId: "session-123"
- * });
- *
- * // Without catalog (for edge cases)
- * const { importFile } = await withImportFile(testEnv, null, csvContent, {
- *   sessionId: "session-123"
  * });
  * ```
  */
@@ -709,7 +716,6 @@ export const withImportFile = async (
     mimeType?: string;
     status?: string;
     user?: string | number;
-    sessionId?: string;
     datasetsCount?: number;
     datasetsProcessed?: number;
     additionalData?: Record<string, any>;
@@ -725,12 +731,31 @@ export const withImportFile = async (
     data.catalog = catalogId;
   }
 
-  // Add optional fields if provided
+  // User is required for import-files. Create a test user if not provided.
+  let userContext: any = undefined;
   if (options?.user !== undefined) {
     data.user = options.user;
-  }
-  if (options?.sessionId !== undefined) {
-    data.sessionId = options.sessionId;
+    // Try to get the full user object for context
+    try {
+      userContext = await testEnv.payload.findByID({
+        collection: "users",
+        id: options.user,
+      });
+    } catch {
+      // User might not exist, just use ID
+    }
+  } else {
+    // Create a temporary test user for this import
+    const tempUser = await testEnv.payload.create({
+      collection: "users",
+      data: {
+        email: `import-test-${Date.now()}@test.local`,
+        password: "TestPassword123!",
+        role: "user",
+      },
+    });
+    data.user = tempUser.id;
+    userContext = tempUser;
   }
   if (options?.datasetsCount !== undefined) {
     data.datasetsCount = options.datasetsCount;
@@ -749,7 +774,8 @@ export const withImportFile = async (
     data,
     csvContent,
     options?.filename ?? `test-import-${Date.now()}.csv`,
-    options?.mimeType ?? "text/csv"
+    options?.mimeType ?? "text/csv",
+    userContext
   );
 
   return { ...testEnv, importFile };

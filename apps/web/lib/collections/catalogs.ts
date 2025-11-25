@@ -136,7 +136,7 @@ const Catalogs: CollectionConfig = {
 
           // Check catalog quota
           const quotaService = getQuotaService(req.payload);
-          const quotaCheck = quotaService.checkQuota(req.user, QUOTA_TYPES.CATALOGS_PER_USER, 1);
+          const quotaCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.CATALOGS_PER_USER, 1);
 
           if (!quotaCheck.allowed) {
             const errorMessage = QUOTA_ERROR_MESSAGES[QUOTA_TYPES.CATALOGS_PER_USER](

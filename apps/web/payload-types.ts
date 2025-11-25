@@ -75,6 +75,7 @@ export interface Config {
     'scheduled-imports': ScheduledImport;
     events: Event;
     users: User;
+    'user-usage': UserUsage;
     media: Media;
     'location-cache': LocationCache;
     'geocoding-providers': GeocodingProvider;
@@ -94,6 +95,7 @@ export interface Config {
     'scheduled-imports': ScheduledImportsSelect<false> | ScheduledImportsSelect<true>;
     events: EventsSelect<false> | EventsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
+    'user-usage': UserUsageSelect<false> | UserUsageSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     'location-cache': LocationCacheSelect<false> | LocationCacheSelect<true>;
     'geocoding-providers': GeocodingProvidersSelect<false> | GeocodingProvidersSelect<true>;
@@ -212,6 +214,10 @@ export interface User {
   isActive?: boolean | null;
   lastLoginAt?: string | null;
   /**
+   * How this user account was created
+   */
+  registrationSource?: ('admin' | 'self') | null;
+  /**
    * User trust level determines resource quotas and rate limits
    */
   trustLevel: '0' | '1' | '2' | '3' | '4' | '5';
@@ -253,39 +259,6 @@ export interface User {
     maxCatalogsPerUser?: number | null;
   };
   /**
-   * Current resource usage tracking
-   */
-  usage?: {
-    /**
-     * Currently active scheduled imports
-     */
-    currentActiveSchedules?: number | null;
-    /**
-     * URL fetches performed today
-     */
-    urlFetchesToday?: number | null;
-    /**
-     * Files uploaded today
-     */
-    fileUploadsToday?: number | null;
-    /**
-     * Import jobs created today
-     */
-    importJobsToday?: number | null;
-    /**
-     * Total events created by this user
-     */
-    totalEventsCreated?: number | null;
-    /**
-     * Current number of catalogs owned by this user
-     */
-    currentCatalogs?: number | null;
-    /**
-     * Last time daily counters were reset
-     */
-    lastResetDate?: string | null;
-  };
-  /**
    * Custom quota overrides (JSON format) - overrides trust level defaults
    */
   customQuotas?:
@@ -300,12 +273,13 @@ export interface User {
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
   email: string;
   resetPasswordToken?: string | null;
   resetPasswordExpiration?: string | null;
   salt?: string | null;
   hash?: string | null;
+  _verified?: boolean | null;
+  _verificationToken?: string | null;
   loginAttempts?: number | null;
   lockUntil?: string | null;
   sessions?:
@@ -1025,13 +999,9 @@ export interface ImportFile {
    */
   datasets?: (number | Dataset)[] | null;
   /**
-   * User who initiated the import (null for unauthenticated)
+   * User who initiated the import
    */
-  user?: (number | null) | User;
-  /**
-   * Session ID for unauthenticated users
-   */
-  sessionId?: string | null;
+  user: number | User;
   status?: ('pending' | 'parsing' | 'processing' | 'completed' | 'failed') | null;
   /**
    * Number of datasets detected in this catalog import
@@ -1494,6 +1464,48 @@ export interface Event {
   createdAt: string;
   deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-usage".
+ */
+export interface UserUsage {
+  id: number;
+  /**
+   * The user this usage record belongs to
+   */
+  user: number | User;
+  /**
+   * URL fetches performed today (resets at midnight UTC)
+   */
+  urlFetchesToday?: number | null;
+  /**
+   * Files uploaded today (resets at midnight UTC)
+   */
+  fileUploadsToday?: number | null;
+  /**
+   * Import jobs created today (resets at midnight UTC)
+   */
+  importJobsToday?: number | null;
+  /**
+   * Currently active scheduled imports
+   */
+  currentActiveSchedules?: number | null;
+  /**
+   * Total events created by this user (lifetime)
+   */
+  totalEventsCreated?: number | null;
+  /**
+   * Current number of catalogs owned by this user
+   */
+  currentCatalogs?: number | null;
+  /**
+   * Last time daily counters were reset
+   */
+  lastResetDate?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2202,6 +2214,10 @@ export interface PayloadLockedDocument {
         value: number | User;
       } | null)
     | ({
+        relationTo: 'user-usage';
+        value: number | UserUsage;
+      } | null)
+    | ({
         relationTo: 'media';
         value: number | Media;
       } | null)
@@ -2452,7 +2468,6 @@ export interface ImportFilesSelect<T extends boolean = true> {
   catalog?: T;
   datasets?: T;
   user?: T;
-  sessionId?: T;
   status?: T;
   datasetsCount?: T;
   datasetsProcessed?: T;
@@ -2706,6 +2721,7 @@ export interface UsersSelect<T extends boolean = true> {
   role?: T;
   isActive?: T;
   lastLoginAt?: T;
+  registrationSource?: T;
   trustLevel?: T;
   quotas?:
     | T
@@ -2719,27 +2735,17 @@ export interface UsersSelect<T extends boolean = true> {
         maxFileSizeMB?: T;
         maxCatalogsPerUser?: T;
       };
-  usage?:
-    | T
-    | {
-        currentActiveSchedules?: T;
-        urlFetchesToday?: T;
-        fileUploadsToday?: T;
-        importJobsToday?: T;
-        totalEventsCreated?: T;
-        currentCatalogs?: T;
-        lastResetDate?: T;
-      };
   customQuotas?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
-  _status?: T;
   email?: T;
   resetPasswordToken?: T;
   resetPasswordExpiration?: T;
   salt?: T;
   hash?: T;
+  _verified?: T;
+  _verificationToken?: T;
   loginAttempts?: T;
   lockUntil?: T;
   sessions?:
@@ -2749,6 +2755,23 @@ export interface UsersSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-usage_select".
+ */
+export interface UserUsageSelect<T extends boolean = true> {
+  user?: T;
+  urlFetchesToday?: T;
+  fileUploadsToday?: T;
+  importJobsToday?: T;
+  currentActiveSchedules?: T;
+  totalEventsCreated?: T;
+  currentCatalogs?: T;
+  lastResetDate?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

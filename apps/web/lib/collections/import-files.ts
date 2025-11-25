@@ -42,12 +42,7 @@ const ALLOWED_MIME_TYPES = [
   "application/vnd.google-apps.spreadsheet",
 ];
 
-// User-specific file size limits (enforced in beforeValidate hook)
-// Note: Payload doesn't support collection-level size limits, so we handle this in hooks
-const MAX_FILE_SIZE = {
-  authenticated: 100 * 1024 * 1024, // 100MB for authenticated users
-  unauthenticated: 10 * 1024 * 1024, // 10MB - stricter limit for unauthenticated users
-};
+// Note: File size limits are enforced per user's trust level via quota service in beforeValidate hook
 
 const ImportFiles: CollectionConfig = {
   slug: "import-files",
@@ -62,17 +57,18 @@ const ImportFiles: CollectionConfig = {
   },
   access: {
     // Import files can be read by their owner or admins
-    // Unauthenticated users can only read their own session files
+    // eslint-disable-next-line sonarjs/function-return-type
     read: async ({ req, id }): Promise<boolean | Where> => {
       const { user, payload } = req;
 
       // Admins can read all
       if (user?.role === "admin") return true;
 
+      // Authentication required
+      if (!user) return false;
+
       // For findByID operations (id is provided)
       if (id) {
-        if (!user) return false;
-
         try {
           // Fetch the file to check ownership
           const file = await payload.findByID({
@@ -93,30 +89,13 @@ const ImportFiles: CollectionConfig = {
       }
 
       // For find operations (query-based filtering)
-      if (user) {
-        return {
-          user: { equals: user.id },
-        };
-      }
-
-      // Unauthenticated users can access files with matching sessionId
-      // Get sessionId from request headers or cookies
-      const sessionId =
-        req.headers?.get?.("x-session-id") ?? req.headers?.get?.("cookie")?.match(/sessionId=([^;]+)/)?.[1];
-
-      if (sessionId) {
-        return {
-          sessionId: { equals: sessionId },
-          user: { equals: null }, // Ensure file belongs to no authenticated user
-        };
-      }
-
-      // No session ID available - deny access
-      return false;
+      return {
+        user: { equals: user.id },
+      };
     },
 
-    // Anyone can create (upload) files (quota-checked in hooks)
-    create: () => true,
+    // Only authenticated users can upload files
+    create: ({ req: { user } }) => !!user,
 
     // Only file owner or admins can update
     update: async ({ req, id }) => {
@@ -185,15 +164,9 @@ const ImportFiles: CollectionConfig = {
       name: "user",
       type: "relationship",
       relationTo: "users",
+      required: true,
       admin: {
-        description: "User who initiated the import (null for unauthenticated)",
-      },
-    },
-    {
-      name: "sessionId",
-      type: "text",
-      admin: {
-        description: "Session ID for unauthenticated users",
+        description: "User who initiated the import",
       },
     },
     {
@@ -394,57 +367,53 @@ const ImportFiles: CollectionConfig = {
       },
     ],
     beforeValidate: [
-      ({ data, req, operation }) => {
+      async ({ data, req, operation }) => {
         // Only run on create operations
         if (operation !== "create") return data;
 
         const logger = createRequestLogger("import-files-validate");
         const user = req.user;
 
-        // Check file upload quota
-        if (user) {
-          const quotaService = getQuotaService(req.payload);
+        // Skip validation for local API calls without a user (test/system operations)
+        // These bypass access control via overrideAccess: true
+        // Real API requests always have req.payloadAPI === "REST" or "GraphQL"
+        if (!user && req.payloadAPI !== "REST" && req.payloadAPI !== "GraphQL") {
+          logger.debug("Skipping authentication check for local API operation");
+          return data;
+        }
 
-          // Check daily file upload quota
-          const uploadQuotaCheck = quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+        // Authentication is required for external API requests
+        if (!user) {
+          throw new Error("Authentication required to upload files");
+        }
 
-          if (!uploadQuotaCheck.allowed) {
-            throw new Error(
-              `Daily file upload limit reached (${uploadQuotaCheck.current}/${uploadQuotaCheck.limit}). ` +
-                `Resets at midnight UTC.`
-            );
+        const quotaService = getQuotaService(req.payload);
+
+        // Check daily file upload quota
+        const uploadQuotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+
+        if (!uploadQuotaCheck.allowed) {
+          throw new Error(
+            `Daily file upload limit reached (${uploadQuotaCheck.current}/${uploadQuotaCheck.limit}). ` +
+              `Resets at midnight UTC.`
+          );
+        }
+
+        // Check file size quota based on trust level
+        if (req.file) {
+          const quotas = quotaService.getEffectiveQuotas(user);
+          const maxSizeMB = quotas.maxFileSizeMB;
+          const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+          if (req.file.size > maxSizeBytes) {
+            throw new Error(`File too large. Maximum size for your trust level: ${maxSizeMB}MB`);
           }
 
-          // Check file size quota based on trust level
-          if (req.file) {
-            const quotas = quotaService.getEffectiveQuotas(user);
-            const maxSizeMB = quotas.maxFileSizeMB;
-            const maxSizeBytes = maxSizeMB * 1024 * 1024;
-
-            if (req.file.size > maxSizeBytes) {
-              throw new Error(`File too large. Maximum size for your trust level: ${maxSizeMB}MB`);
-            }
-
-            logger.debug("File size validation passed", {
-              filesize: req.file.size,
-              maxSizeMB,
-              trustLevel: user.trustLevel,
-            });
-          }
-        } else {
-          // Validate unauthenticated user file size limits
-          if (req.file) {
-            const maxSize = MAX_FILE_SIZE.unauthenticated;
-            if (req.file.size > maxSize) {
-              const sizeMB = Math.round(maxSize / 1024 / 1024);
-              throw new Error(`File too large. Maximum size: ${sizeMB}MB`);
-            }
-            logger.debug("File size validation passed", {
-              filesize: req.file.size,
-              maxSize,
-              isAuthenticated: false,
-            });
-          }
+          logger.debug("File size validation passed", {
+            filesize: req.file.size,
+            maxSizeMB,
+            trustLevel: user.trustLevel,
+          });
         }
 
         return data;
@@ -488,8 +457,6 @@ const ImportFiles: CollectionConfig = {
         }
 
         // Extract custom metadata from the request
-        // SessionId comes from the _payload data
-        const sessionId = data.sessionId ?? null;
         const userAgent = req.headers?.get?.("user-agent") ?? null;
 
         // Get original filename from beforeOperation hook (for file uploads)
@@ -501,11 +468,11 @@ const ImportFiles: CollectionConfig = {
         return {
           ...data,
           originalName, // Set or preserve the original filename
-          sessionId: !req.user ? sessionId : undefined,
+          user: req.user?.id, // Set the authenticated user
           ...(clientId && {
             rateLimitInfo: {
               clientId,
-              isAuthenticated: !!req.user,
+              isAuthenticated: true,
               timestamp: new Date().toISOString(),
             },
           }),
@@ -524,12 +491,9 @@ const ImportFiles: CollectionConfig = {
         if (operation !== "create") return doc;
         const { payload } = req;
 
-        // Track file upload usage for authenticated users
-        if (req.user) {
-          const quotaService = getQuotaService(req.payload);
-
-          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1, req);
-        }
+        // Track file upload usage (authentication is required)
+        const quotaService = getQuotaService(req.payload);
+        await quotaService.incrementUsage(req.user!.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1, req);
 
         // Skip processing for duplicate imports (they're already marked as completed)
         if (doc.metadata?.urlFetch?.isDuplicate === true) {

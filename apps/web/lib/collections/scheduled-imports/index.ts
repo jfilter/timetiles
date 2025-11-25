@@ -46,12 +46,12 @@ const shouldSkipQuotaChecks = (
   Boolean(context?.skipQuotaChecks || req.context?.skipQuotaChecks);
 
 // Helper to check active schedules quota
-const checkActiveSchedulesQuota = (
+const checkActiveSchedulesQuota = async (
   user: User,
   quotaService: ReturnType<typeof getQuotaService>,
-  req: PayloadRequest
-): void => {
-  const quotaCheck = quotaService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1, req);
+  _req: PayloadRequest
+): Promise<void> => {
+  const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
   if (!quotaCheck.allowed) {
     const message =
       quotaCheck.remaining === 0
@@ -67,7 +67,7 @@ const isEnablingSchedule = (originalDoc: Record<string, unknown>, data: Record<s
 };
 
 // Helper function to handle schedule quota tracking
-const handleScheduleQuotaTracking = ({
+const handleScheduleQuotaTracking = async ({
   data,
   operation,
   req,
@@ -79,7 +79,7 @@ const handleScheduleQuotaTracking = ({
   req: { user?: User | null; payload: Payload; context?: Record<string, unknown> };
   originalDoc?: Record<string, unknown>;
   context?: Record<string, unknown>;
-}) => {
+}): Promise<Record<string, unknown>> => {
   if (shouldSkipQuotaChecks(req, context)) {
     return data;
   }
@@ -93,14 +93,14 @@ const handleScheduleQuotaTracking = ({
 
   // Handle update operations (enabling a disabled schedule)
   if (isUpdate && isEnablingSchedule(originalDoc, data)) {
-    checkActiveSchedulesQuota(req.user!, quotaService, req as PayloadRequest);
+    await checkActiveSchedulesQuota(req.user!, quotaService, req as PayloadRequest);
     // Note: Actual increment happens in afterChange hook to avoid nested Payload operations
     return data;
   }
 
   // Handle new schedule creation (enabled by default)
   if (isCreate && data?.enabled !== false) {
-    checkActiveSchedulesQuota(req.user!, quotaService, req as PayloadRequest);
+    await checkActiveSchedulesQuota(req.user!, quotaService, req as PayloadRequest);
   }
 
   return data;

@@ -27,6 +27,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
   let payload: any;
   let testCatalogId: string;
   let testDir: string;
+  let testUser: any;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment();
@@ -49,6 +50,16 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
   beforeEach(async () => {
     // Clear collections before each test
     await testEnv.seedManager.truncate();
+
+    // Create test user (needed for import files which require a user)
+    testUser = await payload.create({
+      collection: "users",
+      data: {
+        email: `e2e-test-${Date.now()}@test.local`,
+        password: "TestPassword123!",
+        role: "user",
+      },
+    });
 
     // Create test catalog
     const { catalog } = await withCatalog(testEnv, {
@@ -86,6 +97,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
           collection: "import-files",
           data: {
             catalog: testCatalogId,
+            user: testUser.id,
             status: "pending",
           },
           file: {
@@ -94,6 +106,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
             size: fileBuffer.length,
             mimetype: "text/csv",
           },
+          user: testUser,
         });
 
         logger.info(`✓ Created import-files record: ${importFile.id}`);
@@ -252,6 +265,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
           collection: "import-files",
           data: {
             catalog: testCatalogId,
+            user: testUser.id,
             status: "pending",
           },
           file: {
@@ -260,6 +274,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
             size: fileBuffer.length,
             mimetype: "text/csv",
           },
+          user: testUser,
         });
 
         // Initial status should be pending

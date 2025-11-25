@@ -495,7 +495,7 @@ const Events: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      ({ data, operation, req }) => {
+      async ({ data, operation, req }) => {
         // Skip quota checks for system operations and admin users
         if (!req.user || req.user.role === "admin") {
           return data;
@@ -506,7 +506,7 @@ const Events: CollectionConfig = {
           const quotaService = getQuotaService(req.payload);
 
           // Check total events quota
-          const totalEventsCheck = quotaService.checkQuota(req.user, QUOTA_TYPES.TOTAL_EVENTS, 1);
+          const totalEventsCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.TOTAL_EVENTS, 1);
 
           if (!totalEventsCheck.allowed) {
             throw new Error(

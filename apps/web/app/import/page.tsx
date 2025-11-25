@@ -1,142 +1,58 @@
 /**
- * This file defines the data import page of the application.
+ * Import page with multi-step wizard.
  *
- * It serves as the main user interface for the data import system. The page includes
- * the `ImportUpload` component, which allows users to upload their data files, and
- * provides information about file format requirements and the stages of the import process.
+ * This page provides a guided import wizard for uploading event data files.
+ * Requires authentication to complete the import process.
  *
  * @module
  */
-import { ImportUpload } from "@/app/import/_components/import-upload";
+import config from "@payload-config";
+import { headers } from "next/headers";
+import { getPayload } from "payload";
+
 import { PageLayout } from "@/components/layout/page-layout";
+import type { User } from "@/payload-types";
 
-export default function ImportPage() {
+import { ImportWizard } from "./_components";
+
+// Force dynamic rendering to read cookies on every request
+export const dynamic = "force-dynamic";
+
+const getInitialAuth = async () => {
+  try {
+    const payload = await getPayload({ config });
+    const headersList = await headers();
+
+    // Try auth with headers
+    const { user } = await payload.auth({ headers: headersList });
+
+    if (user) {
+      const typedUser = user as User;
+      return {
+        isAuthenticated: true,
+        isEmailVerified: typedUser._verified === true,
+        userId: typedUser.id,
+      };
+    }
+  } catch {
+    // Not authenticated - fall through to default state
+  }
+
+  return {
+    isAuthenticated: false,
+    isEmailVerified: false,
+    userId: null,
+  };
+};
+
+export default async function ImportPage() {
+  const initialAuth = await getInitialAuth();
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PageLayout title="Event Data Import System" maxWidth="4xl" centered={false} contentClassName="text-left">
-        <div className="mb-8 text-center">
-          <p className="mx-auto max-w-2xl text-lg text-gray-600">
-            Upload your event data files (CSV or Excel) and watch them get processed, geocoded, and imported into the
-            system with real-time progress tracking.
-          </p>
-        </div>
-
-        <ImportUpload />
-
-        <div className="mx-auto mt-12 max-w-4xl">
-          <div className="rounded-lg bg-white p-6 shadow-md">
-            <h2 className="mb-4 text-2xl font-bold">📋 File Format Requirements</h2>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <div>
-                <h3 className="mb-3 text-lg font-semibold text-green-600">✅ Required Fields</h3>
-                <ul className="space-y-2 text-sm">
-                  <li>
-                    <strong>title</strong> - Event name/title
-                  </li>
-                  <li>
-                    <strong>date</strong> - Event date (YYYY-MM-DD, MM/DD/YYYY, etc.)
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="mb-3 text-lg font-semibold text-blue-600">📝 Optional Fields</h3>
-                <ul className="space-y-2 text-sm">
-                  <li>
-                    <strong>description</strong> - Event description
-                  </li>
-                  <li>
-                    <strong>enddate</strong> - Event end date
-                  </li>
-                  <li>
-                    <strong>location</strong> - Venue name
-                  </li>
-                  <li>
-                    <strong>address</strong> - Full address (for geocoding)
-                  </li>
-                  <li>
-                    <strong>url</strong> - Event website
-                  </li>
-                  <li>
-                    <strong>category</strong> - Event category
-                  </li>
-                  <li>
-                    <strong>tags</strong> - Comma-separated tags
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="mt-6 rounded-md border border-yellow-200 bg-yellow-50 p-4">
-              <h4 className="mb-2 font-semibold text-yellow-800">💡 Tips</h4>
-              <ul className="space-y-1 text-sm text-yellow-700">
-                <li>• Include addresses for automatic geocoding</li>
-                <li>• Use consistent date formats</li>
-                <li>• Maximum file size: 10MB for unauthenticated users</li>
-                <li>• Supported formats: CSV, XLSX, XLS</li>
-                <li>• Rate limit: 5 uploads per hour for unauthenticated users</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-6 rounded-lg bg-white p-6 shadow-md">
-            <h2 className="mb-4 text-2xl font-bold">🔄 Processing Stages</h2>
-
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600">
-                  1
-                </div>
-                <div>
-                  <h3 className="font-semibold">File Parsing</h3>
-                  <p className="text-sm text-gray-600">Your file is parsed and validated for required fields</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600">
-                  2
-                </div>
-                <div>
-                  <h3 className="font-semibold">Batch Processing</h3>
-                  <p className="text-sm text-gray-600">Data is processed in batches for optimal performance</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600">
-                  3
-                </div>
-                <div>
-                  <h3 className="font-semibold">Event Creation</h3>
-                  <p className="text-sm text-gray-600">Events are created in the database</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600">
-                  4
-                </div>
-                <div>
-                  <h3 className="font-semibold">Geocoding</h3>
-                  <p className="text-sm text-gray-600">
-                    Addresses are geocoded using Google Maps API with OpenStreetMap fallback
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-sm font-bold text-green-600">
-                  ✓
-                </div>
-                <div>
-                  <h3 className="font-semibold">Completed</h3>
-                  <p className="text-sm text-gray-600">All events are imported and ready to use</p>
-                </div>
-              </div>
-            </div>
-          </div>
+    <div className="bg-background min-h-screen">
+      <PageLayout title="Import Data" maxWidth="4xl" centered>
+        <div className="py-8">
+          <ImportWizard initialAuth={initialAuth} />
         </div>
       </PageLayout>
     </div>

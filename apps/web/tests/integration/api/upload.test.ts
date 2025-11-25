@@ -67,14 +67,12 @@ describe.sequential("Import Files Collection", () => {
 
     const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
       filename: fileName,
-      sessionId: "test-session-123",
     });
 
     // Check that hooks populated metadata correctly
     expect(importFile.originalName).toBe("valid-events.csv"); // Set by beforeOperation hook
     expect(importFile.filename).toBeDefined(); // Payload auto-generated with unique name
     expect(importFile.filename).not.toBe("valid-events.csv"); // Should be unique
-    expect(importFile.sessionId).toBe("test-session-123");
     expect(importFile.rateLimitInfo).toBeDefined();
     expect(importFile.metadata).toBeDefined();
     expect(importFile.importedAt).toBeDefined();
