@@ -17,18 +17,14 @@
  */
 
 import { setupDatabase } from "../lib/database/setup";
-import { deriveE2eDatabaseUrl, getDatabaseUrl, parseDatabaseUrl } from "../lib/database/url";
 import { createLogger } from "../lib/logger";
+import { E2E_DATABASE_NAME, E2E_DATABASE_URL } from "../tests/e2e/config";
 import { resetTestDatabase, validateTestDatabaseSchema } from "./e2e-validate-schema";
 
 const logger = createLogger("test-db-setup");
 
-// Get DATABASE_URL from environment - required
-const DATABASE_URL = getDatabaseUrl(true)!;
-
-// Derive E2E test database URL
-const TEST_DATABASE_URL = deriveE2eDatabaseUrl(DATABASE_URL);
-const { database: TEST_DB_NAME } = parseDatabaseUrl(TEST_DATABASE_URL);
+const TEST_DATABASE_URL = E2E_DATABASE_URL;
+const TEST_DB_NAME = E2E_DATABASE_NAME;
 
 const setupTestDatabase = async (options: { forceReset?: boolean } = {}): Promise<void> => {
   logger.info("🗄️  Setting up test database for E2E tests");
@@ -173,7 +169,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
   const forceReset = args.includes("--force-reset") || args.includes("--force");
 
-  void setupTestDatabase({ forceReset });
+  setupTestDatabase({ forceReset })
+    .then(() => {
+      process.exit(0);
+    })
+    .catch((error) => {
+      logger.error("Failed to setup test database", error);
+      process.exit(1);
+    });
 }
 
 export { setupTestDatabase, TEST_DATABASE_URL };

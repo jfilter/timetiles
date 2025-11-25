@@ -26,7 +26,6 @@ interface ParsedArgs {
   randomSeed?: number;
 }
 
-// eslint-disable-next-line sonarjs/cognitive-complexity
 const parseArguments = (args: string[]): ParsedArgs => {
   const validPresets = ["minimal", "testing", "e2e", "development", "demo", "benchmark"];
   let preset = "development";

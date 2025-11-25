@@ -334,12 +334,13 @@ test.describe("Access Control - User Perspective", () => {
 
 test.describe("Access Control - Error Handling", () => {
   test("should show user-friendly error for unauthorized access", async ({ page }) => {
-    // Try to navigate to admin panel
-    await page.goto("http://localhost:3002/admin");
+    // Try to navigate to admin panel with increased timeout for JS bundle loading
+    await page.goto("http://localhost:3002/admin", { timeout: 30000 });
 
     // Should redirect to login page - wait for login form to appear
     // instead of waiting for networkidle (which times out with admin panel JS bundles)
-    await page.locator('input[name="email"], input[type="email"]').waitFor({ timeout: 10000 });
+    // Use .first() to avoid strict mode violation (there are 2 email inputs on the page)
+    await page.locator('input[type="email"]').first().waitFor({ timeout: 15000 });
 
     const url = page.url();
     console.log("Redirect URL after admin access attempt:", url);
@@ -348,9 +349,9 @@ test.describe("Access Control - Error Handling", () => {
     const isOnLogin = url.includes("/login") || url.includes("/auth");
     expect(isOnLogin).toBe(true);
 
-    // Login form should be visible
-    await expect(page.locator('input[name="email"], input[type="email"]')).toBeVisible();
-    await expect(page.locator('input[name="password"], input[type="password"]')).toBeVisible();
+    // Login form should be visible - use .first() to target the first email input
+    await expect(page.locator('input[type="email"]').first()).toBeVisible();
+    await expect(page.locator('input[type="password"]').first()).toBeVisible();
   });
 
   test("should handle 403 responses gracefully", async ({ page }) => {

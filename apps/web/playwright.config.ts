@@ -9,24 +9,18 @@
 import { defineConfig, devices } from "@playwright/test";
 import { config as loadEnv } from "dotenv";
 
-import { deriveE2eDatabaseUrl, getDatabaseUrl } from "./lib/database/url";
+import { E2E_DATABASE_URL } from "./tests/e2e/config";
 
 // Load environment variables from .env.local before accessing DATABASE_URL
 loadEnv({ path: ".env.local" });
 
-// Get DATABASE_URL from environment - required
-const DATABASE_URL = getDatabaseUrl(true)!;
-
-// Derive E2E test database URL from base URL
-const TEST_DATABASE_URL = deriveE2eDatabaseUrl(DATABASE_URL);
-
 // Common environment variables for all E2E tests
 const TEST_ENV = {
-  DATABASE_URL: TEST_DATABASE_URL,
+  DATABASE_URL: E2E_DATABASE_URL,
   // Note: This is a test-only secret, not a real credential.
   // Kept inline as Playwright config needs to be self-contained and loads before test setup
   PAYLOAD_SECRET: process.env.PAYLOAD_SECRET || "test-secret-key",
-  NEXT_PUBLIC_PAYLOAD_URL: process.env.NEXT_PUBLIC_PAYLOAD_URL || "http://localhost:3002",
+  NEXT_PUBLIC_PAYLOAD_URL: "http://localhost:3002",
   NODE_ENV: "test",
   // Ensure database setup errors are visible even in test mode
   LOG_LEVEL: "info",

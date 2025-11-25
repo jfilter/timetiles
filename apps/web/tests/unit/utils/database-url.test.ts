@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   constructDatabaseUrl,
-  deriveTestDatabaseUrl,
+  deriveDatabaseUrl,
   getDatabaseInfo,
   getDatabaseUrl,
   getTestDatabaseUrl,
@@ -72,31 +72,31 @@ describe("Database URL Utilities", () => {
     });
   });
 
-  describe("deriveTestDatabaseUrl", () => {
-    it("should add _test suffix when not present", () => {
+  describe("deriveDatabaseUrl", () => {
+    it("should create test database URL with worker ID", () => {
       const baseUrl = "postgresql://user:pass@localhost:5432/mydb";
-      const testUrl = deriveTestDatabaseUrl(baseUrl);
+      const testUrl = deriveDatabaseUrl(baseUrl, { workerId: "1" });
+
+      expect(testUrl).toBe("postgresql://user:pass@localhost:5432/mydb_test_1");
+    });
+
+    it("should create test database URL without worker ID", () => {
+      const baseUrl = "postgresql://user:pass@localhost:5432/mydb";
+      const testUrl = deriveDatabaseUrl(baseUrl, {});
 
       expect(testUrl).toBe("postgresql://user:pass@localhost:5432/mydb_test");
     });
 
-    it("should not duplicate _test suffix", () => {
+    it("should clean existing _test suffix to avoid duplication", () => {
       const baseUrl = "postgresql://user:pass@localhost:5432/mydb_test";
-      const testUrl = deriveTestDatabaseUrl(baseUrl);
+      const testUrl = deriveDatabaseUrl(baseUrl, { workerId: "1" });
 
-      expect(testUrl).toBe("postgresql://user:pass@localhost:5432/mydb_test");
+      expect(testUrl).toBe("postgresql://user:pass@localhost:5432/mydb_test_1");
     });
 
-    it("should add worker ID when provided", () => {
-      const baseUrl = "postgresql://user:pass@localhost:5432/mydb";
-      const testUrl = deriveTestDatabaseUrl(baseUrl, "3");
-
-      expect(testUrl).toBe("postgresql://user:pass@localhost:5432/mydb_test_3");
-    });
-
-    it("should handle existing _test with worker ID", () => {
-      const baseUrl = "postgresql://user:pass@localhost:5432/mydb_test";
-      const testUrl = deriveTestDatabaseUrl(baseUrl, "2");
+    it("should handle existing _test_1 suffix", () => {
+      const baseUrl = "postgresql://user:pass@localhost:5432/mydb_test_1";
+      const testUrl = deriveDatabaseUrl(baseUrl, { workerId: "2" });
 
       expect(testUrl).toBe("postgresql://user:pass@localhost:5432/mydb_test_2");
     });

@@ -48,8 +48,11 @@ test.describe("Explore Page - Map Interactions", () => {
     // Pan the map significantly to ensure bounds change
     await explorePage.panMap(400, 400);
 
-    // Wait for debounced API response
-    await explorePage.waitForApiResponse();
+    // Wait for the 300ms debounce delay plus buffer time for API calls
+    await page.waitForTimeout(500);
+
+    // Wait for any pending API responses to complete
+    await page.waitForLoadState("networkidle", { timeout: 3000 });
 
     // Check that API calls were made with bounds after panning
     const eventsListWithBounds = eventsListRequests.filter((url) => url.includes("bounds="));

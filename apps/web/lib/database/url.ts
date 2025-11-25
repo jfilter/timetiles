@@ -45,64 +45,54 @@ export const constructDatabaseUrl = (components: Omit<DatabaseUrlComponents, "fu
 };
 
 /**
- * Derive a test database URL from a base URL
- *
- * @param baseUrl - The base database URL
- * @param workerId - Optional worker ID for parallel test execution
- * @returns The test database URL
- *
- * @example
- * ```typescript
- * // For unit/integration tests (worker-specific)
- * const testUrl = deriveTestDatabaseUrl(process.env.DATABASE_URL, "1");
- * // Returns: postgresql://user:pass@host:5432/mydb_test_1
- * ```
+ * Options for deriving database URLs
  */
-export const deriveTestDatabaseUrl = (baseUrl: string, workerId?: string): string => {
-  const components = parseDatabaseUrl(baseUrl);
-  const baseName = components.database;
-
-  // Add _test suffix if not already present
-  const testBaseName = baseName.endsWith("_test") ? baseName : `${baseName}_test`;
-
-  // Add worker ID if provided
-  const testDbName = workerId ? `${testBaseName}_${workerId}` : testBaseName;
-
-  return constructDatabaseUrl({
-    ...components,
-    database: testDbName,
-  });
-};
+export interface DeriveDatabaseUrlOptions {
+  /**
+   * Optional worker ID for parallel test execution
+   */
+  workerId?: string;
+}
 
 /**
- * Derive an E2E test database URL from a base URL
+ * Derive test database URL from a base URL for unit/integration tests
  *
- * Creates a dedicated database for E2E tests with _test_e2e suffix
- * to distinguish from unit/integration test databases.
+ * This function creates worker-specific test database URLs for parallel test execution.
+ * For E2E tests, use getE2ETestDatabaseConfig() instead.
  *
  * @param baseUrl - The base database URL
- * @returns The E2E test database URL
+ * @param options - Configuration options for database derivation
+ * @returns The derived test database URL
  *
  * @example
  * ```typescript
- * const e2eUrl = deriveE2eDatabaseUrl(process.env.DATABASE_URL);
- * // Returns: postgresql://user:pass@host:5432/mydb_test_e2e
+ * // Test database with worker ID
+ * deriveDatabaseUrl(baseUrl, { workerId: '1' });
+ * // Returns: postgresql://user:pass@host:5432/mydb_test_1
+ *
+ * // Test database without worker ID
+ * deriveDatabaseUrl(baseUrl, {});
+ * // Returns: postgresql://user:pass@host:5432/mydb_test
  * ```
  */
-export const deriveE2eDatabaseUrl = (baseUrl: string): string => {
+export const deriveDatabaseUrl = (baseUrl: string, options: DeriveDatabaseUrlOptions = {}): string => {
   const components = parseDatabaseUrl(baseUrl);
-  const baseName = components.database;
+  let baseName = components.database;
 
   // Remove any existing _test suffix to avoid duplication
+  // Matches: _test, _test_1, etc.
   // eslint-disable-next-line security/detect-unsafe-regex -- Simple bounded regex for database name cleanup
-  const cleanBaseName = baseName.replace(/_test(_\d+)?$/, "");
+  baseName = baseName.replace(/_test(_\d+)?$/, "");
 
-  // Add _test_e2e suffix for E2E tests
-  const e2eDbName = `${cleanBaseName}_test_e2e`;
+  // Add _test suffix
+  const testBaseName = `${baseName}_test`;
+
+  // Add worker ID if provided
+  const derivedName = options.workerId ? `${testBaseName}_${options.workerId}` : testBaseName;
 
   return constructDatabaseUrl({
     ...components,
-    database: e2eDbName,
+    database: derivedName,
   });
 };
 
@@ -136,7 +126,7 @@ export const getTestDatabaseUrl = (): string => {
   const baseUrl = getDatabaseUrl(true)!;
   const workerId = process.env.VITEST_WORKER_ID;
 
-  return deriveTestDatabaseUrl(baseUrl, workerId);
+  return deriveDatabaseUrl(baseUrl, { workerId });
 };
 
 /**

@@ -52,8 +52,8 @@ jobs:
 
       - name: Setup E2E database
         run: |
-          psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles_test;"
-          psql -h localhost -U timetiles_user -d timetiles_test -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE SCHEMA IF NOT EXISTS payload;"
+          psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles_test_e2e;"
+          psql -h localhost -U timetiles_user -d timetiles_test_e2e -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE SCHEMA IF NOT EXISTS payload;"
 
       - name: Setup E2E environment
         timeout-minutes: 10

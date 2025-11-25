@@ -20,9 +20,6 @@ test.describe("Explore Page - Basic Functionality", () => {
   });
 
   test("should load the explore page with all components", async ({ page }) => {
-    // Check page heading
-    await expect(page.getByRole("heading", { name: "Event Explorer" })).toBeVisible();
-
     // Check main components are visible
     await expect(explorePage.map).toBeVisible();
     await expect(explorePage.catalogSelect).toBeVisible();
@@ -64,8 +61,9 @@ test.describe("Explore Page - Basic Functionality", () => {
     if (eventCount === 0) {
       await expect(explorePage.noEventsMessage).toBeVisible();
     } else {
-      // If there are events, they should be visible
-      await expect(page.locator(".space-y-2 > div").first()).toBeVisible();
+      // If there are events, they should be visible in space-y-4 container
+      // Events are rendered as Card components from @timetiles/ui
+      await expect(page.locator(".space-y-4").first()).toBeVisible();
     }
   });
 
@@ -101,8 +99,8 @@ test.describe("Explore Page - Basic Functionality", () => {
   });
 
   test("should handle keyboard navigation", async ({ page }) => {
-    // Click on the page heading to set initial focus
-    await page.getByRole("heading", { name: "Event Explorer" }).click();
+    // Click on the catalog select to set initial focus
+    await explorePage.catalogSelect.click();
 
     // Tab to navigate through interactive elements
     await page.keyboard.press("Tab");

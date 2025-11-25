@@ -22,31 +22,19 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { deriveE2eDatabaseUrl, getDatabaseUrl, parseDatabaseUrl } from "../lib/database/url";
+import { parseDatabaseUrl } from "../lib/database/url";
 import { createLogger } from "../lib/logger";
+import { E2E_DATABASE_URL } from "../tests/e2e/config";
 
 const logger = createLogger("schema-validator");
 
-// Lazy initialization of database configuration
-let _dbConfig: ReturnType<typeof parseDatabaseUrl> | null = null;
+const components = parseDatabaseUrl(E2E_DATABASE_URL);
 
-const getDbConfig = () => {
-  if (!_dbConfig) {
-    // Get DATABASE_URL from environment - required
-    const DATABASE_URL = getDatabaseUrl(true)!;
-    // Derive E2E test database URL
-    const TEST_DATABASE_URL = deriveE2eDatabaseUrl(DATABASE_URL);
-    _dbConfig = parseDatabaseUrl(TEST_DATABASE_URL);
-  }
-  return _dbConfig;
-};
-
-// Getters for database configuration components
-const getDbUser = () => getDbConfig().username;
-const getDbPassword = () => getDbConfig().password;
-const getDbHost = () => getDbConfig().host;
-const getDbName = () => getDbConfig().database;
-const _getTestDatabaseUrl = () => getDbConfig().fullUrl;
+// Database configuration helpers
+const getDbUser = () => components.username;
+const getDbPassword = () => components.password;
+const getDbHost = () => components.host;
+const getDbName = () => components.database;
 
 export interface SchemaValidationResult {
   isValid: boolean;
