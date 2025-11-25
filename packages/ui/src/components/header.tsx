@@ -82,7 +82,7 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
         )}
 
         {/* Content container */}
-        <div className="relative mx-auto flex h-16 items-center justify-between px-6 md:px-8">{children}</div>
+        <div className="relative mx-auto flex h-12 items-center justify-between px-6 md:px-8">{children}</div>
       </header>
     );
   }

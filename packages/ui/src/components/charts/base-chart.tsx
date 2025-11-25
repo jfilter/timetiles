@@ -21,6 +21,7 @@ const ReactECharts = ReactEChartsLib as ReactEChartsWithRef;
 
 import { applyThemeToOption, defaultLightTheme } from "../../lib/chart-themes";
 import { cn } from "../../lib/utils";
+import { ChartSkeleton } from "./chart-skeleton";
 import type { BaseChartProps, EChartsInstance } from "./types";
 
 const containerStyle = { height: "100%", width: "100%" };
@@ -38,6 +39,7 @@ export const BaseChart = ({
   config = defaultConfig,
   onChartReady,
   onEvents = defaultEvents,
+  skeletonVariant = "histogram",
 }: BaseChartProps) => {
   const chartRef = useRef<ReactEChartsLib>(null);
 
@@ -72,18 +74,18 @@ export const BaseChart = ({
 
   return (
     <div className={cn("relative", className)} style={containerDivStyle}>
-      {/* Full loading overlay on initial load */}
+      {/* Skeleton loading on initial load */}
       {isInitialLoad && (
-        <div className="bg-muted/50 absolute inset-0 z-10 flex items-center justify-center">
-          <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2" />
+        <div className="absolute inset-0 z-10">
+          <ChartSkeleton variant={skeletonVariant} height={height} />
         </div>
       )}
       {/* Subtle corner badge when updating */}
       {isUpdating && (
-        <div className="absolute right-2 top-2 z-10">
-          <div className="border-border bg-background/80 flex items-center gap-2 rounded-sm border px-3 py-1 text-xs backdrop-blur-sm">
-            <div className="border-primary h-3 w-3 animate-spin rounded-full border-b-2" />
-            <span className="text-muted-foreground">Updating...</span>
+        <div className="absolute right-3 top-3 z-10">
+          <div className="bg-card/95 border-border flex items-center gap-2 rounded-sm border px-3 py-1.5 text-xs shadow-sm backdrop-blur-sm">
+            <div className="border-cartographic-blue h-3 w-3 animate-spin rounded-full border-2 border-t-transparent" />
+            <span className="text-muted-foreground font-medium">Updating</span>
           </div>
         </div>
       )}

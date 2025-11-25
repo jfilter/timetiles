@@ -55,6 +55,8 @@ export interface BaseChartProps {
   config?: Partial<EChartsOption>;
   onChartReady?: (chart: EChartsInstance) => void;
   onEvents?: Record<string, (params: EChartsEventParams) => void>;
+  /** Skeleton variant to show during initial load */
+  skeletonVariant?: "histogram" | "bar";
 }
 
 export interface BarChartDataItem {

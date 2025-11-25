@@ -14,6 +14,7 @@ import { useMemo } from "react";
 
 import { cartographicColors } from "../../lib/chart-themes";
 import { BaseChart } from "./base-chart";
+import { ChartEmptyState } from "./chart-empty-state";
 import type { BarChartDataItem, ChartTheme } from "./types";
 
 // Helper to check if click params are valid
@@ -143,6 +144,11 @@ export const BarChart = ({
     };
   }, [onBarClick, data]);
 
+  // Handle empty state
+  if (data.length === 0 && !isInitialLoad && !isUpdating) {
+    return <ChartEmptyState variant="no-match" height={height} className={className} />;
+  }
+
   return (
     <BaseChart
       height={height}
@@ -152,6 +158,7 @@ export const BarChart = ({
       isUpdating={isUpdating}
       config={chartOption}
       onEvents={onEventsHandler}
+      skeletonVariant="bar"
     />
   );
 };

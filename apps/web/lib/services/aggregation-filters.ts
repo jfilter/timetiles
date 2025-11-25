@@ -131,17 +131,6 @@ export const buildAggregationWhereClause = (
 };
 
 /**
- * Parse comma-separated dataset IDs from query parameter.
- *
- * @param datasetsParam - Comma-separated dataset IDs (e.g., "1,2,3")
- * @returns Array of dataset ID strings, or empty array if none
- */
-export const parseDatasetIds = (datasetsParam: string | null): string[] => {
-  if (!datasetsParam) return [];
-  return datasetsParam.split(",").filter(Boolean);
-};
-
-/**
  * Normalize end date to include full day (23:59:59.999).
  *
  * Ensures that date range filtering includes events from the entire end date,

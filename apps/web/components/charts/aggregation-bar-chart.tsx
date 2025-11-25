@@ -42,7 +42,7 @@ const AggregationBarChartComponent = ({
   const chartTheme = useChartTheme();
   const { filters } = useFilters();
 
-  // Fetch aggregation data using unified endpoint
+  // Fetch aggregation data using unified endpoint (viewport-filtered)
   const aggregationQuery = useEventsAggregationQuery(filters, bounds ?? null, type);
   const { data, isInitialLoad, isUpdating } = useChartQuery(aggregationQuery);
 

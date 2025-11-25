@@ -15,6 +15,7 @@ import { useCallback, useMemo } from "react";
 
 import { cartographicColors, defaultDarkTheme, defaultLightTheme } from "../../lib/chart-themes";
 import { BaseChart } from "./base-chart";
+import { ChartEmptyState } from "./chart-empty-state";
 import type { ChartTheme, EChartsEventParams } from "./types";
 
 export interface TimeHistogramDataItem {
@@ -348,22 +349,8 @@ export const TimeHistogram = ({
   const chartEvents = useMemo(() => ({ click: handleChartClick }), [handleChartClick]);
 
   // Handle empty state
-  const containerHeight = useMemo(() => (typeof height === "number" ? `${height}px` : height), [height]);
-  const emptyStateStyle = useMemo(
-    () => ({ height: containerHeight, display: "flex", alignItems: "center", justifyContent: "center" }),
-    [containerHeight]
-  );
-  const emptyTextStyle = useMemo(
-    () => ({ color: theme?.textColor ?? cartographicColors.navy, fontSize: "14px" }),
-    [theme?.textColor]
-  );
-
   if (data.length === 0 && !isInitialLoad && !isUpdating) {
-    return (
-      <div className={className} style={emptyStateStyle}>
-        <div style={emptyTextStyle}>{emptyMessage}</div>
-      </div>
-    );
+    return <ChartEmptyState variant="no-match" height={height} className={className} message={emptyMessage} />;
   }
 
   return (
@@ -375,6 +362,7 @@ export const TimeHistogram = ({
       theme={theme}
       config={chartOption as unknown as Partial<EChartsOption>}
       onEvents={chartEvents}
+      skeletonVariant="histogram"
     />
   );
 };
