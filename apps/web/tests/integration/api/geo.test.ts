@@ -11,7 +11,7 @@ import { sql } from "@payloadcms/db-postgres";
 import { NextRequest } from "next/server";
 import type { Payload } from "payload";
 
-import { GET } from "../../../app/api/events/map-clusters/route";
+import { GET } from "../../../app/api/v1/events/geo/route";
 
 interface MapClusterFeature {
   type: "Feature";
@@ -27,7 +27,7 @@ interface MapClusterFeature {
   };
 }
 
-describe("/api/events/map-clusters", () => {
+describe("/api/v1/events/geo", () => {
   let payload: Payload;
   let testCatalogId: string;
   let testDatasetId: string;

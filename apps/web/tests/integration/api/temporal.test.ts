@@ -11,14 +11,15 @@ import { NextRequest } from "next/server";
 import type { Payload } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { GET } from "../../../app/api/events/histogram/route";
+import { GET } from "../../../app/api/v1/events/temporal/route";
 
 interface HistogramBucket {
   date: string;
+  dateEnd: string;
   count: number;
 }
 
-describe("/api/events/histogram", () => {
+describe("/api/v1/events/temporal", () => {
   let payload: Payload;
   let testDatasetId: string;
   const testEventIds: string[] = [];

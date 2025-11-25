@@ -53,8 +53,8 @@ export interface MapClustersResponse {
 }
 
 export interface HistogramData {
-  date: number; // Bucket start timestamp (Unix timestamp in milliseconds)
-  dateEnd: number; // Bucket end timestamp (Unix timestamp in milliseconds)
+  date: string; // Bucket start timestamp (ISO 8601)
+  dateEnd: string; // Bucket end timestamp (ISO 8601)
   count: number;
 }
 
@@ -199,7 +199,7 @@ const fetchEvents = async (
 
   logger.debug("Fetching events list", { filters, bounds, limit });
 
-  const response = await fetch(`/api/events/list?${params.toString()}`, {
+  const response = await fetch(`/api/v1/events?${params.toString()}`, {
     signal,
   });
 
@@ -230,7 +230,7 @@ const fetchMapClusters = async (
 
   logger.debug("Fetching map clusters", { filters, bounds, zoom });
 
-  const response = await fetch(`/api/events/map-clusters?${params.toString()}`, { signal });
+  const response = await fetch(`/api/v1/events/geo?${params.toString()}`, { signal });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch map clusters: ${response.statusText}`);
@@ -248,7 +248,7 @@ const fetchHistogram = async (
 
   logger.debug("Fetching histogram", { filters, bounds });
 
-  const response = await fetch(`/api/events/histogram?${params.toString()}`, {
+  const response = await fetch(`/api/v1/events/temporal?${params.toString()}`, {
     signal,
   });
 
@@ -281,7 +281,7 @@ const fetchClusterStats = async (filters: FilterState, signal?: AbortSignal): Pr
 
   logger.debug("Fetching global cluster stats", { filters });
 
-  const response = await fetch(`/api/events/cluster-stats?${params.toString()}`, { signal });
+  const response = await fetch(`/api/v1/events/geo/stats?${params.toString()}`, { signal });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch cluster stats: ${response.statusText}`);
@@ -491,7 +491,7 @@ const fetchAggregation = async (
   signal?: AbortSignal
 ): Promise<AggregationResponse> => {
   const params = buildEventParams(filters, bounds, { groupBy });
-  const url = `/api/events/aggregate?${params.toString()}`;
+  const url = `/api/v1/events/stats?${params.toString()}`;
 
   logger.debug("Fetching aggregation", { env: process.env.NODE_ENV, groupBy });
 

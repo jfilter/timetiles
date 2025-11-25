@@ -36,7 +36,7 @@ const EMPTY_HANDLER = () => {};
 export const ActiveFilters = ({
   labels,
   hasActiveFilters,
-  activeFilterCount,
+  // activeFilterCount - kept in props for future use
   actions,
 }: Readonly<ActiveFiltersProps>) => {
   const removeCatalogFilter = useCallback(() => actions.removeFilter("catalog"), [actions]);
@@ -56,38 +56,52 @@ export const ActiveFilters = ({
     return null;
   }
 
+  // For now, only show date range filters (catalog/dataset shown in sidebar)
+  // TODO: Re-enable catalog/dataset filters when needed
+  const showCatalogDatasetFilters = false;
+
+  // Only show component if there are visible filters
+  const hasVisibleFilters =
+    labels.dateRange != null || (showCatalogDatasetFilters && (labels.catalog != null || labels.datasets.length > 0));
+
+  if (!hasVisibleFilters) {
+    return null;
+  }
+
   return (
-    <div className="bg-muted/30 mb-4 rounded-lg border p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-foreground text-sm font-medium">Active Filters ({activeFilterCount})</h3>
+    <div className="bg-muted/30 mb-3 rounded-md border px-2.5 py-2">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* Catalog Filter - hidden for now */}
+          {showCatalogDatasetFilters && labels.catalog != null && (
+            <FilterPill label="Catalog" value={labels.catalog} onRemove={removeCatalogFilter} />
+          )}
+
+          {/* Dataset Filters - hidden for now */}
+          {showCatalogDatasetFilters &&
+            labels.datasets.map((dataset) => (
+              <FilterPill
+                key={dataset.id}
+                label="Dataset"
+                value={dataset.name}
+                onRemove={datasetRemoveHandlers[dataset.id] ?? EMPTY_HANDLER}
+              />
+            ))}
+
+          {/* Date Range Filter */}
+          {labels.dateRange != null && (
+            <FilterPill label="Date Range" value={labels.dateRange} onRemove={removeDateRangeFilter} />
+          )}
+        </div>
+
         <button
           type="button"
           onClick={actions.clearAllFilters}
-          className="text-muted-foreground hover:text-foreground text-xs transition-colors"
+          className="text-muted-foreground hover:text-foreground shrink-0 text-xs transition-colors"
           aria-label="Clear all filters"
         >
-          Clear all
+          Clear
         </button>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {/* Catalog Filter */}
-        {labels.catalog != null && <FilterPill label="Catalog" value={labels.catalog} onRemove={removeCatalogFilter} />}
-
-        {/* Dataset Filters */}
-        {labels.datasets.map((dataset) => (
-          <FilterPill
-            key={dataset.id}
-            label="Dataset"
-            value={dataset.name}
-            onRemove={datasetRemoveHandlers[dataset.id] ?? EMPTY_HANDLER}
-          />
-        ))}
-
-        {/* Date Range Filter */}
-        {labels.dateRange != null && (
-          <FilterPill label="Date Range" value={labels.dateRange} onRemove={removeDateRangeFilter} />
-        )}
       </div>
     </div>
   );
@@ -100,13 +114,13 @@ interface FilterPillProps {
 }
 
 const FilterPill = ({ label, value, onRemove }: Readonly<FilterPillProps>) => (
-  <div className="bg-background inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm shadow-sm">
+  <div className="bg-background inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs shadow-sm">
     <span className="text-muted-foreground">{label}:</span>
     <span className="font-medium">{value}</span>
     <button
       type="button"
       onClick={onRemove}
-      className="hover:bg-muted ml-1 rounded p-0.5 transition-colors"
+      className="hover:bg-muted -mr-0.5 rounded p-0.5 transition-colors"
       aria-label={`Remove ${label}: ${value}`}
     >
       <X className="h-3 w-3" />

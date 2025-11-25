@@ -29,7 +29,7 @@ export const dataSourceStatsQueryKey = ["data-source-stats"] as const;
  * Fetch data source statistics from the API.
  */
 const fetchDataSourceStats = async (): Promise<DataSourceStatsResponse> => {
-  const response = await fetch("/api/events/data-source-stats");
+  const response = await fetch("/api/v1/sources/stats");
 
   if (!response.ok) {
     throw new Error(`Failed to fetch data source stats: ${response.status}`);

@@ -5,8 +5,10 @@ The TimeTiles REST API provides programmatic access to event data, geospatial cl
 ## Base URL
 
 ```
-https://your-instance.com/api
+https://your-instance.com/api/v1
 ```
+
+All API endpoints are versioned under `/api/v1/`.
 
 ## Authentication
 
@@ -49,7 +51,7 @@ See [Usage Limits](/admin-guide/usage-limits) for details on rate limiting and q
 Retrieve a paginated list of events with optional filters.
 
 ```http
-GET /api/events/list
+GET /api/v1/events
 ```
 
 **Query Parameters:**
@@ -102,7 +104,7 @@ GET /api/events/list
 **Example:**
 
 ```bash
-curl "https://your-instance.com/api/events/list?\
+curl "https://your-instance.com/api/v1/events?\
 catalog=tech-events&\
 startDate=2024-01-01&\
 endDate=2024-12-31&\
@@ -110,7 +112,7 @@ page=1&\
 limit=100"
 ```
 
-**Implementation:** `apps/web/app/api/events/list/route.ts:120-133`
+**Implementation:** `apps/web/app/api/v1/events/route.ts`
 
 ---
 
@@ -119,7 +121,7 @@ limit=100"
 Retrieve clustered or individual event points for map visualization. Uses PostGIS server-side clustering for performance with large datasets.
 
 ```http
-GET /api/events/map-clusters
+GET /api/v1/events/geo
 ```
 
 **Query Parameters:**
@@ -169,22 +171,22 @@ Returns a GeoJSON `FeatureCollection` with cluster and point features:
 **Example:**
 
 ```bash
-curl "https://your-instance.com/api/events/map-clusters?\
+curl "https://your-instance.com/api/v1/events/geo?\
 bounds=%7B%22north%22%3A37.8%2C%22south%22%3A37.7%2C%22east%22%3A-122.3%2C%22west%22%3A-122.5%7D&\
 zoom=12&\
 catalog=sf-events"
 ```
 
-**Implementation:** `apps/web/app/api/events/map-clusters/route.ts:34-61`
+**Implementation:** `apps/web/app/api/v1/events/geo/route.ts`
 
 ---
 
-#### Get Histogram
+#### Get Temporal Histogram
 
 Retrieve temporal histogram data showing event distribution over time. Uses custom PostgreSQL function for efficient aggregation.
 
 ```http
-GET /api/events/histogram
+GET /api/v1/events/temporal
 ```
 
 **Query Parameters:**
@@ -204,7 +206,8 @@ GET /api/events/histogram
 {
   histogram: [
     {
-      date: string,        // ISO 8601 date
+      date: string,        // Bucket start (ISO 8601)
+      dateEnd: string,     // Bucket end (ISO 8601)
       count: number        // Events in this bucket
     }
   ],
@@ -234,14 +237,131 @@ GET /api/events/histogram
 **Example:**
 
 ```bash
-curl "https://your-instance.com/api/events/histogram?\
+curl "https://your-instance.com/api/v1/events/temporal?\
 catalog=tech-events&\
 startDate=2024-01-01&\
-endDate=2024-12-31&\
-granularity=month"
+endDate=2024-12-31"
 ```
 
-**Implementation:** `apps/web/app/api/events/histogram/route.ts:80-103`
+**Implementation:** `apps/web/app/api/v1/events/temporal/route.ts`
+
+---
+
+#### Get Event Statistics
+
+Aggregate event counts grouped by catalog or dataset.
+
+```http
+GET /api/v1/events/stats
+```
+
+**Query Parameters:**
+
+| Parameter   | Type     | Required | Description                                          |
+| ----------- | -------- | -------- | ---------------------------------------------------- |
+| `groupBy`   | string   | **Yes**  | Group results by `catalog` or `dataset`              |
+| `catalog`   | string   | No       | Filter by catalog slug                               |
+| `datasets`  | string[] | No       | Filter by dataset slugs                              |
+| `bounds`    | JSON     | No       | Geographic bounding box `{north, south, east, west}` |
+| `startDate` | ISO 8601 | No       | Filter events after this date                        |
+| `endDate`   | ISO 8601 | No       | Filter events before this date                       |
+
+**Response:**
+
+```typescript
+{
+  items: [
+    {
+      id: number | string,
+      name: string,
+      count: number
+    }
+  ],
+  total: number,
+  groupedBy: "catalog" | "dataset"
+}
+```
+
+**Example:**
+
+```bash
+curl "https://your-instance.com/api/v1/events/stats?\
+groupBy=dataset&\
+catalog=tech-events"
+```
+
+**Implementation:** `apps/web/app/api/v1/events/stats/route.ts`
+
+---
+
+#### Get Cluster Statistics
+
+Get percentile breakpoints for cluster sizes across the filtered dataset. Used for consistent cluster visualization across zoom levels.
+
+```http
+GET /api/v1/events/geo/stats
+```
+
+**Query Parameters:**
+
+| Parameter   | Type     | Required | Description                                          |
+| ----------- | -------- | -------- | ---------------------------------------------------- |
+| `catalog`   | string   | No       | Filter by catalog slug                               |
+| `datasets`  | string[] | No       | Filter by dataset slugs                              |
+| `bounds`    | JSON     | No       | Geographic bounding box `{north, south, east, west}` |
+| `startDate` | ISO 8601 | No       | Filter events after this date                        |
+| `endDate`   | ISO 8601 | No       | Filter events before this date                       |
+
+**Response:**
+
+```typescript
+{
+  p20: number,   // 20th percentile cluster size
+  p40: number,   // 40th percentile
+  p60: number,   // 60th percentile
+  p80: number,   // 80th percentile
+  p100: number   // Maximum cluster size
+}
+```
+
+**Example:**
+
+```bash
+curl "https://your-instance.com/api/v1/events/geo/stats?\
+catalog=tech-events"
+```
+
+**Implementation:** `apps/web/app/api/v1/events/geo/stats/route.ts`
+
+---
+
+### Sources
+
+#### Get Data Source Statistics
+
+Get event counts grouped by catalog and dataset. Used for displaying totals in the filter UI.
+
+```http
+GET /api/v1/sources/stats
+```
+
+**Response:**
+
+```typescript
+{
+  catalogCounts: Record<string, number>,   // catalog ID → event count
+  datasetCounts: Record<string, number>,   // dataset ID → event count
+  totalEvents: number
+}
+```
+
+**Example:**
+
+```bash
+curl "https://your-instance.com/api/v1/sources/stats"
+```
+
+**Implementation:** `apps/web/app/api/v1/sources/stats/route.ts`
 
 ---
 
@@ -403,7 +523,7 @@ curl -H "Cookie: payload-token=..." \
 Check system health and readiness.
 
 ```http
-GET /api/health
+GET /api/v1/health
 ```
 
 **Response:**
@@ -437,10 +557,10 @@ GET /api/health
 **Example:**
 
 ```bash
-curl "https://your-instance.com/api/health"
+curl "https://your-instance.com/api/v1/health"
 ```
 
-**Implementation:** `apps/web/app/api/health/route.ts:65-83`
+**Implementation:** `apps/web/app/api/v1/health/route.ts`
 
 ---
 
@@ -556,9 +676,9 @@ The API routes have comprehensive TypeScript documentation. See the [API Referen
 
 Key type definitions:
 
-- `apps/web/app/api/events/list/route.ts` - Event listing types
-- `apps/web/app/api/events/map-clusters/route.ts` - GeoJSON cluster types
-- `apps/web/app/api/events/histogram/route.ts` - Histogram types
+- `apps/web/app/api/v1/events/route.ts` - Event listing types
+- `apps/web/app/api/v1/events/geo/route.ts` - GeoJSON cluster types
+- `apps/web/app/api/v1/events/temporal/route.ts` - Histogram types
 - `apps/web/payload-types.ts` - Payload collection types
 
 ## Examples
@@ -567,7 +687,7 @@ Key type definitions:
 
 ```typescript
 const response = await fetch(
-  "https://your-instance.com/api/events/list?" +
+  "https://your-instance.com/api/v1/events?" +
     new URLSearchParams({
       bounds: JSON.stringify({
         north: 37.8,
@@ -588,7 +708,7 @@ const { events, pagination } = await response.json();
 
 ```typescript
 const response = await fetch(
-  "https://your-instance.com/api/events/map-clusters?" +
+  "https://your-instance.com/api/v1/events/geo?" +
     new URLSearchParams({
       bounds: JSON.stringify({
         north: 37.8,
@@ -602,7 +722,7 @@ const response = await fetch(
 );
 
 const geojson = await response.json();
-// Use with Mapbox, Leaflet, etc.
+// Use with MapLibre, Leaflet, etc.
 ```
 
 ### Check Import Progress
@@ -622,22 +742,21 @@ async function pollImportProgress(importId: string) {
 }
 ```
 
-### Get Monthly Event Histogram
+### Get Temporal Event Histogram
 
 ```typescript
 const response = await fetch(
-  "https://your-instance.com/api/events/histogram?" +
+  "https://your-instance.com/api/v1/events/temporal?" +
     new URLSearchParams({
       catalog: "my-catalog",
       startDate: "2024-01-01",
       endDate: "2024-12-31",
-      granularity: "month",
     })
 );
 
 const { histogram, metadata } = await response.json();
 
-// histogram = [{ date: "2024-01", count: 150 }, ...]
+// histogram = [{ date: 1704067200000, dateEnd: 1706745600000, count: 150 }, ...]
 console.log(`Total events: ${metadata.total}`);
 ```
 

@@ -63,7 +63,7 @@ const fetchFullHistogram = async (catalog: string | null, datasets: string[]): P
   }
 
   // No bounds, no date filters - get full range
-  const response = await fetch(`/api/events/histogram?${params.toString()}`);
+  const response = await fetch(`/api/v1/events/temporal?${params.toString()}`);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch histogram: ${response.statusText}`);
@@ -102,13 +102,16 @@ export const TimeRangeSlider = ({
 
     const firstBucket = histogram[0];
     const lastBucket = histogram[histogram.length - 1];
-    const min = firstBucket?.date ?? 0;
-    const max = lastBucket?.dateEnd ?? 0;
+    // Parse ISO date strings to timestamps
+    const min = firstBucket?.date ? new Date(firstBucket.date).getTime() : 0;
+    const max = lastBucket?.dateEnd ? new Date(lastBucket.dateEnd).getTime() : 0;
     const maxC = Math.max(...histogram.map((h) => h.count));
 
-    // Normalize bar heights (0-1)
+    // Normalize bar heights (0-1) and convert dates to timestamps
     const bars = histogram.map((h) => ({
-      ...h,
+      date: new Date(h.date).getTime(),
+      dateEnd: h.dateEnd ? new Date(h.dateEnd).getTime() : new Date(h.date).getTime(),
+      count: h.count,
       normalizedHeight: maxC > 0 ? h.count / maxC : 0,
     }));
 

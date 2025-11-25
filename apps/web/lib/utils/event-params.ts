@@ -61,15 +61,29 @@ export type ClusterStatsParameters = BaseEventParameters;
  * Extract base event parameters from URL search params.
  * These parameters are common to all event API routes.
  *
+ * Handles datasets in multiple formats:
+ * - Multiple params: `?datasets=1&datasets=2&datasets=3`
+ * - Comma-separated: `?datasets=1,2,3`
+ * - Mixed: `?datasets=1,2&datasets=3`
+ *
  * @param searchParams - URL search parameters
  * @returns Base event parameters
  */
-export const extractBaseEventParameters = (searchParams: URLSearchParams): BaseEventParameters => ({
-  catalog: searchParams.get("catalog"),
-  datasets: searchParams.getAll("datasets"),
-  startDate: searchParams.get("startDate"),
-  endDate: searchParams.get("endDate"),
-});
+export const extractBaseEventParameters = (searchParams: URLSearchParams): BaseEventParameters => {
+  // Get all dataset values and flatten comma-separated values
+  const rawDatasets = searchParams.getAll("datasets");
+  const datasets = rawDatasets
+    .flatMap((d) => d.split(","))
+    .map((d) => d.trim())
+    .filter(Boolean);
+
+  return {
+    catalog: searchParams.get("catalog"),
+    datasets,
+    startDate: searchParams.get("startDate"),
+    endDate: searchParams.get("endDate"),
+  };
+};
 
 /**
  * Extract parameters for the events list endpoint.

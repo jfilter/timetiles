@@ -8,18 +8,19 @@
 
 ### API
 
-- [app/api/events/aggregate/route](app/api/events/aggregate/route.md)
-- [app/api/events/cluster-stats/route](app/api/events/cluster-stats/route.md)
 - [app/api/import-jobs/\[id\]/reset/route](app/api/import-jobs/[id]/reset/route.md)
 - [app/api/import-jobs/\[id\]/retry/route](app/api/import-jobs/[id]/retry/route.md)
 - [app/api/import-jobs/failed/recommendations/route](app/api/import-jobs/failed/recommendations/route.md)
 - [app/api/import/\[importId\]/progress/route](app/api/import/[importId]/progress/route.md)
 - [app/api/newsletter/subscribe/route](app/api/newsletter/subscribe/route.md)
+- [app/api/v1/events/geo/stats/route](app/api/v1/events/geo/stats/route.md)
+- [app/api/v1/events/stats/route](app/api/v1/events/stats/route.md)
+- [app/api/v1/sources/stats/route](app/api/v1/sources/stats/route.md)
 - [app/api/webhooks/trigger/\[token\]/route](app/api/webhooks/trigger/[token]/route.md)
 
 ### API Routes
 
-- [app/api/health/route](app/api/health/route.md)
+- [app/api/v1/health/route](app/api/v1/health/route.md)
 
 ### Collections
 
@@ -41,6 +42,7 @@
 
 ### Constants
 
+- [lib/constants/map](lib/constants/map.md)
 - [lib/constants/stage-time-weights](lib/constants/stage-time-weights.md)
 
 ### Hooks
@@ -73,11 +75,11 @@
 ### Other
 
 - [app/api/admin/schedule-service/route](app/api/admin/schedule-service/route.md)
-- [app/api/events/histogram/route](app/api/events/histogram/route.md)
-- [app/api/events/list/route](app/api/events/list/route.md)
-- [app/api/events/map-clusters/route](app/api/events/map-clusters/route.md)
 - [app/api/preview/route](app/api/preview/route.md)
 - [app/api/quotas/route](app/api/quotas/route.md)
+- [app/api/v1/events/geo/route](app/api/v1/events/geo/route.md)
+- [app/api/v1/events/route](app/api/v1/events/route.md)
+- [app/api/v1/events/temporal/route](app/api/v1/events/temporal/route.md)
 - [lib/collections/dataset-schemas](lib/collections/dataset-schemas.md)
 - [lib/collections/datasets](lib/collections/datasets.md)
 - [lib/collections/datasets/transformation-fields](lib/collections/datasets/transformation-fields.md)
@@ -99,6 +101,7 @@
 - [lib/globals/footer](lib/globals/footer.md)
 - [lib/globals/main-menu](lib/globals/main-menu.md)
 - [lib/globals/settings](lib/globals/settings.md)
+- [lib/hooks/use-data-source-stats](lib/hooks/use-data-source-stats.md)
 - [lib/hooks/use-event-stats](lib/hooks/use-event-stats.md)
 - [lib/hooks/use-events-queries](lib/hooks/use-events-queries.md)
 - [lib/hooks/use-theme](lib/hooks/use-theme.md)
@@ -139,7 +142,6 @@
 
 - [lib/services/access-control](lib/services/access-control.md)
 - [lib/services/aggregation-filters](lib/services/aggregation-filters.md)
-- [lib/services/audit-log](lib/services/audit-log.md)
 - [lib/services/import-transforms](lib/services/import-transforms.md)
 - [lib/services/progress-tracking](lib/services/progress-tracking.md)
 - [lib/services/quota-service](lib/services/quota-service.md)
@@ -181,4 +183,5 @@
 
 - [lib/utils/api-response](lib/utils/api-response.md)
 - [lib/utils/coordinates](lib/utils/coordinates.md)
-- [lib/utils/errors](lib/utils/errors.md)
+- [lib/utils/event-filters](lib/utils/event-filters.md)
+- [lib/utils/event-params](lib/utils/event-params.md)

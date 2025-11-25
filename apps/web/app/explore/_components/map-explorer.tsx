@@ -197,7 +197,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
   );
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-[calc(100dvh-3rem)] flex-col">
       {/* Desktop: Flex layout - both map and list shrink proportionally when filters open */}
       <div ref={gridRef} className="hidden flex-1 overflow-hidden md:flex">
         {/* Map Panel - takes half of available space */}
@@ -222,7 +222,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
             />
 
             {/* Chart Section */}
-            <div className="mb-6 border-t pt-6">
+            <div className="mb-6">
               <ChartSection bounds={debouncedSimpleBounds} />
             </div>
 
@@ -262,7 +262,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
               actions={filterActions}
             />
 
-            <div className="mb-4 border-t pt-4">
+            <div className="mb-4">
               <ChartSection bounds={debouncedSimpleBounds} />
             </div>
 

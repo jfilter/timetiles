@@ -89,8 +89,8 @@ const buildHistogramResponse = (
   const total = rows.reduce((sum: number, row) => sum + parseInt(String(row.event_count), 10), 0);
 
   const histogram = rows.map((row) => ({
-    date: new Date(row.bucket_start).getTime(), // Bucket start timestamp
-    dateEnd: new Date(row.bucket_end).getTime(), // Bucket end timestamp
+    date: new Date(row.bucket_start).toISOString(), // Bucket start as ISO 8601
+    dateEnd: new Date(row.bucket_end).toISOString(), // Bucket end as ISO 8601
     count: parseInt(String(row.event_count), 10),
   }));
 

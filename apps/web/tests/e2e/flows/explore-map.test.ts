@@ -27,10 +27,10 @@ test.describe("Explore Page - Map Interactions", () => {
 
     page.on("request", (request) => {
       const url = request.url();
-      if (url.includes("/api/events/list")) {
+      if (url.includes("/api/v1/events") && !url.includes("/api/v1/events/")) {
         eventsListRequests.push(url);
       }
-      if (url.includes("/api/events/map-clusters")) {
+      if (url.includes("/api/v1/events/geo")) {
         mapClustersRequests.push(url);
       }
     });

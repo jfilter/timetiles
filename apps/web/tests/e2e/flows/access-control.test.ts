@@ -129,7 +129,7 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should enforce access control on event list endpoint", async ({ request }) => {
       // Unauthenticated request
-      const response = await request.get("http://localhost:3002/api/events/list");
+      const response = await request.get("http://localhost:3002/api/v1/events");
 
       // Should succeed and return only events from accessible datasets
       expect(response.status()).toBe(200);
@@ -268,7 +268,7 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should handle empty state when no public data exists", async ({ page }) => {
       // Mock empty response
-      await page.route("**/api/events/list*", async (route) => {
+      await page.route("**/api/v1/events?*", async (route) => {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -297,7 +297,7 @@ test.describe("Access Control - User Perspective", () => {
 
   test.describe("Cross-Origin and Security Headers", () => {
     test("should include proper security headers in API responses", async ({ request }) => {
-      const response = await request.get("http://localhost:3002/api/events/list");
+      const response = await request.get("http://localhost:3002/api/v1/events");
 
       // Check for security headers (these might vary based on Next.js config)
       const headers = response.headers();
@@ -314,7 +314,7 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should handle CORS properly for API endpoints", async ({ request }) => {
       // Test CORS preflight
-      const response = await request.fetch("http://localhost:3002/api/events/list", {
+      const response = await request.fetch("http://localhost:3002/api/v1/events/list", {
         method: "OPTIONS",
       });
 

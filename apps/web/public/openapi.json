@@ -1,0 +1,1047 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "TimeTiles API",
+    "version": "1.0.0",
+    "description": "API for querying and aggregating geospatial event data in TimeTiles.\n\n## Overview\n\nTimeTiles provides endpoints for:\n- **Event listing** with pagination and filtering\n- **Aggregations** by catalog or dataset\n- **Temporal histograms** for time-based analysis\n- **Map clustering** for efficient visualization of large datasets\n- **Cluster statistics** for consistent visualization scaling\n\n## Authentication\n\nMost endpoints support optional authentication. Authenticated users may have access to additional catalogs and datasets.\n\n## Filtering\n\nAll event endpoints support common filter parameters:\n- `catalog`: Filter by catalog ID\n- `datasets`: Filter by dataset IDs (comma-separated or multiple params)\n- `startDate` / `endDate`: Temporal filtering (ISO 8601 date format)\n- `bounds`: Geographic bounding box as JSON string",
+    "contact": {
+      "name": "TimeTiles",
+      "url": "https://github.com/timetiles/timetiles"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Events",
+      "description": "Event querying and aggregation endpoints"
+    },
+    {
+      "name": "System",
+      "description": "System health and status endpoints"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "EventItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "dataset": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "title": {
+                "type": "string"
+              },
+              "catalog": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": {
+              "nullable": true
+            }
+          },
+          "location": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "longitude": {
+                "type": "number"
+              },
+              "latitude": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "longitude",
+              "latitude"
+            ]
+          },
+          "eventTimestamp": {
+            "type": "string"
+          },
+          "isValid": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "dataset",
+          "data",
+          "location",
+          "eventTimestamp",
+          "isValid"
+        ]
+      },
+      "EventListResponse": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventItem"
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "number"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "totalDocs": {
+                "type": "number"
+              },
+              "totalPages": {
+                "type": "number"
+              },
+              "hasNextPage": {
+                "type": "boolean"
+              },
+              "hasPrevPage": {
+                "type": "boolean"
+              },
+              "nextPage": {
+                "type": "number",
+                "nullable": true
+              },
+              "prevPage": {
+                "type": "number",
+                "nullable": true
+              }
+            },
+            "required": [
+              "page",
+              "limit",
+              "totalDocs",
+              "totalPages",
+              "hasNextPage",
+              "hasPrevPage",
+              "nextPage",
+              "prevPage"
+            ]
+          }
+        },
+        "required": [
+          "events",
+          "pagination"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "details": {
+            "nullable": true
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "AggregationItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "count"
+        ]
+      },
+      "AggregateResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AggregationItem"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "groupedBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "groupedBy"
+        ]
+      },
+      "HistogramBucket": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "Bucket start timestamp (ISO 8601)"
+          },
+          "dateEnd": {
+            "type": "string",
+            "description": "Bucket end timestamp (ISO 8601)"
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "dateEnd",
+          "count"
+        ]
+      },
+      "HistogramResponse": {
+        "type": "object",
+        "properties": {
+          "histogram": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistogramBucket"
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer"
+              },
+              "dateRange": {
+                "type": "object",
+                "properties": {
+                  "min": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "max": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "min",
+                  "max"
+                ]
+              },
+              "bucketSizeSeconds": {
+                "type": "number",
+                "nullable": true
+              },
+              "bucketCount": {
+                "type": "integer"
+              },
+              "counts": {
+                "type": "object",
+                "properties": {
+                  "datasets": {
+                    "type": "integer"
+                  },
+                  "catalogs": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "datasets",
+                  "catalogs"
+                ]
+              },
+              "topDatasets": {
+                "type": "array",
+                "items": {
+                  "nullable": true
+                }
+              },
+              "topCatalogs": {
+                "type": "array",
+                "items": {
+                  "nullable": true
+                }
+              }
+            },
+            "required": [
+              "total",
+              "dateRange",
+              "bucketSizeSeconds",
+              "bucketCount",
+              "counts",
+              "topDatasets",
+              "topCatalogs"
+            ]
+          }
+        },
+        "required": [
+          "histogram",
+          "metadata"
+        ]
+      },
+      "ClusterFeature": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Feature"
+            ]
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "geometry": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Point"
+                ]
+              },
+              "coordinates": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "required": [
+              "type",
+              "coordinates"
+            ]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "event-cluster",
+                  "event-point"
+                ]
+              },
+              "count": {
+                "type": "integer"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "geometry",
+          "properties"
+        ]
+      },
+      "MapClustersResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "FeatureCollection"
+            ]
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClusterFeature"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "features"
+        ]
+      },
+      "ClusterStatsResponse": {
+        "type": "object",
+        "properties": {
+          "p20": {
+            "type": "number"
+          },
+          "p40": {
+            "type": "number"
+          },
+          "p60": {
+            "type": "number"
+          },
+          "p80": {
+            "type": "number"
+          },
+          "p100": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "p20",
+          "p40",
+          "p60",
+          "p80",
+          "p100"
+        ]
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/api/v1/events": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "List events with pagination",
+        "description": "Returns a paginated list of events matching the specified filters. Events are returned with enriched data including extracted title, description, and location.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "nullable": true
+            },
+            "required": false,
+            "name": "catalog",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "required": false,
+            "name": "datasets",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "startDate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "endDate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "bounds",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "default": "-eventTimestamp"
+            },
+            "required": false,
+            "name": "sort",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated event list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events/stats": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Aggregate event counts by catalog or dataset",
+        "description": "Returns event counts grouped by catalog or dataset. When datasets are explicitly filtered, all selected datasets appear in results (with 0 count if no events match in the current viewport).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "nullable": true
+            },
+            "required": false,
+            "name": "catalog",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "required": false,
+            "name": "datasets",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "startDate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "endDate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "bounds",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "catalog",
+                "dataset"
+              ]
+            },
+            "required": true,
+            "name": "groupBy",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aggregated event counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events/temporal": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get temporal histogram of events",
+        "description": "Returns a histogram of event counts over time with automatically calculated bucket sizes. The bucket size is optimized based on the target, min, and max bucket parameters.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "nullable": true
+            },
+            "required": false,
+            "name": "catalog",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "required": false,
+            "name": "datasets",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "startDate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "endDate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "bounds",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "nullable": true,
+              "default": 30
+            },
+            "required": false,
+            "name": "targetBuckets",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "nullable": true,
+              "default": 20
+            },
+            "required": false,
+            "name": "minBuckets",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "nullable": true,
+              "default": 50
+            },
+            "required": false,
+            "name": "maxBuckets",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Temporal histogram data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistogramResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events/geo": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get clustered events for map display",
+        "description": "Returns events clustered based on zoom level and viewport bounds. Uses server-side PostGIS clustering for optimal performance with large datasets. Returns a GeoJSON FeatureCollection.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "nullable": true
+            },
+            "required": false,
+            "name": "catalog",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "required": false,
+            "name": "datasets",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "startDate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "endDate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Required JSON bounding box"
+            },
+            "required": true,
+            "description": "Required JSON bounding box",
+            "name": "bounds",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "nullable": true,
+              "default": 10
+            },
+            "required": false,
+            "name": "zoom",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GeoJSON FeatureCollection of clustered events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapClustersResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events/geo/stats": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get cluster statistics for visualization",
+        "description": "Returns percentile breakpoints for cluster sizes across the entire filtered dataset. Used to maintain consistent cluster visualization across all zoom levels and viewports.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "nullable": true
+            },
+            "required": false,
+            "name": "catalog",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "required": false,
+            "name": "datasets",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "startDate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "endDate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "bounds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cluster size percentile statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClusterStatsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sources/stats": {
+      "get": {
+        "tags": [
+          "Sources"
+        ],
+        "summary": "Get data source statistics",
+        "description": "Returns event counts grouped by catalog and dataset. Used to display total event counts for each data source in the filter UI.",
+        "responses": {
+          "200": {
+            "description": "Data source statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "catalogCounts": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "integer"
+                      }
+                    },
+                    "datasetCounts": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "integer"
+                      }
+                    },
+                    "totalEvents": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "catalogCounts",
+                    "datasetCounts",
+                    "totalEvents"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Health check endpoint",
+        "description": "Returns the health status of the API and its dependencies.",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

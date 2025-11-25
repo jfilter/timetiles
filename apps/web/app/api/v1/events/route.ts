@@ -15,26 +15,33 @@ import { getPayload } from "payload";
 import { type MapBounds, parseBoundsParameter } from "@/lib/geospatial";
 import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
+import { extractListParameters } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 import type { Event, User } from "@/payload-types";
 
 const addCatalogFilter = (where: Where, catalog: string) => {
+  const catalogId = parseInt(catalog, 10);
+  if (isNaN(catalogId)) return;
+
   where.and = [
     ...(Array.isArray(where.and) ? where.and : []),
     {
-      "dataset.catalog.slug": {
-        equals: catalog,
+      "dataset.catalog": {
+        equals: catalogId,
       },
     },
   ];
 };
 
 const addDatasetFilter = (where: Where, datasets: string[]) => {
+  const datasetIds = datasets.map((d) => parseInt(d, 10)).filter((id) => !isNaN(id));
+  if (datasetIds.length === 0) return;
+
   where.and = [
     ...(Array.isArray(where.and) ? where.and : []),
     {
-      "dataset.slug": {
-        in: datasets,
+      dataset: {
+        in: datasetIds,
       },
     },
   ];
@@ -176,17 +183,6 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
     logError(error, "Failed to fetch events list", { user: request.user?.id });
     return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
   }
-});
-
-const extractListParameters = (searchParams: URLSearchParams) => ({
-  boundsParam: searchParams.get("bounds"),
-  catalog: searchParams.get("catalog"),
-  datasets: searchParams.getAll("datasets"),
-  startDate: searchParams.get("startDate"),
-  endDate: searchParams.get("endDate"),
-  page: parseInt(searchParams.get("page") ?? "1", 10),
-  limit: Math.min(parseInt(searchParams.get("limit") ?? "100", 10), 1000),
-  sort: searchParams.get("sort") ?? "-eventTimestamp",
 });
 
 const buildWhereClause = (parameters: ReturnType<typeof extractListParameters>, bounds: MapBounds | null): Where => {

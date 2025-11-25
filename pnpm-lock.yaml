@@ -68,13 +68,13 @@ importers:
         version: link:../../packages/ui
       next:
         specifier: ^15.2.3
-        version: 15.2.3(@babel/core@7.28.0)(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4)
+        version: 15.2.3(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4)
       nextra:
         specifier: ^4.3.0
-        version: 4.3.0(acorn@8.15.0)(next@15.2.3(@babel/core@7.28.0)(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3)
+        version: 4.3.0(acorn@8.15.0)(next@15.2.3(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3)
       nextra-theme-docs:
         specifier: ^4.3.0
-        version: 4.3.0(@types/react@19.0.10)(immer@10.1.3)(next@15.2.3(@babel/core@7.28.0)(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(nextra@4.3.0(acorn@8.15.0)(next@15.2.3(@babel/core@7.28.0)(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(use-sync-external-store@1.5.0(react@19.0.0))
+        version: 4.3.0(@types/react@19.0.10)(immer@10.1.3)(next@15.2.3(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(nextra@4.3.0(acorn@8.15.0)(next@15.2.3(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(use-sync-external-store@1.5.0(react@19.0.0))
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -124,6 +124,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@asteasolutions/zod-to-openapi':
+        specifier: ^7.3.4
+        version: 7.3.4(zod@3.25.76)
       '@cfworker/json-schema':
         specifier: ^4.1.1
         version: 4.1.1
@@ -226,6 +229,12 @@ importers:
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
+      yaml:
+        specifier: ^2.8.1
+        version: 2.8.1
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
       zustand:
         specifier: ^5.0.6
         version: 5.0.6(@types/react@19.0.10)(immer@10.1.3)(react@19.0.0)(use-sync-external-store@1.5.0(react@19.0.0))
@@ -313,7 +322,7 @@ importers:
     devDependencies:
       '@mermaid-js/mermaid-cli':
         specifier: ^11.12.0
-        version: 11.12.0(@babel/core@7.28.0)(@babel/template@7.27.2)(@types/react@19.0.10)(puppeteer@23.11.1(typescript@5.7.3))(tsx@4.20.5)(yaml@2.8.0)
+        version: 11.12.0(@babel/core@7.28.0)(@babel/template@7.27.2)(@types/react@19.0.10)(puppeteer@23.11.1(typescript@5.7.3))(tsx@4.20.5)(yaml@2.8.1)
 
   packages/eslint-config:
     dependencies:
@@ -544,6 +553,11 @@ packages:
 
   '@asamuzakjp/css-color@3.2.0':
     resolution: {integrity: sha512-K1A6z8tS3XsmCMM86xoWdn7Fkdn9m6RSVtocUrJYIwZnFVkng/PvkEoWtOWmP+Scc6saYWHWZYbndEEXxl24jw==}
+
+  '@asteasolutions/zod-to-openapi@7.3.4':
+    resolution: {integrity: sha512-/2rThQ5zPi9OzVwes6U7lK1+Yvug0iXu25olp7S0XsYmOqnyMfxH7gdSQjn/+DSOHRg7wnotwGJSyL+fBKdnEA==}
+    peerDependencies:
+      zod: ^3.20.2
 
   '@babel/code-frame@7.27.1':
     resolution: {integrity: sha512-cjQ7ZlQ0Mv3b47hABuTevyTuYN4i+loJKGeV9flcCgIK37cCXRh+L1bd3iBHlynerhQ7BhCkn2BPbQUL+rGqFg==}
@@ -7828,6 +7842,9 @@ packages:
   oniguruma-to-es@4.3.3:
     resolution: {integrity: sha512-rPiZhzC3wXwE59YQMRDodUwwT9FZ9nNBwQQfsd1wfdtlKEyCdRV0avrTcSZ5xlIvGRVPd/cx6ZN45ECmS39xvg==}
 
+  openapi3-ts@4.5.0:
+    resolution: {integrity: sha512-jaL+HgTq2Gj5jRcfdutgRGLosCy/hT8sQf6VOy+P+g36cZOjI1iukdPnijC+4CmeRzg/jEllJUboEic2FhxhtQ==}
+
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
@@ -10081,6 +10098,11 @@ packages:
     engines: {node: '>= 14.6'}
     hasBin: true
 
+  yaml@2.8.1:
+    resolution: {integrity: sha512-lcYcMxX2PO9XMGvAJkJ3OsNMw+/7FKes7/hgerGUYWIoWu5j/+YQqcZr5JnPZWzOsEBgMbSbiSTn/dv/69Mkpw==}
+    engines: {node: '>= 14.6'}
+    hasBin: true
+
   yargs-parser@18.1.3:
     resolution: {integrity: sha512-o50j0JeToy/4K6OZcaQmW6lyXXKhq7csREXcDwk2omFPJEwUNOVtJKvmDr9EI1fAJZUyZcRF7kxGBWmRXudrCQ==}
     engines: {node: '>=6'}
@@ -10193,6 +10215,11 @@ snapshots:
       '@csstools/css-parser-algorithms': 3.0.5(@csstools/css-tokenizer@3.0.4)
       '@csstools/css-tokenizer': 3.0.4
       lru-cache: 10.4.3
+
+  '@asteasolutions/zod-to-openapi@7.3.4(zod@3.25.76)':
+    dependencies:
+      openapi3-ts: 4.5.0
+      zod: 3.25.76
 
   '@babel/code-frame@7.27.1':
     dependencies:
@@ -11695,9 +11722,9 @@ snapshots:
       react-dom: 19.0.0(react@19.0.0)
       use-sync-external-store: 1.5.0(react@19.0.0)
 
-  '@headlessui/tailwindcss@0.2.2(tailwindcss@3.4.18(tsx@4.20.5)(yaml@2.8.0))':
+  '@headlessui/tailwindcss@0.2.2(tailwindcss@3.4.18(tsx@4.20.5)(yaml@2.8.1))':
     dependencies:
-      tailwindcss: 3.4.18(tsx@4.20.5)(yaml@2.8.0)
+      tailwindcss: 3.4.18(tsx@4.20.5)(yaml@2.8.1)
 
   '@humanfs/core@0.19.1': {}
 
@@ -12287,9 +12314,9 @@ snapshots:
       - acorn
       - supports-color
 
-  '@mermaid-js/mermaid-cli@11.12.0(@babel/core@7.28.0)(@babel/template@7.27.2)(@types/react@19.0.10)(puppeteer@23.11.1(typescript@5.7.3))(tsx@4.20.5)(yaml@2.8.0)':
+  '@mermaid-js/mermaid-cli@11.12.0(@babel/core@7.28.0)(@babel/template@7.27.2)(@types/react@19.0.10)(puppeteer@23.11.1(typescript@5.7.3))(tsx@4.20.5)(yaml@2.8.1)':
     dependencies:
-      '@mermaid-js/mermaid-zenuml': 0.2.2(@babel/core@7.28.0)(@babel/template@7.27.2)(@types/react@19.0.10)(mermaid@11.12.0)(tsx@4.20.5)(yaml@2.8.0)
+      '@mermaid-js/mermaid-zenuml': 0.2.2(@babel/core@7.28.0)(@babel/template@7.27.2)(@types/react@19.0.10)(mermaid@11.12.0)(tsx@4.20.5)(yaml@2.8.1)
       chalk: 5.6.0
       commander: 14.0.1
       import-meta-resolve: 4.1.0
@@ -12303,9 +12330,9 @@ snapshots:
       - tsx
       - yaml
 
-  '@mermaid-js/mermaid-zenuml@0.2.2(@babel/core@7.28.0)(@babel/template@7.27.2)(@types/react@19.0.10)(mermaid@11.12.0)(tsx@4.20.5)(yaml@2.8.0)':
+  '@mermaid-js/mermaid-zenuml@0.2.2(@babel/core@7.28.0)(@babel/template@7.27.2)(@types/react@19.0.10)(mermaid@11.12.0)(tsx@4.20.5)(yaml@2.8.1)':
     dependencies:
-      '@zenuml/core': 3.41.5(@babel/core@7.28.0)(@babel/template@7.27.2)(@types/react@19.0.10)(tsx@4.20.5)(yaml@2.8.0)
+      '@zenuml/core': 3.41.5(@babel/core@7.28.0)(@babel/template@7.27.2)(@types/react@19.0.10)(tsx@4.20.5)(yaml@2.8.1)
       mermaid: 11.12.0
     transitivePeerDependencies:
       - '@babel/core'
@@ -14334,11 +14361,11 @@ snapshots:
 
   '@xmldom/xmldom@0.9.8': {}
 
-  '@zenuml/core@3.41.5(@babel/core@7.28.0)(@babel/template@7.27.2)(@types/react@19.0.10)(tsx@4.20.5)(yaml@2.8.0)':
+  '@zenuml/core@3.41.5(@babel/core@7.28.0)(@babel/template@7.27.2)(@types/react@19.0.10)(tsx@4.20.5)(yaml@2.8.1)':
     dependencies:
       '@floating-ui/react': 0.27.16(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@headlessui/react': 2.2.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@headlessui/tailwindcss': 0.2.2(tailwindcss@3.4.18(tsx@4.20.5)(yaml@2.8.0))
+      '@headlessui/tailwindcss': 0.2.2(tailwindcss@3.4.18(tsx@4.20.5)(yaml@2.8.1))
       antlr4: 4.11.0
       class-variance-authority: 0.7.1
       clsx: 2.1.1
@@ -14357,7 +14384,7 @@ snapshots:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
       tailwind-merge: 3.3.1
-      tailwindcss: 3.4.18(tsx@4.20.5)(yaml@2.8.0)
+      tailwindcss: 3.4.18(tsx@4.20.5)(yaml@2.8.1)
     transitivePeerDependencies:
       - '@babel/core'
       - '@babel/template'
@@ -18669,7 +18696,7 @@ snapshots:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
-  next@15.2.3(@babel/core@7.28.0)(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4):
+  next@15.2.3(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4):
     dependencies:
       '@next/env': 15.2.3
       '@swc/counter': 0.1.3
@@ -18721,13 +18748,13 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  nextra-theme-docs@4.3.0(@types/react@19.0.10)(immer@10.1.3)(next@15.2.3(@babel/core@7.28.0)(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(nextra@4.3.0(acorn@8.15.0)(next@15.2.3(@babel/core@7.28.0)(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(use-sync-external-store@1.5.0(react@19.0.0)):
+  nextra-theme-docs@4.3.0(@types/react@19.0.10)(immer@10.1.3)(next@15.2.3(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(nextra@4.3.0(acorn@8.15.0)(next@15.2.3(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(use-sync-external-store@1.5.0(react@19.0.0)):
     dependencies:
       '@headlessui/react': 2.2.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       clsx: 2.1.1
-      next: 15.2.3(@babel/core@7.28.0)(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4)
+      next: 15.2.3(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4)
       next-themes: 0.4.4(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      nextra: 4.3.0(acorn@8.15.0)(next@15.2.3(@babel/core@7.28.0)(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3)
+      nextra: 4.3.0(acorn@8.15.0)(next@15.2.3(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3)
       react: 19.0.0
       react-compiler-runtime: 19.1.0-rc.2(react@19.0.0)
       react-dom: 19.0.0(react@19.0.0)
@@ -18739,7 +18766,7 @@ snapshots:
       - immer
       - use-sync-external-store
 
-  nextra@4.3.0(acorn@8.15.0)(next@15.2.3(@babel/core@7.28.0)(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3):
+  nextra@4.3.0(acorn@8.15.0)(next@15.2.3(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3):
     dependencies:
       '@formatjs/intl-localematcher': 0.6.1
       '@headlessui/react': 2.2.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -18760,7 +18787,7 @@ snapshots:
       mdast-util-gfm: 3.1.0
       mdast-util-to-hast: 13.2.0
       negotiator: 1.0.0
-      next: 15.2.3(@babel/core@7.28.0)(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4)
+      next: 15.2.3(@playwright/test@1.54.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.77.4)
       react: 19.0.0
       react-compiler-runtime: 19.1.0-rc.2(react@19.0.0)
       react-dom: 19.0.0(react@19.0.0)
@@ -19002,6 +19029,10 @@ snapshots:
       oniguruma-parser: 0.12.1
       regex: 6.0.1
       regex-recursion: 6.0.2
+
+  openapi3-ts@4.5.0:
+    dependencies:
+      yaml: 2.8.1
 
   optionator@0.9.4:
     dependencies:
@@ -19401,14 +19432,14 @@ snapshots:
       camelcase-css: 2.0.1
       postcss: 8.5.3
 
-  postcss-load-config@6.0.1(jiti@1.21.7)(postcss@8.5.3)(tsx@4.20.5)(yaml@2.8.0):
+  postcss-load-config@6.0.1(jiti@1.21.7)(postcss@8.5.3)(tsx@4.20.5)(yaml@2.8.1):
     dependencies:
       lilconfig: 3.1.3
     optionalDependencies:
       jiti: 1.21.7
       postcss: 8.5.3
       tsx: 4.20.5
-      yaml: 2.8.0
+      yaml: 2.8.1
 
   postcss-nested@6.2.0(postcss@8.5.3):
     dependencies:
@@ -19602,7 +19633,7 @@ snapshots:
       unicode-properties: 1.4.1
       urijs: 1.19.11
       wordwrap: 1.0.0
-      yaml: 2.8.0
+      yaml: 2.8.1
     transitivePeerDependencies:
       - encoding
 
@@ -20679,7 +20710,7 @@ snapshots:
 
   tailwind-merge@3.3.1: {}
 
-  tailwindcss@3.4.18(tsx@4.20.5)(yaml@2.8.0):
+  tailwindcss@3.4.18(tsx@4.20.5)(yaml@2.8.1):
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
@@ -20698,7 +20729,7 @@ snapshots:
       postcss: 8.5.3
       postcss-import: 15.1.0(postcss@8.5.3)
       postcss-js: 4.1.0(postcss@8.5.3)
-      postcss-load-config: 6.0.1(jiti@1.21.7)(postcss@8.5.3)(tsx@4.20.5)(yaml@2.8.0)
+      postcss-load-config: 6.0.1(jiti@1.21.7)(postcss@8.5.3)(tsx@4.20.5)(yaml@2.8.1)
       postcss-nested: 6.2.0(postcss@8.5.3)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.10
@@ -21142,7 +21173,7 @@ snapshots:
       vfile-message: 4.0.2
       vfile-reporter: 8.1.1
       vfile-statistics: 3.0.0
-      yaml: 2.8.0
+      yaml: 2.8.1
     transitivePeerDependencies:
       - bluebird
       - supports-color
@@ -21685,6 +21716,8 @@ snapshots:
   yaml@1.10.2: {}
 
   yaml@2.8.0: {}
+
+  yaml@2.8.1: {}
 
   yargs-parser@18.1.3:
     dependencies:

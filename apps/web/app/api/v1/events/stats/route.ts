@@ -20,9 +20,9 @@ import {
   type AggregationFilters,
   buildAggregationWhereClause,
   normalizeEndDate,
-  parseDatasetIds,
 } from "@/lib/services/aggregation-filters";
 import { internalError } from "@/lib/utils/api-response";
+import { extractBaseEventParameters } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 
 /**
@@ -78,12 +78,12 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
       );
     }
 
-    // Parse filter parameters
-    const catalog = searchParams.get("catalog");
-    const datasetsParam = searchParams.get("datasets");
-    const datasets = parseDatasetIds(datasetsParam);
-    const startDate = searchParams.get("startDate");
-    const endDate = normalizeEndDate(searchParams.get("endDate"));
+    // Parse filter parameters using shared utility
+    const baseParams = extractBaseEventParameters(searchParams);
+    const catalog = baseParams.catalog;
+    const datasets = baseParams.datasets;
+    const startDate = baseParams.startDate;
+    const endDate = normalizeEndDate(baseParams.endDate);
 
     // Parse geographic bounds
     const boundsParam = searchParams.get("bounds");
@@ -132,6 +132,9 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
  *
  * Uses GROUP BY to aggregate event counts by the specified field,
  * applying all filters in the WHERE clause for optimal performance.
+ *
+ * When datasets are explicitly filtered, ensures all selected datasets
+ * appear in results (with 0 count if no events match in viewport).
  */
 const executeAggregationQuery = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
@@ -187,12 +190,48 @@ const executeAggregationQuery = async (
     }>;
   };
 
-  // Transform results
-  const items: AggregationItem[] = queryResult.rows.map((row) => ({
-    id: row.id,
-    name: row.name ?? `${groupBy.charAt(0).toUpperCase() + groupBy.slice(1)} ${row.id}`,
-    count: row.count,
-  }));
+  // Transform results into a map for easy lookup
+  const resultMap = new Map<number, AggregationItem>();
+  for (const row of queryResult.rows) {
+    resultMap.set(row.id, {
+      id: row.id,
+      name: row.name ?? `${groupBy.charAt(0).toUpperCase() + groupBy.slice(1)} ${row.id}`,
+      count: row.count,
+    });
+  }
+
+  // If datasets are explicitly filtered, ensure all selected datasets appear in results
+  // (even with 0 count if they have no events in viewport)
+  if (groupBy === "dataset" && filters.datasets && filters.datasets.length > 0) {
+    const selectedDatasetIds = filters.datasets.map((d) => parseInt(d)).filter((id) => !isNaN(id));
+
+    // Fetch dataset names for any missing datasets
+    const missingDatasetIds = selectedDatasetIds.filter((id) => !resultMap.has(id));
+
+    if (missingDatasetIds.length > 0) {
+      const missingDatasetsResult = (await payload.db.drizzle.execute(sql`
+        SELECT id, name FROM payload.datasets
+        WHERE id IN (${sql.join(
+          missingDatasetIds.map((id) => sql`${id}`),
+          sql`, `
+        )})
+      `)) as {
+        rows: Array<{ id: number; name: string | null }>;
+      };
+
+      // Add missing datasets with 0 count
+      for (const row of missingDatasetsResult.rows) {
+        resultMap.set(row.id, {
+          id: row.id,
+          name: row.name ?? `Dataset ${row.id}`,
+          count: 0,
+        });
+      }
+    }
+  }
+
+  // Convert map to array, sorted by count descending (0-count items at the end)
+  const items = Array.from(resultMap.values()).sort((a, b) => b.count - a.count);
 
   // Calculate total events
   const total = items.reduce((sum, item) => sum + item.count, 0);

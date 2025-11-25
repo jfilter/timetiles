@@ -9,10 +9,10 @@
  */
 import { NextRequest } from "next/server";
 
-import { GET } from "../../../app/api/events/map-clusters/route";
+import { GET } from "../../../app/api/v1/events/geo/route";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
-describe("Map-clusters API test", () => {
+describe("Geo API test", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   afterEach(async () => {
@@ -28,7 +28,7 @@ describe("Map-clusters API test", () => {
       // API routes now use getPayload({ config }) directly
 
       // Create a mock request with bounds parameter
-      const url = new URL("http://localhost:3000/api/events/map-clusters");
+      const url = new URL("http://localhost:3000/api/v1/events/geo");
       url.searchParams.set(
         "bounds",
         JSON.stringify({
