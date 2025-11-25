@@ -5,23 +5,26 @@ import { EventFilters } from "@/components/filters/event-filters";
 import type { Catalog } from "@/payload-types";
 
 import { createCatalogs, createDatasets, createRichText } from "../../mocks";
-import { renderWithProviders, userEvent } from "../../setup/unit/react-render";
+import { renderWithProviders } from "../../setup/unit/react-render";
 
 const mockCatalogs = createCatalogs(2);
 const mockDatasets = createDatasets(3);
 
 describe("EventFilters", () => {
-  test("renders with all datasets initially when no catalog selected", () => {
+  test("renders catalog cards when no catalog is selected", () => {
     const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />);
 
-    // Should show all datasets initially (no catalog selected - defaults to "All Catalogs")
-    expect(container).toHaveTextContent("Air Quality Measurements");
-    expect(container).toHaveTextContent("Water Quality Data");
-    expect(container).toHaveTextContent("GDP Growth Rates");
-    expect(container).toHaveTextContent("All Catalogs");
+    // Should show catalog cards with names
+    expect(container).toHaveTextContent("Test Catalog 1");
+    expect(container).toHaveTextContent("Test Catalog 2");
+    expect(container).toHaveTextContent("Catalogs");
+
+    // Should NOT show dataset chips when no catalog is selected
+    expect(container).not.toHaveTextContent("Air Quality Measurements");
+    expect(container).not.toHaveTextContent("Datasets");
   });
 
-  test("filters datasets when catalog is selected via URL state", () => {
+  test("shows dataset chips when catalog is selected via URL state", () => {
     // Test the filtering logic by setting URL state to select first catalog
     const searchParams = new URLSearchParams("catalog=1");
 
@@ -29,7 +32,10 @@ describe("EventFilters", () => {
       searchParams,
     });
 
-    // Should only show datasets from catalog 1 (Air Quality and GDP Growth Rates)
+    // Should show Datasets section
+    expect(container).toHaveTextContent("Datasets");
+
+    // Should show datasets from catalog 1 (Air Quality and GDP Growth Rates)
     expect(container).toHaveTextContent("Air Quality Measurements");
     expect(container).toHaveTextContent("GDP Growth Rates");
 
@@ -37,90 +43,43 @@ describe("EventFilters", () => {
     expect(container).not.toHaveTextContent("Water Quality Data");
   });
 
-  test("shows all datasets when catalog is set to all via URL state", () => {
-    // Test that null catalog value shows all datasets
-    const searchParams = new URLSearchParams();
-
-    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />, {
-      searchParams,
-    });
-
-    // Should show all datasets
-    expect(container).toHaveTextContent("Air Quality Measurements");
-    expect(container).toHaveTextContent("Water Quality Data");
-    expect(container).toHaveTextContent("GDP Growth Rates");
-  });
-
-  test("manages dataset selection state correctly", async () => {
-    const user = userEvent.setup();
-
+  test("catalog cards are clickable buttons", () => {
     const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />);
 
-    // Find the checkbox for Air Quality Measurements within this container
-    const airQualityCheckbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
-    expect(airQualityCheckbox).toBeInTheDocument();
+    // Find all catalog card buttons
+    const catalogButtons = container.querySelectorAll('button[type="button"]');
 
-    // Initially should not be checked
-    expect(airQualityCheckbox).not.toBeChecked();
+    // Should have at least 2 catalog buttons (one for each catalog)
+    expect(catalogButtons.length).toBeGreaterThanOrEqual(2);
 
-    // Click to check it
-    await user.click(airQualityCheckbox);
-    expect(airQualityCheckbox).toBeChecked();
-
-    // Click again to uncheck it
-    await user.click(airQualityCheckbox);
-    expect(airQualityCheckbox).not.toBeChecked();
+    // Buttons should be enabled
+    const firstCatalogButton = Array.from(catalogButtons).find(
+      (btn) => btn.textContent?.includes("Test Catalog 1") ?? btn.textContent?.includes("Test Catalog 2")
+    );
+    expect(firstCatalogButton).toBeTruthy();
+    expect(firstCatalogButton).not.toBeDisabled();
   });
 
-  test("shows selected datasets from URL state", () => {
-    // Test that datasets selected via URL are checked
-    const searchParams = new URLSearchParams("datasets=1&datasets=2");
+  test("catalog cards have appropriate styling classes", () => {
+    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />);
 
-    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />, {
-      searchParams,
-    });
+    // Find catalog card buttons
+    const catalogButtons = container.querySelectorAll("button.rounded-sm.border-2");
+    expect(catalogButtons.length).toBeGreaterThanOrEqual(1);
 
-    // Debug: let's see what the actual checkbox states are
-    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
-
-    // Check that checkboxes exist
-    expect(checkboxes).toHaveLength(3);
-
-    // For now, let's just verify the checkboxes exist and can be identified
-    const airQualityCheckbox = Array.from(checkboxes).find(
-      (cb) => cb.nextElementSibling?.textContent === "Air Quality Measurements"
-    );
-    const waterQualityCheckbox = Array.from(checkboxes).find(
-      (cb) => cb.nextElementSibling?.textContent === "Water Quality Data"
-    );
-    const gdpCheckbox = Array.from(checkboxes).find((cb) => cb.nextElementSibling?.textContent === "GDP Growth Rates");
-
-    // Verify checkboxes are found
-    expect(airQualityCheckbox).toBeInTheDocument();
-    expect(waterQualityCheckbox).toBeInTheDocument();
-    expect(gdpCheckbox).toBeInTheDocument();
-
-    // Note: URL state may not synchronously update checkbox states in tests
-    // This tests that the checkboxes exist and are ready for interaction
+    // Catalog buttons should have base styling
+    const firstButton = catalogButtons[0];
+    expect(firstButton).toHaveClass("rounded-sm");
+    expect(firstButton).toHaveClass("border-2");
+    expect(firstButton).toHaveClass("p-3");
   });
 
-  test("renders date filter inputs with correct values from URL state", () => {
-    const searchParams = new URLSearchParams("startDate=2024-01-01&endDate=2024-12-31");
+  test("shows dataset counts in catalog cards", () => {
+    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />);
 
-    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />, {
-      searchParams,
-    });
-
-    const startDateInput = container.querySelector("#start-date") as HTMLInputElement;
-    const endDateInput = container.querySelector("#end-date") as HTMLInputElement;
-
-    // Should render date inputs with correct values from URL
-    expect(startDateInput).toBeInTheDocument();
-    expect(endDateInput).toBeInTheDocument();
-    expect(startDateInput).toHaveAttribute("type", "date");
-    expect(endDateInput).toHaveAttribute("type", "date");
-    expect(startDateInput).toHaveValue("2024-01-01");
-    expect(endDateInput).toHaveValue("2024-12-31");
+    // Should show dataset counts (Test Catalog 1 has 2 datasets, Test Catalog 2 has 1 dataset)
+    expect(container).toHaveTextContent("2 datasets");
+    expect(container).toHaveTextContent("1 dataset");
   });
 
   test("shows clear date filters button when dates are set", () => {
@@ -141,15 +100,15 @@ describe("EventFilters", () => {
     expect(container).not.toHaveTextContent("Clear date filters");
   });
 
-  test("shows appropriate empty state when no datasets available", () => {
+  test("shows no catalogs when empty catalogs array", () => {
     const { container } = renderWithProviders(<EventFilters catalogs={[]} datasets={[]} />);
 
-    // Should show no datasets available message
-    expect(container).toHaveTextContent("No datasets available");
-    expect(container).toHaveTextContent("All Catalogs");
+    // Should show Catalogs label but no catalog cards
+    expect(container).toHaveTextContent("Catalogs");
+    expect(container).not.toHaveTextContent("datasets");
   });
 
-  test("filters out datasets correctly when catalog has no datasets", () => {
+  test("shows no datasets available when selected catalog has no datasets", () => {
     // Create a catalog with no associated datasets
     const catalogWithNoDatasets: Catalog = {
       id: 99,

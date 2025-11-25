@@ -13,6 +13,7 @@
 import type { EChartsOption } from "echarts";
 import { useCallback, useMemo } from "react";
 
+import { cartographicColors } from "../../lib/chart-themes";
 import { BaseChart } from "./base-chart";
 import type { ChartTheme, EChartsEventParams } from "./types";
 
@@ -148,17 +149,17 @@ export const TimeHistogram = ({
   );
 
   const getSeriesConfig = useCallback(
-    (isDark: boolean, histogramData: TimeHistogramDataItem[]) => [
+    (_isDark: boolean, histogramData: TimeHistogramDataItem[]) => [
       {
         type: "bar",
         data: histogramData.map((item) => [item.date, item.count]),
         itemStyle: {
-          color: isDark ? "#60a5fa" : "#3b82f6",
+          color: cartographicColors.blue,
           borderRadius: [2, 2, 0, 0],
         },
         emphasis: {
           itemStyle: {
-            color: isDark ? "#93c5fd" : "#1d4ed8",
+            color: cartographicColors.navy,
           },
         },
       },

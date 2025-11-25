@@ -2,15 +2,14 @@
  * Drawer component for event filtering controls.
  *
  * Provides a collapsible sidebar with filter options for events including
- * date range, dataset selection, and other filter criteria. Manages filter
- * state and communicates changes to parent components.
+ * date range, dataset selection, and other filter criteria. Width is
+ * controlled by parent CSS Grid layout; this component handles content
+ * visibility transitions.
  *
  * @module
  * @category Components
  */
 "use client";
-
-import { cn } from "@timetiles/ui/lib/utils";
 
 import { EventFilters } from "@/components/filters/event-filters";
 import type { Catalog, Dataset } from "@/payload-types";
@@ -18,36 +17,10 @@ import type { Catalog, Dataset } from "@/payload-types";
 interface FilterDrawerProps {
   catalogs: Catalog[];
   datasets: Dataset[];
-  isOpen: boolean;
-  onToggle: () => void;
 }
 
-export const FilterDrawer = ({ catalogs, datasets, isOpen }: Readonly<FilterDrawerProps>) => (
-  <>
-    {/* Drawer Container */}
-    <div
-      className={cn(
-        "relative h-full border-l bg-white transition-all duration-300 ease-in-out",
-        isOpen ? "w-80" : "w-0"
-      )}
-    >
-      {/* Drawer Content */}
-      <div
-        className={cn(
-          "absolute right-0 top-0 h-full w-80 overflow-hidden",
-          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        )}
-      >
-        {/* Drawer Header */}
-        <div className="border-b bg-white p-4">
-          <h2 className="text-lg font-semibold">Filters</h2>
-        </div>
-
-        {/* Drawer Body */}
-        <div className="h-full overflow-y-auto p-4 pb-20">
-          <EventFilters catalogs={catalogs} datasets={datasets} />
-        </div>
-      </div>
-    </div>
-  </>
+export const FilterDrawer = ({ catalogs, datasets }: Readonly<FilterDrawerProps>) => (
+  <div className="bg-background h-full w-80 overflow-y-auto p-4">
+    <EventFilters catalogs={catalogs} datasets={datasets} />
+  </div>
 );

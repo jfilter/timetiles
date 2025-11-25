@@ -12,6 +12,7 @@
 import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
+import { cartographicColors } from "../../lib/chart-themes";
 import { BaseChart } from "./base-chart";
 import type { BarChartDataItem, ChartTheme } from "./types";
 
@@ -95,7 +96,9 @@ export const BarChart = ({
             value,
             name: labels[index], // Track by name
             itemStyle: {
-              color: "#3b82f6",
+              color: Array.isArray(theme?.itemColor)
+                ? theme.itemColor[0]
+                : (theme?.itemColor ?? cartographicColors.blue),
             },
           })),
           universalTransition: true,
@@ -117,7 +120,7 @@ export const BarChart = ({
         },
       ],
     };
-  }, [data]);
+  }, [data, theme?.itemColor]);
 
   // Create event handlers
   // Very important to depend on data to enable animation on data change.

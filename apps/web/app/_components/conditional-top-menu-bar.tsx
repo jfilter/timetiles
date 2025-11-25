@@ -11,7 +11,7 @@
 import { getPayload } from "payload";
 
 import config from "@/payload.config";
-import type { MainMenu } from "@/payload-types";
+import type { Catalog, Dataset, MainMenu } from "@/payload-types";
 
 import { AdaptiveHeader } from "./adaptive-header";
 
@@ -22,8 +22,20 @@ const getMainMenu = async (): Promise<MainMenu> => {
   });
 };
 
-export const ConditionalTopMenuBar = async () => {
-  const mainMenu = await getMainMenu();
+const getCatalogsAndDatasets = async (): Promise<{ catalogs: Catalog[]; datasets: Dataset[] }> => {
+  const payload = await getPayload({ config });
+  const [catalogsResult, datasetsResult] = await Promise.all([
+    payload.find({ collection: "catalogs", limit: 100 }),
+    payload.find({ collection: "datasets", limit: 1000 }),
+  ]);
+  return {
+    catalogs: catalogsResult.docs,
+    datasets: datasetsResult.docs,
+  };
+};
 
-  return <AdaptiveHeader mainMenu={mainMenu} />;
+export const ConditionalTopMenuBar = async () => {
+  const [mainMenu, { catalogs, datasets }] = await Promise.all([getMainMenu(), getCatalogsAndDatasets()]);
+
+  return <AdaptiveHeader mainMenu={mainMenu} catalogs={catalogs} datasets={datasets} />;
 };

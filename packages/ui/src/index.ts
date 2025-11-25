@@ -21,6 +21,7 @@ export {
   cardVariants,
   CardVersion,
 } from "./components/card";
+export { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./components/collapsible";
 export {
   DropdownMenu,
   DropdownMenuCheckboxItem,

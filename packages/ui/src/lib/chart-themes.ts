@@ -24,7 +24,7 @@ const cartographicColors = {
   parchment: "#f8f5f0", // oklch(0.96 0.01 80)
   charcoal: "#404040", // oklch(0.25 0 0)
   navy: "#4a5568", // oklch(0.35 0.06 250)
-  blue: "#6495ed", // oklch(0.58 0.11 220)
+  blue: "#0089a7", // oklch(0.58 0.11 220)
   terracotta: "#cd853f", // oklch(0.56 0.14 35)
   forest: "#5f9e6e", // oklch(0.42 0.08 145)
   cream: "#e8e4dd", // oklch(0.88 0.01 80)
