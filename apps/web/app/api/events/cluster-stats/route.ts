@@ -12,43 +12,32 @@ import { sql } from "@payloadcms/db-postgres";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
+import { DEFAULT_CLUSTER_STATS } from "@/lib/constants/map";
 import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
+import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
+import { createErrorHandler } from "@/lib/utils/api-response";
+import { buildMapClusterFilters } from "@/lib/utils/event-filters";
+import { extractClusterStatsParameters } from "@/lib/utils/event-params";
 import config from "@/payload.config";
-import type { User } from "@/payload-types";
 
-/**
- * Get catalog IDs that the user has access to
- */
-const getAccessibleCatalogIds = async (
-  payload: Awaited<ReturnType<typeof getPayload>>,
-  user?: User | null
-): Promise<number[]> => {
-  const { getAllAccessibleCatalogIds } = await import("@/lib/services/access-control");
-  return getAllAccessibleCatalogIds(payload, user);
-};
+const handleError = createErrorHandler("calculating cluster stats", logger);
 
 export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown) => {
   try {
     const payload = await getPayload({ config });
 
-    const parameters = extractRequestParameters(request.nextUrl.searchParams);
+    const parameters = extractClusterStatsParameters(request.nextUrl.searchParams);
 
     // Get accessible catalog IDs for this user
-    const accessibleCatalogIds = await getAccessibleCatalogIds(payload, request.user);
+    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, request.user);
 
     // If no accessible catalogs and no catalog filter specified, return empty result
     if (accessibleCatalogIds.length === 0 && !parameters.catalog) {
-      return NextResponse.json({
-        p20: 2,
-        p40: 5,
-        p60: 10,
-        p80: 20,
-        p100: 50,
-      });
+      return NextResponse.json(DEFAULT_CLUSTER_STATS);
     }
 
-    const filters = buildFilters(parameters, accessibleCatalogIds);
+    const filters = buildMapClusterFilters(parameters, accessibleCatalogIds);
     const stats = await calculateGlobalStats(payload, filters);
 
     return NextResponse.json(stats);
@@ -56,40 +45,6 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
     return handleError(error);
   }
 });
-
-const extractRequestParameters = (searchParams: URLSearchParams) => ({
-  catalog: searchParams.get("catalog"),
-  datasets: searchParams.getAll("datasets"),
-  startDate: searchParams.get("startDate"),
-  endDate: searchParams.get("endDate"),
-});
-
-const buildFilters = (
-  parameters: ReturnType<typeof extractRequestParameters>,
-  accessibleCatalogIds: number[]
-): Record<string, unknown> => {
-  const filters: Record<string, unknown> = {};
-
-  // Apply catalog access control
-  if (parameters.catalog != null) {
-    const catalogId = parseInt(parameters.catalog);
-    // Only include if user has access to this catalog
-    if (accessibleCatalogIds.includes(catalogId)) {
-      filters.catalog = parameters.catalog;
-    } else {
-      // User trying to access catalog they don't have permission for
-      filters.accessibleCatalogIds = accessibleCatalogIds;
-    }
-  } else {
-    // No specific catalog requested, filter by all accessible catalogs
-    filters.accessibleCatalogIds = accessibleCatalogIds;
-  }
-
-  if (parameters.datasets.length > 0 && parameters.datasets[0] !== "") filters.datasets = parameters.datasets;
-  if (parameters.startDate != null) filters.startDate = parameters.startDate;
-  if (parameters.endDate != null) filters.endDate = parameters.endDate;
-  return filters;
-};
 
 const calculateGlobalStats = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
@@ -170,7 +125,7 @@ const calculateGlobalStats = async (
 
   if (!row || row.total_clusters === 0) {
     logger.debug("No clusters found, returning default stats");
-    return { p20: 2, p40: 5, p60: 10, p80: 20, p100: 50 };
+    return DEFAULT_CLUSTER_STATS;
   }
 
   const stats = {
@@ -187,19 +142,4 @@ const calculateGlobalStats = async (
   });
 
   return stats;
-};
-
-const handleError = (error: unknown): NextResponse => {
-  logger.error("Error calculating cluster stats:", {
-    error: error as Error,
-    message: (error as Error).message,
-    stack: (error as Error).stack,
-  });
-  return NextResponse.json(
-    {
-      error: "Failed to calculate cluster stats",
-      details: (error as Error).message,
-    },
-    { status: 500 }
-  );
 };

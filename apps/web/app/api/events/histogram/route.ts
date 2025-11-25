@@ -15,52 +15,15 @@ import { sql } from "@payloadcms/db-postgres";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
-import { type MapBounds, parseBoundsParameter } from "@/lib/geospatial";
+import type { MapBounds } from "@/lib/geospatial";
+import { parseBoundsParameter } from "@/lib/geospatial";
 import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { internalError } from "@/lib/utils/api-response";
+import { buildEventFilters } from "@/lib/utils/event-filters";
+import { extractHistogramParameters, type HistogramParameters } from "@/lib/utils/event-params";
 import config from "@/payload.config";
-
-const buildFiltersWithBounds = (params: {
-  catalog: string | null;
-  datasets: string[];
-  startDate: string | null;
-  endDate: string | null;
-  bounds: MapBounds | null;
-  accessibleCatalogIds: number[];
-}) => {
-  const filters: Record<string, unknown> = {
-    datasets: params.datasets.length > 0 ? params.datasets.map((d) => parseInt(d)) : undefined,
-    startDate: params.startDate,
-    endDate: params.endDate,
-    ...(params.bounds != null && {
-      bounds: {
-        minLng: params.bounds.west,
-        maxLng: params.bounds.east,
-        minLat: params.bounds.south,
-        maxLat: params.bounds.north,
-      },
-    }),
-  };
-
-  // Apply catalog access control
-  if (params.catalog != null && params.catalog !== "") {
-    const catalogId = parseInt(params.catalog);
-    // Only include if user has access to this catalog
-    if (params.accessibleCatalogIds.includes(catalogId)) {
-      filters.catalogId = catalogId;
-    } else {
-      // User trying to access catalog they don't have permission for
-      filters.catalogIds = params.accessibleCatalogIds;
-    }
-  } else {
-    // No specific catalog requested, filter by all accessible catalogs
-    filters.catalogIds = params.accessibleCatalogIds;
-  }
-
-  return filters;
-};
 
 export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown): Promise<NextResponse> => {
   try {
@@ -86,36 +49,21 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
   }
 });
 
-const extractHistogramParameters = (searchParams: URLSearchParams) => ({
-  boundsParam: searchParams.get("bounds"),
-  catalog: searchParams.get("catalog"),
-  datasets: searchParams.getAll("datasets"),
-  startDate: searchParams.get("startDate"),
-  endDate: searchParams.get("endDate"),
-  // Flexible bucketing parameters
-  targetBuckets: parseInt(searchParams.get("targetBuckets") ?? "30", 10),
-  minBuckets: parseInt(searchParams.get("minBuckets") ?? "20", 10),
-  maxBuckets: parseInt(searchParams.get("maxBuckets") ?? "50", 10),
-});
-
 const executeHistogramQuery = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
-  parameters: ReturnType<typeof extractHistogramParameters>,
+  parameters: HistogramParameters,
   bounds: MapBounds | null,
   accessibleCatalogIds: number[]
 ) => {
-  const filtersWithBounds = buildFiltersWithBounds({
-    catalog: parameters.catalog,
-    datasets: parameters.datasets,
-    startDate: parameters.startDate,
-    endDate: parameters.endDate,
-    bounds,
+  const filters = buildEventFilters({
+    parameters,
     accessibleCatalogIds,
+    bounds,
   });
 
   return (await payload.db.drizzle.execute(sql`
     SELECT * FROM calculate_event_histogram(
-      ${JSON.stringify(filtersWithBounds)}::jsonb,
+      ${JSON.stringify(filters)}::jsonb,
       ${parameters.targetBuckets}::integer,
       ${parameters.minBuckets}::integer,
       ${parameters.maxBuckets}::integer

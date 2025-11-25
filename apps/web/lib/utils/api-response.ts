@@ -106,3 +106,38 @@ export const internalError = (
   code?: string,
   details?: unknown
 ): NextResponse<ErrorResponse> => apiError(message, 500, code ?? "INTERNAL_ERROR", details);
+
+/**
+ * Create an error handler function for API routes.
+ *
+ * This factory function creates a consistent error handler that logs errors
+ * and returns a standardized 500 response. Use this to eliminate duplicate
+ * error handling logic across API routes.
+ *
+ * @param context - Context string describing what action failed (e.g., "fetching map clusters")
+ * @param logger - Logger instance with error method
+ * @returns Error handler function
+ *
+ * @example
+ * ```typescript
+ * const handleError = createErrorHandler("fetching events", logger);
+ * // In catch block:
+ * return handleError(error);
+ * ```
+ */
+export const createErrorHandler =
+  (context: string, logger: { error: (message: string, meta?: unknown) => void }) =>
+  (error: unknown): NextResponse<ErrorResponse> => {
+    logger.error(`Error ${context}:`, {
+      error: error as Error,
+      message: (error as Error).message,
+      stack: (error as Error).stack,
+    });
+    return NextResponse.json(
+      {
+        error: `Failed to ${context.replace(/^(fetching|calculating|processing)\s+/, "")}`,
+        details: (error as Error).message,
+      },
+      { status: 500 }
+    );
+  };

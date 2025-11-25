@@ -15,26 +15,19 @@ import { getPayload } from "payload";
 import { isValidBounds, type MapBounds } from "@/lib/geospatial";
 import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
-import { badRequest } from "@/lib/utils/api-response";
+import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
+import { badRequest, createErrorHandler } from "@/lib/utils/api-response";
+import { buildMapClusterFilters } from "@/lib/utils/event-filters";
+import { extractMapClusterParameters } from "@/lib/utils/event-params";
 import config from "@/payload.config";
-import type { User } from "@/payload-types";
 
-/**
- * Get catalog IDs that the user has access to
- */
-const getAccessibleCatalogIds = async (
-  payload: Awaited<ReturnType<typeof getPayload>>,
-  user?: User | null
-): Promise<number[]> => {
-  const { getAllAccessibleCatalogIds } = await import("@/lib/services/access-control");
-  return getAllAccessibleCatalogIds(payload, user);
-};
+const handleError = createErrorHandler("fetching map clusters", logger);
 
 export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown) => {
   try {
     const payload = await getPayload({ config });
 
-    const parameters = extractRequestParameters(request.nextUrl.searchParams);
+    const parameters = extractMapClusterParameters(request.nextUrl.searchParams);
 
     const boundsResult = parseBounds(parameters.boundsParam);
     if ("error" in boundsResult) {
@@ -42,7 +35,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
     }
 
     // Get accessible catalog IDs for this user
-    const accessibleCatalogIds = await getAccessibleCatalogIds(payload, request.user);
+    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, request.user);
 
     // If no accessible catalogs and no catalog filter specified, return empty result
     if (accessibleCatalogIds.length === 0 && !parameters.catalog) {
@@ -52,7 +45,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
       });
     }
 
-    const filters = buildFilters(parameters, accessibleCatalogIds);
+    const filters = buildMapClusterFilters(parameters, accessibleCatalogIds);
 
     const result = await executeClusteringQuery(payload, boundsResult.bounds, parameters.zoom, filters);
     const clusters = transformResultToClusters(result.rows);
@@ -64,15 +57,6 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
   } catch (error) {
     return handleError(error);
   }
-});
-
-const extractRequestParameters = (searchParams: URLSearchParams) => ({
-  boundsParam: searchParams.get("bounds"),
-  zoom: parseInt(searchParams.get("zoom") ?? "10", 10),
-  catalog: searchParams.get("catalog"),
-  datasets: searchParams.getAll("datasets"),
-  startDate: searchParams.get("startDate"),
-  endDate: searchParams.get("endDate"),
 });
 
 const parseBounds = (boundsParam: string | null): { bounds: MapBounds } | { error: NextResponse } => {
@@ -98,33 +82,6 @@ const parseBounds = (boundsParam: string | null): { bounds: MapBounds } | { erro
       ),
     };
   }
-};
-
-const buildFilters = (
-  parameters: ReturnType<typeof extractRequestParameters>,
-  accessibleCatalogIds: number[]
-): Record<string, unknown> => {
-  const filters: Record<string, unknown> = {};
-
-  // Apply catalog access control
-  if (parameters.catalog != null) {
-    const catalogId = parseInt(parameters.catalog);
-    // Only include if user has access to this catalog
-    if (accessibleCatalogIds.includes(catalogId)) {
-      filters.catalog = parameters.catalog;
-    } else {
-      // User trying to access catalog they don't have permission for
-      filters.accessibleCatalogIds = accessibleCatalogIds;
-    }
-  } else {
-    // No specific catalog requested, filter by all accessible catalogs
-    filters.accessibleCatalogIds = accessibleCatalogIds;
-  }
-
-  if (parameters.datasets.length > 0 && parameters.datasets[0] !== "") filters.datasets = parameters.datasets;
-  if (parameters.startDate != null) filters.startDate = parameters.startDate;
-  if (parameters.endDate != null) filters.endDate = parameters.endDate;
-  return filters;
 };
 
 const executeClusteringQuery = async (
@@ -182,18 +139,3 @@ const transformResultToClusters = (rows: Array<Record<string, unknown>>) =>
       },
     };
   });
-
-const handleError = (error: unknown): NextResponse => {
-  logger.error("Error fetching map clusters:", {
-    error: error as Error,
-    message: (error as Error).message,
-    stack: (error as Error).stack,
-  });
-  return NextResponse.json(
-    {
-      error: "Failed to fetch map clusters",
-      details: (error as Error).message,
-    },
-    { status: 500 }
-  );
-};
