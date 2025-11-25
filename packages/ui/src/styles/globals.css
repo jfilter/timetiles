@@ -288,3 +288,40 @@
 .animate-collapsible-up {
   animation: collapsible-up 200ms ease-out;
 }
+
+/* MapLibre GL controls dark mode support */
+.dark .maplibregl-ctrl-group {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+.dark .maplibregl-ctrl-group button {
+  background-color: #1f2937;
+}
+
+.dark .maplibregl-ctrl-group button:hover {
+  background-color: #374151;
+}
+
+.dark .maplibregl-ctrl-group button + button {
+  border-top-color: #374151;
+}
+
+/* Style the zoom and other control icons for dark mode */
+.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1);
+}
+
+/* MapLibre attribution control dark mode */
+.dark .maplibregl-ctrl-attrib {
+  background-color: rgba(31, 41, 55, 0.8) !important;
+  color: #9ca3af !important;
+}
+
+.dark .maplibregl-ctrl-attrib a {
+  color: #60a5fa !important;
+}
+
+.dark .maplibregl-ctrl-attrib-button {
+  filter: invert(1) !important;
+}

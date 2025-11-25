@@ -28,6 +28,17 @@ const cartographicColors = {
   terracotta: "#cd853f", // oklch(0.56 0.14 35)
   forest: "#5f9e6e", // oklch(0.42 0.08 145)
   cream: "#e8e4dd", // oklch(0.88 0.01 80)
+
+  // Map visualization colors (cartographic palette)
+  mapPoint: "#0089a7", // cartographic-blue for individual event points
+  mapClusterGradient: [
+    "#f5e6d3", // p0-p20: very light terracotta
+    "#e8c9a0", // p20-p40: light terracotta
+    "#cd853f", // p40-p60: medium (cartographic-terracotta)
+    "#b06c2e", // p60-p80: dark terracotta
+    "#8b4513", // p80-p100: very dark terracotta (saddle brown)
+  ] as const,
+  mapStroke: "#ffffff", // White stroke for circles
 };
 
 export const defaultLightTheme: ChartTheme = {

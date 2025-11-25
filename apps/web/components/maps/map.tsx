@@ -15,7 +15,14 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import maplibregl from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 
+import { useTheme } from "@/lib/hooks/use-theme";
 import { logger } from "@/lib/logger";
+
+// Map style URLs for light and dark themes
+const MAP_STYLES = {
+  light: "/map-styles/cartographic.json",
+  dark: "/map-styles/cartographic-dark.json",
+} as const;
 
 interface MapProps {
   onBoundsChange?: (bounds: maplibregl.LngLatBounds) => void;
@@ -31,9 +38,13 @@ const DEFAULT_EVENTS: MapProps["events"] = [];
 const MAP_STYLE = { minHeight: "400px" };
 
 export const MapComponent = ({ onBoundsChange, events = DEFAULT_EVENTS }: Readonly<MapProps>) => {
+  const { resolvedTheme } = useTheme();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Select map style based on theme
+  const mapStyleUrl = MAP_STYLES[resolvedTheme];
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -41,7 +52,7 @@ export const MapComponent = ({ onBoundsChange, events = DEFAULT_EVENTS }: Readon
     try {
       map.current = new maplibregl.Map({
         container: mapContainer.current,
-        style: "https://tiles.versatiles.org/assets/styles/colorful/style.json",
+        style: mapStyleUrl,
         center: [0, 40],
         zoom: 2,
       });
@@ -71,7 +82,14 @@ export const MapComponent = ({ onBoundsChange, events = DEFAULT_EVENTS }: Readon
       map.current?.remove();
       map.current = null;
     };
-  }, [onBoundsChange]); // Include onBoundsChange in dependency array
+  }, [onBoundsChange, mapStyleUrl]); // Include mapStyleUrl in dependency array
+
+  // Update map style when theme changes
+  useEffect(() => {
+    if (map.current && isLoaded) {
+      map.current.setStyle(mapStyleUrl);
+    }
+  }, [mapStyleUrl, isLoaded]);
 
   useEffect(() => {
     if (!map.current || !isLoaded) return;

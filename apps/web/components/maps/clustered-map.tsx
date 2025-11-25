@@ -12,11 +12,23 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
+import { cartographicColors } from "@timetiles/ui/lib/chart-themes";
 import type { LngLatBounds } from "maplibre-gl";
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
-import Map, { Layer, type MapLayerMouseEvent, type MapRef, Popup, Source } from "react-map-gl/maplibre";
+import Map, {
+  Layer,
+  type MapLayerMouseEvent,
+  type MapRef,
+  NavigationControl,
+  Popup,
+  Source,
+} from "react-map-gl/maplibre";
 
+import { type ClusterStats, DEFAULT_CLUSTER_STATS, ensureAscendingPercentiles, MAP_STYLES } from "@/lib/constants/map";
+import { useTheme } from "@/lib/hooks/use-theme";
 import { createLogger } from "@/lib/logger";
+
+import { MapThemeControl } from "./map-theme-control";
 
 export interface ClusterFeature {
   type: "Feature";
@@ -30,14 +42,6 @@ export interface ClusterFeature {
     count?: number;
     title?: string;
   };
-}
-
-interface ClusterStats {
-  p20: number;
-  p40: number;
-  p60: number;
-  p80: number;
-  p100: number;
 }
 
 interface ClusteredMapProps {
@@ -61,12 +65,13 @@ const INITIAL_VIEW_STATE = {
   latitude: 40.6,
   zoom: 9,
 };
-const MAP_STYLE = { width: "100%", height: "100%", minHeight: "400px" };
+const MAP_COMPONENT_STYLE = { width: "100%", height: "100%", minHeight: "400px" };
 const INTERACTIVE_LAYER_IDS = ["event-clusters", "unclustered-point"];
 
 export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
   // eslint-disable-next-line sonarjs/max-lines-per-function -- Complex map component with extensive styling logic
   ({ onBoundsChange, clusters = DEFAULT_CLUSTERS, clusterStats: globalClusterStats }, ref) => {
+    const { resolvedTheme } = useTheme();
     const [popupInfo, setPopupInfo] = useState<{
       longitude: number;
       latitude: number;
@@ -74,6 +79,9 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
     } | null>(null);
 
     const mapRef = useRef<MapRef | null>(null);
+
+    // Select map style based on theme
+    const mapStyleUrl = MAP_STYLES[resolvedTheme];
 
     // Expose resize method to parent via ref
     useImperativeHandle(ref, () => ({
@@ -84,20 +92,8 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
 
     // Global stats for consistent size/color across all views
     const globalStats = useMemo(() => {
-      const rawStats = globalClusterStats ?? { p20: 2, p40: 5, p60: 10, p80: 20, p100: 50 };
-
-      // Ensure strictly ascending order for MapLibre step expressions
-      const stats = {
-        p20: rawStats.p20,
-        p40: 0,
-        p60: 0,
-        p80: 0,
-        p100: 0,
-      };
-      stats.p40 = Math.max(rawStats.p40, stats.p20 + 1);
-      stats.p60 = Math.max(rawStats.p60, stats.p40 + 1);
-      stats.p80 = Math.max(rawStats.p80, stats.p60 + 1);
-      stats.p100 = Math.max(rawStats.p100, stats.p80 + 1);
+      const rawStats = globalClusterStats ?? DEFAULT_CLUSTER_STATS;
+      const stats = ensureAscendingPercentiles(rawStats);
 
       logger.debug("Global cluster stats for size/color", {
         rawStats,
@@ -110,7 +106,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
     // Viewport-relative stats for opacity (shows density within current view)
     const viewportStats = useMemo(() => {
       if (clusters.length === 0) {
-        return { p20: 2, p40: 5, p60: 10, p80: 20, p100: 50 };
+        return DEFAULT_CLUSTER_STATS;
       }
 
       const counts = clusters
@@ -119,7 +115,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
         .sort((a, b) => a - b);
 
       if (counts.length === 0) {
-        return { p20: 2, p40: 5, p60: 10, p80: 20, p100: 50 };
+        return DEFAULT_CLUSTER_STATS;
       }
 
       const getPercentile = (arr: number[], percentile: number) => {
@@ -135,18 +131,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
         p100: Math.max(...counts),
       };
 
-      // Ensure strictly ascending order for MapLibre step expressions
-      const stats = {
-        p20: rawStats.p20 ?? 2,
-        p40: 0,
-        p60: 0,
-        p80: 0,
-        p100: 0,
-      };
-      stats.p40 = Math.max(rawStats.p40 ?? 5, stats.p20 + 1);
-      stats.p60 = Math.max(rawStats.p60 ?? 10, stats.p40 + 1);
-      stats.p80 = Math.max(rawStats.p80 ?? 20, stats.p60 + 1);
-      stats.p100 = Math.max(rawStats.p100 ?? 50, stats.p80 + 1);
+      const stats = ensureAscendingPercentiles(rawStats);
 
       logger.debug("Viewport cluster percentiles for opacity", {
         totalClusters: clusters.length,
@@ -255,11 +240,11 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
       type: "circle" as const,
       filter: eventPointFilter,
       paint: {
-        "circle-color": "#8b5cf6",
+        "circle-color": cartographicColors.mapPoint,
         "circle-radius": 6,
         "circle-opacity": 1,
         "circle-stroke-width": 1,
-        "circle-stroke-color": "#fff",
+        "circle-stroke-color": cartographicColors.mapStroke,
       },
     };
 
@@ -287,15 +272,15 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
           "circle-color": [
             "step",
             ["get", "count"],
-            "#ffcccc", // Level 1: very light red/pink (0-p20)
+            cartographicColors.mapClusterGradient[0], // Level 1: very light terracotta (0-p20)
             globalStats.p20,
-            "#ff9999", // Level 2: light red (p20-p40)
+            cartographicColors.mapClusterGradient[1], // Level 2: light terracotta (p20-p40)
             globalStats.p40,
-            "#ff6666", // Level 3: medium red (p40-p60)
+            cartographicColors.mapClusterGradient[2], // Level 3: medium terracotta (p40-p60)
             globalStats.p60,
-            "#ff3333", // Level 4: dark red (p60-p80)
+            cartographicColors.mapClusterGradient[3], // Level 4: dark terracotta (p60-p80)
             globalStats.p80,
-            "#cc0000", // Level 5: very dark red/crimson (p80-p100)
+            cartographicColors.mapClusterGradient[4], // Level 5: very dark terracotta (p80-p100)
           ],
           // Opacity based on VIEWPORT percentiles (shows relative density in current view)
           "circle-opacity": [
@@ -312,7 +297,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
             0.9, // Level 5: max opacity (p80-p100)
           ],
           "circle-stroke-width": 2,
-          "circle-stroke-color": "#ffffff",
+          "circle-stroke-color": cartographicColors.mapStroke,
           "circle-stroke-opacity": 0.8,
         },
       }),
@@ -346,14 +331,20 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
       <Map
         ref={mapRef}
         initialViewState={INITIAL_VIEW_STATE}
-        style={MAP_STYLE}
-        mapStyle="https://tiles.versatiles.org/assets/styles/colorful/style.json"
+        style={MAP_COMPONENT_STYLE}
+        mapStyle={mapStyleUrl}
         onMoveEnd={handleMoveEnd}
         onLoad={handleLoad}
         onClick={handleClick}
         interactiveLayerIds={INTERACTIVE_LAYER_IDS}
         cursor="auto"
       >
+        {/* Map controls */}
+        <NavigationControl position="bottom-right" showCompass={false} />
+        <div className="absolute bottom-2 left-2 z-10">
+          <MapThemeControl />
+        </div>
+
         <Source type="geojson" data={geojsonData} id="clustered-map-source" key="clustered-map-source">
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           <Layer {...(eventPointLayer as any)} />
