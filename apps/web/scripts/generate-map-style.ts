@@ -97,9 +97,9 @@ const darkMapColors: MapColorPalette = {
   roadMinor: darkModeColors.surface,
   roadSecondary: darkModeColors.backgroundMedium,
   roadOutline: darkModeColors.muted,
-  textPrimary: cartographicColors.cream, // Light text on dark
-  textSecondary: "#a0a0a0", // Medium gray
-  textHalo: darkModeColors.background, // Dark halo
+  textPrimary: "#ffffff", // Pure white for crisp readable text
+  textSecondary: "#c0c0c0", // Light gray for secondary text
+  textHalo: "#000000", // Black halo for contrast
   boundary: darkModeColors.muted,
   rail: "#5a5a5a",
   sand: "#3d3528", // Dark warm tone
@@ -170,6 +170,25 @@ const createColorReplacements = (colors: MapColorPalette): Record<string, string
   "rgba(119,119,119,1)": colors.textSecondary,
   "#ffffff": colors.textHalo,
   "#fff": colors.textHalo,
+  // Additional text color variants found in VersaTiles
+  "rgb(51,51,68)": colors.textPrimary, // Dark blue-gray text
+  "rgba(51,51,68,1)": colors.textPrimary,
+  "rgb(85,85,85)": colors.textSecondary, // Medium gray text
+  "rgba(85,85,85,1)": colors.textSecondary,
+  "rgb(102,98,106)": colors.textSecondary, // Gray-purple text
+  "rgba(102,98,106,1)": colors.textSecondary,
+  "rgb(40,48,73)": colors.textPrimary, // Very dark blue text
+  "rgba(40,48,73,1)": colors.textPrimary,
+  "rgb(61,61,77)": colors.textPrimary, // Dark blue-gray
+  "rgba(61,61,77,1)": colors.textPrimary,
+  "rgb(40,67,73)": colors.textPrimary, // Dark teal
+  "rgba(40,67,73,1)": colors.textPrimary,
+  "rgb(40,62,73)": colors.textPrimary,
+  "rgba(40,62,73,1)": colors.textPrimary,
+  "rgb(40,57,73)": colors.textPrimary,
+  "rgba(40,57,73,1)": colors.textPrimary,
+  "rgb(169,164,158)": colors.textSecondary, // Light gray text (keep visible)
+  "rgba(169,164,158,1)": colors.textSecondary,
 
   // ===== BOUNDARIES =====
   "rgb(153,136,119)": colors.boundary,
@@ -241,6 +260,40 @@ const createColorReplacements = (colors: MapColorPalette): Record<string, string
   "rgba(251,235,255,1)": colors.commercial,
   "rgb(226,212,230)": colors.commercial, // Light purple (special areas)
   "rgba(226,212,230,1)": colors.commercial,
+
+  // ===== ADDITIONAL PARKS/VEGETATION (bright greens found in VersaTiles) =====
+  "rgb(216,232,200)": colors.parkLight, // Light green park
+  "rgba(216,232,200,1)": colors.parkLight,
+  "rgb(211,230,219)": colors.parkLight, // Light green/cyan park
+  "rgba(211,230,219,1)": colors.parkLight,
+  "rgb(231,237,222)": colors.parkLight, // Very light green park
+  "rgba(231,237,222,1)": colors.parkLight,
+
+  // ===== REMAINING BRIGHT SURFACES =====
+  "rgb(250,250,237)": colors.building, // Very light cream
+  "rgba(250,250,237,1)": colors.building,
+  "rgb(250,245,240)": colors.building, // Very light cream
+  "rgba(250,245,240,1)": colors.building,
+  "rgb(243,235,227)": colors.building, // Light cream
+  "rgba(243,235,227,1)": colors.building,
+  "rgb(224,228,229)": colors.buildingStroke, // Light gray
+  "rgba(224,228,229,1)": colors.buildingStroke,
+  "rgb(223,219,215)": colors.buildingStroke, // Light gray
+  "rgba(223,219,215,1)": colors.buildingStroke,
+  "rgb(221,219,202)": colors.building, // Light cream/tan
+  "rgba(221,219,202,1)": colors.building,
+  "rgb(219,214,189)": colors.building, // Light tan
+  "rgba(219,214,189,1)": colors.building,
+  "rgb(253,242,252)": colors.commercial, // Very light pink
+  "rgba(253,242,252,1)": colors.commercial,
+  "rgb(215,224,230)": colors.buildingStroke, // Light blue-gray
+  "rgba(215,224,230,1)": colors.buildingStroke,
+  "rgb(197,204,211)": colors.buildingStroke, // Blue-gray
+  "rgba(197,204,211,1)": colors.buildingStroke,
+  "rgb(188,202,213)": colors.buildingStroke, // Blue-gray
+  "rgba(188,202,213,1)": colors.buildingStroke,
+  "rgb(177,187,196)": colors.buildingStroke, // Gray-blue
+  "rgba(177,187,196,1)": colors.buildingStroke,
 });
 
 /**
@@ -290,8 +343,8 @@ interface StyleVariant {
 
 const styleVariants: StyleVariant[] = [
   {
-    name: "timetiles-cartographic",
-    filename: "cartographic.json",
+    name: "timetiles-cartographic-light",
+    filename: "cartographic-light.json",
     colors: lightMapColors,
     description: "Light mode map style using TimeTiles cartographic design system",
   },
