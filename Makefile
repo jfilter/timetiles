@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset db-shell db-query db-logs clean setup seed init ensure-infra dev kill-dev fresh reset build lint typecheck format test test-ai test-e2e test-coverage coverage coverage-check migrate migrate-create check check-ai help
+.PHONY: all selftest status up down logs db-reset db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint typecheck format test test-ai test-e2e test-coverage coverage coverage-check migrate migrate-create check check-ai help
 
 all: help
 
@@ -46,6 +46,22 @@ db-query:
 # View PostgreSQL logs
 db-logs:
 	docker compose -f docker-compose.dev.yml logs postgres -f --tail=100
+
+# Reset all test databases (drop all + recreate e2e database)
+# Vitest databases are created on-demand when tests run
+db-reset-tests:
+	@echo "🧹 Dropping all test databases (timetiles_test_*)..."
+	@docker exec timetiles-postgres psql -U timetiles_user -d postgres -t -c \
+		"SELECT datname FROM pg_database WHERE datname LIKE 'timetiles_test_%'" | \
+		while read db; do \
+			if [ -n "$$db" ]; then \
+				echo "  Dropping $$db..."; \
+				docker exec timetiles-postgres psql -U timetiles_user -d postgres -c "DROP DATABASE \"$$db\"" 2>/dev/null || true; \
+			fi; \
+		done
+	@echo "🔄 Recreating E2E test database..."
+	@cd apps/web && pnpm exec tsx scripts/e2e-setup-database.ts
+	@echo "✅ Test databases reset complete"
 
 # Clean up everything (containers, volumes, networks)
 clean:
@@ -268,7 +284,8 @@ help:
 		'  db-query      - Execute SQL query (non-interactive)' \
 		'                  Usage: make db-query SQL='"'"'SELECT ...'"'"' [DB_NAME=database_name]' \
 		'  db-logs       - View PostgreSQL logs (live tail)' \
-		'  db-reset      - Reset database (removes all data)' '' \
+		'  db-reset      - Reset database (removes all data)' \
+		'  db-reset-tests - Reset all test databases (drop + recreate e2e)' '' \
 		'🐳 Infrastructure:' \
 		'  up          - Start development environment (docker compose)' \
 		'  down        - Stop development environment' \
