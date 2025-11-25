@@ -36,6 +36,8 @@ interface VisualizationPanelProps {
   chartMeta: ChartMeta;
   /** Which chart types are available based on current filters */
   availableChartTypes?: ChartType[];
+  /** When true, the panel will fill available height */
+  fillHeight?: boolean;
 }
 
 /**
@@ -60,6 +62,7 @@ export const VisualizationPanel = ({
   onChartTypeChange,
   chartMeta,
   availableChartTypes = ALL_CHART_TYPES,
+  fillHeight = false,
 }: Readonly<VisualizationPanelProps>) => {
   const handleValueChange = useCallback((value: string) => onChartTypeChange(value as ChartType), [onChartTypeChange]);
 
@@ -67,7 +70,11 @@ export const VisualizationPanel = ({
   const showDropdown = availableChartTypes.length > 1;
 
   return (
-    <Card variant="default" padding="none" className="overflow-hidden transition-shadow hover:shadow-sm">
+    <Card
+      variant="default"
+      padding="none"
+      className={`overflow-hidden transition-shadow hover:shadow-sm ${fillHeight ? "flex h-full flex-col" : ""}`}
+    >
       <CardHeader className="flex flex-row items-start justify-between gap-4 border-b px-4 py-3 md:px-6 md:py-4">
         <div className="min-w-0 flex-1">
           {/* Section Label - cartographic monospace style */}
@@ -97,7 +104,9 @@ export const VisualizationPanel = ({
         )}
       </CardHeader>
 
-      <CardContent className="px-4 pb-4 pt-4 md:px-6 md:pb-6">{children}</CardContent>
+      <CardContent className={`px-4 pb-4 pt-4 md:px-6 md:pb-6 ${fillHeight ? "flex flex-1 flex-col" : ""}`}>
+        {children}
+      </CardContent>
     </Card>
   );
 };

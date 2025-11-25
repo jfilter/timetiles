@@ -21,54 +21,25 @@ test.describe("Explore Page - Real Data Tests", () => {
   });
 
   test("should work with available catalog data", async ({ page }) => {
-    // Check if catalog select is available
-    await expect(explorePage.catalogSelect).toBeVisible();
+    // Check if Data Sources section is available (new button-based UI)
+    await expect(explorePage.dataSourcesSection).toBeVisible();
 
-    // Click on catalog dropdown to see what options are available
-    await explorePage.catalogSelect.click();
+    // Get available catalogs (shown as buttons with dataset/event counts)
+    const catalogs = await explorePage.getAvailableCatalogs();
+    expect(catalogs.length).toBeGreaterThan(0);
 
-    // Wait for dropdown options to appear
-    await page.locator('[role="option"]').first().waitFor({ state: "visible" });
+    // Find a catalog with datasets by looking at button text
+    // Each button shows: "CatalogName X datasets Y events"
+    const catalogsWithDatasets = explorePage.catalogButtons.filter({ hasText: "datasets" });
+    const count = await catalogsWithDatasets.count();
+    expect(count).toBeGreaterThan(0);
 
-    // Check that there are catalog options available
-    const catalogOptions = await page.locator('[role="option"]').count();
-    expect(catalogOptions).toBeGreaterThan(1); // Should have at least "All Catalogs" + actual catalogs
+    // Click on the first catalog that has datasets
+    await catalogsWithDatasets.first().click();
+    await page.waitForTimeout(500);
 
-    // Find a catalog that has datasets (loop through options)
-    const catalogOptionSelector = page.locator('[role="option"]:not(:has-text("All Catalogs"))');
-    const optionCount = await catalogOptionSelector.count();
-    let catalogWithDatasets: string | null = null;
-
-    for (let i = 0; i < optionCount; i++) {
-      const option = catalogOptionSelector.nth(i);
-      const catalogName = await option.textContent();
-
-      // Select this catalog
-      await option.click();
-
-      // Wait a moment for UI to update
-      await page.waitForTimeout(500);
-
-      // Check if datasets appear
-      const hasDatasets = (await page.locator('input[type="checkbox"]').count()) > 0;
-
-      if (hasDatasets) {
-        catalogWithDatasets = catalogName;
-        break;
-      }
-
-      // If no datasets, open dropdown again for next iteration
-      if (i < optionCount - 1) {
-        await explorePage.catalogSelect.click();
-        await page.locator('[role="option"]').first().waitFor({ state: "visible" });
-      }
-    }
-
-    // Verify we found a catalog with datasets
-    expect(catalogWithDatasets?.trim()).toBeTruthy();
-
-    // Datasets should now be visible
-    await page.waitForSelector('input[type="checkbox"]', { timeout: 1000 });
+    // Datasets should now be visible (checkboxes appear when catalog is expanded)
+    await page.waitForSelector('input[type="checkbox"]', { timeout: 3000 });
 
     // Check that datasets are available
     const datasetCheckboxes = await page.locator('input[type="checkbox"]').count();
@@ -106,11 +77,7 @@ test.describe("Explore Page - Real Data Tests", () => {
     await explorePage.setStartDate("2024-01-01");
     await explorePage.setEndDate("2024-12-31");
 
-    // The date inputs should be set correctly
-    await expect(explorePage.startDateInput).toHaveValue("2024-01-01");
-    await expect(explorePage.endDateInput).toHaveValue("2024-12-31");
-
-    // URL should reflect the date parameters
+    // URL should reflect the date parameters (new button-based UI doesn't have input values)
     await explorePage.assertUrlParam("startDate", "2024-01-01");
     await explorePage.assertUrlParam("endDate", "2024-12-31");
 
@@ -179,7 +146,7 @@ test.describe("Explore Page - Real Data Tests", () => {
 
     // Page should still be functional
     await expect(explorePage.map).toBeVisible();
-    await expect(explorePage.catalogSelect).toBeVisible();
+    await expect(explorePage.dataSourcesSection).toBeVisible();
 
     // Should be able to clear the dates
     if (await explorePage.clearDatesButton.isVisible()) {

@@ -60,6 +60,7 @@ function getExpectedScopes(files) {
     'packages/typescript-config/': 'config',
     
     // Web app specific paths
+    'apps/web/app/explore/': 'explore',
     'apps/web/app/api/import/': 'import',
     'apps/web/app/api/events/': 'events',
     'apps/web/lib/services/geocoding': 'geocoding',
@@ -324,6 +325,7 @@ export default {
         'config',     // Configuration changes (Payload, ESLint, TypeScript, Prettier packages, etc.)
 
         // Core features
+        'explore',    // Explore page and data exploration UI
         'import',     // File import system (manual, scheduled, webhook)
         'geocoding',  // Address geocoding services
         'events',     // Event data management
@@ -450,6 +452,7 @@ export default {
           config: 'Configuration changes (Payload, ESLint, TypeScript, Prettier)',
           
           // Features
+          explore: 'Explore page and data exploration UI',
           import: 'File import system',
           geocoding: 'Geocoding services',
           events: 'Event management',

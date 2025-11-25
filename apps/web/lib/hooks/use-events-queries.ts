@@ -16,8 +16,9 @@
  */
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LngLatBounds } from "maplibre-gl";
+import { useMemo } from "react";
 
 import type { ClusterFeature } from "@/components/maps/clustered-map";
 import type { Event } from "@/payload-types";
@@ -354,6 +355,9 @@ export const eventsQueryKeys = {
   lists: () => [...eventsQueryKeys.all, "list"] as const,
   list: (filters: FilterState, bounds: BoundsType, limit: number) =>
     [...eventsQueryKeys.lists(), { filters, bounds, limit }] as const,
+  infinite: () => [...eventsQueryKeys.all, "infinite"] as const,
+  infiniteList: (filters: FilterState, bounds: BoundsType, limit: number) =>
+    [...eventsQueryKeys.infinite(), { filters, bounds, limit }] as const,
   clusters: () => [...eventsQueryKeys.all, "clusters"] as const,
   cluster: (filters: FilterState, bounds: BoundsType, zoom: number) =>
     [...eventsQueryKeys.clusters(), { filters, bounds, zoom }] as const,
@@ -520,3 +524,80 @@ export const useEventsAggregationQuery = (
     refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });
+
+// Fetch function with page support for infinite queries
+const fetchEventsPage = async (
+  filters: FilterState,
+  bounds: BoundsType,
+  page: number,
+  limit: number = 20,
+  signal?: AbortSignal
+): Promise<EventsListResponse> => {
+  const params = buildEventParams(filters, bounds, {
+    limit: limit.toString(),
+    page: page.toString(),
+  });
+
+  logger.debug("Fetching events page", { filters, bounds, page, limit });
+
+  const response = await fetch(`/api/v1/events?${params.toString()}`, { signal });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch events: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+
+  return {
+    events: data.events,
+    total: data.pagination.totalDocs,
+    page: data.pagination.page,
+    limit: data.pagination.limit,
+    hasNextPage: data.pagination.hasNextPage,
+    hasPrevPage: data.pagination.hasPrevPage,
+  };
+};
+
+// Infinite query hook for paginated events list
+export const useEventsInfiniteQuery = (
+  filters: FilterState,
+  bounds: BoundsType,
+  limit: number = 20,
+  enabled: boolean = true
+) =>
+  useInfiniteQuery({
+    queryKey: eventsQueryKeys.infiniteList(filters, bounds, limit),
+    queryFn: ({ pageParam, signal }) => fetchEventsPage(filters, bounds, pageParam, limit, signal),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.page + 1 : undefined),
+    enabled: enabled && bounds != null,
+    staleTime: 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+
+// Helper hook that flattens paginated data for easier consumption
+export const useEventsInfiniteFlattened = (
+  filters: FilterState,
+  bounds: BoundsType,
+  limit: number = 20,
+  enabled: boolean = true
+) => {
+  const query = useEventsInfiniteQuery(filters, bounds, limit, enabled);
+
+  // Flatten all pages into a single array
+  const events = useMemo(() => {
+    if (!query.data?.pages) return [];
+    return query.data.pages.flatMap((page) => page.events);
+  }, [query.data?.pages]);
+
+  // Get total from first page (all pages have same total)
+  const total = query.data?.pages[0]?.total ?? 0;
+
+  return {
+    ...query,
+    events,
+    total,
+    loadedCount: events.length,
+  };
+};

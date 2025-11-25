@@ -25,6 +25,7 @@ import { useUIStore } from "@/lib/store";
 import { formatCenterCoordinates, formatEventCount } from "@/lib/utils/coordinates";
 import type { Catalog, Dataset, MainMenu } from "@/payload-types";
 
+import { ViewToggle } from "../explore/_components/view-toggle";
 import { ThemeToggle } from "./theme-toggle";
 
 interface AdaptiveHeaderProps {
@@ -103,6 +104,7 @@ const buildDynamicTitle = (
 interface ExploreNavigationProps {
   catalogs: Catalog[];
   datasets: Dataset[];
+  currentView: "map" | "list";
 }
 
 /**
@@ -113,7 +115,7 @@ interface ExploreNavigationProps {
  * - Right half (over list): centered title and date range
  * - Filter area: matches sidebar width (320px when open, 0 when closed)
  */
-const ExploreFullHeader = ({ catalogs, datasets }: ExploreNavigationProps) => {
+const ExploreFullHeader = ({ catalogs, datasets, currentView }: ExploreNavigationProps) => {
   const { filters } = useFilters();
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
   const mapStats = useUIStore((state) => state.ui.mapStats);
@@ -141,7 +143,7 @@ const ExploreFullHeader = ({ catalogs, datasets }: ExploreNavigationProps) => {
 
   return (
     <div className="-mx-6 flex flex-1 items-center md:-mx-8">
-      {/* Left half - over the map (includes back button) */}
+      {/* Left half - over the map (includes back button and view toggle) */}
       <div className="flex flex-1 items-center">
         {/* Back button */}
         <Link
@@ -151,6 +153,11 @@ const ExploreFullHeader = ({ catalogs, datasets }: ExploreNavigationProps) => {
         >
           <ArrowLeft className="text-cartographic-navy dark:text-cartographic-charcoal h-5 w-5" />
         </Link>
+
+        {/* View Toggle */}
+        <div className="ml-2">
+          <ViewToggle currentView={currentView} />
+        </div>
 
         {/* Centered stats */}
         <div className="flex flex-1 items-center justify-center gap-2">
@@ -234,15 +241,16 @@ const ExploreFullHeader = ({ catalogs, datasets }: ExploreNavigationProps) => {
  */
 export const AdaptiveHeader = ({ mainMenu, catalogs = [], datasets = [] }: Readonly<AdaptiveHeaderProps>) => {
   const pathname = usePathname();
-  const isExplorePage = pathname === "/explore";
+  const isExplorePage = pathname === "/explore" || pathname === "/explore/list";
+  const currentView: "map" | "list" = pathname === "/explore/list" ? "list" : "map";
   const { resolvedTheme } = useTheme();
   const logo = resolvedTheme === "dark" ? LogoDark : LogoLight;
 
-  // Explore page uses a custom full-width layout for alignment with content below
+  // Explore pages use a custom full-width layout for alignment with content below
   if (isExplorePage) {
     return (
       <Header variant="app">
-        <ExploreFullHeader catalogs={catalogs} datasets={datasets} />
+        <ExploreFullHeader catalogs={catalogs} datasets={datasets} currentView={currentView} />
       </Header>
     );
   }

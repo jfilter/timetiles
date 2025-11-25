@@ -22,6 +22,8 @@ import { type ChartMeta, type ChartType, VisualizationPanel } from "./visualizat
 
 interface ChartSectionProps {
   bounds?: SimpleBounds | null;
+  /** When true, the chart will fill available height instead of using fixed heights */
+  fillHeight?: boolean;
 }
 
 /**
@@ -51,7 +53,7 @@ const getChartMeta = (type: ChartType): ChartMeta => {
 };
 
 /**
- * Get appropriate height for each chart type.
+ * Get appropriate height for each chart type (used when fillHeight is false).
  */
 const getChartHeight = (type: ChartType): number => {
   switch (type) {
@@ -63,7 +65,7 @@ const getChartHeight = (type: ChartType): number => {
   }
 };
 
-export const ChartSection = ({ bounds }: Readonly<ChartSectionProps>) => {
+export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSectionProps>) => {
   const [chartType, setChartType] = useState<ChartType>("histogram");
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -117,7 +119,10 @@ export const ChartSection = ({ bounds }: Readonly<ChartSectionProps>) => {
 
   const chartMeta = useMemo(() => getChartMeta(chartType), [chartType]);
   const chartHeight = useMemo(() => getChartHeight(chartType), [chartType]);
-  const containerStyle = useMemo(() => ({ minHeight: chartHeight }), [chartHeight]);
+  const containerStyle = useMemo(
+    () => (fillHeight ? undefined : { minHeight: chartHeight }),
+    [chartHeight, fillHeight]
+  );
 
   return (
     <VisualizationPanel
@@ -125,14 +130,23 @@ export const ChartSection = ({ bounds }: Readonly<ChartSectionProps>) => {
       onChartTypeChange={handleChartTypeChange}
       chartMeta={chartMeta}
       availableChartTypes={availableChartTypes}
+      fillHeight={fillHeight}
     >
       <div
-        className={cn("relative transition-all duration-300 ease-out", isTransitioning && "opacity-0")}
+        className={cn(
+          "relative transition-all duration-300 ease-out",
+          isTransitioning && "opacity-0",
+          fillHeight && "flex-1"
+        )}
         style={containerStyle}
       >
-        {chartType === "histogram" && <EventHistogram bounds={bounds} height={chartHeight} />}
-        {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={chartHeight} />}
-        {chartType === "catalog-bar" && <AggregationBarChart bounds={bounds} type="catalog" height={chartHeight} />}
+        {chartType === "histogram" && <EventHistogram bounds={bounds} height={fillHeight ? "100%" : chartHeight} />}
+        {chartType === "dataset-bar" && (
+          <AggregationBarChart bounds={bounds} type="dataset" height={fillHeight ? "100%" : chartHeight} />
+        )}
+        {chartType === "catalog-bar" && (
+          <AggregationBarChart bounds={bounds} type="catalog" height={fillHeight ? "100%" : chartHeight} />
+        )}
       </div>
     </VisualizationPanel>
   );

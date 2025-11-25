@@ -211,7 +211,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
         </div>
 
         {/* Content Panel - takes half of available space */}
-        <div className="min-w-0 flex-1 overflow-y-auto border-l transition-all duration-500 ease-in-out">
+        <div className="min-w-0 flex-1 overflow-y-auto border-l transition-all duration-500 ease-in-out [scrollbar-gutter:stable]">
           <div className="p-6">
             {/* Active Filters */}
             <ActiveFilters
@@ -221,14 +221,16 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
               actions={filterActions}
             />
 
-            {/* Chart Section */}
-            <div className="mb-6">
-              <ChartSection bounds={debouncedSimpleBounds} />
+            {/* Chart Section - height matches list explorer (50vh - p-6 padding) */}
+            <div className="mb-6 h-[calc(50vh-3rem)] min-h-[252px]">
+              <ChartSection bounds={debouncedSimpleBounds} fillHeight />
             </div>
 
             {/* Events List */}
             <div className="border-t pt-6">
-              <h2 className="mb-4 text-lg font-semibold">Events ({events.length})</h2>
+              <h2 className="mb-4 text-lg font-semibold">
+                Events ({events.length} of {totalEventsData?.total ?? "..."})
+              </h2>
               <EventsList events={events} isInitialLoad={isInitialLoad} isUpdating={isUpdating} />
             </div>
           </div>
@@ -267,7 +269,9 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
             </div>
 
             <div className="border-t pt-4">
-              <h2 className="mb-4 text-lg font-semibold">Events ({events.length})</h2>
+              <h2 className="mb-4 text-lg font-semibold">
+                Events ({events.length} of {totalEventsData?.total ?? "..."})
+              </h2>
               <EventsList events={events} isInitialLoad={isInitialLoad} isUpdating={isUpdating} />
             </div>
           </div>
