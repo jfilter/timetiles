@@ -22,9 +22,8 @@ test.describe("Explore Page - Basic Functionality", () => {
   test("should load the explore page with all components", async ({ page }) => {
     // Check main components are visible
     await expect(explorePage.map).toBeVisible();
-    await expect(explorePage.catalogSelect).toBeVisible();
-    await expect(explorePage.startDateInput).toBeVisible();
-    await expect(explorePage.endDateInput).toBeVisible();
+    // UI redesigned: catalogs are now shown as buttons under Data Sources section
+    await expect(explorePage.dataSourcesSection).toBeVisible();
 
     // Check initial state - dataset message should be visible
     // Note: With seeded data, there might be datasets available
@@ -53,6 +52,9 @@ test.describe("Explore Page - Basic Functionality", () => {
     // Wait for the page to fully load and events to be fetched
     await explorePage.waitForEventsToLoad();
 
+    // Wait a bit for React to settle after loading
+    await page.waitForTimeout(1000);
+
     // Check if we have "No events found" when there are no events
     // Note: Depending on seeded data, this might not always be true
     const eventCount = await explorePage.getEventCount();
@@ -61,9 +63,8 @@ test.describe("Explore Page - Basic Functionality", () => {
     if (eventCount === 0) {
       await expect(explorePage.noEventsMessage).toBeVisible();
     } else {
-      // If there are events, they should be visible in space-y-4 container
-      // Events are rendered as Card components from @timetiles/ui
-      await expect(page.locator(".space-y-4").first()).toBeVisible();
+      // If there are events, the events count heading should be visible
+      await expect(explorePage.eventsCount).toBeVisible();
     }
   });
 
@@ -84,23 +85,24 @@ test.describe("Explore Page - Basic Functionality", () => {
 
     // Both sections should still be visible
     await expect(explorePage.map).toBeVisible();
-    await expect(explorePage.catalogSelect).toBeVisible();
+    await expect(explorePage.dataSourcesSection).toBeVisible();
   });
 
   test("should persist state in URL", async ({ page }) => {
     // Initial URL should be clean
     expect(page.url()).toBe("http://localhost:3002/explore");
 
-    // Select a catalog
-    await explorePage.selectCatalog("All Catalogs");
+    // Select a catalog (new button-based UI)
+    await explorePage.selectCatalog("Environmental Data");
 
-    // URL should remain clean when "All Catalogs" is selected
-    expect(page.url()).toBe("http://localhost:3002/explore");
+    // URL should have catalog parameter after selecting a specific catalog
+    const url = new URL(page.url());
+    expect(url.searchParams.has("catalog")).toBe(true);
   });
 
   test("should handle keyboard navigation", async ({ page }) => {
-    // Click on the catalog select to set initial focus
-    await explorePage.catalogSelect.click();
+    // Click on the Data Sources button to set initial focus
+    await explorePage.dataSourcesSection.click();
 
     // Tab to navigate through interactive elements
     await page.keyboard.press("Tab");

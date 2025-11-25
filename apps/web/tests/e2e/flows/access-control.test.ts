@@ -19,25 +19,18 @@ test.describe("Access Control - User Perspective", () => {
   });
 
   test.describe("Unauthenticated Access", () => {
-    test("should show only public catalogs in the explore page", async ({ page }) => {
+    test("should show only public catalogs in the explore page", async () => {
       await explorePage.goto();
 
-      // Wait for catalogs to load
-      await page.waitForSelector('[data-testid="catalog-select"], [id*="catalog"], select');
+      // Wait for catalogs to load (new UI uses buttons instead of select)
+      const catalogs = await explorePage.getAvailableCatalogs();
 
-      // Get all catalog options
-      const catalogSelect = explorePage.catalogSelect;
-      await catalogSelect.click();
-
-      // Get all available options
-      const options = await page.locator("option, [role='option']").allTextContents();
-
-      // Should include "All Catalogs" option
-      expect(options.some((opt) => opt.includes("All"))).toBe(true);
+      // Should have at least one catalog visible
+      expect(catalogs.length).toBeGreaterThan(0);
 
       // Note: Without authentication, only public catalogs should be visible
       // The exact number depends on seeded data
-      console.log("Available catalogs for unauthenticated user:", options);
+      console.log("Available catalogs for unauthenticated user:", catalogs);
     });
 
     test("should display only events from public datasets", async () => {
@@ -231,22 +224,16 @@ test.describe("Access Control - User Perspective", () => {
   });
 
   test.describe("Data Visibility in UI", () => {
-    test("should filter catalogs based on visibility", async ({ page }) => {
+    test("should filter catalogs based on visibility", async () => {
       await explorePage.goto();
 
-      // Wait for page to load
-      await page.waitForLoadState("networkidle");
+      // Check that only appropriate catalogs are shown (new UI uses buttons)
+      const catalogs = await explorePage.getAvailableCatalogs();
 
-      // Check that only appropriate catalogs are shown
-      const catalogSelect = explorePage.catalogSelect;
-      await catalogSelect.click();
+      // Should have at least one catalog visible
+      expect(catalogs.length).toBeGreaterThanOrEqual(1);
 
-      const optionCount = await page.locator("option, [role='option']").count();
-
-      // Should have at least "All Catalogs" option
-      expect(optionCount).toBeGreaterThanOrEqual(1);
-
-      console.log(`Visible catalogs in UI: ${optionCount}`);
+      console.log(`Visible catalogs in UI: ${catalogs.length}`, catalogs);
     });
 
     test("should show appropriate dataset count", async ({ page }) => {
