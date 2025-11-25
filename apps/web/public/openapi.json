@@ -50,9 +50,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "id"
-            ]
+            "required": ["id"]
           },
           "data": {
             "type": "object",
@@ -71,10 +69,7 @@
                 "type": "number"
               }
             },
-            "required": [
-              "longitude",
-              "latitude"
-            ]
+            "required": ["longitude", "latitude"]
           },
           "eventTimestamp": {
             "type": "string"
@@ -83,14 +78,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "id",
-          "dataset",
-          "data",
-          "location",
-          "eventTimestamp",
-          "isValid"
-        ]
+        "required": ["id", "dataset", "data", "location", "eventTimestamp", "isValid"]
       },
       "EventListResponse": {
         "type": "object",
@@ -143,10 +131,7 @@
             ]
           }
         },
-        "required": [
-          "events",
-          "pagination"
-        ]
+        "required": ["events", "pagination"]
       },
       "ErrorResponse": {
         "type": "object",
@@ -161,9 +146,7 @@
             "nullable": true
           }
         },
-        "required": [
-          "error"
-        ]
+        "required": ["error"]
       },
       "AggregationItem": {
         "type": "object",
@@ -185,11 +168,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "id",
-          "name",
-          "count"
-        ]
+        "required": ["id", "name", "count"]
       },
       "AggregateResponse": {
         "type": "object",
@@ -207,11 +186,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "items",
-          "total",
-          "groupedBy"
-        ]
+        "required": ["items", "total", "groupedBy"]
       },
       "HistogramBucket": {
         "type": "object",
@@ -228,11 +203,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "date",
-          "dateEnd",
-          "count"
-        ]
+        "required": ["date", "dateEnd", "count"]
       },
       "HistogramResponse": {
         "type": "object",
@@ -261,10 +232,7 @@
                     "nullable": true
                   }
                 },
-                "required": [
-                  "min",
-                  "max"
-                ]
+                "required": ["min", "max"]
               },
               "bucketSizeSeconds": {
                 "type": "number",
@@ -283,10 +251,7 @@
                     "type": "integer"
                   }
                 },
-                "required": [
-                  "datasets",
-                  "catalogs"
-                ]
+                "required": ["datasets", "catalogs"]
               },
               "topDatasets": {
                 "type": "array",
@@ -312,19 +277,14 @@
             ]
           }
         },
-        "required": [
-          "histogram",
-          "metadata"
-        ]
+        "required": ["histogram", "metadata"]
       },
       "ClusterFeature": {
         "type": "object",
         "properties": {
           "type": {
             "type": "string",
-            "enum": [
-              "Feature"
-            ]
+            "enum": ["Feature"]
           },
           "id": {
             "anyOf": [
@@ -341,9 +301,7 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": [
-                  "Point"
-                ]
+                "enum": ["Point"]
               },
               "coordinates": {
                 "type": "array",
@@ -354,20 +312,14 @@
                 "maxItems": 2
               }
             },
-            "required": [
-              "type",
-              "coordinates"
-            ]
+            "required": ["type", "coordinates"]
           },
           "properties": {
             "type": "object",
             "properties": {
               "type": {
                 "type": "string",
-                "enum": [
-                  "event-cluster",
-                  "event-point"
-                ]
+                "enum": ["event-cluster", "event-point"]
               },
               "count": {
                 "type": "integer"
@@ -376,26 +328,17 @@
                 "type": "string"
               }
             },
-            "required": [
-              "type"
-            ]
+            "required": ["type"]
           }
         },
-        "required": [
-          "type",
-          "id",
-          "geometry",
-          "properties"
-        ]
+        "required": ["type", "id", "geometry", "properties"]
       },
       "MapClustersResponse": {
         "type": "object",
         "properties": {
           "type": {
             "type": "string",
-            "enum": [
-              "FeatureCollection"
-            ]
+            "enum": ["FeatureCollection"]
           },
           "features": {
             "type": "array",
@@ -404,10 +347,7 @@
             }
           }
         },
-        "required": [
-          "type",
-          "features"
-        ]
+        "required": ["type", "features"]
       },
       "ClusterStatsResponse": {
         "type": "object",
@@ -428,13 +368,7 @@
             "type": "number"
           }
         },
-        "required": [
-          "p20",
-          "p40",
-          "p60",
-          "p80",
-          "p100"
-        ]
+        "required": ["p20", "p40", "p60", "p80", "p100"]
       }
     },
     "parameters": {}
@@ -442,9 +376,7 @@
   "paths": {
     "/api/v1/events": {
       "get": {
-        "tags": [
-          "Events"
-        ],
+        "tags": ["Events"],
         "summary": "List events with pagination",
         "description": "Returns a paginated list of events matching the specified filters. Events are returned with enriched data including extracted title, description, and location.",
         "parameters": [
@@ -561,9 +493,7 @@
     },
     "/api/v1/events/stats": {
       "get": {
-        "tags": [
-          "Events"
-        ],
+        "tags": ["Events"],
         "summary": "Aggregate event counts by catalog or dataset",
         "description": "Returns event counts grouped by catalog or dataset. When datasets are explicitly filtered, all selected datasets appear in results (with 0 count if no events match in the current viewport).",
         "parameters": [
@@ -616,10 +546,7 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "catalog",
-                "dataset"
-              ]
+              "enum": ["catalog", "dataset"]
             },
             "required": true,
             "name": "groupBy",
@@ -662,9 +589,7 @@
     },
     "/api/v1/events/temporal": {
       "get": {
-        "tags": [
-          "Events"
-        ],
+        "tags": ["Events"],
         "summary": "Get temporal histogram of events",
         "description": "Returns a histogram of event counts over time with automatically calculated bucket sizes. The bucket size is optimized based on the target, min, and max bucket parameters.",
         "parameters": [
@@ -781,9 +706,7 @@
     },
     "/api/v1/events/geo": {
       "get": {
-        "tags": [
-          "Events"
-        ],
+        "tags": ["Events"],
         "summary": "Get clustered events for map display",
         "description": "Returns events clustered based on zoom level and viewport bounds. Uses server-side PostGIS clustering for optimal performance with large datasets. Returns a GeoJSON FeatureCollection.",
         "parameters": [
@@ -882,9 +805,7 @@
     },
     "/api/v1/events/geo/stats": {
       "get": {
-        "tags": [
-          "Events"
-        ],
+        "tags": ["Events"],
         "summary": "Get cluster statistics for visualization",
         "description": "Returns percentile breakpoints for cluster sizes across the entire filtered dataset. Used to maintain consistent cluster visualization across all zoom levels and viewports.",
         "parameters": [
@@ -961,9 +882,7 @@
     },
     "/api/v1/sources/stats": {
       "get": {
-        "tags": [
-          "Sources"
-        ],
+        "tags": ["Sources"],
         "summary": "Get data source statistics",
         "description": "Returns event counts grouped by catalog and dataset. Used to display total event counts for each data source in the filter UI.",
         "responses": {
@@ -990,11 +909,7 @@
                       "type": "integer"
                     }
                   },
-                  "required": [
-                    "catalogCounts",
-                    "datasetCounts",
-                    "totalEvents"
-                  ]
+                  "required": ["catalogCounts", "datasetCounts", "totalEvents"]
                 }
               }
             }
@@ -1014,9 +929,7 @@
     },
     "/api/v1/health": {
       "get": {
-        "tags": [
-          "System"
-        ],
+        "tags": ["System"],
         "summary": "Health check endpoint",
         "description": "Returns the health status of the API and its dependencies.",
         "responses": {

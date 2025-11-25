@@ -63,15 +63,15 @@ describe("EventFilters", () => {
   test("catalog cards have appropriate styling classes", () => {
     const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />);
 
-    // Find catalog card buttons
-    const catalogButtons = container.querySelectorAll("button.rounded-sm.border-2");
+    // Find catalog card buttons (masonry layout with condensed cards)
+    const catalogButtons = container.querySelectorAll("button.rounded-sm.border");
     expect(catalogButtons.length).toBeGreaterThanOrEqual(1);
 
     // Catalog buttons should have base styling
     const firstButton = catalogButtons[0];
     expect(firstButton).toHaveClass("rounded-sm");
-    expect(firstButton).toHaveClass("border-2");
-    expect(firstButton).toHaveClass("p-3");
+    expect(firstButton).toHaveClass("border");
+    expect(firstButton).toHaveClass("p-2");
   });
 
   test("shows dataset counts in catalog cards", () => {

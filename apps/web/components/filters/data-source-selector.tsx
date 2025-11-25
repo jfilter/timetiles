@@ -11,7 +11,7 @@
 "use client";
 
 import { cn } from "@timetiles/ui/lib/utils";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
+import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 import { useFilters } from "@/lib/filters";
@@ -26,8 +26,6 @@ interface DataSourceSelectorProps {
   eventCountsByDataset?: Record<string, number>;
 }
 
-/** Number of catalogs to show before enabling carousel */
-const CATALOG_CAROUSEL_THRESHOLD = 5;
 /** Number of datasets to show before collapsing */
 const DATASET_COLLAPSE_THRESHOLD = 10;
 
@@ -65,34 +63,36 @@ const CatalogCard = ({ catalog, isSelected, datasetCount, eventCount, onSelect }
       type="button"
       onClick={handleClick}
       className={cn(
-        "relative w-full rounded-sm border-2 p-3 text-left transition-all",
-        "hover:bg-cartographic-cream/50 dark:hover:bg-cartographic-navy/10",
+        "relative w-full break-inside-avoid rounded-sm border p-2 text-left transition-all",
+        "hover:bg-cartographic-cream/50 dark:hover:bg-white/10",
         isSelected
-          ? "border-cartographic-terracotta bg-cartographic-cream/30 dark:bg-cartographic-navy/5"
-          : "border-cartographic-navy/20 bg-transparent"
+          ? "border-cartographic-terracotta bg-cartographic-cream/30 dark:bg-white/15"
+          : "border-cartographic-navy/20 bg-transparent dark:border-white/30"
       )}
     >
       {/* Checkmark for selected state */}
       {isSelected && (
-        <div className="bg-cartographic-terracotta absolute right-2 top-2 rounded-full p-0.5">
-          <Check className="h-3 w-3 text-white" />
+        <div className="bg-cartographic-terracotta absolute right-1 top-1 rounded-full p-0.5">
+          <Check className="h-2.5 w-2.5 text-white" />
         </div>
       )}
 
-      {/* Catalog name */}
+      {/* Catalog name - allow 2 lines with truncation */}
       <div
         className={cn(
-          "pr-6 font-serif text-sm font-medium",
-          isSelected ? "text-cartographic-charcoal" : "text-cartographic-navy/70"
+          "line-clamp-2 pr-5 font-serif text-xs font-medium leading-tight",
+          isSelected ? "text-cartographic-charcoal dark:text-white" : "text-cartographic-navy/70 dark:text-white/80"
         )}
       >
         {catalog.name}
       </div>
 
-      {/* Stats line */}
-      <div className="text-cartographic-navy/50 mt-1 font-mono text-xs">
-        {datasetCount} {datasetCount === 1 ? "dataset" : "datasets"}
-        {eventCount != null && <span> · {formatCount(eventCount)} events</span>}
+      {/* Stats - stacked vertically */}
+      <div className="text-cartographic-navy/50 mt-1 space-y-0.5 font-mono text-[10px] dark:text-white/60">
+        <div>
+          {datasetCount} {datasetCount === 1 ? "dataset" : "datasets"}
+        </div>
+        {eventCount != null && <div>{formatCount(eventCount)} events</div>}
       </div>
     </button>
   );
@@ -140,7 +140,6 @@ export const DataSourceSelector = ({
   eventCountsByDataset,
 }: DataSourceSelectorProps) => {
   const { filters, setCatalog, setDatasets } = useFilters();
-  const [carouselIndex, setCarouselIndex] = useState(0);
   const [datasetsExpanded, setDatasetsExpanded] = useState(false);
 
   // Sort catalogs by event count (descending), then by name
@@ -213,25 +212,10 @@ export const DataSourceSelector = ({
     [filters.datasets, setDatasets]
   );
 
-  // Carousel navigation handlers
-  const handleCarouselPrev = useCallback(() => {
-    setCarouselIndex((i) => Math.max(0, i - 1));
-  }, []);
-
-  const handleCarouselNext = useCallback(() => {
-    setCarouselIndex((i) => Math.min(sortedCatalogs.length - 3, i + 1));
-  }, [sortedCatalogs.length]);
-
   // Dataset expand/collapse handler
   const handleToggleExpanded = useCallback(() => {
     setDatasetsExpanded((prev) => !prev);
   }, []);
-
-  // Carousel controls
-  const useCarousel = sortedCatalogs.length > CATALOG_CAROUSEL_THRESHOLD;
-  const visibleCatalogs = useCarousel ? sortedCatalogs.slice(carouselIndex, carouselIndex + 3) : sortedCatalogs;
-  const canScrollLeft = carouselIndex > 0;
-  const canScrollRight = carouselIndex + 3 < sortedCatalogs.length;
 
   // Dataset visibility
   const useCollapse = filteredDatasets.length > DATASET_COLLAPSE_THRESHOLD;
@@ -247,68 +231,19 @@ export const DataSourceSelector = ({
       <div>
         <div className="text-cartographic-navy/60 mb-2 font-mono text-xs uppercase tracking-wider">Catalogs</div>
 
-        {useCarousel ? (
-          // Carousel mode for many catalogs
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleCarouselPrev}
-              disabled={!canScrollLeft}
-              className={cn(
-                "rounded-sm p-1 transition-colors",
-                canScrollLeft
-                  ? "text-cartographic-navy hover:bg-cartographic-cream"
-                  : "text-cartographic-navy/20 cursor-not-allowed"
-              )}
-              aria-label="Previous catalogs"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-
-            <div className="flex flex-1 gap-2">
-              {visibleCatalogs.map((catalog) => (
-                <div key={catalog.id} className="flex-1">
-                  <CatalogCard
-                    catalog={catalog}
-                    isSelected={filters.catalog === String(catalog.id)}
-                    datasetCount={datasetCountByCatalog[String(catalog.id)] ?? 0}
-                    eventCount={eventCountsByCatalog?.[String(catalog.id)]}
-                    onSelect={handleCatalogSelect}
-                  />
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={handleCarouselNext}
-              disabled={!canScrollRight}
-              className={cn(
-                "rounded-sm p-1 transition-colors",
-                canScrollRight
-                  ? "text-cartographic-navy hover:bg-cartographic-cream"
-                  : "text-cartographic-navy/20 cursor-not-allowed"
-              )}
-              aria-label="Next catalogs"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          // Standard mode - show all catalogs
-          <div className="space-y-2">
-            {sortedCatalogs.map((catalog) => (
-              <CatalogCard
-                key={catalog.id}
-                catalog={catalog}
-                isSelected={filters.catalog === String(catalog.id)}
-                datasetCount={datasetCountByCatalog[String(catalog.id)] ?? 0}
-                eventCount={eventCountsByCatalog?.[String(catalog.id)]}
-                onSelect={handleCatalogSelect}
-              />
-            ))}
-          </div>
-        )}
+        {/* Masonry layout for catalogs */}
+        <div className="columns-2 gap-2 space-y-2">
+          {sortedCatalogs.map((catalog) => (
+            <CatalogCard
+              key={catalog.id}
+              catalog={catalog}
+              isSelected={filters.catalog === String(catalog.id)}
+              datasetCount={datasetCountByCatalog[String(catalog.id)] ?? 0}
+              eventCount={eventCountsByCatalog?.[String(catalog.id)]}
+              onSelect={handleCatalogSelect}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Dataset Selection - only show when a catalog is selected */}
