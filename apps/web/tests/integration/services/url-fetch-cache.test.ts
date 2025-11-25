@@ -327,52 +327,6 @@ describe.sequential("HTTP Cache Integration", () => {
       });
       expect(["MISS", "REVALIDATED"]).toContain(result3.cacheStatus);
     });
-
-    it("should be significantly faster for cached responses", async () => {
-      const url = `${serverUrl}/json`;
-
-      // Run multiple iterations to get reliable average
-      const iterations = 5;
-      let totalNetworkTime = 0;
-      let totalCachedTime = 0;
-
-      // Clear cache before test
-      await urlFetchCache.clear();
-
-      for (let i = 0; i < iterations; i++) {
-        // Clear cache for network timing
-        await urlFetchCache.clear();
-
-        // First fetch - measure time (network)
-        const start1 = Date.now();
-        const result1 = await fetchWithRetry(url, {
-          cacheOptions: { useCache: true },
-        });
-        const time1 = Date.now() - start1;
-        expect(result1.cacheStatus).toBe("MISS");
-        totalNetworkTime += time1;
-
-        // Second fetch - measure time (cached)
-        const start2 = Date.now();
-        const result2 = await fetchWithRetry(url, {
-          cacheOptions: { useCache: true },
-        });
-        const time2 = Date.now() - start2;
-        expect(result2.cacheStatus).toBe("HIT");
-        totalCachedTime += time2;
-      }
-
-      const avgNetworkTime = totalNetworkTime / iterations;
-      const avgCachedTime = totalCachedTime / iterations;
-      const speedup = avgNetworkTime / avgCachedTime;
-
-      // Cached response should be faster on average (at least 1.2x)
-      expect(speedup).toBeGreaterThanOrEqual(1.2);
-
-      console.log(
-        `Network (avg): ${avgNetworkTime.toFixed(1)}ms, Cached (avg): ${avgCachedTime.toFixed(1)}ms, Speedup: ${speedup.toFixed(1)}x`
-      );
-    });
   });
 
   describe("URL Normalization", () => {

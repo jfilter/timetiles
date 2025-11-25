@@ -59,8 +59,12 @@ export const ChartSkeleton = ({ variant, height = 200, className }: ChartSkeleto
       <div className={cn("flex flex-col", className)} style={containerStyle}>
         {/* Chart area */}
         <div className="flex flex-1 items-end justify-between gap-1 px-8 pb-6">
-          {HISTOGRAM_BAR_HEIGHTS.map((_, index) => (
-            <div key={index} className="bg-muted animate-pulse rounded-t-sm" style={HISTOGRAM_BAR_STYLES[index]} />
+          {HISTOGRAM_BAR_HEIGHTS.map((barHeight, index) => (
+            <div
+              key={`bar-${barHeight}`}
+              className="bg-muted animate-pulse rounded-t-sm"
+              style={HISTOGRAM_BAR_STYLES[index]}
+            />
           ))}
         </div>
         {/* X-axis line */}
@@ -78,8 +82,8 @@ export const ChartSkeleton = ({ variant, height = 200, className }: ChartSkeleto
   // Bar chart variant (horizontal bars)
   return (
     <div className={cn("flex flex-col justify-center gap-3 py-4", className)} style={containerStyle}>
-      {BAR_CHART_WIDTHS.map((_, index) => (
-        <div key={index} className="flex items-center gap-3 px-6">
+      {BAR_CHART_WIDTHS.map((width, index) => (
+        <div key={`bar-${width}`} className="flex items-center gap-3 px-6">
           {/* Label skeleton */}
           <div className="bg-muted h-3 w-20 shrink-0 animate-pulse rounded" />
           {/* Bar skeleton */}

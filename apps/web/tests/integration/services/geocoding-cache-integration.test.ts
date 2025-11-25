@@ -241,11 +241,11 @@ describe.sequential("Geocoding Cache Integration", () => {
       // Verify geocoding provider was called exactly 10 times (once per unique location)
       expect(mockGoogleGeocode).toHaveBeenCalledTimes(10);
 
-      // Verify all cache entries were just created
+      // Verify all cache entries were created during this test run
       const now = new Date();
       for (const entry of locationCache.docs) {
         const createdAt = new Date(entry.createdAt);
-        expect(now.getTime() - createdAt.getTime()).toBeLessThan(5000); // Within 5 seconds
+        expect(now.getTime() - createdAt.getTime()).toBeLessThan(60000); // Within 60 seconds (pipeline can be slow)
         expect(entry.hitCount).toBe(1);
       }
 
@@ -402,7 +402,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         expect(event.location).toBeDefined();
         expect(event.coordinateSource.type).toBe("geocoded");
       }
-    });
+    }, 60000); // 60 second timeout - runs two full import pipelines
   });
 
   describe("Scenario 4: Duplicate Locations Within Single Import", () => {

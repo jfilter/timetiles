@@ -135,8 +135,8 @@ export const ShowcaseCardGridExample = () => {
 
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {items.map((item, index) => (
-        <Card key={index} variant="showcase" padding="lg">
+      {items.map((item) => (
+        <Card key={item.title} variant="showcase" padding="lg">
           <CardVersion>{item.version}</CardVersion>
           <CardHeader>
             <CardTitle className="text-xl">{item.title}</CardTitle>
@@ -144,8 +144,8 @@ export const ShowcaseCardGridExample = () => {
           </CardHeader>
           <CardContent>
             <CardSpec>
-              {item.specs.map((spec, i) => (
-                <CardSpecItem key={i} label={spec.label}>
+              {item.specs.map((spec) => (
+                <CardSpecItem key={spec.label} label={spec.label}>
                   {spec.value}
                 </CardSpecItem>
               ))}
