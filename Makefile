@@ -155,16 +155,17 @@ test:
 # Run tests with AI-friendly output
 # Usage: make test-ai [FILTER=pattern]
 # Examples:
-#   make test-ai                                    # Run all tests
+#   make test-ai                                    # Run all tests (Turbo cached)
 #   make test-ai FILTER=tests/unit                  # Run unit tests directory
 #   make test-ai FILTER=date.test                   # Run tests matching pattern (faster)
 #   make test-ai FILTER=store.test                  # Run store tests
 #   make test-ai FILTER=tests/unit/lib              # Run specific directory
 #   make test-ai FILTER="date|store|geo"            # Run multiple patterns (pipe-separated)
 #   make test-ai FILTER="date store geo"            # Run multiple patterns (space-separated)
+# Note: Full runs (no FILTER) use Turbo caching. Filtered runs bypass Turbo.
 test-ai:
 	@if [ -z "$(FILTER)" ]; then \
-		cd apps/web && pnpm test:ai; \
+		pnpm turbo run test:ai --filter=web; \
 	else \
 		cd apps/web && pnpm test:ai "$(FILTER)"; \
 	fi
@@ -267,8 +268,9 @@ help:
 		'  test        - Run tests (standard output)' \
 		'  test-ai     - Run tests with AI-friendly output (web app only)' \
 		'                Usage: make test-ai [FILTER=pattern]' \
+		'                Full runs use Turbo caching, filtered runs bypass cache' \
 		'                Examples:' \
-		'                  make test-ai                    # All tests' \
+		'                  make test-ai                    # All tests (Turbo cached)' \
 		'                  make test-ai FILTER=date.test   # Pattern match (fastest)' \
 		'                  make test-ai FILTER=tests/unit  # Directory' \
 		'  test-e2e      - Run E2E tests with automatic database setup' \

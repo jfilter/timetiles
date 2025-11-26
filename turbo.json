@@ -36,7 +36,13 @@
     "BATCH_SIZE_DUPLICATE_ANALYSIS",
     "BATCH_SIZE_SCHEMA_DETECTION",
     "BATCH_SIZE_EVENT_CREATION",
-    "BATCH_SIZE_DATABASE_CHUNK"
+    "BATCH_SIZE_DATABASE_CHUNK",
+    "EMAIL_FROM_ADDRESS",
+    "EMAIL_FROM_NAME",
+    "EMAIL_SMTP_HOST",
+    "EMAIL_SMTP_PORT",
+    "EMAIL_SMTP_USER",
+    "EMAIL_SMTP_PASS"
   ],
   "tasks": {
     "build": {
@@ -74,7 +80,41 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "outputs": ["coverage/**", "test-results.json"]
+      "inputs": [
+        "lib/**/*.ts",
+        "lib/**/*.tsx",
+        "app/**/*.ts",
+        "app/**/*.tsx",
+        "components/**/*.ts",
+        "components/**/*.tsx",
+        "tests/**/*.ts",
+        "tests/**/*.tsx",
+        "migrations/**/*",
+        "vitest.config.ts",
+        "vitest.config.base.ts",
+        "vitest.workspace.ts",
+        "payload.config.ts"
+      ],
+      "outputs": [".test-results.json", "coverage/**"]
+    },
+    "test:ai": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "lib/**/*.ts",
+        "lib/**/*.tsx",
+        "app/**/*.ts",
+        "app/**/*.tsx",
+        "components/**/*.ts",
+        "components/**/*.tsx",
+        "tests/**/*.ts",
+        "tests/**/*.tsx",
+        "migrations/**/*",
+        "vitest.config.ts",
+        "vitest.config.base.ts",
+        "vitest.workspace.ts",
+        "payload.config.ts"
+      ],
+      "outputs": [".test-results.json"]
     },
     "test:coverage": {
       "dependsOn": ["^build"],
