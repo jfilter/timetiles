@@ -187,7 +187,7 @@ registry.registerPath({
 
 registry.registerPath({
   method: "get",
-  path: "/api/v1/health",
+  path: "/api/health",
   tags: ["System"],
   summary: "Health check endpoint",
   description: "Returns the health status of the API and its dependencies.",
