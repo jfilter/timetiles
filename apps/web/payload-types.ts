@@ -1094,7 +1094,7 @@ export interface ScheduledImport {
   /**
    * User who created this scheduled import
    */
-  createdBy?: (number | null) | User;
+  createdBy: number | User;
   /**
    * Optional description of what this import does
    */

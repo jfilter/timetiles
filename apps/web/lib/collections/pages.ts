@@ -138,7 +138,7 @@ export const Pages: CollectionConfig = {
             {
               name: "columns",
               type: "select",
-              defaultValue: 3,
+              defaultValue: "3",
               options: [
                 { label: "1 Column", value: "1" },
                 { label: "2 Columns", value: "2" },

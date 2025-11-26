@@ -20,7 +20,6 @@ import {
   TRUST_LEVEL_LABELS,
   TRUST_LEVELS,
 } from "@/lib/constants/quota-constants";
-import { logError } from "@/lib/logger";
 
 import { createCommonConfig } from "./shared-fields";
 
@@ -311,7 +310,6 @@ const Users: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      // eslint-disable-next-line sonarjs/cognitive-complexity -- Pre-existing quota logic requires multiple conditions
       ({ data, operation, req, originalDoc }) => {
         // SECURITY: Handle self-registration (unauthenticated user creation)
         // Force safe defaults to prevent privilege escalation
