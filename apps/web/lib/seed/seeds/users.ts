@@ -58,6 +58,18 @@ export const userSeeds = (environment: string): UserSeed[] => {
   if (environment === "development") {
     return [
       ...baseUsers,
+      // Demo user with simple credentials for quick testing
+      {
+        email: "demo@example.com",
+        // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+        password: "demo", // Development seed password only
+        firstName: "Demo",
+        lastName: "User",
+        role: "user",
+        trustLevel: "2", // REGULAR
+        isActive: true,
+        _verified: true, // Pre-verified for testing
+      },
       {
         email: "john.doe@example.com",
         // eslint-disable-next-line sonarjs/no-hardcoded-passwords
