@@ -13,6 +13,9 @@ node_modules
 .env.production.local
 deployment/.env.production
 
+# Dev email credentials (ethereal.email)
+.ethereal-credentials.json
+
 # Testing
 coverage
 .nyc_output

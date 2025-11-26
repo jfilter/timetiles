@@ -10,7 +10,11 @@
  */
 
 import { postgresAdapter } from "@payloadcms/db-postgres";
+import { nodemailerAdapter } from "@payloadcms/email-nodemailer";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
+import { existsSync, readFileSync, writeFileSync } from "fs";
+import nodemailer from "nodemailer";
+import { join } from "path";
 import type { Config } from "payload";
 import { buildConfig } from "payload";
 import sharp from "sharp";
@@ -62,6 +66,64 @@ export interface PayloadConfigOptions {
   runMigrations?: boolean;
 }
 
+// Cache file for ethereal.email credentials (dev only)
+const ETHEREAL_CACHE_FILE = join(process.cwd(), ".ethereal-credentials.json");
+
+interface EtherealCredentials {
+  user: string;
+  pass: string;
+}
+
+// Cached credentials in memory (survives hot reloads within same process)
+let cachedEtherealCredentials: EtherealCredentials | null = null;
+
+/**
+ * Get or create ethereal.email test account credentials.
+ * Caches to file so credentials persist across server restarts.
+ */
+const getEtherealCredentials = async (): Promise<EtherealCredentials> => {
+  // Check memory cache first (no race condition - single-threaded init)
+  if (cachedEtherealCredentials) {
+    return cachedEtherealCredentials;
+  }
+
+  // Check file cache
+  if (existsSync(ETHEREAL_CACHE_FILE)) {
+    try {
+      const cached = JSON.parse(readFileSync(ETHEREAL_CACHE_FILE, "utf-8")) as EtherealCredentials;
+      if (cached.user && cached.pass) {
+        // eslint-disable-next-line no-console -- Intentional dev output before logger init
+        console.log(`E-mail: cached ethereal.email (${cached.user}) - https://ethereal.email/login`);
+        cachedEtherealCredentials = cached;
+        return cached;
+      }
+    } catch {
+      // Invalid cache, will create new account
+    }
+  }
+
+  // Create new ethereal account
+  const testAccount = await nodemailer.createTestAccount();
+  const credentials: EtherealCredentials = {
+    user: testAccount.user,
+    pass: testAccount.pass,
+  };
+
+  // Cache to file
+  try {
+    writeFileSync(ETHEREAL_CACHE_FILE, JSON.stringify(credentials, null, 2));
+  } catch {
+    // Non-fatal, just won't persist
+  }
+
+  // eslint-disable-next-line no-console -- Intentional dev output before logger init
+  console.log(`E-mail: NEW ethereal.email (${credentials.user} / ${credentials.pass}) - https://ethereal.email/login`);
+
+  // eslint-disable-next-line require-atomic-updates -- Single-threaded init, no race condition
+  cachedEtherealCredentials = credentials;
+  return credentials;
+};
+
 // Helper to get logger configuration
 const getLogger = (logLevel: string | undefined, environment: string) => {
   if (logLevel === "silent" || environment === "test") {
@@ -95,8 +157,6 @@ const configureProduction = (config: Config, serverURL: string) => {
   config.serverURL = serverURL;
   config.cors = [serverURL];
   config.csrf = [serverURL];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  config.sharp = sharp as any;
   config.upload = DEFAULT_UPLOAD_CONFIG;
 };
 
@@ -104,6 +164,7 @@ const configureProduction = (config: Config, serverURL: string) => {
  * Creates a Payload configuration with the specified options.
  * Simplified factory following Payload's own buildConfigWithDefaults pattern.
  */
+// eslint-disable-next-line complexity -- Payload config requires many conditional options
 export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}) => {
   const {
     environment = process.env.NODE_ENV ?? "development",
@@ -141,7 +202,43 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     graphQL: {
       disable: disableGraphQL,
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sharp: sharp as any,
   };
+
+  // Configure email adapter
+  if (process.env.EMAIL_SMTP_HOST) {
+    // Production: Use SMTP transport
+    config.email = nodemailerAdapter({
+      defaultFromAddress: process.env.EMAIL_FROM_ADDRESS ?? "noreply@timetiles.app",
+      defaultFromName: process.env.EMAIL_FROM_NAME ?? "TimeTiles",
+      transportOptions: {
+        host: process.env.EMAIL_SMTP_HOST,
+        port: Number(process.env.EMAIL_SMTP_PORT) || 587,
+        auth: process.env.EMAIL_SMTP_USER
+          ? {
+              user: process.env.EMAIL_SMTP_USER,
+              pass: process.env.EMAIL_SMTP_PASS,
+            }
+          : undefined,
+      },
+    });
+  } else {
+    // Development: Use ethereal.email with cached credentials
+    const ethereal = await getEtherealCredentials();
+    config.email = nodemailerAdapter({
+      defaultFromAddress: process.env.EMAIL_FROM_ADDRESS ?? "noreply@timetiles.app",
+      defaultFromName: process.env.EMAIL_FROM_NAME ?? "TimeTiles",
+      transportOptions: {
+        host: "smtp.ethereal.email",
+        port: 587,
+        auth: {
+          user: ethereal.user,
+          pass: ethereal.pass,
+        },
+      },
+    });
+  }
 
   // Add production-specific configuration
   if (environment === "production" && serverURL) {

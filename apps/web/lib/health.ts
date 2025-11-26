@@ -310,6 +310,37 @@ const checkDatabaseFunctions = async (): Promise<HealthCheckResult> => {
   }
 };
 
+const checkEmailConfiguration = (): HealthCheckResult => {
+  logger.debug("Checking email configuration");
+
+  const hasSmtpHost = Boolean(getEnvValue("EMAIL_SMTP_HOST"));
+  const isProduction = process.env.NODE_ENV === "production";
+
+  if (isProduction && !hasSmtpHost) {
+    logger.warn("SMTP not configured in production - emails will not be sent");
+    return {
+      status: "error",
+      message: "SMTP not configured (EMAIL_SMTP_HOST not set) - emails will not work in production",
+    };
+  }
+
+  if (hasSmtpHost) {
+    const hasAuth = Boolean(getEnvValue("EMAIL_SMTP_USER"));
+    logger.debug("SMTP configured", { hasAuth });
+    return {
+      status: "healthy",
+      message: `SMTP configured (${getEnvValue("EMAIL_SMTP_HOST")})${hasAuth ? " with authentication" : ""}`,
+    };
+  }
+
+  // Development mode without SMTP - using ethereal.email
+  logger.debug("Using ethereal.email for development");
+  return {
+    status: "degraded",
+    message: "Development mode - using ethereal.email (view at https://ethereal.email)",
+  };
+};
+
 const checkDatabaseSize = async (): Promise<HealthCheckResult> => {
   logger.debug("Checking database size");
 
@@ -358,6 +389,7 @@ const createHealthSummary = (results: {
   env: HealthCheckResult;
   uploads: HealthCheckResult;
   geocoding: HealthCheckResult;
+  email: HealthCheckResult;
   cms: HealthCheckResult;
   migrations: HealthCheckResult;
   postgis: HealthCheckResult;
@@ -367,6 +399,7 @@ const createHealthSummary = (results: {
   env: results.env.status,
   uploads: results.uploads.status,
   geocoding: results.geocoding.status,
+  email: results.email.status,
   cms: results.cms.status,
   migrations: results.migrations.status,
   postgis: results.postgis.status,
@@ -378,10 +411,11 @@ export const runHealthChecks = async () => {
   logger.info("Starting health checks");
   const startTime = Date.now();
 
-  const [env, uploads, geocoding, cms, migrations, postgis, dbFunctions, dbSize] = await Promise.all([
+  const [env, uploads, geocoding, email, cms, migrations, postgis, dbFunctions, dbSize] = await Promise.all([
     wrapHealthCheck(() => Promise.resolve(checkEnvironmentVariables()), "Environment"),
     wrapHealthCheck(checkUploadsDirectory, "Uploads directory"),
     wrapHealthCheck(checkGeocodingService, "Geocoding service"),
+    wrapHealthCheck(() => Promise.resolve(checkEmailConfiguration()), "Email"),
     wrapHealthCheck(checkPayloadCMS, "Payload CMS"),
     wrapHealthCheck(checkMigrations, "Migrations"),
     wrapHealthCheck(checkPostGIS, "PostGIS"),
@@ -389,7 +423,7 @@ export const runHealthChecks = async () => {
     wrapHealthCheck(checkDatabaseSize, "Database size"),
   ]);
 
-  const results = { env, uploads, geocoding, cms, migrations, postgis, dbFunctions, dbSize };
+  const results = { env, uploads, geocoding, email, cms, migrations, postgis, dbFunctions, dbSize };
   const duration = Date.now() - startTime;
 
   logger.info("Health checks completed", {
