@@ -397,6 +397,14 @@ export class SeedingOperations {
           mimetype: (resolvedItem as { mimeType?: string }).mimeType ?? "text/plain",
         },
       });
+    } else if (collectionName === "users") {
+      // Disable verification email for seeded users (they're already pre-verified)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Dynamic seeding requires type flexibility
+      await (payload.create as any)({
+        collection: "users",
+        data: resolvedItem,
+        disableVerificationEmail: true,
+      });
     } else {
       await payload.create({
         collection: collectionName as keyof Config["collections"],
