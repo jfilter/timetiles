@@ -84,14 +84,11 @@ export const TimeRangeSlider = ({
   const [isEditingDates, setIsEditingDates] = useState(false);
 
   // Fetch histogram data for full date range (no date filter applied)
-  // Only fetch when we have datasets selected - otherwise show "no events" state
-  const hasDatasets = filters.datasets.length > 0;
   const { data: histogramData, isLoading } = useQuery({
     queryKey: ["histogram-full", filters.catalog, filters.datasets],
     queryFn: () => fetchFullHistogram(filters.catalog, filters.datasets),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes
-    enabled: hasDatasets, // Don't fetch if no datasets selected
   });
 
   // Memoize histogram to prevent useMemo dependencies from changing on every render
@@ -276,15 +273,6 @@ export const TimeRangeSlider = ({
     [positionToTimestamp, startPosition, endPosition, onStartDateChange, onEndDateChange]
   );
 
-  // No datasets selected - show empty state
-  if (!hasDatasets) {
-    return (
-      <div className="flex h-24 items-center justify-center">
-        <span className="text-muted-foreground font-mono text-xs">Select a dataset to see timeline</span>
-      </div>
-    );
-  }
-
   // Loading state
   if (isLoading) {
     return (
@@ -294,7 +282,7 @@ export const TimeRangeSlider = ({
     );
   }
 
-  // No data state (datasets selected but no events found)
+  // No data state - no events match current filters
   if (histogram.length === 0) {
     return (
       <div className="flex h-24 items-center justify-center">

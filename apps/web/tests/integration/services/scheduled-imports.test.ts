@@ -131,6 +131,27 @@ describe.sequential("Scheduled Imports Integration", () => {
       // Ignore if no records to delete
     }
 
+    // Reset user quota/usage to avoid quota exhaustion between tests
+    try {
+      const allUsage = await payload.find({
+        collection: "user-usage",
+        limit: 1000,
+      });
+
+      for (const usage of allUsage.docs) {
+        await payload.update({
+          collection: "user-usage",
+          id: usage.id,
+          data: {
+            fileUploadsToday: 0,
+            urlFetchesToday: 0,
+          },
+        });
+      }
+    } catch {
+      // Ignore if no records to update
+    }
+
     // Stop current server and create new one with fresh routes
     if (testServer) {
       await testServer.stop();
@@ -172,10 +193,8 @@ describe.sequential("Scheduled Imports Integration", () => {
           apiKey: "test-key-123",
           apiKeyHeader: "X-API-Key",
         },
-        maxRetries: 3,
-        retryDelayMinutes: 5,
-        timeoutSeconds: 300,
         importNameTemplate: "{{name}} - {{date}}",
+        user: testUser,
       });
 
       expect(scheduledImport).toMatchObject({
@@ -202,6 +221,7 @@ describe.sequential("Scheduled Imports Integration", () => {
             scheduleType: "cron",
             cronExpression: "invalid-cron",
           },
+          user: testUser,
         })
       ).rejects.toThrow(/The following field is invalid: Cron/);
     });
@@ -216,6 +236,7 @@ describe.sequential("Scheduled Imports Integration", () => {
             scheduleType: "cron",
             cronExpression: "0 0 * * *",
           },
+          user: testUser,
         })
       ).rejects.toThrow(/The following field is invalid: Source URL/);
     });
@@ -241,6 +262,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           lastRun: new Date("2024-01-14T00:00:00.000Z"), // Yesterday at midnight UTC
           nextRun: new Date("2024-01-15T00:00:00.000Z"), // Today at midnight UTC - due to run
         },
+        user: testUser,
       });
 
       // Set up test server endpoint
@@ -317,6 +339,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduleType: "cron",
           cronExpression: "* * * * *", // Every minute
         },
+        user: testUser,
       });
 
       const result = await scheduleManagerJob.handler({
@@ -340,6 +363,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         additionalData: {
           lastRun: new Date("2024-01-15T09:00:00.000Z"), // 1.5 hours ago - should trigger
         },
+        user: testUser,
       });
 
       await withScheduledImport(testEnv, testCatalog.id, `${testServerUrl}/schedule2.csv`, {
@@ -350,6 +374,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         additionalData: {
           lastRun: new Date("2024-01-15T00:00:00.000Z"), // Today - should not trigger
         },
+        user: testUser,
       });
 
       await withScheduledImport(testEnv, testCatalog.id, `${testServerUrl}/schedule3.csv`, {
@@ -360,6 +385,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         additionalData: {
           lastRun: new Date("2024-01-15T08:00:00.000Z"), // 2.5 hours ago - should trigger
         },
+        user: testUser,
       });
 
       // Set up test server endpoints for all URLs
@@ -438,6 +464,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduleType: "cron",
           cronExpression: "0 * * * *",
         },
+        user: testUser,
       });
 
       // Run URL fetch job
@@ -572,10 +599,11 @@ describe.sequential("Scheduled Imports Integration", () => {
           catalog: testCatalog.id,
           scheduleType: "frequency",
           frequency: "hourly",
-          advancedConfig: {
-            skipDuplicateCheck: false,
+          advancedOptions: {
+            skipDuplicateChecking: false,
           },
         },
+        user: testUser,
       });
 
       const mockCsvData = "id,name,value\n1,test,100";
@@ -654,10 +682,11 @@ describe.sequential("Scheduled Imports Integration", () => {
           catalog: testCatalog.id,
           scheduleType: "frequency",
           frequency: "hourly",
-          advancedConfig: {
-            skipDuplicateCheck: true,
+          advancedOptions: {
+            skipDuplicateChecking: true,
           },
         },
+        user: testUser,
       });
 
       const mockCsvData = "id,name,value\n1,test,100";
@@ -710,10 +739,11 @@ describe.sequential("Scheduled Imports Integration", () => {
           catalog: testCatalog.id,
           scheduleType: "frequency",
           frequency: "daily",
-          advancedConfig: {
+          advancedOptions: {
             expectedContentType: "csv",
           },
         },
+        user: testUser,
       });
 
       // Server returns generic content type
@@ -755,6 +785,7 @@ describe.sequential("Scheduled Imports Integration", () => {
             maxFileSizeMB: 1, // 1MB limit
           },
         },
+        user: testUser,
       });
 
       // Create large data (2MB)
@@ -805,6 +836,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduleType: "frequency",
           frequency: "daily",
         },
+        user: testUser,
       });
 
       // Set up test server endpoint with JSON response
@@ -857,6 +889,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduleType: "frequency",
           frequency: "daily",
         },
+        user: testUser,
       });
 
       // Set up test server endpoint with Excel mime type
@@ -916,6 +949,7 @@ describe.sequential("Scheduled Imports Integration", () => {
             averageDuration: 3.5,
           },
         },
+        user: testUser,
       });
 
       // Set up test server endpoint with CSV data
@@ -952,7 +986,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         averageDuration: 3,
       });
 
-      vi.spyOn(Date, "now").mockRestore();
+      vi.restoreAllMocks();
     });
 
     it("should handle retry logic with exponential backoff", async () => {
@@ -966,9 +1000,12 @@ describe.sequential("Scheduled Imports Integration", () => {
           catalog: testCatalog.id,
           scheduleType: "frequency",
           frequency: "daily",
-          maxRetries: 3,
-          retryDelayMinutes: 1, // Minimum allowed value
+          retryConfig: {
+            maxRetries: 3,
+            retryDelayMinutes: 1, // Minimum allowed value
+          },
         },
+        user: testUser,
       });
 
       // Fail twice, then succeed
@@ -1025,8 +1062,11 @@ describe.sequential("Scheduled Imports Integration", () => {
           catalog: testCatalog.id,
           scheduleType: "frequency",
           frequency: "daily",
-          timeoutSeconds: 30, // Minimum allowed value
+          advancedOptions: {
+            timeoutMinutes: 1, // Minimum allowed value
+          },
         },
+        user: testUser,
       });
 
       // Set up a slow endpoint that will timeout
@@ -1090,6 +1130,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           lastRun: new Date("2024-01-15 08:00:00"), // 2 hours ago
           importNameTemplate: "Products - {{date}} {{time}}",
         },
+        user: testUser,
       });
 
       // Mock successful fetch

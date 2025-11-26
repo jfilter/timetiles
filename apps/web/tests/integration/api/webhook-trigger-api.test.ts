@@ -87,7 +87,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       testCatalog.id,
       "https://example.com/test-data.csv",
       {
-        createdBy: testUser.id,
+        user: testUser,
         webhookEnabled: true,
         frequency: "daily",
       }
@@ -490,7 +490,9 @@ describe.sequential("Webhook Trigger API Integration", () => {
           scheduleType: "frequency",
           frequency: "daily",
           webhookEnabled: true,
+          createdBy: testUser.id,
         },
+        user: testUser,
       });
 
       // Call webhook with invalid configuration

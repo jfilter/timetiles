@@ -92,6 +92,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
         testCatalog.id,
         "https://example.com/test-data.csv",
         {
+          user: testUser,
           name: "Stuck Import Test",
           frequency: "daily",
           createdBy: testUser.id,

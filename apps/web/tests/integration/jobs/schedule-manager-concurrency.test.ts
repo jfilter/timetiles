@@ -58,6 +58,7 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
       testCatalog.id,
       "https://example.com/schedule-test.csv",
       {
+        user: testUser,
         name: `Schedule Test Import ${Date.now()}`,
         createdBy: testUser.id,
         frequency: "hourly",
@@ -106,6 +107,7 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
       testCatalog.id,
       "https://example.com/concurrent-test.csv",
       {
+        user: testUser,
         name: `Concurrent Test Import ${Date.now()}`,
         createdBy: testUser.id,
         frequency: "hourly",

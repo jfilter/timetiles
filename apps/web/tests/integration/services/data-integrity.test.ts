@@ -29,7 +29,7 @@ describe.sequential("Data Integrity Tests", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;
-  let testUserId: string;
+  let testUser: any;
   let testCatalogId: string;
   let testServer: any;
   let testServerUrl: string;
@@ -43,7 +43,7 @@ describe.sequential("Data Integrity Tests", () => {
     testServerUrl = envWithServer.testServerUrl;
 
     // Create test user
-    const user = await payload.create({
+    testUser = await payload.create({
       collection: "users",
       data: {
         email: TEST_EMAILS.integrity,
@@ -51,7 +51,6 @@ describe.sequential("Data Integrity Tests", () => {
         role: "admin",
       },
     });
-    testUserId = user.id;
 
     // Create test catalog
     const { catalog } = await withCatalog(testEnv, {
@@ -85,6 +84,7 @@ describe.sequential("Data Integrity Tests", () => {
       const expectedHash = crypto.createHash("sha256").update(csvContent).digest("hex");
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/hash-test.csv`, {
+        user: testUser,
         name: "Hash Test Import",
         frequency: "daily",
       });
@@ -105,7 +105,7 @@ describe.sequential("Data Integrity Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Hash Test",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -128,6 +128,7 @@ describe.sequential("Data Integrity Tests", () => {
       const csvContent = "id,name,value\n1,Duplicate Test,100";
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/duplicate.csv`, {
+        user: testUser,
         name: "Duplicate Detection Import",
         frequency: "hourly",
       });
@@ -148,7 +149,7 @@ describe.sequential("Data Integrity Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "First Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -177,7 +178,7 @@ describe.sequential("Data Integrity Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Second Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -198,6 +199,7 @@ describe.sequential("Data Integrity Tests", () => {
       const largeContent = header + row.repeat(rowCount);
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/large-hash.csv`, {
+        user: testUser,
         name: "Large File Hash Import",
         frequency: "daily",
         additionalData: {
@@ -225,7 +227,7 @@ describe.sequential("Data Integrity Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Large Hash Test",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -239,6 +241,7 @@ describe.sequential("Data Integrity Tests", () => {
   describe("Execution History Tracking", () => {
     it("should accurately track execution history", async () => {
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/history.csv`, {
+        user: testUser,
         name: "History Tracking Import",
         frequency: "hourly",
         additionalData: {
@@ -339,6 +342,7 @@ describe.sequential("Data Integrity Tests", () => {
         testCatalogId,
         `${testServerUrl}/history-limit.csv`,
         {
+          user: testUser,
           name: "History Limit Import",
           frequency: "hourly",
           additionalData: {
@@ -423,6 +427,7 @@ describe.sequential("Data Integrity Tests", () => {
   describe("Statistics Accuracy", () => {
     it("should accurately track success and failure rates", async () => {
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/stats.csv`, {
+        user: testUser,
         name: "Statistics Test Import",
         frequency: "hourly",
       });
@@ -513,6 +518,7 @@ describe.sequential("Data Integrity Tests", () => {
 
     it("should calculate average duration correctly", async () => {
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/duration.csv`, {
+        user: testUser,
         name: "Duration Test Import",
         frequency: "hourly",
         additionalData: {
@@ -623,6 +629,7 @@ describe.sequential("Data Integrity Tests", () => {
       const specialContent = 'id,name,description\n1,"Test, Inc.","Quote: ""Hello"" - O\'Reilly"\n2,Café,Niño José™';
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/special.csv`, {
+        user: testUser,
         name: "Special Chars Import",
         frequency: "daily",
       });
@@ -646,7 +653,7 @@ describe.sequential("Data Integrity Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Special Chars Test",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -661,6 +668,7 @@ describe.sequential("Data Integrity Tests", () => {
 
     it("should handle different encodings correctly", async () => {
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/encoded.csv`, {
+        user: testUser,
         name: "Encoding Test Import",
         frequency: "daily",
       });
@@ -687,7 +695,7 @@ describe.sequential("Data Integrity Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Encoding Test",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -706,6 +714,7 @@ describe.sequential("Data Integrity Tests", () => {
         testCatalogId,
         `${testServerUrl}/retry-consistency.csv`,
         {
+          user: testUser,
           name: "Retry Consistency Import",
           frequency: "daily",
           maxRetries: 1,
@@ -750,7 +759,7 @@ describe.sequential("Data Integrity Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Retry Consistency Test",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 

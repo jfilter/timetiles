@@ -50,7 +50,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;
-  let testUserId: string;
+  let testUser: any;
   let testCatalogId: string;
   let testServer: any;
   let testServerUrl: string;
@@ -72,7 +72,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
         role: "admin",
       },
     });
-    testUserId = user.id;
+    testUser = user;
 
     // Create test catalog
     const { catalog } = await withCatalog(testEnv, {
@@ -109,6 +109,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
   describe("Large File Performance", () => {
     it("should handle CSV files with streaming", async () => {
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/stream.csv`, {
+        user: testUser,
         name: "CSV Stream Test",
         frequency: "daily",
       });
@@ -143,7 +144,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "CSV Stream Test",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -157,6 +158,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
 
     it("should handle Excel files correctly", async () => {
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/large.xlsx`, {
+        user: testUser,
         name: "Large Excel Import",
         frequency: "daily",
         additionalData: {
@@ -192,7 +194,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Large Excel Test",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -210,6 +212,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
       const schedules = await Promise.all(
         Array.from({ length: 2 }, (_, i) =>
           withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/concurrent-${i}.csv`, {
+            user: testUser,
             name: `Concurrent Import ${i}`,
             frequency: "hourly",
           }).then((result) => result.scheduledImport)
@@ -237,7 +240,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
               authConfig: schedule.authConfig,
               catalogId: testCatalogId as any,
               originalName: `Concurrent Test ${i}`,
-              userId: testUserId,
+              userId: testUser.id,
             },
           })
         )
@@ -262,6 +265,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
 
       // Create a scheduled import with lastRun set to an hour ago
       await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/duplicate-test.csv`, {
+        user: testUser,
         name: "Duplicate Prevention Import",
         frequency: "hourly",
         additionalData: {
@@ -308,6 +312,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
       const schedules = await Promise.all(
         Array.from({ length: 3 }, (_, i) =>
           withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/queue-test-${i}.csv`, {
+            user: testUser,
             name: `Queue Test Import ${i}`,
             frequency: "daily",
           }).then((result) => result.scheduledImport)
@@ -329,7 +334,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
               authConfig: schedule.authConfig,
               catalogId: testCatalogId as any,
               originalName: "Queue Test",
-              userId: testUserId,
+              userId: testUser.id,
             },
           })
         )
@@ -352,6 +357,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
         const schedules = await Promise.all(
           Array.from({ length: 2 }, (_, i) =>
             withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/memory-${batch}-${i}.csv`, {
+              user: testUser,
               name: `Memory Test Import ${batch}-${i}`,
               frequency: "hourly",
             }).then((result) => result.scheduledImport)
@@ -376,7 +382,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
                 authConfig: schedule.authConfig,
                 catalogId: testCatalogId as any,
                 originalName: "Memory Test",
-                userId: testUserId,
+                userId: testUser.id,
               },
             })
           )
@@ -403,6 +409,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
         testCatalogId,
         `${testServerUrl}/rate-limited.csv`,
         {
+          user: testUser,
           name: "Rate Limited Import",
           frequency: "hourly",
           maxRetries: 3,
@@ -447,7 +454,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Rate Limit Test",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -461,6 +468,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
   describe("Timeout Performance", () => {
     it("should handle slow responses efficiently", async () => {
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/slow.csv`, {
+        user: testUser,
         name: "Slow Response Import",
         frequency: "daily",
         timeoutSeconds: 30, // 30 second timeout (minimum allowed)
@@ -488,7 +496,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Slow Response Test",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 

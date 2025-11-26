@@ -95,9 +95,9 @@ describe.sequential("EventHistogram", () => {
     });
 
     renderWithProviders(<EventHistogram />);
-    // Check for loading spinner instead of text (BaseChart shows spinner only)
-    const loadingSpinner = document.querySelector(".animate-spin");
-    expect(loadingSpinner).toBeInTheDocument();
+    // Check for skeleton loading state (ChartSkeleton uses animate-pulse)
+    const loadingSkeleton = document.querySelector(".animate-pulse");
+    expect(loadingSkeleton).toBeInTheDocument();
   });
 
   it("renders no data state when histogram data is empty", async () => {

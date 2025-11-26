@@ -54,7 +54,7 @@ describe.sequential("Network Error Handling Tests", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;
-  let testUserId: string;
+  let testUser: any;
   let testCatalogId: string;
   let testServer: Server;
   let testServerPort: number;
@@ -96,7 +96,7 @@ describe.sequential("Network Error Handling Tests", () => {
     cleanup = env.cleanup;
 
     // Create test user
-    const user = await payload.create({
+    testUser = await payload.create({
       collection: "users",
       data: {
         email: TEST_EMAILS.network,
@@ -104,7 +104,6 @@ describe.sequential("Network Error Handling Tests", () => {
         role: "admin",
       },
     });
-    testUserId = user.id;
 
     // Create test catalog
     const { catalog } = await withCatalog(env, {
@@ -173,6 +172,7 @@ describe.sequential("Network Error Handling Tests", () => {
         testCatalogId,
         `${testServerUrl}/file with spaces.csv`,
         {
+          user: testUser,
           name: "URL with Spaces Import",
           frequency: "daily",
         }
@@ -188,7 +188,7 @@ describe.sequential("Network Error Handling Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -207,6 +207,7 @@ describe.sequential("Network Error Handling Tests", () => {
         testCatalogId,
         "https://this-domain-definitely-does-not-exist-12345.com/file.csv",
         {
+          user: testUser,
           name: "DNS Failure Import",
           frequency: "daily",
         }
@@ -222,7 +223,7 @@ describe.sequential("Network Error Handling Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -238,6 +239,7 @@ describe.sequential("Network Error Handling Tests", () => {
     it("should handle connection refused errors", async () => {
       // Use a port that's guaranteed to be refused (1 is privileged and likely unused)
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, "http://127.0.0.1:1/file.csv", {
+        user: testUser,
         name: "Connection Refused Import",
         frequency: "daily",
       });
@@ -252,7 +254,7 @@ describe.sequential("Network Error Handling Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -271,6 +273,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/slow-file.csv`, {
+        user: testUser,
         name: "Timeout Import",
         frequency: "daily",
         maxRetries: 0, // No retries for timeout test to avoid exceeding test timeout
@@ -297,7 +300,7 @@ describe.sequential("Network Error Handling Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -319,6 +322,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/missing.csv`, {
+        user: testUser,
         name: "404 Import",
         frequency: "daily",
       });
@@ -333,7 +337,7 @@ describe.sequential("Network Error Handling Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -352,6 +356,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/error.csv`, {
+        user: testUser,
         name: "500 Import",
         frequency: "daily",
       });
@@ -366,7 +371,7 @@ describe.sequential("Network Error Handling Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -391,6 +396,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/protected.csv`, {
+        user: testUser,
         name: "Auth Failure Import",
         frequency: "daily",
         authConfig: {
@@ -409,7 +415,7 @@ describe.sequential("Network Error Handling Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -435,6 +441,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/partial.csv`, {
+        user: testUser,
         name: "Partial Download Import",
         frequency: "daily",
       });
@@ -449,7 +456,7 @@ describe.sequential("Network Error Handling Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -468,6 +475,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/wrong-type.csv`, {
+        user: testUser,
         name: "Wrong Content Type Import",
         frequency: "daily",
         additionalData: {
@@ -487,7 +495,7 @@ describe.sequential("Network Error Handling Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -509,6 +517,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/binary.csv`, {
+        user: testUser,
         name: "Binary Data Import",
         frequency: "daily",
         additionalData: {
@@ -528,7 +537,7 @@ describe.sequential("Network Error Handling Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -556,6 +565,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/large.csv`, {
+        user: testUser,
         name: "Large File Import",
         frequency: "daily",
         additionalData: {
@@ -575,7 +585,7 @@ describe.sequential("Network Error Handling Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -606,6 +616,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/redirect1.csv`, {
+        user: testUser,
         name: "Redirect Import",
         frequency: "daily",
       });
@@ -620,7 +631,7 @@ describe.sequential("Network Error Handling Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -638,6 +649,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/loop.csv`, {
+        user: testUser,
         name: "Infinite Redirect Import",
         frequency: "daily",
       });
@@ -652,7 +664,7 @@ describe.sequential("Network Error Handling Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 
@@ -675,6 +687,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/data.csv`, {
+        user: testUser,
         name: "Real Queue Test Import",
         frequency: "daily",
       });
@@ -689,7 +702,7 @@ describe.sequential("Network Error Handling Tests", () => {
           authConfig: scheduledImport.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Queue Test Import",
-          userId: testUserId,
+          userId: testUser.id,
         },
       });
 

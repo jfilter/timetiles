@@ -233,6 +233,7 @@ export class TestEnvironmentBuilder {
   /**
    * Cleanup test environment.
    */
+  // eslint-disable-next-line @typescript-eslint/require-await -- Intentionally sync, but kept async for interface compatibility
   private async cleanup(testEnv: TestEnvironment): Promise<void> {
     const workerId = process.env.VITEST_WORKER_ID ?? "unknown";
     logger.info("Cleaning up test environment", { dbName: testEnv.dbName, workerId });
