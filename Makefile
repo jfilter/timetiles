@@ -97,7 +97,7 @@ reset: kill-dev db-reset
 	@echo "✅ Environment reset complete!"
 	@echo "🚀 Starting development server..."
 	@echo ""
-	@$(MAKE) dev
+	@exec $(MAKE) dev
 
 # Ensure infrastructure is running
 ensure-infra:
@@ -113,7 +113,7 @@ status:
 # Start development server (requires infrastructure)
 dev: ensure-infra
 	@echo "🚀 Starting development server..."
-	pnpm dev
+	exec pnpm dev
 
 # Kill all development servers and processes
 kill-dev:
