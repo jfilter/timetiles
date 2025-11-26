@@ -54,7 +54,8 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.selectCatalog("Economic Indicators");
 
     // Check if GDP Growth Rates dataset is visible
-    const gdpDataset = explorePage.page.getByText("GDP Growth Rates");
+    // New UI: dataset buttons have event counts appended (e.g., "GDP Growth Rates40")
+    const gdpDataset = explorePage.page.getByRole("button", { name: /GDP Growth Rates/i });
     await expect(gdpDataset).toBeVisible();
 
     // Select the dataset

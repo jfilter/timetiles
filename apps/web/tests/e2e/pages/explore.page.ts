@@ -74,6 +74,75 @@ export class ExplorePage {
     );
   }
 
+  /**
+   * Wait for the timeline/date range slider to be ready.
+   * The timeline shows different states:
+   * - "Loading timeline..." when fetching data
+   * - "No events to display" when no events match current filters
+   * - The actual slider UI with date range button when data is available
+   */
+  async waitForTimelineReady() {
+    // First, wait for "Loading timeline..." to disappear (if present)
+    const loadingText = this.page.getByText("Loading timeline...");
+    await loadingText.waitFor({ state: "hidden", timeout: 30000 }).catch(() => {
+      // If not visible, that's fine - timeline might already be loaded or not yet started
+    });
+
+    // Wait for either the date range button (normal state) or "No events to display" message
+    const dateRangeButton = this.page.getByRole("button", { name: /→/ }).last();
+    const noEventsText = this.page.getByText("No events to display");
+
+    // Wait for one of these states
+    await Promise.race([
+      dateRangeButton.waitFor({ state: "visible", timeout: 15000 }),
+      noEventsText.waitFor({ state: "visible", timeout: 15000 }),
+    ]).catch(() => {
+      // If neither appears, continue anyway - might be a timing issue
+    });
+  }
+
+  /**
+   * Enter date edit mode if not already in it.
+   * In edit mode, two date input fields are visible.
+   */
+  async enterDateEditMode() {
+    // Check if we're already in edit mode by looking for date input fields
+    const dateInputs = this.page.locator('input[type="date"]');
+    const inputCount = await dateInputs.count();
+
+    if (inputCount >= 2) {
+      // Already in edit mode (two date inputs visible)
+      const firstInput = dateInputs.first();
+      if (await firstInput.isVisible()) {
+        return;
+      }
+    }
+
+    // Not in edit mode - find and click the date range button to open it
+    // The date range button shows format like "Jan 2024 → Dec 2025"
+    // It's a button containing "→" but NOT in the slider track (those have aria-label with "date:")
+    const allArrowButtons = this.page.getByRole("button", { name: /→/ });
+    const buttonCount = await allArrowButtons.count();
+
+    // Find the button that is the date range display (not slider handles)
+    for (let i = 0; i < buttonCount; i++) {
+      const button = allArrowButtons.nth(i);
+      const ariaLabel = await button.getAttribute("aria-label");
+
+      // Skip slider handles (they have aria-label starting with date info)
+      if (ariaLabel && (ariaLabel.includes("date:") || ariaLabel.includes("valuemin"))) {
+        continue;
+      }
+
+      // This is likely the date range button - click it
+      await button.click();
+      break;
+    }
+
+    // Wait for edit mode to open (date inputs to appear)
+    await dateInputs.first().waitFor({ state: "visible", timeout: 5000 });
+  }
+
   async selectCatalog(catalogName: string) {
     // New UI: catalogs are displayed as buttons under "Data Sources" section
     // Each button shows: "CatalogName X datasets Y events"
@@ -110,8 +179,9 @@ export class ExplorePage {
 
   async selectDatasets(datasetNames: string[]) {
     for (const datasetName of datasetNames) {
-      // New UI: datasets are shown as buttons, click to select
-      const datasetButton = this.page.getByRole("button", { name: datasetName, exact: true }).first();
+      // New UI: datasets are shown as buttons with event counts (e.g., "Air Quality Measurements5")
+      // Use partial name match since buttons have numbers appended
+      const datasetButton = this.page.getByRole("button", { name: new RegExp(datasetName, "i") }).first();
       await datasetButton.waitFor({ state: "visible", timeout: 5000 });
       await datasetButton.click();
       // Wait for UI to update after selection
@@ -122,28 +192,27 @@ export class ExplorePage {
   async deselectDatasets(datasetNames: string[]) {
     for (const name of datasetNames) {
       // New UI: click the dataset button again to deselect
-      const datasetButton = this.page.getByRole("button", { name, exact: true }).first();
+      const datasetButton = this.page.getByRole("button", { name: new RegExp(name, "i") }).first();
       await datasetButton.click();
       await this.page.waitForTimeout(300);
     }
   }
 
   async setStartDate(date: string) {
-    // New UI: click the start date button to open picker, then type date
-    await this.startDateInput.click();
-    // Look for an input field in the date picker popup
-    const dateInput = this.page.locator('input[type="date"], input[placeholder*="date" i]').first();
-    await dateInput.waitFor({ state: "visible", timeout: 3000 }).catch(() => {
-      // If no input visible, try keyboard input directly
-    });
-    if (await dateInput.isVisible()) {
-      await dateInput.fill(date);
-      await dateInput.press("Enter");
-    } else {
-      // Fallback: type date and press enter
-      await this.page.keyboard.type(date);
-      await this.page.keyboard.press("Enter");
-    }
+    // Wait for timeline to load first (date range button only appears after timeline loads)
+    await this.waitForTimelineReady();
+
+    // Enter edit mode if not already in it
+    await this.enterDateEditMode();
+
+    // Wait for the date inputs to appear (start date is first date input)
+    const dateInputs = this.page.locator('input[type="date"]');
+    const startDateInput = dateInputs.first();
+    await startDateInput.waitFor({ state: "visible", timeout: 3000 });
+
+    // Clear and fill the date input
+    await startDateInput.fill(date);
+
     // Wait for URL to update with the date
     await this.page
       .waitForFunction((expectedDate) => window.location.href.includes(`startDate=${expectedDate}`), date, {
@@ -155,21 +224,20 @@ export class ExplorePage {
   }
 
   async setEndDate(date: string) {
-    // New UI: click the end date button to open picker, then type date
-    await this.endDateInput.click();
-    // Look for an input field in the date picker popup
-    const dateInput = this.page.locator('input[type="date"], input[placeholder*="date" i]').first();
-    await dateInput.waitFor({ state: "visible", timeout: 3000 }).catch(() => {
-      // If no input visible, try keyboard input directly
-    });
-    if (await dateInput.isVisible()) {
-      await dateInput.fill(date);
-      await dateInput.press("Enter");
-    } else {
-      // Fallback: type date and press enter
-      await this.page.keyboard.type(date);
-      await this.page.keyboard.press("Enter");
-    }
+    // Wait for timeline to load first (date range button only appears after timeline loads)
+    await this.waitForTimelineReady();
+
+    // Enter edit mode if not already in it
+    await this.enterDateEditMode();
+
+    // Wait for the date inputs to appear (end date is second date input)
+    const dateInputs = this.page.locator('input[type="date"]');
+    const endDateInput = dateInputs.nth(1);
+    await endDateInput.waitFor({ state: "visible", timeout: 3000 });
+
+    // Clear and fill the date input
+    await endDateInput.fill(date);
+
     // Wait for URL to update with the date
     await this.page
       .waitForFunction((expectedDate) => window.location.href.includes(`endDate=${expectedDate}`), date, {
@@ -181,16 +249,36 @@ export class ExplorePage {
   }
 
   async clearDateFilters() {
-    // New UI: click the date range button to reset
-    await this.clearDatesButton.click();
-    // Wait for URL to no longer have date params
-    await this.page
-      .waitForFunction(() => !window.location.href.includes("startDate") && !window.location.href.includes("endDate"), {
-        timeout: 5000,
-      })
-      .catch(() => {
-        // Dates might not clear from URL, continue anyway
-      });
+    // Try to use the "Clear date filters" button if visible
+    const clearButton = this.page.getByRole("button", { name: /Clear date filters/i });
+    const isClearButtonVisible = await clearButton.isVisible().catch(() => false);
+
+    if (isClearButtonVisible) {
+      await clearButton.click();
+      // Wait for URL to update
+      await this.page
+        .waitForFunction(
+          () => {
+            const url = new URL(window.location.href);
+            return !url.searchParams.has("startDate") && !url.searchParams.has("endDate");
+          },
+          { timeout: 5000 }
+        )
+        .catch(() => {
+          // Continue anyway
+        });
+    } else {
+      // Fallback: clear dates by navigating to /explore without date params
+      const currentUrl = new URL(this.page.url());
+      currentUrl.searchParams.delete("startDate");
+      currentUrl.searchParams.delete("endDate");
+
+      // Navigate to the URL without date params
+      await this.page.goto(currentUrl.toString());
+
+      // Wait for page to stabilize
+      await this.map.waitFor({ state: "visible", timeout: 10000 });
+    }
   }
 
   async panMap(deltaX: number, deltaY: number) {
@@ -237,7 +325,9 @@ export class ExplorePage {
       throw new Error("Events count text is empty");
     }
 
-    const matches = /Events \((\d+)\)/.exec(text);
+    // Match "Events (X)" or "Events (X of Y)" - capture the first number
+    // Use simple pattern - extract digits after opening parenthesis
+    const matches = /Events \((\d+)/.exec(text);
     if (!matches?.[1]) {
       throw new Error(`Events count text does not match expected pattern: "${text}"`);
     }

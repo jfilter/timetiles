@@ -38,17 +38,17 @@ test.describe("Explore Page - Real Data Tests", () => {
     await catalogsWithDatasets.first().click();
     await page.waitForTimeout(500);
 
-    // Datasets should now be visible (checkboxes appear when catalog is expanded)
-    await page.waitForSelector('input[type="checkbox"]', { timeout: 3000 });
+    // Datasets are shown as buttons (new UI), not checkboxes
+    // Look for dataset buttons that show event counts (e.g., "Climate Station Data35")
+    // Use simple digit pattern that avoids backtracking issues
+    const datasetButtons = page.locator("button").filter({ hasText: /\d/ });
+    const datasetCount = await datasetButtons.count();
+    expect(datasetCount).toBeGreaterThan(0);
 
-    // Check that datasets are available
-    const datasetCheckboxes = await page.locator('input[type="checkbox"]').count();
-    expect(datasetCheckboxes).toBeGreaterThan(0);
+    // Select the first dataset by clicking its button
+    const firstDatasetButton = datasetButtons.first();
 
-    // Select the first dataset
-    const firstDatasetCheckbox = page.locator('input[type="checkbox"]').first();
-
-    // Set up promise to wait for API response before checking the box
+    // Set up promise to wait for API response before clicking
     const responsePromise = (async () => {
       try {
         return await page.waitForResponse((response) => response.url().includes("/api/events"), { timeout: 5000 });
@@ -58,7 +58,7 @@ test.describe("Explore Page - Real Data Tests", () => {
       }
     })();
 
-    await firstDatasetCheckbox.check();
+    await firstDatasetButton.click();
 
     // Wait for response if it comes
     await responsePromise;
@@ -73,6 +73,13 @@ test.describe("Explore Page - Real Data Tests", () => {
   });
 
   test("should handle date filtering with any data", async () => {
+    // Select a catalog and dataset to filter events for date testing
+    await explorePage.selectCatalog("Environmental Data");
+    await explorePage.selectDatasets(["Air Quality Measurements"]);
+
+    // Wait for events to load so the timeline becomes available
+    await explorePage.waitForEventsToLoad();
+
     // Set some date filters
     await explorePage.setStartDate("2024-01-01");
     await explorePage.setEndDate("2024-12-31");
@@ -118,22 +125,34 @@ test.describe("Explore Page - Real Data Tests", () => {
     await explorePage.noEventsMessage.isVisible();
 
     // Either should show datasets/events, or show appropriate empty state messages
-    const hasDatasets = (await page.locator('input[type="checkbox"]').count()) > 0;
-    const hasEvents = (await explorePage.getEventCount()) > 0;
+    // New UI: datasets are shown as buttons, not checkboxes
+    // Use simple digit pattern that avoids backtracking issues
+    const datasetButtons = page.locator("button").filter({ hasText: /\d/ });
+    const hasDatasets = (await datasetButtons.count()) > 0;
+    const eventCount = await explorePage.getEventCount();
+    const hasEvents = eventCount > 0;
 
     if (!hasDatasets) {
-      await expect(explorePage.noDatasetsMessage).toBeVisible();
+      // If no datasets visible, check for appropriate message
+      const noDatasetsVisible = await explorePage.noDatasetsMessage.isVisible().catch(() => false);
+      expect(noDatasetsVisible || hasDatasets).toBe(true);
     }
 
     if (!hasEvents) {
       // Should show events count as 0
-      const count = await explorePage.getEventCount();
-      expect(count).toBe(0);
+      expect(eventCount).toBe(0);
     }
   });
 
   test("should handle API errors gracefully", async ({ page }) => {
-    // Try to make a request that might fail
+    // First, select a catalog and dataset - required for the timeline to appear
+    await explorePage.selectCatalog("Environmental Data");
+    await explorePage.selectDatasets(["Air Quality Measurements"]);
+
+    // Wait for events to load so the timeline becomes available
+    await explorePage.waitForEventsToLoad();
+
+    // Try to make a request that might fail by setting extreme date range
     await explorePage.setStartDate("9999-01-01");
     await explorePage.setEndDate("9999-12-31");
 

@@ -55,15 +55,29 @@ test.describe("Explore Page - Basic Functionality", () => {
     // Wait a bit for React to settle after loading
     await page.waitForTimeout(1000);
 
-    // Check if we have "No events found" when there are no events
-    // Note: Depending on seeded data, this might not always be true
+    // Get the event count - format is "Events (X of Y)" where X is displayed, Y is total
     const eventCount = await explorePage.getEventCount();
-    console.log(`Test: Got event count: ${eventCount}`);
 
+    // When no datasets are selected, the displayed count is 0 but total may be > 0
+    // This is the expected "empty state" - no datasets selected means no events shown
+    // The "No events found" message only appears when datasets ARE selected but no events match
     if (eventCount === 0) {
-      await expect(explorePage.noEventsMessage).toBeVisible();
+      // Check the full text to understand the state
+      const countText = await explorePage.eventsCount.textContent();
+
+      // "Events (0 of X)" where X > 0 means no datasets selected - this is valid
+      // "Events (0)" or "No events found" means truly no events exist
+      const hasEventsAvailable = countText?.includes(" of ");
+
+      if (hasEventsAvailable) {
+        // No datasets selected state - events count header is the correct display
+        await expect(explorePage.eventsCount).toBeVisible();
+      } else {
+        // No events exist at all - expect the no events message
+        await expect(explorePage.noEventsMessage).toBeVisible();
+      }
     } else {
-      // If there are events, the events count heading should be visible
+      // If there are events displayed, the events count heading should be visible
       await expect(explorePage.eventsCount).toBeVisible();
     }
   });
