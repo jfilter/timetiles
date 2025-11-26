@@ -52,7 +52,7 @@ interface ImportContext {
 /**
  * Handles successful fetch and creates import file.
  */
-/* eslint-disable sonarjs/max-lines-per-function -- Complex import file creation logic */
+/* eslint-disable sonarjs/max-lines-per-function, complexity -- Complex import file creation logic */
 const handleFetchSuccess = async (
   payload: Payload,
   data: Buffer,
@@ -203,12 +203,16 @@ const prepareFetchOptions = (scheduledImport: ScheduledImport | null) => {
 };
 
 const createImportContext = (input: UrlFetchJobInput, scheduledImport: ScheduledImport | null): ImportContext => {
+  // Resolve userId from input or scheduled import's creator
+  const createdBy = scheduledImport?.createdBy;
+  const resolvedUserId = input.userId ?? (typeof createdBy === "object" ? createdBy?.id : createdBy);
+
   return {
     originalName: input.originalName,
     catalogId:
       input.catalogId ??
       (typeof scheduledImport?.catalog === "object" ? scheduledImport.catalog.id : scheduledImport?.catalog),
-    userId: input.userId,
+    userId: resolvedUserId,
     scheduledImportId: input.scheduledImportId,
     scheduledImport,
     advancedConfig: scheduledImport?.advancedOptions,
@@ -332,9 +336,12 @@ export const urlFetchJob = {
     try {
       scheduledImport = await loadScheduledImportConfig(payload, input.scheduledImportId);
 
-      // Check and track quota
-      const userId = input.userId ?? scheduledImport?.createdBy;
-      await checkAndTrackQuota(payload, userId, scheduledImport);
+      // Resolve userId from input or scheduled import's creator
+      const createdBy = scheduledImport?.createdBy;
+      const resolvedUserId = input.userId ?? (typeof createdBy === "object" ? createdBy?.id : createdBy);
+
+      // Check and track quota (handles undefined userId gracefully)
+      await checkAndTrackQuota(payload, resolvedUserId, scheduledImport);
 
       // Perform fetch
       const fetchResult = await performFetch(input, scheduledImport);

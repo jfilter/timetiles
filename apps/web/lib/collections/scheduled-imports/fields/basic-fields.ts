@@ -22,6 +22,7 @@ export const basicFields: Field[] = [
     name: "createdBy",
     type: "relationship",
     relationTo: "users",
+    required: true,
     admin: {
       position: "sidebar",
       readOnly: true,

@@ -102,18 +102,14 @@ const clearScheduleTypeFields = (data: Record<string, unknown>): void => {
 
 /**
  * Hook that handles schedule calculation, webhook token management, and field normalization.
+ * Also preserves createdBy on updates to prevent modification.
  */
-export const beforeChangeHook: CollectionBeforeChangeHook = ({ data, operation, req, originalDoc }) => {
+export const beforeChangeHook: CollectionBeforeChangeHook = ({ data, operation, originalDoc }) => {
   if (!data) return data;
 
-  // Set createdBy on create
-  if (operation === "create" && req.user) {
-    data.createdBy = req.user.id;
-  }
-
-  // Prevent changing createdBy on update
-  if (operation === "update") {
-    delete data.createdBy;
+  // Prevent changing createdBy on update - preserve the original value
+  if (operation === "update" && originalDoc?.createdBy) {
+    data.createdBy = typeof originalDoc.createdBy === "object" ? originalDoc.createdBy.id : originalDoc.createdBy;
   }
 
   // Handle webhook token generation

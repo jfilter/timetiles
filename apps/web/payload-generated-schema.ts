@@ -2710,7 +2710,7 @@ export const pages_blocks_features = db_schema.table(
     id: varchar("id").primaryKey(),
     sectionTitle: varchar("section_title"),
     sectionDescription: varchar("section_description"),
-    columns: enum_pages_blocks_features_columns("columns").default(3),
+    columns: enum_pages_blocks_features_columns("columns").default("3"),
     blockName: varchar("block_name"),
   },
   (columns) => ({
@@ -3101,7 +3101,7 @@ export const _pages_v_blocks_features = db_schema.table(
     id: serial("id").primaryKey(),
     sectionTitle: varchar("section_title"),
     sectionDescription: varchar("section_description"),
-    columns: enum__pages_v_blocks_features_columns("columns").default(3),
+    columns: enum__pages_v_blocks_features_columns("columns").default("3"),
     _uuid: varchar("_uuid"),
     blockName: varchar("block_name"),
   },

@@ -311,7 +311,14 @@ const ScheduledImports: CollectionConfig = {
       },
     ],
     beforeValidate: [
-      async ({ data, req }) => {
+      async ({ data, operation, req }) => {
+        if (!data) return data;
+
+        // Set createdBy on create operation (before validation runs)
+        if (operation === "create" && req.user && !data.createdBy) {
+          data.createdBy = req.user.id;
+        }
+
         // Validate catalog access
         await validateCatalogAccess(data, req);
 
