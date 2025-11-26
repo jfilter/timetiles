@@ -8,7 +8,59 @@ The TimeTiles REST API provides programmatic access to event data, geospatial cl
 https://your-instance.com/api/v1
 ```
 
-All API endpoints are versioned under `/api/v1/`.
+## API Endpoint Structure
+
+TimeTiles uses two categories of API endpoints with different purposes:
+
+### Versioned Public APIs (`/api/v1/`)
+
+**Purpose**: Stable, public-facing data APIs designed for external consumers and integrations.
+
+| Endpoint                   | Description                |
+| -------------------------- | -------------------------- |
+| `/api/v1/events`           | Event listing with filters |
+| `/api/v1/events/geo`       | Map clusters (GeoJSON)     |
+| `/api/v1/events/temporal`  | Temporal histogram         |
+| `/api/v1/events/stats`     | Event statistics           |
+| `/api/v1/events/geo/stats` | Cluster size statistics    |
+| `/api/v1/sources/stats`    | Data source statistics     |
+
+**Characteristics**:
+
+- Versioned for backwards compatibility
+- Stable response formats
+- Designed for external API consumers
+- Breaking changes require new version (`v2`, `v3`, etc.)
+
+### Internal APIs (`/api/`)
+
+**Purpose**: Frontend-specific APIs used by the TimeTiles application. Not intended for external consumption.
+
+| Endpoint             | Description                          |
+| -------------------- | ------------------------------------ |
+| `/api/health`        | System health check                  |
+| `/api/auth/register` | User registration (enumeration-safe) |
+| `/api/wizard/*`      | Import wizard workflows              |
+| `/api/admin/*`       | Admin operations                     |
+| `/api/import/*`      | Import progress tracking             |
+| `/api/import-jobs/*` | Import job management                |
+| `/api/quotas`        | User quota status                    |
+| `/api/newsletter/*`  | Newsletter subscription              |
+| `/api/webhooks/*`    | Webhook triggers                     |
+| `/api/preview`       | Content preview                      |
+
+**Characteristics**:
+
+- No version prefix (internal use only)
+- May change without notice
+- Coupled to frontend implementation
+- Not recommended for external integrations
+
+### Payload CMS REST API (`/api/{collection}`)
+
+Payload CMS auto-generates REST endpoints for all collections (e.g., `/api/users`, `/api/events`). These are used by the admin panel and require authentication with collection-level access control.
+
+For external integrations, prefer the versioned APIs (`/api/v1/`) which have stable response formats.
 
 ## Authentication
 
@@ -523,7 +575,7 @@ curl -H "Cookie: payload-token=..." \
 Check system health and readiness.
 
 ```http
-GET /api/v1/health
+GET /api/health
 ```
 
 **Response:**
@@ -557,10 +609,10 @@ GET /api/v1/health
 **Example:**
 
 ```bash
-curl "https://your-instance.com/api/v1/health"
+curl "https://your-instance.com/api/health"
 ```
 
-**Implementation:** `apps/web/app/api/v1/health/route.ts`
+**Implementation:** `apps/web/app/api/health/route.ts`
 
 ---
 
