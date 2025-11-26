@@ -9,9 +9,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService } from "@/lib/services/quota-service";
 import type { UserUsage } from "@/payload-types";
-import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 
-import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
+import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
 
 // Helper to get user usage record
 const getUserUsage = async (payload: any, userId: number): Promise<UserUsage | null> => {
@@ -25,13 +24,14 @@ const getUserUsage = async (payload: any, userId: number): Promise<UserUsage | n
 
 // Force sequential execution to avoid database state conflicts
 describe.sequential("Basic Quota Test", () => {
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;
 
   beforeAll(async () => {
-    const env = await createIntegrationTestEnvironment();
-    payload = env.payload;
-    cleanup = env.cleanup;
+    testEnv = await createIntegrationTestEnvironment();
+    payload = testEnv.payload;
+    cleanup = testEnv.cleanup;
   });
 
   afterAll(async () => {
@@ -39,27 +39,13 @@ describe.sequential("Basic Quota Test", () => {
   });
 
   it("should block operations when quota is exceeded", async () => {
-    // Create an admin user to perform updates
-    const adminUser = await payload.create({
-      collection: "users",
-      data: {
-        email: "admin@quota.test",
-        password: TEST_CREDENTIALS.basic.strongPassword,
-        role: "admin",
-        trustLevel: "5",
-      },
+    // Create an admin user to perform updates and a limited user
+    const { users } = await withUsers(testEnv, {
+      adminUser: { role: "admin", email: "admin@quota.test", trustLevel: "5" },
+      user: { role: "user", email: "limited@quota.test", trustLevel: "1" },
     });
-
-    // Create a limited user
-    const user = await payload.create({
-      collection: "users",
-      data: {
-        email: "limited@quota.test",
-        password: TEST_CREDENTIALS.basic.strongPassword,
-        role: "user",
-        trustLevel: "1", // Basic trust level
-      },
-    });
+    const adminUser = users.adminUser;
+    const user = users.user;
 
     // Update with specific quota using admin context - must set ALL fields
     const updatedUser = await payload.update({

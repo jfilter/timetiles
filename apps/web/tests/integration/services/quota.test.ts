@@ -12,12 +12,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { QUOTA_TYPES, TRUST_LEVELS, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService, QuotaExceededError } from "@/lib/services/quota-service";
 import type { User, UserUsage } from "@/payload-types";
-import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 
-import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
+import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
 
-// Helper to get user usage record
-const getUserUsage = async (payload: any, userId: number): Promise<UserUsage | null> => {
+// Helper types - defined outside describe to avoid hoisting issues
+type PayloadInstance = Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
+
+const getUserUsage = async (payload: PayloadInstance, userId: number): Promise<UserUsage | null> => {
   const result = await payload.find({
     collection: "user-usage",
     where: { user: { equals: userId } },
@@ -27,7 +28,7 @@ const getUserUsage = async (payload: any, userId: number): Promise<UserUsage | n
 };
 
 // Helper to reset user usage for clean test state
-const resetUserUsage = async (payload: any, userId: number): Promise<void> => {
+const resetUserUsage = async (payload: PayloadInstance, userId: number): Promise<void> => {
   const usage = await getUserUsage(payload, userId);
   if (usage) {
     await payload.update({
@@ -49,25 +50,20 @@ const resetUserUsage = async (payload: any, userId: number): Promise<void> => {
 // Force sequential execution for this test file to avoid database state conflicts
 // All tests in this file share the same database within a worker
 describe.sequential("Quota System", () => {
-  let payload: any;
-  let cleanup: () => Promise<void>;
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let testUser: User;
   let adminUser: User;
 
   beforeAll(async () => {
-    const env = await createIntegrationTestEnvironment();
-    payload = env.payload;
-    cleanup = env.cleanup;
+    testEnv = await createIntegrationTestEnvironment();
 
     // Create test users with different trust levels
     // Note: user-usage record is auto-created via afterChange hook
-    testUser = await payload.create({
-      collection: "users",
-      data: {
-        email: "limited@test.com",
-        password: TEST_CREDENTIALS.basic.strongPassword,
+    const { users } = await withUsers(testEnv, {
+      testUser: {
         role: "user",
-        trustLevel: String(TRUST_LEVELS.BASIC), // Limited quotas
+        email: "limited@test.com",
+        trustLevel: String(TRUST_LEVELS.BASIC),
         quotas: {
           maxFileUploadsPerDay: 2,
           maxUrlFetchesPerDay: 3,
@@ -78,26 +74,25 @@ describe.sequential("Quota System", () => {
           maxFileSizeMB: 5,
         },
       },
-    });
-
-    adminUser = await payload.create({
-      collection: "users",
-      data: {
-        email: "admin@test.com",
-        password: TEST_CREDENTIALS.basic.strongPassword,
+      adminUser: {
         role: "admin",
-        trustLevel: String(TRUST_LEVELS.UNLIMITED), // Convert to string
+        email: "admin@test.com",
+        trustLevel: String(TRUST_LEVELS.UNLIMITED),
         // Don't provide quotas - let the hook set them based on trust level
       },
     });
+
+    testUser = users.testUser;
+    adminUser = users.adminUser;
   });
 
   afterAll(async () => {
-    await cleanup();
+    await testEnv.cleanup();
   });
 
   describe("Quota Checking", () => {
     it("should allow operations within quota limits", async () => {
+      const { payload } = testEnv;
       const quotaService = getQuotaService(payload);
 
       // Get fresh user after reset
@@ -115,6 +110,7 @@ describe.sequential("Quota System", () => {
     });
 
     it("should block operations that exceed quota limits", async () => {
+      const { payload } = testEnv;
       const quotaService = getQuotaService(payload);
 
       // Get fresh user after reset
@@ -131,6 +127,7 @@ describe.sequential("Quota System", () => {
     });
 
     it("should allow unlimited operations for admin users", async () => {
+      const { payload } = testEnv;
       const quotaService = getQuotaService(payload);
 
       // Get fresh admin user to ensure quotas are loaded
@@ -152,6 +149,7 @@ describe.sequential("Quota System", () => {
 
   describe("Usage Tracking", () => {
     it("should increment usage counters", async () => {
+      const { payload } = testEnv;
       const quotaService = getQuotaService(payload);
 
       // Ensure clean state for this test
@@ -167,6 +165,7 @@ describe.sequential("Quota System", () => {
     });
 
     it("should enforce quotas after usage increments", async () => {
+      const { payload } = testEnv;
       const quotaService = getQuotaService(payload);
 
       // Ensure clean state
@@ -195,6 +194,7 @@ describe.sequential("Quota System", () => {
     });
 
     it("should throw QuotaExceededError when validateQuota fails", async () => {
+      const { payload } = testEnv;
       const quotaService = getQuotaService(payload);
 
       // Ensure clean state
@@ -222,6 +222,7 @@ describe.sequential("Quota System", () => {
 
   describe("Daily Reset", () => {
     it("should reset daily counters", async () => {
+      const { payload } = testEnv;
       const quotaService = getQuotaService(payload);
 
       // First add some usage to reset
@@ -242,6 +243,7 @@ describe.sequential("Quota System", () => {
     });
 
     it("should allow operations after daily reset", async () => {
+      const { payload } = testEnv;
       const quotaService = getQuotaService(payload);
 
       // Get fresh user after reset
@@ -258,27 +260,17 @@ describe.sequential("Quota System", () => {
     });
 
     it("should reset daily counters for all users efficiently", async () => {
+      const { payload } = testEnv;
       const quotaService = getQuotaService(payload);
 
       // Create additional test users with usage
       // Note: user-usage records are auto-created via afterChange hook
-      const user2 = await payload.create({
-        collection: "users",
-        data: {
-          email: "quota-test-2@example.com",
-          password: "test123456",
-          trustLevel: TRUST_LEVELS.REGULAR,
-        },
+      const { users: extraUsers } = await withUsers(testEnv, {
+        user2: { trustLevel: String(TRUST_LEVELS.REGULAR) },
+        user3: { trustLevel: String(TRUST_LEVELS.REGULAR) },
       });
-
-      const user3 = await payload.create({
-        collection: "users",
-        data: {
-          email: "quota-test-3@example.com",
-          password: "test123456",
-          trustLevel: TRUST_LEVELS.REGULAR,
-        },
-      });
+      const user2 = extraUsers.user2;
+      const user3 = extraUsers.user3;
 
       // Add usage to all users
       await quotaService.incrementUsage(testUser.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 5);
@@ -339,6 +331,7 @@ describe.sequential("Quota System", () => {
 
   describe("File Upload Quota Checking", () => {
     it("should block operations when file upload quota exceeded", async () => {
+      const { payload } = testEnv;
       // Max out the file upload quota for testUser
       const quotaService = getQuotaService(payload);
       await quotaService.incrementUsage(testUser.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 2);
@@ -358,6 +351,7 @@ describe.sequential("Quota System", () => {
     });
 
     it("should allow unlimited file uploads for admin users", async () => {
+      const { payload } = testEnv;
       const quotaService = getQuotaService(payload);
 
       // Get fresh admin user to ensure we have latest data
@@ -376,6 +370,7 @@ describe.sequential("Quota System", () => {
 
   describe("Scheduled Import Quotas", () => {
     it("should enforce active schedule limits", async () => {
+      const { payload } = testEnv;
       const quotaService = getQuotaService(payload);
 
       // Get fresh user after reset
@@ -409,6 +404,7 @@ describe.sequential("Quota System", () => {
 
   describe("URL Fetch Quotas", () => {
     it("should track and limit URL fetches", async () => {
+      const { payload } = testEnv;
       const quotaService = getQuotaService(payload);
 
       // Reset daily counters first
@@ -437,6 +433,7 @@ describe.sequential("Quota System", () => {
 
   describe("Event Creation Quotas", () => {
     it("should enforce total event limits", async () => {
+      const { payload } = testEnv;
       const quotaService = getQuotaService(payload);
 
       // Set user near their total event limit in user-usage collection

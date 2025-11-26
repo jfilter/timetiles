@@ -28,6 +28,7 @@ import {
   createIntegrationTestEnvironment,
   withCatalog,
   withScheduledImport,
+  withUsers,
 } from "@/tests/setup/integration/environment";
 
 // Type definitions for urlFetchJob output
@@ -96,14 +97,10 @@ describe.sequential("Network Error Handling Tests", () => {
     cleanup = env.cleanup;
 
     // Create test user
-    testUser = await payload.create({
-      collection: "users",
-      data: {
-        email: TEST_EMAILS.network,
-        password: "test123456",
-        role: "admin",
-      },
+    const { users } = await withUsers(env, {
+      testUser: { role: "admin", email: TEST_EMAILS.network },
     });
+    testUser = users.testUser;
 
     // Create test catalog
     const { catalog } = await withCatalog(env, {

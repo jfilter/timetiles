@@ -37,19 +37,14 @@ describe.sequential("Hierarchical Access Control", () => {
     cleanup = env.cleanup;
 
     // Create test users using withUsers helper
-    const { users } = await withUsers(env, ["admin", "user"]);
-    adminUser = users.admin;
-    ownerUser = users.user;
-
-    // Create second regular user (other) manually
-    otherUser = await payload.create({
-      collection: "users",
-      data: {
-        email: "other@test.com",
-        password: "password123",
-        role: "user",
-      },
+    const { users } = await withUsers(env, {
+      admin: { role: "admin" },
+      owner: { role: "user" },
+      other: { role: "user", email: "other@test.com" },
     });
+    adminUser = users.admin;
+    ownerUser = users.owner;
+    otherUser = users.other;
 
     // Create test catalogs (as owner) - Note: user context matters for access control
     publicCatalog = await payload.create({

@@ -21,7 +21,7 @@ import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
 import type { Catalog, Dataset, ScheduledImport, User } from "@/payload-types";
 
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
-import { createIntegrationTestEnvironment, withScheduledImport } from "../../setup/integration/environment";
+import { createIntegrationTestEnvironment, withScheduledImport, withUsers } from "../../setup/integration/environment";
 
 // Test server to serve fixture files
 let testServer: http.Server;
@@ -156,15 +156,14 @@ describe.sequential("Webhook Import Service Integration", () => {
 
     // Setup test data
     const timestamp = Date.now();
-    testUser = await payload.create({
-      collection: "users",
-      data: {
-        email: `service-test-${timestamp}@example.com`,
-        password: "test123456",
+    const { users } = await withUsers(testEnv, {
+      testUser: {
         role: "admin",
+        email: `service-test-${timestamp}@example.com`,
         trustLevel: "5",
       },
     });
+    testUser = users.testUser;
 
     testCatalog = await payload.create({
       collection: "catalogs",

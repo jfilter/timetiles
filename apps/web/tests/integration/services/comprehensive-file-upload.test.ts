@@ -25,6 +25,7 @@ import {
   withCatalog,
   withDataset,
   withImportFile,
+  withUsers,
 } from "../../setup/integration/environment";
 
 describe.sequential("Comprehensive File Upload Tests", () => {
@@ -114,14 +115,10 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     let testUser = null;
     let testUserId = null;
     if (approved) {
-      testUser = await payload.create({
-        collection: "users",
-        data: {
-          email: "test-approver@example.com",
-          password: "test123",
-          role: "admin",
-        },
+      const { users } = await withUsers(testEnv, {
+        approver: { role: "admin", email: "test-approver@example.com" },
       });
+      testUser = users.approver;
       testUserId = testUser.id;
     }
 

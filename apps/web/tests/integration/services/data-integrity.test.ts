@@ -23,6 +23,7 @@ import {
   withCatalog,
   withScheduledImport,
   withTestServer,
+  withUsers,
 } from "@/tests/setup/integration/environment";
 
 describe.sequential("Data Integrity Tests", () => {
@@ -43,14 +44,10 @@ describe.sequential("Data Integrity Tests", () => {
     testServerUrl = envWithServer.testServerUrl;
 
     // Create test user
-    testUser = await payload.create({
-      collection: "users",
-      data: {
-        email: TEST_EMAILS.integrity,
-        password: "test123456",
-        role: "admin",
-      },
+    const { users } = await withUsers(envWithServer, {
+      testUser: { role: "admin", email: TEST_EMAILS.integrity },
     });
+    testUser = users.testUser;
 
     // Create test catalog
     const { catalog } = await withCatalog(testEnv, {

@@ -24,6 +24,7 @@ import {
   withCatalog,
   withDataset,
   withImportFile,
+  withUsers,
 } from "../../setup/integration/environment";
 
 describe.sequential("Combined Transformations Integration", () => {
@@ -79,14 +80,10 @@ describe.sequential("Combined Transformations Integration", () => {
 
   const simulateSchemaApproval = async (importJobId: string) => {
     // Create a test user for approval
-    const testUser = await payload.create({
-      collection: "users",
-      data: {
-        email: `test-approver-${Date.now()}-${Math.random()}@example.com`,
-        password: "test123",
-        role: "admin",
-      },
+    const { users } = await withUsers(testEnv, {
+      approver: { role: "admin" },
     });
+    const testUser = users.approver;
 
     // Get the current job
     const beforeJob = await payload.findByID({

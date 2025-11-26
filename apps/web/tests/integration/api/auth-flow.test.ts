@@ -53,6 +53,7 @@ describe.sequential("Authentication Flow", () => {
           // Try to set high trust level (should be forced to BASIC)
           trustLevel: String(TRUST_LEVELS.TRUSTED),
         },
+        disableVerificationEmail: true,
         req: {
           payloadAPI: "REST",
           user: undefined,
@@ -88,6 +89,7 @@ describe.sequential("Authentication Flow", () => {
           role: "admin",
           trustLevel: String(TRUST_LEVELS.TRUSTED),
         },
+        disableVerificationEmail: true,
       });
 
       expect(user).toBeDefined();
@@ -108,6 +110,7 @@ describe.sequential("Authentication Flow", () => {
           email: testEmail,
           password: "SecurePassword123!",
         },
+        disableVerificationEmail: true,
       });
 
       // BASIC trust level should have quotas set
@@ -127,6 +130,7 @@ describe.sequential("Authentication Flow", () => {
           email: testEmail,
           password: "SecurePassword123!",
         },
+        disableVerificationEmail: true,
       });
 
       // User-usage records are created lazily via QuotaService.getOrCreateUsageRecord()
@@ -175,6 +179,7 @@ describe.sequential("Authentication Flow", () => {
           email: testEmail,
           password: "SecurePassword123!",
         },
+        disableVerificationEmail: true,
       });
 
       // Payload auto-adds _verified field when auth.verify is configured
@@ -197,6 +202,7 @@ describe.sequential("Authentication Flow", () => {
           email: testEmail,
           password: testPassword,
         },
+        disableVerificationEmail: true,
       });
 
       // Attempt login should fail because email is not verified
@@ -224,6 +230,7 @@ describe.sequential("Authentication Flow", () => {
           email: testEmail,
           password: testPassword,
         },
+        disableVerificationEmail: true,
       });
 
       // Get verification token and verify email
@@ -267,6 +274,7 @@ describe.sequential("Authentication Flow", () => {
           email: testEmail,
           password: "CorrectPassword123!",
         },
+        disableVerificationEmail: true,
       });
 
       // Attempt login with wrong password
@@ -309,6 +317,7 @@ describe.sequential("Authentication Flow", () => {
           email: testEmail,
           password: "SecurePassword123!",
         },
+        disableVerificationEmail: true,
       });
 
       expect(user._verified).toBe(false);
@@ -365,6 +374,7 @@ describe.sequential("Authentication Flow", () => {
           role: "admin",
         },
         overrideAccess: true, // Bypass access control for test setup
+        disableVerificationEmail: true,
       });
 
       // Now use admin context to create another user
@@ -377,6 +387,7 @@ describe.sequential("Authentication Flow", () => {
           trustLevel: String(TRUST_LEVELS.TRUSTED),
         },
         user: adminUser,
+        disableVerificationEmail: true,
       });
 
       // Admin-created user should retain the specified role
@@ -400,6 +411,7 @@ describe.sequential("Authentication Flow", () => {
           email: testEmail,
           password: "SecurePassword123!",
         },
+        disableVerificationEmail: true,
       });
 
       // Read own profile with user context
@@ -423,6 +435,7 @@ describe.sequential("Authentication Flow", () => {
           email: `user1-${timestamp}@test.com`,
           password: "SecurePassword123!",
         },
+        disableVerificationEmail: true,
       });
 
       await payload.create({
@@ -431,6 +444,7 @@ describe.sequential("Authentication Flow", () => {
           email: `user2-${timestamp}@test.com`,
           password: "SecurePassword123!",
         },
+        disableVerificationEmail: true,
       });
 
       // When user1 queries users with overrideAccess: false
@@ -456,6 +470,7 @@ describe.sequential("Authentication Flow", () => {
           email: `rolechange-${timestamp}@test.com`,
           password: "SecurePassword123!",
         },
+        disableVerificationEmail: true,
       });
 
       // User trying to change their own role should be blocked
@@ -486,6 +501,7 @@ describe.sequential("Authentication Flow", () => {
           role: "admin",
         },
         overrideAccess: true,
+        disableVerificationEmail: true,
       });
 
       // Create regular user
@@ -495,6 +511,7 @@ describe.sequential("Authentication Flow", () => {
           email: `regular-${timestamp}@test.com`,
           password: "SecurePassword123!",
         },
+        disableVerificationEmail: true,
       });
 
       // Admin should be able to read regular user's profile
@@ -521,6 +538,7 @@ describe.sequential("Authentication Flow", () => {
           email: `noauth-${timestamp}@test.com`,
           password: "SecurePassword123!",
         },
+        disableVerificationEmail: true,
       });
 
       // Unauthenticated request with access control enforced should throw Forbidden

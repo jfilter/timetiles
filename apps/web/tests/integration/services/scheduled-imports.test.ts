@@ -20,6 +20,7 @@ import {
   createIntegrationTestEnvironment,
   withScheduledImport,
   withTestServer,
+  withUsers,
 } from "../../setup/integration/environment";
 
 // Type definitions for urlFetchJob output
@@ -59,14 +60,10 @@ describe.sequential("Scheduled Imports Integration", () => {
     testServerUrl = envWithServer.testServerUrl;
 
     // Create shared test data once
-    testUser = await payload.create({
-      collection: "users",
-      data: {
-        email: `test-shared-${timestamp}@example.com`,
-        password: "test123456",
-        role: "admin",
-      },
+    const { users } = await withUsers(envWithServer, {
+      testUser: { role: "admin" },
     });
+    testUser = users.testUser;
 
     testCatalog = await payload.create({
       collection: "catalogs",

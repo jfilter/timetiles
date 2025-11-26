@@ -20,7 +20,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
 
-import { createIntegrationTestEnvironment, withCatalog } from "../../setup/integration/environment";
+import { createIntegrationTestEnvironment, withCatalog, withUsers } from "../../setup/integration/environment";
 
 describe.sequential("End-to-End Job Processing with Manual Execution", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -52,14 +52,8 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
     await testEnv.seedManager.truncate();
 
     // Create test user (needed for import files which require a user)
-    testUser = await payload.create({
-      collection: "users",
-      data: {
-        email: `e2e-test-${Date.now()}@test.local`,
-        password: "TestPassword123!",
-        role: "user",
-      },
-    });
+    const { users } = await withUsers(testEnv, ["user"]);
+    testUser = users.user;
 
     // Create test catalog
     const { catalog } = await withCatalog(testEnv, {

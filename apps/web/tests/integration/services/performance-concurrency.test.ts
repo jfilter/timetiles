@@ -25,6 +25,7 @@ import {
   withCatalog,
   withScheduledImport,
   withTestServer,
+  withUsers,
 } from "@/tests/setup/integration/environment";
 
 // Type definitions for urlFetchJob output
@@ -64,15 +65,10 @@ describe.sequential("Performance and Concurrency Tests", () => {
     testServerUrl = envWithServer.testServerUrl;
 
     // Create test user
-    const user = await payload.create({
-      collection: "users",
-      data: {
-        email: TEST_EMAILS.performance,
-        password: "test123456",
-        role: "admin",
-      },
+    const { users } = await withUsers(envWithServer, {
+      testUser: { role: "admin", email: TEST_EMAILS.performance },
     });
-    testUser = user;
+    testUser = users.testUser;
 
     // Create test catalog
     const { catalog } = await withCatalog(testEnv, {

@@ -19,6 +19,7 @@ import {
   createIntegrationTestEnvironment,
   withCatalog,
   withScheduledImport,
+  withUsers,
 } from "@/tests/setup/integration/environment";
 
 describe.sequential("Schedule Edge Case Tests", () => {
@@ -35,14 +36,10 @@ describe.sequential("Schedule Edge Case Tests", () => {
     cleanup = env.cleanup;
 
     // Create test user
-    testUser = await payload.create({
-      collection: "users",
-      data: {
-        email: TEST_EMAILS.schedule,
-        password: "test123456",
-        role: "admin",
-      },
+    const { users } = await withUsers(env, {
+      testUser: { role: "admin", email: TEST_EMAILS.schedule },
     });
+    testUser = users.testUser;
 
     // Create test catalog
     const { catalog } = await withCatalog(env, {

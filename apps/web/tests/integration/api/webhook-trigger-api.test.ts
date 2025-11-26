@@ -19,6 +19,7 @@ import {
   createIntegrationTestEnvironment,
   withCatalog,
   withScheduledImport,
+  withUsers,
 } from "../../setup/integration/environment";
 
 describe.sequential("Webhook Trigger API Integration", () => {
@@ -55,16 +56,13 @@ describe.sequential("Webhook Trigger API Integration", () => {
     vi.spyOn(RateLimitModule, "getRateLimitService").mockReturnValue(rateLimitService);
 
     // Create base test data
-    const timestamp = Date.now();
-    testUser = await payload.create({
-      collection: "users",
-      data: {
-        email: `webhook-api-test-${timestamp}@example.com`,
-        password: "test123456",
+    const { users } = await withUsers(testEnv, {
+      webhookTestUser: {
         role: "admin",
         trustLevel: "5",
       },
     });
+    testUser = users.webhookTestUser;
 
     const { catalog } = await withCatalog(testEnv, {
       name: "Webhook API Test Catalog",

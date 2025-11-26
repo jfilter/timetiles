@@ -44,19 +44,14 @@ describe.sequential("Access Control Edge Cases", () => {
     // Upload dir is automatically created and cleaned up by testEnv
 
     // Create test users using withUsers helper
-    const { users } = await withUsers(testEnv, ["admin", "user"]);
-    adminUser = users.admin;
-    ownerUser = users.user;
-
-    // Create second regular user (other) manually
-    otherUser = await payload.create({
-      collection: "users",
-      data: {
-        email: "other@test.com",
-        password: "password123",
-        role: "user",
-      },
+    const { users } = await withUsers(testEnv, {
+      admin: { role: "admin" },
+      owner: { role: "user" },
+      other: { role: "user", email: "other@test.com" },
     });
+    adminUser = users.admin;
+    ownerUser = users.owner;
+    otherUser = users.other;
   }, 60000);
 
   afterEach(async () => {

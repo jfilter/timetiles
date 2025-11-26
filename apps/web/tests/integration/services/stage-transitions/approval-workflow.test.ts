@@ -18,7 +18,12 @@ import { datasetDetectionJob } from "@/lib/jobs/handlers/dataset-detection-job";
 import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
 import { validateSchemaJob } from "@/lib/jobs/handlers/validate-schema-job";
 
-import { createIntegrationTestEnvironment, withCatalog, withImportFile } from "../../../setup/integration/environment";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withImportFile,
+  withUsers,
+} from "../../../setup/integration/environment";
 
 describe.sequential("Approval Workflow Transition Integration", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -40,13 +45,8 @@ describe.sequential("Approval Workflow Transition Integration", () => {
     await testEnv.seedManager.truncate();
 
     // Create test user (recreated each test since truncate() clears users)
-    await payload.create({
-      collection: "users",
-      data: {
-        email: `approval-test-${Date.now()}@example.com`,
-        password: "test-password-123",
-        name: "Approval Test User",
-      },
+    await withUsers(testEnv, {
+      approvalTestUser: { role: "user", firstName: "Approval", lastName: "Test User" },
     });
 
     const { catalog } = await withCatalog(testEnv, {

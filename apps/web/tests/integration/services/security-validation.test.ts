@@ -22,6 +22,7 @@ import {
   createIntegrationTestEnvironment,
   withScheduledImport,
   withTestServer,
+  withUsers,
 } from "@/tests/setup/integration/environment";
 
 // Type definitions for urlFetchJob output
@@ -61,25 +62,13 @@ describe.sequential("Security Validation Tests", () => {
     testServer = envWithServer.testServer;
     testServerUrl = envWithServer.testServerUrl;
 
-    // Create admin user
-    adminUser = await payload.create({
-      collection: "users",
-      data: {
-        email: "admin@example.com",
-        password: "admin123456",
-        role: "admin",
-      },
+    // Create admin and regular users
+    const { users } = await withUsers(envWithServer, {
+      adminUser: { role: "admin", email: "admin@example.com" },
+      regularUser: { role: "user", email: "user@example.com" },
     });
-
-    // Create regular user
-    regularUser = await payload.create({
-      collection: "users",
-      data: {
-        email: "user@example.com",
-        password: "user123456",
-        role: "user",
-      },
-    });
+    adminUser = users.adminUser;
+    regularUser = users.regularUser;
 
     // Create test catalog owned by regularUser so they can create scheduled imports
     const catalog = await payload.create({
@@ -435,14 +424,10 @@ describe.sequential("Security Validation Tests", () => {
       testServer.respondWithCSV("/private-catalog.csv", "test,data\n1,2");
 
       // Create another user (admin2) who owns the private catalog
-      const admin2 = await payload.create({
-        collection: "users",
-        data: {
-          email: "admin2@test.com",
-          password: TEST_CREDENTIALS.basic.strongPassword,
-          role: "user",
-        },
+      const { users: admin2Users } = await withUsers(testEnv, {
+        admin2: { role: "user", email: "admin2@test.com" },
       });
+      const admin2 = admin2Users.admin2;
 
       // Create a private catalog owned by admin2
       const privateCatalog = await payload.create({
@@ -599,14 +584,10 @@ describe.sequential("Security Validation Tests", () => {
       );
 
       // Create another regular user
-      const anotherUser = await payload.create({
-        collection: "users",
-        data: {
-          email: "another@test.com",
-          password: TEST_CREDENTIALS.basic.strongPassword,
-          role: "user",
-        },
+      const { users: anotherUsers } = await withUsers(testEnv, {
+        anotherUser: { role: "user", email: "another@test.com" },
       });
+      const anotherUser = anotherUsers.anotherUser;
 
       // Another user should not be able to modify this scheduled import
       // Currently scheduled-imports don't have explicit ownership checks

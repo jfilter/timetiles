@@ -17,7 +17,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { logger } from "@/lib/logger";
 
-import { createIntegrationTestEnvironment, withCatalog, withImportFile } from "../../setup/integration/environment";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withImportFile,
+  withUsers,
+} from "../../setup/integration/environment";
 
 describe.sequential("Job Queueing Tests", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -140,14 +145,10 @@ describe.sequential("Job Queueing Tests", () => {
       const importJob = importJobs.docs[0];
 
       // Approve schema
-      const testUser = await payload.create({
-        collection: "users",
-        data: {
-          email: `approver-${Date.now()}@example.com`,
-          password: "test123",
-          role: "admin",
-        },
+      const { users } = await withUsers(testEnv, {
+        approver: { role: "admin" },
       });
+      const testUser = users.approver;
 
       await payload.update({
         collection: "import-jobs",

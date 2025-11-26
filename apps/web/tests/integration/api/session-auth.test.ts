@@ -9,7 +9,8 @@
 import { sql } from "@payloadcms/db-postgres";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
+import { TEST_CREDENTIALS } from "../../constants/test-credentials";
+import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
 
 describe("Session Authentication", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -25,16 +26,16 @@ describe("Session Authentication", () => {
       // Create a test user
       const timestamp = Date.now();
       const testEmail = `session-test-${timestamp}@test.com`;
-      const testPassword = "SecurePassword123!";
+      const testPassword = TEST_CREDENTIALS.basic.strongPassword;
 
-      const user = await payload.create({
-        collection: "users",
-        data: {
+      const { users } = await withUsers(testEnv, {
+        sessionTestUser: {
           email: testEmail,
           password: testPassword,
           _verified: true,
         },
       });
+      const user = users.sessionTestUser;
 
       expect(user.id).toBeDefined();
 
@@ -77,11 +78,10 @@ describe("Session Authentication", () => {
       // Create a test user
       const timestamp = Date.now();
       const testEmail = `auth-test-${timestamp}@test.com`;
-      const testPassword = "SecurePassword123!";
+      const testPassword = TEST_CREDENTIALS.basic.strongPassword;
 
-      await payload.create({
-        collection: "users",
-        data: {
+      await withUsers(testEnv, {
+        authTestUser: {
           email: testEmail,
           password: testPassword,
           _verified: true,
@@ -122,11 +122,10 @@ describe("Session Authentication", () => {
       // Create a test user
       const timestamp = Date.now();
       const testEmail = `cookie-test-${timestamp}@test.com`;
-      const testPassword = "SecurePassword123!";
+      const testPassword = TEST_CREDENTIALS.basic.strongPassword;
 
-      await payload.create({
-        collection: "users",
-        data: {
+      await withUsers(testEnv, {
+        cookieTestUser: {
           email: testEmail,
           password: testPassword,
           _verified: true,
@@ -162,16 +161,16 @@ describe("Session Authentication", () => {
       // Create a test user
       const timestamp = Date.now();
       const testEmail = `session-delete-${timestamp}@test.com`;
-      const testPassword = "SecurePassword123!";
+      const testPassword = TEST_CREDENTIALS.basic.strongPassword;
 
-      const user = await payload.create({
-        collection: "users",
-        data: {
+      const { users } = await withUsers(testEnv, {
+        sessionDeleteUser: {
           email: testEmail,
           password: testPassword,
           _verified: true,
         },
       });
+      const user = users.sessionDeleteUser;
 
       // Login to get token
       const loginResult = await payload.login({
@@ -214,16 +213,16 @@ describe("Session Authentication", () => {
       // Create and login
       const timestamp = Date.now();
       const testEmail = `inspect-${timestamp}@test.com`;
-      const testPassword = "SecurePassword123!";
+      const testPassword = TEST_CREDENTIALS.basic.strongPassword;
 
-      const user = await payload.create({
-        collection: "users",
-        data: {
+      const { users } = await withUsers(testEnv, {
+        inspectUser: {
           email: testEmail,
           password: testPassword,
           _verified: true,
         },
       });
+      const user = users.inspectUser;
 
       await payload.login({
         collection: "users",

@@ -11,7 +11,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 
 import { TEST_CREDENTIALS, TEST_EMAILS } from "../../constants/test-credentials";
-import { createIntegrationTestEnvironment, withCatalog, withImportFile } from "../../setup/integration/environment";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withImportFile,
+  withUsers,
+} from "../../setup/integration/environment";
 
 describe.sequential("Import Job Retry API", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -41,15 +46,14 @@ describe.sequential("Import Job Retry API", () => {
     testCatalogId = catalog.id;
 
     // Create test user
-    const testUser = await payload.create({
-      collection: "users",
-      data: {
+    const { users } = await withUsers(testEnv, {
+      retryTestUser: {
         email: TEST_EMAILS.user,
         password: TEST_CREDENTIALS.basic.password,
         role: "user",
       },
     });
-    testUserId = testUser.id;
+    testUserId = users.retryTestUser.id;
   });
 
   describe("POST /api/import-jobs/[id]/retry", () => {

@@ -27,6 +27,7 @@ import {
   withCatalog,
   withDataset,
   withImportFile,
+  withUsers,
 } from "../../setup/integration/environment";
 
 describe.sequential("Multi-Language Import Tests", () => {
@@ -87,14 +88,10 @@ describe.sequential("Multi-Language Import Tests", () => {
   };
 
   const simulateSchemaApproval = async (importJobId: string) => {
-    const testUser = await payload.create({
-      collection: "users",
-      data: {
-        email: `approver-${Date.now()}@example.com`,
-        password: "test123",
-        role: "admin",
-      },
+    const { users } = await withUsers(testEnv, {
+      approver: { role: "admin" },
     });
+    const testUser = users.approver;
 
     const beforeJob = await payload.findByID({
       collection: "import-jobs",

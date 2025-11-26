@@ -14,6 +14,7 @@ import {
   createIntegrationTestEnvironment,
   withCatalog,
   withScheduledImport,
+  withUsers,
 } from "../../setup/integration/environment";
 
 describe.sequential("Cleanup Stuck Imports Job Integration", () => {
@@ -28,16 +29,10 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
 
-    const timestamp = Date.now();
-    testUser = await payload.create({
-      collection: "users",
-      data: {
-        email: `cleanup-test-${timestamp}@example.com`,
-        password: "test123456",
-        role: "admin",
-        trustLevel: "5",
-      },
+    const { users } = await withUsers(testEnv, {
+      testUser: { role: "admin", trustLevel: "5" },
     });
+    testUser = users.testUser;
 
     const { catalog } = await withCatalog(testEnv, {
       name: "Cleanup Test Catalog",

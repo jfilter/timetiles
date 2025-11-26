@@ -11,6 +11,7 @@ import {
   createIntegrationTestEnvironment,
   withCatalog,
   withScheduledImport,
+  withUsers,
 } from "../../setup/integration/environment";
 
 describe.sequential("Schedule Manager Concurrency Updates", () => {
@@ -28,14 +29,10 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
     cleanup = env.cleanup;
 
     // Create test data
-    testUser = await payload.create({
-      collection: "users",
-      data: {
-        email: `schedule-concurrency-${Date.now()}@example.com`,
-        password: "test123456",
-        role: "admin",
-      },
+    const { users } = await withUsers(env, {
+      testUser: { role: "admin" },
     });
+    testUser = users.testUser;
 
     const { catalog } = await withCatalog(env, {
       name: "Schedule Concurrency Catalog",
