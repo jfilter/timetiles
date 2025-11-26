@@ -430,31 +430,109 @@ export const withDataset = async (
 };
 
 /**
- * Create a set of test users with specified roles.
+ * User configuration options for withUsers helper.
+ */
+export interface UserConfig {
+  role?: "admin" | "editor" | "user";
+  email?: string;
+  password?: string;
+  firstName?: string;
+  lastName?: string;
+  trustLevel?: string;
+  quotas?: {
+    maxFileUploadsPerDay?: number;
+    maxUrlFetchesPerDay?: number;
+    maxActiveSchedules?: number;
+    maxEventsPerImport?: number;
+    maxTotalEvents?: number;
+    maxImportJobsPerDay?: number;
+    maxFileSizeMB?: number;
+  };
+  isActive?: boolean;
+  _verified?: boolean;
+}
+
+type UserRole = "admin" | "editor" | "user";
+
+/**
+ * Create a set of test users with specified roles or custom configurations.
+ *
+ * Supports two usage patterns:
+ * 1. Simple array of roles - creates users with default settings
+ * 2. Object with custom configurations - full control over user properties
+ *
+ * All users are created with `disableVerificationEmail: true` to prevent
+ * email sending during tests.
  *
  * @example
  * ```typescript
+ * // Simple: Create users by role (uses role name as key)
  * const { users } = await withUsers(testEnv, ['admin', 'editor', 'user']);
  * const adminUser = users.admin;
  * const editorUser = users.editor;
+ *
+ * // Custom: Create users with specific configurations
+ * const { users } = await withUsers(testEnv, {
+ *   limitedUser: {
+ *     role: 'user',
+ *     trustLevel: '1',
+ *     quotas: { maxFileUploadsPerDay: 2, maxEventsPerImport: 100 }
+ *   },
+ *   superAdmin: {
+ *     role: 'admin',
+ *     trustLevel: '5',
+ *     email: 'super@test.com'
+ *   }
+ * });
+ * const limited = users.limitedUser;
+ * const admin = users.superAdmin;
  * ```
  */
 export const withUsers = async (
   testEnv: TestEnvironment,
-  roles: ("admin" | "editor" | "user")[]
+  rolesOrConfigs: UserRole[] | Record<string, UserConfig>
 ): Promise<TestEnvironment & { users: Record<string, any> }> => {
   const users: Record<string, any> = {};
+  const timestamp = Date.now();
 
-  for (const role of roles) {
-    const user = await testEnv.payload.create({
-      collection: "users",
-      data: {
-        email: `${role}@test.com`,
-        password: TEST_CREDENTIALS.basic.strongPassword,
-        role: role === "user" ? "user" : role,
-      },
-    });
-    users[role] = user;
+  // Handle simple array of roles
+  if (Array.isArray(rolesOrConfigs)) {
+    for (const role of rolesOrConfigs) {
+      const user = await testEnv.payload.create({
+        collection: "users",
+        data: {
+          email: `${role}@test.com`,
+          password: TEST_CREDENTIALS.basic.strongPassword,
+          role: role,
+        },
+        disableVerificationEmail: true,
+      });
+      users[role] = user;
+    }
+  } else {
+    // Handle object with custom configurations
+    for (const [key, config] of Object.entries(rolesOrConfigs)) {
+      const userData: Record<string, any> = {
+        email: config.email ?? `${key}-${timestamp}@test.com`,
+        password: config.password ?? TEST_CREDENTIALS.basic.strongPassword,
+        role: config.role ?? "user",
+      };
+
+      // Add optional fields if provided
+      if (config.firstName !== undefined) userData.firstName = config.firstName;
+      if (config.lastName !== undefined) userData.lastName = config.lastName;
+      if (config.trustLevel !== undefined) userData.trustLevel = config.trustLevel;
+      if (config.quotas !== undefined) userData.quotas = config.quotas;
+      if (config.isActive !== undefined) userData.isActive = config.isActive;
+      if (config._verified !== undefined) userData._verified = config._verified;
+
+      const user = await testEnv.payload.create({
+        collection: "users",
+        data: userData,
+        disableVerificationEmail: true,
+      });
+      users[key] = user;
+    }
   }
 
   return { ...testEnv, users };
@@ -754,6 +832,7 @@ export const withImportFile = async (
         password: "TestPassword123!",
         role: "user",
       },
+      disableVerificationEmail: true,
     });
     data.user = tempUser.id;
     userContext = tempUser;
