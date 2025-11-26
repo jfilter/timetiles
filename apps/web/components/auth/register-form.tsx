@@ -73,7 +73,8 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
 
       void (async () => {
         try {
-          const response = await fetch("/api/users", {
+          // Use secure registration endpoint that prevents user enumeration
+          const response = await fetch("/api/auth/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -84,11 +85,11 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
 
           const data = await response.json();
 
-          if (response.ok && data.doc) {
+          if (response.ok && data.success) {
             setStatus("success");
             onSuccess?.();
           } else {
-            const message = data.errors?.[0]?.message || data.message || "Registration failed. Please try again.";
+            const message = data.error || "Registration failed. Please try again.";
             setStatus("error");
             setErrorMessage(message);
             onError?.(message);
