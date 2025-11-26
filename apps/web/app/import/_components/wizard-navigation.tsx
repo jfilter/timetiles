@@ -11,8 +11,8 @@
 
 import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, Loader2Icon } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, Loader2Icon, RotateCcwIcon } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useWizard } from "./wizard-context";
 
@@ -41,8 +41,9 @@ export const WizardNavigation = ({
   showNext = true,
   isLoading = false,
 }: Readonly<WizardNavigationProps>) => {
-  const { state, nextStep, prevStep, canProceed } = useWizard();
+  const { state, nextStep, prevStep, reset, canProceed } = useWizard();
   const { currentStep } = state;
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const isFirstStep = currentStep === 1;
   const isLastStep = currentStep === 6;
@@ -83,14 +84,54 @@ export const WizardNavigation = ({
     return <ArrowRightIcon className="h-4 w-4" />;
   }, [isLoading, currentStep]);
 
+  const handleReset = useCallback(() => {
+    reset();
+    setShowResetConfirm(false);
+  }, [reset]);
+
+  const showConfirmDialog = useCallback(() => {
+    setShowResetConfirm(true);
+  }, []);
+
+  const hideConfirmDialog = useCallback(() => {
+    setShowResetConfirm(false);
+  }, []);
+
   return (
     <div className={cn("flex items-center justify-between border-t pt-6", className)} data-testid="wizard-navigation">
-      <div>
+      <div className="flex items-center gap-4">
         {showBack && !isFirstStep && (
           <Button type="button" variant="outline" onClick={handleBack} disabled={isLoading}>
             <ArrowLeftIcon className="mr-2 h-4 w-4" />
             Back
           </Button>
+        )}
+        {!isFirstStep && !isLastStep && (
+          <>
+            {showResetConfirm ? (
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground text-sm">Reset wizard?</span>
+                <Button type="button" variant="destructive" size="sm" onClick={handleReset}>
+                  Yes
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={hideConfirmDialog}>
+                  No
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={showConfirmDialog}
+                disabled={isLoading}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcwIcon className="mr-1 h-3 w-3" />
+                Start Over
+              </Button>
+            )}
+          </>
         )}
       </div>
 

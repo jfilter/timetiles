@@ -324,6 +324,7 @@ const processScheduledImport = async (
           : (scheduledImport.catalog ?? undefined),
       originalName: importName,
       userId:
+        // eslint-disable-next-line sonarjs/different-types-comparison -- Checking for object type is correct
         typeof scheduledImport.createdBy === "object" && scheduledImport.createdBy !== null
           ? scheduledImport.createdBy.id
           : scheduledImport.createdBy,
