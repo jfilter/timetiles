@@ -23,6 +23,8 @@
 - [app/api/import-jobs/failed/recommendations/route](app/api/import-jobs/failed/recommendations/route.md)
 - [app/api/import/\[importId\]/progress/route](app/api/import/[importId]/progress/route.md)
 - [app/api/newsletter/subscribe/route](app/api/newsletter/subscribe/route.md)
+- [app/api/v1/datasets/\[id\]/schema/infer/route](app/api/v1/datasets/[id]/schema/infer/route.md)
+- [app/api/v1/events/bounds/route](app/api/v1/events/bounds/route.md)
 - [app/api/v1/events/geo/stats/route](app/api/v1/events/geo/stats/route.md)
 - [app/api/v1/events/stats/route](app/api/v1/events/stats/route.md)
 - [app/api/v1/sources/stats/route](app/api/v1/sources/stats/route.md)
@@ -43,6 +45,7 @@
 - [lib/collections/datasets/access](lib/collections/datasets/access.md)
 - [lib/collections/datasets/hooks](lib/collections/datasets/hooks.md)
 - [lib/collections/deletion-audit-log](lib/collections/deletion-audit-log.md)
+- [lib/collections/events/hooks](lib/collections/events/hooks.md)
 - [lib/collections/scheduled-imports/fields/auth-fields](lib/collections/scheduled-imports/fields/auth-fields.md)
 - [lib/collections/scheduled-imports/fields/basic-fields](lib/collections/scheduled-imports/fields/basic-fields.md)
 - [lib/collections/scheduled-imports/fields/execution-fields](lib/collections/scheduled-imports/fields/execution-fields.md)
@@ -72,6 +75,7 @@
 - [lib/hooks/use-chart-filters](lib/hooks/use-chart-filters.md)
 - [lib/hooks/use-chart-query](lib/hooks/use-chart-query.md)
 - [lib/hooks/use-data-export](lib/hooks/use-data-export.md)
+- [lib/hooks/use-dataset-queries](lib/hooks/use-dataset-queries.md)
 - [lib/hooks/use-feature-flags](lib/hooks/use-feature-flags.md)
 
 ### Jobs
@@ -85,6 +89,7 @@
 - [lib/jobs/handlers/execute-account-deletion-job](lib/jobs/handlers/execute-account-deletion-job.md)
 - [lib/jobs/handlers/geocode-batch-job](lib/jobs/handlers/geocode-batch-job.md)
 - [lib/jobs/handlers/schedule-manager-job](lib/jobs/handlers/schedule-manager-job.md)
+- [lib/jobs/handlers/schema-maintenance-job](lib/jobs/handlers/schema-maintenance-job.md)
 - [lib/jobs/handlers/url-fetch-job](lib/jobs/handlers/url-fetch-job.md)
 - [lib/jobs/handlers/url-fetch-job](lib/jobs/handlers/url-fetch-job-1.md)
 - [lib/jobs/utils/event-creation-helpers](lib/jobs/utils/event-creation-helpers.md)
@@ -182,6 +187,8 @@
 - [lib/services/rate-limit-service](lib/services/rate-limit-service.md)
 - [lib/services/schedule-service](lib/services/schedule-service.md)
 - [lib/services/schema-builder](lib/services/schema-builder.md)
+- [lib/services/schema-freshness](lib/services/schema-freshness.md)
+- [lib/services/schema-inference-service](lib/services/schema-inference-service.md)
 - [lib/services/schema-similarity](lib/services/schema-similarity.md)
 - [lib/services/system-user-service](lib/services/system-user-service.md)
 
