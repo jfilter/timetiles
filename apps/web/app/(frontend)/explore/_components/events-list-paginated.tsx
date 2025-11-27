@@ -21,9 +21,11 @@ import { EventsListSkeleton } from "./events-list-skeleton";
 interface EventsListPaginatedProps {
   filters: FilterState;
   bounds: SimpleBounds | null;
+  /** Callback when an event card is clicked */
+  onEventClick?: (eventId: number) => void;
 }
 
-export const EventsListPaginated = ({ filters, bounds }: Readonly<EventsListPaginatedProps>) => {
+export const EventsListPaginated = ({ filters, bounds, onEventClick }: Readonly<EventsListPaginatedProps>) => {
   const { events, total, loadedCount, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, isError, error } =
     useEventsInfiniteFlattened(filters, bounds, 20);
 
@@ -71,7 +73,7 @@ export const EventsListPaginated = ({ filters, bounds }: Readonly<EventsListPagi
       </div>
 
       {/* Events list - reuses existing component */}
-      <EventsList events={events} isInitialLoad={false} isUpdating={isFetchingNextPage} />
+      <EventsList events={events} isInitialLoad={false} isUpdating={isFetchingNextPage} onEventClick={onEventClick} />
 
       {/* Load More button */}
       {hasNextPage && (
