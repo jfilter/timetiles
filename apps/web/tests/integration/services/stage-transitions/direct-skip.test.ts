@@ -54,7 +54,7 @@ Event 1,2024-01-01,Location 1
 Event 2,2024-01-02,Location 2`;
 
       const csvFileName1 = `direct-skip-1-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }
@@ -189,7 +189,7 @@ Event 4,2024-01-04,Location 4`;
 Event 1,2024-01-01,Location 1`;
 
       const csvFileName = `schema-changes-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }
@@ -251,7 +251,7 @@ Event 1,2024-01-01
 Event 2,2024-01-02`;
 
       const csvFileName = `integrity-test-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }

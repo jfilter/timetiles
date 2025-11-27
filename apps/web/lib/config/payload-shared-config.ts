@@ -11,8 +11,10 @@
 
 // Import all collections
 import Catalogs from "@/lib/collections/catalogs";
+import DataExports from "@/lib/collections/data-exports";
 import DatasetSchemas from "@/lib/collections/dataset-schemas";
 import Datasets from "@/lib/collections/datasets";
+import DeletionAuditLog from "@/lib/collections/deletion-audit-log";
 import Events from "@/lib/collections/events";
 import GeocodingProviders from "@/lib/collections/geocoding-providers";
 import ImportFiles from "@/lib/collections/import-files";
@@ -24,6 +26,7 @@ import ScheduledImports from "@/lib/collections/scheduled-imports/index";
 import UserUsage from "@/lib/collections/user-usage";
 import Users from "@/lib/collections/users";
 // Import globals
+import { Branding } from "@/lib/globals/branding";
 import { Footer } from "@/lib/globals/footer";
 import { MainMenu } from "@/lib/globals/main-menu";
 import { Settings } from "@/lib/globals/settings";
@@ -35,6 +38,8 @@ import {
   cleanupStuckScheduledImportsJob,
   createEventsBatchJob,
   createSchemaVersionJob,
+  dataExportCleanupJob,
+  dataExportJob,
   datasetDetectionJob,
   geocodeBatchJob,
   processPendingRetriesJob,
@@ -50,8 +55,10 @@ import { migrations } from "@/migrations";
 // Collection registry for easy access
 export const COLLECTIONS = {
   catalogs: Catalogs,
+  "data-exports": DataExports,
   datasets: Datasets,
   "dataset-schemas": DatasetSchemas,
+  "deletion-audit-log": DeletionAuditLog,
   "import-files": ImportFiles,
   "import-jobs": ImportJobs,
   "scheduled-imports": ScheduledImports,
@@ -67,24 +74,31 @@ export const COLLECTIONS = {
 export type CollectionName = keyof typeof COLLECTIONS;
 
 // Ordered list of all collections for production
+// Grouped: Data, Import, Content, System
 export const ALL_COLLECTIONS = [
+  // Data
   Catalogs,
   Datasets,
   DatasetSchemas,
+  Events,
+  // Import
   ImportFiles,
   ImportJobs,
   ScheduledImports,
-  Events,
+  // Content
+  Pages,
+  Media,
+  // System
   Users,
   UserUsage,
-  Media,
-  LocationCache,
   GeocodingProviders,
-  Pages,
+  LocationCache,
+  DeletionAuditLog,
+  DataExports,
 ];
 
-// All globals
-export const ALL_GLOBALS = [MainMenu, Footer, Settings];
+// All globals (grouped: Content, System)
+export const ALL_GLOBALS = [MainMenu, Footer, Branding, Settings];
 
 // All jobs
 export const ALL_JOBS = [
@@ -102,6 +116,8 @@ export const ALL_JOBS = [
   processPendingRetriesJob,
   quotaResetJobConfig,
   cacheCleanupJob,
+  dataExportJob,
+  dataExportCleanupJob,
 ];
 
 // Common upload configuration

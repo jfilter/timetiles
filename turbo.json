@@ -11,8 +11,7 @@
     "VITEST",
     "VITEST_WORKER_ID",
     "LOG_LEVEL",
-    "UPLOAD_DIR_IMPORT_FILES",
-    "UPLOAD_DIR_MEDIA",
+    "UPLOAD_DIR",
     "UPLOAD_TEMP_DIR",
     "TEST_ALL_BROWSERS",
     "E2E_DEBUG",
@@ -42,7 +41,8 @@
     "EMAIL_SMTP_HOST",
     "EMAIL_SMTP_PORT",
     "EMAIL_SMTP_USER",
-    "EMAIL_SMTP_PASS"
+    "EMAIL_SMTP_PASS",
+    "DATA_EXPORT_DIR"
   ],
   "tasks": {
     "build": {

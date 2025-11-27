@@ -69,8 +69,8 @@ test.describe("Access Control - User Perspective", () => {
     test("should not display admin navigation elements", async ({ page }) => {
       await page.goto("http://localhost:3002/");
 
-      // Should not see admin panel link
-      const adminLink = page.locator('a[href="/admin"]').first();
+      // Should not see dashboard link
+      const adminLink = page.locator('a[href="/dashboard"]').first();
       const isVisible = await adminLink.isVisible().catch(() => false);
 
       // Admin link should either not exist or not be visible
@@ -313,8 +313,8 @@ test.describe("Access Control - User Perspective", () => {
 
 test.describe("Access Control - Error Handling", () => {
   test("should show user-friendly error for unauthorized access", async ({ page }) => {
-    // Try to navigate to admin panel with increased timeout for JS bundle loading
-    await page.goto("http://localhost:3002/admin", { timeout: 30000 });
+    // Try to navigate to dashboard with increased timeout for JS bundle loading
+    await page.goto("http://localhost:3002/dashboard", { timeout: 30000 });
 
     // Should redirect to login page - wait for login form to appear
     // instead of waiting for networkidle (which times out with admin panel JS bundles)
@@ -324,7 +324,7 @@ test.describe("Access Control - Error Handling", () => {
     const url = page.url();
     console.log("Redirect URL after admin access attempt:", url);
 
-    // Should be on login page (accepts /login, /auth, or /admin/login)
+    // Should be on login page (accepts /login, /auth, or /dashboard/login)
     const isOnLogin = url.includes("/login") || url.includes("/auth");
     expect(isOnLogin).toBe(true);
 

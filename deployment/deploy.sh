@@ -10,13 +10,22 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ENV_FILE="$SCRIPT_DIR/.env.production"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.prod.yml"
 TEST_OVERRIDE="$SCRIPT_DIR/docker-compose.test.yml"
+SSL_OVERRIDE="$SCRIPT_DIR/docker-compose.ssl-override.yml"
 
-# Use test override if it exists (for CI/testing)
-if [ -f "$TEST_OVERRIDE" ]; then
-    DC_CMD="docker compose -f $COMPOSE_FILE -f $TEST_OVERRIDE --env-file $ENV_FILE"
-else
-    DC_CMD="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE"
+# Build compose command with appropriate overrides
+DC_CMD="docker compose -f $COMPOSE_FILE"
+
+# Add SSL override if exists (for self-signed certs when SKIP_SSL=true)
+if [ -f "$SSL_OVERRIDE" ]; then
+    DC_CMD="$DC_CMD -f $SSL_OVERRIDE"
 fi
+
+# Add test override if exists (for CI/testing)
+if [ -f "$TEST_OVERRIDE" ]; then
+    DC_CMD="$DC_CMD -f $TEST_OVERRIDE"
+fi
+
+DC_CMD="$DC_CMD --env-file $ENV_FILE"
 
 # Change to project root for build context
 cd "$SCRIPT_DIR/.."
@@ -38,7 +47,7 @@ print_usage() {
     echo "  down      - Stop all services"
     echo "  restart   - Restart all services"
     echo "  logs      - View logs (follow mode)"
-    echo "  backup    - Backup management (db|full|auto|list|clean)"
+    echo "  backup    - Backup management (full|db|auto|list|clean)"
     echo "  restore   - Restore from backup"
     echo "  status    - Check service status"
     echo "  ssl       - Initialize Let's Encrypt SSL certificate"
@@ -110,7 +119,6 @@ case "$1" in
             echo "  - DB_PASSWORD"
             echo "  - DOMAIN_NAME (your domain)"
             echo "  - LETSENCRYPT_EMAIL"
-            echo "  - GOOGLE_MAPS_API_KEY (optional)"
         else
             echo -e "${YELLOW}$ENV_FILE already exists${NC}"
         fi
@@ -157,12 +165,13 @@ case "$1" in
         BACKUP_DIR="${BACKUP_DIR:-$SCRIPT_DIR/backups}"
         mkdir -p "$BACKUP_DIR"
         
-        # Parse sub-command
-        case "${2:-db}" in
+        # Parse sub-command (default to full backup for safety)
+        case "${2:-full}" in
             db|database)
                 echo -e "${YELLOW}Backing up database...${NC}"
                 BACKUP_FILE="$BACKUP_DIR/db-$(date +%Y%m%d-%H%M%S).sql.gz"
-                $DC_CMD exec -T postgres pg_dump -U timetiles_user timetiles | gzip > "$BACKUP_FILE"
+                # --clean adds DROP statements, --if-exists prevents errors if objects don't exist
+                $DC_CMD exec -T postgres pg_dump -U timetiles_user --clean --if-exists timetiles | gzip > "$BACKUP_FILE"
                 echo -e "${GREEN}Database backup saved to $BACKUP_FILE${NC}"
                 
                 # Keep only last 30 backups
@@ -175,7 +184,7 @@ case "$1" in
                 
                 # Backup database
                 echo "Backing up database..."
-                $DC_CMD exec -T postgres pg_dump -U timetiles_user timetiles | gzip > "$BACKUP_DIR/db-$TIMESTAMP.sql.gz"
+                $DC_CMD exec -T postgres pg_dump -U timetiles_user --clean --if-exists timetiles | gzip > "$BACKUP_DIR/db-$TIMESTAMP.sql.gz"
                 
                 # Backup uploads
                 echo "Backing up uploads..."
@@ -227,9 +236,9 @@ EOF
                 ;;
                 
             *)
-                echo "Usage: $0 backup [db|full|auto|list|clean]"
-                echo "  db    - Backup database only (default)"
-                echo "  full  - Backup database and uploads"
+                echo "Usage: $0 backup [full|db|auto|list|clean]"
+                echo "  full  - Backup database and uploads (default)"
+                echo "  db    - Backup database only"
                 echo "  auto  - Setup automatic daily backups"
                 echo "  list  - List available backups"
                 echo "  clean - Remove backups older than 30 days"
@@ -241,44 +250,81 @@ EOF
     restore)
         check_env
         BACKUP_DIR="${BACKUP_DIR:-$SCRIPT_DIR/backups}"
-        
+
         if [ -z "$2" ]; then
             echo "Usage: $0 restore <backup-file> [uploads-file]"
             echo ""
             echo "Available backups:"
-            ls -1 "$BACKUP_DIR"/db-*.sql.gz 2>/dev/null | tail -10 || echo "No backups found"
+            echo "  Database:"
+            ls -1 "$BACKUP_DIR"/db-*.sql.gz 2>/dev/null | tail -10 || echo "    No database backups found"
+            echo "  Uploads:"
+            ls -1 "$BACKUP_DIR"/uploads-*.tar.gz 2>/dev/null | tail -10 || echo "    No upload backups found"
             exit 1
         fi
-        
-        BACKUP_FILE="$2"
-        if [ ! -f "$BACKUP_FILE" ]; then
+
+        # Validate database backup file
+        DB_BACKUP="$2"
+        if [ ! -f "$DB_BACKUP" ]; then
             # Try in backup directory
-            BACKUP_FILE="$BACKUP_DIR/$2"
-            if [ ! -f "$BACKUP_FILE" ]; then
-                echo -e "${RED}Error: Backup file not found: $2${NC}"
+            DB_BACKUP="$BACKUP_DIR/$2"
+            if [ ! -f "$DB_BACKUP" ]; then
+                echo -e "${RED}Error: Database backup file not found: $2${NC}"
                 exit 1
             fi
         fi
-        
-        echo -e "${RED}WARNING: This will replace the current database!${NC}"
+
+        # Validate uploads backup file if provided
+        UPLOADS_BACKUP=""
+        if [ -n "$3" ]; then
+            UPLOADS_BACKUP="$3"
+            if [ ! -f "$UPLOADS_BACKUP" ]; then
+                # Try in backup directory
+                UPLOADS_BACKUP="$BACKUP_DIR/$3"
+                if [ ! -f "$UPLOADS_BACKUP" ]; then
+                    echo -e "${RED}Error: Uploads backup file not found: $3${NC}"
+                    exit 1
+                fi
+            fi
+        fi
+
+        # Show what will be restored
+        echo ""
+        echo -e "${YELLOW}Files to restore:${NC}"
+        echo "  Database: $DB_BACKUP"
+        if [ -n "$UPLOADS_BACKUP" ]; then
+            echo "  Uploads:  $UPLOADS_BACKUP"
+        fi
+        echo ""
+
+        # Warning about data loss
+        echo -e "${RED}WARNING: This will REPLACE ALL EXISTING DATA!${NC}"
+        echo -e "${RED}  - Database: All tables will be dropped and recreated${NC}"
+        if [ -n "$UPLOADS_BACKUP" ]; then
+            echo -e "${RED}  - Uploads: All uploaded files will be deleted${NC}"
+        fi
+        echo ""
         read -r -p "Are you sure? (yes/no): " confirm
         if [ "$confirm" != "yes" ]; then
             echo "Restore cancelled"
             exit 0
         fi
-        
-        echo -e "${YELLOW}Restoring database from $BACKUP_FILE...${NC}"
-        gunzip < "$BACKUP_FILE" | $DC_CMD exec -T postgres psql -U timetiles_user timetiles
-        
-        if [ -n "$3" ] && [ -f "$3" ]; then
-            echo -e "${YELLOW}Restoring uploads from $3...${NC}"
+
+        # Restore database
+        echo -e "${YELLOW}Restoring database from $DB_BACKUP...${NC}"
+        gunzip < "$DB_BACKUP" | $DC_CMD exec -T postgres psql -U timetiles_user timetiles
+
+        # Restore uploads if provided
+        if [ -n "$UPLOADS_BACKUP" ]; then
+            echo -e "${YELLOW}Restoring uploads from $UPLOADS_BACKUP...${NC}"
             UPLOAD_VOL=$(docker volume ls -q | grep -E 'timetiles.*uploads' | head -1)
             if [ -n "$UPLOAD_VOL" ]; then
-                docker run --rm -v "$UPLOAD_VOL:/data" -v "$(dirname "$3"):/backup" alpine \
-                    sh -c "rm -rf /data/* && tar xzf /backup/$(basename "$3") -C /data"
+                docker run --rm -v "$UPLOAD_VOL:/data" -v "$(dirname "$UPLOADS_BACKUP"):/backup" alpine \
+                    sh -c "rm -rf /data/* && tar xzf /backup/$(basename "$UPLOADS_BACKUP") -C /data"
+            else
+                echo -e "${YELLOW}Warning: Upload volume not found, skipping uploads restore${NC}"
             fi
         fi
-        
+
         echo -e "${GREEN}Restore complete!${NC}"
         ;;
         

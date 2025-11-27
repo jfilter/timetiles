@@ -16,12 +16,15 @@ if (!process.env.NODE_ENV) {
 }
 
 // Set upload directory environment variables for unit tests
-process.env.UPLOAD_DIR_MEDIA = `/tmp/media`;
-process.env.UPLOAD_DIR_IMPORT_FILES = `/tmp/import-files`;
+process.env.UPLOAD_DIR = `/tmp/uploads`;
 process.env.UPLOAD_TEMP_DIR = `/tmp/temp`;
 
 // Ensure upload directories exist for unit tests
-const uploadDirs = [process.env.UPLOAD_DIR_MEDIA, process.env.UPLOAD_DIR_IMPORT_FILES, process.env.UPLOAD_TEMP_DIR];
+const uploadDirs = [
+  `${process.env.UPLOAD_DIR}/media`,
+  `${process.env.UPLOAD_DIR}/import-files`,
+  process.env.UPLOAD_TEMP_DIR,
+];
 
 uploadDirs.forEach((dir) => {
   const fullPath = path.isAbsolute(dir) ? dir : path.resolve(process.cwd(), dir);

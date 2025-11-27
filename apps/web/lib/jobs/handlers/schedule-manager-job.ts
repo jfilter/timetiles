@@ -412,6 +412,19 @@ export const scheduleManagerJob = {
     }
 
     try {
+      // Check feature flag - skip execution if disabled
+      const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
+      if (!(await isFeatureEnabled(payload, "enableScheduledJobExecution"))) {
+        logger.info("Schedule manager job skipped - feature disabled", { jobId: job?.id });
+        return {
+          output: {
+            success: true,
+            skipped: true,
+            reason: "Feature flag enableScheduledJobExecution is disabled",
+          },
+        };
+      }
+
       logger.info("Starting schedule manager job", { jobId: job?.id });
 
       const currentTime = new Date();

@@ -12,12 +12,66 @@
  * @category Collections
  * @module
  */
-import type { CollectionConfig } from "payload";
+import type { CollectionConfig, PayloadRequest } from "payload";
 
 import { QUOTA_ERROR_MESSAGES, QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService } from "@/lib/services/quota-service";
 
 import { basicMetadataFields, createCommonConfig, createSlugField } from "./shared-fields";
+
+/** Validates that private catalogs are allowed if isPublic is false. */
+const validatePrivateVisibility = async (data: Record<string, unknown>, req: PayloadRequest): Promise<void> => {
+  const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
+  const allowPrivate = await isFeatureEnabled(req.payload, "allowPrivateImports");
+  if (!allowPrivate && data.isPublic === false) {
+    throw new Error("Private catalogs are currently disabled. Please make the catalog public.");
+  }
+};
+
+/** Checks quota and increments usage for new catalogs. */
+const checkAndIncrementQuota = async (req: PayloadRequest): Promise<void> => {
+  if (!req.user) return;
+
+  const quotaService = getQuotaService(req.payload);
+  const quotaCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.CATALOGS_PER_USER, 1);
+
+  if (!quotaCheck.allowed) {
+    const errorMessage = QUOTA_ERROR_MESSAGES[QUOTA_TYPES.CATALOGS_PER_USER](quotaCheck.current, quotaCheck.limit);
+    throw new Error(errorMessage);
+  }
+
+  await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_CATALOGS, 1, req);
+};
+
+/** Validates slug uniqueness for catalogs. */
+const validateSlugUniqueness = async (
+  data: Record<string, unknown>,
+  req: PayloadRequest,
+  operation: "create" | "update"
+): Promise<void> => {
+  const slug = data.slug;
+  if (!slug || typeof slug !== "string") return;
+
+  const existing = await req.payload.find({
+    collection: "catalogs",
+    where: { slug: { equals: slug } },
+    limit: 1,
+    overrideAccess: true,
+  });
+
+  if (existing.docs.length === 0) return;
+
+  if (operation === "update") {
+    const currentDocId = req.context?.id;
+    const existingDocId = existing.docs[0]?.id;
+
+    if (currentDocId && existingDocId && currentDocId !== existingDocId) {
+      throw new Error(`Slug "${slug}" is already in use by another catalog.`);
+    }
+  } else {
+    throw new Error(`Slug "${slug}" is already in use.`);
+  }
+};
 
 const Catalogs: CollectionConfig = {
   slug: "catalogs",
@@ -25,14 +79,15 @@ const Catalogs: CollectionConfig = {
   admin: {
     useAsTitle: "name",
     defaultColumns: ["name", "isPublic", "createdBy"],
+    group: "Data",
   },
   access: {
     // Public catalogs can be read by anyone, private ones only by creator or admins
     // @ts-expect-error - Payload access control allows returning true | Where query object
     // eslint-disable-next-line sonarjs/function-return-type
     read: ({ req: { user } }) => {
-      // Admins can read all
-      if (user?.role === "admin") return true;
+      // Admins and editors can read all
+      if (user?.role === "admin" || user?.role === "editor") return true;
 
       // Users (including not logged in) can read public catalogs OR their own private catalogs
       if (user) {
@@ -50,9 +105,9 @@ const Catalogs: CollectionConfig = {
     // Only authenticated users can create catalogs
     create: ({ req: { user } }) => Boolean(user),
 
-    // Only creator or admins can update
+    // Only creator, editors, or admins can update
     update: async ({ req: { user, payload }, id }) => {
-      if (user?.role === "admin") return true;
+      if (user?.role === "admin" || user?.role === "editor") return true;
 
       if (!user || !id) return false;
 
@@ -76,9 +131,9 @@ const Catalogs: CollectionConfig = {
       }
     },
 
-    // Only creator or admins can delete
+    // Only creator, editors, or admins can delete
     delete: async ({ req: { user, payload }, id }) => {
-      if (user?.role === "admin") return true;
+      if (user?.role === "admin" || user?.role === "editor") return true;
 
       if (!user || !id) return false;
 
@@ -102,8 +157,8 @@ const Catalogs: CollectionConfig = {
       }
     },
 
-    // Only admins can read version history
-    readVersions: ({ req: { user } }) => user?.role === "admin",
+    // Only admins and editors can read version history
+    readVersions: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
   },
   fields: [
     ...basicMetadataFields,
@@ -124,59 +179,34 @@ const Catalogs: CollectionConfig = {
       defaultValue: false,
       admin: {
         position: "sidebar",
+        components: {
+          afterInput: ["/components/admin/private-visibility-notice"],
+        },
       },
     },
   ],
   hooks: {
     beforeChange: [
       async ({ data, req, operation }) => {
-        // Auto-set createdBy on creation
-        if (operation === "create" && req.user) {
-          data.createdBy = req.user.id;
-
-          // Check catalog quota
-          const quotaService = getQuotaService(req.payload);
-          const quotaCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.CATALOGS_PER_USER, 1);
-
-          if (!quotaCheck.allowed) {
-            const errorMessage = QUOTA_ERROR_MESSAGES[QUOTA_TYPES.CATALOGS_PER_USER](
-              quotaCheck.current,
-              quotaCheck.limit
-            );
-            throw new Error(errorMessage);
-          }
-
-          // Increment catalog count
-          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_CATALOGS, 1, req);
+        // Validate private visibility is allowed
+        if (operation === "create" || operation === "update") {
+          await validatePrivateVisibility(data, req);
         }
 
-        // Validate slug uniqueness on create and update
-        if (data.slug && (operation === "create" || operation === "update")) {
-          const existing = await req.payload.find({
-            collection: "catalogs",
-            where: {
-              slug: { equals: data.slug },
-            },
-            limit: 1,
-            overrideAccess: true,
-          });
+        // Set createdBy on creation (same pattern as media.ts)
+        if (operation === "create" && req.user) {
+          // eslint-disable-next-line require-atomic-updates -- Sequential hook, no race condition
+          data.createdBy = req.user.id;
+        }
 
-          // Check if slug exists and belongs to a different document
-          if (existing.docs.length > 0) {
-            // For updates, ensure it's not the same document
-            if (operation === "update") {
-              const currentDocId = req.context?.id;
-              const existingDocId = existing.docs[0]?.id;
+        // Handle quota check and increment for new catalogs
+        if (operation === "create") {
+          await checkAndIncrementQuota(req);
+        }
 
-              // If both IDs exist and are different, reject the slug
-              if (currentDocId && existingDocId && currentDocId !== existingDocId) {
-                throw new Error(`Slug "${data.slug}" is already in use by another catalog.`);
-              }
-            } else {
-              // For creates, slug must be unique
-              throw new Error(`Slug "${data.slug}" is already in use.`);
-            }
-          }
+        // Validate slug uniqueness
+        if (operation === "create" || operation === "update") {
+          await validateSlugUniqueness(data, req, operation);
         }
 
         return data;

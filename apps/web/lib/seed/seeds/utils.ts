@@ -8,6 +8,10 @@
  * - Determining the number of items to generate for different collections based on their type.
  * - Providing predefined schemas and geographic regions to ensure consistency.
  *
+ * Note: This file exceeds the standard line limit because it contains extensive
+ * seed data definitions that are more maintainable when co-located. Rules are disabled
+ * via eslint.config.js for seed files.
+ *
  * @module
  */
 
@@ -176,6 +180,102 @@ export const GEOGRAPHIC_REGIONS = {
 };
 
 /**
+ * Categories for each schema type.
+ */
+export const CATEGORIES = {
+  government: ["Compliance", "Safety", "Infrastructure", "Public Health", "Emergency"],
+  environmental: ["Air Quality", "Water Quality", "Soil", "Noise", "Radiation"],
+  academic: ["Study", "Survey", "Meta-Analysis", "Clinical Trial", "Review"],
+  cultural: ["Concert", "Exhibition", "Theater", "Festival", "Workshop"],
+  economic: ["Report", "Forecast", "Analysis", "Index", "Survey"],
+};
+
+/**
+ * Tags for each schema type.
+ */
+export const TAGS = {
+  government: [
+    "urgent",
+    "federal",
+    "state",
+    "local",
+    "compliance",
+    "safety",
+    "environmental",
+    "health",
+    "regulatory",
+    "audit",
+  ],
+  environmental: [
+    "outdoor",
+    "indoor",
+    "urban",
+    "rural",
+    "industrial",
+    "residential",
+    "monitoring",
+    "alert",
+    "seasonal",
+    "baseline",
+  ],
+  academic: [
+    "peer-reviewed",
+    "preprint",
+    "longitudinal",
+    "cross-sectional",
+    "experimental",
+    "observational",
+    "replication",
+    "open-access",
+  ],
+  cultural: [
+    "outdoor",
+    "indoor",
+    "family-friendly",
+    "free",
+    "ticketed",
+    "accessible",
+    "premiere",
+    "limited-seating",
+    "livestream",
+  ],
+  economic: [
+    "quarterly",
+    "annual",
+    "national",
+    "regional",
+    "preliminary",
+    "revised",
+    "final",
+    "benchmark",
+    "seasonally-adjusted",
+  ],
+};
+
+/**
+ * Pick random items from an array.
+ */
+const pickRandom = <T>(arr: T[], count: number): T[] => {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+};
+
+/**
+ * Generate a deterministic priority (1-5) based on index.
+ */
+const generatePriority = (index: number): number => (index % 5) + 1;
+
+/**
+ * Generate a deterministic rating (0.0-5.0) based on index.
+ */
+const generateRating = (index: number): number => Math.round(((index * 7) % 50) / 10 + 0.5) / 1;
+
+/**
+ * Generate a deterministic count based on index and multiplier.
+ */
+const generateCount = (index: number, multiplier: number): number => 10 + ((index * multiplier) % 9990);
+
+/**
  * Generate a random coordinate within bounds with optional clustering.
  */
 export const generateCoordinate = (
@@ -265,23 +365,62 @@ const generateGovernmentMetadata = (index: number): Record<string, unknown> => {
   const departments = ["Operations", "Compliance", "Research", "Public Affairs", "Emergency Response"];
   const statuses = ["open", "in-progress", "resolved", "closed"];
   const severities = ["low", "medium", "high", "critical"];
+  const findings = [
+    "Initial assessment indicates compliance with federal standards.",
+    "Field inspections revealed areas requiring immediate attention.",
+    "Documentation review completed with minor discrepancies noted.",
+    "Site conditions meet current regulatory requirements.",
+    "Follow-up inspection scheduled pending corrective action verification.",
+  ];
+  const nextSteps = [
+    "Stakeholder notifications have been distributed to all affected parties.",
+    "Technical review committee will convene within the next reporting period.",
+    "Updated guidelines will be published following the comment period.",
+    "Regional offices have been briefed on implementation protocols.",
+    "Public comment period opens next month for community input.",
+  ];
+  const impacts = [
+    "This report affects approximately 50,000 residents in the service area.",
+    "Estimated economic impact ranges from $1M to $5M over the fiscal year.",
+    "Environmental remediation efforts are expected to span 18-24 months.",
+    "Coordination with state agencies has been initiated to ensure compliance.",
+    "Budget allocation requests have been submitted for the upcoming cycle.",
+  ];
 
   const agency = agencies[index % agencies.length];
   const department = departments[(index + 1) % departments.length];
   const status = statuses[index % statuses.length];
+  const severity = severities[index % severities.length];
   const reference = `REF-2024-${String(index + 1000).padStart(5, "0")}`;
+  const category = CATEGORIES.government[index % CATEGORIES.government.length] ?? "Compliance";
+  // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+  const tags = pickRandom(TAGS.government, 2 + Math.floor(Math.random() * 3));
+
+  const description = [
+    `Official ${status} report from ${agency} ${department} regarding ${category.toLowerCase()} matters.`,
+    findings[index % findings.length],
+    `Current severity level is classified as ${severity}, requiring ${severity === "critical" ? "immediate" : "standard"} response protocols.`,
+    impacts[(index + 2) % impacts.length],
+    nextSteps[(index + 1) % nextSteps.length],
+    `For questions or concerns, contact the ${department} division at the provided contact information.`,
+  ].join(" ");
 
   return {
     title: `${agency} ${department} Report ${reference}`,
-    description: `Official ${status} report from ${agency} ${department} regarding compliance and operations.`,
+    description,
     startDate: new Date(Date.now() - index * 86400000).toISOString(),
     agency,
     department,
     contact: `contact-${index}@agency.gov`,
-    severity: severities[index % severities.length],
+    severity,
     status,
     reference_number: reference,
-    reported_date: new Date(Date.now() - index * 86400000).toISOString(), // Days ago
+    reported_date: new Date(Date.now() - index * 86400000).toISOString(),
+    category,
+    tags,
+    priority: generatePriority(index),
+    rating: generateRating(index),
+    views: generateCount(index, 17),
   };
 };
 
@@ -292,18 +431,51 @@ const generateEnvironmentalMetadata = (index: number): Record<string, unknown> =
   const measurements = ["PM2.5", "PM10", "NO2", "O3", "SO2", "CO"];
   const units = ["μg/m³", "ppb", "ppm", "mg/m³"];
   const qualities = ["good", "moderate", "poor", "hazardous"];
+  const weatherConditions = ["Clear", "Cloudy", "Rainy", "Foggy"];
+  const healthImplications = [
+    "Current levels are within safe limits for outdoor activities.",
+    "Sensitive groups should consider limiting prolonged outdoor exposure.",
+    "General population may experience minor respiratory irritation.",
+    "All individuals should avoid extended outdoor activities.",
+  ];
+  const historicalComparisons = [
+    "This reading is consistent with seasonal averages for the region.",
+    "Values are approximately 15% lower than the same period last year.",
+    "Measurements show a slight increase compared to the weekly baseline.",
+    "Data indicates improvement following recent weather patterns.",
+  ];
+  const sensorNotes = [
+    "Sensor calibration was verified within the last 30 days.",
+    "Equipment is operating within normal parameters.",
+    "Data quality has been validated against reference monitors.",
+    "Continuous monitoring ensures real-time accuracy of readings.",
+  ];
 
   const measurement = measurements[index % measurements.length];
   // eslint-disable-next-line sonarjs/pseudo-random -- Test data generation, not security-sensitive
   const value = Math.round(Math.random() * 100 * 10) / 10;
   const unit = units[index % units.length];
   // eslint-disable-next-line sonarjs/pseudo-random -- Test data generation, not security-sensitive
-  const quality = qualities[Math.floor(Math.random() * qualities.length)];
+  const quality = qualities[Math.floor(Math.random() * qualities.length)] ?? "good";
+  const qualityIndex = qualities.indexOf(quality);
   const timestamp = new Date(Date.now() - index * 3600000).toISOString();
+  const conditions = weatherConditions[index % weatherConditions.length] ?? "Clear";
+  const category = CATEGORIES.environmental[index % CATEGORIES.environmental.length] ?? "Air Quality";
+  // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+  const tags = pickRandom(TAGS.environmental, 2 + Math.floor(Math.random() * 3));
+
+  const description = [
+    `Environmental sensor reading for ${measurement} recorded at station ENV-${String(index + 100).padStart(3, "0")}.`,
+    `Current conditions show ${quality} ${category.toLowerCase()} with a measured value of ${value}${unit}.`,
+    `Weather conditions at time of reading: ${conditions}.`,
+    healthImplications[qualityIndex] ?? healthImplications[0] ?? "Current levels are within safe limits.",
+    historicalComparisons[index % historicalComparisons.length],
+    sensorNotes[(index + 1) % sensorNotes.length],
+  ].join(" ");
 
   return {
     title: `${measurement} Reading: ${value}${unit}`,
-    description: `Environmental sensor reading for ${measurement} showing ${quality} air quality conditions.`,
+    description,
     startDate: timestamp,
     station_id: `ENV-${String(index + 100).padStart(3, "0")}`,
     measurement_type: measurement,
@@ -311,8 +483,13 @@ const generateEnvironmentalMetadata = (index: number): Record<string, unknown> =
     unit,
     sensor_id: `SENSOR-${index + 1000}`,
     quality,
-    conditions: ["Clear", "Cloudy", "Rainy", "Foggy"][index % 4],
-    timestamp, // Hours ago
+    conditions,
+    timestamp,
+    category,
+    tags,
+    priority: generatePriority(index),
+    rating: generateRating(index),
+    views: generateCount(index, 23),
   };
 };
 
@@ -323,24 +500,65 @@ const generateAcademicMetadata = (index: number): Record<string, unknown> => {
   const institutions = ["MIT", "Stanford", "Harvard", "Yale", "Princeton"];
   const disciplines = ["Computer Science", "Biology", "Physics", "Economics", "Psychology"];
   const funders = ["NSF", "NIH", "DOE", "NASA", "Private Foundation"];
+  const methodologies = [
+    "The study employed a randomized controlled trial design with double-blind procedures.",
+    "Researchers utilized a mixed-methods approach combining quantitative surveys and qualitative interviews.",
+    "Data was collected through longitudinal observation over a 24-month period.",
+    "The analysis incorporated machine learning algorithms to identify patterns in large datasets.",
+    "A cross-sectional survey design was implemented across multiple demographic groups.",
+  ];
+  const significances = [
+    "These findings contribute significantly to our understanding of fundamental processes in the field.",
+    "The results challenge existing theoretical frameworks and suggest new avenues for investigation.",
+    "This research addresses critical gaps in the current literature and provides actionable insights.",
+    "The study outcomes have direct implications for policy development and practical applications.",
+    "Findings demonstrate reproducibility of earlier work while extending the scope of inquiry.",
+  ];
+  const implications = [
+    "Future research should explore the boundary conditions identified in this work.",
+    "The methodological innovations presented here can be applied to related domains.",
+    "Practitioners can leverage these findings to improve outcomes in applied settings.",
+    "The data and materials have been made available for replication and extension studies.",
+    "Collaboration opportunities exist for researchers interested in building on this foundation.",
+  ];
 
   const institution = institutions[index % institutions.length];
   const discipline = disciplines[index % disciplines.length];
   const researcher = `Dr. ${["Smith", "Johnson", "Williams", "Brown", "Jones"][index % 5]}`;
   const pubDate = new Date(Date.now() - index * 86400000).toISOString().split("T")[0];
+  const funding = funders[index % funders.length];
+  const sampleSize = 100 + index * 50;
+  const category = CATEGORIES.academic[index % CATEGORIES.academic.length] ?? "Study";
+  // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+  const tags = pickRandom(TAGS.academic, 2 + Math.floor(Math.random() * 3));
+
+  const description = [
+    `New findings in ${discipline} led by ${researcher} at ${institution}, funded by ${funding}.`,
+    methodologies[index % methodologies.length],
+    `The ${category.toLowerCase()} included ${sampleSize} participants and achieved statistical significance.`,
+    significances[(index + 1) % significances.length],
+    implications[(index + 2) % implications.length],
+    `Full methodology and supplementary materials are available via the DOI reference.`,
+  ].join(" ");
 
   return {
     title: `${discipline} Research Study by ${institution}`,
-    description: `New findings in ${discipline} led by ${researcher}, funded by ${funders[index % funders.length]}.`,
+    description,
     startDate: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
     institution,
     researcher,
-    funding: funders[index % funders.length],
+    funding,
     discipline,
-    keywords: ["research", discipline?.toLowerCase() ?? "", "study"].filter(Boolean),
+    keywords: ["research", discipline?.toLowerCase() ?? "", "study", category.toLowerCase()].filter(Boolean),
     doi: `10.1234/example.${index + 1000}`,
     publication_date: pubDate,
-    sample_size: 100 + index * 50,
+    sample_size: sampleSize,
+    category,
+    tags,
+    priority: generatePriority(index),
+    rating: generateRating(index),
+    views: generateCount(index, 31),
+    registrations: generateCount(index, 7),
   };
 };
 
@@ -350,25 +568,68 @@ const generateAcademicMetadata = (index: number): Record<string, unknown> => {
 const generateCulturalMetadata = (index: number): Record<string, unknown> => {
   const venues = ["City Theater", "Music Hall", "Art Gallery", "Convention Center", "Stadium"];
   const genres = ["Rock", "Classical", "Jazz", "Pop", "Electronic"];
+  const artistBackgrounds = [
+    "The performer has been touring internationally for over a decade, bringing unique energy to every show.",
+    "Known for their innovative style, this artist has won multiple awards and critical acclaim.",
+    "A rising star in the industry, this performer has captivated audiences across the country.",
+    "With roots in traditional forms and contemporary fusion, expect an unforgettable experience.",
+    "This artist is known for interactive performances that engage the audience throughout.",
+  ];
+  const venueDescriptions = [
+    "The venue features state-of-the-art acoustics and comfortable seating throughout.",
+    "Located in the heart of the city, this iconic space has hosted legendary performances.",
+    "Accessibility accommodations are available upon request when purchasing tickets.",
+    "On-site parking and nearby public transit make the venue easily accessible.",
+    "Concessions and merchandise will be available before the show and during intermission.",
+  ];
+  const eventDetails = [
+    "Doors open one hour before showtime; early arrival is recommended.",
+    "Photography is permitted during the performance; flash photography is discouraged.",
+    "A meet-and-greet opportunity is available with VIP ticket purchases.",
+    "The performance includes a brief intermission for refreshments.",
+    "Special effects including lighting and sound may be intense for some audience members.",
+  ];
 
-  const venue = venues[index % venues.length];
+  const venue = venues[index % venues.length] ?? "City Theater";
   const performer = `Artist ${index + 1}`;
-  const genre = genres[index % genres.length];
+  const genre = genres[index % genres.length] ?? "Rock";
   const eventDate = new Date(Date.now() + index * 86400000).toISOString();
+  const ticketPrice = 25 + (index % 10) * 5;
+  const capacity = 500 + (index % 10) * 100;
+  const durationMinutes = 90 + (index % 6) * 30;
+  const ageRestriction = index % 3 === 0 ? "21+" : "All Ages";
+  const category = CATEGORIES.cultural[index % CATEGORIES.cultural.length] ?? "Concert";
+  // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+  const tags = pickRandom(TAGS.cultural, 2 + Math.floor(Math.random() * 3));
+
+  const description = [
+    `Join us for a ${genre.toLowerCase()} ${category.toLowerCase()} featuring ${performer} at ${venue}.`,
+    artistBackgrounds[index % artistBackgrounds.length],
+    `This ${durationMinutes}-minute performance is ${ageRestriction === "21+" ? "for ages 21 and over" : "suitable for all ages"}.`,
+    venueDescriptions[(index + 1) % venueDescriptions.length],
+    `Tickets start at $${ticketPrice} with limited seating for ${capacity} guests.`,
+    eventDetails[(index + 2) % eventDetails.length],
+  ].join(" ");
 
   return {
     title: `${performer} Live at ${venue}`,
-    description: `A ${genre} performance by ${performer}. Tickets starting at $${25 + (index % 10) * 5}.`,
+    description,
     startDate: eventDate,
-    endDate: new Date(new Date(eventDate).getTime() + (90 + (index % 6) * 30) * 60000).toISOString(),
+    endDate: new Date(new Date(eventDate).getTime() + durationMinutes * 60000).toISOString(),
     venue,
     performer,
-    ticket_price: 25 + (index % 10) * 5,
-    capacity: 500 + (index % 10) * 100,
+    ticket_price: ticketPrice,
+    capacity,
     genre,
-    duration_minutes: 90 + (index % 6) * 30,
-    age_restriction: index % 3 === 0 ? "21+" : "All Ages",
-    event_date: eventDate, // Days in future
+    duration_minutes: durationMinutes,
+    age_restriction: ageRestriction,
+    event_date: eventDate,
+    category,
+    tags,
+    priority: generatePriority(index),
+    rating: generateRating(index),
+    attendees: generateCount(index, 13),
+    registrations: generateCount(index, 19),
   };
 };
 
@@ -379,25 +640,65 @@ const generateEconomicMetadata = (index: number): Record<string, unknown> => {
   const indicators = ["GDP", "Unemployment", "Inflation", "Trade Balance", "Consumer Confidence"];
   const regions = ["North America", "Europe", "Asia", "South America", "Africa"];
   const sectors = ["Technology", "Healthcare", "Finance", "Manufacturing", "Retail"];
+  const trendAnalyses = [
+    "The data shows a continuation of trends observed in the previous reporting period.",
+    "Analysts note a significant shift compared to historical averages for this metric.",
+    "Market conditions suggest potential volatility in the near-term outlook.",
+    "Year-over-year comparisons indicate steady progress toward target benchmarks.",
+    "Seasonal adjustments have been applied to normalize for cyclical variations.",
+  ];
+  const comparisons = [
+    "Regional performance exceeds global averages by approximately 2 percentage points.",
+    "The indicator trails peer economies but shows signs of convergence.",
+    "Cross-sector analysis reveals divergent trends among key industry groups.",
+    "Comparison with emerging markets highlights structural differences in growth patterns.",
+    "Historical context suggests this level is consistent with mid-cycle economic conditions.",
+  ];
+  const forecasts = [
+    "Projections for the next quarter remain cautiously optimistic based on leading indicators.",
+    "Economic models suggest continued stability with modest upside potential.",
+    "Risk factors including policy uncertainty may impact future measurements.",
+    "Consensus forecasts point to gradual improvement over the coming months.",
+    "Scenario analysis indicates resilience across most plausible economic pathways.",
+  ];
 
   const indicator = indicators[index % indicators.length];
   const region = regions[index % regions.length];
+  const sector = sectors[index % sectors.length];
   const period = `Q${(index % 4) + 1} 2024`;
   // eslint-disable-next-line sonarjs/pseudo-random -- Test data generation, not security-sensitive
   const value = Math.round(Math.random() * 1000) / 10;
+  const confidence = ["high", "medium", "low"][index % 3] ?? "medium";
+  const category = CATEGORIES.economic[index % CATEGORIES.economic.length] ?? "Report";
+  // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+  const tags = pickRandom(TAGS.economic, 2 + Math.floor(Math.random() * 3));
+
+  const description = [
+    `Comprehensive ${category.toLowerCase()} on ${indicator} for the ${region} region during ${period}.`,
+    `The current reading of ${value}% reflects conditions in the ${sector} sector and related industries.`,
+    trendAnalyses[index % trendAnalyses.length],
+    comparisons[(index + 1) % comparisons.length],
+    `Data confidence level: ${confidence}.`,
+    forecasts[(index + 2) % forecasts.length],
+  ].join(" ");
 
   return {
     title: `${indicator} Report - ${region} (${period})`,
-    description: `Economic analysis of ${indicator} for the ${region} region during ${period}.`,
+    description,
     startDate: new Date().toISOString(),
     indicator,
     value,
     unit: "%",
     region,
-    sector: sectors[index % sectors.length],
+    sector,
     period,
     source: "Economic Research Bureau",
-    confidence: ["high", "medium", "low"][index % 3],
+    confidence,
+    category,
+    tags,
+    priority: generatePriority(index),
+    rating: generateRating(index),
+    views: generateCount(index, 29),
   };
 };
 

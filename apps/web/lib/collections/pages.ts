@@ -42,13 +42,14 @@ export const Pages: CollectionConfig = {
   ...createCommonConfig(),
   admin: {
     useAsTitle: "title",
+    group: "Content",
   },
   access: {
     read: () => true,
-    create: ({ req: { user } }) => user?.role === "admin",
-    update: ({ req: { user } }) => user?.role === "admin",
-    delete: ({ req: { user } }) => user?.role === "admin",
-    readVersions: ({ req: { user } }) => user?.role === "admin",
+    create: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
+    update: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
+    delete: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
+    readVersions: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
   },
   fields: [
     {

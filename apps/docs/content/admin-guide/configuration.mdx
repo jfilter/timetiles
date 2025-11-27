@@ -76,9 +76,10 @@ Control file size limits and upload directories:
 MAX_FILE_SIZE_AUTHENTICATED=104857600    # 100MB for authenticated users
 MAX_FILE_SIZE_UNAUTHENTICATED=10485760   # 10MB for unauthenticated users
 
-# Upload Directory Configuration (relative to apps/web or absolute paths)
-UPLOAD_DIR_MEDIA=media                   # Directory for media uploads (images)
-UPLOAD_DIR_IMPORT_FILES=import-files     # Directory for import file uploads
+# Upload Directory Configuration
+# Base directory for all uploads (relative to apps/web or absolute path)
+# Subfolders are created automatically: /media and /import-files
+UPLOAD_DIR=uploads
 UPLOAD_TEMP_DIR=./tmp                    # Temporary directory for file processing
 ```
 
@@ -238,6 +239,67 @@ curl "https://api.opencagedata.com/geocode/v1/json?q=Paris&key=YOUR_API_KEY"
 # Test Nominatim (no key required)
 curl "https://nominatim.openstreetmap.org/search?q=Paris&format=json"
 ```
+
+## Dashboard
+
+The dashboard at `/dashboard` provides a web interface for managing data. All authenticated users can access it, with permissions based on role:
+
+- **User**: Manage their own catalogs, datasets, and imports
+- **Editor**: User permissions plus access to advanced dataset configuration and branding
+- **Admin**: Full access including user management, system settings, and feature flags
+
+## Content Management
+
+Editors and admins can manage site content through these features:
+
+### Pages
+
+Create custom pages with a block-based builder (`/dashboard/collections/pages`). Available blocks:
+
+- Hero, Features, Stats, Timeline, Testimonials
+- Rich Text, Call to Action, Newsletter forms
+
+Pages are accessible at `/{slug}`.
+
+### Navigation
+
+- **Main Menu** (`/dashboard/globals/main-menu`): Up to 6 navigation links
+- **Footer** (`/dashboard/globals/footer`): Tagline, social links, link columns, copyright
+
+### Newsletter
+
+Newsletter signup forms can be added to footer or pages. Configure the backend service URL in Settings (`/dashboard/globals/settings`) under "Newsletter Configuration".
+
+### Branding
+
+Customize site appearance in Branding (`/dashboard/globals/branding`):
+
+- **Site Name**: Displayed in header and browser tab
+- **Site Description**: Meta description for SEO
+- **Logos**: Separate uploads for light/dark themes
+- **Favicons**: Auto-generated from uploaded source images
+
+## Feature Flags
+
+Feature flags are configured in Settings (`/dashboard/globals/settings`) under "Feature Flags":
+
+| Flag                           | Default | Description                                                 |
+| ------------------------------ | ------- | ----------------------------------------------------------- |
+| Allow Private Imports          | On      | Users can create private imports visible only to themselves |
+| Enable Scheduled Imports       | On      | Users can create automated URL-based import schedules       |
+| Enable Public Registration     | On      | New users can self-register accounts                        |
+| Enable Event Creation          | On      | New events can be created via imports or API                |
+| Enable Dataset Creation        | On      | Users can create new datasets                               |
+| Enable Import Creation         | On      | Users can create new import jobs                            |
+| Enable Scheduled Job Execution | On      | Scheduled imports run automatically                         |
+| Enable URL Fetch Caching       | On      | Cache URL fetches to reduce external requests               |
+
+## User Data Management
+
+TimeTiles includes self-service data management for users:
+
+- **Data Export**: Users can download all their data (catalogs, datasets, events, import history) as a ZIP archive from Account Settings
+- **Account Deletion**: Users can request account deletion with a 7-day grace period. Private data is permanently deleted; public data is transferred to an admin account for continuity.
 
 ## Next Steps
 

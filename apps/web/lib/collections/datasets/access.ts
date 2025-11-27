@@ -17,8 +17,8 @@ import type { Access, Where } from "payload";
 export const read: Access = async ({ req }) => {
   const { user, payload } = req;
 
-  // Admin can read all
-  if (user?.role === "admin") return true;
+  // Admin and editor can read all
+  if (user?.role === "admin" || user?.role === "editor") return true;
 
   // For non-admin users, we need to check:
   // 1. Public datasets in public catalogs
@@ -66,7 +66,12 @@ export const read: Access = async ({ req }) => {
  */
 export const create: Access = async ({ req: { user, payload }, data }) => {
   if (!user) return false;
-  if (user?.role === "admin") return true;
+
+  // Check feature flag - even admins can't create if disabled
+  const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
+  if (!(await isFeatureEnabled(payload, "enableDatasetCreation"))) return false;
+
+  if (user?.role === "admin" || user?.role === "editor") return true;
 
   // Check if user has access to the catalog
   if (data?.catalog) {
@@ -98,7 +103,7 @@ export const create: Access = async ({ req: { user, payload }, data }) => {
  */
 const checkCatalogOwnership: Access = async ({ req, id }) => {
   const { user, payload } = req;
-  if (user?.role === "admin") return true;
+  if (user?.role === "admin" || user?.role === "editor") return true;
 
   if (!user || !id) return false;
 
@@ -142,6 +147,6 @@ export const update: Access = checkCatalogOwnership;
 export const deleteAccess: Access = checkCatalogOwnership;
 
 /**
- * ReadVersions access: Only admins can read version history.
+ * ReadVersions access: Only admins and editors can read version history.
  */
-export const readVersions: Access = ({ req: { user } }) => user?.role === "admin";
+export const readVersions: Access = ({ req: { user } }) => user?.role === "admin" || user?.role === "editor";

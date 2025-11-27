@@ -18,7 +18,8 @@ import type { Config } from "@/payload-types";
 
 import { createSlugHook } from "../utils/slug";
 
-// Access control helper for role-based permissions
+// Access control helpers for role-based permissions
+export const isAdmin: Access = ({ req: { user } }) => user?.role === "admin";
 export const isEditorOrAdmin: Access = ({ req: { user } }) => user?.role === "editor" || user?.role === "admin";
 
 // Basic metadata fields common to many entities

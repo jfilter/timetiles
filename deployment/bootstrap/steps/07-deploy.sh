@@ -1,0 +1,102 @@
+#!/bin/bash
+# TimeTiles Bootstrap - Step 07: Deploy Application
+# Builds and starts the application using deploy.sh
+
+run_step() {
+    local install_dir="${INSTALL_DIR:-/opt/timetiles}"
+    local app_dir="$install_dir/app"
+    local user="${APP_USER:-timetiles}"
+
+    # Change to app directory
+    cd "$app_dir" || die "Cannot change to $app_dir"
+
+    # Helper to run commands as app user with docker group
+    # Using 'sg docker' ensures the docker group is active in the session
+    run_as_user() {
+        sudo -u "$user" sg docker -c "cd $app_dir && $*"
+    }
+
+    # Always generate self-signed SSL certificate as a fallback
+    # Nginx requires SSL certs to start - Let's Encrypt (Step 08) will replace these if DNS is configured
+    setup_self_signed_ssl "$app_dir" "$user"
+
+    # Build Docker images
+    print_step "Building Docker images..."
+    print_info "This may take several minutes on first run..."
+
+    if ! run_as_user "./deployment/deploy.sh build"; then
+        die "Failed to build Docker images"
+    fi
+
+    print_success "Docker images built"
+
+    # Start services
+    print_step "Starting services..."
+
+    if ! run_as_user "./deployment/deploy.sh up"; then
+        die "Failed to start services"
+    fi
+
+    print_success "Services started"
+
+    # Wait for application to be healthy
+    print_step "Waiting for application to be ready..."
+
+    # Initial delay for containers to start
+    sleep 15
+
+    # Wait for health check
+    if ! wait_for_health "http://localhost:3000/api/health" 300 10; then
+        print_error "Application failed to become healthy"
+        print_info "Checking logs..."
+        run_as_user "./deployment/deploy.sh logs 2>&1 | tail -50"
+        die "Application health check failed"
+    fi
+
+    # Verify all services
+    print_step "Verifying services..."
+    run_as_user "./deployment/deploy.sh status"
+
+    print_success "Application deployed successfully"
+}
+
+# Set up self-signed SSL as a fallback
+# Nginx requires SSL certs to start - these get replaced by Let's Encrypt if DNS is configured
+setup_self_signed_ssl() {
+    local app_dir="$1"
+    local user="$2"
+    local deployment_dir="$app_dir/deployment"
+    local ssl_dir="$deployment_dir/ssl"
+
+    print_step "Setting up self-signed SSL as fallback..."
+
+    # Generate self-signed certificate
+    if ! generate_self_signed_ssl "$DOMAIN_NAME" "$ssl_dir"; then
+        die "Failed to generate self-signed SSL certificate"
+    fi
+
+    # Set ownership
+    chown -R "$user:$user" "$ssl_dir"
+
+    # Create docker-compose override to use local ssl directory instead of volume
+    local override_file="$deployment_dir/docker-compose.ssl-override.yml"
+
+    cat > "$override_file" << EOF
+# Auto-generated override for self-signed SSL fallback
+services:
+  nginx:
+    volumes:
+      - ${ssl_dir}:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/certbot:ro
+      - \${NGINX_CONF_PATH:-./nginx/nginx.conf}:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites-enabled:/etc/nginx/sites-enabled:ro
+
+volumes:
+  certbot-webroot:
+EOF
+
+    chown "$user:$user" "$override_file"
+
+    print_success "Self-signed SSL configured for $DOMAIN_NAME"
+    print_info "SSL certificates at: $ssl_dir/live/$DOMAIN_NAME/"
+}

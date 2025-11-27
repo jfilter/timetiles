@@ -175,15 +175,18 @@ const ScheduledImports: CollectionConfig = {
   admin: {
     useAsTitle: "name",
     defaultColumns: ["name", "sourceUrl", "enabled", "nextRun", "lastRun", "updatedAt"],
-    group: "Import System",
+    group: "Import",
     description: "Manage scheduled URL imports that run automatically",
+    components: {
+      beforeList: ["/components/admin/scheduled-imports-banner"],
+    },
   },
   access: {
-    // Users can only read their own scheduled imports
+    // Users can only read their own scheduled imports, editors and admins can read all
     // eslint-disable-next-line sonarjs/function-return-type
     read: ({ req: { user } }): boolean | { createdBy: { equals: string | number } } => {
       if (!user) return false;
-      if (user.role === "admin") return true;
+      if (user.role === "admin" || user.role === "editor") return true;
 
       return {
         createdBy: { equals: user.id },
@@ -192,12 +195,19 @@ const ScheduledImports: CollectionConfig = {
 
     // Anyone authenticated can create, but createdBy will be set automatically
     // Quota check moved to beforeChange hook to avoid deadlock
-    create: ({ req: { user } }) => Boolean(user),
+    create: async ({ req: { user, payload } }) => {
+      if (!user) return false;
 
-    // Users can only update their own scheduled imports
+      // Check feature flag - even admins can't create if disabled
+      const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
+      // eslint-disable-next-line @typescript-eslint/return-await -- Returning awaited promise is intentional for async access control
+      return await isFeatureEnabled(payload, "enableScheduledImports");
+    },
+
+    // Users can only update their own scheduled imports, editors and admins can update all
     update: async ({ req: { user, payload }, id }) => {
       if (!user) return false;
-      if (user.role === "admin") return true;
+      if (user.role === "admin" || user.role === "editor") return true;
 
       if (!id) return false;
 
@@ -218,10 +228,10 @@ const ScheduledImports: CollectionConfig = {
       }
     },
 
-    // Users can delete their own, admins can delete any
+    // Users can delete their own, editors and admins can delete any
     delete: async ({ req: { user, payload }, id }) => {
       if (!user) return false;
-      if (user.role === "admin") return true;
+      if (user.role === "admin" || user.role === "editor") return true;
 
       if (!id) return false;
 
@@ -241,10 +251,10 @@ const ScheduledImports: CollectionConfig = {
       }
     },
 
-    // Only owners or admins can read version history
+    // Only owners, editors, or admins can read version history
     readVersions: async ({ req: { user, payload }, id }) => {
       if (!user) return false;
-      if (user.role === "admin") return true;
+      if (user.role === "admin" || user.role === "editor") return true;
 
       if (!id) return false;
 

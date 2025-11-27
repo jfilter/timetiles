@@ -3,33 +3,43 @@
 
 services:
   # PostgreSQL with PostGIS extensions
+  # Uses kartoza/postgis by default for multi-arch support (amd64 + arm64)
+  # Set POSTGRES_IMAGE=postgis/postgis for official image on x86 systems
   postgres:
-    image: postgis/postgis:${POSTGRES_VERSION:-17-3.5}
-    platform: linux/amd64  # Ensure compatibility on ARM64 Macs via emulation
+    image: ${POSTGRES_IMAGE:-kartoza/postgis}:${POSTGRES_VERSION:-17-3.5}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-postgres
     restart: unless-stopped
     environment:
+      # Standard postgres image variables
       POSTGRES_DB: ${DB_NAME:-timetiles}
       POSTGRES_USER: ${DB_USER:-timetiles_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-    command: >
-      postgres
-      -c max_locks_per_transaction=${PG_MAX_LOCKS:-1024}
-      -c max_stack_depth=${PG_STACK_DEPTH:-7680kB}
-      -c work_mem=${PG_WORK_MEM:-32MB}
-      -c shared_buffers=${PG_SHARED_BUFFERS:-256MB}
-      -c max_connections=${PG_MAX_CONNECTIONS:-100}
-      -c effective_cache_size=${PG_CACHE_SIZE:-1GB}
-      -c maintenance_work_mem=${PG_MAINTENANCE_MEM:-128MB}
-      -c checkpoint_completion_target=0.9
-      -c wal_buffers=16MB
-      -c random_page_cost=1.1
-      -c log_statement=${PG_LOG_STATEMENT:-none}
+      # Kartoza image variables (for ARM64 compatibility)
+      POSTGRES_DBNAME: ${DB_NAME:-timetiles}
+      POSTGRES_PASS: ${DB_PASSWORD}
+      # Kartoza networking - allow connections from Docker network
+      ALLOW_IP_RANGE: "0.0.0.0/0"
+      # Disable kartoza's SSL (nginx handles SSL termination)
+      FORCE_SSL: "false"
+      # PostgreSQL tuning via kartoza's EXTRA_CONF
+      EXTRA_CONF: |
+        max_locks_per_transaction = ${PG_MAX_LOCKS:-1024}
+        max_stack_depth = ${PG_STACK_DEPTH:-7680kB}
+        work_mem = ${PG_WORK_MEM:-32MB}
+        shared_buffers = ${PG_SHARED_BUFFERS:-256MB}
+        max_connections = ${PG_MAX_CONNECTIONS:-100}
+        effective_cache_size = ${PG_CACHE_SIZE:-1GB}
+        maintenance_work_mem = ${PG_MAINTENANCE_MEM:-128MB}
+        checkpoint_completion_target = 0.9
+        wal_buffers = 16MB
+        random_page_cost = 1.1
+        log_statement = ${PG_LOG_STATEMENT:-none}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-timetiles_user} -d ${DB_NAME:-timetiles}"]
+      # Use -h localhost to force TCP connection (avoids peer auth issues with kartoza/postgis)
+      test: ["CMD-SHELL", "pg_isready -h localhost -U ${DB_USER:-timetiles_user} -d ${DB_NAME:-timetiles}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,12 +73,16 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${CONTAINER_PORT:-3000}
       
-      # Geocoding (optional)
-      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
-      GEOCODING_RATE_LIMIT: ${GEOCODING_RATE_LIMIT:-10}
-      
       # Logging
       LOG_LEVEL: ${LOG_LEVEL:-info}
+
+      # File uploads
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
+
+      # Email (SMTP) - required for production
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_FROM: ${EMAIL_FROM}
     depends_on:
       postgres:
         condition: service_healthy
@@ -110,7 +124,6 @@ services:
   # Certbot for Let's Encrypt SSL certificates
   certbot:
     image: certbot/certbot:latest
-    platform: linux/amd64  # Ensure compatibility on ARM64 Macs via emulation
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-certbot
     volumes:
       - letsencrypt:/etc/letsencrypt

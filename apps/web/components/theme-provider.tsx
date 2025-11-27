@@ -1,21 +1,30 @@
 /**
  * Provides theme context and initialization for the application.
  *
- * This component wraps the application and ensures the theme is properly
- * initialized on mount using the useTheme hook. It manages dark/light
- * mode preferences and system theme detection.
+ * Uses next-themes for theme management with support for light, dark,
+ * and system themes. The theme is persisted in localStorage and applied
+ * via the `class` attribute on the html element for Tailwind CSS.
  *
  * @module
  * @category Components
  */
 "use client";
-import type React from "react";
 
-import { useTheme } from "../lib/hooks/use-theme";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
+import type { ReactNode } from "react";
 
-export const ThemeProvider = ({ children }: Readonly<{ children: React.ReactNode }>): React.ReactElement => {
-  // Initialize theme on mount
-  useTheme();
+interface ThemeProviderProps {
+  children: ReactNode;
+}
 
-  return children as React.ReactElement;
-};
+export const ThemeProvider = ({ children }: Readonly<ThemeProviderProps>) => (
+  <NextThemesProvider
+    attribute="class"
+    defaultTheme="system"
+    enableSystem
+    disableTransitionOnChange
+    storageKey="timetiles-theme"
+  >
+    {children}
+  </NextThemesProvider>
+);

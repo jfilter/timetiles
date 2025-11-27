@@ -8,7 +8,11 @@ import { EventHistogram } from "@/components/charts/event-histogram";
 import { useHistogramQuery } from "../../../lib/hooks/use-events-queries";
 import { renderWithProviders } from "../../setup/unit/react-render";
 
-// Mock next-themes is handled by ThemeProvider in test-utils
+// Mock next-themes to avoid matchMedia issues in tests
+vi.mock("next-themes", () => ({
+  ThemeProvider: ({ children }: { children: unknown }) => children,
+  useTheme: () => ({ theme: "light", setTheme: () => {}, resolvedTheme: "light" }),
+}));
 
 // Mock the UI charts package
 vi.mock("@timetiles/ui/charts", async () => {
@@ -78,7 +82,7 @@ describe.sequential("EventHistogram", () => {
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();
-    vi.resetModules();
+    // Note: vi.resetModules() removed - it clears the matchMedia mock needed by next-themes
   });
 
   afterEach(() => {

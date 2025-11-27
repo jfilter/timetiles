@@ -4,7 +4,7 @@
  * Handles email subscription requests and forwards them to the configured
  * newsletter service backend (e.g., Listmonk, Mailchimp, custom service).
  *
- * Configure the backend service via Settings global in Payload CMS (/admin/globals/settings).
+ * Configure the backend service via Settings global in Payload CMS (/dashboard/globals/settings).
  * This endpoint acts as a proxy to keep API credentials server-side.
  *
  * @module
@@ -57,7 +57,7 @@ export const POST = withRateLimit(
       if (!serviceUrl) {
         logError(
           new Error("Newsletter service not configured"),
-          "Newsletter service URL not configured in Settings. Configure it at /admin/globals/settings"
+          "Newsletter service URL not configured in Settings. Configure it at /dashboard/globals/settings"
         );
         return NextResponse.json({ error: "Newsletter service not configured" }, { status: 500 });
       }

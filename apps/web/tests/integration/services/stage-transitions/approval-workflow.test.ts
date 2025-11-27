@@ -63,7 +63,7 @@ describe.sequential("Approval Workflow Transition Integration", () => {
 Event 1,2024-01-01,Location 1`;
 
       const csvFileName1 = `approval-1-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }
@@ -186,7 +186,7 @@ Event 2,2024-01-02`;
 Event 1,2024-01-01,Location 1`;
 
       const csvFileName = `manual-approval-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }
@@ -256,7 +256,7 @@ Event 1,2024-01-01,Location 1`;
 Event 1,2024-01-01`;
 
       const csvFileName = `rejection-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }
@@ -327,7 +327,7 @@ Event 1,2024-01-01`;
 Event 1,2024-01-01`;
 
       const csvFileName = `no-approval-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }

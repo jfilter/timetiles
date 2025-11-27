@@ -140,7 +140,7 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
     expect(run2.output).toBeDefined();
 
     // Check total triggers
-    const totalTriggered = run1.output.triggered + run2.output.triggered;
+    const totalTriggered = (run1.output?.triggered ?? 0) + (run2.output?.triggered ?? 0);
 
     // At least one should have triggered the schedule
     expect(totalTriggered).toBeGreaterThanOrEqual(1);

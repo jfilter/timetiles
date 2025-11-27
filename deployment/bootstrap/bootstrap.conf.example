@@ -1,0 +1,70 @@
+# ============================================================================
+# TimeTiles Bootstrap Configuration
+# ============================================================================
+# Copy this file to bootstrap.conf and edit values before running bootstrap.sh
+# Alternatively, set these as environment variables or let the script prompt you.
+#
+# Usage:
+#   cp bootstrap.conf.example bootstrap.conf
+#   # Edit bootstrap.conf with your values
+#   sudo ./bootstrap.sh --config bootstrap.conf
+#
+# Or with environment variables:
+#   sudo DOMAIN_NAME=example.com LETSENCRYPT_EMAIL=admin@example.com ./bootstrap.sh
+# ============================================================================
+
+# ============================================================================
+# REQUIRED SETTINGS
+# ============================================================================
+
+# Your domain name (e.g., timetiles.example.com)
+# This should already have DNS pointing to your server
+DOMAIN_NAME=""
+
+# Email for Let's Encrypt SSL certificate notifications
+# You'll receive renewal reminders and important notices here
+LETSENCRYPT_EMAIL=""
+
+# ============================================================================
+# SECRETS (Optional - auto-generated if empty)
+# ============================================================================
+
+# Database password - leave empty to auto-generate a secure password
+DB_PASSWORD=""
+
+# Payload CMS secret key - leave empty to auto-generate
+# Generate manually with: openssl rand -base64 32
+PAYLOAD_SECRET=""
+
+# ============================================================================
+# REPOSITORY SETTINGS (defaults should work for most users)
+# ============================================================================
+
+# Git repository URL
+REPO_URL="https://github.com/jfilter/timetiles.git"
+
+# Branch to checkout
+REPO_BRANCH="main"
+
+# ============================================================================
+# INSTALLATION PATHS (defaults should work for most users)
+# ============================================================================
+
+# Where to install the application
+INSTALL_DIR="/opt/timetiles"
+
+# System user to run the application
+APP_USER="timetiles"
+
+# ============================================================================
+# ADVANCED SETTINGS
+# ============================================================================
+
+# Skip SSL setup (useful if you're behind a reverse proxy)
+# SKIP_SSL="false"
+
+# Skip firewall setup (useful if managed externally)
+# SKIP_FIREWALL="false"
+
+# Enable non-interactive mode (fails if required values missing)
+# NON_INTERACTIVE="false"

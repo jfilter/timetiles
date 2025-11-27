@@ -11,6 +11,9 @@ import type { GlobalConfig } from "payload";
 
 export const MainMenu: GlobalConfig = {
   slug: "main-menu",
+  admin: {
+    group: "Content",
+  },
   versions: {
     drafts: {
       autosave: true,
@@ -19,6 +22,7 @@ export const MainMenu: GlobalConfig = {
   },
   access: {
     read: () => true,
+    update: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
   },
   fields: [
     {

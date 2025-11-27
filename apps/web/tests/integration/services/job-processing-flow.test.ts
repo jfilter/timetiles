@@ -74,7 +74,7 @@ Data Workshop,2024-05-10,Austin TX`;
       });
 
       // Move file to expected location
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }
@@ -280,7 +280,7 @@ Data Workshop,2024-05-10,Austin TX`;
       });
 
       // Move file to expected location
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }
@@ -316,7 +316,7 @@ Event 1,2024-01-01,Location 1
 Event 2,2024-01-02,Location 2`;
 
       const csvFileName = `progress-test-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }

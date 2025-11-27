@@ -86,7 +86,7 @@ describe.sequential("Import Files Collection", () => {
 
     expect(importFilesCollection).toBeDefined();
     expect(importFilesCollection.upload).toBeDefined();
-    expect(importFilesCollection.upload.staticDir).toBe(process.env.UPLOAD_DIR_IMPORT_FILES);
+    expect(importFilesCollection.upload.staticDir).toBe(`${process.env.UPLOAD_DIR ?? "uploads"}/import-files`);
     expect(importFilesCollection.upload.mimeTypes).toContain("text/csv");
   });
 

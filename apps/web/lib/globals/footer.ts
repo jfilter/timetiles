@@ -11,6 +11,9 @@ import type { GlobalConfig } from "payload";
 
 export const Footer: GlobalConfig = {
   slug: "footer",
+  admin: {
+    group: "Content",
+  },
   versions: {
     drafts: {
       autosave: true,
@@ -19,6 +22,7 @@ export const Footer: GlobalConfig = {
   },
   access: {
     read: () => true,
+    update: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
   },
   fields: [
     {

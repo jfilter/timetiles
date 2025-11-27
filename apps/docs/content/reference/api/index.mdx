@@ -8,6 +8,16 @@
 
 ### API
 
+- [app/api/account/change-email/route](app/api/account/change-email/route.md)
+- [app/api/account/change-password/route](app/api/account/change-password/route.md)
+- [app/api/account/delete/cancel/route](app/api/account/delete/cancel/route.md)
+- [app/api/account/delete/route](app/api/account/delete/route.md)
+- [app/api/account/deletion-summary/route](app/api/account/deletion-summary/route.md)
+- [app/api/account/download-data/\[exportId\]/route](app/api/account/download-data/[exportId]/route.md)
+- [app/api/account/download-data/route](app/api/account/download-data/route.md)
+- [app/api/auth/register/route](app/api/auth/register/route.md)
+- [app/api/feature-flags/route](app/api/feature-flags/route.md)
+- [app/api/geocoding/test/route](app/api/geocoding/test/route.md)
 - [app/api/import-jobs/\[id\]/reset/route](app/api/import-jobs/[id]/reset/route.md)
 - [app/api/import-jobs/\[id\]/retry/route](app/api/import-jobs/[id]/retry/route.md)
 - [app/api/import-jobs/failed/recommendations/route](app/api/import-jobs/failed/recommendations/route.md)
@@ -20,9 +30,8 @@
 
 ### API Routes
 
-- [app/api/admin/debug-auth/route](app/api/admin/debug-auth/route.md)
 - [app/api/admin/jobs/run/route](app/api/admin/jobs/run/route.md)
-- [app/api/v1/health/route](app/api/v1/health/route.md)
+- [app/api/health/route](app/api/health/route.md)
 - [app/api/wizard/catalogs/route](app/api/wizard/catalogs/route.md)
 - [app/api/wizard/configure-import/route](app/api/wizard/configure-import/route.md)
 - [app/api/wizard/preview-schema/route](app/api/wizard/preview-schema/route.md)
@@ -30,8 +39,10 @@
 ### Collections
 
 - [lib/collections/catalogs](lib/collections/catalogs.md)
+- [lib/collections/data-exports](lib/collections/data-exports.md)
 - [lib/collections/datasets/access](lib/collections/datasets/access.md)
 - [lib/collections/datasets/hooks](lib/collections/datasets/hooks.md)
+- [lib/collections/deletion-audit-log](lib/collections/deletion-audit-log.md)
 - [lib/collections/scheduled-imports/fields/auth-fields](lib/collections/scheduled-imports/fields/auth-fields.md)
 - [lib/collections/scheduled-imports/fields/basic-fields](lib/collections/scheduled-imports/fields/basic-fields.md)
 - [lib/collections/scheduled-imports/fields/execution-fields](lib/collections/scheduled-imports/fields/execution-fields.md)
@@ -51,17 +62,27 @@
 - [lib/constants/map](lib/constants/map.md)
 - [lib/constants/stage-time-weights](lib/constants/stage-time-weights.md)
 
+### Globals
+
+- [lib/globals/branding-hooks](lib/globals/branding-hooks.md)
+- [lib/globals/branding](lib/globals/branding.md)
+
 ### Hooks
 
 - [lib/hooks/use-chart-filters](lib/hooks/use-chart-filters.md)
 - [lib/hooks/use-chart-query](lib/hooks/use-chart-query.md)
+- [lib/hooks/use-data-export](lib/hooks/use-data-export.md)
+- [lib/hooks/use-feature-flags](lib/hooks/use-feature-flags.md)
 
 ### Jobs
 
 - [lib/jobs/handlers/cache-cleanup-job](lib/jobs/handlers/cache-cleanup-job.md)
 - [lib/jobs/handlers/cleanup-stuck-scheduled-imports-job](lib/jobs/handlers/cleanup-stuck-scheduled-imports-job.md)
 - [lib/jobs/handlers/create-events-batch-job](lib/jobs/handlers/create-events-batch-job.md)
+- [lib/jobs/handlers/data-export-cleanup-job](lib/jobs/handlers/data-export-cleanup-job.md)
+- [lib/jobs/handlers/data-export-job](lib/jobs/handlers/data-export-job.md)
 - [lib/jobs/handlers/dataset-detection-job](lib/jobs/handlers/dataset-detection-job.md)
+- [lib/jobs/handlers/execute-account-deletion-job](lib/jobs/handlers/execute-account-deletion-job.md)
 - [lib/jobs/handlers/geocode-batch-job](lib/jobs/handlers/geocode-batch-job.md)
 - [lib/jobs/handlers/schedule-manager-job](lib/jobs/handlers/schedule-manager-job.md)
 - [lib/jobs/handlers/url-fetch-job](lib/jobs/handlers/url-fetch-job.md)
@@ -147,7 +168,14 @@
 ### Services
 
 - [lib/services/access-control](lib/services/access-control.md)
+- [lib/services/account-deletion-emails](lib/services/account-deletion-emails.md)
+- [lib/services/account-deletion-service](lib/services/account-deletion-service.md)
+- [lib/services/account-deletion-types](lib/services/account-deletion-types.md)
 - [lib/services/aggregation-filters](lib/services/aggregation-filters.md)
+- [lib/services/data-export-emails](lib/services/data-export-emails.md)
+- [lib/services/data-export-service](lib/services/data-export-service.md)
+- [lib/services/data-export-types](lib/services/data-export-types.md)
+- [lib/services/feature-flag-service](lib/services/feature-flag-service.md)
 - [lib/services/import-transforms](lib/services/import-transforms.md)
 - [lib/services/progress-tracking](lib/services/progress-tracking.md)
 - [lib/services/quota-service](lib/services/quota-service.md)
@@ -155,6 +183,7 @@
 - [lib/services/schedule-service](lib/services/schedule-service.md)
 - [lib/services/schema-builder](lib/services/schema-builder.md)
 - [lib/services/schema-similarity](lib/services/schema-similarity.md)
+- [lib/services/system-user-service](lib/services/system-user-service.md)
 
 ### Services/Cache
 
@@ -173,6 +202,7 @@
 
 - [lib/services/schema-builder/field-mapping-detection](lib/services/schema-builder/field-mapping-detection.md)
 - [lib/services/schema-builder/field-statistics](lib/services/schema-builder/field-statistics.md)
+- [lib/services/schema-builder/language-detection](lib/services/schema-builder/language-detection.md)
 - [lib/services/schema-builder/pattern-detection](lib/services/schema-builder/pattern-detection.md)
 - [lib/services/schema-builder/schema-comparison](lib/services/schema-builder/schema-comparison.md)
 
@@ -184,6 +214,7 @@
 ### Utilities
 
 - [lib/utils/cron-parser](lib/utils/cron-parser.md)
+- [lib/utils/masking](lib/utils/masking.md)
 - [lib/utils/slug](lib/utils/slug.md)
 
 ### Utils

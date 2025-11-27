@@ -220,71 +220,183 @@ jobs:
           cd deployment
           DC_CMD="docker compose -f docker-compose.prod.yml -f docker-compose.test.yml --env-file .env.production"
 
-          # Create some test data
-          $DC_CMD exec -T postgres psql -U timetiles_user timetiles -c \
-            "INSERT INTO payload.users (email, created_at, updated_at) VALUES ('test@backup.com', NOW(), NOW());"
+          echo "=== Phase 1: Create test data (database + uploads) ==="
 
-          # Test database backup
-          echo "Testing database backup..."
+          # Create test user with multiple fields
+          $DC_CMD exec -T postgres psql -U timetiles_user timetiles -c \
+            "INSERT INTO payload.users (email, role, created_at, updated_at)
+             VALUES ('backup-test@example.com', 'user', '2024-01-15 10:30:00', '2024-01-15 10:30:00');"
+
+          # Create test dataset record
+          $DC_CMD exec -T postgres psql -U timetiles_user timetiles -c \
+            "INSERT INTO payload.datasets (name, slug, description, created_at, updated_at)
+             VALUES ('Backup Test Dataset', 'backup-test-dataset', 'Dataset for backup testing', NOW(), NOW());"
+
+          # Create test files in uploads volume (both media and import-files subdirs)
+          UPLOAD_VOL=$(docker volume ls -q | grep -E 'timetiles.*uploads' | head -1)
+          echo "Upload volume: $UPLOAD_VOL"
+
+          docker run --rm -v "$UPLOAD_VOL:/uploads" alpine sh -c "
+            mkdir -p /uploads/media /uploads/import-files
+            echo 'test-media-content-12345' > /uploads/media/test-image.txt
+            echo 'test-import-content-67890' > /uploads/import-files/test-import.csv
+          "
+
+          # Verify test files exist
+          echo "Verifying test files were created..."
+          docker run --rm -v "$UPLOAD_VOL:/uploads" alpine ls -la /uploads/media/ /uploads/import-files/
+
+          echo "=== Phase 2: Test database-only backup ==="
           ./deploy.sh backup db
 
-          # Verify backup was created
           if ! ls backups/db-*.sql.gz > /dev/null 2>&1; then
-            echo "Database backup failed - no backup file found"
+            echo "ERROR: Database backup failed - no backup file found"
             exit 1
           fi
+          echo "Database backup created successfully"
 
-          # Test full backup (with uploads)
-          echo "Testing full backup..."
+          echo "=== Phase 3: Test full backup (database + uploads) ==="
           ./deploy.sh backup full
 
-          # Verify full backup files
           if ! ls backups/uploads-*.tar.gz > /dev/null 2>&1; then
-            echo "Full backup failed - no uploads backup found"
+            echo "ERROR: Full backup failed - no uploads backup found"
             exit 1
           fi
+          echo "Full backup created successfully"
 
-          # List backups
-          echo "Listing backups..."
+          # List all backups
           ./deploy.sh backup list
 
-          # Get the latest backup file (filename only, deploy.sh prepends backup dir)
-          LATEST_BACKUP=$(find backups -name 'db-*.sql.gz' -type f -printf '%T@ %p\n' | sort -rn | head -1 | cut -d' ' -f2 | xargs basename)
-          echo "Latest backup: $LATEST_BACKUP"
+          # Get latest backup filenames
+          LATEST_DB_BACKUP=$(find backups -name 'db-*.sql.gz' -type f -printf '%T@ %p\n' | sort -rn | head -1 | cut -d' ' -f2 | xargs basename)
+          LATEST_UPLOADS_BACKUP=$(find backups -name 'uploads-*.tar.gz' -type f -printf '%T@ %p\n' | sort -rn | head -1 | cut -d' ' -f2 | xargs basename)
+          echo "Latest DB backup: $LATEST_DB_BACKUP"
+          echo "Latest uploads backup: $LATEST_UPLOADS_BACKUP"
 
-          # Delete test data
+          echo "=== Phase 4: Delete all test data ==="
+
+          # Delete database records
           $DC_CMD exec -T postgres psql -U timetiles_user timetiles -c \
-            "DELETE FROM payload.users WHERE email = 'test@backup.com';"
+            "DELETE FROM payload.users WHERE email = 'backup-test@example.com';"
+          $DC_CMD exec -T postgres psql -U timetiles_user timetiles -c \
+            "DELETE FROM payload.datasets WHERE slug = 'backup-test-dataset';"
 
-          # Verify data is gone
-          COUNT=$($DC_CMD exec -T postgres psql -U timetiles_user timetiles -t -c \
-            "SELECT COUNT(*) FROM payload.users WHERE email = 'test@backup.com';" | tr -d ' ')
-          if [ "$COUNT" != "0" ]; then
-            echo "Failed to delete test data"
+          # Delete uploaded files
+          docker run --rm -v "$UPLOAD_VOL:/uploads" alpine sh -c "
+            rm -f /uploads/media/test-image.txt /uploads/import-files/test-import.csv
+          "
+
+          # Verify database data is gone
+          USER_COUNT=$($DC_CMD exec -T postgres psql -U timetiles_user timetiles -t -c \
+            "SELECT COUNT(*) FROM payload.users WHERE email = 'backup-test@example.com';" | tr -d ' ')
+          DATASET_COUNT=$($DC_CMD exec -T postgres psql -U timetiles_user timetiles -t -c \
+            "SELECT COUNT(*) FROM payload.datasets WHERE slug = 'backup-test-dataset';" | tr -d ' ')
+
+          if [ "$USER_COUNT" != "0" ] || [ "$DATASET_COUNT" != "0" ]; then
+            echo "ERROR: Failed to delete test database records"
             exit 1
           fi
 
-          # Test restore (auto-confirm for CI)
-          echo "Testing restore..."
-          echo "yes" | ./deploy.sh restore "$LATEST_BACKUP"
+          # Verify files are gone
+          if docker run --rm -v "$UPLOAD_VOL:/uploads" alpine test -f /uploads/media/test-image.txt; then
+            echo "ERROR: Failed to delete test media file"
+            exit 1
+          fi
+          if docker run --rm -v "$UPLOAD_VOL:/uploads" alpine test -f /uploads/import-files/test-import.csv; then
+            echo "ERROR: Failed to delete test import file"
+            exit 1
+          fi
+          echo "All test data deleted successfully"
 
-          # Verify data was restored
-          COUNT=$($DC_CMD exec -T postgres psql -U timetiles_user timetiles -t -c \
-            "SELECT COUNT(*) FROM payload.users WHERE email = 'test@backup.com';" | tr -d ' ')
-          if [ "$COUNT" != "1" ]; then
-            echo "Restore failed - test data not found after restore"
+          echo "=== Phase 5a: Test database-only restore ==="
+          echo "yes" | ./deploy.sh restore "$LATEST_DB_BACKUP"
+
+          # Verify database records restored
+          USER_COUNT=$($DC_CMD exec -T postgres psql -U timetiles_user timetiles -t -c \
+            "SELECT COUNT(*) FROM payload.users WHERE email = 'backup-test@example.com';" | tr -d ' ')
+          if [ "$USER_COUNT" != "1" ]; then
+            echo "ERROR: User record not restored after db-only restore (count: $USER_COUNT)"
+            exit 1
+          fi
+          echo "Database-only restore: user record restored"
+
+          # Verify uploads were NOT restored (files should still be missing)
+          if docker run --rm -v "$UPLOAD_VOL:/uploads" alpine test -f /uploads/media/test-image.txt 2>/dev/null; then
+            echo "ERROR: Media file should not exist after db-only restore"
+            exit 1
+          fi
+          echo "Database-only restore: uploads correctly unchanged"
+
+          # Delete db records again for full restore test
+          $DC_CMD exec -T postgres psql -U timetiles_user timetiles -c \
+            "DELETE FROM payload.users WHERE email = 'backup-test@example.com';"
+          $DC_CMD exec -T postgres psql -U timetiles_user timetiles -c \
+            "DELETE FROM payload.datasets WHERE slug = 'backup-test-dataset';"
+
+          echo "=== Phase 5b: Test full restore (database + uploads) ==="
+          echo "yes" | ./deploy.sh restore "$LATEST_DB_BACKUP" "$LATEST_UPLOADS_BACKUP"
+
+          echo "=== Phase 6: Verify fully restored data ==="
+
+          # Verify database records restored
+          USER_COUNT=$($DC_CMD exec -T postgres psql -U timetiles_user timetiles -t -c \
+            "SELECT COUNT(*) FROM payload.users WHERE email = 'backup-test@example.com';" | tr -d ' ')
+          if [ "$USER_COUNT" != "1" ]; then
+            echo "ERROR: User record not restored (count: $USER_COUNT)"
             exit 1
           fi
 
-          echo "Backup and restore tests passed!"
+          # Verify user fields restored correctly
+          USER_ROLE=$($DC_CMD exec -T postgres psql -U timetiles_user timetiles -t -c \
+            "SELECT role FROM payload.users WHERE email = 'backup-test@example.com';" | tr -d ' ')
+          if [ "$USER_ROLE" != "user" ]; then
+            echo "ERROR: User role not restored correctly (got: $USER_ROLE)"
+            exit 1
+          fi
+          echo "User record restored with correct fields"
 
-          # Test backup cleanup
-          echo "Testing backup cleanup..."
+          DATASET_COUNT=$($DC_CMD exec -T postgres psql -U timetiles_user timetiles -t -c \
+            "SELECT COUNT(*) FROM payload.datasets WHERE slug = 'backup-test-dataset';" | tr -d ' ')
+          if [ "$DATASET_COUNT" != "1" ]; then
+            echo "ERROR: Dataset record not restored (count: $DATASET_COUNT)"
+            exit 1
+          fi
+
+          # Verify dataset fields
+          DATASET_NAME=$($DC_CMD exec -T postgres psql -U timetiles_user timetiles -t -c \
+            "SELECT name FROM payload.datasets WHERE slug = 'backup-test-dataset';" | xargs)
+          if [ "$DATASET_NAME" != "Backup Test Dataset" ]; then
+            echo "ERROR: Dataset name not restored correctly (got: $DATASET_NAME)"
+            exit 1
+          fi
+          echo "Dataset record restored with correct fields"
+
+          # Verify uploaded files restored
+          MEDIA_CONTENT=$(docker run --rm -v "$UPLOAD_VOL:/uploads" alpine cat /uploads/media/test-image.txt 2>/dev/null || echo "")
+          if [ "$MEDIA_CONTENT" != "test-media-content-12345" ]; then
+            echo "ERROR: Media file not restored correctly (got: $MEDIA_CONTENT)"
+            exit 1
+          fi
+          echo "Media file restored correctly"
+
+          IMPORT_CONTENT=$(docker run --rm -v "$UPLOAD_VOL:/uploads" alpine cat /uploads/import-files/test-import.csv 2>/dev/null || echo "")
+          if [ "$IMPORT_CONTENT" != "test-import-content-67890" ]; then
+            echo "ERROR: Import file not restored correctly (got: $IMPORT_CONTENT)"
+            exit 1
+          fi
+          echo "Import file restored correctly"
+
+          echo "=== All backup and restore tests passed! ==="
+
+          # Cleanup
+          echo "Cleaning up test data..."
           ./deploy.sh backup clean
-
-          # Clean up test data
           $DC_CMD exec -T postgres psql -U timetiles_user timetiles -c \
-            "DELETE FROM payload.users WHERE email = 'test@backup.com';"
+            "DELETE FROM payload.users WHERE email = 'backup-test@example.com';"
+          $DC_CMD exec -T postgres psql -U timetiles_user timetiles -c \
+            "DELETE FROM payload.datasets WHERE slug = 'backup-test-dataset';"
+          docker run --rm -v "$UPLOAD_VOL:/uploads" alpine sh -c \
+            "rm -f /uploads/media/test-image.txt /uploads/import-files/test-import.csv"
 
           cd ..
 

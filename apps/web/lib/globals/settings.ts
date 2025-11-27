@@ -11,6 +11,9 @@ import type { GlobalConfig } from "payload";
 
 export const Settings: GlobalConfig = {
   slug: "settings",
+  admin: {
+    group: "System",
+  },
   access: {
     read: () => true,
     update: ({ req: { user } }) => user?.role === "admin",
@@ -128,6 +131,88 @@ export const Settings: GlobalConfig = {
               },
             },
           ],
+        },
+      ],
+    },
+    {
+      name: "featureFlags",
+      type: "group",
+      label: "Feature Flags",
+      admin: {
+        description: "Enable or disable major application features",
+      },
+      fields: [
+        {
+          name: "allowPrivateImports",
+          type: "checkbox",
+          label: "Allow Private Imports",
+          defaultValue: true,
+          admin: {
+            description: "When enabled, users can create private imports visible only to themselves",
+          },
+        },
+        {
+          name: "enableScheduledImports",
+          type: "checkbox",
+          label: "Enable Scheduled Imports",
+          defaultValue: true,
+          admin: {
+            description: "When enabled, users can create automated URL-based import schedules",
+          },
+        },
+        {
+          name: "enableRegistration",
+          type: "checkbox",
+          label: "Enable Public Registration",
+          defaultValue: true,
+          admin: {
+            description: "When enabled, new users can self-register accounts",
+          },
+        },
+        {
+          name: "enableEventCreation",
+          type: "checkbox",
+          label: "Enable Event Creation",
+          defaultValue: true,
+          admin: {
+            description: "When enabled, new events can be created (via imports or API)",
+          },
+        },
+        {
+          name: "enableDatasetCreation",
+          type: "checkbox",
+          label: "Enable Dataset Creation",
+          defaultValue: true,
+          admin: {
+            description: "When enabled, users can create new datasets",
+          },
+        },
+        {
+          name: "enableImportCreation",
+          type: "checkbox",
+          label: "Enable Import Creation",
+          defaultValue: true,
+          admin: {
+            description: "When enabled, users can create new import jobs",
+          },
+        },
+        {
+          name: "enableScheduledJobExecution",
+          type: "checkbox",
+          label: "Enable Scheduled Job Execution",
+          defaultValue: true,
+          admin: {
+            description: "When enabled, scheduled import jobs will execute automatically",
+          },
+        },
+        {
+          name: "enableUrlFetchCaching",
+          type: "checkbox",
+          label: "Enable URL Fetch Caching",
+          defaultValue: true,
+          admin: {
+            description: "When enabled, URL fetches for scheduled imports are cached to reduce requests",
+          },
         },
       ],
     },

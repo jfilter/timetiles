@@ -68,8 +68,10 @@ export interface Config {
   blocks: {};
   collections: {
     catalogs: Catalog;
+    'data-exports': DataExport;
     datasets: Dataset;
     'dataset-schemas': DatasetSchema;
+    'deletion-audit-log': DeletionAuditLog;
     'import-files': ImportFile;
     'import-jobs': ImportJob;
     'scheduled-imports': ScheduledImport;
@@ -88,8 +90,10 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     catalogs: CatalogsSelect<false> | CatalogsSelect<true>;
+    'data-exports': DataExportsSelect<false> | DataExportsSelect<true>;
     datasets: DatasetsSelect<false> | DatasetsSelect<true>;
     'dataset-schemas': DatasetSchemasSelect<false> | DatasetSchemasSelect<true>;
+    'deletion-audit-log': DeletionAuditLogSelect<false> | DeletionAuditLogSelect<true>;
     'import-files': ImportFilesSelect<false> | ImportFilesSelect<true>;
     'import-jobs': ImportJobsSelect<false> | ImportJobsSelect<true>;
     'scheduled-imports': ScheduledImportsSelect<false> | ScheduledImportsSelect<true>;
@@ -111,12 +115,14 @@ export interface Config {
   globals: {
     'main-menu': MainMenu;
     footer: Footer;
+    branding: Branding;
     settings: Setting;
     'payload-jobs-stats': PayloadJobsStat;
   };
   globalsSelect: {
     'main-menu': MainMenuSelect<false> | MainMenuSelect<true>;
     footer: FooterSelect<false> | FooterSelect<true>;
+    branding: BrandingSelect<false> | BrandingSelect<true>;
     settings: SettingsSelect<false> | SettingsSelect<true>;
     'payload-jobs-stats': PayloadJobsStatsSelect<false> | PayloadJobsStatsSelect<true>;
   };
@@ -140,6 +146,8 @@ export interface Config {
       'process-pending-retries': TaskProcessPendingRetries;
       'quota-reset': TaskQuotaReset;
       'cache-cleanup': TaskCacheCleanup;
+      'data-export': TaskDataExport;
+      'data-export-cleanup': TaskDataExportCleanup;
       inline: {
         input: unknown;
         output: unknown;
@@ -270,6 +278,18 @@ export interface User {
     | number
     | boolean
     | null;
+  /**
+   * Account deletion status
+   */
+  deletionStatus?: ('active' | 'pending_deletion' | 'deleted') | null;
+  /**
+   * When the user requested account deletion
+   */
+  deletionRequestedAt?: string | null;
+  /**
+   * When the account will be permanently deleted
+   */
+  deletionScheduledAt?: string | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -290,6 +310,65 @@ export interface User {
       }[]
     | null;
   password?: string | null;
+}
+/**
+ * User data export requests and their status
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "data-exports".
+ */
+export interface DataExport {
+  id: number;
+  /**
+   * User who requested the export
+   */
+  user: number | User;
+  /**
+   * Current status of the export request
+   */
+  status: 'pending' | 'processing' | 'ready' | 'failed' | 'expired';
+  /**
+   * When the export was requested
+   */
+  requestedAt: string;
+  /**
+   * When the export finished processing
+   */
+  completedAt?: string | null;
+  /**
+   * When the download link expires (7 days after completion)
+   */
+  expiresAt?: string | null;
+  /**
+   * Internal file path for the export ZIP (for cleanup)
+   */
+  filePath?: string | null;
+  /**
+   * File size in bytes
+   */
+  fileSize?: number | null;
+  /**
+   * Number of times the export has been downloaded
+   */
+  downloadCount?: number | null;
+  /**
+   * Export summary with record counts
+   */
+  summary?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Error details if export failed
+   */
+  errorLog?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -323,6 +402,10 @@ export interface Dataset {
    */
   language: string;
   isPublic?: boolean | null;
+  /**
+   * User who created this dataset
+   */
+  createdBy?: (number | null) | User;
   /**
    * Additional metadata for the entity
    */
@@ -1078,6 +1161,73 @@ export interface ImportFile {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
+}
+/**
+ * Immutable audit trail of account deletions
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "deletion-audit-log".
+ */
+export interface DeletionAuditLog {
+  id: number;
+  /**
+   * The ID of the deleted user
+   */
+  deletedUserId: number;
+  /**
+   * SHA256 hash of the deleted user's email (for privacy)
+   */
+  deletedUserEmailHash: string;
+  /**
+   * When the account was permanently deleted
+   */
+  deletedAt: string;
+  /**
+   * When the user requested deletion
+   */
+  deletionRequestedAt?: string | null;
+  /**
+   * User who initiated the deletion (null for self-deletion after grace period)
+   */
+  deletedBy?: (number | null) | User;
+  /**
+   * How the deletion was initiated
+   */
+  deletionType: 'self' | 'admin' | 'scheduled';
+  /**
+   * Optional reason for deletion (admin-initiated only)
+   */
+  reason?: string | null;
+  /**
+   * Summary of public data transferred to system user
+   */
+  dataTransferred?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Summary of private data permanently deleted
+   */
+  dataDeleted?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Hashed IP address of the requester (for security)
+   */
+  ipAddressHash?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * Manage scheduled URL imports that run automatically
@@ -2107,7 +2257,9 @@ export interface PayloadJob {
           | 'cleanup-stuck-scheduled-imports'
           | 'process-pending-retries'
           | 'quota-reset'
-          | 'cache-cleanup';
+          | 'cache-cleanup'
+          | 'data-export'
+          | 'data-export-cleanup';
         taskID: string;
         input?:
           | {
@@ -2157,6 +2309,8 @@ export interface PayloadJob {
         | 'process-pending-retries'
         | 'quota-reset'
         | 'cache-cleanup'
+        | 'data-export'
+        | 'data-export-cleanup'
       )
     | null;
   queue?: string | null;
@@ -2186,12 +2340,20 @@ export interface PayloadLockedDocument {
         value: number | Catalog;
       } | null)
     | ({
+        relationTo: 'data-exports';
+        value: number | DataExport;
+      } | null)
+    | ({
         relationTo: 'datasets';
         value: number | Dataset;
       } | null)
     | ({
         relationTo: 'dataset-schemas';
         value: number | DatasetSchema;
+      } | null)
+    | ({
+        relationTo: 'deletion-audit-log';
+        value: number | DeletionAuditLog;
       } | null)
     | ({
         relationTo: 'import-files';
@@ -2296,6 +2458,24 @@ export interface CatalogsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "data-exports_select".
+ */
+export interface DataExportsSelect<T extends boolean = true> {
+  user?: T;
+  status?: T;
+  requestedAt?: T;
+  completedAt?: T;
+  expiresAt?: T;
+  filePath?: T;
+  fileSize?: T;
+  downloadCount?: T;
+  summary?: T;
+  errorLog?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "datasets_select".
  */
 export interface DatasetsSelect<T extends boolean = true> {
@@ -2305,6 +2485,7 @@ export interface DatasetsSelect<T extends boolean = true> {
   catalog?: T;
   language?: T;
   isPublic?: T;
+  createdBy?: T;
   metadata?: T;
   idStrategy?:
     | T
@@ -2458,6 +2639,24 @@ export interface DatasetSchemasSelect<T extends boolean = true> {
   createdAt?: T;
   deletedAt?: T;
   _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "deletion-audit-log_select".
+ */
+export interface DeletionAuditLogSelect<T extends boolean = true> {
+  deletedUserId?: T;
+  deletedUserEmailHash?: T;
+  deletedAt?: T;
+  deletionRequestedAt?: T;
+  deletedBy?: T;
+  deletionType?: T;
+  reason?: T;
+  dataTransferred?: T;
+  dataDeleted?: T;
+  ipAddressHash?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2736,6 +2935,9 @@ export interface UsersSelect<T extends boolean = true> {
         maxCatalogsPerUser?: T;
       };
   customQuotas?: T;
+  deletionStatus?: T;
+  deletionRequestedAt?: T;
+  deletionScheduledAt?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
@@ -3233,6 +3435,39 @@ export interface Footer {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "branding".
+ */
+export interface Branding {
+  id: number;
+  /**
+   * The name displayed in the header and browser tab title
+   */
+  siteName?: string | null;
+  /**
+   * Meta description for SEO and social sharing (og:description)
+   */
+  siteDescription?: string | null;
+  /**
+   * Logo for light backgrounds. Recommended: 128x128px PNG with transparency.
+   */
+  logoLight?: (number | null) | Media;
+  /**
+   * Logo for dark backgrounds. Recommended: 128x128px PNG with transparency.
+   */
+  logoDark?: (number | null) | Media;
+  /**
+   * Source image for light theme favicons. Recommended: 512x512px square PNG.
+   */
+  faviconSourceLight?: (number | null) | Media;
+  /**
+   * Source image for dark theme favicons. Recommended: 512x512px square PNG.
+   */
+  faviconSourceDark?: (number | null) | Media;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "settings".
  */
 export interface Setting {
@@ -3276,6 +3511,43 @@ export interface Setting {
        */
       ttlDays?: number | null;
     };
+  };
+  /**
+   * Enable or disable major application features
+   */
+  featureFlags?: {
+    /**
+     * When enabled, users can create private imports visible only to themselves
+     */
+    allowPrivateImports?: boolean | null;
+    /**
+     * When enabled, users can create automated URL-based import schedules
+     */
+    enableScheduledImports?: boolean | null;
+    /**
+     * When enabled, new users can self-register accounts
+     */
+    enableRegistration?: boolean | null;
+    /**
+     * When enabled, new events can be created (via imports or API)
+     */
+    enableEventCreation?: boolean | null;
+    /**
+     * When enabled, users can create new datasets
+     */
+    enableDatasetCreation?: boolean | null;
+    /**
+     * When enabled, users can create new import jobs
+     */
+    enableImportCreation?: boolean | null;
+    /**
+     * When enabled, scheduled import jobs will execute automatically
+     */
+    enableScheduledJobExecution?: boolean | null;
+    /**
+     * When enabled, URL fetches for scheduled imports are cached to reduce requests
+     */
+    enableUrlFetchCaching?: boolean | null;
   };
   updatedAt?: string | null;
   createdAt?: string | null;
@@ -3358,6 +3630,21 @@ export interface FooterSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "branding_select".
+ */
+export interface BrandingSelect<T extends boolean = true> {
+  siteName?: T;
+  siteDescription?: T;
+  logoLight?: T;
+  logoDark?: T;
+  faviconSourceLight?: T;
+  faviconSourceDark?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "settings_select".
  */
 export interface SettingsSelect<T extends boolean = true> {
@@ -3384,6 +3671,18 @@ export interface SettingsSelect<T extends boolean = true> {
               enabled?: T;
               ttlDays?: T;
             };
+      };
+  featureFlags?:
+    | T
+    | {
+        allowPrivateImports?: T;
+        enableScheduledImports?: T;
+        enableRegistration?: T;
+        enableEventCreation?: T;
+        enableDatasetCreation?: T;
+        enableImportCreation?: T;
+        enableScheduledJobExecution?: T;
+        enableUrlFetchCaching?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -3508,6 +3807,22 @@ export interface TaskQuotaReset {
  * via the `definition` "TaskCache-cleanup".
  */
 export interface TaskCacheCleanup {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskData-export".
+ */
+export interface TaskDataExport {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskData-export-cleanup".
+ */
+export interface TaskDataExportCleanup {
   input?: unknown;
   output?: unknown;
 }

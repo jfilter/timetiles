@@ -6,13 +6,19 @@ Get TimeTiles up and running in minutes. This guide is for developers and admini
 
 ## Prerequisites
 
-- Bash
-- Git
-- Git LFS
-- Make
-- Node.js 24+
-- pnpm 10.12.4+
-- Docker and Docker Compose
+- Git, Git LFS, Make, Bash
+- Node.js 24+, pnpm 10.12.4+
+- Docker & Docker Compose
+- PostgreSQL client, jq, curl
+
+```bash
+# macOS
+brew install git git-lfs node pnpm docker postgresql jq curl
+
+# Debian/Ubuntu
+sudo apt install git git-lfs make nodejs npm docker.io docker-compose postgresql-client jq curl
+sudo npm install -g pnpm
+```
 
 ## Quick Start
 

@@ -293,17 +293,26 @@ const checkAndTrackQuota = async (
 };
 
 // Helper to prepare cache options
-const prepareCacheOptions = (scheduledImport: ScheduledImport | null, triggeredBy: string | undefined) => ({
-  useCache: scheduledImport?.advancedOptions?.useHttpCache !== false,
-  bypassCache: triggeredBy === "manual" && scheduledImport?.advancedOptions?.bypassCacheOnManual === true,
+const prepareCacheOptions = (
+  scheduledImport: ScheduledImport | null,
+  triggeredBy: string | undefined,
+  cachingEnabled: boolean
+) => ({
+  useCache: cachingEnabled && scheduledImport?.advancedOptions?.useHttpCache !== false,
+  bypassCache:
+    !cachingEnabled || (triggeredBy === "manual" && scheduledImport?.advancedOptions?.bypassCacheOnManual === true),
   respectCacheControl: scheduledImport?.advancedOptions?.respectCacheControl !== false,
 });
 
 // Helper to perform the fetch operation
-const performFetch = async (input: UrlFetchJobInput, scheduledImport: ScheduledImport | null): Promise<FetchResult> => {
+const performFetch = async (
+  input: UrlFetchJobInput,
+  scheduledImport: ScheduledImport | null,
+  cachingEnabled: boolean
+): Promise<FetchResult> => {
   const authHeaders = buildAuthHeaders(input.authConfig ?? scheduledImport?.authConfig);
   const { timeout, maxSize } = prepareFetchOptions(scheduledImport);
-  const cacheOptions = prepareCacheOptions(scheduledImport, input.triggeredBy);
+  const cacheOptions = prepareCacheOptions(scheduledImport, input.triggeredBy, cachingEnabled);
 
   return fetchWithRetry(input.sourceUrl, {
     authHeaders,
@@ -343,8 +352,12 @@ export const urlFetchJob = {
       // Check and track quota (handles undefined userId gracefully)
       await checkAndTrackQuota(payload, resolvedUserId, scheduledImport);
 
+      // Check if URL fetch caching is enabled
+      const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
+      const cachingEnabled = await isFeatureEnabled(payload, "enableUrlFetchCaching");
+
       // Perform fetch
-      const fetchResult = await performFetch(input, scheduledImport);
+      const fetchResult = await performFetch(input, scheduledImport, cachingEnabled);
 
       logger.info("URL fetch successful", {
         sourceUrl: input.sourceUrl,

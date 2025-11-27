@@ -18,6 +18,8 @@ import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { useCallback, useState } from "react";
 
+import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
+
 export interface RegisterFormProps {
   /** Callback fired on successful registration */
   onSuccess?: () => void;
@@ -30,6 +32,7 @@ export interface RegisterFormProps {
 type FormStatus = "idle" | "loading" | "success" | "error";
 
 export const RegisterForm = ({ onSuccess, onError, className }: Readonly<RegisterFormProps>) => {
+  const { isEnabled: registrationEnabled, isLoading: flagsLoading } = useFeatureEnabled("enableRegistration");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -104,6 +107,42 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
     },
     [email, password, confirmPassword, onSuccess, onError]
   );
+
+  // Show loading state while checking feature flags
+  if (flagsLoading) {
+    return (
+      <div className={cn("flex items-center justify-center py-8", className)}>
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show message when registration is disabled
+  if (!registrationEnabled) {
+    return (
+      <div className={cn("space-y-4 text-center", className)}>
+        <div className="bg-muted/50 border-border rounded-sm border p-6">
+          <svg
+            className="text-muted-foreground mx-auto mb-4 h-12 w-12"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+            />
+          </svg>
+          <h3 className="text-lg font-semibold">Registration Unavailable</h3>
+          <p className="text-muted-foreground mt-2 text-sm">
+            New account registration is currently disabled. Please contact an administrator if you need access.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Show success message after registration
   if (status === "success") {

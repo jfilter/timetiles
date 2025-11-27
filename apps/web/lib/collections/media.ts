@@ -16,7 +16,7 @@ const Media: CollectionConfig = {
   slug: "media",
   ...createCommonConfig(),
   upload: {
-    staticDir: process.env.UPLOAD_DIR_MEDIA!,
+    staticDir: `${process.env.UPLOAD_DIR ?? "uploads"}/media`,
     imageSizes: [
       {
         name: "thumbnail",
@@ -43,6 +43,7 @@ const Media: CollectionConfig = {
   admin: {
     useAsTitle: "filename",
     defaultColumns: ["filename", "alt", "mimeType", "filesize", "createdAt", "createdBy"],
+    group: "Content",
   },
   access: {
     // Public media is readable by all, private media only by owner/admins
@@ -55,9 +56,9 @@ const Media: CollectionConfig = {
     // Only authenticated users can upload media
     create: ({ req: { user } }) => Boolean(user),
 
-    // Only owner or admins can update
+    // Only owner, editors, or admins can update
     update: ({ req: { user }, data }) => {
-      if (user?.role === "admin") return true;
+      if (user?.role === "admin" || user?.role === "editor") return true;
 
       if (user && data?.createdBy) {
         const createdById = typeof data.createdBy === "object" ? data.createdBy.id : data.createdBy;
@@ -67,9 +68,9 @@ const Media: CollectionConfig = {
       return false;
     },
 
-    // Only owner or admins can delete
+    // Only owner, editors, or admins can delete
     delete: ({ req: { user }, data }) => {
-      if (user?.role === "admin") return true;
+      if (user?.role === "admin" || user?.role === "editor") return true;
 
       if (user && data?.createdBy) {
         const createdById = typeof data.createdBy === "object" ? data.createdBy.id : data.createdBy;
@@ -79,8 +80,8 @@ const Media: CollectionConfig = {
       return false;
     },
 
-    // Only admins can read version history
-    readVersions: ({ req: { user } }) => user?.role === "admin",
+    // Only admins and editors can read version history
+    readVersions: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
   },
   fields: [
     {

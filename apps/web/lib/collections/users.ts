@@ -95,6 +95,7 @@ const Users: CollectionConfig = {
   admin: {
     useAsTitle: "email",
     defaultColumns: ["email", "firstName", "lastName", "role", "trustLevel", "isActive"],
+    group: "System",
   },
   access: {
     // Users can read their own profile, admins can read all
@@ -305,6 +306,45 @@ const Users: CollectionConfig = {
       },
       access: {
         update: ({ req: { user } }) => user?.role === "admin",
+      },
+    },
+    // Account Deletion Fields
+    {
+      name: "deletionStatus",
+      type: "select",
+      options: [
+        { label: "Active", value: "active" },
+        { label: "Pending Deletion", value: "pending_deletion" },
+        { label: "Deleted", value: "deleted" },
+      ],
+      defaultValue: "active",
+      admin: {
+        position: "sidebar",
+        description: "Account deletion status",
+      },
+    },
+    {
+      name: "deletionRequestedAt",
+      type: "date",
+      admin: {
+        date: {
+          pickerAppearance: "dayAndTime",
+        },
+        position: "sidebar",
+        readOnly: true,
+        description: "When the user requested account deletion",
+      },
+    },
+    {
+      name: "deletionScheduledAt",
+      type: "date",
+      admin: {
+        date: {
+          pickerAppearance: "dayAndTime",
+        },
+        position: "sidebar",
+        readOnly: true,
+        description: "When the account will be permanently deleted",
       },
     },
   ],

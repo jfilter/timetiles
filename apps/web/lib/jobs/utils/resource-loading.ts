@@ -91,7 +91,7 @@ export const loadJobAndFilePath = async (
   const job = await loadImportJob(payload, importJobId);
   const importFile = await loadImportFile(payload, job.importFile);
 
-  const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+  const uploadDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR ?? "uploads"}/import-files`);
   const filePath = path.join(uploadDir, importFile.filename ?? "");
 
   return { job, importFile, filePath };

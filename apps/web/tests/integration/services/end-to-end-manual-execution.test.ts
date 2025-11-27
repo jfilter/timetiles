@@ -74,7 +74,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
 
       // Write CSV to temp file and move to import location
       const csvFileName = `e2e-test-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }
@@ -245,7 +245,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
       const csvFileName = `status-test-${Date.now()}.csv`;
 
       // Create file in import directory
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }

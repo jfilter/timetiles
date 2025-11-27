@@ -21,6 +21,10 @@ import { v4 as uuidv4 } from "uuid";
 import { read, utils } from "xlsx";
 
 import { createLogger } from "@/lib/logger";
+import {
+  detectLanguageFromSamples,
+  type LanguageDetectionResult,
+} from "@/lib/services/schema-builder/language-detection";
 import { badRequest, internalError, unauthorized } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
@@ -31,10 +35,34 @@ const ALLOWED_MIME_TYPES = [
   "text/plain",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.oasis.opendocument.spreadsheet",
 ];
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const SAMPLE_ROW_COUNT = 5;
+
+/** Confidence level for field mapping suggestion */
+type ConfidenceLevel = "high" | "medium" | "low" | "none";
+
+/** Field mapping suggestion with confidence */
+interface FieldMappingSuggestion {
+  path: string | null;
+  confidence: number;
+  confidenceLevel: ConfidenceLevel;
+}
+
+/** Suggested mappings from auto-detection */
+interface SuggestedMappings {
+  language: LanguageDetectionResult;
+  mappings: {
+    titlePath: FieldMappingSuggestion;
+    descriptionPath: FieldMappingSuggestion;
+    timestampPath: FieldMappingSuggestion;
+    latitudePath: FieldMappingSuggestion;
+    longitudePath: FieldMappingSuggestion;
+    locationPath: FieldMappingSuggestion;
+  };
+}
 
 interface SheetInfo {
   index: number;
@@ -42,7 +70,122 @@ interface SheetInfo {
   rowCount: number;
   headers: string[];
   sampleData: Record<string, unknown>[];
+  suggestedMappings?: SuggestedMappings;
 }
+
+/**
+ * Field name patterns for different languages
+ */
+const FIELD_PATTERNS: Record<string, Record<string, RegExp[]>> = {
+  title: {
+    eng: [/^title$/i, /^name$/i, /^event.*name$/i, /^event.*title$/i, /^event$/i],
+    deu: [/^titel$/i, /^name$/i, /^bezeichnung$/i, /^veranstaltung$/i],
+    default: [/^title$/i, /^name$/i, /^titel$/i],
+  },
+  description: {
+    eng: [/^description$/i, /^details$/i, /^summary$/i, /^notes$/i, /^text$/i],
+    deu: [/^beschreibung$/i, /^details$/i, /^zusammenfassung$/i, /^text$/i],
+    default: [/^description$/i, /^beschreibung$/i, /^details$/i],
+  },
+  timestamp: {
+    eng: [/^date$/i, /^timestamp$/i, /^datetime$/i, /^time$/i, /^when$/i],
+    deu: [/^datum$/i, /^zeitstempel$/i, /^zeit$/i, /^wann$/i],
+    default: [/^date$/i, /^datum$/i, /^timestamp$/i, /^time$/i],
+  },
+  location: {
+    eng: [/^address$/i, /^location$/i, /^place$/i, /^venue$/i, /^city$/i],
+    deu: [/^adresse$/i, /^ort$/i, /^standort$/i, /^platz$/i, /^stadt$/i],
+    default: [/^address$/i, /^location$/i, /^ort$/i, /^adresse$/i],
+  },
+  latitude: {
+    eng: [/^lat$/i, /^latitude$/i, /^lat.*coord$/i, /^y$/i],
+    deu: [/^lat$/i, /^breitengrad$/i, /^breite$/i],
+    default: [/^lat$/i, /^latitude$/i, /^breitengrad$/i],
+  },
+  longitude: {
+    eng: [/^lon$/i, /^lng$/i, /^longitude$/i, /^long$/i, /^lon.*coord$/i, /^x$/i],
+    deu: [/^lon$/i, /^lng$/i, /^längengrad$/i, /^laengengrad$/i, /^länge$/i],
+    default: [/^lon$/i, /^lng$/i, /^longitude$/i, /^längengrad$/i],
+  },
+};
+
+/**
+ * Get confidence level from confidence score
+ */
+const getConfidenceLevel = (confidence: number): ConfidenceLevel => {
+  if (confidence >= 0.8) return "high";
+  if (confidence >= 0.5) return "medium";
+  if (confidence > 0) return "low";
+  return "none";
+};
+
+/**
+ * Detect a field mapping from headers based on patterns
+ */
+const detectFieldFromHeaders = (headers: string[], fieldType: string, language: string): FieldMappingSuggestion => {
+  const patterns = FIELD_PATTERNS[fieldType];
+  if (!patterns) {
+    return { path: null, confidence: 0, confidenceLevel: "none" };
+  }
+
+  // Get patterns for language, fallback to default
+  const langPatterns = patterns[language] ?? patterns.default ?? [];
+  const defaultPatterns = patterns.default ?? [];
+
+  // Try language-specific patterns first
+  for (let i = 0; i < langPatterns.length; i++) {
+    const pattern = langPatterns[i];
+    if (!pattern) continue;
+    const match = headers.find((h) => pattern.test(h));
+    if (match) {
+      // Higher confidence for earlier patterns (more specific)
+      const confidence = 0.9 - i * 0.1;
+      return {
+        path: match,
+        confidence: Math.max(0.5, confidence),
+        confidenceLevel: getConfidenceLevel(confidence),
+      };
+    }
+  }
+
+  // Try default patterns as fallback
+  for (let i = 0; i < defaultPatterns.length; i++) {
+    const pattern = defaultPatterns[i];
+    if (!pattern) continue;
+    const match = headers.find((h) => pattern.test(h));
+    if (match) {
+      const confidence = 0.7 - i * 0.1;
+      return {
+        path: match,
+        confidence: Math.max(0.3, confidence),
+        confidenceLevel: getConfidenceLevel(confidence),
+      };
+    }
+  }
+
+  return { path: null, confidence: 0, confidenceLevel: "none" };
+};
+
+/**
+ * Detect suggested field mappings for a sheet
+ */
+const detectSuggestedMappings = (headers: string[], sampleData: Record<string, unknown>[]): SuggestedMappings => {
+  // Detect language from headers and sample data
+  const language = detectLanguageFromSamples(sampleData, headers);
+  const langCode = language.code;
+
+  return {
+    language,
+    mappings: {
+      titlePath: detectFieldFromHeaders(headers, "title", langCode),
+      descriptionPath: detectFieldFromHeaders(headers, "description", langCode),
+      timestampPath: detectFieldFromHeaders(headers, "timestamp", langCode),
+      latitudePath: detectFieldFromHeaders(headers, "latitude", langCode),
+      longitudePath: detectFieldFromHeaders(headers, "longitude", langCode),
+      locationPath: detectFieldFromHeaders(headers, "location", langCode),
+    },
+  };
+};
 
 const getPreviewDir = (): string => {
   const previewDir = path.join(os.tmpdir(), "timetiles-wizard-preview");
@@ -72,6 +215,9 @@ const parseCSVPreview = (filePath: string): SheetInfo[] => {
   const headers = result.meta.fields ?? [];
   const sampleData = (result.data as Record<string, unknown>[]).slice(0, SAMPLE_ROW_COUNT);
 
+  // Detect suggested field mappings
+  const suggestedMappings = detectSuggestedMappings(headers, sampleData);
+
   return [
     {
       index: 0,
@@ -79,6 +225,7 @@ const parseCSVPreview = (filePath: string): SheetInfo[] => {
       rowCount: fullResult.data.length,
       headers,
       sampleData,
+      suggestedMappings,
     },
   ];
 };
@@ -105,6 +252,7 @@ const parseExcelPreview = (filePath: string): SheetInfo[] => {
         rowCount: 0,
         headers: [],
         sampleData: [],
+        suggestedMappings: detectSuggestedMappings([], []),
       });
       return;
     }
@@ -127,12 +275,16 @@ const parseExcelPreview = (filePath: string): SheetInfo[] => {
       sampleData.push(obj);
     }
 
+    // Detect suggested field mappings
+    const suggestedMappings = detectSuggestedMappings(headers, sampleData);
+
     sheets.push({
       index,
       name: sheetName,
       rowCount,
       headers,
       sampleData,
+      suggestedMappings,
     });
   });
 
@@ -170,14 +322,20 @@ export const POST = async (req: NextRequest) => {
     }
 
     // Validate mime type
-    const fileExtensionRegex = /\.(csv|xls|xlsx)$/i;
+    const fileExtensionRegex = /\.(csv|xls|xlsx|ods)$/i;
     if (!ALLOWED_MIME_TYPES.includes(file.type) && !fileExtensionRegex.test(file.name)) {
-      return badRequest("Unsupported file type. Please upload a CSV or Excel file.");
+      return badRequest("Unsupported file type. Please upload a CSV, Excel, or ODS file.");
     }
 
     // Generate preview ID and save file
     const previewId = uuidv4();
     const fileExtension = path.extname(file.name).toLowerCase();
+
+    // Security: Validate extension matches allowed pattern before constructing path
+    if (!fileExtensionRegex.test(file.name)) {
+      return badRequest("Unsupported file extension. Please upload a CSV, Excel, or ODS file.");
+    }
+
     const previewDir = getPreviewDir();
     const previewFilePath = path.join(previewDir, `${previewId}${fileExtension}`);
 
@@ -198,6 +356,7 @@ export const POST = async (req: NextRequest) => {
       if (fileExtension === ".csv") {
         sheets = parseCSVPreview(previewFilePath);
       } else {
+        // xlsx library handles .xls, .xlsx, and .ods files
         sheets = parseExcelPreview(previewFilePath);
       }
     } catch (parseError) {

@@ -35,7 +35,8 @@ export const readBatchFromFile = (filePath: string, options: ReadBatchOptions): 
   try {
     if (fileExtension === "csv") {
       return readBatchFromCSV(filePath, startRow, limit);
-    } else if (fileExtension === "xlsx" || fileExtension === "xls") {
+    } else if (fileExtension === "xlsx" || fileExtension === "xls" || fileExtension === "ods") {
+      // xlsx library handles .xls, .xlsx, and .ods files
       return readBatchFromExcel(filePath, sheetIndex, startRow, limit);
     } else {
       throw new Error(`Unsupported file type: ${fileExtension}`);
@@ -164,8 +165,8 @@ export const getFileRowCount = (filePath: string, sheetIndex = 0): number => {
       skipEmptyLines: true,
     });
     return result.data.length;
-  } else if (fileExtension === "xlsx" || fileExtension === "xls") {
-    // Use buffer approach instead of direct file path for better compatibility
+  } else if (fileExtension === "xlsx" || fileExtension === "xls" || fileExtension === "ods") {
+    // xlsx library handles .xls, .xlsx, and .ods files
     const fileBuffer = fs.readFileSync(filePath);
     const workbook = read(fileBuffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[sheetIndex];

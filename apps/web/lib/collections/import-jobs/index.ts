@@ -35,7 +35,7 @@ const ImportJobs: CollectionConfig = {
   admin: {
     useAsTitle: "id",
     defaultColumns: ["dataset", "stage", "progress", "createdAt"],
-    group: "Import System",
+    group: "Import",
     description: "Unified import processing pipeline",
   },
   access: importJobsAccess,

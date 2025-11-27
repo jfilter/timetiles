@@ -1,17 +1,18 @@
 /**
  * Server component wrapper for adaptive header.
  *
- * Fetches main menu data from Payload CMS and renders the adaptive header
- * which automatically shows marketing navigation or app controls based on
- * the current route.
+ * Fetches main menu data and user auth state from Payload CMS and renders
+ * the adaptive header which shows marketing navigation or app controls
+ * based on the current route.
  *
  * @module
  * @category Components
  */
+import { headers as getHeaders } from "next/headers";
 import { getPayload } from "payload";
 
 import config from "@/payload.config";
-import type { Catalog, Dataset, MainMenu } from "@/payload-types";
+import type { Catalog, Dataset, MainMenu, User } from "@/payload-types";
 
 import { AdaptiveHeader } from "./adaptive-header";
 
@@ -34,8 +35,19 @@ const getCatalogsAndDatasets = async (): Promise<{ catalogs: Catalog[]; datasets
   };
 };
 
-export const ConditionalTopMenuBar = async () => {
-  const [mainMenu, { catalogs, datasets }] = await Promise.all([getMainMenu(), getCatalogsAndDatasets()]);
+const getUser = async (): Promise<User | null> => {
+  const payload = await getPayload({ config });
+  const headers = await getHeaders();
+  const { user } = await payload.auth({ headers });
+  return user;
+};
 
-  return <AdaptiveHeader mainMenu={mainMenu} catalogs={catalogs} datasets={datasets} />;
+export const ConditionalTopMenuBar = async () => {
+  const [mainMenu, { catalogs, datasets }, user] = await Promise.all([
+    getMainMenu(),
+    getCatalogsAndDatasets(),
+    getUser(),
+  ]);
+
+  return <AdaptiveHeader mainMenu={mainMenu} catalogs={catalogs} datasets={datasets} user={user} />;
 };

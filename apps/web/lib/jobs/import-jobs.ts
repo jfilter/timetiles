@@ -31,6 +31,10 @@ export { cacheCleanupJob } from "./handlers/cache-cleanup-job";
 // Error recovery job handlers
 export { processPendingRetriesJob } from "./handlers/process-pending-retries-job";
 
+// Data export job handlers
+export { dataExportCleanupJob } from "./handlers/data-export-cleanup-job";
+export { dataExportJob } from "./handlers/data-export-job";
+
 // Re-export utility types
 export type {
   AnalyzeDuplicatesJobInput,

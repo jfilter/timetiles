@@ -1,0 +1,22 @@
+# Test override - adds Mailpit for local SMTP
+# Used automatically by deploy.sh when this file exists
+
+services:
+  # Override web to use mailpit for SMTP
+  web:
+    environment:
+      EMAIL_SMTP_HOST: mailpit
+      EMAIL_SMTP_PORT: 1025
+      EMAIL_FROM: noreply@test.local
+
+  # Mailpit - Local SMTP server for testing
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-mailpit
+    restart: unless-stopped
+    expose:
+      - "1025"
+    ports:
+      - "8025:8025"
+    networks:
+      - timetiles-network

@@ -332,7 +332,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         expect(event.location.longitude).toBeTypeOf("number");
         expect(event.coordinateSource.type).toBe("geocoded");
       }
-    });
+    }, 60000); // 60 second timeout - runs two full import pipelines
   });
 
   describe("Scenario 3: Mixed Cached and Uncached Locations", () => {

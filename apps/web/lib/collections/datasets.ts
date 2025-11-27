@@ -25,6 +25,7 @@ const Datasets: CollectionConfig = {
   admin: {
     useAsTitle: "name",
     defaultColumns: ["name", "catalog", "language", "isPublic"],
+    group: "Data",
   },
   access: {
     read: access.read,
@@ -68,6 +69,20 @@ const Datasets: CollectionConfig = {
       defaultValue: false,
       admin: {
         position: "sidebar",
+        components: {
+          afterInput: ["/components/admin/private-visibility-notice"],
+        },
+      },
+    },
+    {
+      name: "createdBy",
+      type: "relationship",
+      relationTo: "users",
+      hasMany: false,
+      admin: {
+        position: "sidebar",
+        readOnly: true,
+        description: "User who created this dataset",
       },
     },
     metadataField,

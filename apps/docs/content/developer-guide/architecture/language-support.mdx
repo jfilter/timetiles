@@ -1,0 +1,222 @@
+---
+title: Language Support
+description: Multi-language support for field mapping detection in the import wizard
+---
+
+# Language Support
+
+TimeTiles supports automatic language detection and language-aware field mapping during CSV/Excel imports. This enables the system to recognize column headers in multiple languages.
+
+## Supported Languages
+
+| Code | Language   | Example Headers                       |
+| ---- | ---------- | ------------------------------------- |
+| eng  | English    | title, description, date, address     |
+| deu  | German     | titel, beschreibung, datum, adresse   |
+| fra  | French     | titre, description, date, adresse     |
+| spa  | Spanish    | titulo, descripcion, fecha, direccion |
+| ita  | Italian    | titolo, descrizione, data, indirizzo  |
+| nld  | Dutch      | titel, beschrijving, datum, adres     |
+| por  | Portuguese | titulo, descricao, data, endereco     |
+
+## How It Works
+
+### 1. Language Detection
+
+When a file is uploaded, the system analyzes sample data using the [franc](https://github.com/wooorm/franc) library:
+
+```
+File Upload -> Extract Text -> Detect Language -> Return Confidence Score
+```
+
+- Minimum 20 characters required for reliable detection
+- Confidence threshold: 0.5 (50%) for reliable detection
+- Falls back to English if detection fails
+
+### 2. Field Mapping
+
+Once language is detected, the system matches column headers against language-specific patterns:
+
+| Field Type  | Purpose               | Pattern Examples (German)               |
+| ----------- | --------------------- | --------------------------------------- |
+| title       | Event name/title      | `titel`, `name`, `bezeichnung`          |
+| description | Event description     | `beschreibung`, `details`, `inhalt`     |
+| timestamp   | Event date/time       | `datum`, `zeitstempel`, `zeit`          |
+| location    | Address for geocoding | `adresse`, `ort`, `standort`, `strasse` |
+
+### 3. Confidence Scoring
+
+Each field mapping receives a confidence score (0-1) based on:
+
+- **Pattern match quality** (60%): How specific the regex pattern is
+- **Content validation** (40%): Whether the data matches expected format
+
+Confidence levels shown in UI:
+
+- `high` (>= 0.8): Auto-detected with high confidence
+- `medium` (>= 0.5): Suggested match
+- `low` (> 0): Best guess
+- `none` (0): No match found
+
+## Key Files
+
+| File                                                     | Purpose                       |
+| -------------------------------------------------------- | ----------------------------- |
+| `lib/services/schema-builder/language-detection.ts`      | Language detection with franc |
+| `lib/services/schema-builder/field-mapping-detection.ts` | Field pattern matching        |
+
+## Adding a New Language
+
+To add support for a new language (e.g., Polish - `pol`):
+
+### Step 1: Update Language Constants
+
+In `lib/services/schema-builder/language-detection.ts`:
+
+```typescript
+// Add to SUPPORTED_LANGUAGES array (line ~17)
+export const SUPPORTED_LANGUAGES = [
+  "eng",
+  "deu",
+  "fra",
+  "spa",
+  "ita",
+  "nld",
+  "por",
+  "pol", // Add new language
+] as const;
+
+// Add to LANGUAGE_NAMES map (line ~24)
+export const LANGUAGE_NAMES: Record<string, string> = {
+  eng: "English",
+  deu: "German",
+  fra: "French",
+  spa: "Spanish",
+  ita: "Italian",
+  nld: "Dutch",
+  por: "Portuguese",
+  pol: "Polish", // Add new language
+  und: "Unknown",
+};
+```
+
+### Step 2: Add Field Patterns
+
+In `lib/services/schema-builder/field-mapping-detection.ts`, add patterns for all 4 field types in the `FIELD_PATTERNS` object:
+
+```typescript
+const FIELD_PATTERNS = {
+  title: {
+    // ... existing languages ...
+    pol: [/^tytul$/i, /^nazwa$/i, /^wydarzenie.*nazwa$/i, /^wydarzenie.*tytul$/i, /^oznaczenie$/i, /^wydarzenie$/i],
+  },
+  description: {
+    // ... existing languages ...
+    pol: [/^opis$/i, /^szczegoly$/i, /^podsumowanie$/i, /^notatki$/i, /^tekst$/i, /^tresc$/i, /^wydarzenie.*opis$/i],
+  },
+  timestamp: {
+    // ... existing languages ...
+    pol: [
+      /^data$/i,
+      /^znacznik.*czasu$/i,
+      /^utworzono$/i,
+      /^wydarzenie.*data$/i,
+      /^wydarzenie.*czas$/i,
+      /^czas$/i,
+      /^kiedy$/i,
+    ],
+  },
+  location: {
+    // ... existing languages ...
+    pol: [
+      /^adres$/i,
+      /^lokalizacja$/i,
+      /^miejsce$/i,
+      /^miasto$/i,
+      /^region$/i,
+      /^ulica$/i,
+      /^pelny.*adres$/i,
+      /^wydarzenie.*miejsce$/i,
+      /^wydarzenie.*adres$/i,
+      /^adres.*pocztowy$/i,
+    ],
+  },
+};
+```
+
+### Step 3: Add Tests
+
+Create test fixtures and cases in `tests/integration/services/multi-language-imports.test.ts`:
+
+```typescript
+describe("Polish language support", () => {
+  it("should detect Polish field mappings", async () => {
+    const fieldStats = createFieldStats({
+      tytul: { type: "string", samples: ["Wydarzenie testowe"] },
+      opis: { type: "string", samples: ["To jest opis wydarzenia"] },
+      data: { type: "string", samples: ["2024-01-15"] },
+      adres: { type: "string", samples: ["ul. Marszalkowska 1, Warszawa"] },
+    });
+
+    const mappings = detectFieldMappings(fieldStats, "pol");
+
+    expect(mappings.titlePath).toBe("tytul");
+    expect(mappings.descriptionPath).toBe("opis");
+    expect(mappings.timestampPath).toBe("data");
+    expect(mappings.locationPath).toBe("adres");
+  });
+});
+```
+
+### Step 4: Verify
+
+Run the tests to ensure everything works:
+
+```bash
+make test-ai FILTER="language"
+```
+
+## Pattern Writing Guidelines
+
+When creating patterns for a new language:
+
+1. **Order by specificity**: Put more specific patterns first (they get higher confidence scores)
+2. **Use case-insensitive matching**: All patterns use `/i` flag
+3. **Include variations**: Common abbreviations, compound words, formal/informal terms
+4. **Test with real data**: Use actual CSV files in the target language
+
+### Good Pattern Examples
+
+```typescript
+// More specific patterns first
+/^event.*date$/i,      // Compound: "event_date", "event date"
+/^created.*at$/i,      // Compound: "created_at", "created at"
+/^date$/i,             // Simple: "date"
+/^when$/i,             // Alternative: "when"
+```
+
+### Pattern Categories to Consider
+
+| Category       | Examples                   |
+| -------------- | -------------------------- |
+| Direct terms   | `date`, `datum`, `fecha`   |
+| Compounds      | `event_date`, `event_time` |
+| Abbreviations  | `addr`, `desc`, `loc`      |
+| Technical      | `timestamp`, `datetime`    |
+| Conversational | `when`, `where`            |
+
+## Database Storage
+
+Languages are stored as ISO 639-3 codes (3 characters) on:
+
+- **Catalogs**: Required field, default `"eng"`
+- **Datasets**: Required field, must match catalog language
+
+Validation ensures codes are exactly 3 lowercase letters.
+
+## Limitations
+
+1. **Detection accuracy**: Short text or technical content may not detect reliably
+2. **Fallback behavior**: Unknown languages fall back to English patterns
+3. **No UI translation**: The application interface is English-only
+4. **Regional variants**: No distinction between regional variants (e.g., pt-BR vs pt-PT)

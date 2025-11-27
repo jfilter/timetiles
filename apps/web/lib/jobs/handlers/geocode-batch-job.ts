@@ -186,7 +186,7 @@ export const geocodeBatchJob = {
         return { output: { skipped: true } };
       }
 
-      const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES ?? "");
+      const uploadDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR ?? "uploads"}/import-files`);
       const filePath = path.join(uploadDir, importFile.filename ?? "");
 
       // Read ALL rows from file (not batched)

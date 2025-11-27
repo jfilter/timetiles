@@ -48,12 +48,13 @@ const ImportFiles: CollectionConfig = {
   slug: "import-files",
   ...createCommonConfig({ drafts: false }),
   upload: {
-    staticDir: process.env.UPLOAD_DIR_IMPORT_FILES!,
+    staticDir: `${process.env.UPLOAD_DIR ?? "uploads"}/import-files`,
     mimeTypes: ALLOWED_MIME_TYPES,
   },
   admin: {
     useAsTitle: "originalName", // Use original user-friendly filename
     defaultColumns: ["originalName", "catalog", "status", "datasetsCount", "createdAt", "user"],
+    group: "Import",
   },
   access: {
     // Import files can be read by their owner or admins
@@ -61,8 +62,8 @@ const ImportFiles: CollectionConfig = {
     read: async ({ req, id }): Promise<boolean | Where> => {
       const { user, payload } = req;
 
-      // Admins can read all
-      if (user?.role === "admin") return true;
+      // Admins and editors can read all
+      if (user?.role === "admin" || user?.role === "editor") return true;
 
       // Authentication required
       if (!user) return false;
@@ -97,10 +98,10 @@ const ImportFiles: CollectionConfig = {
     // Only authenticated users can upload files
     create: ({ req: { user } }) => !!user,
 
-    // Only file owner or admins can update
+    // Only file owner, editors, or admins can update
     update: async ({ req, id }) => {
       const { user, payload } = req;
-      if (user?.role === "admin") return true;
+      if (user?.role === "admin" || user?.role === "editor") return true;
 
       if (!user || !id) return false;
 
@@ -123,11 +124,11 @@ const ImportFiles: CollectionConfig = {
       }
     },
 
-    // Only admins can delete
-    delete: ({ req: { user } }) => user?.role === "admin",
+    // Only admins and editors can delete
+    delete: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
 
-    // Only admins can read version history
-    readVersions: ({ req: { user } }) => user?.role === "admin",
+    // Only admins and editors can read version history
+    readVersions: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
   },
   fields: [
     // Payload automatically adds filename, mimeType, filesize fields when upload is enabled

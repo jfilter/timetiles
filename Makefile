@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint typecheck format test test-ai test-e2e test-coverage coverage coverage-check migrate migrate-create check check-ai help
+.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint typecheck format test test-ai test-e2e test-coverage coverage coverage-check migrate migrate-create check check-ai help
 
 all: help
 
@@ -28,6 +28,20 @@ db-reset:
 	docker compose -f docker-compose.dev.yml down -v
 	docker compose -f docker-compose.dev.yml up -d postgres
 	@echo "🔄 Database reset complete!"
+
+# Wait for database to be ready (requires pg_isready - see README for prerequisites)
+wait-db:
+	@echo "⏳ Waiting for database to be ready..."
+	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do \
+		if pg_isready -h localhost -p 5432 -U timetiles_user >/dev/null 2>&1; then \
+			echo "✅ Database is ready!"; \
+			exit 0; \
+		fi; \
+		echo "  Attempt $$i/20 - waiting..."; \
+		sleep 2; \
+	done; \
+	echo "❌ Database failed to become ready"; \
+	exit 1
 
 # Open a shell in the PostgreSQL container
 db-shell:
@@ -74,9 +88,7 @@ setup:
 	@./scripts/setup.sh
 
 # Complete fresh start (clean slate)
-fresh: clean up
-	@echo "⏳ Waiting for services to be ready..."
-	@sleep 5
+fresh: clean up wait-db
 	@echo "🔄 Running migrations..."
 	@$(MAKE) migrate
 	@echo "🌱 Seeding database..."
@@ -86,9 +98,7 @@ fresh: clean up
 	@echo "🚀 Run 'make dev' to start development server"
 
 # Quick reset (preserves Docker images)
-reset: kill-dev db-reset
-	@echo "⏳ Waiting for database to be ready..."
-	@sleep 3
+reset: kill-dev db-reset wait-db
 	@echo "🔄 Running migrations..."
 	@$(MAKE) migrate
 	@echo "🌱 Seeding database..."
@@ -103,7 +113,7 @@ reset: kill-dev db-reset
 ensure-infra:
 	@if ! docker compose -f docker-compose.dev.yml ps --services --filter status=running | grep -q postgres; then \
 		echo "❌ PostgreSQL not running. Starting infrastructure..."; \
-		$(MAKE) up && sleep 5; \
+		$(MAKE) up && $(MAKE) wait-db; \
 	fi
 
 # Check development environment status
@@ -209,9 +219,7 @@ seed:
 	@LOG_LEVEL=info pnpm --filter web seed $(ARGS)
 
 # Complete first-time initialization (setup + database + seed + start dev)
-init: setup up
-	@echo "⏳ Waiting for database to be ready..."
-	@sleep 5
+init: setup up wait-db
 	@echo "🔄 Running migrations..."
 	@$(MAKE) migrate
 	@echo "🌱 Seeding development data..."

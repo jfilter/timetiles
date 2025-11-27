@@ -58,7 +58,7 @@ describe.sequential("Failure Transitions Integration", () => {
     it("should transition to FAILED when file has no data rows", async () => {
       const csvContent = ""; // Empty file
       const csvFileName = `empty-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }
@@ -106,7 +106,7 @@ describe.sequential("Failure Transitions Integration", () => {
     it("should handle CSV with inconsistent columns gracefully", async () => {
       const csvContent = "header1,header2\nvalue1"; // Missing second value - Papa Parse handles this
       const csvFileName = `inconsistent-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }
@@ -189,7 +189,7 @@ Event 1,2024-01-01,New York NY
 Event 2,2024-01-02,San Francisco CA`;
 
       const csvFileName = `geocoding-test-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }
@@ -265,7 +265,7 @@ Event 2,2024-01-02,San Francisco CA`;
     it("should mark file as failed when job fails", async () => {
       const csvContent = ""; // Empty file to trigger failure
       const csvFileName = `error-log-test-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }

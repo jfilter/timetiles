@@ -21,6 +21,7 @@ const LocationCache: CollectionConfig = {
   admin: {
     useAsTitle: "originalAddress",
     defaultColumns: ["originalAddress", "provider", "confidence", "hitCount", "lastUsed"],
+    group: "System",
     pagination: {
       defaultLimit: 50,
     },

@@ -33,6 +33,7 @@ const Events: CollectionConfig = {
   admin: {
     useAsTitle: "id",
     defaultColumns: ["dataset", "eventTimestamp", "createdAt", "validationStatus", "geocodingStatus"],
+    group: "Data",
     pagination: {
       defaultLimit: 50,
     },
@@ -50,7 +51,7 @@ const Events: CollectionConfig = {
     // Events inherit access from their dataset and catalog
     read: async ({ req }) => {
       const { user, payload } = req;
-      if (user?.role === "admin") return true;
+      if (user?.role === "admin" || user?.role === "editor") return true;
 
       // Get accessible catalogs using shared helper
       const { publicCatalogIds, ownedCatalogIds } = await (
@@ -103,7 +104,12 @@ const Events: CollectionConfig = {
     // Only authenticated users can create events in datasets they have access to
     create: async ({ req: { user, payload }, data }) => {
       if (!user) return false;
-      if (user.role === "admin") return true;
+
+      // Check feature flag - even admins can't create if disabled
+      const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
+      if (!(await isFeatureEnabled(payload, "enableEventCreation"))) return false;
+
+      if (user.role === "admin" || user.role === "editor") return true;
       if (!data?.dataset) return false;
 
       const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
@@ -127,10 +133,10 @@ const Events: CollectionConfig = {
       }
     },
 
-    // Only catalog owner or admins can update
+    // Only catalog owner, editors, or admins can update
     update: async ({ req, id }) => {
       const { user, payload } = req;
-      if (user?.role === "admin") return true;
+      if (user?.role === "admin" || user?.role === "editor") return true;
 
       if (!user || !id) return false;
 
@@ -172,10 +178,10 @@ const Events: CollectionConfig = {
       }
     },
 
-    // Only catalog owner or admins can delete
+    // Only catalog owner, editors, or admins can delete
     delete: async ({ req, id }) => {
       const { user, payload } = req;
-      if (user?.role === "admin") return true;
+      if (user?.role === "admin" || user?.role === "editor") return true;
 
       if (!user || !id) return false;
 
@@ -217,8 +223,8 @@ const Events: CollectionConfig = {
       }
     },
 
-    // Only admins can read version history
-    readVersions: ({ req: { user } }) => user?.role === "admin",
+    // Only admins and editors can read version history
+    readVersions: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
   },
   fields: [
     {

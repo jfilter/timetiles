@@ -277,7 +277,7 @@ const processBatchData = async (
   batchNumber: number,
   logger: ReturnType<typeof createJobLogger>
 ) => {
-  const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+  const uploadDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR ?? "uploads"}/import-files`);
   const filePath = path.join(uploadDir, importFile.filename ?? "");
   const BATCH_SIZE = BATCH_SIZES.EVENT_CREATION;
 

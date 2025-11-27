@@ -23,6 +23,7 @@ import { getPayload } from "payload";
 
 import type { CollectionName } from "@/lib/config/payload-config-factory";
 import { createTestConfig } from "@/lib/config/payload-config-factory";
+import { COLLECTIONS } from "@/lib/config/payload-shared-config";
 import { createLogger } from "@/lib/logger";
 import { SeedManager } from "@/lib/seed/index";
 
@@ -111,7 +112,7 @@ export class TestEnvironmentBuilder {
 
     // Upload directory is already configured in global-setup.ts
     // Just ensure it exists for this test run
-    const uploadDir = process.env.UPLOAD_DIR_IMPORT_FILES!;
+    const uploadDir = `${process.env.UPLOAD_DIR!}/import-files`;
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -189,21 +190,7 @@ export class TestEnvironmentBuilder {
    */
   async createIntegrationTestEnvironment(): Promise<TestEnvironment> {
     return this.createTestEnvironment({
-      collections: [
-        "users",
-        "user-usage",
-        "media",
-        "pages",
-        "catalogs",
-        "datasets",
-        "dataset-schemas",
-        "events",
-        "import-files",
-        "import-jobs",
-        "scheduled-imports",
-        "geocoding-providers",
-        "location-cache",
-      ] as CollectionName[],
+      collections: Object.keys(COLLECTIONS) as CollectionName[],
       createTempDir: true, // Enable temp directory for file operations
     });
   }
@@ -344,6 +331,7 @@ export const withCatalog = async (
     name?: string;
     slug?: string;
     description?: string;
+    language?: string;
     editors?: string[];
     isPublic?: boolean;
     user?: any;
@@ -358,6 +346,7 @@ export const withCatalog = async (
       name: options?.name ?? `Test Catalog ${timestamp}`,
       slug: options?.slug ?? `test-catalog-${timestamp}-${randomSuffix}`,
       description: options?.description ?? "Test catalog",
+      language: options?.language ?? "eng",
       editors: options?.editors,
       isPublic: options?.isPublic ?? false,
     },

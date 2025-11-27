@@ -14,6 +14,34 @@ const isProduction = process.env.NODE_ENV === "production";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@timetiles/ui", "@timetiles/assets"],
+  redirects: async () => [
+    // Redirect Payload dashboard auth routes to main app
+    {
+      source: "/dashboard/login",
+      destination: "/login?redirect=/dashboard",
+      permanent: false,
+    },
+    {
+      source: "/dashboard/logout",
+      destination: "/logout",
+      permanent: false,
+    },
+    {
+      source: "/dashboard/create-first-user",
+      destination: "/",
+      permanent: false,
+    },
+    {
+      source: "/dashboard/forgot-password",
+      destination: "/login",
+      permanent: false,
+    },
+    {
+      source: "/dashboard/reset-password",
+      destination: "/login",
+      permanent: false,
+    },
+  ],
   experimental: {
     reactCompiler: false,
   },

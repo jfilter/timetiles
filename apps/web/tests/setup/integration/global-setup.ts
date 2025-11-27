@@ -48,8 +48,7 @@ const testDbName = parseDatabaseUrl(dbUrl).database;
 process.env.DATABASE_URL = dbUrl;
 
 // Use worker-specific upload directories for test isolation
-process.env.UPLOAD_DIR_MEDIA = `/tmp/media-${workerId}`;
-process.env.UPLOAD_DIR_IMPORT_FILES = `/tmp/test-uploads-${workerId}`;
+process.env.UPLOAD_DIR = `/tmp/uploads-${workerId}`;
 process.env.UPLOAD_TEMP_DIR = `/tmp/temp-${workerId}`;
 
 // Check if we're running integration tests
@@ -100,8 +99,8 @@ beforeAll(async () => {
 
   // Ensure upload directories exist
   const uploadDirs = [
-    process.env.UPLOAD_DIR_MEDIA!,
-    process.env.UPLOAD_DIR_IMPORT_FILES!,
+    `${process.env.UPLOAD_DIR!}/media`,
+    `${process.env.UPLOAD_DIR!}/import-files`,
     process.env.UPLOAD_TEMP_DIR!,
   ];
 
@@ -164,12 +163,8 @@ beforeAll(async () => {
 
 // Global teardown to clean up
 afterAll(() => {
-  // Clean up upload directories
-  const uploadDirs = [
-    process.env.UPLOAD_DIR_MEDIA!,
-    process.env.UPLOAD_DIR_IMPORT_FILES!,
-    process.env.UPLOAD_TEMP_DIR!,
-  ];
+  // Clean up upload directories (clean base upload dir and temp dir)
+  const uploadDirs = [process.env.UPLOAD_DIR!, process.env.UPLOAD_TEMP_DIR!];
   uploadDirs.forEach((dir) => {
     if (fs.existsSync(dir)) {
       fs.rmSync(dir, { recursive: true, force: true });

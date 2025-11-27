@@ -92,8 +92,6 @@ const getEtherealCredentials = async (): Promise<EtherealCredentials> => {
     try {
       const cached = JSON.parse(readFileSync(ETHEREAL_CACHE_FILE, "utf-8")) as EtherealCredentials;
       if (cached.user && cached.pass) {
-        // eslint-disable-next-line no-console -- Intentional dev output before logger init
-        console.log(`E-mail: cached ethereal.email (${cached.user}) - https://ethereal.email/login`);
         cachedEtherealCredentials = cached;
         return cached;
       }
@@ -185,9 +183,15 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
   // Build configuration
   const config: Config = {
     secret: secret ?? "default-secret-key",
+    routes: {
+      admin: "/dashboard",
+    },
     admin: {
       user: collections?.includes("users") ? Users.slug : undefined,
       disable: disableAdmin || environment === "test",
+      components: {
+        header: ["/components/admin/admin-header"],
+      },
     },
     logger: getLogger(logLevel, environment),
     debug: environment === "development",

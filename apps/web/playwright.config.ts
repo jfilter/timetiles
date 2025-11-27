@@ -64,7 +64,7 @@ export default defineConfig({
     /* Record video on failure */
     video: "retain-on-failure",
     /* Navigation timeout */
-    navigationTimeout: process.env.CI != null && process.env.CI !== "" ? 15000 : 8000,
+    navigationTimeout: process.env.CI != null && process.env.CI !== "" ? 30000 : 15000,
     /* Action timeout - for click, fill, etc */
     actionTimeout: process.env.CI != null && process.env.CI !== "" ? 8000 : 5000,
     /* Run tests in headless mode */

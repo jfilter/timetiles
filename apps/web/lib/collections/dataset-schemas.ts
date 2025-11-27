@@ -20,6 +20,7 @@ const DatasetSchemas: CollectionConfig = {
     useAsTitle: "displayName",
     defaultColumns: ["displayName", "dataset", "version", "createdAt"],
     description: "Schema versions for datasets with full change tracking",
+    group: "Data",
   },
   access: {
     // Schema access inherits from dataset access

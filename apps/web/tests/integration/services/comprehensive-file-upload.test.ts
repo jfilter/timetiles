@@ -232,6 +232,93 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       logger.info("🎉 Excel multi-sheet test completed successfully!");
     });
 
+    it("should process ODS (OpenDocument Spreadsheet) file", async () => {
+      logger.info("Testing ODS file upload...");
+
+      // Use the ODS fixture file
+      const fixturePath = path.join(__dirname, "../../fixtures", "events.ods");
+      const fileBuffer = fs.readFileSync(fixturePath);
+      const fileName = "events.ods";
+
+      logger.debug(`✓ Using ODS fixture file: ${fixturePath} (${fileBuffer.length} bytes)`);
+
+      // Use the helper function that properly handles file uploads
+      const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+        filename: fileName,
+        mimeType: "application/vnd.oasis.opendocument.spreadsheet",
+        datasetsCount: 0,
+        datasetsProcessed: 0,
+      });
+
+      logger.debug(`✓ Created ODS import file: ${importFile.id}`);
+
+      // Wait for file to be written and hook to trigger
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Run jobs until completion
+      const completed = await runJobsUntilComplete(importFile.id);
+
+      // Check the final status
+      const finalImportFile = await payload.findByID({
+        collection: "import-files",
+        id: importFile.id,
+      });
+
+      if (finalImportFile.status !== "completed") {
+        logger.debug(`Import file status: ${finalImportFile.status}`);
+        if (finalImportFile.errorLog) {
+          logger.debug(`Error log: ${finalImportFile.errorLog}`);
+        }
+
+        // Check import jobs for more details
+        const importJobs = await payload.find({
+          collection: "import-jobs",
+          where: { importFile: { equals: importFile.id } },
+        });
+
+        importJobs.docs.forEach((job: any, index: number) => {
+          logger.debug(`Job ${index + 1}: stage=${job.stage}, errors=${job.errors?.length || 0}`);
+          if (job.errors?.length > 0) {
+            logger.debug(`  Errors:`, job.errors);
+          }
+        });
+      }
+
+      expect(completed).toBe(true);
+      expect(finalImportFile.status).toBe("completed");
+
+      // Verify import jobs were created
+      const importJobs = await payload.find({
+        collection: "import-jobs",
+        where: { importFile: { equals: importFile.id } },
+      });
+
+      expect(importJobs.docs.length).toBe(1); // ODS file has one sheet
+      logger.debug(`✓ Created ${importJobs.docs.length} import job for ODS sheet`);
+
+      // Verify jobs completed
+      importJobs.docs.forEach((job: any) => {
+        expect(job.stage).toBe(PROCESSING_STAGE.COMPLETED);
+      });
+
+      // Verify events were created from ODS file (3 events in fixture)
+      const events = await payload.find({
+        collection: "events",
+        limit: 20,
+      });
+
+      expect(events.docs.length).toBe(3);
+      logger.debug(`✓ Created ${events.docs.length} events from ODS file`);
+
+      // Verify specific event data (title is stored in data.title JSON field)
+      const eventTitles = events.docs.map((e: any) => e.data.title);
+      expect(eventTitles).toContain("ODS Conference 2024");
+      expect(eventTitles).toContain("OpenDocument Workshop");
+      expect(eventTitles).toContain("LibreOffice Summit");
+
+      logger.info("🎉 ODS file upload test completed successfully!");
+    });
+
     it("should reject invalid file types gracefully", async () => {
       logger.info("Testing invalid file type rejection...");
 
@@ -546,7 +633,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 "Auto Event","2024-01-01","Auto Location","Optional Data"`;
 
       const csvFileName = `auto-approve-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
       if (!fs.existsSync(importDir)) {
         fs.mkdirSync(importDir, { recursive: true });
       }

@@ -271,7 +271,7 @@ export const analyzeDuplicatesJob = {
 
     try {
       const { job, dataset, importFile } = await loadJobResources(payload, importJobId);
-      const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const uploadDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR ?? "uploads"}/import-files`);
       const filePath = path.join(uploadDir, importFile.filename ?? "");
 
       // Count total rows

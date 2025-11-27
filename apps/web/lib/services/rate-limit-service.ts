@@ -599,4 +599,36 @@ export const RATE_LIMITS = {
       { limit: 10, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 10 per day (generous but prevents abuse)
     ],
   },
+  PASSWORD_CHANGE: {
+    windows: [
+      { limit: 3, windowMs: 60 * 1000, name: "burst" }, // 3 per minute (allows for typos)
+      { limit: 10, windowMs: 60 * 60 * 1000, name: "hourly" }, // 10 per hour
+      { limit: 20, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 20 per day
+    ],
+  },
+  EMAIL_CHANGE: {
+    windows: [
+      { limit: 3, windowMs: 60 * 1000, name: "burst" }, // 3 per minute (allows for typos)
+      { limit: 5, windowMs: 60 * 60 * 1000, name: "hourly" }, // 5 per hour
+      { limit: 10, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 10 per day
+    ],
+  },
+  ACCOUNT_DELETION: {
+    windows: [
+      { limit: 3, windowMs: 60 * 60 * 1000, name: "hourly" }, // 3 per hour
+      { limit: 5, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 5 per day
+    ],
+  },
+  DELETION_PASSWORD_ATTEMPTS: {
+    windows: [
+      { limit: 5, windowMs: 60 * 1000, name: "burst" }, // 5 per minute
+      { limit: 10, windowMs: 60 * 60 * 1000, name: "hourly" }, // 10 per hour
+    ],
+  },
+  DATA_EXPORT: {
+    windows: [
+      { limit: 1, windowMs: 60 * 60 * 1000, name: "hourly" }, // 1 per hour
+      { limit: 3, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 3 per day
+    ],
+  },
 } as const;

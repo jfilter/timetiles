@@ -18,6 +18,7 @@ import { getPayload } from "payload";
 import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { logError, logger } from "@/lib/logger";
 import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
+import { maskEmail } from "@/lib/utils/masking";
 import config from "@/payload.config";
 
 interface RegisterRequest {
@@ -71,6 +72,12 @@ export const POST = async (request: Request): Promise<Response> => {
   try {
     const payload = await getPayload({ config });
 
+    // Check if registration is enabled
+    const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
+    if (!(await isFeatureEnabled(payload, "enableRegistration"))) {
+      return NextResponse.json({ error: "Registration is currently disabled." }, { status: 403 });
+    }
+
     // Apply rate limiting
     const clientId = getClientIdentifier(request);
     const rateLimitService = getRateLimitService(payload);
@@ -122,7 +129,7 @@ export const POST = async (request: Request): Promise<Response> => {
 
     if (existingUser.docs.length > 0) {
       // User exists - send notification email (don't reveal this to the client)
-      logger.info(`Registration attempt for existing email: ${normalizedEmail}`);
+      logger.info(`Registration attempt for existing email: ${maskEmail(normalizedEmail)}`);
 
       try {
         // Generate password reset URL so user can recover their account
@@ -135,10 +142,10 @@ export const POST = async (request: Request): Promise<Response> => {
           html: generateAccountExistsEmailHTML(resetUrl),
         });
 
-        logger.info(`Sent account exists notification to: ${normalizedEmail}`);
+        logger.info(`Sent account exists notification to: ${maskEmail(normalizedEmail)}`);
       } catch (emailError) {
         // Log but don't fail - we still want to return success to prevent enumeration
-        logError(emailError, `Failed to send account exists email to: ${normalizedEmail}`);
+        logError(emailError, `Failed to send account exists email to: ${maskEmail(normalizedEmail)}`);
       }
 
       // Return same success response as new registration
@@ -165,7 +172,7 @@ export const POST = async (request: Request): Promise<Response> => {
         // based on the auth.verify configuration in users collection
       });
 
-      logger.info(`New user registered: ${normalizedEmail}`);
+      logger.info(`New user registered: ${maskEmail(normalizedEmail)}`);
 
       return NextResponse.json({
         success: true,
@@ -179,7 +186,7 @@ export const POST = async (request: Request): Promise<Response> => {
       if (errorMessage.includes("unique") || errorMessage.includes("duplicate")) {
         // Race condition - user was created between check and create
         // Return success to prevent enumeration
-        logger.warn(`Race condition during registration for: ${normalizedEmail}`);
+        logger.warn(`Race condition during registration for: ${maskEmail(normalizedEmail)}`);
 
         return NextResponse.json({
           success: true,

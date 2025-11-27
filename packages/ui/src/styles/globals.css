@@ -164,6 +164,11 @@
     @apply border-border outline-ring/50;
   }
 
+  html,
+  body {
+    @apply min-h-screen;
+  }
+
   body {
     @apply bg-background text-foreground;
     /* Subtle paper texture overlay for vintage map feel */

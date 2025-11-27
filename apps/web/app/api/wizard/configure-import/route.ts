@@ -25,6 +25,11 @@ import type { User } from "@/payload-types";
 
 const logger = createLogger("api-wizard-configure-import");
 
+// UUID v4 format validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const isValidUUID = (id: string): boolean => UUID_REGEX.test(id);
+
 interface SheetMapping {
   sheetIndex: number;
   datasetId: number | "new";
@@ -77,6 +82,11 @@ const getPreviewDir = (): string => {
 };
 
 const loadPreviewMetadata = (previewId: string): PreviewMetadata | null => {
+  // Security: Validate previewId is a valid UUID to prevent path traversal
+  if (!isValidUUID(previewId)) {
+    return null;
+  }
+
   const previewDir = getPreviewDir();
   const metaPath = path.join(previewDir, `${previewId}.meta.json`);
 

@@ -6,10 +6,10 @@
 import type { Access } from "payload";
 
 export const importJobsAccess = {
-  // Import jobs can be read by the import file owner or admins
+  // Import jobs can be read by the import file owner, editors, or admins
   read: (async ({ req }) => {
     const { user, payload } = req;
-    if (user?.role === "admin") return true;
+    if (user?.role === "admin" || user?.role === "editor") return true;
 
     if (!user) return false;
 
@@ -34,13 +34,20 @@ export const importJobsAccess = {
     };
   }) as Access,
 
-  // Only authenticated users can create import jobs
-  create: (({ req: { user } }) => Boolean(user)) as Access,
+  // Only authenticated users can create import jobs (if feature enabled)
+  create: (async ({ req: { user, payload } }) => {
+    if (!user) return false;
 
-  // Only import file owner or admins can update
+    // Check feature flag - even admins can't create if disabled
+    const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
+    // eslint-disable-next-line @typescript-eslint/return-await -- Returning awaited promise is intentional for async access control
+    return await isFeatureEnabled(payload, "enableImportCreation");
+  }) as Access,
+
+  // Only import file owner, editors, or admins can update
   update: (async ({ req, id }) => {
     const { user } = req;
-    if (user?.role === "admin") return true;
+    if (user?.role === "admin" || user?.role === "editor") return true;
 
     // Security: Check ownership of EXISTING job, not the new data being set
     if (user && id) {
@@ -73,9 +80,9 @@ export const importJobsAccess = {
     return false;
   }) as Access,
 
-  // Only admins can delete
-  delete: (({ req: { user } }) => user?.role === "admin") as Access,
+  // Only admins and editors can delete
+  delete: (({ req: { user } }) => user?.role === "admin" || user?.role === "editor") as Access,
 
-  // Only admins can read version history
-  readVersions: (({ req: { user } }) => user?.role === "admin") as Access,
+  // Only admins and editors can read version history
+  readVersions: (({ req: { user } }) => user?.role === "admin" || user?.role === "editor") as Access,
 };

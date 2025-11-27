@@ -23,15 +23,17 @@ import { useFilters } from "@/lib/filters";
 import { useTheme } from "@/lib/hooks/use-theme";
 import { useUIStore } from "@/lib/store";
 import { formatCenterCoordinates, formatEventCount } from "@/lib/utils/coordinates";
-import type { Catalog, Dataset, MainMenu } from "@/payload-types";
+import type { Catalog, Dataset, MainMenu, User } from "@/payload-types";
 
-import { ViewToggle } from "../explore/_components/view-toggle";
+import { ViewToggle } from "../(frontend)/explore/_components/view-toggle";
+import { HeaderAuth } from "./header-auth";
 import { ThemeToggle } from "./theme-toggle";
 
 interface AdaptiveHeaderProps {
   mainMenu: MainMenu;
   catalogs?: Catalog[];
   datasets?: Dataset[];
+  user?: User | null;
 }
 
 /**
@@ -239,7 +241,12 @@ const ExploreFullHeader = ({ catalogs, datasets, currentView }: ExploreNavigatio
  * <AdaptiveHeader mainMenu={mainMenuFromPayload} catalogs={catalogs} datasets={datasets} />
  * ```
  */
-export const AdaptiveHeader = ({ mainMenu, catalogs = [], datasets = [] }: Readonly<AdaptiveHeaderProps>) => {
+export const AdaptiveHeader = ({
+  mainMenu,
+  catalogs = [],
+  datasets = [],
+  user = null,
+}: Readonly<AdaptiveHeaderProps>) => {
   const pathname = usePathname();
   const isExplorePage = pathname === "/explore" || pathname === "/explore/list";
   const currentView: "map" | "list" = pathname === "/explore/list" ? "list" : "map";
@@ -272,6 +279,7 @@ export const AdaptiveHeader = ({ mainMenu, catalogs = [], datasets = [] }: Reado
       </HeaderNav>
 
       <HeaderActions>
+        <HeaderAuth user={user} />
         <ThemeToggle />
       </HeaderActions>
     </Header>

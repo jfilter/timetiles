@@ -292,7 +292,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
       });
 
       // At least one should have triggered
-      const totalTriggered = run1.output.triggered + run2.output.triggered;
+      const totalTriggered = (run1.output?.triggered ?? 0) + (run2.output?.triggered ?? 0);
       expect(totalTriggered).toBeGreaterThanOrEqual(1);
 
       // Cleanup

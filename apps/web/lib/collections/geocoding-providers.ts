@@ -27,6 +27,9 @@ export const GeocodingProviders: CollectionConfig = {
     defaultColumns: ["name", "type", "enabled", "priority", "tags"],
     listSearchableFields: ["name", "type", "tags.value"],
     useAsTitle: "name",
+    components: {
+      beforeList: ["/components/admin/geocoding-test-panel"],
+    },
   },
   access: {
     read: ({ req: { user } }) => !!user,

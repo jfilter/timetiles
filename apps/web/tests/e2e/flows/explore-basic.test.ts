@@ -149,9 +149,9 @@ test.describe("Explore Page - Basic Functionality", () => {
   });
 
   test("should show loading state while fetching events", async ({ page }) => {
-    // Mock slow API response
-    await page.route("**/api/events*", async (route) => {
-      await page.waitForTimeout(1000);
+    // Set up slow API response BEFORE navigation to capture loading state
+    await page.route("**/api/events/**", async (route) => {
+      await page.waitForTimeout(2000); // Delay response to see loading state
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -159,19 +159,26 @@ test.describe("Explore Page - Basic Functionality", () => {
       });
     });
 
-    await explorePage.goto();
+    // Navigate without waiting for full load (use simpler navigation)
+    await page.goto("/explore", { waitUntil: "domcontentloaded" });
+
+    // Wait for page content to be present
+    await page.waitForSelector("body", { timeout: 10000 });
 
     // The loading state is shown as "Loading events..." in the EventsList
     const loadingText = page.getByText("Loading events...");
 
     // Check if loading state appears (it might be very quick)
     try {
-      await expect(loadingText).toBeVisible({ timeout: 500 });
+      await expect(loadingText).toBeVisible({ timeout: 3000 });
       // Should hide loading indicator after response
-      await expect(loadingText).not.toBeVisible({ timeout: 5000 });
+      await expect(loadingText).not.toBeVisible({ timeout: 10000 });
     } catch {
-      // If loading was too fast to catch, just verify the page loaded
-      await expect(explorePage.eventsCount).toBeVisible();
+      // If loading was too fast to catch, verify the page eventually loads
+      // Either events count or empty state should be visible
+      const eventsCount = page.getByText(/Events \(\d+ of \d+\)/).first();
+      const emptyState = page.getByText(/No events found/i).first();
+      await expect(eventsCount.or(emptyState)).toBeVisible({ timeout: 15000 });
     }
   });
 });

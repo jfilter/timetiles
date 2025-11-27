@@ -117,7 +117,7 @@ describe.sequential("urlFetchJob", () => {
     vi.restoreAllMocks();
 
     // Reset environment
-    process.env.UPLOAD_DIR_IMPORT_FILES = "/tmp/uploads";
+    process.env.UPLOAD_DIR = "/tmp/uploads";
 
     // Reset global fetch mock
     (globalThis.fetch as any) = vi.fn();

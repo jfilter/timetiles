@@ -244,7 +244,7 @@ export const datasetDetectionJob = {
         throw new Error("Import file not found");
       }
 
-      const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR_IMPORT_FILES!);
+      const uploadDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR ?? "uploads"}/import-files`);
       const filePath = path.join(uploadDir, importFile.filename ?? "");
 
       if (!fs.existsSync(filePath)) {
@@ -252,6 +252,7 @@ export const datasetDetectionJob = {
       }
 
       const fileExtension = path.extname(filePath).toLowerCase();
+      // xlsx library handles .xls, .xlsx, and .ods files
       const { sheets } = fileExtension === ".csv" ? processCSVFile(filePath) : processExcelFile(filePath);
 
       if (sheets.length === 0) {

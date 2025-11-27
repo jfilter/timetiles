@@ -27,7 +27,7 @@ Built with Next.js, React, PostgreSQL/PostGIS, and Payload CMS.
 
 ### Data Import & Processing
 
-- **📁 Multiple Formats**: Import CSV and Excel files with automatic format detection
+- **📁 Multiple Formats**: Import CSV, Excel, and ODS files with automatic format detection
 - **🗺️ Smart Geocoding**: Automatically convert addresses to map coordinates
 - **⚡ Real-time Progress**: Watch your data being processed with live updates
 - **🔄 Batch Processing**: Handle thousands of events efficiently
@@ -62,7 +62,7 @@ make init
 
 # Open in browser
 # Main app: http://localhost:3000
-# Admin: http://localhost:3000/admin
+# Dashboard: http://localhost:3000/dashboard
 ```
 
 Your first chronicle:
@@ -94,15 +94,19 @@ Full documentation at **[docs.timetiles.io](https://docs.timetiles.io)**
 
 ### Prerequisites
 
-- Bash
-- Git
-- Git LFS
-- Make
-- Node.js 24+
-- pnpm 10.12.4+
+- Git, Git LFS, Make, Bash
+- Node.js 24+, pnpm 10.12.4+
 - Docker & Docker Compose
-- jq (JSON processor for scripts)
-- curl (for API calls and health checks)
+- PostgreSQL client, jq, curl
+
+```bash
+# macOS
+brew install git git-lfs node pnpm docker postgresql jq curl
+
+# Debian/Ubuntu
+sudo apt install git git-lfs make nodejs npm docker.io docker-compose postgresql-client jq curl
+sudo npm install -g pnpm
+```
 
 ### Installation
 
