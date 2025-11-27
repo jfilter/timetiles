@@ -146,6 +146,7 @@ export interface Config {
       'process-pending-retries': TaskProcessPendingRetries;
       'quota-reset': TaskQuotaReset;
       'cache-cleanup': TaskCacheCleanup;
+      'schema-maintenance': TaskSchemaMaintenance;
       'data-export': TaskDataExport;
       'data-export-cleanup': TaskDataExportCleanup;
       inline: {
@@ -397,6 +398,14 @@ export interface Dataset {
    */
   slug?: string | null;
   catalog: number | Catalog;
+  /**
+   * Denormalized from catalog.createdBy for zero-query owner access control
+   */
+  catalogCreatorId?: number | null;
+  /**
+   * Denormalized from catalog.isPublic for zero-query access control
+   */
+  catalogIsPublic?: boolean | null;
   /**
    * ISO-639-3 code: 3 lowercase letters (e.g., eng, deu, fra)
    */
@@ -663,6 +672,10 @@ export interface DatasetSchema {
     | number
     | boolean
     | null;
+  /**
+   * Number of events in the dataset when this schema was generated
+   */
+  eventCountAtCreation?: number | null;
   schemaSummary?: {
     totalFields?: number | null;
     newFields?:
@@ -1485,6 +1498,14 @@ export interface Event {
   id: number;
   dataset: number | Dataset;
   /**
+   * Denormalized from dataset.isPublic for zero-query access control
+   */
+  datasetIsPublic?: boolean | null;
+  /**
+   * Denormalized from catalog.owner for zero-query owner access control
+   */
+  catalogOwnerId?: number | null;
+  /**
    * The import job that created this event
    */
   importJob?: (number | null) | ImportJob;
@@ -2258,6 +2279,7 @@ export interface PayloadJob {
           | 'process-pending-retries'
           | 'quota-reset'
           | 'cache-cleanup'
+          | 'schema-maintenance'
           | 'data-export'
           | 'data-export-cleanup';
         taskID: string;
@@ -2309,6 +2331,7 @@ export interface PayloadJob {
         | 'process-pending-retries'
         | 'quota-reset'
         | 'cache-cleanup'
+        | 'schema-maintenance'
         | 'data-export'
         | 'data-export-cleanup'
       )
@@ -2483,6 +2506,8 @@ export interface DatasetsSelect<T extends boolean = true> {
   description?: T;
   slug?: T;
   catalog?: T;
+  catalogCreatorId?: T;
+  catalogIsPublic?: T;
   language?: T;
   isPublic?: T;
   createdBy?: T;
@@ -2582,6 +2607,7 @@ export interface DatasetSchemasSelect<T extends boolean = true> {
   displayName?: T;
   schema?: T;
   fieldMetadata?: T;
+  eventCountAtCreation?: T;
   schemaSummary?:
     | T
     | {
@@ -2864,6 +2890,8 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
  */
 export interface EventsSelect<T extends boolean = true> {
   dataset?: T;
+  datasetIsPublic?: T;
+  catalogOwnerId?: T;
   importJob?: T;
   data?: T;
   location?:
@@ -3807,6 +3835,14 @@ export interface TaskQuotaReset {
  * via the `definition` "TaskCache-cleanup".
  */
 export interface TaskCacheCleanup {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskSchema-maintenance".
+ */
+export interface TaskSchemaMaintenance {
   input?: unknown;
   output?: unknown;
 }

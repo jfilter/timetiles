@@ -43,6 +43,68 @@ const checkAndIncrementQuota = async (req: PayloadRequest): Promise<void> => {
   await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_CATALOGS, 1, req);
 };
 
+/** Detect what changed between previous and new catalog doc */
+const detectCatalogChanges = (
+  previousDoc: Record<string, unknown> | undefined,
+  doc: Record<string, unknown>
+): { createdByChanged: boolean; isPublicChanged: boolean; newCreatedBy: unknown; newIsPublic: boolean } => {
+  const prevCreatedBy =
+    typeof previousDoc?.createdBy === "object" ? (previousDoc.createdBy as { id: unknown }).id : previousDoc?.createdBy;
+  const newCreatedBy = typeof doc.createdBy === "object" ? (doc.createdBy as { id: unknown }).id : doc.createdBy;
+  const prevIsPublic = (previousDoc?.isPublic as boolean) ?? false;
+  const newIsPublic = (doc.isPublic as boolean) ?? false;
+
+  return {
+    createdByChanged: prevCreatedBy !== newCreatedBy,
+    isPublicChanged: prevIsPublic !== newIsPublic,
+    newCreatedBy,
+    newIsPublic,
+  };
+};
+
+/** Sync catalog changes to child datasets */
+const syncDatasetsWithCatalog = async (
+  req: PayloadRequest,
+  catalogId: number,
+  changes: { createdByChanged: boolean; isPublicChanged: boolean; newCreatedBy: unknown; newIsPublic: boolean }
+): Promise<void> => {
+  const datasetUpdates: Record<string, unknown> = {};
+  if (changes.createdByChanged) datasetUpdates.catalogCreatorId = changes.newCreatedBy;
+  if (changes.isPublicChanged) datasetUpdates.catalogIsPublic = changes.newIsPublic;
+
+  if (Object.keys(datasetUpdates).length > 0) {
+    await req.payload.update({
+      collection: "datasets",
+      where: { catalog: { equals: catalogId } },
+      data: datasetUpdates,
+      overrideAccess: true,
+      req,
+    });
+  }
+};
+
+/** Sync catalog changes to events in a dataset */
+const syncEventsWithCatalog = async (
+  req: PayloadRequest,
+  datasetId: number,
+  datasetIsPublic: boolean,
+  changes: { createdByChanged: boolean; isPublicChanged: boolean; newCreatedBy: unknown; newIsPublic: boolean }
+): Promise<void> => {
+  const eventUpdates: Record<string, unknown> = {};
+  if (changes.createdByChanged) eventUpdates.catalogOwnerId = changes.newCreatedBy;
+  if (changes.isPublicChanged) eventUpdates.datasetIsPublic = datasetIsPublic && changes.newIsPublic;
+
+  if (Object.keys(eventUpdates).length > 0) {
+    await req.payload.update({
+      collection: "events",
+      where: { dataset: { equals: datasetId } },
+      data: eventUpdates,
+      overrideAccess: true,
+      req,
+    });
+  }
+};
+
 /** Validates slug uniqueness for catalogs. */
 const validateSlugUniqueness = async (
   data: Record<string, unknown>,
@@ -210,6 +272,35 @@ const Catalogs: CollectionConfig = {
         }
 
         return data;
+      },
+    ],
+    afterChange: [
+      async ({ doc, previousDoc, operation, req }) => {
+        // Sync catalog changes to datasets and events (for access control)
+        if (operation !== "update") return doc;
+
+        const changes = detectCatalogChanges(previousDoc, doc);
+        if (!changes.createdByChanged && !changes.isPublicChanged) return doc;
+
+        // Get all datasets in this catalog (needed for events update)
+        const datasets = await req.payload.find({
+          collection: "datasets",
+          where: { catalog: { equals: doc.id } },
+          limit: 1000,
+          depth: 0,
+          overrideAccess: true,
+          req,
+        });
+
+        // Sync changes to datasets
+        await syncDatasetsWithCatalog(req, doc.id, changes);
+
+        // Sync changes to events in all datasets
+        for (const dataset of datasets.docs) {
+          await syncEventsWithCatalog(req, dataset.id, dataset.isPublic ?? false, changes);
+        }
+
+        return doc;
       },
     ],
     afterDelete: [
