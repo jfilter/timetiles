@@ -17,7 +17,6 @@
 "use client";
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { LngLatBounds } from "maplibre-gl";
 import { useMemo } from "react";
 
 import type { ClusterFeature } from "@/components/maps/clustered-map";
@@ -25,6 +24,8 @@ import type { Event } from "@/payload-types";
 
 import type { FilterState } from "../filters";
 import { createLogger } from "../logger";
+import type { BoundsType, SimpleBounds } from "../utils/event-params";
+import { buildBaseEventParams, buildEventParams } from "../utils/event-params";
 
 // Helper function to determine polling interval
 // Returns false to stop polling or number for interval - React Query expects this pattern
@@ -130,64 +131,13 @@ export interface ClusterStatsResponse {
   p100: number;
 }
 
-// Simple bounds interface for better React Query compatibility
-export interface SimpleBounds {
-  north: number;
-  south: number;
-  east: number;
-  west: number;
+export interface BoundsResponse {
+  bounds: SimpleBounds | null;
+  count: number;
 }
 
-// Type alias for bounds to satisfy sonarjs rule
-type BoundsType = LngLatBounds | SimpleBounds | null;
-
-// Helper to build query parameters
-const buildEventParams = (
-  filters: FilterState,
-  bounds: BoundsType,
-  additionalParams: Record<string, string> = {}
-): URLSearchParams => {
-  const params = new URLSearchParams();
-
-  // Add filters
-  if (filters.catalog != null && filters.catalog !== "") {
-    params.append("catalog", filters.catalog);
-  }
-
-  filters.datasets.forEach((datasetId) => {
-    params.append("datasets", datasetId);
-  });
-
-  if (filters.startDate != null && filters.startDate !== "") {
-    params.append("startDate", filters.startDate);
-  }
-
-  if (filters.endDate != null && filters.endDate !== "") {
-    params.append("endDate", filters.endDate);
-  }
-
-  // Add bounds - handle both LngLatBounds and SimpleBounds
-  if (bounds) {
-    const boundsData =
-      "getWest" in bounds
-        ? {
-            west: bounds.getWest(),
-            south: bounds.getSouth(),
-            east: bounds.getEast(),
-            north: bounds.getNorth(),
-          }
-        : bounds;
-
-    params.append("bounds", JSON.stringify(boundsData));
-  }
-
-  // Add additional parameters
-  Object.entries(additionalParams).forEach(([key, value]) => {
-    params.append(key, value);
-  });
-
-  return params;
-};
+// Re-export types for consumers of this module
+export type { BoundsType, SimpleBounds };
 
 // Fetch functions
 const fetchEvents = async (
@@ -261,24 +211,7 @@ const fetchHistogram = async (
 };
 
 const fetchClusterStats = async (filters: FilterState, signal?: AbortSignal): Promise<ClusterStatsResponse> => {
-  // Build params without bounds (global stats)
-  const params = new URLSearchParams();
-
-  if (filters.catalog != null && filters.catalog !== "") {
-    params.append("catalog", filters.catalog);
-  }
-
-  filters.datasets.forEach((datasetId) => {
-    params.append("datasets", datasetId);
-  });
-
-  if (filters.startDate != null && filters.startDate !== "") {
-    params.append("startDate", filters.startDate);
-  }
-
-  if (filters.endDate != null && filters.endDate !== "") {
-    params.append("endDate", filters.endDate);
-  }
+  const params = buildBaseEventParams(filters);
 
   logger.debug("Fetching global cluster stats", { filters });
 
@@ -289,6 +222,20 @@ const fetchClusterStats = async (filters: FilterState, signal?: AbortSignal): Pr
   }
 
   return response.json() as Promise<ClusterStatsResponse>;
+};
+
+const fetchBounds = async (filters: FilterState, signal?: AbortSignal): Promise<BoundsResponse> => {
+  const params = buildBaseEventParams(filters);
+
+  logger.debug("Fetching event bounds", { filters });
+
+  const response = await fetch(`/api/v1/events/bounds?${params.toString()}`, { signal });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch event bounds: ${response.statusText}`);
+  }
+
+  return response.json() as Promise<BoundsResponse>;
 };
 
 const fetchImportProgress = async (importId: string, signal?: AbortSignal): Promise<ImportProgressResponse> => {
@@ -352,6 +299,7 @@ const uploadImport = async (
 // Query key factories
 export const eventsQueryKeys = {
   all: ["events"] as const,
+  detail: (eventId: number) => [...eventsQueryKeys.all, "detail", eventId] as const,
   lists: () => [...eventsQueryKeys.all, "list"] as const,
   list: (filters: FilterState, bounds: BoundsType, limit: number) =>
     [...eventsQueryKeys.lists(), { filters, bounds, limit }] as const,
@@ -371,6 +319,8 @@ export const eventsQueryKeys = {
     [...eventsQueryKeys.aggregations(), { filters, bounds, groupBy }] as const,
   imports: () => ["imports"] as const,
   importProgress: (importId: string) => [...eventsQueryKeys.imports(), "progress", importId] as const,
+  bounds: () => [...eventsQueryKeys.all, "bounds"] as const,
+  boundsFiltered: (filters: FilterState) => [...eventsQueryKeys.bounds(), { filters }] as const,
 };
 
 // Query hooks
@@ -430,6 +380,26 @@ export const useClusterStatsQuery = (filters: FilterState, enabled: boolean = tr
     enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes - stats change less frequently
     gcTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnWindowFocus: false,
+  });
+
+/**
+ * Hook to fetch geographic bounds of all events matching the current filters.
+ *
+ * Used for initial map positioning and "zoom to data" functionality.
+ * Returns the bounding box containing all accessible events.
+ *
+ * @param filters - Current filter state (catalog, datasets, dates)
+ * @param enabled - Whether the query should be enabled
+ * @returns React Query result with bounds data
+ */
+export const useBoundsQuery = (filters: FilterState, enabled: boolean = true) =>
+  useQuery({
+    queryKey: eventsQueryKeys.boundsFiltered(filters),
+    queryFn: ({ signal }) => fetchBounds(filters, signal),
+    enabled,
+    staleTime: 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
   });
 
@@ -601,3 +571,44 @@ export const useEventsInfiniteFlattened = (
     loadedCount: events.length,
   };
 };
+
+// Fetch function for single event by ID
+const fetchEventById = async (eventId: number, signal?: AbortSignal): Promise<Event> => {
+  logger.debug("Fetching event by ID", { eventId });
+
+  const response = await fetch(`/api/events/${eventId}?depth=2`, { signal });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("Event not found");
+    }
+    throw new Error(`Failed to fetch event: ${response.statusText}`);
+  }
+
+  return response.json() as Promise<Event>;
+};
+
+/**
+ * Hook to fetch a single event by ID.
+ *
+ * Used by the event detail modal to fetch full event data when
+ * clicking on an event card.
+ *
+ * @param eventId - The event database ID to fetch
+ * @returns React Query result with event data
+ */
+export const useEventDetailQuery = (eventId: number | null) =>
+  useQuery({
+    queryKey: eventsQueryKeys.detail(eventId!),
+    queryFn: ({ signal }) => fetchEventById(eventId!, signal),
+    enabled: eventId != null,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    retry: (failureCount, error) => {
+      // Don't retry if event not found
+      if (error instanceof Error && error.message.includes("not found")) {
+        return false;
+      }
+      return failureCount < 2;
+    },
+  });

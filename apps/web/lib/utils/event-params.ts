@@ -6,9 +6,16 @@
  * centralizing this logic, we ensure consistent parameter handling and
  * reduce code duplication.
  *
+ * It also provides utilities for building URL query parameters on the client
+ * side, ensuring consistent parameter format across all API calls.
+ *
  * @module
  * @category Utils
  */
+
+import type { LngLatBounds } from "maplibre-gl";
+
+import type { FilterState } from "../filters";
 
 /**
  * Base parameters common to all event queries.
@@ -133,3 +140,95 @@ export const extractMapClusterParameters = (searchParams: URLSearchParams): MapC
  */
 export const extractClusterStatsParameters = (searchParams: URLSearchParams): ClusterStatsParameters =>
   extractBaseEventParameters(searchParams);
+
+// ============================================================================
+// Client-side Parameter Building
+// ============================================================================
+
+/**
+ * Simple bounds interface for better React Query compatibility.
+ * Used when we need a plain object instead of MapLibre's LngLatBounds class.
+ */
+export interface SimpleBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+/** Bounds can be MapLibre LngLatBounds, SimpleBounds, or null */
+export type BoundsType = LngLatBounds | SimpleBounds | null;
+
+/**
+ * Build URL search params from filter state without bounds.
+ *
+ * Use this for API calls that don't require geographic bounds,
+ * such as global statistics or bounds calculation endpoints.
+ *
+ * @param filters - Current filter state
+ * @param additionalParams - Extra parameters to include
+ * @returns URLSearchParams ready for API call
+ */
+export const buildBaseEventParams = (
+  filters: FilterState,
+  additionalParams: Record<string, string> = {}
+): URLSearchParams => {
+  const params = new URLSearchParams();
+
+  if (filters.catalog != null && filters.catalog !== "") {
+    params.append("catalog", filters.catalog);
+  }
+
+  if (filters.datasets.length > 0) {
+    params.append("datasets", filters.datasets.join(","));
+  }
+
+  if (filters.startDate != null && filters.startDate !== "") {
+    params.append("startDate", filters.startDate);
+  }
+
+  if (filters.endDate != null && filters.endDate !== "") {
+    params.append("endDate", filters.endDate);
+  }
+
+  Object.entries(additionalParams).forEach(([key, value]) => {
+    params.append(key, value);
+  });
+
+  return params;
+};
+
+/**
+ * Build URL search params from filter state with optional bounds.
+ *
+ * Handles both MapLibre LngLatBounds objects and plain SimpleBounds objects.
+ * Use this for API calls that support geographic filtering.
+ *
+ * @param filters - Current filter state
+ * @param bounds - Geographic bounds (LngLatBounds, SimpleBounds, or null)
+ * @param additionalParams - Extra parameters to include
+ * @returns URLSearchParams ready for API call
+ */
+export const buildEventParams = (
+  filters: FilterState,
+  bounds: BoundsType,
+  additionalParams: Record<string, string> = {}
+): URLSearchParams => {
+  const params = buildBaseEventParams(filters, additionalParams);
+
+  if (bounds) {
+    const boundsData =
+      "getWest" in bounds
+        ? {
+            west: bounds.getWest(),
+            south: bounds.getSouth(),
+            east: bounds.getEast(),
+            north: bounds.getNorth(),
+          }
+        : bounds;
+
+    params.append("bounds", JSON.stringify(boundsData));
+  }
+
+  return params;
+};

@@ -16,6 +16,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import { useFilters } from "@/lib/filters";
 import type { HistogramResponse } from "@/lib/hooks/use-events-queries";
+import { buildBaseEventParams } from "@/lib/utils/event-params";
 
 interface TimeRangeSliderProps {
   startDate: string | null;
@@ -52,17 +53,14 @@ const parseISODate = (dateStr: string): number => {
  * Fetch histogram data for the full date range (no date filters)
  */
 const fetchFullHistogram = async (catalog: string | null, datasets: string[]): Promise<HistogramResponse> => {
-  const params = new URLSearchParams();
+  // Use buildBaseEventParams with no date filters to get full range
+  const params = buildBaseEventParams({
+    catalog,
+    datasets,
+    startDate: null,
+    endDate: null,
+  });
 
-  if (catalog != null && catalog !== "") {
-    params.set("catalog", catalog);
-  }
-
-  if (datasets.length > 0) {
-    params.set("datasets", datasets.join(","));
-  }
-
-  // No bounds, no date filters - get full range
   const response = await fetch(`/api/v1/events/temporal?${params.toString()}`);
 
   if (!response.ok) {
