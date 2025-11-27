@@ -35,24 +35,26 @@ export const GET = withRateLimit(
       let filteredRecommendations = recommendations;
 
       if (request.user && request.user.role !== "admin") {
-        // Get all import files owned by this user
+        // Get all import files owned by this user - only fetch IDs (id is auto-included)
         const userImportFiles = await payload.find({
           collection: "import-files",
           where: { user: { equals: request.user.id } },
           limit: 1000,
           pagination: false,
           overrideAccess: true, // We'll do manual filtering
+          select: { status: true },
         });
 
         const userImportFileIds = userImportFiles.docs.map((file) => file.id);
 
-        // Get all import jobs for these files
+        // Get all import jobs for these files - only fetch IDs (id is auto-included)
         const userImportJobs = await payload.find({
           collection: "import-jobs",
           where: { importFile: { in: userImportFileIds } },
           limit: 1000,
           pagination: false,
           overrideAccess: true,
+          select: { stage: true },
         });
 
         const userImportJobIds = new Set(userImportJobs.docs.map((job) => String(job.id)));

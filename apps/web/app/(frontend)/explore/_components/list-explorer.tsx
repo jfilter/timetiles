@@ -18,10 +18,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ClusteredMap, type ClusteredMapHandle } from "@/components/maps/clustered-map";
 import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
 import { useFilters, useSelectedEvent } from "@/lib/filters";
+import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useBoundsQuery, useClusterStatsQuery, useMapClustersQuery } from "@/lib/hooks/use-events-queries";
 import { useUIStore } from "@/lib/store";
-import type { Catalog, Dataset } from "@/payload-types";
 
 import { ActiveFilters } from "./active-filters";
 import { ChartSection } from "./chart-section";
@@ -30,14 +30,9 @@ import { EventsListPaginated } from "./events-list-paginated";
 import { FilterDrawer } from "./filter-drawer";
 import { MobileTabs } from "./mobile-tabs";
 
-interface ListExplorerProps {
-  catalogs: Catalog[];
-  datasets: Dataset[];
-}
-
 type MobileTab = "map" | "chart" | "list";
 
-export const ListExplorer = ({ catalogs, datasets }: Readonly<ListExplorerProps>) => {
+export const ListExplorer = () => {
   const [mapZoom, setMapZoom] = useState(9);
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileTab>("list");
   const [hasUserPanned, setHasUserPanned] = useState(false);
@@ -48,6 +43,11 @@ export const ListExplorer = ({ catalogs, datasets }: Readonly<ListExplorerProps>
 
   // Get filter state from URL (nuqs)
   const { filters, activeFilterCount, hasActiveFilters, removeFilter, clearAllFilters } = useFilters();
+
+  // Fetch lightweight catalog/dataset data for filter labels
+  const { data: dataSources } = useDataSourcesQuery();
+  const catalogs = dataSources?.catalogs ?? [];
+  const datasets = dataSources?.datasets ?? [];
 
   // Ref to track previous filters for detecting filter changes
   const prevFiltersRef = useRef(filters);
@@ -255,7 +255,7 @@ export const ListExplorer = ({ catalogs, datasets }: Readonly<ListExplorerProps>
               isFilterDrawerOpen ? "w-80" : "w-0 overflow-hidden"
             )}
           >
-            <FilterDrawer catalogs={catalogs} datasets={datasets} />
+            <FilterDrawer />
           </div>
         </div>
       </div>
@@ -291,7 +291,7 @@ export const ListExplorer = ({ catalogs, datasets }: Readonly<ListExplorerProps>
 
               {/* Filter content */}
               <div className="flex-1 overflow-y-auto p-4">
-                <FilterDrawer catalogs={catalogs} datasets={datasets} />
+                <FilterDrawer />
               </div>
             </div>
           </div>

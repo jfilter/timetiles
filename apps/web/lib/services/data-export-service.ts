@@ -69,12 +69,13 @@ export class DataExportService {
       overrideAccess: true,
     });
 
-    // Get dataset IDs to count events
+    // Get dataset IDs to count events - only fetch IDs (id is auto-included)
     const userDatasets = await this.payload.find({
       collection: "datasets",
       where: { createdBy: { equals: userId } },
       limit: 10000,
       overrideAccess: true,
+      select: { name: true },
     });
 
     const datasetIds = userDatasets.docs.map((d) => d.id);
@@ -108,12 +109,13 @@ export class DataExportService {
       }),
     ]);
 
-    // Count import jobs via import files
+    // Count import jobs via import files - only fetch IDs (id is auto-included)
     const userImportFiles = await this.payload.find({
       collection: "import-files",
       where: { user: { equals: userId } },
       limit: 10000,
       overrideAccess: true,
+      select: { status: true },
     });
     const importFileIds = userImportFiles.docs.map((f) => f.id);
 

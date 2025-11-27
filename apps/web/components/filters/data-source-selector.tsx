@@ -15,11 +15,13 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 import { useFilters } from "@/lib/filters";
-import type { Catalog, Dataset } from "@/payload-types";
+import {
+  type DataSourceCatalog,
+  type DataSourceDataset,
+  useDataSourcesQuery,
+} from "@/lib/hooks/use-data-sources-query";
 
 interface DataSourceSelectorProps {
-  catalogs: Catalog[];
-  datasets: Dataset[];
   /** Event counts by catalog ID - shows total events per catalog */
   eventCountsByCatalog?: Record<string, number>;
   /** Event counts by dataset ID - shows total events per dataset */
@@ -46,7 +48,7 @@ const formatCount = (count: number): string => {
  * Catalog card component showing catalog name, dataset count, and event count.
  */
 interface CatalogCardProps {
-  catalog: Catalog;
+  catalog: DataSourceCatalog;
   isSelected: boolean;
   datasetCount: number;
   eventCount?: number;
@@ -102,7 +104,7 @@ const CatalogCard = ({ catalog, isSelected, datasetCount, eventCount, onSelect }
  * Dataset chip component for toggling individual datasets.
  */
 interface DatasetChipProps {
-  dataset: Dataset;
+  dataset: DataSourceDataset;
   isActive: boolean;
   eventCount?: number;
   onToggle: (datasetId: string) => void;
@@ -133,14 +135,14 @@ const DatasetChip = ({ dataset, isActive, eventCount, onToggle }: DatasetChipPro
   );
 };
 
-export const DataSourceSelector = ({
-  catalogs,
-  datasets,
-  eventCountsByCatalog,
-  eventCountsByDataset,
-}: DataSourceSelectorProps) => {
+export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset }: DataSourceSelectorProps) => {
   const { filters, setCatalog, setDatasets } = useFilters();
   const [datasetsExpanded, setDatasetsExpanded] = useState(false);
+
+  // Fetch lightweight catalog/dataset data
+  const { data: dataSources } = useDataSourcesQuery();
+  const catalogs = dataSources?.catalogs ?? [];
+  const datasets = dataSources?.datasets ?? [];
 
   // Sort catalogs by event count (descending), then by name
   const sortedCatalogs = useMemo(() => {
@@ -156,9 +158,7 @@ export const DataSourceSelector = ({
   const filteredDatasets = useMemo(() => {
     const catalogDatasets =
       filters.catalog != null
-        ? datasets.filter(
-            (d) => typeof d.catalog === "object" && d.catalog != null && String(d.catalog.id) === filters.catalog
-          )
+        ? datasets.filter((d) => d.catalogId != null && String(d.catalogId) === filters.catalog)
         : datasets;
 
     return [...catalogDatasets].sort((a, b) => {
@@ -173,8 +173,8 @@ export const DataSourceSelector = ({
   const datasetCountByCatalog = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const dataset of datasets) {
-      if (typeof dataset.catalog === "object" && dataset.catalog != null) {
-        const catalogId = String(dataset.catalog.id);
+      if (dataset.catalogId != null) {
+        const catalogId = String(dataset.catalogId);
         counts[catalogId] = (counts[catalogId] ?? 0) + 1;
       }
     }
@@ -192,7 +192,7 @@ export const DataSourceSelector = ({
         // Select catalog and auto-select all its datasets
         setCatalog(catalogId);
         const catalogDatasets = datasets
-          .filter((d) => typeof d.catalog === "object" && d.catalog != null && String(d.catalog.id) === catalogId)
+          .filter((d) => d.catalogId != null && String(d.catalogId) === catalogId)
           .map((d) => String(d.id));
         void setDatasets(catalogDatasets);
       }

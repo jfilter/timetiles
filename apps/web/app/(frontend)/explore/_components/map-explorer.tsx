@@ -14,9 +14,10 @@ import { cn } from "@timetiles/ui/lib/utils";
 import type { LngLatBounds } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ClusteredMap, type ClusteredMapHandle } from "@/components/maps/clustered-map";
+import { ClusteredMap, type ClusteredMapHandle, type MapViewState } from "@/components/maps/clustered-map";
 import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
-import { useFilters, useSelectedEvent } from "@/lib/filters";
+import { useFilters, useMapPosition, useSelectedEvent } from "@/lib/filters";
+import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import {
   useBoundsQuery,
@@ -26,7 +27,6 @@ import {
   useMapClustersQuery,
 } from "@/lib/hooks/use-events-queries";
 import { useUIStore } from "@/lib/store";
-import type { Catalog, Dataset } from "@/payload-types";
 
 import { ActiveFilters } from "./active-filters";
 import { ChartSection } from "./chart-section";
@@ -35,12 +35,7 @@ import { EventsList } from "./events-list";
 import { FilterDrawer } from "./filter-drawer";
 import { getFilterLabels, getLoadingStates, simplifyBounds } from "./map-explorer-helpers";
 
-interface MapExplorerProps {
-  catalogs: Catalog[];
-  datasets: Dataset[];
-}
-
-export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) => {
+export const MapExplorer = () => {
   const [mapZoom, setMapZoom] = useState(9);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [hasUserPanned, setHasUserPanned] = useState(false);
@@ -53,11 +48,31 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
   // Get filter state from URL (nuqs)
   const { filters, activeFilterCount, hasActiveFilters, removeFilter, clearAllFilters } = useFilters();
 
+  // Fetch lightweight catalog/dataset data for filter labels
+  const { data: dataSources } = useDataSourcesQuery();
+  const catalogs = dataSources?.catalogs ?? [];
+  const datasets = dataSources?.datasets ?? [];
+
   // Ref to track previous filters for detecting filter changes
   const prevFiltersRef = useRef(filters);
 
   // Get selected event state from URL (nuqs)
   const { selectedEventId, openEvent, closeEvent } = useSelectedEvent();
+
+  // Get map position from URL (nuqs)
+  const { mapPosition, hasMapPosition, setMapPosition } = useMapPosition();
+
+  // Convert URL map position to initial view state for ClusteredMap
+  const initialViewState: MapViewState | null = useMemo(() => {
+    if (hasMapPosition && mapPosition.latitude != null && mapPosition.longitude != null && mapPosition.zoom != null) {
+      return {
+        latitude: mapPosition.latitude,
+        longitude: mapPosition.longitude,
+        zoom: mapPosition.zoom,
+      };
+    }
+    return null;
+  }, [hasMapPosition, mapPosition.latitude, mapPosition.longitude, mapPosition.zoom]);
 
   const filterActions = useMemo(() => ({ removeFilter, clearAllFilters }), [removeFilter, clearAllFilters]);
 
@@ -168,7 +183,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
   const filterLabels = useMemo(() => getFilterLabels(filters, catalogs, datasets), [filters, catalogs, datasets]);
 
   const handleBoundsChange = useCallback(
-    (newBounds: LngLatBounds | null, zoom?: number) => {
+    (newBounds: LngLatBounds | null, zoom?: number, center?: { lng: number; lat: number }) => {
       if (newBounds) {
         setMapBounds({
           north: newBounds.getNorth(),
@@ -178,6 +193,15 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
         });
         if (zoom != undefined) {
           setMapZoom(Math.round(zoom));
+        }
+
+        // Update URL with map position (center + zoom)
+        if (center && zoom != undefined) {
+          setMapPosition({
+            latitude: center.lat,
+            longitude: center.lng,
+            zoom: zoom,
+          });
         }
 
         // Mark that initial bounds have been applied (first bounds change)
@@ -191,7 +215,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
         setMapBounds(null);
       }
     },
-    [setMapBounds, isInitialBoundsApplied]
+    [setMapBounds, setMapPosition, isInitialBoundsApplied]
   );
 
   return (
@@ -206,6 +230,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
             clusterStats={clusterStats}
             onBoundsChange={handleBoundsChange}
             initialBounds={boundsData?.bounds}
+            initialViewState={initialViewState}
             isLoadingBounds={isLoadingInitialBounds}
           />
           {/* Zoom to data button - positioned above theme control */}
@@ -252,7 +277,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
             isFilterDrawerOpen ? "w-80" : "w-0"
           )}
         >
-          <FilterDrawer catalogs={catalogs} datasets={datasets} />
+          <FilterDrawer />
         </div>
       </div>
 
@@ -265,6 +290,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
             clusterStats={clusterStats}
             onBoundsChange={handleBoundsChange}
             initialBounds={boundsData?.bounds}
+            initialViewState={initialViewState}
             isLoadingBounds={isLoadingInitialBounds}
           />
           {/* Zoom to data button - positioned above theme control */}
@@ -321,7 +347,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
 
               {/* Filter content */}
               <div className="flex-1 overflow-y-auto p-4">
-                <FilterDrawer catalogs={catalogs} datasets={datasets} />
+                <FilterDrawer />
               </div>
             </div>
           </div>

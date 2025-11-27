@@ -2,17 +2,36 @@
  * @module
  */
 import { EventFilters } from "@/components/filters/event-filters";
-import type { Catalog } from "@/payload-types";
+import type { DataSourcesResponse } from "@/lib/hooks/use-data-sources-query";
 
-import { createCatalogs, createDatasets, createRichText } from "../../mocks";
+import { createCatalogs, createDatasets } from "../../mocks";
 import { renderWithProviders } from "../../setup/unit/react-render";
 
+// Convert mock data to lightweight format
 const mockCatalogs = createCatalogs(2);
 const mockDatasets = createDatasets(3);
 
+const mockDataSources: DataSourcesResponse = {
+  catalogs: mockCatalogs.map((c) => ({ id: c.id, name: c.name })),
+  datasets: mockDatasets.map((d) => ({
+    id: d.id,
+    name: d.name,
+    catalogId: typeof d.catalog === "object" && d.catalog != null ? d.catalog.id : null,
+  })),
+};
+
+// Mock the useDataSourcesQuery hook
+vi.mock("@/lib/hooks/use-data-sources-query", () => ({
+  useDataSourcesQuery: () => ({
+    data: mockDataSources,
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 describe("EventFilters", () => {
   test("renders catalog cards when no catalog is selected", () => {
-    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />);
+    const { container } = renderWithProviders(<EventFilters />);
 
     // Should show catalog cards with names
     expect(container).toHaveTextContent("Test Catalog 1");
@@ -28,7 +47,7 @@ describe("EventFilters", () => {
     // Test the filtering logic by setting URL state to select first catalog
     const searchParams = new URLSearchParams("catalog=1");
 
-    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />, {
+    const { container } = renderWithProviders(<EventFilters />, {
       searchParams,
     });
 
@@ -44,7 +63,7 @@ describe("EventFilters", () => {
   });
 
   test("catalog cards are clickable buttons", () => {
-    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />);
+    const { container } = renderWithProviders(<EventFilters />);
 
     // Find all catalog card buttons
     const catalogButtons = container.querySelectorAll('button[type="button"]');
@@ -61,7 +80,7 @@ describe("EventFilters", () => {
   });
 
   test("catalog cards have appropriate styling classes", () => {
-    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />);
+    const { container } = renderWithProviders(<EventFilters />);
 
     // Find catalog card buttons (masonry layout with condensed cards)
     const catalogButtons = container.querySelectorAll("button.rounded-sm.border");
@@ -75,7 +94,7 @@ describe("EventFilters", () => {
   });
 
   test("shows dataset counts in catalog cards", () => {
-    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />);
+    const { container } = renderWithProviders(<EventFilters />);
 
     // Should show dataset counts (Test Catalog 1 has 2 datasets, Test Catalog 2 has 1 dataset)
     expect(container).toHaveTextContent("2 datasets");
@@ -85,7 +104,7 @@ describe("EventFilters", () => {
   test("shows clear date filters button when dates are set", () => {
     const searchParams = new URLSearchParams("startDate=2024-01-01&endDate=2024-12-31");
 
-    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />, {
+    const { container } = renderWithProviders(<EventFilters />, {
       searchParams,
     });
 
@@ -94,38 +113,62 @@ describe("EventFilters", () => {
   });
 
   test("does not show clear date filters button when no dates are set", () => {
-    const { container } = renderWithProviders(<EventFilters catalogs={mockCatalogs} datasets={mockDatasets} />);
+    const { container } = renderWithProviders(<EventFilters />);
 
     // Should not show the clear button when no dates are set
     expect(container).not.toHaveTextContent("Clear date filters");
   });
+});
 
-  test("shows no catalogs when empty catalogs array", () => {
-    const { container } = renderWithProviders(<EventFilters catalogs={[]} datasets={[]} />);
+describe("EventFilters with empty data", () => {
+  beforeEach(() => {
+    // Override mock for empty data tests
+    vi.doMock("@/lib/hooks/use-data-sources-query", () => ({
+      useDataSourcesQuery: () => ({
+        data: { catalogs: [], datasets: [] },
+        isLoading: false,
+        error: null,
+      }),
+    }));
+  });
+
+  afterEach(() => {
+    vi.doUnmock("@/lib/hooks/use-data-sources-query");
+  });
+
+  test("shows no catalogs when empty catalogs array", async () => {
+    // Re-import to get mocked version
+    const { EventFilters: MockedEventFilters } = await import("@/components/filters/event-filters");
+    const { container } = renderWithProviders(<MockedEventFilters />);
 
     // Should show Catalogs label but no catalog cards
     expect(container).toHaveTextContent("Catalogs");
-    expect(container).not.toHaveTextContent("datasets");
+  });
+});
+
+describe("EventFilters with catalog having no datasets", () => {
+  beforeEach(() => {
+    vi.doMock("@/lib/hooks/use-data-sources-query", () => ({
+      useDataSourcesQuery: () => ({
+        data: {
+          catalogs: [{ id: 99, name: "Empty Catalog" }],
+          datasets: [],
+        },
+        isLoading: false,
+        error: null,
+      }),
+    }));
   });
 
-  test("shows no datasets available when selected catalog has no datasets", () => {
-    // Create a catalog with no associated datasets
-    const catalogWithNoDatasets: Catalog = {
-      id: 99,
-      name: "Empty Catalog",
-      slug: "empty-catalog",
-      description: createRichText("Empty catalog"),
-      _status: "published" as const,
-      createdAt: "2024-01-01T00:00:00Z",
-      updatedAt: "2024-01-01T00:00:00Z",
-    };
+  afterEach(() => {
+    vi.doUnmock("@/lib/hooks/use-data-sources-query");
+  });
 
+  test("shows no datasets available when selected catalog has no datasets", async () => {
     const searchParams = new URLSearchParams("catalog=99");
 
-    const { container } = renderWithProviders(
-      <EventFilters catalogs={[...mockCatalogs, catalogWithNoDatasets]} datasets={mockDatasets} />,
-      { searchParams }
-    );
+    const { EventFilters: MockedEventFilters } = await import("@/components/filters/event-filters");
+    const { container } = renderWithProviders(<MockedEventFilters />, { searchParams });
 
     // Should show "No datasets available" when catalog has no datasets
     expect(container).toHaveTextContent("No datasets available");

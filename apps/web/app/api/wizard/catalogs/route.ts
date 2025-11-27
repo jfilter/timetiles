@@ -43,38 +43,41 @@ export const GET = async (req: NextRequest) => {
       return unauthorized();
     }
 
-    // Fetch user's catalogs
-    const catalogsResult = await payload.find({
-      collection: "catalogs",
-      where: {
-        createdBy: { equals: user.id },
-      },
-      limit: 100,
-      sort: "-createdAt",
-    });
-
-    const catalogs: CatalogWithDatasets[] = [];
-
-    // For each catalog, fetch its datasets
-    for (const catalog of catalogsResult.docs) {
-      const datasetsResult = await payload.find({
-        collection: "datasets",
-        where: {
-          catalog: { equals: catalog.id },
-        },
+    // Fetch user's catalogs and datasets in parallel (2 queries instead of N+1)
+    const [catalogsResult, datasetsResult] = await Promise.all([
+      payload.find({
+        collection: "catalogs",
+        where: { createdBy: { equals: user.id } },
         limit: 100,
-        sort: "title",
-      });
+        sort: "-createdAt",
+        select: { id: true, name: true },
+      }),
+      payload.find({
+        collection: "datasets",
+        where: { "catalog.createdBy": { equals: user.id } },
+        limit: 1000,
+        depth: 1,
+        select: { id: true, name: true, catalog: true },
+      }),
+    ]);
 
-      catalogs.push({
-        id: catalog.id,
-        name: catalog.name,
-        datasets: datasetsResult.docs.map((ds) => ({
-          id: ds.id,
-          name: ds.name,
-        })),
-      });
+    // Group datasets by catalog ID
+    const datasetsByCatalog = new Map<number, Array<{ id: number; name: string }>>();
+    for (const ds of datasetsResult.docs) {
+      const catalogId = typeof ds.catalog === "object" && ds.catalog != null ? ds.catalog.id : null;
+      if (catalogId != null) {
+        const existing = datasetsByCatalog.get(catalogId) ?? [];
+        existing.push({ id: ds.id, name: ds.name });
+        datasetsByCatalog.set(catalogId, existing);
+      }
     }
+
+    // Build response with datasets grouped by catalog
+    const catalogs: CatalogWithDatasets[] = catalogsResult.docs.map((catalog) => ({
+      id: catalog.id,
+      name: catalog.name,
+      datasets: datasetsByCatalog.get(catalog.id) ?? [],
+    }));
 
     logger.info("Catalogs fetched for wizard", {
       userId: user.id,

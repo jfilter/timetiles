@@ -34,17 +34,18 @@ export interface AccessibleCatalogIds {
  */
 export const getAccessibleCatalogIds = async (payload: Payload, user?: User | null): Promise<AccessibleCatalogIds> => {
   try {
-    // Get public catalogs
+    // Get public catalogs - only fetch IDs (id is auto-included with any select)
     const publicCatalogs = await payload.find({
       collection: "catalogs",
       where: { isPublic: { equals: true } },
       limit: 100,
       pagination: false,
       overrideAccess: true,
+      select: { isPublic: true },
     });
     const publicCatalogIds = publicCatalogs.docs.map((cat) => cat.id);
 
-    // Get owned catalogs (if authenticated)
+    // Get owned catalogs (if authenticated) - only fetch IDs (id is auto-included with any select)
     let ownedCatalogIds: number[] = [];
     if (user) {
       const ownedCatalogs = await payload.find({
@@ -53,6 +54,7 @@ export const getAccessibleCatalogIds = async (payload: Payload, user?: User | nu
         limit: 100,
         pagination: false,
         overrideAccess: true,
+        select: { name: true },
       });
       ownedCatalogIds = ownedCatalogs.docs.map((cat) => cat.id);
     }

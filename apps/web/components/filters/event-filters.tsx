@@ -15,18 +15,12 @@ import { useCallback } from "react";
 
 import { useFilters } from "@/lib/filters";
 import { useDataSourceStatsQuery } from "@/lib/hooks/use-data-source-stats";
-import type { Catalog, Dataset } from "@/payload-types";
 
 import { DataSourceSelector } from "./data-source-selector";
 import { FilterSection } from "./filter-section";
 import { TimeRangeSlider } from "./time-range-slider";
 
-interface EventFiltersProps {
-  catalogs: Catalog[];
-  datasets: Dataset[];
-}
-
-export const EventFilters = ({ catalogs, datasets }: Readonly<EventFiltersProps>) => {
+export const EventFilters = () => {
   const { filters, setStartDate, setEndDate } = useFilters();
 
   // Fetch event counts for catalogs and datasets
@@ -46,8 +40,6 @@ export const EventFilters = ({ catalogs, datasets }: Readonly<EventFiltersProps>
       {/* Data Sources Section */}
       <FilterSection title="Data Sources" defaultOpen activeCount={dataSourcesActiveCount}>
         <DataSourceSelector
-          catalogs={catalogs}
-          datasets={datasets}
           eventCountsByCatalog={statsData?.catalogCounts}
           eventCountsByDataset={statsData?.datasetCounts}
         />

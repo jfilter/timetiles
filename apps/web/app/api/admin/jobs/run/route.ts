@@ -23,6 +23,24 @@ interface RunJobsRequest {
   iterations?: number;
 }
 
+/** Fetch job stats for logging */
+const fetchJobStats = async (payload: Awaited<ReturnType<typeof getPayload>>) => {
+  const [payloadJobs, importJobs, importFiles] = await Promise.all([
+    payload.find({ collection: "payload-jobs", limit: 1000 }),
+    payload.find({ collection: "import-jobs", limit: 1000, select: { stage: true } }),
+    payload.find({ collection: "import-files", limit: 100, select: { status: true } }),
+  ]);
+  return { payloadJobs, importJobs, importFiles };
+};
+
+/** Map import files to status summaries */
+const mapFileStatuses = (docs: Array<{ id: number; status?: string | null }>) =>
+  docs.map((f) => ({ id: f.id, status: f.status ?? "unknown" }));
+
+/** Map import jobs to stage summaries */
+const mapJobStages = (docs: Array<{ id: number; stage?: string | null }>) =>
+  docs.map((j) => ({ id: j.id, stage: j.stage ?? "unknown" }));
+
 /**
  * Run queued jobs.
  *
@@ -31,112 +49,55 @@ interface RunJobsRequest {
  */
 export const POST = async (req: Request) => {
   try {
-    // Only allow in non-production environments
     if (process.env.NODE_ENV === "production") {
       return NextResponse.json({ error: "Not available in production" }, { status: 403 });
     }
 
     const payload = await getPayload({ config });
     const body = (await req.json().catch(() => ({}))) as RunJobsRequest;
-
     const limit = body.limit ?? 100;
     const iterations = body.iterations ?? 10;
 
-    let iterationsRun = 0;
-
-    // Get initial job counts
-    const initialPayloadJobs = await payload.find({
-      collection: "payload-jobs",
-      limit: 1000,
-    });
-
-    const initialImportJobs = await payload.find({
-      collection: "import-jobs",
-      limit: 1000,
-    });
-
-    const initialImportFiles = await payload.find({
-      collection: "import-files",
-      limit: 100,
-    });
-
+    const initial = await fetchJobStats(payload);
     logger.info("Jobs run starting", {
-      payloadJobsCount: initialPayloadJobs.totalDocs,
-      importJobsCount: initialImportJobs.totalDocs,
-      importFilesCount: initialImportFiles.totalDocs,
-      importFileStatuses: initialImportFiles.docs.map((f) => ({
-        id: f.id,
-        status: f.status ?? "unknown",
-      })),
+      payloadJobsCount: initial.payloadJobs.totalDocs,
+      importJobsCount: initial.importJobs.totalDocs,
+      importFilesCount: initial.importFiles.totalDocs,
+      importFileStatuses: mapFileStatuses(initial.importFiles.docs),
     });
 
-    // Run jobs for specified iterations
+    let iterationsRun = 0;
     for (let i = 0; i < iterations; i++) {
       iterationsRun++;
-
-      await payload.jobs.run({
-        limit,
-      });
-
-      // Small delay between iterations to allow job state to update
+      await payload.jobs.run({ limit });
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
 
-    // Get final job counts
-    const finalPayloadJobs = await payload.find({
-      collection: "payload-jobs",
-      limit: 1000,
-    });
-
-    const finalImportJobs = await payload.find({
-      collection: "import-jobs",
-      limit: 1000,
-    });
-
-    const finalImportFiles = await payload.find({
-      collection: "import-files",
-      limit: 100,
-    });
-
+    const final = await fetchJobStats(payload);
     logger.info("Jobs run completed", {
       iterationsRun,
       limit,
-      payloadJobsCount: finalPayloadJobs.totalDocs,
-      importJobsCount: finalImportJobs.totalDocs,
-      importFilesCount: finalImportFiles.totalDocs,
-      importFileStatuses: finalImportFiles.docs.map((f) => ({
-        id: f.id,
-        status: f.status ?? "unknown",
-      })),
-      importJobStages: finalImportJobs.docs.map((j) => ({
-        id: j.id,
-        stage: j.stage ?? "unknown",
-      })),
+      payloadJobsCount: final.payloadJobs.totalDocs,
+      importJobsCount: final.importJobs.totalDocs,
+      importFilesCount: final.importFiles.totalDocs,
+      importFileStatuses: mapFileStatuses(final.importFiles.docs),
+      importJobStages: mapJobStages(final.importJobs.docs),
     });
 
     return NextResponse.json({
       success: true,
       iterationsRun,
       debug: {
-        payloadJobs: {
-          initial: initialPayloadJobs.totalDocs,
-          final: finalPayloadJobs.totalDocs,
-        },
+        payloadJobs: { initial: initial.payloadJobs.totalDocs, final: final.payloadJobs.totalDocs },
         importJobs: {
-          initial: initialImportJobs.totalDocs,
-          final: finalImportJobs.totalDocs,
-          stages: finalImportJobs.docs.map((j) => ({
-            id: j.id,
-            stage: j.stage ?? "unknown",
-          })),
+          initial: initial.importJobs.totalDocs,
+          final: final.importJobs.totalDocs,
+          stages: mapJobStages(final.importJobs.docs),
         },
         importFiles: {
-          initial: initialImportFiles.totalDocs,
-          final: finalImportFiles.totalDocs,
-          statuses: finalImportFiles.docs.map((f) => ({
-            id: f.id,
-            status: f.status ?? "unknown",
-          })),
+          initial: initial.importFiles.totalDocs,
+          final: final.importFiles.totalDocs,
+          statuses: mapFileStatuses(final.importFiles.docs),
         },
       },
     });
