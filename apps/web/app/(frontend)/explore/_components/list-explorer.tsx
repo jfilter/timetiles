@@ -13,17 +13,19 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import type { LngLatBounds } from "maplibre-gl";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ClusteredMap } from "@/components/maps/clustered-map";
-import { useFilters } from "@/lib/filters";
+import { ClusteredMap, type ClusteredMapHandle } from "@/components/maps/clustered-map";
+import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
+import { useFilters, useSelectedEvent } from "@/lib/filters";
 import { useDebounce } from "@/lib/hooks/use-debounce";
-import { useClusterStatsQuery, useMapClustersQuery } from "@/lib/hooks/use-events-queries";
+import { useBoundsQuery, useClusterStatsQuery, useMapClustersQuery } from "@/lib/hooks/use-events-queries";
 import { useUIStore } from "@/lib/store";
 import type { Catalog, Dataset } from "@/payload-types";
 
 import { ActiveFilters } from "./active-filters";
 import { ChartSection } from "./chart-section";
+import { EventDetailModal } from "./event-detail-modal";
 import { EventsListPaginated } from "./events-list-paginated";
 import { FilterDrawer } from "./filter-drawer";
 import { MobileTabs } from "./mobile-tabs";
@@ -38,10 +40,21 @@ type MobileTab = "map" | "chart" | "list";
 export const ListExplorer = ({ catalogs, datasets }: Readonly<ListExplorerProps>) => {
   const [mapZoom, setMapZoom] = useState(9);
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileTab>("list");
+  const [hasUserPanned, setHasUserPanned] = useState(false);
+  const [isInitialBoundsApplied, setIsInitialBoundsApplied] = useState(false);
+
+  // Ref for map component
+  const mapRef = useRef<ClusteredMapHandle>(null);
 
   // Get filter state from URL (nuqs)
   const { filters, activeFilterCount, hasActiveFilters, removeFilter, clearAllFilters } = useFilters();
+
+  // Ref to track previous filters for detecting filter changes
+  const prevFiltersRef = useRef(filters);
   const filterActions = useMemo(() => ({ removeFilter, clearAllFilters }), [removeFilter, clearAllFilters]);
+
+  // Get selected event state from URL (nuqs)
+  const { selectedEventId, openEvent, closeEvent } = useSelectedEvent();
 
   // Get UI state from Zustand store
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
@@ -67,7 +80,33 @@ export const ListExplorer = ({ catalogs, datasets }: Readonly<ListExplorerProps>
   const { data: clustersData } = useMapClustersQuery(filters, debouncedSimpleBounds, mapZoom);
   const { data: clusterStats } = useClusterStatsQuery(filters);
 
+  // Fetch bounds for initial map positioning and "zoom to data" functionality
+  const { data: boundsData, isLoading: boundsLoading } = useBoundsQuery(filters);
+
   const clusters = clustersData?.features ?? [];
+
+  // Reset user panning state when filters change
+  useEffect(() => {
+    const filtersChanged = JSON.stringify(prevFiltersRef.current) !== JSON.stringify(filters);
+    if (filtersChanged) {
+      prevFiltersRef.current = filters;
+      setHasUserPanned(false);
+    }
+  }, [filters]);
+
+  // Determine if we should show loading overlay (initial load only, not filter changes)
+  const isLoadingInitialBounds = boundsLoading && !isInitialBoundsApplied;
+
+  // Show "zoom to data" button when user has panned and we have bounds data
+  const showZoomToData = hasUserPanned && boundsData?.bounds != null && !boundsLoading;
+
+  // Handler to zoom to data bounds
+  const handleZoomToData = useCallback(() => {
+    if (boundsData?.bounds && mapRef.current) {
+      mapRef.current.fitBounds(boundsData.bounds, { padding: 50, animate: true });
+      setHasUserPanned(false);
+    }
+  }, [boundsData]);
 
   // Helper functions for filter labels
   const getCatalogName = (catalogId: string): string => {
@@ -113,17 +152,36 @@ export const ListExplorer = ({ catalogs, datasets }: Readonly<ListExplorerProps>
         if (zoom != undefined) {
           setMapZoom(Math.round(zoom));
         }
+
+        // Mark that initial bounds have been applied (first bounds change)
+        if (!isInitialBoundsApplied) {
+          setIsInitialBoundsApplied(true);
+        } else {
+          // After initial load, any bounds change means user has panned
+          setHasUserPanned(true);
+        }
       } else {
         setMapBounds(null);
       }
     },
-    [setMapBounds]
+    [setMapBounds, isInitialBoundsApplied]
   );
 
   // Content for mobile tabs
   const mobileMapContent = (
-    <div className="h-full">
-      <ClusteredMap clusters={clusters} clusterStats={clusterStats} onBoundsChange={handleBoundsChange} />
+    <div className="relative h-full">
+      <ClusteredMap
+        ref={mapRef}
+        clusters={clusters}
+        clusterStats={clusterStats}
+        onBoundsChange={handleBoundsChange}
+        initialBounds={boundsData?.bounds}
+        isLoadingBounds={isLoadingInitialBounds}
+      />
+      {/* Zoom to data button - positioned above theme control */}
+      <div className="absolute bottom-12 left-2 z-10">
+        <ZoomToDataButton visible={showZoomToData} onClick={handleZoomToData} />
+      </div>
     </div>
   );
 
@@ -141,7 +199,7 @@ export const ListExplorer = ({ catalogs, datasets }: Readonly<ListExplorerProps>
         activeFilterCount={activeFilterCount}
         actions={filterActions}
       />
-      <EventsListPaginated filters={filters} bounds={debouncedSimpleBounds} />
+      <EventsListPaginated filters={filters} bounds={debouncedSimpleBounds} onEventClick={openEvent} />
     </div>
   );
 
@@ -156,7 +214,18 @@ export const ListExplorer = ({ catalogs, datasets }: Readonly<ListExplorerProps>
             <div className="grid h-[50vh] min-h-[300px] grid-cols-2 gap-0 border-b">
               {/* Map Column */}
               <div className="relative overflow-hidden">
-                <ClusteredMap clusters={clusters} clusterStats={clusterStats} onBoundsChange={handleBoundsChange} />
+                <ClusteredMap
+                  ref={mapRef}
+                  clusters={clusters}
+                  clusterStats={clusterStats}
+                  onBoundsChange={handleBoundsChange}
+                  initialBounds={boundsData?.bounds}
+                  isLoadingBounds={isLoadingInitialBounds}
+                />
+                {/* Zoom to data button - positioned above theme control */}
+                <div className="absolute bottom-12 left-2 z-10">
+                  <ZoomToDataButton visible={showZoomToData} onClick={handleZoomToData} />
+                </div>
               </div>
 
               {/* Chart Column */}
@@ -175,7 +244,7 @@ export const ListExplorer = ({ catalogs, datasets }: Readonly<ListExplorerProps>
                 activeFilterCount={activeFilterCount}
                 actions={filterActions}
               />
-              <EventsListPaginated filters={filters} bounds={debouncedSimpleBounds} />
+              <EventsListPaginated filters={filters} bounds={debouncedSimpleBounds} onEventClick={openEvent} />
             </div>
           </div>
 
@@ -228,6 +297,9 @@ export const ListExplorer = ({ catalogs, datasets }: Readonly<ListExplorerProps>
           </div>
         )}
       </div>
+
+      {/* Event Detail Modal */}
+      <EventDetailModal eventId={selectedEventId} onClose={closeEvent} />
     </div>
   );
 };

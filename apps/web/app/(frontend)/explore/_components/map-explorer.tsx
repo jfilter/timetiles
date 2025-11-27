@@ -33,6 +33,7 @@ import { ChartSection } from "./chart-section";
 import { EventDetailModal } from "./event-detail-modal";
 import { EventsList } from "./events-list";
 import { FilterDrawer } from "./filter-drawer";
+import { getFilterLabels, getLoadingStates, simplifyBounds } from "./map-explorer-helpers";
 
 interface MapExplorerProps {
   catalogs: Catalog[];
@@ -68,16 +69,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
   const setMapStats = useUIStore((state) => state.setMapStats);
 
   // Convert mapBounds to simple object format for React Query compatibility
-  // React Query needs serializable objects for proper cache key comparison
-  const simpleBounds = useMemo(() => {
-    if (!mapBounds) return null;
-    return {
-      north: mapBounds.north,
-      south: mapBounds.south,
-      east: mapBounds.east,
-      west: mapBounds.west,
-    };
-  }, [mapBounds]);
+  const simpleBounds = useMemo(() => simplifyBounds(mapBounds), [mapBounds]);
 
   // Debounce bounds changes to avoid excessive API calls during map panning
   const debouncedSimpleBounds = useDebounce(simpleBounds, 300);
@@ -105,12 +97,16 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
   const clusters = clustersData?.features ?? [];
   const isLoading = eventsLoading || clustersLoading;
 
-  // Track when we've loaded data at least once
-  const isInitialLoad = isLoading && !hasLoadedOnce;
-  const isUpdating = isLoading && hasLoadedOnce;
+  // Track loading states
+  const { isInitialLoad, isUpdating, shouldMarkLoaded } = getLoadingStates(
+    isLoading,
+    hasLoadedOnce,
+    events.length,
+    clusters.length
+  );
 
   // Mark as loaded once we have data
-  if (!isLoading && !hasLoadedOnce && (events.length > 0 || clusters.length > 0)) {
+  if (shouldMarkLoaded) {
     setHasLoadedOnce(true);
   }
 
@@ -168,51 +164,8 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
     }
   }, [boundsData]);
 
-  // Helper function to get catalog name by ID
-  const getCatalogName = (catalogId: string): string => {
-    const catalog = catalogs.find((c) => String(c.id) === catalogId);
-    return catalog?.name ?? "Unknown Catalog";
-  };
-
-  // Helper function to get dataset name by ID
-  const getDatasetName = (datasetId: string): string => {
-    const dataset = datasets.find((d) => String(d.id) === datasetId);
-    return dataset?.name ?? "Unknown Dataset";
-  };
-
-  // Helper function for date range formatting
-  const formatDateRange = () => {
-    const hasStartDate = filters.startDate != null && filters.startDate !== "";
-    const hasEndDate = filters.endDate != null && filters.endDate !== "";
-
-    if (!hasStartDate && !hasEndDate) {
-      return undefined;
-    }
-
-    const start = hasStartDate ? new Date(filters.startDate!).toLocaleDateString("en-US") : "Start";
-    const end = hasEndDate ? new Date(filters.endDate!).toLocaleDateString("en-US") : "End";
-
-    if (hasStartDate && hasEndDate) {
-      return `${start} - ${end}`;
-    } else if (hasStartDate) {
-      return `From ${start}`;
-    } else if (hasEndDate) {
-      return `Until ${end}`;
-    }
-    return undefined;
-  };
-
-  // Get human-readable filter labels
-  const getFilterLabels = () => {
-    return {
-      catalog: filters.catalog != null && filters.catalog !== "" ? getCatalogName(filters.catalog) : undefined,
-      datasets: filters.datasets.map((id) => ({
-        id,
-        name: getDatasetName(id),
-      })),
-      dateRange: formatDateRange(),
-    };
-  };
+  // Get human-readable filter labels (uses helper function)
+  const filterLabels = useMemo(() => getFilterLabels(filters, catalogs, datasets), [filters, catalogs, datasets]);
 
   const handleBoundsChange = useCallback(
     (newBounds: LngLatBounds | null, zoom?: number) => {
@@ -266,7 +219,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
           <div className="p-6">
             {/* Active Filters */}
             <ActiveFilters
-              labels={getFilterLabels()}
+              labels={filterLabels}
               hasActiveFilters={hasActiveFilters}
               activeFilterCount={activeFilterCount}
               actions={filterActions}
@@ -324,7 +277,7 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
         <div className="h-1/2 min-h-0 overflow-y-auto border-t">
           <div className="p-4">
             <ActiveFilters
-              labels={getFilterLabels()}
+              labels={filterLabels}
               hasActiveFilters={hasActiveFilters}
               activeFilterCount={activeFilterCount}
               actions={filterActions}
