@@ -22,8 +22,14 @@ run_step() {
     ufw default allow outgoing
 
     # Allow SSH (prevent lockout!)
-    ufw allow ssh
-    print_info "Allowed SSH (port 22)"
+    local ssh_port="${SSH_PORT:-22}"
+    if [[ "$ssh_port" == "22" ]]; then
+        ufw allow ssh
+        print_info "Allowed SSH (port 22)"
+    else
+        ufw allow "$ssh_port/tcp"
+        print_info "Allowed SSH (custom port $ssh_port)"
+    fi
 
     # Allow HTTP for Let's Encrypt challenges
     ufw allow 80/tcp

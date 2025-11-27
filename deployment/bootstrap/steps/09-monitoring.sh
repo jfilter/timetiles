@@ -34,11 +34,12 @@ create_health_check_script() {
     cat > "$script" << 'EOF'
 #!/bin/bash
 # TimeTiles Health Check Script
-# Restarts the application if health check fails
+# Restarts the application if health check fails and sends alerts
 
 HEALTH_URL="http://localhost:3000/api/health"
 MAX_FAILURES=3
 FAILURE_COUNT_FILE="/var/lib/timetiles/.health-failures"
+ALERT_SCRIPT="/opt/timetiles/scripts/alert.sh"
 
 # Initialize failure count
 if [[ ! -f "$FAILURE_COUNT_FILE" ]]; then
@@ -61,6 +62,13 @@ logger -t timetiles "Health check failed (attempt $failures of $MAX_FAILURES)"
 
 if [[ $failures -ge $MAX_FAILURES ]]; then
     logger -t timetiles "Max failures reached, restarting services"
+
+    # Send alert before restart
+    if [[ -x "$ALERT_SCRIPT" ]]; then
+        "$ALERT_SCRIPT" "Health Check Failed" \
+            "TimeTiles health check failed $MAX_FAILURES times in a row. Service is being restarted automatically."
+    fi
+
     systemctl restart timetiles.service
     echo "0" > "$FAILURE_COUNT_FILE"
 fi

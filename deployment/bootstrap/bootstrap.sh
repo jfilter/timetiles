@@ -44,6 +44,9 @@ STEPS=(
     "07-deploy"
     "08-ssl-setup"
     "09-monitoring"
+    "10-ssh-hardening"
+    "11-fail2ban"
+    "12-alerting"
 )
 
 # ============================================================================
@@ -76,6 +79,9 @@ Steps:
   07-deploy         Build and start application
   08-ssl-setup      Let's Encrypt SSL certificate
   09-monitoring     Health checks, backups, systemd
+  10-ssh-hardening  Secure SSH (disable root, password auth)
+  11-fail2ban       Brute force protection
+  12-alerting       Email alerts for failures
 
 Examples:
   # Interactive installation

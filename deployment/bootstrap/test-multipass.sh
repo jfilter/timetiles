@@ -337,12 +337,15 @@ verify_deployment() {
     multipass exec "$VM_NAME" -- docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
     # Wait for app to be ready
+    # Use HTTPS via nginx (with -k for self-signed cert) since:
+    # 1. Web container's port 3000 is only exposed to Docker network
+    # 2. Nginx redirects HTTP to HTTPS
     print_step "Waiting for application health check..."
     local attempts=0
     local max_attempts=30
 
     while [[ $attempts -lt $max_attempts ]]; do
-        if multipass exec "$VM_NAME" -- curl -sf http://localhost:3000/api/health &>/dev/null; then
+        if multipass exec "$VM_NAME" -- curl -sfk https://localhost/api/health &>/dev/null; then
             print_success "Application is healthy!"
             break
         fi
@@ -360,8 +363,173 @@ verify_deployment() {
 
     # Show health status
     print_step "Health check response:"
-    multipass exec "$VM_NAME" -- curl -s http://localhost:3000/api/health | head -20
+    multipass exec "$VM_NAME" -- curl -sk https://localhost/api/health | head -20
 
+    return 0
+}
+
+test_backup_restore() {
+    print_header "Testing Backup/Restore"
+
+    # deploy.sh now auto-switches to timetiles user when run as root
+    local deploy_cmd="cd /opt/timetiles/app/deployment && sudo ./deploy.sh"
+
+    # Test database backup
+    print_step "Creating database backup..."
+    if multipass exec "$VM_NAME" -- bash -c "${deploy_cmd} backup db"; then
+        print_success "Database backup created"
+    else
+        print_error "Database backup failed"
+        return 1
+    fi
+
+    # Test uploads-only backup
+    print_step "Creating uploads backup..."
+    if multipass exec "$VM_NAME" -- bash -c "${deploy_cmd} backup uploads"; then
+        print_success "Uploads backup created"
+    else
+        print_error "Uploads backup failed"
+        return 1
+    fi
+
+    # Test full backup (database + uploads)
+    print_step "Creating full backup..."
+    if multipass exec "$VM_NAME" -- bash -c "${deploy_cmd} backup full"; then
+        print_success "Full backup created"
+    else
+        print_error "Full backup failed"
+        return 1
+    fi
+
+    # List backups
+    print_step "Listing backups..."
+    multipass exec "$VM_NAME" -- bash -c "${deploy_cmd} backup list"
+
+    # Verify backup files exist
+    # Expected: 2 db backups (from db + full), 2 uploads backups (from uploads + full)
+    print_step "Verifying backup files..."
+    local backup_dir="/opt/timetiles/app/deployment/backups"
+    local backup_count
+    backup_count=$(multipass exec "$VM_NAME" -- ls -1 "$backup_dir"/*.gz 2>/dev/null | wc -l)
+    if [[ "$backup_count" -ge 4 ]]; then
+        print_success "Found $backup_count backup files"
+    else
+        print_error "Expected at least 4 backup files, found $backup_count"
+        return 1
+    fi
+
+    # Test backup verification
+    print_step "Testing backup verify..."
+    if multipass exec "$VM_NAME" -- bash -c "${deploy_cmd} backup verify"; then
+        print_success "Backup verification completed"
+    else
+        print_error "Backup verification failed"
+        return 1
+    fi
+
+    # Test corrupted file detection
+    print_step "Testing corrupted file detection..."
+    # Create corrupted test files
+    multipass exec "$VM_NAME" -- sudo bash -c "cd $backup_dir && \
+        head -c 100 \$(ls -t db-*.sql.gz | head -1) > db-test-corrupted.sql.gz && \
+        echo 'not a dump' | gzip > db-test-invalid.sql.gz"
+
+    # Run verify and check it detects corruption
+    local verify_output
+    verify_output=$(multipass exec "$VM_NAME" -- bash -c "${deploy_cmd} backup verify" 2>&1)
+    if echo "$verify_output" | grep -q "CORRUPTED" && echo "$verify_output" | grep -q "INVALID"; then
+        print_success "Corrupted file detection works"
+    else
+        print_error "Failed to detect corrupted files"
+        echo "$verify_output"
+        return 1
+    fi
+
+    # Clean up test files
+    multipass exec "$VM_NAME" -- sudo rm -f "$backup_dir"/db-test-*.sql.gz
+
+    # Test backup clean (time-based deletion)
+    print_step "Testing backup clean..."
+    # Create old backup files with 31-day old timestamps
+    multipass exec "$VM_NAME" -- sudo bash -c "cd $backup_dir && \
+        echo 'old' | gzip > db-old-test.sql.gz && \
+        touch -d '32 days ago' db-old-test.sql.gz && \
+        echo 'old' | gzip > uploads-old-test.tar.gz && \
+        touch -d '32 days ago' uploads-old-test.tar.gz"
+
+    # Count before clean
+    local old_count_before
+    old_count_before=$(multipass exec "$VM_NAME" -- bash -c "ls -1 $backup_dir/*-old-test.* 2>/dev/null | wc -l")
+    print_info "Old test files before clean: $old_count_before"
+
+    # Run clean with default 30 days
+    multipass exec "$VM_NAME" -- bash -c "${deploy_cmd} backup clean"
+
+    # Verify old files were deleted
+    local old_count_after
+    old_count_after=$(multipass exec "$VM_NAME" -- bash -c "ls -1 $backup_dir/*-old-test.* 2>/dev/null | wc -l")
+    if [[ "$old_count_after" -eq 0 ]]; then
+        print_success "Backup clean deleted old files correctly"
+    else
+        print_error "Clean didn't delete old files (expected 0, got $old_count_after)"
+        return 1
+    fi
+
+    # Test backup pruning
+    print_step "Testing backup prune..."
+    # Create extra backups to have enough to prune
+    multipass exec "$VM_NAME" -- bash -c "${deploy_cmd} backup db"
+    multipass exec "$VM_NAME" -- bash -c "${deploy_cmd} backup db"
+
+    # Count backups before prune
+    local db_count_before
+    db_count_before=$(multipass exec "$VM_NAME" -- ls -1 "$backup_dir"/db-*.sql.gz 2>/dev/null | wc -l)
+    print_info "Database backups before prune: $db_count_before"
+
+    # Prune to keep only 2
+    if multipass exec "$VM_NAME" -- bash -c "${deploy_cmd} backup prune 2"; then
+        local db_count_after
+        db_count_after=$(multipass exec "$VM_NAME" -- ls -1 "$backup_dir"/db-*.sql.gz 2>/dev/null | wc -l)
+        print_info "Database backups after prune: $db_count_after"
+        if [[ "$db_count_after" -le 2 ]]; then
+            print_success "Backup prune works correctly"
+        else
+            print_error "Prune didn't reduce backup count (expected <=2, got $db_count_after)"
+            return 1
+        fi
+    else
+        print_error "Backup prune command failed"
+        return 1
+    fi
+
+    # Test restore (database only)
+    # Note: Restore prompts for confirmation, so we pipe 'yes' to it
+    print_step "Testing database restore..."
+    local latest_db_backup
+    latest_db_backup=$(multipass exec "$VM_NAME" -- ls -t "$backup_dir"/db-*.sql.gz 2>/dev/null | head -1)
+    if [[ -n "$latest_db_backup" ]]; then
+        # Use echo 'yes' to handle the interactive confirmation prompt
+        if multipass exec "$VM_NAME" -- bash -c "echo 'yes' | ${deploy_cmd} restore $latest_db_backup"; then
+            print_success "Database restore completed"
+        else
+            print_error "Database restore failed"
+            return 1
+        fi
+    else
+        print_warning "No database backup found to test restore"
+    fi
+
+    # Verify app still works after restore
+    print_step "Verifying app health after restore..."
+    sleep 5
+    if multipass exec "$VM_NAME" -- curl -sfk https://localhost/api/health &>/dev/null; then
+        print_success "App is healthy after restore"
+    else
+        print_error "App health check failed after restore"
+        return 1
+    fi
+
+    print_success "Backup/restore tests passed"
     return 0
 }
 
@@ -476,6 +644,11 @@ main() {
     # Verify deployment
     if [[ $bootstrap_status -eq 0 ]]; then
         verify_deployment || bootstrap_status=1
+    fi
+
+    # Test backup/restore
+    if [[ $bootstrap_status -eq 0 ]]; then
+        test_backup_restore || bootstrap_status=1
     fi
 
     # Show access info

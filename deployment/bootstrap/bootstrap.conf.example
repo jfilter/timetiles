@@ -57,6 +57,18 @@ INSTALL_DIR="/opt/timetiles"
 APP_USER="timetiles"
 
 # ============================================================================
+# SECURITY SETTINGS
+# ============================================================================
+
+# Custom SSH port (default: 22)
+# Change to a non-standard port for additional security
+# SSH_PORT="22"
+
+# Email for alerts (health check failures, backup failures)
+# Defaults to LETSENCRYPT_EMAIL if not set
+# ALERT_EMAIL=""
+
+# ============================================================================
 # ADVANCED SETTINGS
 # ============================================================================
 
@@ -65,6 +77,15 @@ APP_USER="timetiles"
 
 # Skip firewall setup (useful if managed externally)
 # SKIP_FIREWALL="false"
+
+# Skip SSH hardening (useful if managed externally)
+# SKIP_SSH_HARDENING="false"
+
+# Skip fail2ban setup
+# SKIP_FAIL2BAN="false"
+
+# Skip alerting setup
+# SKIP_ALERTING="false"
 
 # Enable non-interactive mode (fails if required values missing)
 # NON_INTERACTIVE="false"
