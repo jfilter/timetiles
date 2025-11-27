@@ -19,12 +19,11 @@
  *
  * @module
  */
-import type { CollectionConfig, Where } from "payload";
+import type { Access, CollectionConfig, Where } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
-import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
-import { getQuotaService } from "@/lib/services/quota-service";
 
+import { eventsBeforeChangeHook } from "./events/hooks";
 import { createCommonConfig } from "./shared-fields";
 
 const Events: CollectionConfig = {
@@ -48,180 +47,46 @@ const Events: CollectionConfig = {
     },
   },
   access: {
-    // Events inherit access from their dataset and catalog
-    read: async ({ req }) => {
-      const { user, payload } = req;
+    // Events: public data visible to all, private data visible to catalog owner
+    // Uses denormalized fields for zero-query access control
+    // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+    read: (({ req: { user } }): boolean | Where => {
       if (user?.role === "admin" || user?.role === "editor") return true;
 
-      // Get accessible catalogs using shared helper
-      const { publicCatalogIds, ownedCatalogIds } = await (
-        await import("@/lib/services/access-control")
-      ).getAccessibleCatalogIds(payload, user);
-
-      // Get accessible datasets:
-      // - Public datasets in public catalogs
-      // - Any dataset in owned catalogs
-      const datasetConditions: Array<string | number> = [];
-
-      if (publicCatalogIds.length > 0) {
-        const publicDatasets = await payload.find({
-          collection: "datasets",
-          where: {
-            and: [{ catalog: { in: publicCatalogIds } }, { isPublic: { equals: true } }],
-          },
-          limit: 500,
-          pagination: false,
-          overrideAccess: true,
-        });
-        datasetConditions.push(...publicDatasets.docs.map((ds) => ds.id));
+      // Logged-in users can see: public data OR data they own (via catalog)
+      if (user) {
+        return {
+          or: [{ datasetIsPublic: { equals: true } }, { catalogOwnerId: { equals: user.id } }],
+        } as Where;
       }
 
-      if (ownedCatalogIds.length > 0) {
-        const ownedDatasets = await payload.find({
-          collection: "datasets",
-          where: {
-            catalog: { in: ownedCatalogIds },
-          },
-          limit: 500,
-          pagination: false,
-          overrideAccess: true,
-        });
-        datasetConditions.push(...ownedDatasets.docs.map((ds) => ds.id));
-      }
+      // Anonymous users only see public data
+      return { datasetIsPublic: { equals: true } };
+    }) as Access,
 
-      if (datasetConditions.length === 0) {
-        // Return impossible condition instead of false to allow 200 with empty results
-        // This provides graceful degradation when there's no public data
-        return { dataset: { equals: -1 } } as Where; // No event has dataset ID -1
-      }
-
-      // Return events in accessible datasets
-      return {
-        dataset: { in: datasetConditions },
-      };
-    },
-
-    // Only authenticated users can create events in datasets they have access to
-    create: async ({ req: { user, payload }, data }) => {
+    // Only admins/editors can create events (import jobs handle bulk creation)
+    create: async ({ req: { user, payload } }) => {
       if (!user) return false;
 
-      // Check feature flag - even admins can't create if disabled
+      // Check feature flag
       const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
       if (!(await isFeatureEnabled(payload, "enableEventCreation"))) return false;
 
+      return user.role === "admin" || user.role === "editor";
+    },
+
+    // Admins/editors can update all events, catalog owners can update their own
+    // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+    update: (({ req: { user } }): boolean | Where => {
+      if (!user) return false;
       if (user.role === "admin" || user.role === "editor") return true;
-      if (!data?.dataset) return false;
 
-      const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
+      // Catalog owner can update events in their catalog
+      return { catalogOwnerId: { equals: user.id } } as Where;
+    }) as Access,
 
-      try {
-        const dataset = await payload.findByID({ collection: "datasets", id: datasetId, overrideAccess: true });
-        if (!dataset) return false;
-
-        const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
-        const catalog = await payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: true });
-
-        // Can create events if dataset and catalog are both public
-        if (dataset.isPublic && catalog?.isPublic) return true;
-
-        // Or if user owns the catalog
-        if (!catalog?.createdBy) return false;
-        const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
-        return user.id === createdById;
-      } catch {
-        return false;
-      }
-    },
-
-    // Only catalog owner, editors, or admins can update
-    update: async ({ req, id }) => {
-      const { user, payload } = req;
-      if (user?.role === "admin" || user?.role === "editor") return true;
-
-      if (!user || !id) return false;
-
-      try {
-        // Fetch the existing event with override to get dataset info
-        const existingEvent = await payload.findByID({
-          collection: "events",
-          id,
-          overrideAccess: true,
-        });
-
-        if (existingEvent?.dataset) {
-          const datasetId =
-            typeof existingEvent.dataset === "object" ? existingEvent.dataset.id : existingEvent.dataset;
-          const dataset = await payload.findByID({
-            collection: "datasets",
-            id: datasetId,
-            overrideAccess: true,
-          });
-
-          if (dataset?.catalog) {
-            const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
-            const catalog = await payload.findByID({
-              collection: "catalogs",
-              id: catalogId,
-              overrideAccess: true,
-            });
-
-            if (catalog?.createdBy) {
-              const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
-              return user.id === createdById;
-            }
-          }
-        }
-
-        return false;
-      } catch {
-        return false;
-      }
-    },
-
-    // Only catalog owner, editors, or admins can delete
-    delete: async ({ req, id }) => {
-      const { user, payload } = req;
-      if (user?.role === "admin" || user?.role === "editor") return true;
-
-      if (!user || !id) return false;
-
-      try {
-        // Fetch the existing event with override to get dataset info
-        const existingEvent = await payload.findByID({
-          collection: "events",
-          id,
-          overrideAccess: true,
-        });
-
-        if (existingEvent?.dataset) {
-          const datasetId =
-            typeof existingEvent.dataset === "object" ? existingEvent.dataset.id : existingEvent.dataset;
-          const dataset = await payload.findByID({
-            collection: "datasets",
-            id: datasetId,
-            overrideAccess: true,
-          });
-
-          if (dataset?.catalog) {
-            const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
-            const catalog = await payload.findByID({
-              collection: "catalogs",
-              id: catalogId,
-              overrideAccess: true,
-            });
-
-            if (catalog?.createdBy) {
-              const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
-              return user.id === createdById;
-            }
-          }
-        }
-
-        return false;
-      } catch {
-        return false;
-      }
-    },
+    // Only admins/editors can delete events
+    delete: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
 
     // Only admins and editors can read version history
     readVersions: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
@@ -233,6 +98,25 @@ const Events: CollectionConfig = {
       relationTo: "datasets",
       required: true,
       hasMany: false,
+    },
+    {
+      name: "datasetIsPublic",
+      type: "checkbox",
+      defaultValue: false,
+      index: true,
+      admin: {
+        hidden: true,
+        description: "Denormalized from dataset.isPublic for zero-query access control",
+      },
+    },
+    {
+      name: "catalogOwnerId",
+      type: "number",
+      index: true,
+      admin: {
+        hidden: true,
+        description: "Denormalized from catalog.owner for zero-query owner access control",
+      },
     },
     {
       name: "importJob",
@@ -500,44 +384,9 @@ const Events: CollectionConfig = {
     },
   ],
   hooks: {
-    beforeChange: [
-      async ({ data, operation, req }) => {
-        // Skip quota checks for system operations and admin users
-        if (!req.user || req.user.role === "admin") {
-          return data;
-        }
-
-        // Only check quotas on creation
-        if (operation === "create") {
-          const quotaService = getQuotaService(req.payload);
-
-          // Check total events quota
-          const totalEventsCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.TOTAL_EVENTS, 1);
-
-          if (!totalEventsCheck.allowed) {
-            throw new Error(
-              `Total events limit reached (${totalEventsCheck.current}/${totalEventsCheck.limit}). ` +
-                `Please upgrade your account or remove old events.`
-            );
-          }
-        }
-
-        return data;
-      },
-    ],
-    afterChange: [
-      async ({ doc, operation, req }) => {
-        // Track event creation
-        if (operation === "create" && req.user && req.user.role !== "admin") {
-          const quotaService = getQuotaService(req.payload);
-
-          // Increment total events counter
-          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.TOTAL_EVENTS_CREATED, 1, req);
-        }
-
-        return doc;
-      },
-    ],
+    beforeChange: [eventsBeforeChangeHook],
+    // Note: afterChange and afterDelete hooks for dataset stats were removed
+    // for performance. Stats are computed on-demand or via scheduled job.
   },
   indexes: [
     {
@@ -557,6 +406,13 @@ const Events: CollectionConfig = {
     },
     {
       fields: ["validationStatus"],
+    },
+    // B-tree indexes for bounds computation (MIN/MAX queries)
+    {
+      fields: ["location.longitude"],
+    },
+    {
+      fields: ["location.latitude"],
     },
   ],
 };

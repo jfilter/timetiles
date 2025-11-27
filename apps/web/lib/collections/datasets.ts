@@ -15,7 +15,7 @@
 import type { CollectionConfig } from "payload";
 
 import * as access from "./datasets/access";
-import { validatePublicCatalogDataset } from "./datasets/hooks";
+import { syncIsPublicToEvents, validatePublicCatalogDataset } from "./datasets/hooks";
 import { transformationFields } from "./datasets/transformation-fields";
 import { basicMetadataFields, createCommonConfig, createSlugField, metadataField } from "./shared-fields";
 
@@ -36,6 +36,7 @@ const Datasets: CollectionConfig = {
   },
   hooks: {
     beforeChange: [validatePublicCatalogDataset],
+    afterChange: [syncIsPublicToEvents],
   },
   fields: [
     ...basicMetadataFields,
@@ -46,6 +47,25 @@ const Datasets: CollectionConfig = {
       relationTo: "catalogs",
       required: true,
       hasMany: false,
+    },
+    {
+      name: "catalogCreatorId",
+      type: "number",
+      index: true,
+      admin: {
+        hidden: true,
+        description: "Denormalized from catalog.createdBy for zero-query owner access control",
+      },
+    },
+    {
+      name: "catalogIsPublic",
+      type: "checkbox",
+      defaultValue: false,
+      index: true,
+      admin: {
+        hidden: true,
+        description: "Denormalized from catalog.isPublic for zero-query access control",
+      },
     },
     {
       name: "language",

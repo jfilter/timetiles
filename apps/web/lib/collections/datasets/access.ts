@@ -2,9 +2,13 @@
  * Access control logic for the Datasets collection.
  *
  * Defines read, create, update, and delete permissions based on:
- * - User role (admin has full access)
- * - Catalog ownership
- * - Public/private status of datasets and catalogs
+ * - User role (admin/editor has full access)
+ * - Public/private status of datasets
+ * - Catalog ownership (via denormalized catalogCreatorId)
+ *
+ * Since dataset.isPublic=true guarantees catalog.isPublic=true (enforced by hook),
+ * we only need to check dataset.isPublic for public access.
+ * Private datasets are visible to catalog owners.
  *
  * @module
  * @category Collections
@@ -12,139 +16,64 @@
 import type { Access, Where } from "payload";
 
 /**
- * Read access: Public datasets in public catalogs, or any dataset in owned catalogs.
+ * Read access: Datasets visible if both dataset AND catalog are public, OR if user owns the catalog.
+ * Zero queries - just returns a WHERE clause on indexed fields.
+ *
+ * Note: A "public" dataset in a private catalog should NOT be visible to non-owners.
+ * The catalog visibility is the top-level gate.
  */
-export const read: Access = async ({ req }) => {
-  const { user, payload } = req;
-
+// eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+export const read: Access = ({ req: { user } }): boolean | Where => {
   // Admin and editor can read all
   if (user?.role === "admin" || user?.role === "editor") return true;
 
-  // For non-admin users, we need to check:
-  // 1. Public datasets in public catalogs
-  // 2. Any dataset (public or private) in catalogs owned by the user
-
-  // Get accessible catalogs using shared helper
-  const { publicCatalogIds, ownedCatalogIds } = await (
-    await import("@/lib/services/access-control")
-  ).getAccessibleCatalogIds(payload, user);
-
-  // Build query:
-  // - Public datasets in public catalogs
-  // - Any dataset (public or private) in owned catalogs
-  // - Datasets created by the user (if authenticated)
-  const conditions: Where[] = [];
-
-  if (publicCatalogIds.length > 0) {
-    conditions.push({
-      and: [{ catalog: { in: publicCatalogIds } }, { isPublic: { equals: true } }],
-    });
+  // Logged-in users can see: (public data in public catalog) OR data in catalogs they own
+  if (user) {
+    return {
+      or: [
+        // Both dataset and catalog must be public for general access
+        { and: [{ isPublic: { equals: true } }, { catalogIsPublic: { equals: true } }] },
+        // Catalog owner can see everything in their catalog
+        { catalogCreatorId: { equals: user.id } },
+      ],
+    } as Where;
   }
 
-  if (ownedCatalogIds.length > 0) {
-    conditions.push({
-      catalog: { in: ownedCatalogIds },
-    });
-  }
-
-  // Note: Datasets don't have a createdBy field tracked directly
-  // They inherit access through catalog ownership
-  // Users can create datasets in public catalogs but those datasets
-  // follow the standard access rules (must be public to be readable by non-owners)
-
-  if (conditions.length === 0) {
-    // Return impossible condition instead of false to allow 200 with empty results
-    // This provides graceful degradation when there's no public data
-    return { id: { equals: -1 } } as Where; // No dataset has ID -1
-  }
-
-  return { or: conditions };
+  // Anonymous users only see public datasets in public catalogs
+  return { and: [{ isPublic: { equals: true } }, { catalogIsPublic: { equals: true } }] } as Where;
 };
 
 /**
- * Create access: Must be authenticated and have access to the target catalog.
+ * Create access: Any authenticated user can create datasets.
+ * The beforeChange hook validates that users can only create in:
+ * - Public catalogs (anyone can contribute)
+ * - Their own catalogs
  */
-export const create: Access = async ({ req: { user, payload }, data }) => {
+export const create: Access = async ({ req: { user, payload } }) => {
   if (!user) return false;
 
-  // Check feature flag - even admins can't create if disabled
+  // Check feature flag - allow any authenticated user, hook validates catalog ownership/publicity
   const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
-  if (!(await isFeatureEnabled(payload, "enableDatasetCreation"))) return false;
-
-  if (user?.role === "admin" || user?.role === "editor") return true;
-
-  // Check if user has access to the catalog
-  if (data?.catalog) {
-    const catalogId = typeof data.catalog === "object" ? data.catalog.id : data.catalog;
-    try {
-      const catalog = await payload.findByID({
-        collection: "catalogs",
-        id: catalogId,
-        overrideAccess: true,
-      });
-
-      // Can create in public catalogs or own private catalogs
-      if (catalog?.isPublic) return true;
-
-      if (catalog?.createdBy) {
-        const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
-        return user.id === createdById;
-      }
-    } catch {
-      return false;
-    }
-  }
-
-  return false;
+  return isFeatureEnabled(payload, "enableDatasetCreation");
 };
 
 /**
- * Helper: Check if user owns the catalog that the dataset belongs to.
+ * Update access: Admins/editors can update all datasets, catalog owners can update their own.
+ * Uses WHERE clause on indexed catalogCreatorId field for zero queries.
  */
-const checkCatalogOwnership: Access = async ({ req, id }) => {
-  const { user, payload } = req;
-  if (user?.role === "admin" || user?.role === "editor") return true;
+// eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+export const update: Access = ({ req: { user } }): boolean | Where => {
+  if (!user) return false;
+  if (user.role === "admin" || user.role === "editor") return true;
 
-  if (!user || !id) return false;
-
-  try {
-    // Fetch the existing dataset with override to get catalog info
-    const existingDataset = await payload.findByID({
-      collection: "datasets",
-      id,
-      overrideAccess: true,
-    });
-
-    if (existingDataset?.catalog) {
-      const catalogId =
-        typeof existingDataset.catalog === "object" ? existingDataset.catalog.id : existingDataset.catalog;
-      const catalog = await payload.findByID({
-        collection: "catalogs",
-        id: catalogId,
-        overrideAccess: true,
-      });
-
-      if (catalog?.createdBy) {
-        const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
-        return user.id === createdById;
-      }
-    }
-
-    return false;
-  } catch {
-    return false;
-  }
+  // Catalog owner can update datasets in their catalog
+  return { catalogCreatorId: { equals: user.id } } as Where;
 };
 
 /**
- * Update access: Only catalog owner or admins can update.
+ * Delete access: Only admins/editors can delete datasets.
  */
-export const update: Access = checkCatalogOwnership;
-
-/**
- * Delete access: Only catalog owner or admins can delete.
- */
-export const deleteAccess: Access = checkCatalogOwnership;
+export const deleteAccess: Access = ({ req: { user } }) => user?.role === "admin" || user?.role === "editor";
 
 /**
  * ReadVersions access: Only admins and editors can read version history.

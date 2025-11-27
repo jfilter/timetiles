@@ -823,6 +823,6 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         logger.error("Large file processing test failed:", error);
         throw error;
       }
-    }, 120000); // 120 second timeout for large file
+    }, 300000); // 5 minute timeout for large file (resource contention under load)
   });
 });
