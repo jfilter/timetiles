@@ -55,7 +55,7 @@ db-query:
 		echo "Example: make db-query SQL='SELECT COUNT(*) FROM events' DB_NAME=timetiles_test"; \
 		exit 1; \
 	fi
-	@docker exec timetiles-postgres psql -U timetiles_user -d $(if $(DB_NAME),$(DB_NAME),timetiles) -c "$(SQL)"
+	@docker exec -e PGPASSWORD=timetiles_password timetiles-postgres psql -h localhost -U timetiles_user -d $(if $(DB_NAME),$(DB_NAME),timetiles) -c "$(SQL)"
 
 # View PostgreSQL logs
 db-logs:

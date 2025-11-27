@@ -2,8 +2,37 @@
 
 # TimeTiles Production Deployment Script
 # Usage: ./deploy.sh [command]
+#
+# This script should be run as the 'timetiles' user (or root, which will
+# automatically switch to timetiles). Running as other users will fail.
 
 set -e
+
+# =============================================================================
+# User & Permission Handling
+# =============================================================================
+# The script needs to run as 'timetiles' user with docker group access.
+# If run as root, it re-executes itself as the timetiles user.
+
+DEPLOY_USER="${DEPLOY_USER:-timetiles}"
+
+# If running as root, re-exec as the deploy user with docker group
+if [ "$(id -u)" = "0" ]; then
+    # Check if deploy user exists
+    if id "$DEPLOY_USER" &>/dev/null; then
+        exec sg docker -c "sudo -u $DEPLOY_USER $0 $*"
+    else
+        echo "Warning: User '$DEPLOY_USER' not found, running as root"
+    fi
+fi
+
+# Verify docker access (non-fatal warning)
+if ! docker info &>/dev/null 2>&1; then
+    echo "Warning: Cannot connect to Docker. You may need to:"
+    echo "  1. Start Docker daemon"
+    echo "  2. Add user to docker group: sudo usermod -aG docker $USER"
+    echo "  3. Re-login or run: sg docker -c './deploy.sh $*'"
+fi
 
 # Configuration
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -36,6 +65,18 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Alert script location
+ALERT_SCRIPT="/opt/timetiles/scripts/alert.sh"
+
+# Send alert if script exists
+send_alert() {
+    local subject="$1"
+    local message="$2"
+    if [ -x "$ALERT_SCRIPT" ]; then
+        "$ALERT_SCRIPT" "$subject" "$message" 2>/dev/null || true
+    fi
+}
+
 # Functions
 print_usage() {
     echo "Usage: $0 [command]"
@@ -47,7 +88,7 @@ print_usage() {
     echo "  down      - Stop all services"
     echo "  restart   - Restart all services"
     echo "  logs      - View logs (follow mode)"
-    echo "  backup    - Backup management (full|db|auto|list|clean)"
+    echo "  backup    - Backup management (full|db|uploads|auto|list|prune|verify|clean)"
     echo "  restore   - Restore from backup"
     echo "  status    - Check service status"
     echo "  ssl       - Initialize Let's Encrypt SSL certificate"
@@ -171,29 +212,71 @@ case "$1" in
                 echo -e "${YELLOW}Backing up database...${NC}"
                 BACKUP_FILE="$BACKUP_DIR/db-$(date +%Y%m%d-%H%M%S).sql.gz"
                 # --clean adds DROP statements, --if-exists prevents errors if objects don't exist
-                $DC_CMD exec -T postgres pg_dump -U timetiles_user --clean --if-exists timetiles | gzip > "$BACKUP_FILE"
+                # -h localhost forces TCP connection (avoids peer auth issues with kartoza/postgis)
+                # PGPASSWORD uses the password from the container environment
+                if ! $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASS pg_dump -h localhost -U $POSTGRES_USER --clean --if-exists $POSTGRES_DBNAME' | gzip > "$BACKUP_FILE"; then
+                    echo -e "${RED}Database backup FAILED${NC}"
+                    send_alert "Backup Failed" "Database backup failed at $(date). Please check the backup logs."
+                    exit 1
+                fi
                 echo -e "${GREEN}Database backup saved to $BACKUP_FILE${NC}"
-                
+
                 # Keep only last 30 backups
                 ls -t "$BACKUP_DIR"/db-*.sql.gz 2>/dev/null | tail -n +31 | xargs rm -f 2>/dev/null || true
                 ;;
-                
+
+            uploads)
+                echo -e "${YELLOW}Backing up uploads...${NC}"
+                BACKUP_FILE="$BACKUP_DIR/uploads-$(date +%Y%m%d-%H%M%S).tar.gz"
+                UPLOAD_VOL=$(docker volume ls -q | grep -E 'timetiles.*uploads' | head -1)
+                if [ -n "$UPLOAD_VOL" ]; then
+                    if ! docker run --rm -v "$UPLOAD_VOL:/data" -v "$BACKUP_DIR:/backup" alpine \
+                        tar czf "/backup/$(basename "$BACKUP_FILE")" -C /data .; then
+                        echo -e "${RED}Uploads backup FAILED${NC}"
+                        send_alert "Backup Failed" "Uploads backup failed at $(date). Please check the backup logs."
+                        exit 1
+                    fi
+                    echo -e "${GREEN}Uploads backup saved to $BACKUP_FILE${NC}"
+
+                    # Keep only last 30 backups
+                    ls -t "$BACKUP_DIR"/uploads-*.tar.gz 2>/dev/null | tail -n +31 | xargs rm -f 2>/dev/null || true
+                else
+                    echo -e "${RED}Error: Upload volume not found${NC}"
+                    send_alert "Backup Failed" "Uploads backup failed - upload volume not found at $(date)."
+                    exit 1
+                fi
+                ;;
+
             full)
                 echo -e "${YELLOW}Creating full backup (database + uploads)...${NC}"
                 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-                
+                BACKUP_FAILED=false
+
                 # Backup database
+                # -h localhost forces TCP connection (avoids peer auth issues with kartoza/postgis)
+                # PGPASSWORD uses the password from the container environment
                 echo "Backing up database..."
-                $DC_CMD exec -T postgres pg_dump -U timetiles_user --clean --if-exists timetiles | gzip > "$BACKUP_DIR/db-$TIMESTAMP.sql.gz"
-                
+                if ! $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASS pg_dump -h localhost -U $POSTGRES_USER --clean --if-exists $POSTGRES_DBNAME' | gzip > "$BACKUP_DIR/db-$TIMESTAMP.sql.gz"; then
+                    echo -e "${RED}Database backup FAILED${NC}"
+                    BACKUP_FAILED=true
+                fi
+
                 # Backup uploads
                 echo "Backing up uploads..."
                 UPLOAD_VOL=$(docker volume ls -q | grep -E 'timetiles.*uploads' | head -1)
                 if [ -n "$UPLOAD_VOL" ]; then
-                    docker run --rm -v "$UPLOAD_VOL:/data" -v "$BACKUP_DIR:/backup" alpine \
-                        tar czf "/backup/uploads-$TIMESTAMP.tar.gz" -C /data .
+                    if ! docker run --rm -v "$UPLOAD_VOL:/data" -v "$BACKUP_DIR:/backup" alpine \
+                        tar czf "/backup/uploads-$TIMESTAMP.tar.gz" -C /data .; then
+                        echo -e "${RED}Uploads backup FAILED${NC}"
+                        BACKUP_FAILED=true
+                    fi
                 fi
-                
+
+                if [ "$BACKUP_FAILED" = true ]; then
+                    send_alert "Backup Failed" "Full backup failed at $(date). Please check the backup logs."
+                    exit 1
+                fi
+
                 echo -e "${GREEN}Full backup completed:${NC}"
                 echo "  Database: $BACKUP_DIR/db-$TIMESTAMP.sql.gz"
                 echo "  Uploads: $BACKUP_DIR/uploads-$TIMESTAMP.tar.gz"
@@ -229,19 +312,113 @@ EOF
                 ;;
                 
             clean)
-                echo -e "${YELLOW}Cleaning old backups (keeping last 30 days)...${NC}"
-                find "$BACKUP_DIR" -name "db-*.sql.gz" -mtime +30 -delete
-                find "$BACKUP_DIR" -name "uploads-*.tar.gz" -mtime +30 -delete
+                # Clean backups older than N days (default: 30)
+                CLEAN_DAYS="${3:-30}"
+                echo -e "${YELLOW}Cleaning old backups (keeping last $CLEAN_DAYS days)...${NC}"
+                DB_DELETED=$(find "$BACKUP_DIR" -name "db-*.sql.gz" -mtime +$CLEAN_DAYS -delete -print | wc -l)
+                UPLOADS_DELETED=$(find "$BACKUP_DIR" -name "uploads-*.tar.gz" -mtime +$CLEAN_DAYS -delete -print | wc -l)
+                echo "  Removed $DB_DELETED database backup(s)"
+                echo "  Removed $UPLOADS_DELETED uploads backup(s)"
                 echo -e "${GREEN}Cleanup complete${NC}"
                 ;;
-                
+
+            prune)
+                # Keep only N most recent backups (default: 5)
+                # Verifies newest backup is valid before deleting older ones
+                KEEP_COUNT="${3:-5}"
+                echo -e "${YELLOW}Pruning backups (keeping $KEEP_COUNT most recent)...${NC}"
+
+                # Verify newest db backup
+                NEWEST_DB=$(ls -t "$BACKUP_DIR"/db-*.sql.gz 2>/dev/null | head -1)
+                if [ -n "$NEWEST_DB" ]; then
+                    echo -n "Verifying newest database backup... "
+                    if gunzip -t "$NEWEST_DB" 2>/dev/null; then
+                        echo -e "${GREEN}valid${NC}"
+                        # Delete all but newest N
+                        DELETED=$(ls -t "$BACKUP_DIR"/db-*.sql.gz 2>/dev/null | tail -n +$((KEEP_COUNT + 1)) | wc -l)
+                        ls -t "$BACKUP_DIR"/db-*.sql.gz 2>/dev/null | tail -n +$((KEEP_COUNT + 1)) | xargs rm -f 2>/dev/null || true
+                        echo "  Removed $DELETED old database backup(s)"
+                    else
+                        echo -e "${RED}CORRUPTED - skipping database backup pruning${NC}"
+                    fi
+                else
+                    echo "  No database backups found"
+                fi
+
+                # Verify newest uploads backup
+                NEWEST_UPLOADS=$(ls -t "$BACKUP_DIR"/uploads-*.tar.gz 2>/dev/null | head -1)
+                if [ -n "$NEWEST_UPLOADS" ]; then
+                    echo -n "Verifying newest uploads backup... "
+                    if tar tzf "$NEWEST_UPLOADS" &>/dev/null; then
+                        echo -e "${GREEN}valid${NC}"
+                        # Delete all but newest N
+                        DELETED=$(ls -t "$BACKUP_DIR"/uploads-*.tar.gz 2>/dev/null | tail -n +$((KEEP_COUNT + 1)) | wc -l)
+                        ls -t "$BACKUP_DIR"/uploads-*.tar.gz 2>/dev/null | tail -n +$((KEEP_COUNT + 1)) | xargs rm -f 2>/dev/null || true
+                        echo "  Removed $DELETED old uploads backup(s)"
+                    else
+                        echo -e "${RED}CORRUPTED - skipping uploads backup pruning${NC}"
+                    fi
+                else
+                    echo "  No uploads backups found"
+                fi
+
+                echo -e "${GREEN}Prune complete${NC}"
+                ;;
+
+            verify)
+                echo -e "${YELLOW}Verifying all backups...${NC}"
+                echo ""
+                echo "Database backups:"
+                for f in "$BACKUP_DIR"/db-*.sql.gz; do
+                    [ -f "$f" ] || continue
+                    echo -n "  $(basename "$f"): "
+
+                    # Check 1: gzip integrity
+                    if ! gunzip -t "$f" 2>/dev/null; then
+                        echo -e "${RED}CORRUPTED (gzip invalid)${NC}"
+                        continue
+                    fi
+
+                    # Check 2: pg_dump header present
+                    if ! gunzip -c "$f" 2>/dev/null | head -20 | grep -q "PostgreSQL database dump"; then
+                        echo -e "${RED}INVALID (missing pg_dump header)${NC}"
+                        continue
+                    fi
+
+                    # Check 3: pg_dump completion marker (dump wasn't truncated)
+                    if ! gunzip -c "$f" 2>/dev/null | tail -20 | grep -q "PostgreSQL database dump complete"; then
+                        echo -e "${YELLOW}WARNING (possibly truncated - missing completion marker)${NC}"
+                        continue
+                    fi
+
+                    # Check 4: count tables for info
+                    TABLE_COUNT=$(gunzip -c "$f" 2>/dev/null | grep -c "^CREATE TABLE" || echo 0)
+                    echo -e "${GREEN}valid${NC} ($TABLE_COUNT tables)"
+                done
+                echo ""
+                echo "Upload backups:"
+                for f in "$BACKUP_DIR"/uploads-*.tar.gz; do
+                    [ -f "$f" ] || continue
+                    echo -n "  $(basename "$f"): "
+                    if tar tzf "$f" &>/dev/null; then
+                        FILE_COUNT=$(tar tzf "$f" 2>/dev/null | wc -l)
+                        echo -e "${GREEN}valid${NC} ($FILE_COUNT files)"
+                    else
+                        echo -e "${RED}CORRUPTED${NC}"
+                    fi
+                done
+                ;;
+
             *)
-                echo "Usage: $0 backup [full|db|auto|list|clean]"
-                echo "  full  - Backup database and uploads (default)"
-                echo "  db    - Backup database only"
-                echo "  auto  - Setup automatic daily backups"
-                echo "  list  - List available backups"
-                echo "  clean - Remove backups older than 30 days"
+                echo "Usage: $0 backup [full|db|uploads|auto|list|prune|verify|clean]"
+                echo "  full    - Backup database and uploads (default)"
+                echo "  db      - Backup database only"
+                echo "  uploads - Backup uploads only"
+                echo "  auto    - Setup automatic daily backups"
+                echo "  list    - List available backups"
+                echo "  prune N - Keep only N most recent backups (default: 5), verify before deleting"
+                echo "  verify  - Check integrity of all backup files"
+                echo "  clean N - Remove backups older than N days (default: 30)"
                 exit 1
                 ;;
         esac
@@ -310,8 +487,10 @@ EOF
         fi
 
         # Restore database
+        # -h localhost forces TCP connection (avoids peer auth issues with kartoza/postgis)
+        # PGPASSWORD uses the password from the container environment
         echo -e "${YELLOW}Restoring database from $DB_BACKUP...${NC}"
-        gunzip < "$DB_BACKUP" | $DC_CMD exec -T postgres psql -U timetiles_user timetiles
+        gunzip < "$DB_BACKUP" | $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASS psql -h localhost -U $POSTGRES_USER $POSTGRES_DBNAME'
 
         # Restore uploads if provided
         if [ -n "$UPLOADS_BACKUP" ]; then

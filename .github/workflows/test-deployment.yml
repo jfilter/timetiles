@@ -386,6 +386,87 @@ jobs:
           fi
           echo "Import file restored correctly"
 
+          echo "=== Phase 7: Test backup verification ==="
+          ./deploy.sh backup verify
+
+          # Verify it shows valid backups with table counts
+          VERIFY_OUTPUT=$(./deploy.sh backup verify 2>&1)
+          if ! echo "$VERIFY_OUTPUT" | grep -q "valid"; then
+            echo "ERROR: Verify command didn't report valid backups"
+            echo "$VERIFY_OUTPUT"
+            exit 1
+          fi
+          echo "Backup verification passed"
+
+          echo "=== Phase 8: Test corrupted file detection ==="
+
+          # Create corrupted test files
+          head -c 100 backups/db-*.sql.gz 2>/dev/null | head -c 100 > backups/db-test-corrupted.sql.gz
+          echo 'not a dump' | gzip > backups/db-test-invalid.sql.gz
+
+          # Run verify and check it detects corruption
+          VERIFY_OUTPUT=$(./deploy.sh backup verify 2>&1)
+          if ! echo "$VERIFY_OUTPUT" | grep -q "CORRUPTED"; then
+            echo "ERROR: Failed to detect corrupted gzip file"
+            echo "$VERIFY_OUTPUT"
+            exit 1
+          fi
+          if ! echo "$VERIFY_OUTPUT" | grep -q "INVALID"; then
+            echo "ERROR: Failed to detect invalid pg_dump content"
+            echo "$VERIFY_OUTPUT"
+            exit 1
+          fi
+          echo "Corrupted file detection working correctly"
+
+          # Clean up test files
+          rm -f backups/db-test-*.sql.gz
+
+          echo "=== Phase 9: Test backup clean (time-based deletion) ==="
+
+          # Create old backup files with 32-day old timestamps
+          echo 'old' | gzip > backups/db-old-test.sql.gz
+          touch -d '32 days ago' backups/db-old-test.sql.gz
+          echo 'old' | gzip > backups/uploads-old-test.tar.gz
+          touch -d '32 days ago' backups/uploads-old-test.tar.gz
+
+          # Count before clean
+          OLD_COUNT_BEFORE=$(ls -1 backups/*-old-test.* 2>/dev/null | wc -l)
+          echo "Old test files before clean: $OLD_COUNT_BEFORE"
+
+          # Run clean with default 30 days
+          ./deploy.sh backup clean
+
+          # Verify old files were deleted
+          OLD_COUNT_AFTER=$(ls -1 backups/*-old-test.* 2>/dev/null | wc -l)
+          if [ "$OLD_COUNT_AFTER" -ne 0 ]; then
+            echo "ERROR: Clean didn't delete old files (expected 0, got $OLD_COUNT_AFTER)"
+            exit 1
+          fi
+          echo "Backup clean deleted old files correctly"
+
+          echo "=== Phase 10: Test backup pruning ==="
+
+          # Create extra backups to have enough to prune
+          ./deploy.sh backup db
+          ./deploy.sh backup db
+
+          # Count before prune
+          DB_COUNT_BEFORE=$(ls -1 backups/db-*.sql.gz 2>/dev/null | wc -l)
+          echo "Database backups before prune: $DB_COUNT_BEFORE"
+
+          # Prune to keep only 2
+          ./deploy.sh backup prune 2
+
+          # Count after prune
+          DB_COUNT_AFTER=$(ls -1 backups/db-*.sql.gz 2>/dev/null | wc -l)
+          echo "Database backups after prune: $DB_COUNT_AFTER"
+
+          if [ "$DB_COUNT_AFTER" -gt 2 ]; then
+            echo "ERROR: Prune didn't reduce backup count (expected <=2, got $DB_COUNT_AFTER)"
+            exit 1
+          fi
+          echo "Backup pruning works correctly"
+
           echo "=== All backup and restore tests passed! ==="
 
           # Cleanup
