@@ -23,6 +23,19 @@ export {
 } from "./components/card";
 export { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./components/collapsible";
 export {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  dialogContentVariants,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+} from "./components/dialog";
+export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
