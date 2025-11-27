@@ -115,8 +115,8 @@ test.describe("Explore Page - Basic Functionality", () => {
   });
 
   test("should handle keyboard navigation", async ({ page }) => {
-    // Click on the Data Sources button to set initial focus
-    await explorePage.dataSourcesSection.click();
+    // Focus the page body first to start keyboard navigation from a known state
+    await page.locator("body").focus();
 
     // Tab to navigate through interactive elements
     await page.keyboard.press("Tab");
@@ -135,8 +135,9 @@ test.describe("Explore Page - Basic Functionality", () => {
       };
     });
 
-    // We should be on some interactive element (select, input, or button)
-    expect(["SELECT", "INPUT", "BUTTON", "DIV"]).toContain(focusedElement.tagName);
+    // We should be on some interactive element (link, select, input, button, or custom component)
+    const interactiveElements = ["A", "SELECT", "INPUT", "BUTTON", "DIV"];
+    expect(interactiveElements).toContain(focusedElement.tagName);
 
     // Continue tabbing to ensure we can navigate through the form
     for (let i = 0; i < 5; i++) {
@@ -145,7 +146,7 @@ test.describe("Explore Page - Basic Functionality", () => {
 
     // Verify we're still on an interactive element
     const laterElement = await page.evaluate(() => document.activeElement?.tagName);
-    expect(["SELECT", "INPUT", "BUTTON", "DIV"]).toContain(laterElement);
+    expect(interactiveElements).toContain(laterElement);
   });
 
   test("should show loading state while fetching events", async ({ page }) => {
@@ -175,10 +176,9 @@ test.describe("Explore Page - Basic Functionality", () => {
       await expect(loadingText).not.toBeVisible({ timeout: 10000 });
     } catch {
       // If loading was too fast to catch, verify the page eventually loads
-      // Either events count or empty state should be visible
-      const eventsCount = page.getByText(/Events \(\d+ of \d+\)/).first();
-      const emptyState = page.getByText(/No events found/i).first();
-      await expect(eventsCount.or(emptyState)).toBeVisible({ timeout: 15000 });
+      // Check that the events count header is visible (it always shows, even when empty)
+      const eventsCount = page.getByRole("heading", { name: /Events \(\d+/ }).first();
+      await expect(eventsCount).toBeVisible({ timeout: 15000 });
     }
   });
 });

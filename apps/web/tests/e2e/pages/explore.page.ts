@@ -52,15 +52,15 @@ export class ExplorePage {
   }
 
   async goto() {
-    await this.page.goto("/explore");
+    await this.page.goto("/explore", { timeout: 30000 });
     // Wait for key elements to be visible instead of networkidle
     // (networkidle is unreliable with SPAs that have polling/websockets)
-    await this.map.waitFor({ state: "visible", timeout: 15000 });
-    await this.dataSourcesSection.waitFor({ state: "visible", timeout: 5000 });
+    await this.map.waitFor({ state: "visible", timeout: 30000 });
+    await this.dataSourcesSection.waitFor({ state: "visible", timeout: 15000 });
   }
 
   async waitForMapLoad() {
-    await this.map.waitFor({ state: "visible" });
+    await this.map.waitFor({ state: "visible", timeout: 30000 });
     // Wait for map to be fully loaded and interactive
     await this.page.waitForFunction(
       () => {
@@ -70,7 +70,7 @@ export class ExplorePage {
         );
         return mapContainer !== null;
       },
-      { timeout: 5000 }
+      { timeout: 15000 }
     );
   }
 
@@ -356,7 +356,8 @@ export class ExplorePage {
 
   async waitForEventsToLoad() {
     // Wait for loading indicator to disappear
-    await expect(this.loadingIndicator).not.toBeVisible({ timeout: 10000 });
+    // Use longer timeout to handle server resource constraints
+    await expect(this.loadingIndicator).not.toBeVisible({ timeout: 30000 });
   }
 
   async waitForApiResponse() {

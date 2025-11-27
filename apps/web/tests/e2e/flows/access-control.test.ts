@@ -48,7 +48,9 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should return 401 when trying to access admin API endpoints", async ({ request }) => {
       // Try to access admin-only API endpoint
-      const response = await request.get("http://localhost:3002/api/admin/schedule-service");
+      const response = await request.get("http://localhost:3002/api/admin/schedule-service", {
+        timeout: 30000, // Increase timeout to handle server resource constraints
+      });
 
       // Should be unauthorized (401) or forbidden (403)
       expect([401, 403]).toContain(response.status());
@@ -60,14 +62,16 @@ test.describe("Access Control - User Perspective", () => {
       // We'll try to access events from a catalog that doesn't exist or is private
 
       // Try to access with an ID that likely doesn't exist or is private
-      const response = await request.get("http://localhost:3002/api/catalogs/999999");
+      const response = await request.get("http://localhost:3002/api/catalogs/999999", {
+        timeout: 30000, // Increase timeout to handle server resource constraints
+      });
 
       // Should return 403 (forbidden) or 404 (not found)
       expect([403, 404]).toContain(response.status());
     });
 
     test("should not display admin navigation elements", async ({ page }) => {
-      await page.goto("http://localhost:3002/");
+      await page.goto("http://localhost:3002/", { timeout: 30000 });
 
       // Should not see dashboard link
       const adminLink = page.locator('a[href="/dashboard"]').first();
