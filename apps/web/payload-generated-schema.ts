@@ -28,6 +28,13 @@ export const enum__catalogs_v_version_status = db_schema.enum("enum__catalogs_v_
   "draft",
   "published",
 ]);
+export const enum_data_exports_status = db_schema.enum("enum_data_exports_status", [
+  "pending",
+  "processing",
+  "ready",
+  "failed",
+  "expired",
+]);
 export const enum_transforms_from_type = db_schema.enum("enum_transforms_from_type", [
   "string",
   "number",
@@ -120,6 +127,11 @@ export const enum_dataset_schemas_status = db_schema.enum("enum_dataset_schemas_
 export const enum__dataset_schemas_v_version_status = db_schema.enum("enum__dataset_schemas_v_version_status", [
   "draft",
   "published",
+]);
+export const enum_deletion_audit_log_deletion_type = db_schema.enum("enum_deletion_audit_log_deletion_type", [
+  "self",
+  "admin",
+  "scheduled",
 ]);
 export const enum_import_files_status = db_schema.enum("enum_import_files_status", [
   "pending",
@@ -272,6 +284,11 @@ export const enum__events_v_version_status = db_schema.enum("enum__events_v_vers
 export const enum_users_role = db_schema.enum("enum_users_role", ["user", "admin", "editor"]);
 export const enum_users_registration_source = db_schema.enum("enum_users_registration_source", ["admin", "self"]);
 export const enum_users_trust_level = db_schema.enum("enum_users_trust_level", ["0", "1", "2", "3", "4", "5"]);
+export const enum_users_deletion_status = db_schema.enum("enum_users_deletion_status", [
+  "active",
+  "pending_deletion",
+  "deleted",
+]);
 export const enum_media_status = db_schema.enum("enum_media_status", ["draft", "published"]);
 export const enum__media_v_version_status = db_schema.enum("enum__media_v_version_status", ["draft", "published"]);
 export const enum_location_cache_status = db_schema.enum("enum_location_cache_status", ["draft", "published"]);
@@ -583,6 +600,9 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum("enum_payload_jobs
   "process-pending-retries",
   "quota-reset",
   "cache-cleanup",
+  "schema-maintenance",
+  "data-export",
+  "data-export-cleanup",
 ]);
 export const enum_payload_jobs_log_state = db_schema.enum("enum_payload_jobs_log_state", ["failed", "succeeded"]);
 export const enum_payload_jobs_task_slug = db_schema.enum("enum_payload_jobs_task_slug", [
@@ -601,6 +621,9 @@ export const enum_payload_jobs_task_slug = db_schema.enum("enum_payload_jobs_tas
   "process-pending-retries",
   "quota-reset",
   "cache-cleanup",
+  "schema-maintenance",
+  "data-export",
+  "data-export-cleanup",
 ]);
 export const enum_main_menu_status = db_schema.enum("enum_main_menu_status", ["draft", "published"]);
 export const enum__main_menu_v_version_status = db_schema.enum("enum__main_menu_v_version_status", [
@@ -706,6 +729,35 @@ export const _catalogs_v = db_schema.table(
   })
 );
 
+export const data_exports = db_schema.table(
+  "data_exports",
+  {
+    id: serial("id").primaryKey(),
+    user: integer("user_id")
+      .notNull()
+      .references(() => users.id, {
+        onDelete: "set null",
+      }),
+    status: enum_data_exports_status("status").notNull().default("pending"),
+    requestedAt: timestamp("requested_at", { mode: "string", withTimezone: true, precision: 3 }).notNull(),
+    completedAt: timestamp("completed_at", { mode: "string", withTimezone: true, precision: 3 }),
+    expiresAt: timestamp("expires_at", { mode: "string", withTimezone: true, precision: 3 }),
+    filePath: varchar("file_path"),
+    fileSize: numeric("file_size"),
+    downloadCount: numeric("download_count").default("0"),
+    summary: jsonb("summary"),
+    errorLog: varchar("error_log"),
+    updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+  },
+  (columns) => ({
+    data_exports_user_idx: index("data_exports_user_idx").on(columns.user),
+    data_exports_expires_at_idx: index("data_exports_expires_at_idx").on(columns.expiresAt),
+    data_exports_updated_at_idx: index("data_exports_updated_at_idx").on(columns.updatedAt),
+    data_exports_created_at_idx: index("data_exports_created_at_idx").on(columns.createdAt),
+  })
+);
+
 export const datasets_id_strategy_computed_id_fields = db_schema.table(
   "datasets_id_strategy_computed_id_fields",
   {
@@ -788,8 +840,13 @@ export const datasets = db_schema.table(
     catalog: integer("catalog_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
+    catalogCreatorId: numeric("catalog_creator_id"),
+    catalogIsPublic: boolean("catalog_is_public").default(false),
     language: varchar("language"),
     isPublic: boolean("is_public").default(false),
+    createdBy: integer("created_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     metadata: jsonb("metadata"),
     idStrategy_type: enum_datasets_id_strategy_type("id_strategy_type").default("auto"),
     idStrategy_externalIdPath: varchar("id_strategy_external_id_path"),
@@ -829,6 +886,9 @@ export const datasets = db_schema.table(
   (columns) => ({
     datasets_slug_idx: uniqueIndex("datasets_slug_idx").on(columns.slug),
     datasets_catalog_idx: index("datasets_catalog_idx").on(columns.catalog),
+    datasets_catalog_creator_id_idx: index("datasets_catalog_creator_id_idx").on(columns.catalogCreatorId),
+    datasets_catalog_is_public_idx: index("datasets_catalog_is_public_idx").on(columns.catalogIsPublic),
+    datasets_created_by_idx: index("datasets_created_by_idx").on(columns.createdBy),
     datasets_updated_at_idx: index("datasets_updated_at_idx").on(columns.updatedAt),
     datasets_created_at_idx: index("datasets_created_at_idx").on(columns.createdAt),
     datasets_deleted_at_idx: index("datasets_deleted_at_idx").on(columns.deletedAt),
@@ -926,8 +986,13 @@ export const _datasets_v = db_schema.table(
     version_catalog: integer("version_catalog_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
+    version_catalogCreatorId: numeric("version_catalog_creator_id"),
+    version_catalogIsPublic: boolean("version_catalog_is_public").default(false),
     version_language: varchar("version_language"),
     version_isPublic: boolean("version_is_public").default(false),
+    version_createdBy: integer("version_created_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     version_metadata: jsonb("version_metadata"),
     version_idStrategy_type: enum__datasets_v_version_id_strategy_type("version_id_strategy_type").default("auto"),
     version_idStrategy_externalIdPath: varchar("version_id_strategy_external_id_path"),
@@ -978,6 +1043,15 @@ export const _datasets_v = db_schema.table(
     _datasets_v_version_version_slug_idx: index("_datasets_v_version_version_slug_idx").on(columns.version_slug),
     _datasets_v_version_version_catalog_idx: index("_datasets_v_version_version_catalog_idx").on(
       columns.version_catalog
+    ),
+    _datasets_v_version_version_catalog_creator_id_idx: index("_datasets_v_version_version_catalog_creator_id_idx").on(
+      columns.version_catalogCreatorId
+    ),
+    _datasets_v_version_version_catalog_is_public_idx: index("_datasets_v_version_version_catalog_is_public_idx").on(
+      columns.version_catalogIsPublic
+    ),
+    _datasets_v_version_version_created_by_idx: index("_datasets_v_version_version_created_by_idx").on(
+      columns.version_createdBy
     ),
     _datasets_v_version_version_updated_at_idx: index("_datasets_v_version_version_updated_at_idx").on(
       columns.version_updatedAt
@@ -1113,6 +1187,7 @@ export const dataset_schemas = db_schema.table(
     displayName: varchar("display_name"),
     schema: jsonb("schema"),
     fieldMetadata: jsonb("field_metadata"),
+    eventCountAtCreation: numeric("event_count_at_creation"),
     schemaSummary_totalFields: numeric("schema_summary_total_fields"),
     approvalRequired: boolean("approval_required"),
     approvedBy: integer("approved_by_id").references(() => users.id, {
@@ -1264,6 +1339,7 @@ export const _dataset_schemas_v = db_schema.table(
     version_displayName: varchar("version_display_name"),
     version_schema: jsonb("version_schema"),
     version_fieldMetadata: jsonb("version_field_metadata"),
+    version_eventCountAtCreation: numeric("version_event_count_at_creation"),
     version_schemaSummary_totalFields: numeric("version_schema_summary_total_fields"),
     version_approvalRequired: boolean("version_approval_required"),
     version_approvedBy: integer("version_approved_by_id").references(() => users.id, {
@@ -1308,6 +1384,34 @@ export const _dataset_schemas_v = db_schema.table(
     _dataset_schemas_v_updated_at_idx: index("_dataset_schemas_v_updated_at_idx").on(columns.updatedAt),
     _dataset_schemas_v_latest_idx: index("_dataset_schemas_v_latest_idx").on(columns.latest),
     _dataset_schemas_v_autosave_idx: index("_dataset_schemas_v_autosave_idx").on(columns.autosave),
+  })
+);
+
+export const deletion_audit_log = db_schema.table(
+  "deletion_audit_log",
+  {
+    id: serial("id").primaryKey(),
+    deletedUserId: numeric("deleted_user_id").notNull(),
+    deletedUserEmailHash: varchar("deleted_user_email_hash").notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }).notNull(),
+    deletionRequestedAt: timestamp("deletion_requested_at", { mode: "string", withTimezone: true, precision: 3 }),
+    deletedBy: integer("deleted_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    deletionType: enum_deletion_audit_log_deletion_type("deletion_type").notNull(),
+    reason: varchar("reason"),
+    dataTransferred: jsonb("data_transferred"),
+    dataDeleted: jsonb("data_deleted"),
+    ipAddressHash: varchar("ip_address_hash"),
+    updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
+  },
+  (columns) => ({
+    deletion_audit_log_deleted_user_id_idx: index("deletion_audit_log_deleted_user_id_idx").on(columns.deletedUserId),
+    deletion_audit_log_deleted_at_idx: index("deletion_audit_log_deleted_at_idx").on(columns.deletedAt),
+    deletion_audit_log_deleted_by_idx: index("deletion_audit_log_deleted_by_idx").on(columns.deletedBy),
+    deletion_audit_log_updated_at_idx: index("deletion_audit_log_updated_at_idx").on(columns.updatedAt),
+    deletion_audit_log_created_at_idx: index("deletion_audit_log_created_at_idx").on(columns.createdAt),
   })
 );
 
@@ -1981,6 +2085,8 @@ export const events = db_schema.table(
     dataset: integer("dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
+    datasetIsPublic: boolean("dataset_is_public").default(false),
+    catalogOwnerId: numeric("catalog_owner_id"),
     importJob: integer("import_job_id").references(() => import_jobs.id, {
       onDelete: "set null",
     }),
@@ -2017,6 +2123,8 @@ export const events = db_schema.table(
   },
   (columns) => ({
     events_dataset_idx: index("events_dataset_idx").on(columns.dataset),
+    events_dataset_is_public_idx: index("events_dataset_is_public_idx").on(columns.datasetIsPublic),
+    events_catalog_owner_id_idx: index("events_catalog_owner_id_idx").on(columns.catalogOwnerId),
     events_import_job_idx: index("events_import_job_idx").on(columns.importJob),
     events_unique_id_idx: uniqueIndex("events_unique_id_idx").on(columns.uniqueId),
     events_source_id_idx: index("events_source_id_idx").on(columns.sourceId),
@@ -2033,6 +2141,8 @@ export const events = db_schema.table(
     dataset_contentHash_idx: index("dataset_contentHash_idx").on(columns.dataset, columns.contentHash),
     importJob_importBatch_idx: index("importJob_importBatch_idx").on(columns.importJob, columns.importBatch),
     validationStatus_idx: index("validationStatus_idx").on(columns.validationStatus),
+    location_longitude_idx: index("location_longitude_idx").on(columns.location_longitude),
+    location_latitude_idx: index("location_latitude_idx").on(columns.location_latitude),
   })
 );
 
@@ -2046,6 +2156,8 @@ export const _events_v = db_schema.table(
     version_dataset: integer("version_dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
+    version_datasetIsPublic: boolean("version_dataset_is_public").default(false),
+    version_catalogOwnerId: numeric("version_catalog_owner_id"),
     version_importJob: integer("version_import_job_id").references(() => import_jobs.id, {
       onDelete: "set null",
     }),
@@ -2097,6 +2209,12 @@ export const _events_v = db_schema.table(
   (columns) => ({
     _events_v_parent_idx: index("_events_v_parent_idx").on(columns.parent),
     _events_v_version_version_dataset_idx: index("_events_v_version_version_dataset_idx").on(columns.version_dataset),
+    _events_v_version_version_dataset_is_public_idx: index("_events_v_version_version_dataset_is_public_idx").on(
+      columns.version_datasetIsPublic
+    ),
+    _events_v_version_version_catalog_owner_id_idx: index("_events_v_version_version_catalog_owner_id_idx").on(
+      columns.version_catalogOwnerId
+    ),
     _events_v_version_version_import_job_idx: index("_events_v_version_version_import_job_idx").on(
       columns.version_importJob
     ),
@@ -2144,6 +2262,8 @@ export const _events_v = db_schema.table(
       columns.version_importBatch
     ),
     version_validationStatus_idx: index("version_validationStatus_idx").on(columns.version_validationStatus),
+    version_location_longitude_idx: index("version_location_longitude_idx").on(columns.version_location_longitude),
+    version_location_latitude_idx: index("version_location_latitude_idx").on(columns.version_location_latitude),
   })
 );
 
@@ -2187,6 +2307,9 @@ export const users = db_schema.table(
     quotas_maxFileSizeMB: numeric("quotas_max_file_size_m_b"),
     quotas_maxCatalogsPerUser: numeric("quotas_max_catalogs_per_user"),
     customQuotas: jsonb("custom_quotas"),
+    deletionStatus: enum_users_deletion_status("deletion_status").default("active"),
+    deletionRequestedAt: timestamp("deletion_requested_at", { mode: "string", withTimezone: true, precision: 3 }),
+    deletionScheduledAt: timestamp("deletion_scheduled_at", { mode: "string", withTimezone: true, precision: 3 }),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
@@ -3522,8 +3645,10 @@ export const payload_locked_documents_rels = db_schema.table(
     parent: integer("parent_id").notNull(),
     path: varchar("path").notNull(),
     catalogsID: integer("catalogs_id"),
+    "data-exportsID": integer("data_exports_id"),
     datasetsID: integer("datasets_id"),
     "dataset-schemasID": integer("dataset_schemas_id"),
+    "deletion-audit-logID": integer("deletion_audit_log_id"),
     "import-filesID": integer("import_files_id"),
     "import-jobsID": integer("import_jobs_id"),
     "scheduled-importsID": integer("scheduled_imports_id"),
@@ -3543,12 +3668,18 @@ export const payload_locked_documents_rels = db_schema.table(
     payload_locked_documents_rels_catalogs_id_idx: index("payload_locked_documents_rels_catalogs_id_idx").on(
       columns.catalogsID
     ),
+    payload_locked_documents_rels_data_exports_id_idx: index("payload_locked_documents_rels_data_exports_id_idx").on(
+      columns["data-exportsID"]
+    ),
     payload_locked_documents_rels_datasets_id_idx: index("payload_locked_documents_rels_datasets_id_idx").on(
       columns.datasetsID
     ),
     payload_locked_documents_rels_dataset_schemas_id_idx: index(
       "payload_locked_documents_rels_dataset_schemas_id_idx"
     ).on(columns["dataset-schemasID"]),
+    payload_locked_documents_rels_deletion_audit_log_id_idx: index(
+      "payload_locked_documents_rels_deletion_audit_log_id_idx"
+    ).on(columns["deletion-audit-logID"]),
     payload_locked_documents_rels_import_files_id_idx: index("payload_locked_documents_rels_import_files_id_idx").on(
       columns["import-filesID"]
     ),
@@ -3586,6 +3717,11 @@ export const payload_locked_documents_rels = db_schema.table(
       foreignColumns: [catalogs.id],
       name: "payload_locked_documents_rels_catalogs_fk",
     }).onDelete("cascade"),
+    "data-exportsIdFk": foreignKey({
+      columns: [columns["data-exportsID"]],
+      foreignColumns: [data_exports.id],
+      name: "payload_locked_documents_rels_data_exports_fk",
+    }).onDelete("cascade"),
     datasetsIdFk: foreignKey({
       columns: [columns["datasetsID"]],
       foreignColumns: [datasets.id],
@@ -3595,6 +3731,11 @@ export const payload_locked_documents_rels = db_schema.table(
       columns: [columns["dataset-schemasID"]],
       foreignColumns: [dataset_schemas.id],
       name: "payload_locked_documents_rels_dataset_schemas_fk",
+    }).onDelete("cascade"),
+    "deletion-audit-logIdFk": foreignKey({
+      columns: [columns["deletion-audit-logID"]],
+      foreignColumns: [deletion_audit_log.id],
+      name: "payload_locked_documents_rels_deletion_audit_log_fk",
     }).onDelete("cascade"),
     "import-filesIdFk": foreignKey({
       columns: [columns["import-filesID"]],
@@ -3958,6 +4099,37 @@ export const _footer_v = db_schema.table(
   })
 );
 
+export const branding = db_schema.table(
+  "branding",
+  {
+    id: serial("id").primaryKey(),
+    siteName: varchar("site_name").default("TimeTiles"),
+    siteDescription: varchar("site_description").default(
+      "Making spatial and temporal data analysis accessible to everyone."
+    ),
+    logoLight: integer("logo_light_id").references(() => media.id, {
+      onDelete: "set null",
+    }),
+    logoDark: integer("logo_dark_id").references(() => media.id, {
+      onDelete: "set null",
+    }),
+    faviconSourceLight: integer("favicon_source_light_id").references(() => media.id, {
+      onDelete: "set null",
+    }),
+    faviconSourceDark: integer("favicon_source_dark_id").references(() => media.id, {
+      onDelete: "set null",
+    }),
+    updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }),
+    createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
+  },
+  (columns) => ({
+    branding_logo_light_idx: index("branding_logo_light_idx").on(columns.logoLight),
+    branding_logo_dark_idx: index("branding_logo_dark_idx").on(columns.logoDark),
+    branding_favicon_source_light_idx: index("branding_favicon_source_light_idx").on(columns.faviconSourceLight),
+    branding_favicon_source_dark_idx: index("branding_favicon_source_dark_idx").on(columns.faviconSourceDark),
+  })
+);
+
 export const settings_geocoding_provider_selection_required_tags = db_schema.table(
   "settings_geocoding_provider_selection_required_tags",
   {
@@ -3988,6 +4160,14 @@ export const settings = db_schema.table("settings", {
   ).default("priority"),
   geocoding_caching_enabled: boolean("geocoding_caching_enabled").default(true),
   geocoding_caching_ttlDays: numeric("geocoding_caching_ttl_days").default("30"),
+  featureFlags_allowPrivateImports: boolean("feature_flags_allow_private_imports").default(true),
+  featureFlags_enableScheduledImports: boolean("feature_flags_enable_scheduled_imports").default(true),
+  featureFlags_enableRegistration: boolean("feature_flags_enable_registration").default(true),
+  featureFlags_enableEventCreation: boolean("feature_flags_enable_event_creation").default(true),
+  featureFlags_enableDatasetCreation: boolean("feature_flags_enable_dataset_creation").default(true),
+  featureFlags_enableImportCreation: boolean("feature_flags_enable_import_creation").default(true),
+  featureFlags_enableScheduledJobExecution: boolean("feature_flags_enable_scheduled_job_execution").default(true),
+  featureFlags_enableUrlFetchCaching: boolean("feature_flags_enable_url_fetch_caching").default(true),
   updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }),
   createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }),
 });
@@ -4016,6 +4196,13 @@ export const relations__catalogs_v = relations(_catalogs_v, ({ one }) => ({
     fields: [_catalogs_v.version_createdBy],
     references: [users.id],
     relationName: "version_createdBy",
+  }),
+}));
+export const relations_data_exports = relations(data_exports, ({ one }) => ({
+  user: one(users, {
+    fields: [data_exports.user],
+    references: [users.id],
+    relationName: "user",
   }),
 }));
 export const relations_datasets_id_strategy_computed_id_fields = relations(
@@ -4052,6 +4239,11 @@ export const relations_datasets = relations(datasets, ({ one, many }) => ({
     fields: [datasets.catalog],
     references: [catalogs.id],
     relationName: "catalog",
+  }),
+  createdBy: one(users, {
+    fields: [datasets.createdBy],
+    references: [users.id],
+    relationName: "createdBy",
   }),
   idStrategy_computedIdFields: many(datasets_id_strategy_computed_id_fields, {
     relationName: "idStrategy_computedIdFields",
@@ -4105,6 +4297,11 @@ export const relations__datasets_v = relations(_datasets_v, ({ one, many }) => (
     fields: [_datasets_v.version_catalog],
     references: [catalogs.id],
     relationName: "version_catalog",
+  }),
+  version_createdBy: one(users, {
+    fields: [_datasets_v.version_createdBy],
+    references: [users.id],
+    relationName: "version_createdBy",
   }),
   version_idStrategy_computedIdFields: many(_datasets_v_version_id_strategy_computed_id_fields, {
     relationName: "version_idStrategy_computedIdFields",
@@ -4280,6 +4477,13 @@ export const relations__dataset_schemas_v = relations(_dataset_schemas_v, ({ one
     fields: [_dataset_schemas_v.version_approvedBy],
     references: [users.id],
     relationName: "version_approvedBy",
+  }),
+}));
+export const relations_deletion_audit_log = relations(deletion_audit_log, ({ one }) => ({
+  deletedBy: one(users, {
+    fields: [deletion_audit_log.deletedBy],
+    references: [users.id],
+    relationName: "deletedBy",
   }),
 }));
 export const relations_import_files_rels = relations(import_files_rels, ({ one }) => ({
@@ -4976,6 +5180,11 @@ export const relations_payload_locked_documents_rels = relations(payload_locked_
     references: [catalogs.id],
     relationName: "catalogs",
   }),
+  "data-exportsID": one(data_exports, {
+    fields: [payload_locked_documents_rels["data-exportsID"]],
+    references: [data_exports.id],
+    relationName: "data-exports",
+  }),
   datasetsID: one(datasets, {
     fields: [payload_locked_documents_rels.datasetsID],
     references: [datasets.id],
@@ -4985,6 +5194,11 @@ export const relations_payload_locked_documents_rels = relations(payload_locked_
     fields: [payload_locked_documents_rels["dataset-schemasID"]],
     references: [dataset_schemas.id],
     relationName: "dataset-schemas",
+  }),
+  "deletion-audit-logID": one(deletion_audit_log, {
+    fields: [payload_locked_documents_rels["deletion-audit-logID"]],
+    references: [deletion_audit_log.id],
+    relationName: "deletion-audit-log",
   }),
   "import-filesID": one(import_files, {
     fields: [payload_locked_documents_rels["import-filesID"]],
@@ -5153,6 +5367,28 @@ export const relations__footer_v = relations(_footer_v, ({ many }) => ({
     relationName: "version_columns",
   }),
 }));
+export const relations_branding = relations(branding, ({ one }) => ({
+  logoLight: one(media, {
+    fields: [branding.logoLight],
+    references: [media.id],
+    relationName: "logoLight",
+  }),
+  logoDark: one(media, {
+    fields: [branding.logoDark],
+    references: [media.id],
+    relationName: "logoDark",
+  }),
+  faviconSourceLight: one(media, {
+    fields: [branding.faviconSourceLight],
+    references: [media.id],
+    relationName: "faviconSourceLight",
+  }),
+  faviconSourceDark: one(media, {
+    fields: [branding.faviconSourceDark],
+    references: [media.id],
+    relationName: "faviconSourceDark",
+  }),
+}));
 export const relations_settings_geocoding_provider_selection_required_tags = relations(
   settings_geocoding_provider_selection_required_tags,
   ({ one }) => ({
@@ -5174,6 +5410,7 @@ type DatabaseSchema = {
   db_schema: typeof db_schema;
   enum_catalogs_status: typeof enum_catalogs_status;
   enum__catalogs_v_version_status: typeof enum__catalogs_v_version_status;
+  enum_data_exports_status: typeof enum_data_exports_status;
   enum_transforms_from_type: typeof enum_transforms_from_type;
   enum_transforms_to_type: typeof enum_transforms_to_type;
   strategy: typeof strategy;
@@ -5195,6 +5432,7 @@ type DatabaseSchema = {
   enum__datasets_v_version_status: typeof enum__datasets_v_version_status;
   enum_dataset_schemas_status: typeof enum_dataset_schemas_status;
   enum__dataset_schemas_v_version_status: typeof enum__dataset_schemas_v_version_status;
+  enum_deletion_audit_log_deletion_type: typeof enum_deletion_audit_log_deletion_type;
   enum_import_files_status: typeof enum_import_files_status;
   enum__import_files_v_version_status: typeof enum__import_files_v_version_status;
   enum_import_jobs_stage: typeof enum_import_jobs_stage;
@@ -5229,6 +5467,7 @@ type DatabaseSchema = {
   enum_users_role: typeof enum_users_role;
   enum_users_registration_source: typeof enum_users_registration_source;
   enum_users_trust_level: typeof enum_users_trust_level;
+  enum_users_deletion_status: typeof enum_users_deletion_status;
   enum_media_status: typeof enum_media_status;
   enum__media_v_version_status: typeof enum__media_v_version_status;
   enum_location_cache_status: typeof enum_location_cache_status;
@@ -5280,6 +5519,7 @@ type DatabaseSchema = {
   enum_settings_geocoding_provider_selection_strategy: typeof enum_settings_geocoding_provider_selection_strategy;
   catalogs: typeof catalogs;
   _catalogs_v: typeof _catalogs_v;
+  data_exports: typeof data_exports;
   datasets_id_strategy_computed_id_fields: typeof datasets_id_strategy_computed_id_fields;
   transforms: typeof transforms;
   datasets_import_transforms: typeof datasets_import_transforms;
@@ -5300,6 +5540,7 @@ type DatabaseSchema = {
   _dataset_schemas_v_version_schema_summary_enum_changes: typeof _dataset_schemas_v_version_schema_summary_enum_changes;
   _dataset_schemas_v_version_import_sources: typeof _dataset_schemas_v_version_import_sources;
   _dataset_schemas_v: typeof _dataset_schemas_v;
+  deletion_audit_log: typeof deletion_audit_log;
   import_files: typeof import_files;
   import_files_rels: typeof import_files_rels;
   _import_files_v: typeof _import_files_v;
@@ -5380,11 +5621,13 @@ type DatabaseSchema = {
   _footer_v_version_columns_links: typeof _footer_v_version_columns_links;
   _footer_v_version_columns: typeof _footer_v_version_columns;
   _footer_v: typeof _footer_v;
+  branding: typeof branding;
   settings_geocoding_provider_selection_required_tags: typeof settings_geocoding_provider_selection_required_tags;
   settings: typeof settings;
   payload_jobs_stats: typeof payload_jobs_stats;
   relations_catalogs: typeof relations_catalogs;
   relations__catalogs_v: typeof relations__catalogs_v;
+  relations_data_exports: typeof relations_data_exports;
   relations_datasets_id_strategy_computed_id_fields: typeof relations_datasets_id_strategy_computed_id_fields;
   relations_transforms: typeof relations_transforms;
   relations_datasets_import_transforms: typeof relations_datasets_import_transforms;
@@ -5405,6 +5648,7 @@ type DatabaseSchema = {
   relations__dataset_schemas_v_version_schema_summary_enum_changes: typeof relations__dataset_schemas_v_version_schema_summary_enum_changes;
   relations__dataset_schemas_v_version_import_sources: typeof relations__dataset_schemas_v_version_import_sources;
   relations__dataset_schemas_v: typeof relations__dataset_schemas_v;
+  relations_deletion_audit_log: typeof relations_deletion_audit_log;
   relations_import_files_rels: typeof relations_import_files_rels;
   relations_import_files: typeof relations_import_files;
   relations__import_files_v_rels: typeof relations__import_files_v_rels;
@@ -5485,6 +5729,7 @@ type DatabaseSchema = {
   relations__footer_v_version_columns_links: typeof relations__footer_v_version_columns_links;
   relations__footer_v_version_columns: typeof relations__footer_v_version_columns;
   relations__footer_v: typeof relations__footer_v;
+  relations_branding: typeof relations_branding;
   relations_settings_geocoding_provider_selection_required_tags: typeof relations_settings_geocoding_provider_selection_required_tags;
   relations_settings: typeof relations_settings;
   relations_payload_jobs_stats: typeof relations_payload_jobs_stats;

@@ -64,6 +64,7 @@ export class SchemaVersioningService {
       autoApproved = false,
       approvedBy,
       importSources = [],
+      eventCountAtCreation,
       req,
     }: {
       dataset: Dataset | string | number;
@@ -81,6 +82,8 @@ export class SchemaVersioningService {
         recordCount?: number;
         batchCount?: number;
       }>;
+      /** Number of events in the dataset when this schema was generated */
+      eventCountAtCreation?: number;
       req?: PayloadRequest;
     }
   ): Promise<DatasetSchema> {
@@ -111,6 +114,7 @@ export class SchemaVersioningService {
           ...source,
           import: typeof source.import === "string" ? parseInt(source.import, 10) : source.import,
         })),
+        eventCountAtCreation,
         _status: "published" as const,
       };
 

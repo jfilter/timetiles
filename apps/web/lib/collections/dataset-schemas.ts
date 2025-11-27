@@ -110,6 +110,13 @@ const DatasetSchemas: CollectionConfig = {
       },
     },
     {
+      name: "eventCountAtCreation",
+      type: "number",
+      admin: {
+        description: "Number of events in the dataset when this schema was generated",
+      },
+    },
+    {
       name: "schemaSummary",
       type: "group",
       fields: [

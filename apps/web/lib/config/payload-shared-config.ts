@@ -46,6 +46,7 @@ import {
   quotaResetJobConfig,
   scheduleManagerJob,
   schemaDetectionJob,
+  schemaMaintenanceJob,
   urlFetchJob,
   validateSchemaJob,
 } from "@/lib/jobs/import-jobs";
@@ -116,6 +117,7 @@ export const ALL_JOBS = [
   processPendingRetriesJob,
   quotaResetJobConfig,
   cacheCleanupJob,
+  schemaMaintenanceJob,
   dataExportJob,
   dataExportCleanupJob,
 ];

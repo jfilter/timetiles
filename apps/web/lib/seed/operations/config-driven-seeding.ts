@@ -12,6 +12,7 @@
  * @module
  */
 import { createLogger } from "@/lib/logger";
+import { SchemaInferenceService } from "@/lib/services/schema-inference-service";
 
 import {
   type CollectionConfig,
@@ -61,6 +62,14 @@ export class ConfigDrivenSeeding {
     }
 
     const overallResults = await this.processCollections(collectionsToSeed, configOverrides, preset);
+
+    // Generate schemas for datasets if generateSchemas is enabled
+    if (collectionsToSeed.includes("events")) {
+      const datasetsConfig = getCollectionConfig("datasets", preset);
+      if (datasetsConfig?.options?.generateSchemas !== false) {
+        await this.generateSchemasForDatasets();
+      }
+    }
 
     this.logSeedCompletion(startTime, collectionsToSeed, preset, presetConfig, overallResults);
 
@@ -156,6 +165,83 @@ export class ConfigDrivenSeeding {
           : {}),
       },
     };
+  }
+
+  /**
+   * Generate schemas for all datasets that have events.
+   * Called after seeding completes when generateSchemas option is enabled.
+   */
+  private async generateSchemasForDatasets(): Promise<void> {
+    const payload = this.seedManager.payloadInstance;
+    if (!payload) {
+      logger.warn("Payload not initialized, skipping schema generation");
+      return;
+    }
+
+    logger.info("Generating schemas for seeded datasets...");
+
+    try {
+      // Find all datasets
+      const datasets = await payload.find({
+        collection: "datasets",
+        limit: 500,
+        overrideAccess: true,
+      });
+
+      if (datasets.docs.length === 0) {
+        logger.info("No datasets found, skipping schema generation");
+        return;
+      }
+
+      // Filter to datasets that have events by querying event count
+      const datasetsWithEvents = [];
+      for (const dataset of datasets.docs) {
+        const eventCount = await payload.count({
+          collection: "events",
+          where: { dataset: { equals: dataset.id } },
+          overrideAccess: true,
+        });
+        if (eventCount.totalDocs > 0) {
+          datasetsWithEvents.push(dataset);
+        }
+      }
+
+      if (datasetsWithEvents.length === 0) {
+        logger.info("No datasets with events found, skipping schema generation");
+        return;
+      }
+
+      let generated = 0;
+      let skipped = 0;
+      let failed = 0;
+
+      for (const dataset of datasetsWithEvents) {
+        try {
+          const result = await SchemaInferenceService.inferSchemaFromEvents(payload, dataset.id, {
+            forceRegenerate: false, // Only generate if no schema exists or schema is stale
+          });
+
+          if (result.generated) {
+            generated++;
+            logger.debug({ datasetId: dataset.id, datasetName: dataset.name }, "Schema generated for dataset");
+          } else {
+            skipped++;
+          }
+        } catch (error) {
+          failed++;
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          logger.warn({ datasetId: dataset.id, error: errorMsg }, "Failed to generate schema for dataset");
+        }
+      }
+
+      logger.info(
+        { generated, skipped, failed, total: datasetsWithEvents.length },
+        `Schema generation complete: ${generated} generated, ${skipped} skipped, ${failed} failed`
+      );
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error({ error: errorMsg }, "Failed to generate schemas for datasets");
+    }
   }
 
   private logSeedCompletion(
