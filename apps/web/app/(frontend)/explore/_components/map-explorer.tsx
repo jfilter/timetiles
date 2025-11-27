@@ -15,9 +15,11 @@ import type { LngLatBounds } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ClusteredMap, type ClusteredMapHandle } from "@/components/maps/clustered-map";
-import { useFilters } from "@/lib/filters";
+import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
+import { useFilters, useSelectedEvent } from "@/lib/filters";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import {
+  useBoundsQuery,
   useClusterStatsQuery,
   useEventsListQuery,
   useEventsTotalQuery,
@@ -28,6 +30,7 @@ import type { Catalog, Dataset } from "@/payload-types";
 
 import { ActiveFilters } from "./active-filters";
 import { ChartSection } from "./chart-section";
+import { EventDetailModal } from "./event-detail-modal";
 import { EventsList } from "./events-list";
 import { FilterDrawer } from "./filter-drawer";
 
@@ -39,6 +42,8 @@ interface MapExplorerProps {
 export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) => {
   const [mapZoom, setMapZoom] = useState(9);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [hasUserPanned, setHasUserPanned] = useState(false);
+  const [isInitialBoundsApplied, setIsInitialBoundsApplied] = useState(false);
 
   // Refs for map resize handling
   const mapRef = useRef<ClusteredMapHandle>(null);
@@ -46,6 +51,12 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
 
   // Get filter state from URL (nuqs)
   const { filters, activeFilterCount, hasActiveFilters, removeFilter, clearAllFilters } = useFilters();
+
+  // Ref to track previous filters for detecting filter changes
+  const prevFiltersRef = useRef(filters);
+
+  // Get selected event state from URL (nuqs)
+  const { selectedEventId, openEvent, closeEvent } = useSelectedEvent();
 
   const filterActions = useMemo(() => ({ removeFilter, clearAllFilters }), [removeFilter, clearAllFilters]);
 
@@ -85,6 +96,9 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
 
   // Fetch global cluster statistics (independent of viewport)
   const { data: clusterStats } = useClusterStatsQuery(filters);
+
+  // Fetch bounds for initial map positioning and "zoom to data" functionality
+  const { data: boundsData, isLoading: boundsLoading } = useBoundsQuery(filters);
 
   // Extract data from queries
   const events = eventsData?.events ?? [];
@@ -130,6 +144,29 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
       cancelAnimationFrame(rafId);
     };
   }, []);
+
+  // Reset user panning state when filters change
+  useEffect(() => {
+    const filtersChanged = JSON.stringify(prevFiltersRef.current) !== JSON.stringify(filters);
+    if (filtersChanged) {
+      prevFiltersRef.current = filters;
+      setHasUserPanned(false);
+    }
+  }, [filters]);
+
+  // Determine if we should show loading overlay (initial load only, not filter changes)
+  const isLoadingInitialBounds = boundsLoading && !isInitialBoundsApplied;
+
+  // Show "zoom to data" button when user has panned and we have bounds data
+  const showZoomToData = hasUserPanned && boundsData?.bounds != null && !boundsLoading;
+
+  // Handler to zoom to data bounds
+  const handleZoomToData = useCallback(() => {
+    if (boundsData?.bounds && mapRef.current) {
+      mapRef.current.fitBounds(boundsData.bounds, { padding: 50, animate: true });
+      setHasUserPanned(false);
+    }
+  }, [boundsData]);
 
   // Helper function to get catalog name by ID
   const getCatalogName = (catalogId: string): string => {
@@ -189,11 +226,19 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
         if (zoom != undefined) {
           setMapZoom(Math.round(zoom));
         }
+
+        // Mark that initial bounds have been applied (first bounds change)
+        if (!isInitialBoundsApplied) {
+          setIsInitialBoundsApplied(true);
+        } else {
+          // After initial load, any bounds change means user has panned
+          setHasUserPanned(true);
+        }
       } else {
         setMapBounds(null);
       }
     },
-    [setMapBounds]
+    [setMapBounds, isInitialBoundsApplied]
   );
 
   return (
@@ -201,13 +246,19 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
       {/* Desktop: Flex layout - both map and list shrink proportionally when filters open */}
       <div ref={gridRef} className="hidden flex-1 overflow-hidden md:flex">
         {/* Map Panel - takes half of available space */}
-        <div className="h-full min-w-0 flex-1 transition-all duration-500 ease-in-out">
+        <div className="relative h-full min-w-0 flex-1 transition-all duration-500 ease-in-out">
           <ClusteredMap
             ref={mapRef}
             clusters={clusters}
             clusterStats={clusterStats}
             onBoundsChange={handleBoundsChange}
+            initialBounds={boundsData?.bounds}
+            isLoadingBounds={isLoadingInitialBounds}
           />
+          {/* Zoom to data button - positioned above theme control */}
+          <div className="absolute bottom-12 left-2 z-10">
+            <ZoomToDataButton visible={showZoomToData} onClick={handleZoomToData} />
+          </div>
         </div>
 
         {/* Content Panel - takes half of available space */}
@@ -231,7 +282,12 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
               <h2 className="mb-4 text-lg font-semibold">
                 Events ({events.length} of {totalEventsData?.total ?? "..."})
               </h2>
-              <EventsList events={events} isInitialLoad={isInitialLoad} isUpdating={isUpdating} />
+              <EventsList
+                events={events}
+                isInitialLoad={isInitialLoad}
+                isUpdating={isUpdating}
+                onEventClick={openEvent}
+              />
             </div>
           </div>
         </div>
@@ -250,8 +306,18 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
       {/* Mobile: Stacked layout with overlay filter drawer */}
       <div className="flex flex-1 flex-col overflow-hidden md:hidden">
         {/* Map takes top half */}
-        <div className="h-1/2 min-h-0">
-          <ClusteredMap clusters={clusters} clusterStats={clusterStats} onBoundsChange={handleBoundsChange} />
+        <div className="relative h-1/2 min-h-0">
+          <ClusteredMap
+            clusters={clusters}
+            clusterStats={clusterStats}
+            onBoundsChange={handleBoundsChange}
+            initialBounds={boundsData?.bounds}
+            isLoadingBounds={isLoadingInitialBounds}
+          />
+          {/* Zoom to data button - positioned above theme control */}
+          <div className="absolute bottom-12 left-2 z-10">
+            <ZoomToDataButton visible={showZoomToData} onClick={handleZoomToData} />
+          </div>
         </div>
 
         {/* Content takes bottom half */}
@@ -272,7 +338,12 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
               <h2 className="mb-4 text-lg font-semibold">
                 Events ({events.length} of {totalEventsData?.total ?? "..."})
               </h2>
-              <EventsList events={events} isInitialLoad={isInitialLoad} isUpdating={isUpdating} />
+              <EventsList
+                events={events}
+                isInitialLoad={isInitialLoad}
+                isUpdating={isUpdating}
+                onEventClick={openEvent}
+              />
             </div>
           </div>
         </div>
@@ -303,6 +374,9 @@ export const MapExplorer = ({ catalogs, datasets }: Readonly<MapExplorerProps>) 
           </div>
         )}
       </div>
+
+      {/* Event Detail Modal */}
+      <EventDetailModal eventId={selectedEventId} onClose={closeEvent} />
     </div>
   );
 };

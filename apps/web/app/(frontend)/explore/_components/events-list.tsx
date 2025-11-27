@@ -18,6 +18,7 @@ import {
   CardTitle,
   CardVersion,
 } from "@timetiles/ui";
+import { useCallback } from "react";
 
 import type { Event } from "@/payload-types";
 
@@ -25,6 +26,8 @@ interface EventsListProps {
   events: Event[];
   isInitialLoad?: boolean;
   isUpdating?: boolean;
+  /** Callback when an event card is clicked */
+  onEventClick?: (eventId: number) => void;
 }
 
 const safeToString = (value: unknown): string => {
@@ -94,7 +97,14 @@ const formatDateRange = (startDate: unknown, endDate: unknown): string => {
   return parts.join(" - ");
 };
 
-const EventItem = ({ event, index }: { event: Event; index: number }) => {
+interface EventItemProps {
+  event: Event;
+  index: number;
+  eventId: number;
+  onEventClick?: (eventId: number) => void;
+}
+
+const EventItem = ({ event, index, eventId, onEventClick }: EventItemProps) => {
   const eventData = getEventData(event);
   const title = safeToString(eventData.title);
   const datasetName = getDatasetName(event.dataset);
@@ -107,8 +117,37 @@ const EventItem = ({ event, index }: { event: Event; index: number }) => {
     event.location?.longitude != null &&
     event.location.longitude !== 0;
 
+  const handleClick = useCallback(() => {
+    if (onEventClick) {
+      onEventClick(eventId);
+    }
+  }, [onEventClick, eventId]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if ((e.key === "Enter" || e.key === " ") && onEventClick) {
+        e.preventDefault();
+        onEventClick(eventId);
+      }
+    },
+    [onEventClick, eventId]
+  );
+
   return (
-    <Card variant="showcase" padding="lg">
+    <Card
+      variant="showcase"
+      padding="lg"
+      className={
+        onEventClick
+          ? "focus:ring-ring cursor-pointer transition-shadow hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2"
+          : ""
+      }
+      onClick={onEventClick ? handleClick : undefined}
+      onKeyDown={onEventClick ? handleKeyDown : undefined}
+      role={onEventClick ? "button" : undefined}
+      tabIndex={onEventClick ? 0 : undefined}
+      aria-label={onEventClick ? `View details for ${title || "event"}` : undefined}
+    >
       <CardVersion>Event #{index + 1}</CardVersion>
 
       <CardHeader>
@@ -141,7 +180,12 @@ const EventItem = ({ event, index }: { event: Event; index: number }) => {
   );
 };
 
-export const EventsList = ({ events, isInitialLoad = false, isUpdating = false }: Readonly<EventsListProps>) => {
+export const EventsList = ({
+  events,
+  isInitialLoad = false,
+  isUpdating = false,
+  onEventClick,
+}: Readonly<EventsListProps>) => {
   // Only show full loading state on initial load
   if (isInitialLoad) {
     return (
@@ -172,7 +216,7 @@ export const EventsList = ({ events, isInitialLoad = false, isUpdating = false }
       )}
       <div className={`space-y-4 transition-opacity ${isUpdating ? "opacity-90" : "opacity-100"}`}>
         {events.map((event, index) => (
-          <EventItem key={event.id} event={event} index={index} />
+          <EventItem key={event.id} event={event} index={index} eventId={event.id} onEventClick={onEventClick} />
         ))}
       </div>
     </div>

@@ -11,8 +11,8 @@
  *
  * @module
  */
-import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
-import { useMemo } from "react";
+import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryState } from "nuqs";
+import { useCallback, useMemo } from "react";
 
 import type { FilterState } from "./store";
 import { clearAllFilters, getActiveFilterCount, hasActiveFilters, removeFilter } from "./store";
@@ -96,5 +96,42 @@ export const useFilters = () => {
     // Computed values
     activeFilterCount,
     hasActiveFilters: hasActiveFiltersValue,
+  };
+};
+
+/**
+ * Hook for managing selected event state via URL.
+ *
+ * Uses nuqs to sync the selected event ID with the URL, enabling
+ * permalink sharing of the explore page with a specific event open.
+ *
+ * @returns Selected event state and handlers
+ */
+export const useSelectedEvent = () => {
+  // URL state for selected event - uses history: "push" for browser back button support
+  const [selectedEventId, setSelectedEventId] = useQueryState(
+    "event",
+    parseAsInteger.withOptions({
+      history: "push",
+      shallow: true,
+    })
+  );
+
+  const openEvent = useCallback(
+    (eventId: number) => {
+      void setSelectedEventId(eventId);
+    },
+    [setSelectedEventId]
+  );
+
+  const closeEvent = useCallback(() => {
+    void setSelectedEventId(null);
+  }, [setSelectedEventId]);
+
+  return {
+    selectedEventId,
+    isOpen: selectedEventId !== null,
+    openEvent,
+    closeEvent,
   };
 };
