@@ -1,23 +1,15 @@
 /**
  * List component for displaying event items.
  *
- * Renders a scrollable list of events with title, date, location, and
- * description. Includes loading states and empty state handling.
- * Used in the explore page sidebar for browsing events.
+ * Renders a scrollable list of events with dataset badge, title, description,
+ * and location/date row with icons. Variant C design.
  *
  * @module
  * @category Components
  */
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardSpec,
-  CardSpecItem,
-  CardTitle,
-  CardVersion,
-} from "@timetiles/ui";
+import { Card, CardDescription, CardTitle } from "@timetiles/ui";
+import { cn } from "@timetiles/ui/lib/utils";
+import { Calendar, MapPin } from "lucide-react";
 import { useCallback } from "react";
 
 import type { Event } from "@/payload-types";
@@ -31,19 +23,10 @@ interface EventsListProps {
 }
 
 const safeToString = (value: unknown): string => {
-  if (value == null || value == undefined) {
-    return "";
-  }
-  if (typeof value === "string") {
-    return value;
-  }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  // For objects and arrays, return empty string to avoid [object Object]
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (value instanceof Date) return value.toISOString();
   return "";
 };
 
@@ -58,31 +41,47 @@ interface EventData {
   [key: string]: unknown;
 }
 
-// Helper functions to reduce complexity
 const getEventData = (event: Event): EventData => {
   return typeof event.data === "object" && event.data != null && !Array.isArray(event.data)
     ? (event.data as EventData)
     : {};
 };
 
-const getDatasetName = (dataset: unknown): string | null => {
-  if (typeof dataset === "object" && dataset != null && "name" in dataset) {
-    return String(dataset.name);
+const getDatasetInfo = (dataset: unknown): { name: string; id: number } | null => {
+  if (typeof dataset === "object" && dataset != null) {
+    const d = dataset as Record<string, unknown>;
+    // API returns 'title', Payload returns 'name'
+    let name: string | null = null;
+    if (typeof d.title === "string") {
+      name = d.title;
+    } else if (typeof d.name === "string") {
+      name = d.name;
+    }
+    const id = typeof d.id === "number" ? d.id : null;
+    if (name && id !== null) {
+      return { name, id };
+    }
   }
   return null;
 };
 
 const getLocationDisplay = (event: Event, eventData: EventData): string | null => {
+  // Prefer location name (venue, place name) if available
+  if (event.locationName) {
+    return event.locationName;
+  }
+  // Fall back to geocoded/normalized address
   if (event.geocodingInfo?.normalizedAddress) {
     return event.geocodingInfo.normalizedAddress;
   }
+  // Final fallback to city/country from data
   const cityCountry = [safeToString(eventData.city), safeToString(eventData.country)].filter(Boolean);
   return cityCountry.length > 0 ? cityCountry.join(", ") : null;
 };
 
 const formatDateRange = (startDate: unknown, endDate: unknown): string => {
-  const hasStart = startDate != null;
-  const hasEnd = endDate != null;
+  const hasStart = startDate != null && safeToString(startDate) !== "";
+  const hasEnd = endDate != null && safeToString(endDate) !== "";
 
   if (!hasStart && !hasEnd) return "";
 
@@ -90,32 +89,47 @@ const formatDateRange = (startDate: unknown, endDate: unknown): string => {
   if (hasStart) {
     parts.push(new Date(safeToString(startDate)).toLocaleDateString("en-US"));
   }
-  if (hasEnd) {
+  if (hasEnd && safeToString(startDate) !== safeToString(endDate)) {
     parts.push(new Date(safeToString(endDate)).toLocaleDateString("en-US"));
   }
 
   return parts.join(" - ");
 };
 
+// Dataset badge colors - assigned by ID so first datasets get best colors
+const DATASET_BADGE_COLORS = [
+  "bg-cartographic-blue/10 text-cartographic-blue",
+  "bg-cartographic-terracotta/10 text-cartographic-terracotta",
+  "bg-cartographic-forest/10 text-cartographic-forest",
+  "bg-cartographic-teal/10 text-cartographic-teal",
+  "bg-cartographic-amber/10 text-cartographic-amber",
+  "bg-cartographic-plum/10 text-cartographic-plum",
+  "bg-cartographic-rose/10 text-cartographic-rose",
+  "bg-cartographic-olive/10 text-cartographic-olive",
+  "bg-cartographic-navy/10 text-cartographic-navy",
+  "bg-cartographic-slate/10 text-cartographic-slate",
+] as const;
+
+const getDatasetBadgeClass = (datasetId: number | null): string => {
+  // Use ID directly - dataset 1 gets color 0, dataset 2 gets color 1, etc.
+  const index = datasetId === null ? 0 : (datasetId - 1) % DATASET_BADGE_COLORS.length;
+  // Index is always valid since we use modulo with array length
+  return DATASET_BADGE_COLORS[index] ?? DATASET_BADGE_COLORS[0];
+};
+
 interface EventItemProps {
   event: Event;
-  index: number;
   eventId: number;
   onEventClick?: (eventId: number) => void;
 }
 
-const EventItem = ({ event, index, eventId, onEventClick }: EventItemProps) => {
+const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
   const eventData = getEventData(event);
-  const title = safeToString(eventData.title);
-  const datasetName = getDatasetName(event.dataset);
+  const title = safeToString(eventData.title) || safeToString(eventData.name) || "Untitled Event";
+  const description = safeToString(eventData.description);
+  const datasetInfo = getDatasetInfo(event.dataset);
   const locationDisplay = getLocationDisplay(event, eventData);
-
-  const hasDateRange = eventData.startDate != null || eventData.endDate != null;
-  const hasCoordinates =
-    event.location?.latitude != null &&
-    event.location.latitude !== 0 &&
-    event.location?.longitude != null &&
-    event.location.longitude !== 0;
+  const dateRange = formatDateRange(eventData.startDate, eventData.endDate);
 
   const handleClick = useCallback(() => {
     if (onEventClick) {
@@ -133,49 +147,51 @@ const EventItem = ({ event, index, eventId, onEventClick }: EventItemProps) => {
     [onEventClick, eventId]
   );
 
+  const badgeClass = getDatasetBadgeClass(datasetInfo?.id ?? null);
+
   return (
     <Card
-      variant="showcase"
-      padding="lg"
-      className={
-        onEventClick
-          ? "focus:ring-ring cursor-pointer transition-shadow hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2"
-          : ""
-      }
+      className={cn(
+        "border-border bg-background border-2 p-5",
+        onEventClick && "hover:border-cartographic-blue cursor-pointer transition-colors duration-200",
+        "focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      )}
       onClick={onEventClick ? handleClick : undefined}
       onKeyDown={onEventClick ? handleKeyDown : undefined}
       role={onEventClick ? "button" : undefined}
       tabIndex={onEventClick ? 0 : undefined}
-      aria-label={onEventClick ? `View details for ${title || "event"}` : undefined}
+      aria-label={onEventClick ? `View details for ${title}` : undefined}
     >
-      <CardVersion>Event #{index + 1}</CardVersion>
+      {/* Dataset badge */}
+      {datasetInfo && (
+        <span className={cn("inline-block rounded-sm px-2 py-0.5 text-xs font-medium", badgeClass)}>
+          {datasetInfo.name}
+        </span>
+      )}
 
-      <CardHeader>
-        <CardTitle className="text-xl">{title}</CardTitle>
-        {eventData.description && (
-          <CardDescription className="line-clamp-3">{safeToString(eventData.description)}</CardDescription>
-        )}
-      </CardHeader>
+      {/* Title */}
+      <CardTitle className={cn("text-xl", datasetInfo && "mt-3")}>{title}</CardTitle>
 
-      <CardContent>
-        <CardSpec>
-          {hasDateRange && (
-            <CardSpecItem label="Date">{formatDateRange(eventData.startDate, eventData.endDate)}</CardSpecItem>
+      {/* Description - 2 line clamp */}
+      {description && <CardDescription className="mt-2 line-clamp-2">{description}</CardDescription>}
+
+      {/* Location and Date row with icons */}
+      {(locationDisplay != null || dateRange !== "") && (
+        <div className="text-muted-foreground mt-4 flex items-center justify-between text-sm">
+          {locationDisplay && (
+            <div className="flex min-w-0 items-center gap-1.5">
+              <MapPin className="h-4 w-4 shrink-0" />
+              <span className="truncate">{locationDisplay}</span>
+            </div>
           )}
-
-          {locationDisplay && <CardSpecItem label="Location">{locationDisplay}</CardSpecItem>}
-
-          {hasCoordinates && (
-            <CardSpecItem label="Coordinates">
-              <span className="font-mono text-xs">
-                {event.location!.latitude!.toFixed(4)}, {event.location!.longitude!.toFixed(4)}
-              </span>
-            </CardSpecItem>
+          {dateRange && (
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Calendar className="h-4 w-4 shrink-0" />
+              <span>{dateRange}</span>
+            </div>
           )}
-
-          {datasetName && <CardSpecItem label="Dataset">{datasetName}</CardSpecItem>}
-        </CardSpec>
-      </CardContent>
+        </div>
+      )}
     </Card>
   );
 };
@@ -186,7 +202,6 @@ export const EventsList = ({
   isUpdating = false,
   onEventClick,
 }: Readonly<EventsListProps>) => {
-  // Only show full loading state on initial load
   if (isInitialLoad) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -203,7 +218,6 @@ export const EventsList = ({
     );
   }
 
-  // Show events with subtle loading indicator when updating
   return (
     <div className="relative">
       {isUpdating && (
@@ -215,8 +229,8 @@ export const EventsList = ({
         </div>
       )}
       <div className={`space-y-4 transition-opacity ${isUpdating ? "opacity-90" : "opacity-100"}`}>
-        {events.map((event, index) => (
-          <EventItem key={event.id} event={event} index={index} eventId={event.id} onEventClick={onEventClick} />
+        {events.map((event) => (
+          <EventItem key={event.id} event={event} eventId={event.id} onEventClick={onEventClick} />
         ))}
       </div>
     </div>

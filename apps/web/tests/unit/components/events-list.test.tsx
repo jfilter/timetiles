@@ -223,7 +223,7 @@ describe("EventsList", () => {
     expect(screen.getAllByText("Event 10")[0]).toBeInTheDocument();
 
     // Should have proper container structure - now wrapped in relative div
-    const innerContainer = container.querySelector(".space-y-2");
+    const innerContainer = container.querySelector(".space-y-4");
     expect(innerContainer).toBeInTheDocument();
   });
 });
