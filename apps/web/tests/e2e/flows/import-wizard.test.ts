@@ -461,6 +461,18 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     // Verify it shows 3 datasets will be created
     await expect(page.getByText(/3 datasets/i)).toBeVisible({ timeout: 5000 });
 
+    // Verify all 3 sheets' field mappings are shown on Review page
+    // Check that field mapping sections exist for all 3 sheets
+    for (let sheetIndex = 0; sheetIndex < 3; sheetIndex++) {
+      const fieldMappingSection = page.locator(`[data-testid="field-mapping-${sheetIndex}"]`);
+      await expect(fieldMappingSection).toBeVisible({ timeout: 5000 });
+    }
+
+    // Verify dataset names are shown in the field mappings section (use data-testid for specificity)
+    await expect(page.locator('[data-testid="field-mapping-0"]').getByText("Tech Events")).toBeVisible();
+    await expect(page.locator('[data-testid="field-mapping-1"]').getByText("Art Exhibitions")).toBeVisible();
+    await expect(page.locator('[data-testid="field-mapping-2"]').getByText("Sports Events")).toBeVisible();
+
     // Listen for API response
     const responsePromise = page.waitForResponse(
       (response) => response.url().includes("/api/wizard/configure-import"),
@@ -694,6 +706,18 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
 
     // Verify it shows 3 datasets will be created
     await expect(page.getByText(/3 datasets/i)).toBeVisible({ timeout: 5000 });
+
+    // Verify all 3 sheets' field mappings are shown on Review page
+    // Check that field mapping sections exist for all 3 sheets
+    for (let sheetIndex = 0; sheetIndex < 3; sheetIndex++) {
+      const fieldMappingSection = page.locator(`[data-testid="field-mapping-${sheetIndex}"]`);
+      await expect(fieldMappingSection).toBeVisible({ timeout: 5000 });
+    }
+
+    // Verify dataset names are shown in the field mappings section (use data-testid for specificity)
+    await expect(page.locator('[data-testid="field-mapping-0"]').getByText("Tech Events")).toBeVisible();
+    await expect(page.locator('[data-testid="field-mapping-1"]').getByText("Art Exhibitions")).toBeVisible();
+    await expect(page.locator('[data-testid="field-mapping-2"]').getByText("Sports Events")).toBeVisible();
 
     // Listen for API response
     const responsePromise = page.waitForResponse(

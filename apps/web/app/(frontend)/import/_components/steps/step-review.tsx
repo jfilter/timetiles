@@ -114,26 +114,37 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
 
   // Get catalog and dataset names for display
   const catalogName = selectedCatalogId === "new" ? newCatalogName : `Catalog #${selectedCatalogId}`;
-  const datasetName =
-    sheetMappings[0]?.datasetId === "new"
-      ? sheetMappings[0]?.newDatasetName
-      : `Dataset #${sheetMappings[0]?.datasetId}`;
 
-  // Get the active field mapping (first sheet for now)
-  const activeMapping = fieldMappings[0];
+  // Get all dataset names for multi-sheet imports
+  const datasetNames = sheetMappings.map((mapping) =>
+    mapping.datasetId === "new" ? mapping.newDatasetName : `Dataset #${mapping.datasetId}`
+  );
+  const datasetCount = sheetMappings.length;
+  const isMultiDataset = datasetCount > 1;
 
-  // Format location display
-  const getLocationDisplay = () => {
-    if (activeMapping?.locationField) {
-      return activeMapping.locationField;
+  // Format location display for a specific mapping
+  const getLocationDisplay = (mapping: (typeof fieldMappings)[0] | undefined) => {
+    if (mapping?.locationField) {
+      return mapping.locationField;
     }
-    if (activeMapping?.latitudeField && activeMapping?.longitudeField) {
-      return `${activeMapping.latitudeField}, ${activeMapping.longitudeField}`;
+    if (mapping?.latitudeField && mapping?.longitudeField) {
+      return `${mapping.latitudeField}, ${mapping.longitudeField}`;
     }
     return null;
   };
 
-  const locationDisplay = getLocationDisplay();
+  // Get field mappings paired with their sheet/dataset info for display
+  const mappingsWithDataset = fieldMappings.map((mapping) => {
+    const sheetMapping = sheetMappings.find((sm) => sm.sheetIndex === mapping.sheetIndex);
+    const sheet = sheets.find((s) => s.index === mapping.sheetIndex);
+    const datasetName = sheetMapping?.datasetId === "new" ? sheetMapping.newDatasetName : `Dataset #${sheetMapping?.datasetId}`;
+    return {
+      mapping,
+      datasetName: datasetName ?? sheet?.name ?? `Sheet ${mapping.sheetIndex + 1}`,
+      sheetName: sheet?.name,
+    };
+  });
+
   const totalRows = sheets.reduce((sum, s) => sum + s.rowCount, 0);
 
   return (
@@ -187,8 +198,20 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                   <DatabaseIcon className="text-cartographic-blue h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-cartographic-navy/50 text-xs">Dataset</p>
-                  <p className="text-cartographic-charcoal truncate font-serif font-semibold">{datasetName}</p>
+                  <p className="text-cartographic-navy/50 text-xs">
+                    {isMultiDataset ? `${datasetCount} datasets` : "Dataset"}
+                  </p>
+                  {isMultiDataset ? (
+                    <div className="space-y-1">
+                      {datasetNames.map((name, idx) => (
+                        <p key={idx} className="text-cartographic-charcoal truncate font-serif text-sm font-medium">
+                          {name}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-cartographic-charcoal truncate font-serif font-semibold">{datasetNames[0]}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -202,41 +225,64 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
           <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">Field mappings</h3>
         </div>
         <CardContent className="p-6">
-          <div className="space-y-3">
-            {/* Title */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <TextIcon className="text-cartographic-navy/40 h-4 w-4" />
-                <span className="text-cartographic-navy/70 text-sm">Title</span>
-              </div>
-              <span className="text-cartographic-charcoal font-mono text-sm">{activeMapping?.titleField ?? "—"}</span>
-            </div>
+          <div className="space-y-6">
+            {mappingsWithDataset.map(({ mapping, datasetName }, idx) => {
+              const locationDisplay = getLocationDisplay(mapping);
+              return (
+                <div key={mapping.sheetIndex} data-testid={`field-mapping-${mapping.sheetIndex}`}>
+                  {/* Show dataset name header for multi-sheet imports */}
+                  {isMultiDataset && (
+                    <p className="text-cartographic-charcoal mb-3 font-serif text-sm font-semibold">{datasetName}</p>
+                  )}
+                  <div className="space-y-3">
+                    {/* Title */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <TextIcon className="text-cartographic-navy/40 h-4 w-4" />
+                        <span className="text-cartographic-navy/70 text-sm">Title</span>
+                      </div>
+                      <span className="text-cartographic-charcoal font-mono text-sm" data-testid="title-field">
+                        {mapping?.titleField ?? "—"}
+                      </span>
+                    </div>
 
-            {/* Date */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CalendarIcon className="text-cartographic-navy/40 h-4 w-4" />
-                <span className="text-cartographic-navy/70 text-sm">Date</span>
-              </div>
-              <span className="text-cartographic-charcoal font-mono text-sm">{activeMapping?.dateField ?? "—"}</span>
-            </div>
+                    {/* Date */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <CalendarIcon className="text-cartographic-navy/40 h-4 w-4" />
+                        <span className="text-cartographic-navy/70 text-sm">Date</span>
+                      </div>
+                      <span className="text-cartographic-charcoal font-mono text-sm" data-testid="date-field">
+                        {mapping?.dateField ?? "—"}
+                      </span>
+                    </div>
 
-            {/* Location */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <MapPinIcon className="text-cartographic-navy/40 h-4 w-4" />
-                <span className="text-cartographic-navy/70 text-sm">Location</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-cartographic-charcoal font-mono text-sm">{locationDisplay ?? "—"}</span>
-                {geocodingEnabled && locationDisplay && (
-                  <span className="bg-cartographic-forest/10 text-cartographic-forest inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-xs">
-                    <SparklesIcon className="h-3 w-3" />
-                    Geocode
-                  </span>
-                )}
-              </div>
-            </div>
+                    {/* Location */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <MapPinIcon className="text-cartographic-navy/40 h-4 w-4" />
+                        <span className="text-cartographic-navy/70 text-sm">Location</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-cartographic-charcoal font-mono text-sm" data-testid="location-field">
+                          {locationDisplay ?? "—"}
+                        </span>
+                        {geocodingEnabled && locationDisplay && (
+                          <span className="bg-cartographic-forest/10 text-cartographic-forest inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-xs">
+                            <SparklesIcon className="h-3 w-3" />
+                            Geocode
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Divider between sheets */}
+                  {isMultiDataset && idx < mappingsWithDataset.length - 1 && (
+                    <div className="border-cartographic-navy/10 mt-4 border-t" />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -247,32 +293,44 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
           <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">Record handling</h3>
         </div>
         <CardContent className="p-6">
-          <div className="space-y-3">
-            {/* ID Strategy */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <FingerprintIcon className="text-cartographic-navy/40 h-4 w-4" />
-                <span className="text-cartographic-navy/70 text-sm">Identify by</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-cartographic-charcoal font-mono text-sm">
-                  {ID_STRATEGY_LABELS[activeMapping?.idStrategy ?? "auto"]}
-                </span>
-                {activeMapping?.idStrategy === "external" && activeMapping?.idField && (
-                  <span className="text-cartographic-navy/50 font-mono text-xs">({activeMapping.idField})</span>
+          <div className="space-y-6">
+            {/* Per-sheet ID Strategy */}
+            {mappingsWithDataset.map(({ mapping, datasetName }, idx) => (
+              <div key={mapping.sheetIndex} data-testid={`record-handling-${mapping.sheetIndex}`}>
+                {isMultiDataset && (
+                  <p className="text-cartographic-charcoal mb-3 font-serif text-sm font-semibold">{datasetName}</p>
+                )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <FingerprintIcon className="text-cartographic-navy/40 h-4 w-4" />
+                    <span className="text-cartographic-navy/70 text-sm">Identify by</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-cartographic-charcoal font-mono text-sm">
+                      {ID_STRATEGY_LABELS[mapping?.idStrategy ?? "auto"]}
+                    </span>
+                    {mapping?.idStrategy === "external" && mapping?.idField && (
+                      <span className="text-cartographic-navy/50 font-mono text-xs">({mapping.idField})</span>
+                    )}
+                  </div>
+                </div>
+                {isMultiDataset && idx < mappingsWithDataset.length - 1 && (
+                  <div className="border-cartographic-navy/10 mt-4 border-t" />
                 )}
               </div>
-            </div>
+            ))}
 
-            {/* Duplicate handling */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <DatabaseIcon className="text-cartographic-navy/40 h-4 w-4" />
-                <span className="text-cartographic-navy/70 text-sm">On duplicate</span>
+            {/* Duplicate handling (global setting) */}
+            <div className="border-cartographic-navy/10 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <DatabaseIcon className="text-cartographic-navy/40 h-4 w-4" />
+                  <span className="text-cartographic-navy/70 text-sm">On duplicate</span>
+                </div>
+                <span className="text-cartographic-charcoal font-mono text-sm">
+                  {DUPLICATE_LABELS[deduplicationStrategy]}
+                </span>
               </div>
-              <span className="text-cartographic-charcoal font-mono text-sm">
-                {DUPLICATE_LABELS[deduplicationStrategy]}
-              </span>
             </div>
           </div>
         </CardContent>
