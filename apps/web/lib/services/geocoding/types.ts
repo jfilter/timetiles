@@ -51,7 +51,11 @@ export interface ProviderConfig {
   geocoder: NodeGeocoder.Geocoder;
   priority: number;
   enabled: boolean;
+  rateLimit: number; // requests per second
 }
+
+/** Default rate limit for Nominatim public instance (1 request/second per OSM policy) */
+export const DEFAULT_NOMINATIM_RATE_LIMIT = 1;
 
 export interface GeocodingSettings {
   enabled: boolean;
@@ -69,4 +73,4 @@ export interface GeocodingSettings {
 // Constants
 export const LOCATION_CACHE_COLLECTION = "location-cache";
 export const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";
-export const TIMETILES_USER_AGENT = "TimeTiles-Test/1.0";
+export const TIMETILES_USER_AGENT = "TimeTiles/1.0 (https://github.com/jfilter/timetiles)";

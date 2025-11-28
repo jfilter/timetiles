@@ -19,8 +19,9 @@ import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { createLogger } from "@/lib/logger";
 import type { GeocodingProvider } from "@/payload-types";
 
+import { getProviderRateLimiter } from "./provider-rate-limiter";
 import type { GeocodingSettings, ProviderConfig } from "./types";
-import { NOMINATIM_BASE_URL } from "./types";
+import { DEFAULT_NOMINATIM_RATE_LIMIT, NOMINATIM_BASE_URL, TIMETILES_USER_AGENT } from "./types";
 
 const logger = createLogger("geocoding-provider-manager");
 
@@ -63,11 +64,15 @@ export class ProviderManager {
         this.initializeProvidersFromDocs(providerResults.docs);
       }
 
+      // Configure rate limiter for each provider
+      this.configureRateLimiter();
+
       return this.providers;
     } catch (error) {
       logger.error("Error loading providers from database", { error });
       logger.info("Falling back to default provider configuration");
       this.providers = this.buildDefaultProviderConfigs();
+      this.configureRateLimiter();
       return this.providers;
     }
   }
@@ -85,6 +90,19 @@ export class ProviderManager {
     return this.providers;
   }
 
+  /**
+   * Configure the rate limiter with rate limits from all loaded providers.
+   */
+  private configureRateLimiter(): void {
+    const rateLimiter = getProviderRateLimiter();
+    for (const provider of this.providers) {
+      rateLimiter.configure(provider.name, provider.rateLimit);
+    }
+    logger.debug("Configured rate limiter for providers", {
+      providers: this.providers.map((p) => ({ name: p.name, rateLimit: p.rateLimit })),
+    });
+  }
+
   private buildDefaultProviderConfigs(): ProviderConfig[] {
     // Return only Nominatim as default fallback
     // Providers should be configured through the Payload admin panel
@@ -99,10 +117,23 @@ export class ProviderManager {
         osmServer: NOMINATIM_BASE_URL,
         apiKey: undefined,
         formatter: null,
-        // extraQueryParams removed due to type conflicts
-      }),
+        fetch: this.createFetchWithUserAgent(),
+      } as unknown as Parameters<typeof NodeGeocoder>[0]),
       priority: 10,
       enabled: true,
+      rateLimit: DEFAULT_NOMINATIM_RATE_LIMIT,
+    };
+  }
+
+  /**
+   * Creates a fetch function with the required User-Agent header for Nominatim.
+   * Nominatim requires a valid User-Agent per their usage policy.
+   */
+  private createFetchWithUserAgent(userAgent: string = TIMETILES_USER_AGENT): typeof fetch {
+    return (url: RequestInfo | URL, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      headers.set("User-Agent", userAgent);
+      return fetch(url, { ...init, headers });
     };
   }
 
@@ -112,12 +143,18 @@ export class ProviderManager {
   }
 
   // Helper method to create provider entry
-  private createProviderEntry(doc: GeocodingProvider, geocoder: NodeGeocoder.Geocoder, defaultPriority: number) {
+  private createProviderEntry(
+    doc: GeocodingProvider,
+    geocoder: NodeGeocoder.Geocoder,
+    defaultPriority: number,
+    defaultRateLimit: number = 10
+  ): ProviderConfig {
     return {
       name: doc.name ?? doc.type,
       geocoder,
       priority: doc.priority ?? defaultPriority,
       enabled: doc.enabled ?? false,
+      rateLimit: doc.rateLimit ?? defaultRateLimit,
     };
   }
 
@@ -139,19 +176,23 @@ export class ProviderManager {
   }
 
   // Helper method to create geocoder based on type
-  private createGeocoderForType(doc: GeocodingProvider) {
+  // Default rate limits per provider type (if not configured in DB):
+  // - Google: 50 req/sec (paid API, generous limits)
+  // - OpenCage: 10 req/sec (varies by plan)
+  // - Nominatim: 1 req/sec (OSM usage policy)
+  private createGeocoderForType(doc: GeocodingProvider): ProviderConfig | null {
     switch (doc.type) {
       case "google": {
         const geocoder = this.createGoogleGeocoder(doc);
-        return geocoder ? this.createProviderEntry(doc, geocoder, 1) : null;
+        return geocoder ? this.createProviderEntry(doc, geocoder, 1, 50) : null;
       }
       case "opencage": {
         const geocoder = this.createOpenCageGeocoder(doc);
-        return geocoder ? this.createProviderEntry(doc, geocoder, 5) : null;
+        return geocoder ? this.createProviderEntry(doc, geocoder, 5, 10) : null;
       }
       case "nominatim": {
         const geocoder = this.createNominatimGeocoder(doc);
-        return this.createProviderEntry(doc, geocoder, 10);
+        return this.createProviderEntry(doc, geocoder, 10, DEFAULT_NOMINATIM_RATE_LIMIT);
       }
       default:
         logger.warn(`Unknown provider type: ${String(doc.type)}`);
@@ -185,15 +226,17 @@ export class ProviderManager {
   private createNominatimGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder {
     const nominatimConfig = doc.config?.nominatim;
     const baseUrl = nominatimConfig?.baseUrl ?? NOMINATIM_BASE_URL;
+    const userAgent = nominatimConfig?.userAgent ?? TIMETILES_USER_AGENT;
+
+    logger.debug("Creating Nominatim geocoder", { baseUrl, userAgent });
 
     return NodeGeocoder({
       provider: "openstreetmap",
       osmServer: baseUrl,
-      // httpAdapter: "https", // removed due to type conflicts
       apiKey: undefined,
       formatter: null,
-      // extraQueryParams removed due to type conflicts
-    });
+      fetch: this.createFetchWithUserAgent(userAgent),
+    } as unknown as Parameters<typeof NodeGeocoder>[0]);
   }
 
   private createOpenCageGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder | null {

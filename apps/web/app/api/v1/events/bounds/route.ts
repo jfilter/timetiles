@@ -81,9 +81,11 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
       if (accessibleCatalogIds.includes(catalogId)) {
         conditions.push(sql`d.catalog_id = ${catalogId}`);
       } else {
-        // User trying to access catalog they don't have permission for
-        const catalogArray = `{${accessibleCatalogIds.join(",")}}`;
-        conditions.push(sql`d.catalog_id = ANY(${catalogArray}::int[])`);
+        // User trying to access catalog they don't have permission for - deny access
+        return NextResponse.json<BoundsResponse>({
+          bounds: null,
+          count: 0,
+        });
       }
     } else {
       // No specific catalog requested, filter by all accessible catalogs

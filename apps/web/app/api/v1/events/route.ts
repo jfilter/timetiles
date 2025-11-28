@@ -185,10 +185,29 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
   }
 });
 
+const addLocationExistsFilter = (where: Where) => {
+  // Only include events that have geocoded locations
+  // Events without coordinates cannot be displayed on the map
+  where.and = [
+    ...(Array.isArray(where.and) ? where.and : []),
+    {
+      "location.latitude": {
+        exists: true,
+      },
+    },
+    {
+      "location.longitude": {
+        exists: true,
+      },
+    },
+  ];
+};
+
 const buildWhereClause = (parameters: ReturnType<typeof extractListParameters>, bounds: MapBounds | null): Where => {
   const where: Where = {};
 
   addFiltersToWhere(where, parameters);
+  addLocationExistsFilter(where);
   addBoundsToWhere(where, bounds);
   addDateFiltersToWhere(where, parameters.startDate, parameters.endDate);
 

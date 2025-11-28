@@ -42,10 +42,22 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
       return NextResponse.json({
         type: "FeatureCollection",
         features: [],
+        clusters: [],
+        totalCount: 0,
       });
     }
 
     const filters = buildMapClusterFilters(parameters, accessibleCatalogIds);
+
+    // If user doesn't have access to the requested catalog, return empty result
+    if (filters.denyAccess) {
+      return NextResponse.json({
+        type: "FeatureCollection",
+        features: [],
+        clusters: [],
+        totalCount: 0,
+      });
+    }
 
     const result = await executeClusteringQuery(payload, boundsResult.bounds, parameters.zoom, filters);
     const clusters = transformResultToClusters(result.rows);

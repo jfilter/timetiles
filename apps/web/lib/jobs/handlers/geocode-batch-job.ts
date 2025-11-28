@@ -11,13 +11,14 @@
  * @module
  * @category Jobs
  */
+/* eslint-disable sonarjs/max-lines-per-function -- Batch geocoding requires sequential processing steps */
 import path from "node:path";
 
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
-import { geocodeAddress } from "@/lib/services/geocoding";
+import { geocodeAddress, initializeGeocoding } from "@/lib/services/geocoding";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import type { GeocodingResultsMap } from "@/lib/types/geocoding";
 import { getGeocodingCandidate } from "@/lib/types/geocoding";
@@ -57,6 +58,14 @@ const extractUniqueLocations = (
 };
 
 /**
+ * Information about a failed geocoding attempt.
+ */
+interface GeocodingFailure {
+  location: string;
+  error: string;
+}
+
+/**
  * Geocode unique locations with progress tracking.
  */
 const geocodeUniqueLocations = async (
@@ -68,8 +77,10 @@ const geocodeUniqueLocations = async (
   results: GeocodingResultsMap;
   successCount: number;
   failureCount: number;
+  failures: GeocodingFailure[];
 }> => {
   const results: GeocodingResultsMap = {};
+  const failures: GeocodingFailure[] = [];
   let successCount = 0;
   let failureCount = 0;
   let processed = 0;
@@ -88,7 +99,9 @@ const geocodeUniqueLocations = async (
       successCount++;
       logger.debug("Geocoded location", { location, result });
     } catch (error) {
-      logger.warn("Geocoding failed", { location, error });
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      logger.warn("Geocoding failed", { location, error: errorMessage });
+      failures.push({ location, error: errorMessage });
       failureCount++;
     }
 
@@ -112,7 +125,7 @@ const geocodeUniqueLocations = async (
     failed: failureCount,
   });
 
-  return { results, successCount, failureCount };
+  return { results, successCount, failureCount, failures };
 };
 
 /**
@@ -158,6 +171,7 @@ const getJobResources = async (
 
 export const geocodeBatchJob = {
   slug: JOB_TYPES.GEOCODE_BATCH,
+  // eslint-disable-next-line sonarjs/max-lines-per-function -- Batch geocoding requires sequential processing steps
   handler: async (context: JobHandlerContext): Promise<{ output: Record<string, unknown> }> => {
     const payload = (context.req?.payload ?? context.payload) as Payload;
     const input = (context.input ?? context.job?.input) as GeocodingBatchJobInput["input"];
@@ -169,6 +183,9 @@ export const geocodeBatchJob = {
     const startTime = Date.now();
 
     try {
+      // Initialize the geocoding service with payload to load providers from database
+      initializeGeocoding(payload);
+
       const { job, importFile } = await getJobResources(payload, importJobId);
 
       // Get geocoding candidate (locationPath) from field mappings
@@ -208,12 +225,61 @@ export const geocodeBatchJob = {
       );
 
       // Geocode unique locations
-      const { results, successCount, failureCount } = await geocodeUniqueLocations(
+      const { results, successCount, failureCount, failures } = await geocodeUniqueLocations(
         payload,
         importJobId,
         uniqueLocations,
         logger
       );
+
+      // Fail the job if ALL geocoding failed - events without coordinates are useless on a map
+      if (uniqueLocations.size > 0 && successCount === 0) {
+        logger.error("All geocoding failed - cannot create events without coordinates", {
+          totalLocations: uniqueLocations.size,
+          failureCount,
+          failures,
+        });
+
+        // Build detailed error message with failed locations (limit to first 5 for readability)
+        const failedLocationsPreview = failures.slice(0, 5).map((f) => `"${f.location}": ${f.error}`);
+        const moreCount = failures.length > 5 ? ` (and ${failures.length - 5} more)` : "";
+        const errorMessage = `Geocoding failed for all ${failureCount} locations. Please check your Google Maps API key is configured correctly.`;
+        const detailedError = `${errorMessage}\n\nFailed locations${moreCount}:\n${failedLocationsPreview.join("\n")}`;
+
+        await payload.update({
+          collection: COLLECTION_NAMES.IMPORT_JOBS,
+          id: importJobId,
+          data: {
+            stage: PROCESSING_STAGE.FAILED,
+            errorLog: {
+              error: errorMessage,
+              context: "geocode-batch",
+              failedLocations: failureCount,
+              failures: failures.slice(0, 10), // Store first 10 failures with details
+            },
+          },
+        });
+
+        // Also update the import file status with error message (user-facing)
+        const { importFile } = await getJobResources(payload, importJobId);
+        await payload.update({
+          collection: COLLECTION_NAMES.IMPORT_FILES,
+          id: importFile.id,
+          data: {
+            status: "failed",
+            errorLog: detailedError,
+          },
+        });
+
+        return {
+          output: {
+            failed: true,
+            reason: "All geocoding failed",
+            totalLocations: uniqueLocations.size,
+            failedCount: failureCount,
+          },
+        };
+      }
 
       // Complete GEOCODE_BATCH stage
       await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.GEOCODE_BATCH);
@@ -247,11 +313,19 @@ export const geocodeBatchJob = {
     } catch (error) {
       logError(error, "Unique location geocoding failed", { importJobId });
 
-      // Update job status to failed
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+      // Update job status to failed with error details
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
-        data: { stage: PROCESSING_STAGE.FAILED },
+        data: {
+          stage: PROCESSING_STAGE.FAILED,
+          errorLog: {
+            error: errorMessage,
+            context: "geocode-batch",
+          },
+        },
       });
 
       throw error;

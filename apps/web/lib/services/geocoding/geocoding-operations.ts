@@ -19,7 +19,8 @@ import { createLogger, logError, logPerformance } from "@/lib/logger";
 
 import type { CacheManager } from "./cache-manager";
 import type { ProviderManager } from "./provider-manager";
-import type { BatchGeocodingResult, GeocodingResult, GeocodingSettings } from "./types";
+import { getProviderRateLimiter } from "./provider-rate-limiter";
+import type { BatchGeocodingResult, GeocodingResult, GeocodingSettings, ProviderConfig } from "./types";
 import { GeocodingError } from "./types";
 
 const logger = createLogger("geocoding-operations");
@@ -87,7 +88,13 @@ export class GeocodingOperations {
           break;
         }
       } catch (error) {
-        logger.warn(`Geocoding failed with provider ${provider.name}`, { error, address });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorStack = error instanceof Error ? error.stack : undefined;
+        logger.warn(`Geocoding failed with provider ${provider.name}`, {
+          error: errorMessage,
+          stack: errorStack,
+          address,
+        });
 
         if (!this.shouldContinueWithFallback()) {
           this.handleGeocodingError(error, address);
@@ -98,10 +105,11 @@ export class GeocodingOperations {
     return null;
   }
 
-  private async tryProvider(
-    provider: { geocoder: { geocode: (address: string) => Promise<Entry[]> }; name: string },
-    address: string
-  ): Promise<GeocodingResult | null> {
+  private async tryProvider(provider: ProviderConfig, address: string): Promise<GeocodingResult | null> {
+    // Wait for rate limit slot before making request
+    const rateLimiter = getProviderRateLimiter();
+    await rateLimiter.waitForSlot(provider.name);
+
     const results = await this.geocodeWithProvider(provider.geocoder, address);
     if (this.hasValidResults(results)) {
       const firstResult = results[0];
@@ -149,10 +157,8 @@ export class GeocodingOperations {
         }
       }
 
-      // Add delay between batches to respect rate limits
-      if (batches.indexOf(batch) < batches.length - 1) {
-        await this.delay(1000);
-      }
+      // Note: Per-request rate limiting is now handled in tryProvider() via ProviderRateLimiter.
+      // No additional batch delay needed.
     }
 
     return { results, summary };
@@ -339,9 +345,5 @@ export class GeocodingOperations {
       batches.push(items.slice(i, i + batchSize));
     }
     return batches;
-  }
-
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

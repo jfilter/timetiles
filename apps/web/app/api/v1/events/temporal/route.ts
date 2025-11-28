@@ -39,6 +39,17 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
     // Get accessible catalog IDs for this user
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, request.user);
 
+    const filters = buildEventFilters({
+      parameters,
+      accessibleCatalogIds,
+      bounds,
+    });
+
+    // If user doesn't have access to the requested catalog, return empty result
+    if (filters.denyAccess) {
+      return NextResponse.json(buildEmptyHistogramResponse());
+    }
+
     const histogramResult = await executeHistogramQuery(payload, parameters, bounds, accessibleCatalogIds);
     const response = buildHistogramResponse(histogramResult.rows);
 
@@ -77,6 +88,19 @@ const executeHistogramQuery = async (
     }>;
   };
 };
+
+const buildEmptyHistogramResponse = () => ({
+  histogram: [],
+  metadata: {
+    total: 0,
+    dateRange: { min: null, max: null },
+    bucketSizeSeconds: null,
+    bucketCount: 0,
+    counts: { datasets: 0, catalogs: 0 },
+    topDatasets: [],
+    topCatalogs: [],
+  },
+});
 
 const buildHistogramResponse = (
   rows: Array<{
