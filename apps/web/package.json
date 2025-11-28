@@ -5,7 +5,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "./scripts/job-runner.sh & next dev --turbopack",
     "dev:debug": "LOG_LEVEL=debug next dev --turbopack",
     "build": "payload generate:types --silent && next build",
     "build:compile": "payload generate:types --silent && next build --experimental-build-mode compile",
