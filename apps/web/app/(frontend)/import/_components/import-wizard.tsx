@@ -11,6 +11,7 @@
 
 import { Card, CardContent } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
+import { useEffect } from "react";
 
 import { StepAuth, StepDatasetSelection, StepFieldMapping, StepProcessing, StepReview, StepUpload } from "./steps";
 import { useWizard, WizardProvider, type WizardProviderProps } from "./wizard-context";
@@ -23,6 +24,15 @@ interface WizardContentProps {
 const WizardContent = ({ className }: Readonly<WizardContentProps>) => {
   const { state } = useWizard();
   const { currentStep } = state;
+
+  // Scroll to top when step changes
+  useEffect(() => {
+    // Small delay to ensure scroll happens after content renders and any focus events
+    const timer = setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [currentStep]);
 
   const renderStep = () => {
     switch (currentStep) {

@@ -143,8 +143,8 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
   return (
     <div className={cn("flex flex-col items-center justify-center py-8", className)}>
       <div className="mb-8 text-center">
-        <h2 className="text-2xl font-semibold">Sign in to continue</h2>
-        <p className="text-muted-foreground mt-2">Create an account or sign in to import your data.</p>
+        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">Sign in to continue</h2>
+        <p className="text-cartographic-navy/70 mt-2">Create an account or sign in to import your data.</p>
       </div>
 
       <AuthTabs onSuccess={handleAuthSuccess} />

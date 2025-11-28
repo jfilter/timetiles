@@ -9,9 +9,9 @@
  */
 "use client";
 
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@timetiles/ui";
+import { Button, Card, CardContent } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { FileSpreadsheetIcon, Loader2Icon, UploadIcon, XIcon } from "lucide-react";
+import { CheckCircle2Icon, FileSpreadsheetIcon, Loader2Icon, UploadIcon, XIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { useWizard } from "../wizard-context";
@@ -123,8 +123,8 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   return (
     <div className={cn("space-y-6", className)}>
       <div className="text-center">
-        <h2 className="text-2xl font-semibold">Upload your data</h2>
-        <p className="text-muted-foreground mt-2">Upload a CSV, Excel, or ODS file containing your event data.</p>
+        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">Upload your data</h2>
+        <p className="text-cartographic-navy/70 mt-2">Upload a CSV, Excel, or ODS file containing your event data.</p>
       </div>
 
       {/* Upload area or file preview */}
@@ -160,36 +160,68 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
           )}
         </div>
       ) : (
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between space-y-0">
-            <div className="flex items-start gap-4">
-              <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-lg">
-                <FileSpreadsheetIcon className="text-primary h-6 w-6" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">{file.name}</CardTitle>
-                <CardDescription>{formatFileSize(file.size)}</CardDescription>
-              </div>
+        <Card className="overflow-hidden">
+          {/* Success header bar */}
+          <div className="bg-cartographic-forest/10 border-cartographic-forest/20 border-b px-4 py-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle2Icon className="text-cartographic-forest h-4 w-4" />
+              <span className="text-cartographic-forest text-sm font-medium">File ready for import</span>
             </div>
-            <Button type="button" variant="ghost" size="icon" onClick={handleRemoveFile} aria-label="Remove file">
-              <XIcon className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <p className="text-sm font-medium">
-                Detected {sheets.length} {sheets.length === 1 ? "sheet" : "sheets"}:
-              </p>
-              <ul className="text-muted-foreground space-y-1 text-sm">
-                {sheets.map((sheet) => (
-                  <li key={sheet.index} className="flex items-center gap-2">
-                    <FileSpreadsheetIcon className="h-4 w-4" />
-                    <span>{sheet.name}</span>
-                    <span className="text-xs">({sheet.rowCount.toLocaleString()} rows)</span>
-                  </li>
-                ))}
-              </ul>
+          </div>
+
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between gap-4">
+              {/* File info */}
+              <div className="flex items-start gap-4">
+                <div className="bg-cartographic-cream border-cartographic-navy/20 flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border">
+                  <FileSpreadsheetIcon className="text-cartographic-navy h-6 w-6" />
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <h3 className="text-cartographic-charcoal truncate font-serif text-lg font-medium">{file.name}</h3>
+                  <div className="text-cartographic-navy/70 flex items-center gap-3 font-mono text-sm">
+                    <span>{formatFileSize(file.size)}</span>
+                    <span className="text-cartographic-navy/30">·</span>
+                    {sheets.length === 1 ? (
+                      <span>{sheets[0]?.rowCount.toLocaleString()} rows</span>
+                    ) : (
+                      <span>{sheets.length} sheets</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Remove button */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={handleRemoveFile}
+                aria-label="Remove file"
+                className="text-cartographic-navy/50 hover:text-cartographic-charcoal shrink-0"
+              >
+                <XIcon className="h-4 w-4" />
+              </Button>
             </div>
+
+            {/* Multi-sheet details */}
+            {sheets.length > 1 && (
+              <div className="border-cartographic-navy/10 mt-4 border-t pt-4">
+                <p className="text-cartographic-charcoal mb-2 text-sm font-medium">Sheets</p>
+                <ul className="space-y-1">
+                  {sheets.map((sheet) => (
+                    <li
+                      key={sheet.index}
+                      className="bg-cartographic-cream/50 flex items-center justify-between rounded-sm px-3 py-2"
+                    >
+                      <span className="text-cartographic-charcoal text-sm">{sheet.name}</span>
+                      <span className="text-cartographic-navy/70 font-mono text-xs">
+                        {sheet.rowCount.toLocaleString()} rows
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
