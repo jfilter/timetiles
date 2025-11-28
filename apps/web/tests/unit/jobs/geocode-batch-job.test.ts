@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => {
   return {
     readAllRowsFromFile: vi.fn(),
     geocodeAddress: vi.fn(),
+    initializeGeocoding: vi.fn(),
     getFileRowCount: vi.fn(),
   };
 });
@@ -28,6 +29,7 @@ const mocks = vi.hoisted(() => {
 // Mock external dependencies
 vi.mock("@/lib/services/geocoding", () => ({
   geocodeAddress: mocks.geocodeAddress,
+  initializeGeocoding: mocks.initializeGeocoding,
 }));
 
 vi.mock("@/lib/utils/file-readers", () => ({
@@ -46,6 +48,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     // Explicitly reset hoisted mocks to clear both call history AND implementations
     mocks.readAllRowsFromFile.mockReset();
     mocks.geocodeAddress.mockReset();
+    mocks.initializeGeocoding.mockReset();
     mocks.getFileRowCount.mockReset();
     mockPayload = createMockPayload();
     mockContext = {
@@ -370,11 +373,17 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("File read error");
 
-      // Should update job to FAILED stage
+      // Should update job to FAILED stage with error details
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: "import-123",
-        data: { stage: "failed" },
+        data: {
+          stage: "failed",
+          errorLog: {
+            error: "File read error",
+            context: "geocode-batch",
+          },
+        },
       });
     });
   });
@@ -420,10 +429,11 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       });
     });
 
-    it("should handle all locations failing to geocode", async () => {
+    it("should fail the job when all geocoding fails", async () => {
       const mockImportJob = {
         ...createMockImportJob(),
         id: "import-123",
+        importFile: { id: "file-123", filename: "test.csv" },
         detectedFieldMappings: {
           locationPath: "address",
         },
@@ -441,20 +451,39 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       const result = await geocodeBatchJob.handler(mockContext);
 
+      // Should return failure output
       expect(result.output).toEqual({
-        totalRows: 2,
-        uniqueLocations: 2,
-        geocodedCount: 0,
+        failed: true,
+        reason: "All geocoding failed",
+        totalLocations: 2,
         failedCount: 2,
       });
 
-      // Should store empty results but still transition to CREATE_EVENTS
+      // Should update import job to FAILED stage with error message and failure details
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: "import-123",
         data: {
-          geocodingResults: {},
-          stage: "create-events",
+          stage: "failed",
+          errorLog: {
+            error: expect.stringContaining("Geocoding failed for all 2 locations"),
+            context: "geocode-batch",
+            failedLocations: 2,
+            failures: expect.arrayContaining([
+              expect.objectContaining({ location: "Invalid 1", error: expect.any(String) }),
+              expect.objectContaining({ location: "Invalid 2", error: expect.any(String) }),
+            ]),
+          },
+        },
+      });
+
+      // Should also update import file status to failed with detailed error
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "import-files",
+        id: "file-123",
+        data: {
+          status: "failed",
+          errorLog: expect.stringMatching(/Geocoding failed for all 2 locations.*Failed locations/s),
         },
       });
     });

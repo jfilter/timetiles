@@ -814,10 +814,12 @@ export const withImportFile = async (
     }
   } else {
     // Create a temporary test user for this import
+    // Use both timestamp and random suffix to avoid collisions when tests run in parallel
+    const randomSuffix = Math.random().toString(36).substring(2, 10);
     const tempUser = await testEnv.payload.create({
       collection: "users",
       data: {
-        email: `import-test-${Date.now()}@test.local`,
+        email: `import-test-${Date.now()}-${randomSuffix}@test.local`,
         password: "TestPassword123!",
         role: "user",
       },

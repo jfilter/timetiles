@@ -68,6 +68,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       find: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      count: vi.fn().mockResolvedValue({ totalDocs: 2 }),
       jobs: {
         queue: vi.fn().mockResolvedValue({}),
       },
@@ -382,7 +383,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         data: {
           stage: "completed",
           results: {
-            totalEvents: 10,
+            totalEvents: 2, // From payload.count() mock
             duplicatesSkipped: 3, // 1 internal + 2 external
             geocoded: 2, // 2 geocoding results
             errors: 0,
@@ -478,7 +479,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         data: {
           stage: "completed",
           results: {
-            totalEvents: 0,
+            totalEvents: 2, // From payload.count() mock
             duplicatesSkipped: 0,
             geocoded: 0,
             errors: 0,

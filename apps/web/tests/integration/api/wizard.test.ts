@@ -310,7 +310,6 @@ describe.sequential("Wizard API Endpoints", () => {
               titleField: "title",
               descriptionField: "description",
               dateField: "date",
-              endDateField: null,
               idField: null,
               idStrategy: "auto",
               locationField: "location",
