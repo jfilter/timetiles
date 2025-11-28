@@ -231,9 +231,14 @@ init: setup up wait-db
 	@$(MAKE) dev
 
 # Run E2E tests (handles database setup automatically) - web-specific, bypasses turbo
+# Usage: make test-e2e FILTER="test name pattern"
 test-e2e:
 	@echo "🧪 Running E2E tests with automatic database setup..."
+ifdef FILTER
+	pnpm --filter web exec playwright test -g "$(FILTER)"
+else
 	pnpm --filter web test:e2e
+endif
 
 # Run database migrations (web-specific, bypasses turbo)
 migrate:

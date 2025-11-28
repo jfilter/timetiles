@@ -83,7 +83,7 @@ test-ai:
 	@$(MAKE) -C $(ROOT) test-ai $(if $(FILTER),FILTER='$(FILTER)')
 
 test-e2e:
-	@$(MAKE) -C $(ROOT) test-e2e
+	@$(MAKE) -C $(ROOT) test-e2e $(if $(FILTER),FILTER='$(FILTER)')
 
 test-coverage:
 	@$(MAKE) -C $(ROOT) test-coverage
