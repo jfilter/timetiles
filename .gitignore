@@ -62,6 +62,10 @@ dev.log
 .DS_Store
 *.pem
 
+# Office temporary/lock files
+.~lock.*#
+~$*
+
 
 
 # JF
