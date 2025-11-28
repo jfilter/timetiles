@@ -335,11 +335,12 @@ export const getDatasetsPerCatalog = (catalogIndex: number, catalogType: string)
 
 /**
  * Determine number of events for a dataset based on its characteristics.
+ * All datasets get at least 3 events, with a cap of 10 for smaller/newer datasets.
  */
 export const getEventsPerDataset = (datasetIndex: number, datasetName: string): number => {
   const name = datasetName.toLowerCase();
 
-  // Large datasets (national/state level)
+  // Large datasets (national/state level) - existing datasets with many events
   if (name.includes("national") || name.includes("federal") || name.includes("state")) {
     return 50 + ((datasetIndex * 10) % 51); // 50-100 events
   }
@@ -347,13 +348,13 @@ export const getEventsPerDataset = (datasetIndex: number, datasetName: string): 
   else if (name.includes("city") || name.includes("regional") || name.includes("metropolitan")) {
     return 20 + ((datasetIndex * 5) % 31); // 20-50 events
   }
-  // Small datasets (local/specialized)
+  // Small datasets (local/specialized) - 3-10 events
   else if (name.includes("local") || name.includes("community") || name.includes("pilot")) {
-    return 5 + ((datasetIndex * 3) % 16); // 5-20 events
+    return 3 + ((datasetIndex * 2) % 8); // 3-10 events
   }
-  // Default: use a deterministic formula
+  // Default for all other datasets: 3-10 events (minimum 3, max 10)
   else {
-    return 5 + ((datasetIndex * 15) % 96); // 5-100 events
+    return 3 + ((datasetIndex * 3) % 8); // 3-10 events
   }
 };
 

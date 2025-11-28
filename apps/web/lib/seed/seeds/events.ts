@@ -74,11 +74,24 @@ const getBaseDatasetConfigs = () => [
 
 // Development-only dataset configurations
 const getDevelopmentDatasetConfigs = () => [
+  // Cultural Events catalog
+  {
+    slug: "cultural-events-performance-schedule",
+    catalogType: "cultural",
+    name: "Performance Schedule",
+  },
+  {
+    slug: "cultural-events-exhibition-archive",
+    catalogType: "cultural",
+    name: "Exhibition Archive",
+  },
+  // Community Events Portal catalog
   {
     slug: "community-events-portal-local-events-calendar",
     catalogType: "community",
     name: "Local Events Calendar",
   },
+  // Cultural Heritage Archives catalog
   {
     slug: "cultural-heritage-archives-performance-schedule",
     catalogType: "cultural",
@@ -88,6 +101,92 @@ const getDevelopmentDatasetConfigs = () => [
     slug: "cultural-heritage-archives-exhibition-archive",
     catalogType: "cultural",
     name: "Exhibition Archive",
+  },
+  // Government Data catalog
+  {
+    slug: "government-data-public-records-database",
+    catalogType: "government",
+    name: "Public Records Database",
+  },
+  {
+    slug: "government-data-federal-grant-programs",
+    catalogType: "government",
+    name: "Federal Grant Programs",
+  },
+  {
+    slug: "government-data-legislative-data",
+    catalogType: "government",
+    name: "Legislative Data",
+  },
+  // Historical Records catalog
+  {
+    slug: "historical-records-research-study-results",
+    catalogType: "academic",
+    name: "Research Study Results",
+  },
+  {
+    slug: "historical-records-survey-response-data",
+    catalogType: "academic",
+    name: "Survey Response Data",
+  },
+  // Health & Medical Data catalog
+  {
+    slug: "health-medical-data-research-study-results",
+    catalogType: "academic",
+    name: "Research Study Results",
+  },
+  {
+    slug: "health-medical-data-survey-response-data",
+    catalogType: "academic",
+    name: "Survey Response Data",
+  },
+  // Transportation Data catalog
+  {
+    slug: "transportation-data-public-records-database",
+    catalogType: "government",
+    name: "Public Records Database",
+  },
+  {
+    slug: "transportation-data-federal-grant-programs",
+    catalogType: "government",
+    name: "Federal Grant Programs",
+  },
+  {
+    slug: "transportation-data-legislative-data",
+    catalogType: "government",
+    name: "Legislative Data",
+  },
+  // Education Statistics catalog
+  {
+    slug: "education-statistics-public-records-database",
+    catalogType: "government",
+    name: "Public Records Database",
+  },
+  {
+    slug: "education-statistics-federal-grant-programs",
+    catalogType: "government",
+    name: "Federal Grant Programs",
+  },
+  {
+    slug: "education-statistics-legislative-data",
+    catalogType: "government",
+    name: "Legislative Data",
+  },
+  // Urban Planning catalog
+  {
+    slug: "urban-planning-public-records-database",
+    catalogType: "government",
+    name: "Public Records Database",
+  },
+  {
+    slug: "urban-planning-federal-grant-programs",
+    catalogType: "government",
+    name: "Federal Grant Programs",
+  },
+  {
+    slug: "urban-planning-legislative-data",
+    catalogType: "government",
+    name: "Legislative Data",
   },
 ];
 
@@ -123,11 +222,15 @@ const generateEventsForDataset = (
     // eslint-disable-next-line sonarjs/pseudo-random
     const needsLocation = config.catalogType !== "economic" || Math.random() > 0.5;
 
+    // Extract location name from metadata based on catalog type
+    const locationName = extractLocationName(config.catalogType, metadata);
+
     events.push({
       uniqueId: `${config.slug}-event-${i}`,
       dataset: config.slug,
       data: metadata,
       location: needsLocation ? location : undefined,
+      locationName,
       eventTimestamp: eventTimestamp,
       validationStatus: "valid" as const,
       coordinateSource: needsLocation
@@ -159,6 +262,26 @@ export const eventSeeds = (environment: string): EventSeed[] => {
   });
 
   return events;
+};
+
+/**
+ * Extract location name from metadata based on catalog type.
+ * Maps venue/institution/station to locationName for display.
+ */
+const extractLocationName = (catalogType: string, metadata: Record<string, unknown>): string | undefined => {
+  switch (catalogType) {
+    case "cultural":
+      // Cultural events have venue names
+      return typeof metadata.venue === "string" ? metadata.venue : undefined;
+    case "academic":
+      // Academic events use institution as location
+      return typeof metadata.institution === "string" ? metadata.institution : undefined;
+    case "environmental":
+      // Environmental events use station_id
+      return typeof metadata.station_id === "string" ? `Station ${metadata.station_id}` : undefined;
+    default:
+      return undefined;
+  }
 };
 
 const determineEventTimestamp = (catalogType: string, metadata: Record<string, unknown>): Date => {

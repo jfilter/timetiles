@@ -25,6 +25,14 @@
   --cartographic-forest: oklch(0.42 0.08 145);
   --cartographic-cream: oklch(0.88 0.01 80);
 
+  /* Extended Palette for Dataset Badges (Light Mode) */
+  --cartographic-teal: oklch(0.52 0.1 185);
+  --cartographic-amber: oklch(0.62 0.15 70);
+  --cartographic-plum: oklch(0.45 0.12 320);
+  --cartographic-slate: oklch(0.48 0.02 260);
+  --cartographic-rose: oklch(0.55 0.14 10);
+  --cartographic-olive: oklch(0.5 0.08 110);
+
   /* Semantic Tokens (Cartographic Theme - Light Mode) */
   --background: var(--cartographic-parchment);
   --foreground: var(--cartographic-charcoal);
@@ -71,6 +79,14 @@
   --cartographic-forest: oklch(0.55 0.1 145);
   --cartographic-cream: oklch(0.28 0.01 250);
 
+  /* Extended Palette for Dataset Badges (Dark Mode) */
+  --cartographic-teal: oklch(0.58 0.11 185);
+  --cartographic-amber: oklch(0.68 0.16 70);
+  --cartographic-plum: oklch(0.55 0.14 320);
+  --cartographic-slate: oklch(0.58 0.03 260);
+  --cartographic-rose: oklch(0.62 0.15 10);
+  --cartographic-olive: oklch(0.58 0.09 110);
+
   /* Semantic Tokens (Cartographic Theme - Dark Mode) */
   --background: var(--cartographic-parchment);
   --foreground: var(--cartographic-charcoal);
@@ -115,6 +131,14 @@
   --color-cartographic-terracotta: var(--cartographic-terracotta);
   --color-cartographic-forest: var(--cartographic-forest);
   --color-cartographic-cream: var(--cartographic-cream);
+
+  /* Extended Cartographic Colors for Dataset Badges */
+  --color-cartographic-teal: var(--cartographic-teal);
+  --color-cartographic-amber: var(--cartographic-amber);
+  --color-cartographic-plum: var(--cartographic-plum);
+  --color-cartographic-slate: var(--cartographic-slate);
+  --color-cartographic-rose: var(--cartographic-rose);
+  --color-cartographic-olive: var(--cartographic-olive);
 
   /* Font Family Variables */
   --font-family-serif: var(--font-serif);

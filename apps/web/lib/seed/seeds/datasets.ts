@@ -148,6 +148,7 @@ const getCatalogConfigs = (environment: string) => {
   // Development has expanded catalogs
   if (environment === "development") {
     baseCatalogs.push(
+      { slug: "cultural-events", type: "cultural" },
       { slug: "community-events-portal", type: "community" },
       { slug: "cultural-heritage-archives", type: "cultural" },
       { slug: "government-data", type: "government" },
