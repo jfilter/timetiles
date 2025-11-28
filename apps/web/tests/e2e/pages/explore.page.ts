@@ -33,21 +33,24 @@ export class ExplorePage {
     this.catalogSelect = page.locator("#catalog-select"); // eslint-disable-line sonarjs/deprecation
     // New catalog UI: buttons under "Data Sources" / "Catalogs" section
     this.dataSourcesSection = page.getByRole("button", { name: /Data Sources/i });
-    this.catalogButtons = page.locator("button").filter({ hasText: /datasets?|events?/i });
+    // Catalog buttons contain "X datasets" and "Y events" text in divs
+    // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
+    this.catalogButtons = page.locator("button").filter({ hasText: /\d+ datasets?/ });
     this.datasetCheckboxes = page.locator('input[type="checkbox"]');
     // New date picker UI uses buttons instead of input fields
     this.startDateInput = page.getByRole("button", { name: /Start date:/i });
     this.endDateInput = page.getByRole("button", { name: /End date:/i });
     // Clear dates button format changed - now shows date range like "Feb 2024 → Jan 2026"
     this.clearDatesButton = page.getByRole("button", { name: /→/ });
-    this.eventsList = page.locator(".space-y-2").first();
-    // Events count format changed to "Events (X of Y)" or "Events (X)"
+    this.eventsList = page.locator(".space-y-4").first();
+    // Events count format changed to "Showing X of Y events" or "Showing all X events"
     this.eventsCount = page
-      .locator("h2")
-      .filter({ hasText: /Events \(\d+/ })
+      .locator("p")
+      .filter({ hasText: /Showing .* event/ })
       .first();
     this.loadingIndicator = page.getByText("Loading events...").first();
-    this.noEventsMessage = page.getByText("No events found").first();
+    // New UI shows "Showing all 0 events" or "Showing 0 of X events" when no events match
+    this.noEventsMessage = page.locator("p").filter({ hasText: /Showing (?:all )?0|No events/ }).first();
     this.noDatasetsMessage = page.getByText("No datasets available");
   }
 
@@ -143,12 +146,47 @@ export class ExplorePage {
     await dateInputs.first().waitFor({ state: "visible", timeout: 5000 });
   }
 
+  /**
+   * Open the filter drawer if it's not already open.
+   * The filter drawer contains catalog and dataset selection.
+   * Note: Filter drawer is open by default on page load.
+   */
+  async openFilterDrawer() {
+    // Check if filter drawer is already open by looking for a catalog button
+    // (Catalog buttons show "X datasets" in their text content)
+    const catalogButton = this.page.locator("button").filter({ hasText: /\d+ datasets?/ }).first();
+    const isAlreadyOpen = await catalogButton.isVisible({ timeout: 2000 }).catch(() => false);
+
+    if (isAlreadyOpen) {
+      // Already open, nothing to do
+      return;
+    }
+
+    // Try to find "Show filters" button (visible when drawer is closed)
+    const showFiltersButton = this.page.getByRole("button", { name: /Show filters/i });
+    const showButtonVisible = await showFiltersButton.isVisible({ timeout: 1000 }).catch(() => false);
+
+    if (showButtonVisible) {
+      await showFiltersButton.click();
+      // Wait for the drawer to open (catalog buttons should become visible)
+      await catalogButton.waitFor({ state: "visible", timeout: 5000 });
+    }
+  }
+
   async selectCatalog(catalogName: string) {
+    // First, ensure the filter drawer is open
+    await this.openFilterDrawer();
+
+    // Wait for catalogs to load from API (buttons with "X datasets" text)
+    const anyCatalogButton = this.page.locator("button").filter({ hasText: /\d+ datasets?/ }).first();
+    await anyCatalogButton.waitFor({ state: "visible", timeout: 15000 });
+
     // New UI: catalogs are displayed as buttons under "Data Sources" section
     // Each button shows: "CatalogName X datasets Y events"
     const catalogButton = this.page.getByRole("button", { name: new RegExp(catalogName, "i") }).first();
-    await catalogButton.waitFor({ state: "visible", timeout: 5000 });
-    await catalogButton.click();
+    await catalogButton.waitFor({ state: "visible", timeout: 10000 });
+    // Use force: true to click through any potential overlays or animations
+    await catalogButton.click({ force: true, timeout: 10000 });
 
     // Wait for UI to update after selection
     await this.page.waitForTimeout(500);
@@ -159,21 +197,18 @@ export class ExplorePage {
    * Returns array of catalog names (without dataset/event counts).
    */
   async getAvailableCatalogs(): Promise<string[]> {
-    // Wait for catalogs to load
-    await this.page.waitForSelector('button:has-text("datasets")', { timeout: 5000 });
+    // Wait for catalogs to load - catalog buttons contain "X datasets" text
+    await this.page.waitForSelector('button:has-text("datasets")', { timeout: 15000 });
 
     // Get all catalog buttons
     const buttons = await this.catalogButtons.allTextContents();
 
-    // Extract catalog names (text before the numbers)
+    // Extract catalog names - buttons have format:
+    // "Catalog Name\nX datasets\nY events" (newline-separated)
     return buttons.map((text) => {
-      // Format: "Catalog Name X datasets Y events" or "Catalog Name X dataset"
-      // Use indexOf to find where the number starts instead of regex with backtracking
-      const numIndex = text.search(/\d/);
-      if (numIndex > 0) {
-        return text.slice(0, numIndex).trim();
-      }
-      return text.trim();
+      // Split by newlines and take first line (catalog name)
+      const lines = text.split("\n");
+      return lines[0]?.trim() ?? text.trim();
     });
   }
 
@@ -325,14 +360,15 @@ export class ExplorePage {
       throw new Error("Events count text is empty");
     }
 
-    // Match "Events (X)" or "Events (X of Y)" - capture the first number
-    // Use simple pattern - extract digits after opening parenthesis
-    const matches = /Events \((\d+)/.exec(text);
+    // Match "Showing X of Y events" or "Showing all X events" or "Showing X event(s)"
+    // Use simple pattern - extract the first number after "Showing"
+    const matches = /Showing (?:all )?(\d[\d,]*)/.exec(text);
     if (!matches?.[1]) {
       throw new Error(`Events count text does not match expected pattern: "${text}"`);
     }
 
-    const count = Number.parseInt(matches[1], 10);
+    // Remove commas from number (e.g., "1,245" -> "1245")
+    const count = Number.parseInt(matches[1].replace(/,/g, ""), 10);
 
     // Debug logging to help understand what's happening
     console.log(`getEventCount: text="${text}", count=${count}`);

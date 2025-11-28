@@ -203,8 +203,9 @@ test.describe("Import Wizard - Full Flow", () => {
       const completionIndicator = page.getByText(/import complete/i);
       await expect(completionIndicator).toBeVisible({ timeout: 30000 });
 
-      // Verify success message shows events were created
-      const successMessage = page.getByText(/events imported/i);
+      // Verify success message shows events were created (must be > 0)
+      // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
+      const successMessage = page.getByText(/[1-9]\d* events imported/i);
       await expect(successMessage).toBeVisible({ timeout: 5000 });
 
       // Verify we can navigate to explore page
@@ -373,7 +374,9 @@ test.describe("Import Wizard - Full Flow", () => {
       const completionIndicator = page.getByText(/import complete/i);
       await expect(completionIndicator).toBeVisible({ timeout: 30000 });
 
-      const successMessage = page.getByText(/events imported/i);
+      // Verify success message shows events were created (must be > 0)
+      // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
+      const successMessage = page.getByText(/[1-9]\d* events imported/i);
       await expect(successMessage).toBeVisible({ timeout: 5000 });
 
       const viewOnMapButton = page.getByRole("link", { name: /view on map|explore/i });

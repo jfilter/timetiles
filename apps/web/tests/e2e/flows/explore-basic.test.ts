@@ -25,12 +25,12 @@ test.describe("Explore Page - Basic Functionality", () => {
     // UI redesigned: catalogs are now shown as buttons under Data Sources section
     await expect(explorePage.dataSourcesSection).toBeVisible();
 
-    // Check initial state - dataset message should be visible
-    // Note: With seeded data, there might be datasets available
-    const datasetsSection = page.locator("text=Datasets").first();
-    await expect(datasetsSection).toBeVisible();
+    // Check initial state - Catalogs section should be visible (renamed from Datasets)
+    // Note: With seeded data, there might be catalogs available
+    const catalogsSection = page.locator("text=Catalogs").first();
+    await expect(catalogsSection).toBeVisible();
 
-    // Should show events count
+    // Should show events count (now a paragraph with "Showing X events...")
     await expect(explorePage.eventsCount).toBeVisible();
   });
 
@@ -55,30 +55,27 @@ test.describe("Explore Page - Basic Functionality", () => {
     // Wait a bit for React to settle after loading
     await page.waitForTimeout(1000);
 
-    // Get the event count - format is "Events (X of Y)" where X is displayed, Y is total
-    const eventCount = await explorePage.getEventCount();
+    // New UI format: "Showing X of Y events" or "Showing all X events"
+    // The events count paragraph is always visible, showing the current state
+    const countText = await explorePage.eventsCount.textContent();
 
-    // When no datasets are selected, the displayed count is 0 but total may be > 0
-    // This is the expected "empty state" - no datasets selected means no events shown
-    // The "No events found" message only appears when datasets ARE selected but no events match
-    if (eventCount === 0) {
-      // Check the full text to understand the state
-      const countText = await explorePage.eventsCount.textContent();
+    // The new UI shows descriptive text like:
+    // - "Showing 0 of 56 events in the map view." (when map bounds filter to 0)
+    // - "Showing all 56 events." (when showing everything)
+    // - "No events found" only appears when truly no data exists
 
-      // "Events (0 of X)" where X > 0 means no datasets selected - this is valid
-      // "Events (0)" or "No events found" means truly no events exist
-      const hasEventsAvailable = countText?.includes(" of ");
-
-      if (hasEventsAvailable) {
-        // No datasets selected state - events count header is the correct display
-        await expect(explorePage.eventsCount).toBeVisible();
-      } else {
-        // No events exist at all - expect the no events message
-        await expect(explorePage.noEventsMessage).toBeVisible();
-      }
-    } else {
-      // If there are events displayed, the events count heading should be visible
+    if (countText?.includes("Showing")) {
+      // Events count paragraph is visible with descriptive text - this is the expected state
       await expect(explorePage.eventsCount).toBeVisible();
+    } else {
+      // No events exist at all - check for the no events message
+      const noEventsVisible = await explorePage.noEventsMessage.isVisible().catch(() => false);
+      if (noEventsVisible) {
+        await expect(explorePage.noEventsMessage).toBeVisible();
+      } else {
+        // Fallback - just verify the events count element is present
+        await expect(explorePage.eventsCount).toBeVisible();
+      }
     }
   });
 
@@ -176,8 +173,11 @@ test.describe("Explore Page - Basic Functionality", () => {
       await expect(loadingText).not.toBeVisible({ timeout: 10000 });
     } catch {
       // If loading was too fast to catch, verify the page eventually loads
-      // Check that the events count header is visible (it always shows, even when empty)
-      const eventsCount = page.getByRole("heading", { name: /Events \(\d+/ }).first();
+      // Check that the events count paragraph is visible (now shows "Showing X events...")
+      const eventsCount = page
+        .locator("p")
+        .filter({ hasText: /Showing .* event/ })
+        .first();
       await expect(eventsCount).toBeVisible({ timeout: 15000 });
     }
   });

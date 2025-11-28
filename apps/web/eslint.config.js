@@ -192,6 +192,23 @@ export default [
       ],
     },
   },
+  // Complex wizard/service files - allow higher file limits
+  {
+    files: [
+      "app/(frontend)/import/_components/steps/step-field-mapping.tsx",
+      "lib/services/schema-builder/field-mapping-detection.ts",
+    ],
+    rules: {
+      "sonarjs/max-lines": "off", // Complex wizard steps and multi-language detection require extensive code
+    },
+  },
+  // Map component with intentional eslint-disable for mount-only effect
+  {
+    files: ["app/(frontend)/explore/_components/map-explorer.tsx"],
+    rules: {
+      "react-compiler/react-compiler": "off", // Intentional mount-only effect with eslint-disable
+    },
+  },
   // Ignore patterns for performance
   {
     ignores: [
