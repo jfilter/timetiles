@@ -12,7 +12,17 @@
 
 import LogoDark from "@timetiles/assets/logos/final/dark/logo-128.png";
 import LogoLight from "@timetiles/assets/logos/final/light/logo-128.png";
-import { Header, HeaderActions, HeaderBrand, HeaderNav, HeaderNavItem } from "@timetiles/ui";
+import {
+  Header,
+  HeaderActions,
+  HeaderBrand,
+  HeaderNav,
+  HeaderNavItem,
+  MobileNavDrawer,
+  MobileNavDrawerContent,
+  MobileNavDrawerLink,
+  MobileNavDrawerTrigger,
+} from "@timetiles/ui";
 import { ArrowLeft, Filter } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -110,14 +120,66 @@ interface ExploreNavigationProps {
 }
 
 /**
- * Explore page full header content.
+ * Mobile header for explore pages - simplified single-row layout.
+ * Shows catalog/dataset title and event count (visible/total).
+ */
+const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps, "currentView">) => {
+  const { filters } = useFilters();
+  const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
+  const mapStats = useUIStore((state) => state.ui.mapStats);
+
+  const { title } = buildDynamicTitle(filters, catalogs, datasets);
+
+  // Format event count as (visible/total)
+  const eventCount =
+    mapStats != null ? `(${mapStats.visibleEvents.toLocaleString()}/${mapStats.totalEvents.toLocaleString()})` : null;
+
+  return (
+    <div className="-mx-6 flex flex-1 items-center justify-between">
+      {/* Back button */}
+      <Link
+        href="/"
+        className="hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 ml-6 flex items-center rounded-sm p-2 transition-colors"
+        title="Back to home"
+      >
+        <ArrowLeft className="text-cartographic-navy dark:text-cartographic-charcoal h-5 w-5" />
+      </Link>
+
+      {/* Centered title and event count */}
+      <div className="flex flex-col items-center">
+        <span className="text-cartographic-charcoal dark:text-cartographic-charcoal font-sans text-sm font-semibold">
+          {title}
+        </span>
+        {eventCount && (
+          <span className="text-cartographic-navy/60 dark:text-cartographic-charcoal/60 font-mono text-xs">
+            {eventCount}
+          </span>
+        )}
+      </div>
+
+      {/* Filter icon */}
+      <button
+        type="button"
+        onClick={toggleFilterDrawer}
+        className="hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 mr-6 rounded-sm p-2 transition-colors"
+        title="Show filters"
+        aria-label="Show filters"
+      >
+        <Filter className="text-cartographic-navy dark:text-cartographic-charcoal h-5 w-5" />
+      </button>
+    </div>
+  );
+};
+
+/**
+ * Desktop header for explore pages - split layout matching content panels.
  * Renders everything in a single flex container to ensure alignment with content below:
  * - Back button on far left
  * - Left half (over map): centered coordinates and event count
  * - Right half (over list): centered title and date range
  * - Filter area: matches sidebar width (320px when open, 0 when closed)
  */
-const ExploreFullHeader = ({ catalogs, datasets, currentView }: ExploreNavigationProps) => {
+const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNavigationProps) => {
   const { filters } = useFilters();
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
   const mapStats = useUIStore((state) => state.ui.mapStats);
@@ -144,13 +206,13 @@ const ExploreFullHeader = ({ catalogs, datasets, currentView }: ExploreNavigatio
   const eventCount = mapStats ? formatEventCount(mapStats.visibleEvents, mapStats.totalEvents) : null;
 
   return (
-    <div className="-mx-6 flex flex-1 items-center md:-mx-8">
+    <div className="-mx-8 flex flex-1 items-center">
       {/* Left half - over the map (includes back button and view toggle) */}
       <div className="flex flex-1 items-center">
         {/* Back button */}
         <Link
           href="/"
-          className="hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 ml-6 flex items-center rounded-sm p-2 transition-colors md:ml-8"
+          className="hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 ml-8 flex items-center rounded-sm p-2 transition-colors"
           title="Back to home"
         >
           <ArrowLeft className="text-cartographic-navy dark:text-cartographic-charcoal h-5 w-5" />
@@ -213,7 +275,7 @@ const ExploreFullHeader = ({ catalogs, datasets, currentView }: ExploreNavigatio
       {/* Filter area - matches sidebar width, shows clickable "Filters" label when open */}
       <div
         className={`flex items-center justify-center border-l transition-all duration-500 ease-in-out ${
-          isFilterDrawerOpen ? "w-80 pr-6 md:pr-8" : "w-0 overflow-hidden"
+          isFilterDrawerOpen ? "w-80 pr-8" : "w-0 overflow-hidden"
         }`}
       >
         <button
@@ -231,9 +293,28 @@ const ExploreFullHeader = ({ catalogs, datasets, currentView }: ExploreNavigatio
 };
 
 /**
+ * Combined explore header that shows appropriate layout for screen size.
+ */
+const ExploreFullHeader = ({ catalogs, datasets, currentView }: ExploreNavigationProps) => {
+  return (
+    <>
+      {/* Mobile: simplified header */}
+      <div className="flex flex-1 md:hidden">
+        <ExploreMobileHeader catalogs={catalogs} datasets={datasets} />
+      </div>
+      {/* Desktop: full split-pane header */}
+      <div className="hidden flex-1 md:flex">
+        <ExploreDesktopHeader catalogs={catalogs} datasets={datasets} currentView={currentView} />
+      </div>
+    </>
+  );
+};
+
+/**
  * Adaptive header that shows different content based on current route.
  *
- * - Marketing pages: Shows site navigation with decorative grid overlay
+ * - Landing page: Shows site navigation with decorative grid overlay
+ * - Other marketing pages: Shows site navigation without decorative elements
  * - Explore page: Shows app controls with clean functional design
  *
  * @example
@@ -249,6 +330,7 @@ export const AdaptiveHeader = ({
 }: Readonly<AdaptiveHeaderProps>) => {
   const pathname = usePathname();
   const isExplorePage = pathname === "/explore" || pathname === "/explore/list";
+  const isLandingPage = pathname === "/";
   const currentView: "map" | "list" = pathname === "/explore/list" ? "list" : "map";
   const { resolvedTheme } = useTheme();
   const logo = resolvedTheme === "dark" ? LogoDark : LogoLight;
@@ -263,8 +345,9 @@ export const AdaptiveHeader = ({
   }
 
   // Marketing pages use standard brand/nav/actions layout
+  // Only show decorative grid on landing page
   return (
-    <Header variant="marketing" decorative>
+    <Header variant="marketing" decorative={isLandingPage}>
       <HeaderBrand>
         <Link href="/" className="flex items-center gap-3">
           <Image src={logo} alt="TimeTiles" className="h-9 w-9 shrink-0" width={128} height={128} />
@@ -279,8 +362,41 @@ export const AdaptiveHeader = ({
       </HeaderNav>
 
       <HeaderActions>
-        <HeaderAuth user={user} />
-        <ThemeToggle />
+        {/* Desktop only: auth and theme toggle */}
+        <div className="hidden md:block">
+          <HeaderAuth user={user} />
+        </div>
+        <div className="hidden md:block">
+          <ThemeToggle />
+        </div>
+
+        {/* Mobile navigation drawer */}
+        <MobileNavDrawer>
+          <MobileNavDrawerTrigger />
+          <MobileNavDrawerContent>
+            {mainMenu.navItems?.map((item) => (
+              <MobileNavDrawerLink key={`mobile-${item.url}-${item.label}`} active={pathname === item.url} asChild>
+                <Link href={item.url}>{item.label}</Link>
+              </MobileNavDrawerLink>
+            ))}
+
+            {/* Divider */}
+            <div className="border-cartographic-navy/20 dark:border-cartographic-navy/40 my-2 border-t" />
+
+            {/* Auth link for mobile */}
+            <MobileNavDrawerLink active={pathname === "/login"} asChild>
+              <Link href={user ? "/dashboard" : "/login"}>{user ? "Dashboard" : "Sign In"}</Link>
+            </MobileNavDrawerLink>
+
+            {/* Theme toggle in drawer */}
+            <div className="flex items-center justify-between px-6 py-4">
+              <span className="text-cartographic-charcoal dark:text-cartographic-charcoal font-serif text-lg">
+                Theme
+              </span>
+              <ThemeToggle />
+            </div>
+          </MobileNavDrawerContent>
+        </MobileNavDrawer>
       </HeaderActions>
     </Header>
   );

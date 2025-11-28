@@ -42,10 +42,11 @@ export const WizardNavigation = ({
   isLoading = false,
 }: Readonly<WizardNavigationProps>) => {
   const { state, nextStep, prevStep, reset, canProceed } = useWizard();
-  const { currentStep } = state;
+  const { currentStep, startedAuthenticated } = state;
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  const isFirstStep = currentStep === 1;
+  // First visible step is 2 (Upload) if user started authenticated, otherwise 1 (Sign In)
+  const isFirstVisibleStep = startedAuthenticated ? currentStep === 2 : currentStep === 1;
   const isLastStep = currentStep === 6;
 
   const handleBack = useCallback(() => {
@@ -100,13 +101,13 @@ export const WizardNavigation = ({
   return (
     <div className={cn("flex items-center justify-between border-t pt-6", className)} data-testid="wizard-navigation">
       <div className="flex items-center gap-4">
-        {showBack && !isFirstStep && (
+        {showBack && !isFirstVisibleStep && (
           <Button type="button" variant="outline" onClick={handleBack} disabled={isLoading}>
             <ArrowLeftIcon className="mr-2 h-4 w-4" />
             Back
           </Button>
         )}
-        {!isFirstStep && !isLastStep && (
+        {currentStep > 2 && !isLastStep && (
           <>
             {showResetConfirm ? (
               <div className="flex items-center gap-2">

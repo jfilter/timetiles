@@ -51,6 +51,7 @@ export interface SuggestedMappings {
   mappings: {
     titlePath: FieldMappingSuggestion;
     descriptionPath: FieldMappingSuggestion;
+    locationNamePath: FieldMappingSuggestion;
     timestampPath: FieldMappingSuggestion;
     latitudePath: FieldMappingSuggestion;
     longitudePath: FieldMappingSuggestion;
@@ -78,8 +79,8 @@ export interface FieldMapping {
   sheetIndex: number;
   titleField: string | null;
   descriptionField: string | null;
+  locationNameField: string | null;
   dateField: string | null;
-  endDateField: string | null;
   idField: string | null;
   idStrategy: "external" | "computed" | "auto" | "hybrid";
   locationField: string | null;
@@ -97,6 +98,8 @@ export interface WizardState {
   isAuthenticated: boolean;
   isEmailVerified: boolean;
   userId: number | null;
+  /** Whether user was already authenticated when wizard started (used to hide auth step in UI) */
+  startedAuthenticated: boolean;
 
   // Step 2: Upload
   previewId: string | null;
@@ -130,6 +133,7 @@ const initialState: WizardState = {
   isAuthenticated: false,
   isEmailVerified: false,
   userId: null,
+  startedAuthenticated: false,
   previewId: null,
   file: null,
   sheets: [],
@@ -197,7 +201,20 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
           userId: action.userId,
         };
 
-      case "SET_FILE":
+      case "SET_FILE": {
+        // For single-sheet files (like CSV), use the file name instead of "Sheet1"
+        const getDatasetName = (sheet: SheetInfo) => {
+          if (action.sheets.length === 1 && action.file?.name) {
+            // Use file name without extension
+            return action.file.name
+              .replace(/\.[^/.]+$/, "")
+              .replace(/[-_]+/g, " ")
+              .replace(/\s+/g, " ")
+              .trim();
+          }
+          return sheet.name;
+        };
+
         return {
           ...state,
           file: action.file,
@@ -207,7 +224,7 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
           sheetMappings: action.sheets.map((sheet) => ({
             sheetIndex: sheet.index,
             datasetId: "new" as const,
-            newDatasetName: sheet.name,
+            newDatasetName: getDatasetName(sheet),
             similarityScore: null,
           })),
           // Initialize field mappings for each sheet, pre-filled from suggested mappings
@@ -218,8 +235,8 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
               // Pre-fill from auto-detected suggestions
               titleField: suggestions?.titlePath.path ?? null,
               descriptionField: suggestions?.descriptionPath.path ?? null,
+              locationNameField: suggestions?.locationNamePath?.path ?? null,
               dateField: suggestions?.timestampPath.path ?? null,
-              endDateField: null,
               idField: null,
               idStrategy: "auto" as const,
               locationField: suggestions?.locationPath.path ?? null,
@@ -228,6 +245,7 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
             };
           }),
         };
+      }
 
       case "CLEAR_FILE":
         return {
@@ -407,22 +425,73 @@ export interface WizardProviderProps {
 }
 
 export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProviderProps>) => {
+  const wasAuthenticatedOnStart = initialAuth?.isAuthenticated && initialAuth?.isEmailVerified;
   const [state, dispatch] = useReducer(wizardReducer, {
     ...initialState,
     isAuthenticated: initialAuth?.isAuthenticated ?? false,
     isEmailVerified: initialAuth?.isEmailVerified ?? false,
     userId: initialAuth?.userId ?? null,
+    // Track if user was already authenticated when wizard started
+    startedAuthenticated: wasAuthenticatedOnStart ?? false,
     // Skip auth step if already authenticated and verified
-    currentStep: initialAuth?.isAuthenticated && initialAuth?.isEmailVerified ? 2 : 1,
+    currentStep: wasAuthenticatedOnStart ? 2 : 1,
   });
 
   // Restore from localStorage on mount
   useEffect(() => {
     const saved = loadFromStorage();
     if (saved) {
-      dispatch({ type: "RESTORE", state: saved });
+      // Never restore auth state from localStorage - always use server-provided initialAuth
+      // This prevents issues when user logs out but localStorage still has isAuthenticated: true
+      const restoredState = {
+        ...saved,
+        // Always use current auth state from server
+        isAuthenticated: initialAuth?.isAuthenticated ?? false,
+        isEmailVerified: initialAuth?.isEmailVerified ?? false,
+        userId: initialAuth?.userId ?? null,
+        // startedAuthenticated is based on initial page load, not restored state
+        startedAuthenticated: wasAuthenticatedOnStart ?? false,
+        // Adjust step based on current auth state
+        currentStep: (wasAuthenticatedOnStart
+          ? Math.max(saved.currentStep, 2)
+          : !initialAuth?.isAuthenticated
+            ? 1
+            : saved.currentStep) as WizardStep,
+      };
+      dispatch({ type: "RESTORE", state: restoredState });
     }
-  }, []);
+  }, [initialAuth?.isAuthenticated, initialAuth?.isEmailVerified, initialAuth?.userId, wasAuthenticatedOnStart]);
+
+  // Validate preview file exists when we have a previewId
+  // If preview is invalid (file deleted, expired), clear file state and go back to upload step
+  // Skip validation during processing (step 6) since the preview is cleaned up after import starts
+  useEffect(() => {
+    const validatePreview = async () => {
+      // Don't validate if no preview, during processing, or if import has started
+      if (!state.previewId || state.currentStep === 6 || state.importFileId !== null) return;
+
+      try {
+        const response = await fetch(`/api/wizard/validate-preview?previewId=${state.previewId}`);
+        const data = await response.json();
+
+        if (!data.valid) {
+          // Preview file no longer exists - clear file state
+          dispatch({ type: "CLEAR_FILE" });
+          // If we were past the upload step, go back to it
+          if (state.currentStep > 2) {
+            const targetStep = wasAuthenticatedOnStart ? 2 : Math.max(state.currentStep > 1 ? 2 : 1, 1);
+            dispatch({ type: "SET_STEP", step: targetStep as WizardStep });
+          }
+          // Clear invalid state from storage
+          clearStorage();
+        }
+      } catch {
+        // Network error - don't clear state, let the user retry
+      }
+    };
+
+    void validatePreview();
+  }, [state.previewId, state.currentStep, state.importFileId, wasAuthenticatedOnStart]);
 
   // Save to localStorage on state changes (debounced)
   useEffect(() => {

@@ -15,7 +15,7 @@ import { useCallback, useMemo } from "react";
 
 import { useWizard, type WizardStep } from "./wizard-context";
 
-const STEPS: Array<{ step: WizardStep; label: string; shortLabel: string }> = [
+const ALL_STEPS: Array<{ step: WizardStep; label: string; shortLabel: string }> = [
   { step: 1, label: "Sign In", shortLabel: "Auth" },
   { step: 2, label: "Upload", shortLabel: "Upload" },
   { step: 3, label: "Dataset", shortLabel: "Dataset" },
@@ -30,13 +30,21 @@ export interface WizardProgressProps {
 
 interface StepButtonProps {
   step: WizardStep;
+  displayNumber: number;
   isCompleted: boolean;
   isCurrent: boolean;
   isClickable: boolean;
   onNavigate: (step: WizardStep) => void;
 }
 
-const StepButton = ({ step, isCompleted, isCurrent, isClickable, onNavigate }: Readonly<StepButtonProps>) => {
+const StepButton = ({
+  step,
+  displayNumber,
+  isCompleted,
+  isCurrent,
+  isClickable,
+  onNavigate,
+}: Readonly<StepButtonProps>) => {
   const handleClick = useCallback(() => {
     if (isClickable) {
       onNavigate(step);
@@ -58,55 +66,65 @@ const StepButton = ({ step, isCompleted, isCurrent, isClickable, onNavigate }: R
       )}
       aria-current={isCurrent ? "step" : undefined}
     >
-      {isCompleted ? <CheckIcon className="h-4 w-4" aria-hidden="true" /> : <span>{step}</span>}
+      {isCompleted ? <CheckIcon className="h-4 w-4" aria-hidden="true" /> : <span>{displayNumber}</span>}
     </button>
   );
 };
 
 export const WizardProgress = ({ className }: Readonly<WizardProgressProps>) => {
   const { state, goToStep } = useWizard();
-  const { currentStep } = state;
+  const { currentStep, startedAuthenticated } = state;
+
+  // Hide auth step only if user was already authenticated when they started the wizard
+  // (not if they logged in during the wizard flow)
+  const skipAuthStep = startedAuthenticated;
+  const visibleSteps = useMemo(
+    () => (skipAuthStep ? ALL_STEPS.filter((s) => s.step !== 1) : ALL_STEPS),
+    [skipAuthStep]
+  );
 
   const canNavigateTo = useMemo(() => {
     // Can navigate back to any completed step
     // Cannot skip ahead
-    return (step: WizardStep) => step < currentStep;
-  }, [currentStep]);
+    // Cannot navigate during processing (step 6)
+    // Cannot navigate to auth step if skipped
+    return (step: WizardStep) => step < currentStep && currentStep !== 6 && !(skipAuthStep && step === 1);
+  }, [currentStep, skipAuthStep]);
+
+  // Calculate progress based on visible steps
+  const currentStepIndex = visibleSteps.findIndex((s) => s.step === currentStep);
+  const progressPercent = (currentStepIndex / (visibleSteps.length - 1)) * 100;
+  const progressLineStyle = useMemo(
+    () => ({ width: `calc(${progressPercent}% - 32px + ${progressPercent}% * 32px / 100%)` }),
+    [progressPercent]
+  );
 
   return (
     <nav aria-label="Progress" className={cn("w-full", className)}>
-      <ol className="flex items-center justify-between">
-        {STEPS.map((stepInfo, index) => {
-          const isCompleted = stepInfo.step < currentStep;
-          const isCurrent = stepInfo.step === currentStep;
-          const isClickable = canNavigateTo(stepInfo.step);
+      {/* Container with the line behind steps */}
+      <div className="relative">
+        {/* Background line (full width, inactive color) */}
+        <div className="bg-border absolute left-0 right-0 top-4 mx-[16px] h-0.5" aria-hidden="true" />
+        {/* Progress line (active color, width based on progress) */}
+        <div
+          className="bg-primary absolute left-0 top-4 mx-[16px] h-0.5 transition-all duration-300"
+          style={progressLineStyle}
+          aria-hidden="true"
+        />
 
-          return (
-            <li key={stepInfo.step} className="relative flex flex-1 items-center">
-              {/* Connector line */}
-              {index > 0 && (
-                <div
-                  className={cn(
-                    "absolute left-0 right-1/2 top-4 h-0.5 -translate-y-1/2",
-                    isCompleted || isCurrent ? "bg-primary" : "bg-border"
-                  )}
-                  aria-hidden="true"
-                />
-              )}
-              {index < STEPS.length - 1 && (
-                <div
-                  className={cn(
-                    "absolute left-1/2 right-0 top-4 h-0.5 -translate-y-1/2",
-                    isCompleted ? "bg-primary" : "bg-border"
-                  )}
-                  aria-hidden="true"
-                />
-              )}
+        {/* Steps */}
+        <ol className="relative flex items-center justify-between">
+          {visibleSteps.map((stepInfo, index) => {
+            const isCompleted = stepInfo.step < currentStep;
+            const isCurrent = stepInfo.step === currentStep;
+            const isClickable = canNavigateTo(stepInfo.step);
+            const displayNumber = index + 1;
 
-              {/* Step indicator */}
-              <div className="relative flex flex-col items-center">
+            return (
+              <li key={stepInfo.step} className="flex flex-col items-center">
                 <StepButton
                   step={stepInfo.step}
+                  displayNumber={displayNumber}
                   isCompleted={isCompleted}
                   isCurrent={isCurrent}
                   isClickable={isClickable}
@@ -132,11 +150,11 @@ export const WizardProgress = ({ className }: Readonly<WizardProgressProps>) => 
                 >
                   {stepInfo.shortLabel}
                 </span>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
     </nav>
   );
 };
