@@ -11,6 +11,7 @@
  */
 "use client";
 
+import { X } from "lucide-react";
 import { useCallback } from "react";
 
 import { useFilters } from "@/lib/filters";
@@ -21,7 +22,7 @@ import { FilterSection } from "./filter-section";
 import { TimeRangeSlider } from "./time-range-slider";
 
 export const EventFilters = () => {
-  const { filters, setStartDate, setEndDate } = useFilters();
+  const { filters, setStartDate, setEndDate, clearAllFilters, hasActiveFilters, activeFilterCount } = useFilters();
 
   // Fetch event counts for catalogs and datasets
   const { data: statsData } = useDataSourceStatsQuery();
@@ -37,6 +38,20 @@ export const EventFilters = () => {
 
   return (
     <div>
+      {/* Clear Filters Button - shown when filters are active */}
+      {hasActiveFilters && (
+        <button
+          type="button"
+          onClick={clearAllFilters}
+          className="hover:bg-muted mb-4 flex w-full items-center justify-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm transition-colors hover:border-solid"
+          aria-label="Clear all filters"
+        >
+          <X className="h-4 w-4" />
+          <span>Clear Filters</span>
+          <span className="bg-muted rounded-full px-1.5 py-0.5 text-xs font-medium">{activeFilterCount}</span>
+        </button>
+      )}
+
       {/* Data Sources Section */}
       <FilterSection title="Data Sources" defaultOpen activeCount={dataSourcesActiveCount}>
         <DataSourceSelector

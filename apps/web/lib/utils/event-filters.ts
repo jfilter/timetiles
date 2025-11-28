@@ -33,6 +33,10 @@ export interface EventFilters {
     minLat: number;
     maxLat: number;
   };
+  /** Only include events with geocoded locations */
+  requireLocation?: boolean;
+  /** When true, no results should be returned (user lacks access) */
+  denyAccess?: boolean;
 }
 
 /**
@@ -47,6 +51,8 @@ export interface BuildFiltersOptions {
   bounds?: MapBounds | null;
   /** Parse dataset IDs as integers (default: true) */
   parseDatasetIds?: boolean;
+  /** Require events to have geocoded locations (default: true) */
+  requireLocation?: boolean;
 }
 
 /**
@@ -65,8 +71,14 @@ export const buildEventFilters = ({
   accessibleCatalogIds,
   bounds,
   parseDatasetIds = true,
+  requireLocation = true,
 }: BuildFiltersOptions): EventFilters => {
   const filters: EventFilters = {};
+
+  // Only include events with geocoded locations (default: true for map-related queries)
+  if (requireLocation) {
+    filters.requireLocation = true;
+  }
 
   // Apply catalog access control
   if (parameters.catalog != null && parameters.catalog !== "") {
@@ -75,8 +87,8 @@ export const buildEventFilters = ({
     if (accessibleCatalogIds.includes(catalogId)) {
       filters.catalogId = catalogId;
     } else {
-      // User trying to access catalog they don't have permission for
-      filters.catalogIds = accessibleCatalogIds;
+      // User trying to access catalog they don't have permission for - deny access
+      filters.denyAccess = true;
     }
   } else {
     // No specific catalog requested, filter by all accessible catalogs
@@ -132,8 +144,8 @@ export const buildMapClusterFilters = (
     if (accessibleCatalogIds.includes(catalogId)) {
       filters.catalog = parameters.catalog;
     } else {
-      // User trying to access catalog they don't have permission for
-      filters.accessibleCatalogIds = accessibleCatalogIds;
+      // User trying to access catalog they don't have permission for - deny access
+      filters.denyAccess = true;
     }
   } else {
     // No specific catalog requested, filter by all accessible catalogs

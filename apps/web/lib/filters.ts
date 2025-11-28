@@ -11,7 +11,7 @@
  *
  * @module
  */
-import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryState } from "nuqs";
+import { parseAsArrayOf, parseAsFloat, parseAsInteger, parseAsString, useQueryState } from "nuqs";
 import { useCallback, useMemo } from "react";
 
 import type { FilterState } from "./store";
@@ -133,5 +133,85 @@ export const useSelectedEvent = () => {
     isOpen: selectedEventId !== null,
     openEvent,
     closeEvent,
+  };
+};
+
+/**
+ * Map position state stored in URL.
+ *
+ * Includes center coordinates (lat/lng) and zoom level.
+ */
+export interface MapPosition {
+  latitude: number | null;
+  longitude: number | null;
+  zoom: number | null;
+}
+
+/**
+ * Hook for managing map position state via URL.
+ *
+ * Uses nuqs to sync the map center (lat/lng) and zoom level with the URL,
+ * enabling permalink sharing of the explore page with a specific map view.
+ * Uses shallow routing and replace history to avoid excessive history entries.
+ *
+ * @returns Map position state and handlers
+ */
+export const useMapPosition = () => {
+  const [latitude, setLatitude] = useQueryState(
+    "lat",
+    parseAsFloat.withOptions({
+      history: "replace",
+      shallow: true,
+    })
+  );
+
+  const [longitude, setLongitude] = useQueryState(
+    "lng",
+    parseAsFloat.withOptions({
+      history: "replace",
+      shallow: true,
+    })
+  );
+
+  const [zoom, setZoom] = useQueryState(
+    "zoom",
+    parseAsFloat.withOptions({
+      history: "replace",
+      shallow: true,
+    })
+  );
+
+  const mapPosition: MapPosition = useMemo(
+    () => ({
+      latitude,
+      longitude,
+      zoom,
+    }),
+    [latitude, longitude, zoom]
+  );
+
+  const hasMapPosition = latitude !== null && longitude !== null && zoom !== null;
+
+  const setMapPosition = useCallback(
+    (position: { latitude: number; longitude: number; zoom: number }) => {
+      // Round to 4 decimal places for cleaner URLs (~11m precision)
+      void setLatitude(Math.round(position.latitude * 10000) / 10000);
+      void setLongitude(Math.round(position.longitude * 10000) / 10000);
+      void setZoom(Math.round(position.zoom * 10) / 10);
+    },
+    [setLatitude, setLongitude, setZoom]
+  );
+
+  const clearMapPosition = useCallback(() => {
+    void setLatitude(null);
+    void setLongitude(null);
+    void setZoom(null);
+  }, [setLatitude, setLongitude, setZoom]);
+
+  return {
+    mapPosition,
+    hasMapPosition,
+    setMapPosition,
+    clearMapPosition,
   };
 };

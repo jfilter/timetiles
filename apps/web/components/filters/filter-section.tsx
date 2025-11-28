@@ -34,7 +34,7 @@ export const FilterSection = ({
       <CollapsibleTrigger className="hover:text-muted-foreground flex w-full items-center justify-between py-3 text-sm font-medium transition-colors">
         <span className="flex items-center gap-2">
           {title}
-          {activeCount > 0 && (
+          {!isOpen && activeCount > 0 && (
             <span className="bg-primary/10 text-primary rounded-sm px-2 py-0.5 text-xs font-normal">{activeCount}</span>
           )}
         </span>
