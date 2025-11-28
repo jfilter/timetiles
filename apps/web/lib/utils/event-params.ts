@@ -29,6 +29,8 @@ export interface BaseEventParameters {
   startDate: string | null;
   /** End date for temporal filtering (ISO 8601) */
   endDate: string | null;
+  /** Field filters for categorical filtering by enum values */
+  fieldFilters: Record<string, string[]>;
 }
 
 /**
@@ -84,11 +86,23 @@ export const extractBaseEventParameters = (searchParams: URLSearchParams): BaseE
     .map((d) => d.trim())
     .filter(Boolean);
 
+  // Parse field filters from JSON string
+  const ffParam = searchParams.get("ff");
+  let fieldFilters: Record<string, string[]> = {};
+  if (ffParam) {
+    try {
+      fieldFilters = JSON.parse(ffParam) as Record<string, string[]>;
+    } catch {
+      // Invalid JSON, ignore
+    }
+  }
+
   return {
     catalog: searchParams.get("catalog"),
     datasets,
     startDate: searchParams.get("startDate"),
     endDate: searchParams.get("endDate"),
+    fieldFilters,
   };
 };
 
@@ -189,6 +203,11 @@ export const buildBaseEventParams = (
 
   if (filters.endDate != null && filters.endDate !== "") {
     params.append("endDate", filters.endDate);
+  }
+
+  // Add field filters if any
+  if (filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0) {
+    params.append("ff", JSON.stringify(filters.fieldFilters));
   }
 
   Object.entries(additionalParams).forEach(([key, value]) => {

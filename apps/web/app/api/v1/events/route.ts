@@ -86,6 +86,22 @@ const addDateFilter = (where: Where, startDate: string | null, endDate: string |
   ];
 };
 
+const addFieldFilters = (where: Where, fieldFilters: Record<string, string[]>) => {
+  for (const [fieldPath, values] of Object.entries(fieldFilters)) {
+    if (values.length === 0) continue;
+
+    // Query the JSON data field using Payload's nested field syntax
+    where.and = [
+      ...(Array.isArray(where.and) ? where.and : []),
+      {
+        [`data.${fieldPath}`]: {
+          in: values,
+        },
+      },
+    ];
+  }
+};
+
 const extractFieldFromData = (data: unknown, path: string | null | undefined): string | null => {
   if (!path || typeof data !== "object" || data === null || Array.isArray(data)) {
     return null;
@@ -215,7 +231,7 @@ const buildWhereClause = (parameters: ReturnType<typeof extractListParameters>, 
 };
 
 const addFiltersToWhere = (where: Where, parameters: ReturnType<typeof extractListParameters>) => {
-  const { catalog, datasets } = parameters;
+  const { catalog, datasets, fieldFilters } = parameters;
   if (catalog != null || (datasets.length > 0 && datasets[0] !== "")) {
     if (catalog != null && (datasets.length === 0 || datasets[0] === "")) {
       addCatalogFilter(where, catalog);
@@ -223,6 +239,11 @@ const addFiltersToWhere = (where: Where, parameters: ReturnType<typeof extractLi
     if (datasets.length > 0 && datasets[0] !== "") {
       addDatasetFilter(where, datasets);
     }
+  }
+
+  // Add field filters if any
+  if (fieldFilters && Object.keys(fieldFilters).length > 0) {
+    addFieldFilters(where, fieldFilters);
   }
 };
 

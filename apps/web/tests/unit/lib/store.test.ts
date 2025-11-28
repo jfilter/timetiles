@@ -20,6 +20,7 @@ describe("Store Helper Functions", () => {
         datasets: [],
         startDate: null,
         endDate: null,
+        fieldFilters: {},
       };
 
       expect(getActiveFilterCount(filters)).toBe(0);
@@ -31,6 +32,7 @@ describe("Store Helper Functions", () => {
         datasets: [],
         startDate: null,
         endDate: null,
+        fieldFilters: {},
       };
 
       expect(getActiveFilterCount(filters)).toBe(1);
@@ -42,6 +44,7 @@ describe("Store Helper Functions", () => {
         datasets: [],
         startDate: null,
         endDate: null,
+        fieldFilters: {},
       };
 
       expect(getActiveFilterCount(filters)).toBe(0);
@@ -53,6 +56,7 @@ describe("Store Helper Functions", () => {
         datasets: ["dataset-1", "dataset-2", "dataset-3"],
         startDate: null,
         endDate: null,
+        fieldFilters: {},
       };
 
       expect(getActiveFilterCount(filters)).toBe(3);
@@ -64,6 +68,7 @@ describe("Store Helper Functions", () => {
         datasets: [],
         startDate: "2024-01-01",
         endDate: "2024-12-31",
+        fieldFilters: {},
       };
 
       expect(getActiveFilterCount(filters)).toBe(1);
@@ -75,6 +80,7 @@ describe("Store Helper Functions", () => {
         datasets: [],
         startDate: "2024-01-01",
         endDate: null,
+        fieldFilters: {},
       };
 
       expect(getActiveFilterCount(filters)).toBe(1);
@@ -86,6 +92,7 @@ describe("Store Helper Functions", () => {
         datasets: [],
         startDate: null,
         endDate: "2024-12-31",
+        fieldFilters: {},
       };
 
       expect(getActiveFilterCount(filters)).toBe(1);
@@ -97,6 +104,7 @@ describe("Store Helper Functions", () => {
         datasets: [],
         startDate: "",
         endDate: "",
+        fieldFilters: {},
       };
 
       expect(getActiveFilterCount(filters)).toBe(0);
@@ -108,6 +116,7 @@ describe("Store Helper Functions", () => {
         datasets: ["dataset-1", "dataset-2"],
         startDate: "2024-01-01",
         endDate: "2024-12-31",
+        fieldFilters: {},
       };
 
       // catalog (1) + datasets (2) + date range (1) = 4
@@ -120,6 +129,7 @@ describe("Store Helper Functions", () => {
         datasets: ["dataset-1"],
         startDate: "2024-01-01",
         endDate: null,
+        fieldFilters: {},
       };
 
       // datasets (1) + date range (1) = 2
@@ -134,6 +144,7 @@ describe("Store Helper Functions", () => {
         datasets: [],
         startDate: null,
         endDate: null,
+        fieldFilters: {},
       };
 
       expect(hasActiveFilters(filters)).toBe(false);
@@ -145,6 +156,7 @@ describe("Store Helper Functions", () => {
         datasets: [],
         startDate: "",
         endDate: "",
+        fieldFilters: {},
       };
 
       expect(hasActiveFilters(filters)).toBe(false);
@@ -156,6 +168,7 @@ describe("Store Helper Functions", () => {
         datasets: [],
         startDate: null,
         endDate: null,
+        fieldFilters: {},
       };
 
       expect(hasActiveFilters(filters)).toBe(true);
@@ -167,6 +180,7 @@ describe("Store Helper Functions", () => {
         datasets: ["dataset-1"],
         startDate: null,
         endDate: null,
+        fieldFilters: {},
       };
 
       expect(hasActiveFilters(filters)).toBe(true);
@@ -178,6 +192,7 @@ describe("Store Helper Functions", () => {
         datasets: [],
         startDate: "2024-01-01",
         endDate: null,
+        fieldFilters: {},
       };
 
       expect(hasActiveFilters(filters)).toBe(true);
@@ -189,6 +204,7 @@ describe("Store Helper Functions", () => {
         datasets: [],
         startDate: null,
         endDate: "2024-12-31",
+        fieldFilters: {},
       };
 
       expect(hasActiveFilters(filters)).toBe(true);
@@ -200,6 +216,7 @@ describe("Store Helper Functions", () => {
         datasets: ["dataset-1", "dataset-2"],
         startDate: "2024-01-01",
         endDate: "2024-12-31",
+        fieldFilters: {},
       };
 
       expect(hasActiveFilters(filters)).toBe(true);
@@ -211,6 +228,7 @@ describe("Store Helper Functions", () => {
         datasets: [],
         startDate: "2024-01-01",
         endDate: "",
+        fieldFilters: {},
       };
 
       expect(hasActiveFilters(filters)).toBe(true);
@@ -225,6 +243,7 @@ describe("Store Helper Functions", () => {
           datasets: [],
           startDate: null,
           endDate: null,
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "catalog");
@@ -238,6 +257,7 @@ describe("Store Helper Functions", () => {
           datasets: ["dataset-1", "dataset-2"],
           startDate: null,
           endDate: null,
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "catalog");
@@ -252,6 +272,7 @@ describe("Store Helper Functions", () => {
           datasets: [],
           startDate: "2024-01-01",
           endDate: "2024-12-31",
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "catalog");
@@ -266,6 +287,7 @@ describe("Store Helper Functions", () => {
           datasets: ["dataset-1"],
           startDate: null,
           endDate: null,
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "catalog");
@@ -283,6 +305,7 @@ describe("Store Helper Functions", () => {
           datasets: ["dataset-1", "dataset-2", "dataset-3"],
           startDate: null,
           endDate: null,
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "datasets");
@@ -296,6 +319,7 @@ describe("Store Helper Functions", () => {
           datasets: ["dataset-1", "dataset-2"],
           startDate: null,
           endDate: null,
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "datasets", "");
@@ -309,6 +333,7 @@ describe("Store Helper Functions", () => {
           datasets: ["dataset-1", "dataset-2", "dataset-3"],
           startDate: null,
           endDate: null,
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "datasets", "dataset-2");
@@ -322,6 +347,7 @@ describe("Store Helper Functions", () => {
           datasets: ["dataset-1"],
           startDate: null,
           endDate: null,
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "datasets", "dataset-2");
@@ -335,6 +361,7 @@ describe("Store Helper Functions", () => {
           datasets: ["dataset-1", "dataset-2"],
           startDate: null,
           endDate: null,
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "datasets");
@@ -348,6 +375,7 @@ describe("Store Helper Functions", () => {
           datasets: ["dataset-1", "dataset-2"],
           startDate: null,
           endDate: null,
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "datasets", "dataset-1");
@@ -364,6 +392,7 @@ describe("Store Helper Functions", () => {
           datasets: [],
           startDate: "2024-01-01",
           endDate: "2024-12-31",
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "startDate");
@@ -378,6 +407,7 @@ describe("Store Helper Functions", () => {
           datasets: ["dataset-1"],
           startDate: "2024-01-01",
           endDate: null,
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "startDate");
@@ -392,6 +422,7 @@ describe("Store Helper Functions", () => {
           datasets: [],
           startDate: "2024-01-01",
           endDate: null,
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "startDate");
@@ -408,6 +439,7 @@ describe("Store Helper Functions", () => {
           datasets: [],
           startDate: "2024-01-01",
           endDate: "2024-12-31",
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "endDate");
@@ -422,6 +454,7 @@ describe("Store Helper Functions", () => {
           datasets: ["dataset-1"],
           startDate: null,
           endDate: "2024-12-31",
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "endDate");
@@ -436,6 +469,7 @@ describe("Store Helper Functions", () => {
           datasets: [],
           startDate: null,
           endDate: "2024-12-31",
+          fieldFilters: {},
         };
 
         const result = removeFilter(filters, "endDate");
@@ -455,6 +489,7 @@ describe("Store Helper Functions", () => {
         datasets: [],
         startDate: null,
         endDate: null,
+        fieldFilters: {},
       });
     });
 

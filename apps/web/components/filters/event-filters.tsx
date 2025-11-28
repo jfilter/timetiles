@@ -15,8 +15,10 @@ import { X } from "lucide-react";
 import { useCallback } from "react";
 
 import { useFilters } from "@/lib/filters";
+import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
 import { useDataSourceStatsQuery } from "@/lib/hooks/use-data-source-stats";
 
+import { CategoricalFilters } from "./categorical-filters";
 import { DataSourceSelector } from "./data-source-selector";
 import { FilterSection } from "./filter-section";
 import { TimeRangeSlider } from "./time-range-slider";
@@ -26,6 +28,11 @@ export const EventFilters = () => {
 
   // Fetch event counts for catalogs and datasets
   const { data: statsData } = useDataSourceStatsQuery();
+
+  // Fetch enum fields for categorical filters (only when single dataset selected)
+  const singleDatasetId = filters.datasets.length === 1 ? (filters.datasets[0] ?? null) : null;
+  const { data: enumFields } = useDatasetEnumFieldsQuery(singleDatasetId);
+  const hasEnumFields = enumFields != null && enumFields.length > 0;
 
   const handleClearDateFilters = useCallback(() => {
     setStartDate(null);
@@ -59,6 +66,17 @@ export const EventFilters = () => {
           eventCountsByDataset={statsData?.datasetCounts}
         />
       </FilterSection>
+
+      {/* Categorical Filters Section - only shown when single dataset selected and has enum fields */}
+      {filters.datasets.length === 1 && hasEnumFields && (
+        <FilterSection
+          title="Categories"
+          defaultOpen
+          activeCount={Object.values(filters.fieldFilters ?? {}).reduce((sum, vals) => sum + vals.length, 0)}
+        >
+          <CategoricalFilters />
+        </FilterSection>
+      )}
 
       {/* Time Range Section */}
       <FilterSection title="Time Range" defaultOpen activeCount={timeRangeActiveCount}>

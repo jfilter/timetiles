@@ -37,6 +37,8 @@ export interface EventFilters {
   requireLocation?: boolean;
   /** When true, no results should be returned (user lacks access) */
   denyAccess?: boolean;
+  /** Field filters for categorical filtering by enum values */
+  fieldFilters?: Record<string, string[]>;
 }
 
 /**
@@ -118,6 +120,11 @@ export const buildEventFilters = ({
     };
   }
 
+  // Apply field filters for categorical filtering
+  if (parameters.fieldFilters && Object.keys(parameters.fieldFilters).length > 0) {
+    filters.fieldFilters = parameters.fieldFilters;
+  }
+
   return filters;
 };
 
@@ -161,6 +168,11 @@ export const buildMapClusterFilters = (
   }
   if (parameters.endDate != null) {
     filters.endDate = parameters.endDate;
+  }
+
+  // Apply field filters for categorical filtering
+  if (parameters.fieldFilters && Object.keys(parameters.fieldFilters).length > 0) {
+    filters.fieldFilters = parameters.fieldFilters;
   }
 
   return filters;

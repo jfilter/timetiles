@@ -26,6 +26,8 @@ export interface AggregationFilters {
   endDate?: string | null;
   /** Geographic bounding box for location filtering */
   bounds?: SimpleBounds | null;
+  /** Field filters for categorical filtering by enum values */
+  fieldFilters?: Record<string, string[]> | null;
 }
 
 /**
@@ -51,6 +53,7 @@ export interface AggregationFilters {
  * const whereClause = buildAggregationWhereClause(filters, [1, 2, 3]);
  * ```
  */
+/* eslint-disable sonarjs/cognitive-complexity -- Multi-filter clause building is inherently branchy */
 export const buildAggregationWhereClause = (
   filters: AggregationFilters,
   accessibleCatalogIds: number[]
@@ -126,9 +129,24 @@ export const buildAggregationWhereClause = (
     clauses.push(sql`e.location_longitude <= ${filters.bounds.east}`);
   }
 
+  // 6. Field Filters (OPTIONAL) - for categorical filtering by enum values
+  if (filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0) {
+    for (const [fieldKey, values] of Object.entries(filters.fieldFilters)) {
+      if (Array.isArray(values) && values.length > 0) {
+        clauses.push(
+          sql`e.data->>${fieldKey} IN (${sql.join(
+            values.map((v) => sql`${v}`),
+            sql`, `
+          )})`
+        );
+      }
+    }
+  }
+
   // Combine all clauses with AND
   return sql.join(clauses, sql` AND `);
 };
+/* eslint-enable sonarjs/cognitive-complexity */
 
 /**
  * Normalize end date to include full day (23:59:59.999).

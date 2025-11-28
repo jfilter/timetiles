@@ -56,7 +56,7 @@ const calculateGlobalStats = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   filters: Record<string, unknown>
 ) => {
-  const { catalog, datasets, startDate, endDate, accessibleCatalogIds } = filters;
+  const { catalog, datasets, startDate, endDate, accessibleCatalogIds, fieldFilters } = filters;
 
   // Build catalog filter SQL
   let catalogFilter;
@@ -69,6 +69,21 @@ const calculateGlobalStats = async (
     )})`;
   } else {
     catalogFilter = sql``;
+  }
+
+  // Build field filters SQL - for each field, event data must match one of the values
+  let fieldFiltersSql;
+  if (fieldFilters != null && typeof fieldFilters === "object" && Object.keys(fieldFilters as object).length > 0) {
+    const fieldConditions = Object.entries(fieldFilters as Record<string, string[]>).map(([fieldKey, values]) => {
+      if (!Array.isArray(values) || values.length === 0) return sql`TRUE`;
+      return sql`e.data->>${fieldKey} IN (${sql.join(
+        values.map((v) => sql`${v}`),
+        sql`, `
+      )})`;
+    });
+    fieldFiltersSql = sql`AND (${sql.join(fieldConditions, sql` AND `)})`;
+  } else {
+    fieldFiltersSql = sql``;
   }
 
   // Query to get event counts grouped by location (simulating clustering at high zoom)
@@ -94,6 +109,7 @@ const calculateGlobalStats = async (
         }
         ${startDate != null ? sql`AND e.event_timestamp >= ${startDate as string}::timestamp` : sql``}
         ${endDate != null ? sql`AND e.event_timestamp <= ${endDate as string}::timestamp` : sql``}
+        ${fieldFiltersSql}
     ),
     location_clusters AS (
       SELECT

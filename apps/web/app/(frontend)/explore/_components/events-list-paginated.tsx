@@ -10,13 +10,14 @@
 "use client";
 
 import { Button } from "@timetiles/ui";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import type { FilterState } from "@/lib/filters";
 import { type SimpleBounds, useEventsInfiniteFlattened, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 
 import { EventsList } from "./events-list";
 import { EventsListSkeleton } from "./events-list-skeleton";
+import { buildEventsDescription, type FilterLabels } from "./map-explorer-helpers";
 
 interface EventsListPaginatedProps {
   filters: FilterState;
@@ -28,64 +29,6 @@ interface EventsListPaginatedProps {
   /** Callback when an event card is clicked */
   onEventClick?: (eventId: number) => void;
 }
-
-/** Format dataset names for display */
-const formatDatasetNames = (names: string[]): string | null => {
-  const first = names[0];
-  const second = names[1];
-  if (first == null) return null;
-  if (second == null) return first;
-  if (names.length === 2) return `${first} and ${second}`;
-  return `${first}, ${second} and ${names.length - 2} more`;
-};
-
-/** Build a natural sentence describing what's being shown */
-const buildDescription = (
-  visibleCount: number,
-  globalTotal: number | undefined,
-  datasetNames: string[],
-  hasBounds: boolean,
-  dateRangeLabel?: string
-): string => {
-  // Build natural sentences like:
-  // "Showing 34 of 1,245 events from Historical Events in the map view, spanning Jan to Dec 2024."
-  // "Showing all 200 events from Historical Events."
-  // "Showing 500 of 1,245 events in the map view."
-  // "Showing all 1,245 events."
-
-  const datasetsText = formatDatasetNames(datasetNames);
-
-  // Determine if map bounds are limiting the results
-  const isMapLimiting = hasBounds && globalTotal != null && visibleCount < globalTotal;
-
-  // Start with the count
-  let sentence = "Showing ";
-  if (isMapLimiting) {
-    sentence += `${visibleCount.toLocaleString()} of ${globalTotal.toLocaleString()} events`;
-  } else if (globalTotal != null) {
-    sentence += `all ${visibleCount.toLocaleString()} events`;
-  } else {
-    sentence += `${visibleCount.toLocaleString()} event${visibleCount === 1 ? "" : "s"}`;
-  }
-
-  // Add dataset filter
-  if (datasetsText) {
-    sentence += ` from ${datasetsText}`;
-  }
-
-  // Add spatial constraint (only when map is actually limiting)
-  if (isMapLimiting) {
-    sentence += " in the map view";
-  }
-
-  // Add date filter
-  if (dateRangeLabel) {
-    // Make the date range flow naturally
-    sentence += `, spanning ${dateRangeLabel.toLowerCase().replace(/^from /, "")}`;
-  }
-
-  return sentence + ".";
-};
 
 export const EventsListPaginated = ({
   filters,
@@ -103,6 +46,17 @@ export const EventsListPaginated = ({
   const handleLoadMore = useCallback(() => {
     void fetchNextPage();
   }, [fetchNextPage]);
+
+  // Build filter labels for the description (memoized to avoid recreating on each render)
+  const filterLabels: FilterLabels = useMemo(
+    () => ({
+      datasets: datasetNames.map((name, idx) => ({ id: String(idx), name })),
+      dateRange: dateRangeLabel,
+      fieldFilters:
+        filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,
+    }),
+    [datasetNames, dateRangeLabel, filters.fieldFilters]
+  );
 
   // Initial loading state
   if (isLoading) {
@@ -138,7 +92,7 @@ export const EventsListPaginated = ({
     <div className="space-y-6">
       {/* Header - explains what's being shown */}
       <p className="text-muted-foreground text-sm">
-        {buildDescription(total, globalTotalData?.total, datasetNames, bounds != null, dateRangeLabel)}
+        {buildEventsDescription(total, globalTotalData?.total, filterLabels, bounds != null)}
       </p>
 
       {/* Events list - reuses existing component */}

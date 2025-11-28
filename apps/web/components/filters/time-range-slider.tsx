@@ -59,6 +59,7 @@ const fetchFullHistogram = async (catalog: string | null, datasets: string[]): P
     datasets,
     startDate: null,
     endDate: null,
+    fieldFilters: {},
   });
 
   const response = await fetch(`/api/v1/events/temporal?${params.toString()}`);

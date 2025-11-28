@@ -115,6 +115,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
       startDate,
       endDate,
       bounds,
+      fieldFilters: Object.keys(baseParams.fieldFilters).length > 0 ? baseParams.fieldFilters : null,
     };
 
     // Execute aggregation query

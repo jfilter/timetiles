@@ -102,7 +102,7 @@ const executeClusteringQuery = async (
   zoom: number,
   filters: Record<string, unknown>
 ) => {
-  const { catalog, datasets, startDate, endDate, accessibleCatalogIds } = filters;
+  const { catalog, datasets, startDate, endDate, accessibleCatalogIds, fieldFilters } = filters;
 
   return (await payload.db.drizzle.execute(sql`
     SELECT * FROM cluster_events(
@@ -120,6 +120,7 @@ const executeClusteringQuery = async (
             : undefined,
         startDate,
         endDate,
+        fieldFilters: fieldFilters && Object.keys(fieldFilters as object).length > 0 ? fieldFilters : undefined,
       })}::jsonb
     )
   `)) as { rows: Array<Record<string, unknown>> };

@@ -45,6 +45,7 @@ import * as migration_20251127_134428 from './20251127_134428';
 import * as migration_20251127_144121 from './20251127_144121';
 import * as migration_20251127_200651 from './20251127_200651';
 import * as migration_20251127_213122 from './20251127_213122';
+import * as migration_20251128_000000_add_field_filters_to_sql_functions from './20251128_000000_add_field_filters_to_sql_functions';
 
 export const migrations = [
   {
@@ -281,5 +282,10 @@ export const migrations = [
     up: migration_20251127_213122.up,
     down: migration_20251127_213122.down,
     name: '20251127_213122'
+  },
+  {
+    up: migration_20251128_000000_add_field_filters_to_sql_functions.up,
+    down: migration_20251128_000000_add_field_filters_to_sql_functions.down,
+    name: '20251128_000000_add_field_filters_to_sql_functions',
   },
 ];

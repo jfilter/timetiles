@@ -28,9 +28,20 @@ const parseAsArrayOfStrings = parseAsArrayOf(parseAsString).withDefault([]);
 export const useFilters = () => {
   // URL state management with nuqs
   const [catalog, setCatalog] = useQueryState("catalog", parseAsStringOrNull);
-  const [datasets, setDatasets] = useQueryState("datasets", parseAsArrayOfStrings);
+  const [datasets, setDatasetsRaw] = useQueryState("datasets", parseAsArrayOfStrings);
   const [startDate, setStartDate] = useQueryState("startDate", parseAsStringOrNull);
   const [endDate, setEndDate] = useQueryState("endDate", parseAsStringOrNull);
+  const [fieldFiltersParam, setFieldFiltersParam] = useQueryState("ff", parseAsStringOrNull);
+
+  // Parse field filters from JSON string
+  const fieldFilters = useMemo((): Record<string, string[]> => {
+    if (!fieldFiltersParam) return {};
+    try {
+      return JSON.parse(fieldFiltersParam) as Record<string, string[]>;
+    } catch {
+      return {};
+    }
+  }, [fieldFiltersParam]);
 
   // Create filter state object
   const filters: FilterState = useMemo(
@@ -39,19 +50,55 @@ export const useFilters = () => {
       datasets,
       startDate: startDate || null,
       endDate: endDate || null,
+      fieldFilters,
     }),
-    [catalog, datasets, startDate, endDate]
+    [catalog, datasets, startDate, endDate, fieldFilters]
   );
 
-  // Enhanced setCatalog that also clears datasets when catalog changes
+  // Enhanced setCatalog that also clears datasets and field filters when catalog changes
   const handleSetCatalog = (newCatalog: string | null) => {
     const catalogValue = newCatalog === "all" ? null : newCatalog;
     void setCatalog(catalogValue ?? "");
-    // Clear datasets when catalog changes
+    // Clear datasets and field filters when catalog changes
     if (catalogValue !== catalog) {
-      void setDatasets([]);
+      void setDatasetsRaw([]);
+      void setFieldFiltersParam("");
     }
   };
+
+  // Enhanced setDatasets that clears field filters when datasets change
+  const handleSetDatasets = useCallback(
+    (newDatasets: string[]) => {
+      void setDatasetsRaw(newDatasets);
+      // Clear field filters when datasets change (they are dataset-specific)
+      void setFieldFiltersParam("");
+    },
+    [setDatasetsRaw, setFieldFiltersParam]
+  );
+
+  // Set field filters (full replace)
+  const setFieldFilters = useCallback(
+    (newFieldFilters: Record<string, string[]>) => {
+      const serialized = Object.keys(newFieldFilters).length > 0 ? JSON.stringify(newFieldFilters) : "";
+      void setFieldFiltersParam(serialized);
+    },
+    [setFieldFiltersParam]
+  );
+
+  // Set a single field filter (merge with existing)
+  const setFieldFilter = useCallback(
+    (fieldPath: string, values: string[]) => {
+      const updated = { ...fieldFilters };
+      if (values.length > 0) {
+        updated[fieldPath] = values;
+      } else {
+        delete updated[fieldPath];
+      }
+      const serialized = Object.keys(updated).length > 0 ? JSON.stringify(updated) : "";
+      void setFieldFiltersParam(serialized);
+    },
+    [fieldFilters, setFieldFiltersParam]
+  );
 
   // Helper function to remove a specific filter
   const handleRemoveFilter = (filterType: keyof FilterState, value?: string) => {
@@ -59,9 +106,12 @@ export const useFilters = () => {
 
     // Update URL state
     void setCatalog(newFilters.catalog ?? "");
-    void setDatasets(newFilters.datasets);
+    void setDatasetsRaw(newFilters.datasets);
     void setStartDate(newFilters.startDate ?? "");
     void setEndDate(newFilters.endDate ?? "");
+    const fieldFiltersSerialized =
+      Object.keys(newFilters.fieldFilters).length > 0 ? JSON.stringify(newFilters.fieldFilters) : "";
+    void setFieldFiltersParam(fieldFiltersSerialized);
   };
 
   // Helper function to clear all filters
@@ -70,9 +120,10 @@ export const useFilters = () => {
 
     // Update URL state
     void setCatalog(newFilters.catalog ?? "");
-    void setDatasets(newFilters.datasets);
+    void setDatasetsRaw(newFilters.datasets);
     void setStartDate(newFilters.startDate ?? "");
     void setEndDate(newFilters.endDate ?? "");
+    void setFieldFiltersParam("");
   };
 
   // Computed values
@@ -85,9 +136,11 @@ export const useFilters = () => {
 
     // Individual filter setters
     setCatalog: handleSetCatalog,
-    setDatasets,
+    setDatasets: handleSetDatasets,
     setStartDate: (value: string | null) => void setStartDate(value ?? ""),
     setEndDate: (value: string | null) => void setEndDate(value ?? ""),
+    setFieldFilters,
+    setFieldFilter,
 
     // Helper functions
     removeFilter: handleRemoveFilter,

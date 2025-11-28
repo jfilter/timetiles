@@ -106,6 +106,7 @@ export interface FilterState {
   datasets: string[];
   startDate: string | null;
   endDate: string | null;
+  fieldFilters: Record<string, string[]>;
 }
 
 // Helper functions for filter operations (to be used with nuqs)
@@ -115,27 +116,35 @@ export const getActiveFilterCount = (filters: FilterState): number => {
   if (filters.datasets.length > 0) count += filters.datasets.length;
   if ((filters.startDate != null && filters.startDate !== "") || (filters.endDate != null && filters.endDate !== ""))
     count++; // Date range counts as one filter
+  // Count total selected field filter values
+  if (filters.fieldFilters) {
+    count += Object.values(filters.fieldFilters).reduce((sum, vals) => sum + vals.length, 0);
+  }
   return count;
 };
 
 export const hasActiveFilters = (filters: FilterState): boolean => {
+  const hasFieldFilters = filters.fieldFilters && Object.values(filters.fieldFilters).some((vals) => vals.length > 0);
   return !!(
     (filters.catalog != null && filters.catalog !== "") ||
     filters.datasets.length > 0 ||
     (filters.startDate != null && filters.startDate !== "") ||
-    (filters.endDate != null && filters.endDate !== "")
+    (filters.endDate != null && filters.endDate !== "") ||
+    hasFieldFilters
   );
 };
 
 // Helper function to remove a specific filter
+/* eslint-disable sonarjs/cognitive-complexity -- Switch-case with nested conditions for each filter type */
 export const removeFilter = (filters: FilterState, filterType: keyof FilterState, value?: string): FilterState => {
-  const newFilters = { ...filters };
+  const newFilters = { ...filters, fieldFilters: { ...filters.fieldFilters } };
 
   switch (filterType) {
     case "catalog":
       newFilters.catalog = null;
-      // Also clear datasets when catalog is removed
+      // Also clear datasets and field filters when catalog is removed
       newFilters.datasets = [];
+      newFilters.fieldFilters = {};
       break;
     case "datasets":
       if (value != null && value !== "") {
@@ -143,6 +152,8 @@ export const removeFilter = (filters: FilterState, filterType: keyof FilterState
       } else {
         newFilters.datasets = [];
       }
+      // Clear field filters when datasets change
+      newFilters.fieldFilters = {};
       break;
     case "startDate":
       newFilters.startDate = null;
@@ -150,10 +161,29 @@ export const removeFilter = (filters: FilterState, filterType: keyof FilterState
     case "endDate":
       newFilters.endDate = null;
       break;
+    case "fieldFilters":
+      // value format: "fieldPath:filterValue" or just "fieldPath" to clear all values for that field
+      if (value != null && value !== "") {
+        if (value.includes(":")) {
+          const [fieldPath, filterValue] = value.split(":");
+          if (fieldPath && newFilters.fieldFilters[fieldPath]) {
+            newFilters.fieldFilters[fieldPath] = newFilters.fieldFilters[fieldPath].filter((v) => v !== filterValue);
+            if (newFilters.fieldFilters[fieldPath].length === 0) {
+              delete newFilters.fieldFilters[fieldPath];
+            }
+          }
+        } else {
+          delete newFilters.fieldFilters[value];
+        }
+      } else {
+        newFilters.fieldFilters = {};
+      }
+      break;
   }
 
   return newFilters;
 };
+/* eslint-enable sonarjs/cognitive-complexity */
 
 // Helper function to clear all filters
 export const clearAllFilters = (): FilterState => ({
@@ -161,4 +191,5 @@ export const clearAllFilters = (): FilterState => ({
   datasets: [],
   startDate: null,
   endDate: null,
+  fieldFilters: {},
 });
