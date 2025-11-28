@@ -23,7 +23,8 @@ import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useBoundsQuery, useClusterStatsQuery, useMapClustersQuery } from "@/lib/hooks/use-events-queries";
 import { useUIStore } from "@/lib/store";
 
-import { ActiveFilters } from "./active-filters";
+// TODO: ActiveFilters removed for now - may add back later for filter chip UI
+// import { ActiveFilters } from "./active-filters";
 import { ChartSection } from "./chart-section";
 import { EventDetailModal } from "./event-detail-modal";
 import { EventsListPaginated } from "./events-list-paginated";
@@ -42,16 +43,14 @@ export const ListExplorer = () => {
   const mapRef = useRef<ClusteredMapHandle>(null);
 
   // Get filter state from URL (nuqs)
-  const { filters, activeFilterCount, hasActiveFilters, removeFilter, clearAllFilters } = useFilters();
+  const { filters } = useFilters();
 
   // Fetch lightweight catalog/dataset data for filter labels
   const { data: dataSources } = useDataSourcesQuery();
-  const catalogs = dataSources?.catalogs ?? [];
   const datasets = dataSources?.datasets ?? [];
 
   // Ref to track previous filters for detecting filter changes
   const prevFiltersRef = useRef(filters);
-  const filterActions = useMemo(() => ({ removeFilter, clearAllFilters }), [removeFilter, clearAllFilters]);
 
   // Get selected event state from URL (nuqs)
   const { selectedEventId, openEvent, closeEvent } = useSelectedEvent();
@@ -109,11 +108,6 @@ export const ListExplorer = () => {
   }, [boundsData]);
 
   // Helper functions for filter labels
-  const getCatalogName = (catalogId: string): string => {
-    const catalog = catalogs.find((c) => String(c.id) === catalogId);
-    return catalog?.name ?? "Unknown Catalog";
-  };
-
   const getDatasetName = (datasetId: string): string => {
     const dataset = datasets.find((d) => String(d.id) === datasetId);
     return dataset?.name ?? "Unknown Dataset";
@@ -134,11 +128,7 @@ export const ListExplorer = () => {
     return undefined;
   };
 
-  const getFilterLabels = () => ({
-    catalog: filters.catalog != null && filters.catalog !== "" ? getCatalogName(filters.catalog) : undefined,
-    datasets: filters.datasets.map((id) => ({ id, name: getDatasetName(id) })),
-    dateRange: formatDateRange(),
-  });
+  const getDatasetNames = (): string[] => filters.datasets.map((id) => getDatasetName(id));
 
   const handleBoundsChange = useCallback(
     (newBounds: LngLatBounds | null, zoom?: number) => {
@@ -186,20 +176,20 @@ export const ListExplorer = () => {
   );
 
   const mobileChartContent = (
-    <div className="p-4">
-      <ChartSection bounds={debouncedSimpleBounds} />
+    <div className="flex h-full flex-col p-4">
+      <ChartSection bounds={debouncedSimpleBounds} fillHeight />
     </div>
   );
 
   const mobileListContent = (
     <div className="p-4">
-      <ActiveFilters
-        labels={getFilterLabels()}
-        hasActiveFilters={hasActiveFilters}
-        activeFilterCount={activeFilterCount}
-        actions={filterActions}
+      <EventsListPaginated
+        filters={filters}
+        bounds={debouncedSimpleBounds}
+        datasetNames={getDatasetNames()}
+        dateRangeLabel={formatDateRange()}
+        onEventClick={openEvent}
       />
-      <EventsListPaginated filters={filters} bounds={debouncedSimpleBounds} onEventClick={openEvent} />
     </div>
   );
 
@@ -238,13 +228,14 @@ export const ListExplorer = () => {
 
             {/* Main Content - Centered List */}
             <div className="mx-auto max-w-2xl px-4 py-6">
-              <ActiveFilters
-                labels={getFilterLabels()}
-                hasActiveFilters={hasActiveFilters}
-                activeFilterCount={activeFilterCount}
-                actions={filterActions}
+              {/* TODO: ActiveFilters component removed for now - may add back later for filter chip UI */}
+              <EventsListPaginated
+                filters={filters}
+                bounds={debouncedSimpleBounds}
+                datasetNames={getDatasetNames()}
+                dateRangeLabel={formatDateRange()}
+                onEventClick={openEvent}
               />
-              <EventsListPaginated filters={filters} bounds={debouncedSimpleBounds} onEventClick={openEvent} />
             </div>
           </div>
 
@@ -289,8 +280,8 @@ export const ListExplorer = () => {
                 </button>
               </div>
 
-              {/* Filter content */}
-              <div className="flex-1 overflow-y-auto p-4">
+              {/* Filter content - FilterDrawer handles its own scroll */}
+              <div className="min-h-0 flex-1">
                 <FilterDrawer />
               </div>
             </div>

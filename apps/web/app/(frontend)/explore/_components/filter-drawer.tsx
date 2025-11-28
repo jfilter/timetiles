@@ -14,7 +14,7 @@
 import { EventFilters } from "@/components/filters/event-filters";
 
 export const FilterDrawer = () => (
-  <div className="bg-background h-full w-80 overflow-y-auto p-4">
+  <div className="bg-background h-full w-full overflow-y-auto p-4 md:w-80">
     <EventFilters />
   </div>
 );

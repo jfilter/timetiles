@@ -45,7 +45,8 @@ export const ViewToggle = ({ currentView }: ViewToggleProps) => {
   }, [currentView, listUrl, navigateTo]);
 
   return (
-    <div className="bg-muted inline-flex items-center gap-1 rounded-lg p-1">
+    // Hidden on mobile since both /explore and /explore/list show the same tabbed interface
+    <div className="bg-muted hidden items-center gap-1 rounded-lg p-1 md:inline-flex">
       <Button
         variant={currentView === "map" ? "default" : "ghost"}
         size="sm"

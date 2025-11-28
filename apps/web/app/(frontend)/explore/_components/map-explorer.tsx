@@ -28,12 +28,14 @@ import {
 } from "@/lib/hooks/use-events-queries";
 import { useUIStore } from "@/lib/store";
 
-import { ActiveFilters } from "./active-filters";
+// TODO: ActiveFilters removed for now - may add back later for filter chip UI
+// import { ActiveFilters } from "./active-filters";
 import { ChartSection } from "./chart-section";
 import { EventDetailModal } from "./event-detail-modal";
 import { EventsList } from "./events-list";
 import { FilterDrawer } from "./filter-drawer";
-import { getFilterLabels, getLoadingStates, simplifyBounds } from "./map-explorer-helpers";
+import { buildEventsDescription, getFilterLabels, getLoadingStates, simplifyBounds } from "./map-explorer-helpers";
+import { MobileFilterSheet } from "./mobile-filter-sheet";
 
 export const MapExplorer = () => {
   const [mapZoom, setMapZoom] = useState(9);
@@ -46,7 +48,7 @@ export const MapExplorer = () => {
   const gridRef = useRef<HTMLDivElement>(null);
 
   // Get filter state from URL (nuqs)
-  const { filters, activeFilterCount, hasActiveFilters, removeFilter, clearAllFilters } = useFilters();
+  const { filters, activeFilterCount } = useFilters();
 
   // Fetch lightweight catalog/dataset data for filter labels
   const { data: dataSources } = useDataSourcesQuery();
@@ -74,14 +76,23 @@ export const MapExplorer = () => {
     return null;
   }, [hasMapPosition, mapPosition.latitude, mapPosition.longitude, mapPosition.zoom]);
 
-  const filterActions = useMemo(() => ({ removeFilter, clearAllFilters }), [removeFilter, clearAllFilters]);
-
   // Get UI state from Zustand store
   const isFilterDrawerOpen = useUIStore((state) => state.ui.isFilterDrawerOpen);
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
+  const setFilterDrawerOpen = useUIStore((state) => state.setFilterDrawerOpen);
   const setMapBounds = useUIStore((state) => state.setMapBounds);
   const setMapStats = useUIStore((state) => state.setMapStats);
+
+  // Close filter drawer on mobile on first mount for better UX
+  useEffect(() => {
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    if (isMobile && isFilterDrawerOpen) {
+      setFilterDrawerOpen(false);
+    }
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Convert mapBounds to simple object format for React Query compatibility
   const simpleBounds = useMemo(() => simplifyBounds(mapBounds), [mapBounds]);
@@ -242,13 +253,7 @@ export const MapExplorer = () => {
         {/* Content Panel - takes half of available space */}
         <div className="min-w-0 flex-1 overflow-y-auto border-l transition-all duration-500 ease-in-out [scrollbar-gutter:stable]">
           <div className="p-6">
-            {/* Active Filters */}
-            <ActiveFilters
-              labels={filterLabels}
-              hasActiveFilters={hasActiveFilters}
-              activeFilterCount={activeFilterCount}
-              actions={filterActions}
-            />
+            {/* TODO: ActiveFilters component removed for now - may add back later for filter chip UI */}
 
             {/* Chart Section - height matches list explorer (50vh - p-6 padding) */}
             <div className="mb-6 h-[calc(50vh-3rem)] min-h-[252px]">
@@ -257,9 +262,9 @@ export const MapExplorer = () => {
 
             {/* Events List */}
             <div className="border-t pt-6">
-              <h2 className="mb-4 text-lg font-semibold">
-                Events ({events.length} of {totalEventsData?.total ?? "..."})
-              </h2>
+              <p className="text-muted-foreground mb-4 text-sm">
+                {buildEventsDescription(events.length, totalEventsData?.total, filterLabels, simpleBounds != null)}
+              </p>
               <EventsList
                 events={events}
                 isInitialLoad={isInitialLoad}
@@ -302,21 +307,16 @@ export const MapExplorer = () => {
         {/* Content takes bottom half */}
         <div className="h-1/2 min-h-0 overflow-y-auto border-t">
           <div className="p-4">
-            <ActiveFilters
-              labels={filterLabels}
-              hasActiveFilters={hasActiveFilters}
-              activeFilterCount={activeFilterCount}
-              actions={filterActions}
-            />
+            {/* TODO: ActiveFilters component removed for now - may add back later for filter chip UI */}
 
             <div className="mb-4">
               <ChartSection bounds={debouncedSimpleBounds} />
             </div>
 
             <div className="border-t pt-4">
-              <h2 className="mb-4 text-lg font-semibold">
-                Events ({events.length} of {totalEventsData?.total ?? "..."})
-              </h2>
+              <p className="text-muted-foreground mb-4 text-sm">
+                {buildEventsDescription(events.length, totalEventsData?.total, filterLabels, simpleBounds != null)}
+              </p>
               <EventsList
                 events={events}
                 isInitialLoad={isInitialLoad}
@@ -327,31 +327,15 @@ export const MapExplorer = () => {
           </div>
         </div>
 
-        {/* Mobile: Full-screen overlay filter sheet */}
-        {isFilterDrawerOpen && (
-          <div className="bg-background fixed inset-0 z-50">
-            <div className="flex h-full flex-col">
-              {/* Header with close button */}
-              <div className="flex items-center justify-between border-b p-4">
-                <h2 className="text-lg font-semibold">Filters</h2>
-                <button
-                  onClick={toggleFilterDrawer}
-                  className="hover:bg-muted rounded-sm p-2"
-                  aria-label="Close filters"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Filter content */}
-              <div className="flex-1 overflow-y-auto p-4">
-                <FilterDrawer />
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Mobile: Bottom sheet filter drawer */}
+        <MobileFilterSheet
+          isOpen={isFilterDrawerOpen}
+          onClose={toggleFilterDrawer}
+          onOpen={toggleFilterDrawer}
+          activeFilterCount={activeFilterCount}
+        >
+          <FilterDrawer />
+        </MobileFilterSheet>
       </div>
 
       {/* Event Detail Modal */}
