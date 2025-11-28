@@ -179,8 +179,22 @@ export const MapExplorer = () => {
   // Determine if we should show loading overlay (initial load only, not filter changes)
   const isLoadingInitialBounds = boundsLoading && !isInitialBoundsApplied;
 
-  // Show "zoom to data" button when user has panned and we have bounds data
-  const showZoomToData = hasUserPanned && boundsData?.bounds != null && !boundsLoading;
+  // Show "zoom to data" button when:
+  // 1. User has panned away from data, OR
+  // 2. Data bounds exist and map viewport doesn't fully contain them (e.g., after filter change)
+  const dataBoundsOutsideViewport = useMemo(() => {
+    if (!boundsData?.bounds || !mapBounds) return false;
+    const dataBounds = boundsData.bounds;
+    // Check if any edge of data bounds is outside current viewport
+    return (
+      dataBounds.west < mapBounds.west ||
+      dataBounds.south < mapBounds.south ||
+      dataBounds.east > mapBounds.east ||
+      dataBounds.north > mapBounds.north
+    );
+  }, [boundsData, mapBounds]);
+
+  const showZoomToData = (hasUserPanned || dataBoundsOutsideViewport) && boundsData?.bounds != null && !boundsLoading;
 
   // Handler to zoom to data bounds
   const handleZoomToData = useCallback(() => {
