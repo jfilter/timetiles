@@ -13,6 +13,7 @@
  *
  * @module
  */
+/* eslint-disable complexity -- Schema detection handles multiple column types and validation cases */
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
@@ -93,11 +94,13 @@ const loadDatasetAndTransforms = async (
   return { dataset, transforms };
 };
 
+// eslint-disable-next-line complexity -- Merging detected mappings with overrides has many conditional cases
 // Helper to merge detected mappings with overrides
 const mergeFieldMappings = (
   detectedMappings: {
     titlePath: string | null;
     descriptionPath: string | null;
+    locationNamePath: string | null;
     timestampPath: string | null;
     latitudePath: string | null;
     longitudePath: string | null;
@@ -107,6 +110,7 @@ const mergeFieldMappings = (
 ) => ({
   titlePath: dataset?.fieldMappingOverrides?.titlePath ?? detectedMappings.titlePath,
   descriptionPath: dataset?.fieldMappingOverrides?.descriptionPath ?? detectedMappings.descriptionPath,
+  locationNamePath: dataset?.fieldMappingOverrides?.locationNamePath ?? detectedMappings.locationNamePath,
   timestampPath: dataset?.fieldMappingOverrides?.timestampPath ?? detectedMappings.timestampPath,
   latitudePath: dataset?.fieldMappingOverrides?.latitudePath ?? detectedMappings.latitudePath,
   longitudePath: dataset?.fieldMappingOverrides?.longitudePath ?? detectedMappings.longitudePath,
@@ -141,6 +145,7 @@ const detectAndStoreFieldMappings = async (
     overridesUsed: {
       title: Boolean(dataset?.fieldMappingOverrides?.titlePath),
       description: Boolean(dataset?.fieldMappingOverrides?.descriptionPath),
+      locationName: Boolean(dataset?.fieldMappingOverrides?.locationNamePath),
       timestamp: Boolean(dataset?.fieldMappingOverrides?.timestampPath),
       latitude: Boolean(dataset?.fieldMappingOverrides?.latitudePath),
       longitude: Boolean(dataset?.fieldMappingOverrides?.longitudePath),

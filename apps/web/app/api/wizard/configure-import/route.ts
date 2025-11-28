@@ -8,6 +8,7 @@
  * @module
  * @category API Routes
  */
+/* eslint-disable sonarjs/max-lines-per-function -- Import configuration requires many sequential setup steps */
 
 import fs from "node:fs";
 import os from "node:os";
@@ -41,7 +42,6 @@ interface FieldMapping {
   titleField: string | null;
   descriptionField: string | null;
   dateField: string | null;
-  endDateField: string | null;
   idField: string | null;
   idStrategy: "external" | "computed" | "auto" | "hybrid";
   locationField: string | null;
@@ -170,6 +170,7 @@ const processDataset = async (
         name: sheetMapping.newDatasetName,
         catalog: catalogId,
         language: "eng",
+        isPublic: true, // Default to public for wizard imports
         fieldMappingOverrides,
         idStrategy,
         deduplicationConfig,
@@ -261,7 +262,10 @@ const getOrCreateCatalog = async (
 
   const newCatalog = await payload.create({
     collection: "catalogs",
-    data: { name: newCatalogName },
+    data: {
+      name: newCatalogName,
+      isPublic: true, // Default to public for wizard imports
+    },
     req,
   });
 
@@ -312,29 +316,56 @@ const validateRequest = (
  * Takes the wizard configuration (previewId, catalog, datasets, field mappings)
  * and creates the import file record to start processing.
  */
+// eslint-disable-next-line sonarjs/max-lines-per-function -- Import configuration requires many sequential setup steps
 export const POST = async (req: NextRequest) => {
+  logger.debug("Configure import request received");
+
   try {
     const payload = await getPayload({ config });
+    logger.debug("Payload initialized");
+
     const { user } = await payload.auth({ headers: req.headers });
+    logger.debug("Auth check complete", { userId: user?.id });
 
     if (!user) {
       return unauthorized();
     }
 
     const body = (await req.json()) as ConfigureImportRequest;
+    logger.debug("Request body parsed", {
+      previewId: body.previewId,
+      catalogId: body.catalogId,
+      sheetMappingsCount: body.sheetMappings?.length,
+      fieldMappingsCount: body.fieldMappings?.length,
+      deduplicationStrategy: body.deduplicationStrategy,
+      geocodingEnabled: body.geocodingEnabled,
+    });
+
     const previewMeta = loadPreviewMetadata(body.previewId);
+    logger.debug("Preview metadata loaded", {
+      found: !!previewMeta,
+      filePath: previewMeta?.filePath,
+      fileExists: previewMeta?.filePath ? fs.existsSync(previewMeta.filePath) : false,
+    });
 
     // Validate request
     const validationError = validateRequest(body, previewMeta, user);
-    if (validationError) return validationError;
+    if (validationError) {
+      logger.debug("Validation failed");
+      return validationError;
+    }
+    logger.debug("Validation passed");
 
     // Get or create catalog
+    logger.debug("Getting or creating catalog", { catalogId: body.catalogId, newCatalogName: body.newCatalogName });
     const finalCatalogId = await getOrCreateCatalog(payload, req, body.catalogId, body.newCatalogName, user.id);
     if (finalCatalogId === null) {
       return badRequest("New catalog name is required");
     }
+    logger.debug("Catalog ready", { finalCatalogId });
 
     // Process sheet mappings and create/update datasets
+    logger.debug("Processing sheet mappings", { sheetMappings: body.sheetMappings });
     const { datasetIdMap, datasetMappingEntries } = await processSheetMappings(
       payload,
       body.sheetMappings,
@@ -343,11 +374,20 @@ export const POST = async (req: NextRequest) => {
       body.deduplicationStrategy,
       body.geocodingEnabled
     );
+    logger.debug("Sheet mappings processed", {
+      datasetIds: Array.from(datasetIdMap.values()),
+      datasetMappingEntries,
+    });
 
     // Read file and create import file record
+    logger.debug("Reading preview file", { filePath: previewMeta!.filePath });
     const fileBuffer = fs.readFileSync(previewMeta!.filePath);
-    const datasetMapping = buildDatasetMapping(body.sheetMappings, datasetMappingEntries);
+    logger.debug("File read complete", { fileSize: fileBuffer.length });
 
+    const datasetMapping = buildDatasetMapping(body.sheetMappings, datasetMappingEntries);
+    logger.debug("Dataset mapping built", { datasetMapping });
+
+    logger.debug("Creating import file record");
     const importFile = await payload.create({
       collection: "import-files",
       user,
@@ -390,7 +430,11 @@ export const POST = async (req: NextRequest) => {
       datasets: Object.fromEntries(datasetIdMap),
     });
   } catch (error) {
-    logger.error("Failed to configure import", { error });
+    logger.error("Failed to configure import", {
+      error,
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     // Include error details for debugging
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     const errorStack = error instanceof Error ? error.stack : undefined;

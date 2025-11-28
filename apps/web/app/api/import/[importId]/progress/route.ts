@@ -176,7 +176,7 @@ export const GET = withRateLimit(
           .findByID({
             collection: "import-files",
             id: importId,
-            depth: 0,
+            depth: 1, // Include catalog details
             user: request.user,
             overrideAccess: false,
           })
@@ -217,12 +217,19 @@ export const GET = withRateLimit(
           .filter((time): time is Date => time != null)
           .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0];
 
+        // Extract catalog ID from relationship (can be object or number)
+        const catalogId =
+          typeof importFile.catalog === "object" && importFile.catalog !== null
+            ? importFile.catalog.id
+            : importFile.catalog;
+
         // Build comprehensive response
         const response = {
           type: "import-file",
           id: importFile.id,
           status: importFile.status,
           originalName: importFile.originalName,
+          catalogId: catalogId ?? null,
           datasetsCount: importFile.datasetsCount,
           datasetsProcessed: importFile.datasetsProcessed,
           overallProgress: Math.round(overallProgress),

@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/max-lines -- Multi-language field detection requires extensive pattern definitions */
 /**
  * Language-aware field mapping detection for schema building.
  *
@@ -20,6 +21,7 @@ import { isValidDate } from "@/lib/utils/date";
 export interface FieldMappings {
   titlePath: string | null;
   descriptionPath: string | null;
+  locationNamePath: string | null;
   timestampPath: string | null;
   latitudePath: string | null;
   longitudePath: string | null;
@@ -97,6 +99,25 @@ const FIELD_PATTERNS = {
       /^evenement.*beschrijving$/i,
     ],
     por: [/^descrição$/i, /^detalhes$/i, /^resumo$/i, /^notas$/i, /^texto$/i, /^conteúdo$/i, /^evento.*descrição$/i],
+  },
+  locationName: {
+    eng: [
+      /^venue$/i,
+      /^venue.*name$/i,
+      /^place$/i,
+      /^place.*name$/i,
+      /^location$/i,
+      /^location.*name$/i,
+      /^site$/i,
+      /^spot$/i,
+      /^where$/i,
+    ],
+    deu: [/^veranstaltungsort$/i, /^ort$/i, /^spielstätte$/i, /^standort$/i, /^platz$/i, /^lokalität$/i, /^wo$/i],
+    fra: [/^lieu$/i, /^endroit$/i, /^place$/i, /^salle$/i, /^site$/i, /^où$/i],
+    spa: [/^lugar$/i, /^sitio$/i, /^local$/i, /^sede$/i, /^recinto$/i, /^donde$/i, /^dónde$/i],
+    ita: [/^luogo$/i, /^posto$/i, /^locale$/i, /^sede$/i, /^sito$/i, /^dove$/i],
+    nld: [/^locatie$/i, /^plaats$/i, /^plek$/i, /^zaal$/i, /^site$/i, /^waar$/i],
+    por: [/^local$/i, /^lugar$/i, /^recinto$/i, /^sede$/i, /^sítio$/i, /^onde$/i],
   },
   timestamp: {
     eng: [
@@ -261,6 +282,7 @@ export const detectFieldMappings = (fieldStats: Record<string, FieldStatistics>,
   return {
     titlePath: detectField(fieldStats, "title", language),
     descriptionPath: detectField(fieldStats, "description", language),
+    locationNamePath: detectField(fieldStats, "locationName", language),
     timestampPath: detectField(fieldStats, "timestamp", language),
     latitudePath: geoFields.latitudePath,
     longitudePath: geoFields.longitudePath,
@@ -353,6 +375,8 @@ const validateFieldType = (stats: FieldStatistics, fieldType: keyof typeof FIELD
       return validateTitleField(stats, stringPct);
     case "description":
       return validateDescriptionField(stats, stringPct);
+    case "locationName":
+      return validateLocationNameField(stats, stringPct);
     case "timestamp":
       return validateTimestampField(stats, stringPct);
     case "location":
@@ -420,6 +444,44 @@ const validateDescriptionField = (stats: FieldStatistics, stringPct: number): nu
     if (avgLength > 1000) return 0.7;
     // Marginal cases
     return 0.6;
+  }
+
+  // Default score if no samples
+  return 0.5;
+};
+
+/**
+ * Validates field as a location name field
+ * - Should be mostly strings
+ * - Typically venue names, place names, or short location descriptions
+ * - Similar to title but for locations
+ */
+const validateLocationNameField = (stats: FieldStatistics, stringPct: number): number => {
+  // Must be at least 70% strings
+  if (stringPct < 0.7) return 0;
+
+  // Check average length if we have string samples
+  if (stats.uniqueSamples && stats.uniqueSamples.length > 0) {
+    const stringValues = stats.uniqueSamples.filter((v): v is string => typeof v === "string");
+    if (stringValues.length === 0) return 0;
+
+    const avgLength = stringValues.reduce((sum, s) => sum + s.length, 0) / stringValues.length;
+
+    // Location names vary in length:
+    // Short: "Reichstag" (9 chars)
+    // Medium: "Kottbusser Platz" (16 chars)
+    // Long: "Deutsches Historisches Museum" (29 chars)
+
+    // Ideal location name length: 3-50 characters
+    if (avgLength >= 3 && avgLength <= 50) return 1.0;
+    // Acceptable: 2-100 characters
+    if (avgLength >= 2 && avgLength <= 100) return 0.8;
+    // Too short (likely codes)
+    if (avgLength < 2) return 0.2;
+    // Longer (might be full addresses, still acceptable)
+    if (avgLength > 100) return 0.6;
+    // Marginal cases
+    return 0.5;
   }
 
   // Default score if no samples

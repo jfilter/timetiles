@@ -181,10 +181,12 @@ const processEventBatch = async (
 };
 
 const markJobCompleted = async (payload: Payload, importJobId: string | number, job: ImportJob) => {
-  // Get total events created from CREATE_EVENTS stage progress
-  const stages = (job.progress?.stages as Record<string, { rowsProcessed?: number }> | undefined) ?? {};
-  const createEventsStage = stages[PROCESSING_STAGE.CREATE_EVENTS];
-  const totalEventsCreated = createEventsStage?.rowsProcessed ?? 0;
+  // Count actual events created for this import job (reliable source of truth)
+  const eventsResult = await payload.count({
+    collection: COLLECTION_NAMES.EVENTS,
+    where: { importJob: { equals: importJobId } },
+  });
+  const totalEventsCreated = eventsResult.totalDocs;
 
   const duplicatesSkipped =
     (job.duplicates?.summary?.internalDuplicates ?? 0) + (job.duplicates?.summary?.externalDuplicates ?? 0);

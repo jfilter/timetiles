@@ -88,7 +88,7 @@ export const extractCoordinates = (
   geocodingResults: ReturnType<typeof getGeocodingResults>
 ): {
   location?: { latitude: number; longitude: number };
-  coordinateSource: { type: "import" | "geocoded" | "none"; confidence?: number };
+  coordinateSource: { type: "import" | "geocoded" | "none"; confidence?: number; normalizedAddress?: string };
 } => {
   // Try to read coordinates directly from the row (imported data)
   const { latitudePath, longitudePath, locationPath } = fieldMappings;
@@ -121,6 +121,7 @@ export const extractCoordinates = (
           coordinateSource: {
             type: "geocoded" as const,
             confidence: geocoded.confidence,
+            normalizedAddress: geocoded.formattedAddress,
           },
         };
       }
@@ -162,6 +163,19 @@ export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: s
 };
 
 /**
+ * Extract location name from row data using field mapping.
+ */
+const extractLocationName = (row: Record<string, unknown>, locationNamePath?: string | null): string | null => {
+  if (!locationNamePath) return null;
+
+  const value = row[locationNamePath];
+  if (typeof value === "string" && value.trim() !== "") {
+    return value.trim();
+  }
+  return null;
+};
+
+/**
  * Create event data structure from a row of imported data.
  */
 export const createEventData = (
@@ -174,6 +188,7 @@ export const createEventData = (
       latitudePath?: string | null;
       longitudePath?: string | null;
       locationPath?: string | null;
+      locationNamePath?: string | null;
       timestampPath?: string | null;
     };
   },
@@ -195,6 +210,7 @@ export const createEventData = (
 
   const fieldMappings = job.detectedFieldMappings ?? {};
   const { location, coordinateSource } = extractCoordinates(row, fieldMappings, geocodingResults);
+  const locationName = extractLocationName(row, fieldMappings.locationNamePath);
 
   return {
     dataset: dataset.id,
@@ -203,6 +219,7 @@ export const createEventData = (
     uniqueId,
     eventTimestamp: extractTimestamp(row, fieldMappings.timestampPath).toISOString(),
     location,
+    locationName,
     coordinateSource,
     validationStatus: transformationChanges ? ("transformed" as const) : ("pending" as const),
     transformations: transformationChanges,
