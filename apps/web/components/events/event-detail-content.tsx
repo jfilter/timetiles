@@ -1,18 +1,30 @@
 /**
  * Shared event detail content component.
  *
- * Displays comprehensive event information including header, location,
- * and data fields. Used by both the event detail modal and the full
- * event detail page for consistent rendering.
+ * Displays comprehensive event information with dataset badge, title,
+ * description, location/date row with icons, and flexible attribute boxes.
+ * Variant C design matching the card list style.
  *
  * @module
  * @category Components
  */
+/* eslint-disable complexity -- Event detail rendering has many conditional display sections */
 "use client";
 
-import { Button, Card, CardContent, CardSpec, CardSpecItem } from "@timetiles/ui";
+import { Button, Card, CardContent } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { AlertTriangle, Check, Copy, ExternalLink, Loader2, MapPin, RefreshCw, Share2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Calendar,
+  Check,
+  Copy,
+  ExternalLink,
+  Loader2,
+  MapPin,
+  RefreshCw,
+  Share2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 
@@ -65,8 +77,18 @@ const getEventTitle = (eventData: EventData): string => {
 };
 
 const getDatasetInfo = (dataset: unknown): { name: string; id: number } | null => {
-  if (typeof dataset === "object" && dataset != null && "name" in dataset && "id" in dataset) {
-    return { name: String(dataset.name), id: Number(dataset.id) };
+  if (typeof dataset === "object" && dataset != null && "id" in dataset) {
+    const d = dataset as Record<string, unknown>;
+    // API returns 'title', Payload returns 'name'
+    let name: string | null = null;
+    if (typeof d.title === "string") {
+      name = d.title;
+    } else if (typeof d.name === "string") {
+      name = d.name;
+    }
+    if (name) {
+      return { name, id: Number(d.id) };
+    }
   }
   return null;
 };
@@ -89,9 +111,15 @@ const formatDateRange = (startDate: unknown, endDate: unknown): string | null =>
 };
 
 const getLocationDisplay = (event: Event, eventData: EventData): string | null => {
+  // Prefer location name (venue, place name) if available
+  if (event.locationName) {
+    return event.locationName;
+  }
+  // Fall back to geocoded/normalized address
   if (event.geocodingInfo?.normalizedAddress) {
     return event.geocodingInfo.normalizedAddress;
   }
+  // Final fallback to city/country from data
   const cityCountry = [safeToString(eventData.city), safeToString(eventData.country)].filter(Boolean);
   return cityCountry.length > 0 ? cityCountry.join(", ") : null;
 };
@@ -102,18 +130,42 @@ const hasValidCoordinates = (location: Event["location"]): boolean => {
   );
 };
 
+// Dataset badge colors - assigned by ID so first datasets get best colors
+const DATASET_BADGE_COLORS = [
+  "bg-cartographic-blue/10 text-cartographic-blue",
+  "bg-cartographic-terracotta/10 text-cartographic-terracotta",
+  "bg-cartographic-forest/10 text-cartographic-forest",
+  "bg-cartographic-teal/10 text-cartographic-teal",
+  "bg-cartographic-amber/10 text-cartographic-amber",
+  "bg-cartographic-plum/10 text-cartographic-plum",
+  "bg-cartographic-rose/10 text-cartographic-rose",
+  "bg-cartographic-olive/10 text-cartographic-olive",
+  "bg-cartographic-navy/10 text-cartographic-navy",
+  "bg-cartographic-slate/10 text-cartographic-slate",
+] as const;
+
+const getDatasetBadgeClass = (datasetId: number | null): string => {
+  // Use ID directly - dataset 1 gets color 0, dataset 2 gets color 1, etc.
+  const index = datasetId === null ? 0 : (datasetId - 1) % DATASET_BADGE_COLORS.length;
+  // Index is always valid since we use modulo with array length
+  return DATASET_BADGE_COLORS[index] ?? DATASET_BADGE_COLORS[0];
+};
+
 // Loading skeleton component
 export const EventDetailSkeleton = () => (
   <div className="animate-pulse space-y-6">
-    <div className="bg-muted h-8 w-3/4 rounded" />
+    <div className="space-y-3">
+      <div className="bg-muted h-5 w-24 rounded-sm" />
+      <div className="bg-muted h-8 w-3/4 rounded" />
+    </div>
     <div className="space-y-2">
       <div className="bg-muted h-4 w-full rounded" />
       <div className="bg-muted h-4 w-5/6 rounded" />
-      <div className="bg-muted h-4 w-4/6 rounded" />
     </div>
-    <div className="grid grid-cols-2 gap-3">
-      {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="bg-muted h-20 rounded-sm" />
+    <div className="bg-muted h-5 w-full rounded" />
+    <div className="flex flex-wrap gap-2">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className="bg-muted h-14 min-w-[140px] flex-1 rounded-sm" />
       ))}
     </div>
   </div>
@@ -178,6 +230,7 @@ const ShareButton = ({ title }: { title: string }) => {
     <Button
       variant="ghost"
       size="icon"
+      className="hover:bg-muted"
       onClick={handleShare}
       disabled={shareState === "copying"}
       aria-label={shareState === "copied" ? "Link copied" : "Share event"}
@@ -190,54 +243,37 @@ const ShareButton = ({ title }: { title: string }) => {
   );
 };
 
-// Geocoding info display
-const GeocodingInfoCard = ({ geocodingInfo }: { geocodingInfo: NonNullable<Event["geocodingInfo"]> }) => (
-  <Card variant="ghost" padding="sm">
-    <CardContent className="p-4">
-      <h4 className="text-muted-foreground mb-2 text-xs font-bold uppercase tracking-wider">Geocoding</h4>
-      <div className="grid grid-cols-2 gap-2 text-sm">
-        {geocodingInfo.provider && (
-          <div>
-            <span className="text-muted-foreground">Provider:</span>{" "}
-            <span className="capitalize">{geocodingInfo.provider}</span>
-          </div>
-        )}
-        {geocodingInfo.confidence != null && (
-          <div>
-            <span className="text-muted-foreground">Confidence:</span> {(geocodingInfo.confidence * 100).toFixed(0)}%
-          </div>
-        )}
-        <div>
-          <span className="text-muted-foreground">Status:</span>{" "}
-          <span
-            className={cn(
-              "capitalize",
-              geocodingInfo.geocodingStatus === "success" && "text-cartographic-forest",
-              geocodingInfo.geocodingStatus === "failed" && "text-destructive"
-            )}
-          >
-            {geocodingInfo.geocodingStatus}
-          </span>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
+// Field box component for flexible attribute display
+interface FieldBoxProps {
+  label: string;
+  value: string;
+  mono?: boolean;
+  capitalize?: boolean;
+  status?: "success" | "failed" | "pending";
+}
 
-// Additional data fields display
-const AdditionalFieldsSection = ({ fields }: { fields: [string, unknown][] }) => (
-  <div className="space-y-3">
-    <h4 className="text-muted-foreground text-xs font-bold uppercase tracking-wider">Additional Details</h4>
-    <div className="grid gap-3">
-      {fields.map(([key, value]) => (
-        <div key={key} className="border-cartographic-navy/20 border-l-2 pl-3">
-          <p className="text-muted-foreground text-xs font-medium capitalize">
-            {key.replace(/([A-Z])/g, " $1").trim()}
-          </p>
-          <p className="text-sm">{safeToString(value)}</p>
-        </div>
-      ))}
-    </div>
+// Calculate flex-grow based on value length for responsive sizing
+const getFlexGrow = (value: string): string => {
+  const len = value.length;
+  if (len <= 10) return "flex-[1_1_140px]"; // Short: coordinates, status
+  if (len <= 25) return "flex-[2_1_180px]"; // Medium: dates, providers
+  return "flex-[3_1_240px]"; // Long: addresses, descriptions
+};
+
+const FieldBox = ({ label, value, mono, capitalize, status }: FieldBoxProps) => (
+  <div className={cn("bg-muted/40 dark:bg-muted/20 rounded-sm px-3 py-2", getFlexGrow(value))}>
+    <p className="text-muted-foreground mb-0.5 text-xs">{label}</p>
+    <p
+      className={cn(
+        "text-sm",
+        mono && "font-mono",
+        capitalize && "capitalize",
+        status === "success" && "text-cartographic-forest",
+        status === "failed" && "text-destructive"
+      )}
+    >
+      {value}
+    </p>
   </div>
 );
 
@@ -277,6 +313,7 @@ const EventMetadataCard = ({ event }: { event: Event }) => (
   </Card>
 );
 
+// eslint-disable-next-line complexity -- Event detail rendering has many conditional display sections
 export const EventDetailContent = ({
   event,
   variant = "modal",
@@ -303,6 +340,7 @@ export const EventDetailContent = ({
   const datasetInfo = getDatasetInfo(event.dataset);
 
   const hasCoordinates = hasValidCoordinates(event.location);
+  const badgeClass = getDatasetBadgeClass(datasetInfo?.id ?? null);
 
   // Get additional data fields (excluding known fields)
   const knownFields = ["title", "name", "description", "startDate", "endDate", "city", "country", "id"];
@@ -311,71 +349,98 @@ export const EventDetailContent = ({
   );
 
   return (
-    <div className={cn("space-y-6", variant === "page" && "mx-auto max-w-4xl")}>
-      {/* Header Section */}
-      <div className="space-y-2">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-muted-foreground mb-1 font-mono text-xs uppercase tracking-wider">Event #{event.id}</p>
-            <h2 className="font-serif text-2xl font-bold leading-tight">{title}</h2>
-          </div>
-
-          {/* Actions - all icons in one row */}
-          <div className="flex flex-shrink-0 items-center gap-1">
-            <ShareButton title={title} />
-            {variant === "modal" && (
-              <>
-                <Button variant="ghost" size="icon" asChild>
-                  <Link href={`/events/${event.id}`} target="_blank" aria-label="Open in new tab">
-                    <ExternalLink className="h-5 w-5" />
-                  </Link>
-                </Button>
-                {onClose && (
-                  <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
-                    <X className="h-5 w-5" />
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
+    <div className={cn("space-y-5", variant === "page" && "mx-auto max-w-4xl")}>
+      {/* Header with badge + action icons */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          {/* Dataset badge */}
+          {datasetInfo && (
+            <span className={cn("inline-block rounded-sm px-2 py-0.5 text-xs font-medium", badgeClass)}>
+              {datasetInfo.name}
+            </span>
+          )}
+          {/* Title */}
+          <h2 className={cn("font-serif text-2xl font-bold leading-tight", datasetInfo && "mt-3")}>{title}</h2>
         </div>
 
-        {description && <p className="text-muted-foreground leading-relaxed">{description}</p>}
+        {/* Action icons */}
+        <div className="relative z-10 flex shrink-0 items-center gap-1">
+          <ShareButton title={title} />
+          {variant === "modal" && (
+            <>
+              <Button variant="ghost" size="icon" className="hover:bg-muted" asChild>
+                <Link href={`/events/${event.id}`} target="_blank" aria-label="Open in new tab">
+                  <ExternalLink className="h-5 w-5" />
+                </Link>
+              </Button>
+              {onClose && (
+                <Button variant="ghost" size="icon" className="hover:bg-muted" onClick={onClose} aria-label="Close">
+                  <X className="h-5 w-5" />
+                </Button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Quick Info */}
-      <CardSpec>
-        {dateRange && <CardSpecItem label="Date">{dateRange}</CardSpecItem>}
+      {/* Description */}
+      {description && <p className="text-muted-foreground leading-relaxed">{description}</p>}
 
-        {locationDisplay && (
-          <CardSpecItem label="Location">
-            <span className="flex items-center gap-1">
-              <MapPin className="h-3 w-3 flex-shrink-0" />
-              {locationDisplay}
-            </span>
-          </CardSpecItem>
-        )}
-
-        {hasCoordinates && (
-          <CardSpecItem label="Coordinates">
-            <span className="font-mono text-xs">
-              {event.location!.latitude!.toFixed(4)}, {event.location!.longitude!.toFixed(4)}
-            </span>
-          </CardSpecItem>
-        )}
-
-        {datasetInfo && <CardSpecItem label="Dataset">{datasetInfo.name}</CardSpecItem>}
-
-        {event.eventTimestamp && <CardSpecItem label="Event Date">{formatDate(event.eventTimestamp)}</CardSpecItem>}
-      </CardSpec>
-
-      {/* Geocoding Info */}
-      {event.geocodingInfo && event.geocodingInfo.geocodingStatus !== "pending" && (
-        <GeocodingInfoCard geocodingInfo={event.geocodingInfo} />
+      {/* Location and date - one row with icons */}
+      {(locationDisplay != null || dateRange != null) && (
+        <div className="text-muted-foreground flex items-center justify-between text-sm">
+          {locationDisplay && (
+            <div className="flex items-center gap-1.5">
+              <MapPin className="h-4 w-4 shrink-0" />
+              <span>{locationDisplay}</span>
+            </div>
+          )}
+          {dateRange && (
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-4 w-4 shrink-0" />
+              <span>{dateRange}</span>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Additional Data Fields */}
-      {additionalFields.length > 0 && <AdditionalFieldsSection fields={additionalFields} />}
+      {/* All fields in flexible boxes */}
+      <div className="border-t pt-5">
+        <div className="flex flex-wrap gap-2">
+          {hasCoordinates && (
+            <FieldBox
+              label="Coordinates"
+              value={`${event.location!.latitude!.toFixed(4)}, ${event.location!.longitude!.toFixed(4)}`}
+              mono
+            />
+          )}
+
+          {/* Geocoding Info */}
+          {event.geocodingInfo && event.geocodingInfo.geocodingStatus !== "pending" && (
+            <>
+              {event.geocodingInfo.provider && (
+                <FieldBox label="Geocoding" value={event.geocodingInfo.provider} capitalize />
+              )}
+              {event.geocodingInfo.confidence != null && (
+                <FieldBox label="Confidence" value={`${(event.geocodingInfo.confidence * 100).toFixed(0)}%`} />
+              )}
+              <FieldBox
+                label="Status"
+                value={event.geocodingInfo.geocodingStatus ?? "unknown"}
+                capitalize
+                status={event.geocodingInfo.geocodingStatus as "success" | "failed" | "pending"}
+              />
+            </>
+          )}
+
+          {event.eventTimestamp && <FieldBox label="Event Date" value={formatDate(event.eventTimestamp)} />}
+
+          {/* Additional Data Fields */}
+          {additionalFields.map(([key, value]) => (
+            <FieldBox key={key} label={key.replace(/([A-Z])/g, " $1").trim()} value={safeToString(value)} />
+          ))}
+        </div>
+      </div>
 
       {/* Metadata (page variant only) */}
       {variant === "page" && <EventMetadataCard event={event} />}

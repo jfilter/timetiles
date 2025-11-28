@@ -8,6 +8,7 @@
  * @module
  * @category Components
  */
+/* eslint-disable sonarjs/max-lines-per-function -- Map setup requires many sequential configuration steps */
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -51,11 +52,22 @@ export interface ClusterFeature {
   properties: { type: "event-cluster" | "event-point"; count?: number; title?: string };
 }
 
+/**
+ * Map view state for center coordinates and zoom level.
+ * Used for URL-based map position persistence.
+ */
+export interface MapViewState {
+  latitude: number;
+  longitude: number;
+  zoom: number;
+}
+
 interface ClusteredMapProps {
-  onBoundsChange?: (bounds: LngLatBounds, zoom: number) => void;
+  onBoundsChange?: (bounds: LngLatBounds, zoom: number, center?: { lng: number; lat: number }) => void;
   clusters?: ClusterFeature[];
   clusterStats?: ClusterStats;
   initialBounds?: SimpleBounds | null;
+  initialViewState?: MapViewState | null;
   isLoadingBounds?: boolean;
 }
 
@@ -74,8 +86,12 @@ const MapLoadingOverlay = () => (
   </div>
 );
 
+// eslint-disable-next-line sonarjs/max-lines-per-function -- Map setup requires many sequential configuration steps
 export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
-  ({ onBoundsChange, clusters = DEFAULT_CLUSTERS, clusterStats, initialBounds, isLoadingBounds }, ref) => {
+  (
+    { onBoundsChange, clusters = DEFAULT_CLUSTERS, clusterStats, initialBounds, initialViewState, isLoadingBounds },
+    ref
+  ) => {
     const { resolvedTheme } = useTheme();
     const [popupInfo, setPopupInfo] = useState<{ longitude: number; latitude: number; title: string } | null>(null);
     const mapRef = useRef<MapRef | null>(null);
@@ -93,22 +109,38 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
     const viewportStats = useMemo(() => computeViewportStats(clusters), [clusters]);
 
     const handleLoad = useCallback(
-      (evt: { target: { getBounds: () => LngLatBounds; getZoom: () => number } }) => {
+      (evt: {
+        target: { getBounds: () => LngLatBounds; getZoom: () => number; getCenter: () => { lng: number; lat: number } };
+      }) => {
         const map = evt.target as MapRef;
         (window as { _mapRef?: unknown })._mapRef = map;
 
-        if (initialBounds) fitMapToBounds(map, initialBounds, { animate: false });
+        // Use initialViewState if provided (URL position), otherwise fall back to initialBounds
+        if (initialViewState) {
+          map.flyTo({
+            center: [initialViewState.longitude, initialViewState.latitude],
+            zoom: initialViewState.zoom,
+            animate: false,
+          });
+        } else if (initialBounds) {
+          fitMapToBounds(map, initialBounds, { animate: false });
+        }
 
-        const { bounds, zoom } = logMapInitialized(map, !!initialBounds);
-        onBoundsChange?.(bounds, zoom);
+        const { bounds, zoom } = logMapInitialized(map, !!initialBounds || !!initialViewState);
+        const center = map.getCenter();
+        onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat });
       },
-      [onBoundsChange, initialBounds]
+      [onBoundsChange, initialBounds, initialViewState]
     );
 
     const handleMoveEnd = useCallback(
-      (evt: { target: { getBounds: () => LngLatBounds; getZoom: () => number } }) => {
-        const { bounds, zoom } = logMapViewportChanged(evt.target as MapRef);
-        onBoundsChange?.(bounds, zoom);
+      (evt: {
+        target: { getBounds: () => LngLatBounds; getZoom: () => number; getCenter: () => { lng: number; lat: number } };
+      }) => {
+        const map = evt.target as MapRef;
+        const { bounds, zoom } = logMapViewportChanged(map);
+        const center = map.getCenter();
+        onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat });
       },
       [onBoundsChange]
     );
