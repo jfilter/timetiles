@@ -14,6 +14,8 @@
 import { createLogger } from "@/lib/logger";
 import { SchemaInferenceService } from "@/lib/services/schema-inference-service";
 
+import { generateFieldMetadataForAllDatasets } from "./post-seed-field-metadata";
+
 import {
   type CollectionConfig,
   getCollectionConfig,
@@ -63,11 +65,17 @@ export class ConfigDrivenSeeding {
 
     const overallResults = await this.processCollections(collectionsToSeed, configOverrides, preset);
 
-    // Generate schemas for datasets if generateSchemas is enabled
+    // Generate schemas and field metadata for datasets if generateSchemas is enabled
     if (collectionsToSeed.includes("events")) {
       const datasetsConfig = getCollectionConfig("datasets", preset);
       if (datasetsConfig?.options?.generateSchemas !== false) {
         await this.generateSchemasForDatasets();
+
+        // Generate fieldMetadata for categorical filters
+        const payload = this.seedManager.payloadInstance;
+        if (payload) {
+          await generateFieldMetadataForAllDatasets(payload);
+        }
       }
     }
 
