@@ -386,6 +386,13 @@ const Datasets: CollectionConfig = {
           },
         },
         {
+          name: "locationNamePath",
+          type: "text",
+          admin: {
+            description: "Override detected location name field (e.g., 'venue', 'place', 'ort', 'lieu')",
+          },
+        },
+        {
           name: "timestampPath",
           type: "text",
           admin: {

@@ -140,6 +140,14 @@ export const importJobFields: Field[] = [
         },
       },
       {
+        name: "locationNamePath",
+        type: "text",
+        admin: {
+          description: "Path to location/venue name field in source data (for display)",
+          readOnly: true,
+        },
+      },
+      {
         name: "timestampPath",
         type: "text",
         admin: {

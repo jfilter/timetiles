@@ -236,6 +236,14 @@ const DatasetSchemas: CollectionConfig = {
           },
         },
         {
+          name: "locationNamePath",
+          type: "text",
+          admin: {
+            description: "Path to location/venue name field in source data",
+            readOnly: true,
+          },
+        },
+        {
           name: "timestampPath",
           type: "text",
           admin: {

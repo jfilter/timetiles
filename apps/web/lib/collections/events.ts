@@ -221,6 +221,14 @@ const Events: CollectionConfig = {
           },
         },
         {
+          name: "normalizedAddress",
+          type: "text",
+          admin: {
+            description: "Normalized address returned by geocoder",
+            condition: (data) => (data.coordinateSource as { type?: string })?.type === "geocoded",
+          },
+        },
+        {
           name: "validationStatus",
           type: "select",
           options: [
@@ -244,6 +252,13 @@ const Events: CollectionConfig = {
           pickerAppearance: "dayAndTime",
         },
         description: "When the actual event occurred",
+      },
+    },
+    {
+      name: "locationName",
+      type: "text",
+      admin: {
+        description: "Location/venue name for display (e.g., 'Reichstag', 'Kottbusser Platz')",
       },
     },
 

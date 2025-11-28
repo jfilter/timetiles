@@ -199,6 +199,8 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     globals: ALL_GLOBALS,
     jobs: {
       tasks: ALL_JOBS,
+      // In development, run `make jobs` to process jobs every 10s
+      // In production, use external cron or Vercel Cron to call /api/payload-jobs/run
     },
     editor: lexicalEditor({}),
     typescript: DEFAULT_TYPESCRIPT_CONFIG,

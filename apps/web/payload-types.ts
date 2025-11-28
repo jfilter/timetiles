@@ -610,6 +610,10 @@ export interface Dataset {
      */
     descriptionPath?: string | null;
     /**
+     * Override detected location name field (e.g., 'venue', 'place', 'ort', 'lieu')
+     */
+    locationNamePath?: string | null;
+    /**
      * Override detected timestamp field (e.g., 'created_at', 'datum', 'date')
      */
     timestampPath?: string | null;
@@ -769,6 +773,10 @@ export interface DatasetSchema {
      */
     descriptionPath?: string | null;
     /**
+     * Path to location/venue name field in source data
+     */
+    locationNamePath?: string | null;
+    /**
      * Path to timestamp/date field in source data
      */
     timestampPath?: string | null;
@@ -869,6 +877,10 @@ export interface ImportJob {
      * Path to description/details field in source data
      */
     descriptionPath?: string | null;
+    /**
+     * Path to location/venue name field in source data (for display)
+     */
+    locationNamePath?: string | null;
     /**
      * Path to timestamp/date field in source data
      */
@@ -1555,12 +1567,20 @@ export interface Event {
      * Confidence in coordinate accuracy (0-1)
      */
     confidence?: number | null;
+    /**
+     * Normalized address returned by geocoder
+     */
+    normalizedAddress?: string | null;
     validationStatus?: ('valid' | 'out_of_range' | 'suspicious_zero' | 'swapped' | 'invalid') | null;
   };
   /**
    * When the actual event occurred
    */
   eventTimestamp?: string | null;
+  /**
+   * Location/venue name for display (e.g., 'Reichstag', 'Kottbusser Platz')
+   */
+  locationName?: string | null;
   /**
    * Validation errors if any
    */
@@ -2587,6 +2607,7 @@ export interface DatasetsSelect<T extends boolean = true> {
     | {
         titlePath?: T;
         descriptionPath?: T;
+        locationNamePath?: T;
         timestampPath?: T;
         latitudePath?: T;
         longitudePath?: T;
@@ -2659,6 +2680,7 @@ export interface DatasetSchemasSelect<T extends boolean = true> {
     | {
         titlePath?: T;
         descriptionPath?: T;
+        locationNamePath?: T;
         timestampPath?: T;
       };
   updatedAt?: T;
@@ -2740,6 +2762,7 @@ export interface ImportJobsSelect<T extends boolean = true> {
     | {
         titlePath?: T;
         descriptionPath?: T;
+        locationNamePath?: T;
         timestampPath?: T;
         latitudePath?: T;
         longitudePath?: T;
@@ -2913,9 +2936,11 @@ export interface EventsSelect<T extends boolean = true> {
               format?: T;
             };
         confidence?: T;
+        normalizedAddress?: T;
         validationStatus?: T;
       };
   eventTimestamp?: T;
+  locationName?: T;
   validationErrors?: T;
   geocodingInfo?:
     | T
