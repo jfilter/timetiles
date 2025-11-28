@@ -86,6 +86,14 @@ export { HeaderNav, HeaderNavItem } from "./components/header-nav";
 export { Hero, HeroActions, HeroHeadline, HeroSubheadline } from "./components/hero";
 export { Input } from "./components/input";
 export { Label, labelVariants } from "./components/label";
+export {
+  MobileNavDrawer,
+  MobileNavDrawerContent,
+  MobileNavDrawerItem,
+  MobileNavDrawerLink,
+  MobileNavDrawerOverlay,
+  MobileNavDrawerTrigger,
+} from "./components/mobile-nav-drawer";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/tabs";
 
 // Page blocks - generic CMS components
