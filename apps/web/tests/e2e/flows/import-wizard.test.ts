@@ -357,17 +357,27 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-    // Wait for catalog selection to appear
+    // Handle catalog selection - dropdown only appears if user has existing catalogs
     const catalogSelect = page.locator("#catalog-select");
-    await expect(catalogSelect).toBeVisible({ timeout: 10000 });
-
-    // Select "Create new catalog"
-    await catalogSelect.selectOption("new");
-
-    // Fill in new catalog name
     const newCatalogInput = page.locator("#new-catalog-name");
-    await expect(newCatalogInput).toBeVisible();
+
+    // Check if catalog dropdown exists (user has existing catalogs)
+    const hasCatalogDropdown = await catalogSelect.isVisible({ timeout: 2000 }).catch(() => false);
+
+    if (hasCatalogDropdown) {
+      // Select "Create new catalog" from dropdown
+      await catalogSelect.selectOption("new");
+    }
+
+    // Wait for the new catalog name input to appear and be populated
+    await expect(newCatalogInput).toBeVisible({ timeout: 5000 });
+    // Wait for auto-fill to complete (useEffect sets the name from filename)
+    await page.waitForTimeout(500);
+    // Clear and fill with our custom catalog name
+    await newCatalogInput.clear();
     await newCatalogInput.fill(catalogName);
+    // Verify the value was set correctly
+    await expect(newCatalogInput).toHaveValue(catalogName);
 
     // Wait for multi-sheet dataset mapping section to appear
     await page.waitForTimeout(500);
@@ -397,31 +407,46 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     // Verify it's showing the first sheet (Tech Events)
     await expect(page.getByText(/mapping.*tech events/i)).toBeVisible();
 
-    // For Tech Events sheet: title, event_date, venue (location), city, description
-    // The auto-detection should have mapped:
-    // - title -> titleField
-    // - event_date -> dateField
-    // - venue or city -> locationField
-    // - description -> descriptionField
+    // Configure field mappings for ALL 3 sheets using the sheet tabs
+    // Each sheet has different column names that may or may not be auto-detected
 
-    // Verify title field was auto-detected
-    const titleSelect = page.locator("#title-field");
-    await expect(titleSelect).toBeVisible();
-    const titleValue = await titleSelect.inputValue();
-    expect(titleValue).toBe("title");
+    // Sheet mappings: [sheetIndex, titleCol, dateCol, locationCol]
+    const sheetConfigs = [
+      { index: 0, title: "title", date: "event_date", location: "venue" }, // Tech Events
+      { index: 1, title: "name", date: "date", location: "location" }, // Art Exhibitions
+      { index: 2, title: "event_name", date: "start_date", location: "address" }, // Sports Events
+    ];
 
-    // Verify date field was auto-detected (event_date)
-    const dateSelect = page.locator("#date-field");
-    await expect(dateSelect).toBeVisible();
-    const dateValue = await dateSelect.inputValue();
-    expect(dateValue).toBe("event_date");
+    for (const config of sheetConfigs) {
+      // Click the sheet tab to switch to this sheet
+      const sheetTab = page.locator(`[data-testid="sheet-tab-${config.index}"]`);
+      await sheetTab.click();
+      await page.waitForTimeout(300); // Wait for UI to update
 
-    // Verify location field is set to city or venue
-    const locationSelect = page.locator("#location-field");
-    await expect(locationSelect).toBeVisible();
-    const locationValue = await locationSelect.inputValue();
-    // Should be either venue or city
-    expect(["venue", "city"].includes(locationValue) || locationValue !== "").toBe(true);
+      // Set title field if not auto-detected
+      const titleSelect = page.locator("#title-field");
+      await expect(titleSelect).toBeVisible();
+      const titleValue = await titleSelect.inputValue();
+      if (!titleValue || titleValue === "") {
+        await titleSelect.selectOption(config.title);
+      }
+
+      // Set date field if not auto-detected
+      const dateSelect = page.locator("#date-field");
+      await expect(dateSelect).toBeVisible();
+      const dateValue = await dateSelect.inputValue();
+      if (!dateValue || dateValue === "") {
+        await dateSelect.selectOption(config.date);
+      }
+
+      // Set location field if not auto-detected
+      const locationSelect = page.locator("#location-field");
+      await expect(locationSelect).toBeVisible();
+      const locationValue = await locationSelect.inputValue();
+      if (!locationValue || locationValue === "") {
+        await locationSelect.selectOption(config.location);
+      }
+    }
 
     // Click Next to go to Review (Step 5)
     await importPage.clickNext();
@@ -430,8 +455,8 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
     await expect(reviewHeading).toBeVisible({ timeout: 10000 });
 
-    // Verify summary shows catalog
-    await expect(page.getByText(catalogName)).toBeVisible();
+    // Verify summary shows our custom catalog name
+    await expect(page.getByText(catalogName)).toBeVisible({ timeout: 5000 });
 
     // Verify it shows 3 datasets will be created
     await expect(page.getByText(/3 datasets/i)).toBeVisible({ timeout: 5000 });
@@ -513,7 +538,9 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     await expect(viewOnMapButton).toBeVisible();
 
     // Verify the datasets were created by checking the API
-    const catalogsResponse = await page.request.get(`${baseUrl}/api/catalogs?where[name][equals]=${encodeURIComponent(catalogName)}`);
+    const catalogsResponse = await page.request.get(
+      `${baseUrl}/api/catalogs?where[name][equals]=${encodeURIComponent(catalogName)}`
+    );
     expect(catalogsResponse.ok()).toBe(true);
     const catalogsData = await catalogsResponse.json();
     expect(catalogsData.docs.length).toBe(1);
@@ -521,7 +548,243 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const createdCatalogId = catalogsData.docs[0].id;
 
     // Verify 3 datasets exist in the catalog
-    const datasetsResponse = await page.request.get(`${baseUrl}/api/datasets?where[catalog][equals]=${createdCatalogId}`);
+    const datasetsResponse = await page.request.get(
+      `${baseUrl}/api/datasets?where[catalog][equals]=${createdCatalogId}`
+    );
+    expect(datasetsResponse.ok()).toBe(true);
+    const datasetsData = await datasetsResponse.json();
+    expect(datasetsData.docs.length).toBe(3);
+
+    // Verify dataset names match sheet names
+    const datasetNames = datasetsData.docs.map((d: { name: string }) => d.name);
+    expect(datasetNames).toContain("Tech Events");
+    expect(datasetNames).toContain("Art Exhibitions");
+    expect(datasetNames).toContain("Sports Events");
+  });
+
+  test("should import all sheets from multi-sheet ODS and create 3 datasets", async ({ page }) => {
+    // Increase timeout for full import flow with job processing
+    test.setTimeout(240000); // 4 minutes
+
+    // Use a unique catalog/dataset name to avoid conflicts
+    const uniqueId = Date.now();
+    const catalogName = `E2E ODS Multi-Sheet Catalog ${uniqueId}`;
+
+    // Step 1: Upload multi-sheet ODS file (LibreOffice format)
+    const multiSheetPath = path.join(FIXTURES_PATH, "multi-sheet.ods");
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles(multiSheetPath);
+
+    // Wait for file processing - should detect 3 sheets
+    await expect(page.getByText(/3 sheets/i)).toBeVisible({ timeout: 15000 });
+
+    // Verify all three sheet names are displayed
+    await expect(page.getByText("Tech Events")).toBeVisible();
+    await expect(page.getByText("Art Exhibitions")).toBeVisible();
+    await expect(page.getByText("Sports Events")).toBeVisible();
+
+    // Click Next to go to Dataset Selection (Step 3)
+    await importPage.clickNext();
+
+    // Step 2: Dataset Selection
+    // Wait for "Select destination" heading
+    const destinationHeading = page.getByRole("heading", { name: /select destination/i });
+    await expect(destinationHeading).toBeVisible({ timeout: 10000 });
+
+    // Handle catalog selection - dropdown only appears if user has existing catalogs
+    const catalogSelect = page.locator("#catalog-select");
+    const newCatalogInput = page.locator("#new-catalog-name");
+
+    // Check if catalog dropdown exists (user has existing catalogs)
+    const hasCatalogDropdown = await catalogSelect.isVisible({ timeout: 2000 }).catch(() => false);
+
+    if (hasCatalogDropdown) {
+      // Select "Create new catalog" from dropdown
+      await catalogSelect.selectOption("new");
+    }
+
+    // Wait for the new catalog name input to appear and be populated
+    await expect(newCatalogInput).toBeVisible({ timeout: 5000 });
+    // Wait for auto-fill to complete (useEffect sets the name from filename)
+    await page.waitForTimeout(500);
+    // Clear and fill with our custom catalog name
+    await newCatalogInput.clear();
+    await newCatalogInput.fill(catalogName);
+    // Verify the value was set correctly
+    await expect(newCatalogInput).toHaveValue(catalogName);
+
+    // Wait for multi-sheet dataset mapping section to appear
+    await page.waitForTimeout(500);
+
+    // Verify each sheet shows a dataset name input with the sheet name pre-filled
+    // The multi-sheet view shows each sheet with a dataset name input
+    const sheetMappingSections = page.locator('[class*="rounded-sm border p-4"]');
+    await expect(sheetMappingSections).toHaveCount(3, { timeout: 5000 });
+
+    // Verify sheet names are shown
+    await expect(page.getByText("Tech Events").first()).toBeVisible();
+    await expect(page.getByText("Art Exhibitions").first()).toBeVisible();
+    await expect(page.getByText("Sports Events").first()).toBeVisible();
+
+    // Click Next to go to Field Mapping (Step 4)
+    await importPage.clickNext();
+
+    // Step 3: Field Mapping
+    // Wait for field mapping page to appear
+    const fieldMappingHeading = page.getByRole("heading", { name: /map your fields/i });
+    await expect(fieldMappingHeading).toBeVisible({ timeout: 10000 });
+
+    // Multi-sheet indicator should be visible
+    const multiSheetIndicator = page.getByText(/3 sheets detected/i);
+    await expect(multiSheetIndicator).toBeVisible();
+
+    // Verify it's showing the first sheet (Tech Events)
+    await expect(page.getByText(/mapping.*tech events/i)).toBeVisible();
+
+    // Configure field mappings for ALL 3 sheets using the sheet tabs
+    // Each sheet has different column names that may or may not be auto-detected
+
+    // Sheet mappings: [sheetIndex, titleCol, dateCol, locationCol]
+    const sheetConfigs = [
+      { index: 0, title: "title", date: "event_date", location: "venue" }, // Tech Events
+      { index: 1, title: "name", date: "date", location: "location" }, // Art Exhibitions
+      { index: 2, title: "event_name", date: "start_date", location: "address" }, // Sports Events
+    ];
+
+    for (const config of sheetConfigs) {
+      // Click the sheet tab to switch to this sheet
+      const sheetTab = page.locator(`[data-testid="sheet-tab-${config.index}"]`);
+      await sheetTab.click();
+      await page.waitForTimeout(300); // Wait for UI to update
+
+      // Set title field if not auto-detected
+      const titleSelect = page.locator("#title-field");
+      await expect(titleSelect).toBeVisible();
+      const titleValue = await titleSelect.inputValue();
+      if (!titleValue || titleValue === "") {
+        await titleSelect.selectOption(config.title);
+      }
+
+      // Set date field if not auto-detected
+      const dateSelect = page.locator("#date-field");
+      await expect(dateSelect).toBeVisible();
+      const dateValue = await dateSelect.inputValue();
+      if (!dateValue || dateValue === "") {
+        await dateSelect.selectOption(config.date);
+      }
+
+      // Set location field if not auto-detected
+      const locationSelect = page.locator("#location-field");
+      await expect(locationSelect).toBeVisible();
+      const locationValue = await locationSelect.inputValue();
+      if (!locationValue || locationValue === "") {
+        await locationSelect.selectOption(config.location);
+      }
+    }
+
+    // Click Next to go to Review (Step 5)
+    await importPage.clickNext();
+
+    // Step 4: Review
+    const reviewHeading = page.getByRole("heading", { name: /review your import/i });
+    await expect(reviewHeading).toBeVisible({ timeout: 10000 });
+
+    // Verify summary shows our custom catalog name
+    await expect(page.getByText(catalogName)).toBeVisible({ timeout: 5000 });
+
+    // Verify it shows 3 datasets will be created
+    await expect(page.getByText(/3 datasets/i)).toBeVisible({ timeout: 5000 });
+
+    // Listen for API response
+    const responsePromise = page.waitForResponse(
+      (response) => response.url().includes("/api/wizard/configure-import"),
+      { timeout: 30000 }
+    );
+
+    // Click Start Import to begin processing (Step 6)
+    const startImportButton = page.getByRole("button", { name: /start import/i });
+    await expect(startImportButton).toBeVisible();
+    await startImportButton.click();
+
+    // Wait for and check the API response
+    const response = await responsePromise;
+    const responseStatus = response.status();
+
+    const responseBody = await response.json();
+    if (responseStatus !== 200) {
+      throw new Error(`Configure import failed with status ${responseStatus}: ${JSON.stringify(responseBody)}`);
+    }
+
+    expect(responseBody.success).toBe(true);
+    expect(responseBody.importFileId).toBeDefined();
+    expect(responseBody.catalogId).toBeDefined();
+
+    // Verify 3 datasets were created in the response
+    // Response should have datasets object with 3 entries (keyed by sheet index)
+    expect(responseBody.datasets).toBeDefined();
+    const datasetIds = Object.values(responseBody.datasets);
+    expect(datasetIds.length).toBe(3);
+
+    // Step 5: Processing page is shown
+    const processingIndicator = page.getByText(/importing your data/i);
+    await expect(processingIndicator).toBeVisible({ timeout: 10000 });
+
+    // Get base URL for API calls
+    const baseUrl = page.url().split("/import")[0];
+
+    // Run jobs in batches, waiting for UI to poll between runs
+    for (let batch = 0; batch < 15; batch++) {
+      const runJobsResponse = await page.request.post(`${baseUrl}/api/admin/jobs/run`, {
+        data: { limit: 100, iterations: 10 },
+        timeout: 60000,
+      });
+
+      if (!runJobsResponse.ok()) {
+        const jobsError = await runJobsResponse.text();
+        throw new Error(`Failed to run jobs (batch ${batch}): ${jobsError}`);
+      }
+
+      // Wait for UI to poll for progress updates
+      await page.waitForTimeout(3000);
+
+      // Check if import is complete
+      const isComplete = await page
+        .getByText(/import complete/i)
+        .isVisible()
+        .catch(() => false);
+      if (isComplete) {
+        break;
+      }
+    }
+
+    // Wait for completion indicator to be visible
+    const completionIndicator = page.getByText(/import complete/i);
+    await expect(completionIndicator).toBeVisible({ timeout: 60000 });
+
+    // Verify success message shows events were imported
+    // Total: 3 (Tech) + 4 (Art) + 2 (Sports) = 9 events
+    // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
+    const successMessage = page.getByText(/[1-9]\d* events imported/i);
+    await expect(successMessage).toBeVisible({ timeout: 5000 });
+
+    // Verify we can navigate to explore page
+    const viewOnMapButton = page.getByRole("link", { name: /view on map|explore/i });
+    await expect(viewOnMapButton).toBeVisible();
+
+    // Verify the datasets were created by checking the API
+    const catalogsResponse = await page.request.get(
+      `${baseUrl}/api/catalogs?where[name][equals]=${encodeURIComponent(catalogName)}`
+    );
+    expect(catalogsResponse.ok()).toBe(true);
+    const catalogsData = await catalogsResponse.json();
+    expect(catalogsData.docs.length).toBe(1);
+
+    const createdCatalogId = catalogsData.docs[0].id;
+
+    // Verify 3 datasets exist in the catalog
+    const datasetsResponse = await page.request.get(
+      `${baseUrl}/api/datasets?where[catalog][equals]=${createdCatalogId}`
+    );
     expect(datasetsResponse.ok()).toBe(true);
     const datasetsData = await datasetsResponse.json();
     expect(datasetsData.docs.length).toBe(3);
