@@ -297,15 +297,21 @@ Event 2,2024-03-16
       const workbook = read(fileBuffer, { type: "buffer" });
 
       expect(workbook.SheetNames).toHaveLength(3);
-      expect(workbook.SheetNames).toContain("Events");
-      expect(workbook.SheetNames).toContain("Locations");
-      expect(workbook.SheetNames).toContain("Categories");
+      expect(workbook.SheetNames).toContain("Tech Events");
+      expect(workbook.SheetNames).toContain("Art Exhibitions");
+      expect(workbook.SheetNames).toContain("Sports Events");
 
-      // Parse Events sheet
-      const eventsSheet = workbook.Sheets["Events"];
+      // Parse Tech Events sheet
+      const eventsSheet = workbook.Sheets["Tech Events"];
       const eventsData = eventsSheet ? utils.sheet_to_json(eventsSheet, { header: 1 }) : [];
-      expect(eventsData[0]).toEqual(["title", "date", "category"]);
-      expect(eventsData[1]).toEqual(["Event 1", "2024-03-15", "technology"]);
+      expect(eventsData[0]).toEqual(["title", "event_date", "venue", "city", "description"]);
+      expect(eventsData[1]).toEqual([
+        "AI Summit 2024",
+        "2024-06-15",
+        "Tech Convention Center",
+        "San Francisco, CA",
+        "Annual conference on artificial intelligence trends",
+      ]);
     });
 
     it("should convert Excel data to object format", () => {
