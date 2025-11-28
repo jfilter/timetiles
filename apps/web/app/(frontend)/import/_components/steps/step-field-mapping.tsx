@@ -23,10 +23,22 @@ import {
   TableIcon,
   TextIcon,
 } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { type ConfidenceLevel, type FieldMapping, type SuggestedMappings, useWizard } from "../wizard-context";
 import { WizardNavigation } from "../wizard-navigation";
+
+/**
+ * Check if a field mapping is complete (has all required fields)
+ */
+const isMappingComplete = (mapping: FieldMapping | undefined): boolean => {
+  if (!mapping) return false;
+  return (
+    mapping.titleField !== null &&
+    mapping.dateField !== null &&
+    (mapping.locationField !== null || (mapping.latitudeField !== null && mapping.longitudeField !== null))
+  );
+};
 
 /**
  * Confidence badge component showing auto-detection confidence level.
@@ -316,8 +328,9 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
   const { state, setFieldMapping, setImportOptions, nextStep } = useWizard();
   const { sheets, fieldMappings, sheetMappings, deduplicationStrategy, geocodingEnabled } = state;
 
-  // Get active sheet index (first sheet for now, could be tabbed later)
-  const activeSheetIndex = sheets[0]?.index ?? 0;
+  // State for active sheet tab (for multi-sheet files)
+  const [activeSheetIndex, setActiveSheetIndex] = useState(sheets[0]?.index ?? 0);
+
   const activeSheet = sheets.find((s) => s.index === activeSheetIndex);
   const activeMapping = fieldMappings.find((m) => m.sheetIndex === activeSheetIndex);
   const activeSheetMapping = sheetMappings.find((m) => m.sheetIndex === activeSheetIndex);
@@ -396,20 +409,42 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
       {/* Language detection banner */}
       <LanguageDetectionBanner suggestedMappings={suggestedMappings} />
 
-      {/* Sheet indicator for multi-sheet files */}
+      {/* Sheet tabs for multi-sheet files */}
       {sheets.length > 1 && (
-        <div className="border-cartographic-navy/10 bg-cartographic-cream/30 flex items-center gap-3 rounded-sm border px-4 py-3">
-          <FileSpreadsheetIcon className="text-cartographic-navy/50 h-5 w-5" />
-          <div>
-            <p className="text-cartographic-charcoal text-sm font-medium">
-              Mapping: {activeSheet.name}
-              {activeSheetMapping?.newDatasetName && (
-                <span className="text-cartographic-navy/70"> → {activeSheetMapping.newDatasetName}</span>
-              )}
-            </p>
-            <p className="text-cartographic-navy/50 text-xs">
+        <div className="border-cartographic-navy/10 bg-cartographic-cream/30 rounded-sm border p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <FileSpreadsheetIcon className="text-cartographic-navy/50 h-5 w-5" />
+            <p className="text-cartographic-navy/70 text-sm">
               {sheets.length} sheets detected. Configure mapping for each sheet.
             </p>
+          </div>
+          <div className="flex flex-wrap gap-2" data-testid="sheet-tabs">
+            {sheets.map((sheet) => {
+              const mapping = fieldMappings.find((m) => m.sheetIndex === sheet.index);
+              const isComplete = isMappingComplete(mapping);
+              const isActive = sheet.index === activeSheetIndex;
+              const sheetMapping = sheetMappings.find((m) => m.sheetIndex === sheet.index);
+
+              return (
+                <button
+                  key={sheet.index}
+                  type="button"
+                  onClick={() => setActiveSheetIndex(sheet.index)}
+                  data-testid={`sheet-tab-${sheet.index}`}
+                  className={cn(
+                    "flex items-center gap-2 rounded-sm border px-3 py-2 text-sm transition-colors",
+                    isActive
+                      ? "border-cartographic-blue bg-cartographic-blue/10 text-cartographic-blue"
+                      : "border-cartographic-navy/20 hover:border-cartographic-navy/40 text-cartographic-charcoal",
+                    isComplete && !isActive && "border-cartographic-forest/40 bg-cartographic-forest/5"
+                  )}
+                >
+                  {isComplete && <CheckCircleIcon className="text-cartographic-forest h-4 w-4" />}
+                  <span>{sheetMapping?.newDatasetName || sheet.name}</span>
+                  <span className="text-cartographic-navy/50 font-mono text-xs">({sheet.rowCount})</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
