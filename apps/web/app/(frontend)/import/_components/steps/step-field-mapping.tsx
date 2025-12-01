@@ -23,10 +23,9 @@ import {
   TableIcon,
   TextIcon,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { type ConfidenceLevel, type FieldMapping, type SuggestedMappings, useWizard } from "../wizard-context";
-import { WizardNavigation } from "../wizard-navigation";
 
 /**
  * Check if a field mapping is complete (has all required fields)
@@ -325,15 +324,22 @@ const IdStrategyCard = ({
 };
 
 export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>) => {
-  const { state, setFieldMapping, setImportOptions, nextStep } = useWizard();
+  const { state, setFieldMapping, setImportOptions, nextStep, setNavigationConfig } = useWizard();
   const { sheets, fieldMappings, sheetMappings, deduplicationStrategy, geocodingEnabled } = state;
+
+  // Configure navigation for this step
+  useEffect(() => {
+    setNavigationConfig({
+      onNext: () => nextStep(),
+    });
+    return () => setNavigationConfig({});
+  }, [setNavigationConfig, nextStep]);
 
   // State for active sheet tab (for multi-sheet files)
   const [activeSheetIndex, setActiveSheetIndex] = useState(sheets[0]?.index ?? 0);
 
   const activeSheet = sheets.find((s) => s.index === activeSheetIndex);
   const activeMapping = fieldMappings.find((m) => m.sheetIndex === activeSheetIndex);
-  const activeSheetMapping = sheetMappings.find((m) => m.sheetIndex === activeSheetIndex);
   const suggestedMappings = activeSheet?.suggestedMappings;
 
   const headers = useMemo(() => activeSheet?.headers ?? [], [activeSheet]);
@@ -386,10 +392,6 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
     },
     [handleGeocodingChange]
   );
-
-  const handleNext = useCallback(() => {
-    nextStep();
-  }, [nextStep]);
 
   if (!activeSheet || !activeMapping) {
     return (
@@ -689,8 +691,6 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
           </CardContent>
         </Card>
       )}
-
-      <WizardNavigation onNext={handleNext} />
     </div>
   );
 };

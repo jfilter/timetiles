@@ -30,7 +30,7 @@ import { usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
 import { useFilters } from "@/lib/filters";
-import { useTheme } from "@/lib/hooks/use-theme";
+import { useMounted, useTheme } from "@/lib/hooks/use-theme";
 import { useUIStore } from "@/lib/store";
 import { formatCenterCoordinates, formatEventCount } from "@/lib/utils/coordinates";
 import type { Catalog, Dataset, MainMenu, User } from "@/payload-types";
@@ -333,7 +333,9 @@ export const AdaptiveHeader = ({
   const isLandingPage = pathname === "/";
   const currentView: "map" | "list" = pathname === "/explore/list" ? "list" : "map";
   const { resolvedTheme } = useTheme();
-  const logo = resolvedTheme === "dark" ? LogoDark : LogoLight;
+  const mounted = useMounted();
+  // Use light logo as default during SSR to prevent hydration mismatch
+  const logo = mounted && resolvedTheme === "dark" ? LogoDark : LogoLight;
 
   // Explore pages use a custom full-width layout for alignment with content below
   if (isExplorePage) {

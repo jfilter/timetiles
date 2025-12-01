@@ -9,8 +9,23 @@
 "use client";
 
 import { useTheme as useNextTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 export type Theme = "light" | "dark" | "system";
+
+/**
+ * Hook to check if the component is mounted on the client.
+ * Useful for avoiding hydration mismatches with theme-dependent rendering.
+ */
+export const useMounted = () => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  return mounted;
+};
 
 export const useTheme = () => {
   const { theme, setTheme, resolvedTheme, systemTheme } = useNextTheme();

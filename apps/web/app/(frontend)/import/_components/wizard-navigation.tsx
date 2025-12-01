@@ -18,31 +18,20 @@ import { useWizard } from "./wizard-context";
 
 export interface WizardNavigationProps {
   className?: string;
-  /** Custom handler for the next button (overrides default nextStep) */
-  onNext?: () => void | Promise<void>;
-  /** Custom handler for the back button (overrides default prevStep) */
-  onBack?: () => void;
-  /** Custom text for the next button */
-  nextLabel?: string;
-  /** Whether to show the back button */
-  showBack?: boolean;
-  /** Whether to show the next button */
-  showNext?: boolean;
-  /** Whether the next action is loading */
-  isLoading?: boolean;
 }
 
-export const WizardNavigation = ({
-  className,
-  onNext,
-  onBack,
-  nextLabel,
-  showBack = true,
-  showNext = true,
-  isLoading = false,
-}: Readonly<WizardNavigationProps>) => {
-  const { state, nextStep, prevStep, reset, canProceed } = useWizard();
+export const WizardNavigation = ({ className }: Readonly<WizardNavigationProps>) => {
+  const { state, nextStep, prevStep, reset, canProceed, navigationConfig } = useWizard();
   const { currentStep, startedAuthenticated } = state;
+
+  // Get config from context (steps set this via setNavigationConfig)
+  const {
+    onNext: configOnNext,
+    nextLabel: configNextLabel,
+    isLoading = false,
+    showBack = true,
+    showNext = true,
+  } = navigationConfig;
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // First visible step is 2 (Upload) if user started authenticated, otherwise 1 (Sign In)
@@ -50,33 +39,29 @@ export const WizardNavigation = ({
   const isLastStep = currentStep === 6;
 
   const handleBack = useCallback(() => {
-    if (onBack) {
-      onBack();
-    } else {
-      prevStep();
-    }
-  }, [onBack, prevStep]);
+    prevStep();
+  }, [prevStep]);
 
   const handleNext = useCallback(() => {
-    if (onNext) {
-      const result = onNext();
+    if (configOnNext) {
+      const result = configOnNext();
       if (result instanceof Promise) {
         result.catch(() => {
-          // Error handled by the parent component
+          // Error handled by the step component
         });
       }
     } else {
       nextStep();
     }
-  }, [onNext, nextStep]);
+  }, [configOnNext, nextStep]);
 
   // Determine next button label
   const buttonLabel = useMemo(() => {
-    if (nextLabel) return nextLabel;
+    if (configNextLabel) return configNextLabel;
     if (currentStep === 5) return "Start Import";
     if (currentStep === 6) return "Done";
     return "Continue";
-  }, [nextLabel, currentStep]);
+  }, [configNextLabel, currentStep]);
 
   // Determine next button icon
   const buttonIcon = useMemo(() => {

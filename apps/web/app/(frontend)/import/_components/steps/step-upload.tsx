@@ -12,10 +12,9 @@
 import { Button, Card, CardContent } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { CheckCircle2Icon, FileSpreadsheetIcon, Loader2Icon, UploadIcon, XIcon } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useWizard } from "../wizard-context";
-import { WizardNavigation } from "../wizard-navigation";
 
 export interface StepUploadProps {
   className?: string;
@@ -33,8 +32,16 @@ const ACCEPTED_TYPES = [
 ];
 
 export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
-  const { state, setFile, clearFile, nextStep } = useWizard();
+  const { state, setFile, clearFile, nextStep, setNavigationConfig } = useWizard();
   const { file, sheets } = state;
+
+  // Configure navigation for this step
+  useEffect(() => {
+    setNavigationConfig({
+      onNext: () => nextStep(),
+    });
+    return () => setNavigationConfig({});
+  }, [setNavigationConfig, nextStep]);
 
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -109,10 +116,6 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     clearFile();
     setError(null);
   }, [clearFile]);
-
-  const handleNext = useCallback(() => {
-    nextStep();
-  }, [nextStep]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
@@ -228,8 +231,6 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
 
       {/* Error message */}
       {error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>}
-
-      <WizardNavigation onNext={handleNext} />
     </div>
   );
 };

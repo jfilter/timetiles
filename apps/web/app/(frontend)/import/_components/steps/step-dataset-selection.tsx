@@ -15,7 +15,6 @@ import { DatabaseIcon, FileSpreadsheetIcon, FolderIcon, Loader2Icon } from "luci
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useWizard } from "../wizard-context";
-import { WizardNavigation } from "../wizard-navigation";
 
 export interface StepDatasetSelectionProps {
   className?: string;
@@ -91,8 +90,16 @@ const DatasetNameInput = ({ sheetIndex, value, onNameChange }: Readonly<DatasetN
 };
 
 export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectionProps>) => {
-  const { state, setCatalog, setSheetMapping, nextStep } = useWizard();
+  const { state, setCatalog, setSheetMapping, nextStep, setNavigationConfig } = useWizard();
   const { sheets, selectedCatalogId, newCatalogName, sheetMappings } = state;
+
+  // Configure navigation for this step
+  useEffect(() => {
+    setNavigationConfig({
+      onNext: () => nextStep(),
+    });
+    return () => setNavigationConfig({});
+  }, [setNavigationConfig, nextStep]);
 
   const [catalogs, setCatalogs] = useState<Catalog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -185,10 +192,6 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     },
     [handleNewDatasetNameChange]
   );
-
-  const handleNext = useCallback(() => {
-    nextStep();
-  }, [nextStep]);
 
   const selectedCatalog = catalogs.find((c) => c.id === selectedCatalogId);
 
@@ -356,8 +359,6 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
           </CardContent>
         </Card>
       )}
-
-      <WizardNavigation onNext={handleNext} />
     </div>
   );
 };

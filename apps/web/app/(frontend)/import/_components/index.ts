@@ -7,6 +7,7 @@
 export { ImportWizard, type ImportWizardProps } from "./import-wizard";
 export {
   type FieldMapping,
+  type NavigationConfig,
   type SheetInfo,
   type SheetMapping,
   useWizard,
@@ -15,5 +16,6 @@ export {
   type WizardState,
   type WizardStep,
 } from "./wizard-context";
+export { WizardLayoutClient } from "./wizard-layout-client";
 export { WizardNavigation, type WizardNavigationProps } from "./wizard-navigation";
 export { WizardProgress, type WizardProgressProps } from "./wizard-progress";

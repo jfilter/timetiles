@@ -22,10 +22,9 @@ import {
   SparklesIcon,
   TextIcon,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useWizard } from "../wizard-context";
-import { WizardNavigation } from "../wizard-navigation";
 
 export interface StepReviewProps {
   className?: string;
@@ -46,7 +45,7 @@ const DUPLICATE_LABELS: Record<string, string> = {
 
 // eslint-disable-next-line complexity -- Review component displays many configuration sections
 export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
-  const { state, startProcessing, nextStep, setError } = useWizard();
+  const { state, startProcessing, nextStep, setError, setNavigationConfig } = useWizard();
   const {
     file,
     sheets,
@@ -60,6 +59,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Handle the import start - called from navigation
   const handleStartImport = useCallback(async () => {
     setIsSubmitting(true);
     setError(null);
@@ -106,6 +106,16 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     setError,
   ]);
 
+  // Configure navigation for this step
+  useEffect(() => {
+    setNavigationConfig({
+      onNext: handleStartImport,
+      nextLabel: "Start Import",
+      isLoading: isSubmitting,
+    });
+    return () => setNavigationConfig({});
+  }, [setNavigationConfig, handleStartImport, isSubmitting]);
+
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -137,7 +147,8 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   const mappingsWithDataset = fieldMappings.map((mapping) => {
     const sheetMapping = sheetMappings.find((sm) => sm.sheetIndex === mapping.sheetIndex);
     const sheet = sheets.find((s) => s.index === mapping.sheetIndex);
-    const datasetName = sheetMapping?.datasetId === "new" ? sheetMapping.newDatasetName : `Dataset #${sheetMapping?.datasetId}`;
+    const datasetName =
+      sheetMapping?.datasetId === "new" ? sheetMapping.newDatasetName : `Dataset #${sheetMapping?.datasetId}`;
     return {
       mapping,
       datasetName: datasetName ?? sheet?.name ?? `Sheet ${mapping.sheetIndex + 1}`,
@@ -337,8 +348,6 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
       </Card>
 
       {state.error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{state.error}</div>}
-
-      <WizardNavigation onNext={handleStartImport} nextLabel="Start Import" isLoading={isSubmitting} />
     </div>
   );
 };

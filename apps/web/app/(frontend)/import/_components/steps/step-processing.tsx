@@ -167,8 +167,17 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
 
 // eslint-disable-next-line complexity -- Progress polling and status handling requires multiple state transitions
 export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => {
-  const { state, complete, reset } = useWizard();
+  const { state, complete, reset, setNavigationConfig } = useWizard();
   const { importFileId, error: wizardError } = state;
+
+  // Hide navigation on processing step (it has custom action buttons)
+  useEffect(() => {
+    setNavigationConfig({
+      showBack: false,
+      showNext: false,
+    });
+    return () => setNavigationConfig({});
+  }, [setNavigationConfig]);
 
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [pollError, setPollError] = useState<string | null>(null);

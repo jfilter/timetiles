@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from "react";
 
 // Constants
 const STORAGE_KEY = "timetiles_import_wizard_draft";
@@ -361,6 +361,9 @@ interface WizardContextValue {
   setError: (error: string | null) => void;
   complete: () => void;
   reset: () => void;
+  // Navigation config (for layout to render navigation)
+  navigationConfig: NavigationConfig;
+  setNavigationConfig: (config: NavigationConfig) => void;
   // Computed
   canProceed: boolean;
   stepTitle: string;
@@ -418,6 +421,28 @@ const STEP_TITLES: Record<WizardStep, string> = {
   6: "Processing",
 };
 
+/**
+ * Configuration for the wizard navigation buttons.
+ * Steps can customize their navigation behavior via context.
+ */
+export interface NavigationConfig {
+  /** Custom handler for the next button */
+  onNext?: () => void | Promise<void>;
+  /** Custom label for the next button */
+  nextLabel?: string;
+  /** Whether the next action is loading */
+  isLoading?: boolean;
+  /** Whether to show the back button (default: true) */
+  showBack?: boolean;
+  /** Whether to show the next button (default: true) */
+  showNext?: boolean;
+}
+
+const defaultNavigationConfig: NavigationConfig = {
+  showBack: true,
+  showNext: true,
+};
+
 // Provider
 export interface WizardProviderProps {
   children: React.ReactNode;
@@ -436,6 +461,14 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
     // Skip auth step if already authenticated and verified
     currentStep: wasAuthenticatedOnStart ? 2 : 1,
   });
+
+  // Navigation config state - steps can customize their navigation
+  const [navigationConfig, setNavigationConfigState] = useState<NavigationConfig>(defaultNavigationConfig);
+
+  // Wrapper that merges with defaults
+  const setNavigationConfig = useCallback((config: NavigationConfig) => {
+    setNavigationConfigState({ ...defaultNavigationConfig, ...config });
+  }, []);
 
   // Restore from localStorage on mount
   useEffect(() => {
@@ -612,6 +645,8 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       setError,
       complete,
       reset,
+      navigationConfig,
+      setNavigationConfig,
       canProceed,
       stepTitle,
     }),
@@ -631,6 +666,8 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       setError,
       complete,
       reset,
+      navigationConfig,
+      setNavigationConfig,
       canProceed,
       stepTitle,
     ]

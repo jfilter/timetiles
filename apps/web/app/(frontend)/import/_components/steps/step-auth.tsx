@@ -24,9 +24,18 @@ export interface StepAuthProps {
 }
 
 export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
-  const { state, nextStep, setAuth } = useWizard();
+  const { state, nextStep, setAuth, setNavigationConfig } = useWizard();
   const { isAuthenticated, isEmailVerified } = state;
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Hide navigation on auth step (it auto-advances when authenticated)
+  useEffect(() => {
+    setNavigationConfig({
+      showBack: false,
+      showNext: false,
+    });
+    return () => setNavigationConfig({});
+  }, [setNavigationConfig]);
 
   // Check auth status on mount via API (workaround for SSR auth issues)
   useEffect(() => {
