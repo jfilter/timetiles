@@ -46,6 +46,10 @@ import * as migration_20251127_144121 from './20251127_144121';
 import * as migration_20251127_200651 from './20251127_200651';
 import * as migration_20251127_213122 from './20251127_213122';
 import * as migration_20251128_000000_add_field_filters_to_sql_functions from './20251128_000000_add_field_filters_to_sql_functions';
+import * as migration_20251201_190646 from './20251201_190646';
+import * as migration_20251201_195900 from './20251201_195900';
+import * as migration_20251201_200902 from './20251201_200902';
+import * as migration_20251201_201128 from './20251201_201128';
 
 export const migrations = [
   {
@@ -281,11 +285,31 @@ export const migrations = [
   {
     up: migration_20251127_213122.up,
     down: migration_20251127_213122.down,
-    name: '20251127_213122'
+    name: '20251127_213122',
   },
   {
     up: migration_20251128_000000_add_field_filters_to_sql_functions.up,
     down: migration_20251128_000000_add_field_filters_to_sql_functions.down,
     name: '20251128_000000_add_field_filters_to_sql_functions',
+  },
+  {
+    up: migration_20251201_190646.up,
+    down: migration_20251201_190646.down,
+    name: '20251201_190646',
+  },
+  {
+    up: migration_20251201_195900.up,
+    down: migration_20251201_195900.down,
+    name: '20251201_195900',
+  },
+  {
+    up: migration_20251201_200902.up,
+    down: migration_20251201_200902.down,
+    name: '20251201_200902',
+  },
+  {
+    up: migration_20251201_201128.up,
+    down: migration_20251201_201128.down,
+    name: '20251201_201128'
   },
 ];

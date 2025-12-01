@@ -25,6 +25,7 @@ import { Pages } from "@/lib/collections/pages";
 import ScheduledImports from "@/lib/collections/scheduled-imports/index";
 import UserUsage from "@/lib/collections/user-usage";
 import Users from "@/lib/collections/users";
+import Views from "@/lib/collections/views";
 // Import globals
 import { Branding } from "@/lib/globals/branding";
 import { Footer } from "@/lib/globals/footer";
@@ -70,6 +71,7 @@ export const COLLECTIONS = {
   "location-cache": LocationCache,
   "geocoding-providers": GeocodingProviders,
   pages: Pages,
+  views: Views,
 } as const;
 
 export type CollectionName = keyof typeof COLLECTIONS;
@@ -96,6 +98,8 @@ export const ALL_COLLECTIONS = [
   LocationCache,
   DeletionAuditLog,
   DataExports,
+  // Configuration
+  Views,
 ];
 
 // All globals (grouped: Content, System)

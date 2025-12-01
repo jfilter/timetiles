@@ -82,6 +82,8 @@ export interface Config {
     'location-cache': LocationCache;
     'geocoding-providers': GeocodingProvider;
     pages: Page;
+    views: View;
+    'schema-detectors': SchemaDetector;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -104,6 +106,8 @@ export interface Config {
     'location-cache': LocationCacheSelect<false> | LocationCacheSelect<true>;
     'geocoding-providers': GeocodingProvidersSelect<false> | GeocodingProvidersSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
+    views: ViewsSelect<false> | ViewsSelect<true>;
+    'schema-detectors': SchemaDetectorsSelect<false> | SchemaDetectorsSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -514,26 +518,6 @@ export interface Dataset {
     | boolean
     | null;
   /**
-   * Rules for handling type mismatches
-   */
-  typeTransformations?:
-    | {
-        /**
-         * JSON path to field (e.g., 'temperature' or 'location.altitude')
-         */
-        fieldPath: string;
-        fromType: 'string' | 'number' | 'boolean' | 'null' | 'array' | 'object';
-        toType: 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object';
-        transformStrategy: 'parse' | 'cast' | 'custom' | 'reject';
-        /**
-         * Function(value, context) => transformedValue
-         */
-        customTransform?: string | null;
-        enabled?: boolean | null;
-        id?: string | null;
-      }[]
-    | null;
-  /**
    * Transform rules applied to incoming data before validation (e.g., field renames)
    */
   importTransforms?:
@@ -545,15 +529,87 @@ export interface Dataset {
         /**
          * Type of transformation to apply
          */
-        type: 'rename';
+        type: 'rename' | 'date-parse' | 'string-op' | 'concatenate' | 'split' | 'type-cast';
         /**
          * Source field path in import file (e.g., 'date' or 'user.email')
          */
-        from: string;
+        from?: string | null;
         /**
          * Target field path in dataset schema (e.g., 'start_date' or 'contact.email')
          */
-        to: string;
+        to?: string | null;
+        /**
+         * Expected input date format
+         */
+        inputFormat?: ('DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD' | 'DD-MM-YYYY' | 'MM-DD-YYYY' | 'DD.MM.YYYY') | null;
+        /**
+         * Output date format
+         */
+        outputFormat?: ('YYYY-MM-DD' | 'DD/MM/YYYY' | 'MM/DD/YYYY') | null;
+        /**
+         * Optional timezone (e.g., 'America/New_York')
+         */
+        timezone?: string | null;
+        /**
+         * String operation to apply
+         */
+        operation?: ('uppercase' | 'lowercase' | 'trim' | 'replace') | null;
+        /**
+         * Text pattern to find (for replace operation)
+         */
+        pattern?: string | null;
+        /**
+         * Replacement text
+         */
+        replacement?: string | null;
+        /**
+         * Array of source field paths to concatenate (e.g., ["first_name", "last_name"])
+         */
+        fromFields?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        /**
+         * Separator between concatenated values
+         */
+        separator?: string | null;
+        /**
+         * Delimiter to split on
+         */
+        delimiter?: string | null;
+        /**
+         * Array of target field names for split values (e.g., ["first_name", "last_name"])
+         */
+        toFields?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        /**
+         * Expected source type
+         */
+        fromType?: ('string' | 'number' | 'boolean' | 'date' | 'array' | 'object' | 'null') | null;
+        /**
+         * Target type to convert to
+         */
+        toType?: ('string' | 'number' | 'boolean' | 'date' | 'array' | 'object') | null;
+        /**
+         * Strategy for performing the conversion
+         */
+        strategy?: ('parse' | 'cast' | 'custom' | 'reject') | null;
+        /**
+         * Custom JavaScript: (value, context) => transformedValue
+         */
+        customFunction?: string | null;
         /**
          * Uncheck to disable without deleting
          */
@@ -630,10 +686,64 @@ export interface Dataset {
      */
     locationPath?: string | null;
   };
+  /**
+   * Select a schema detector for this dataset (leave empty to use default)
+   */
+  schemaDetector?: (number | null) | SchemaDetector;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * Configure schema detection providers for import workflows
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "schema-detectors".
+ */
+export interface SchemaDetector {
+  id: number;
+  /**
+   * Unique identifier for this detector (matches detector.name in code)
+   */
+  name: string;
+  /**
+   * Human-readable name shown in UI
+   */
+  label: string;
+  /**
+   * Description of what this detector handles
+   */
+  description?: string | null;
+  /**
+   * Whether this detector is available for selection
+   */
+  enabled?: boolean | null;
+  /**
+   * Priority for auto-selection (lower = higher priority)
+   */
+  priority?: number | null;
+  /**
+   * Detector-specific configuration options (JSON)
+   */
+  options?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Automatically updated usage statistics
+   */
+  statistics?: {
+    totalRuns?: number | null;
+    lastUsed?: string | null;
+  };
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * Schema versions for datasets with full change tracking
@@ -1165,6 +1275,26 @@ export interface ImportFile {
     | number
     | boolean
     | null;
+  /**
+   * Processing options for scheduled imports (schemaMode, skipDuplicateChecking, etc.)
+   */
+  processingOptions?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Target dataset for scheduled imports
+   */
+  targetDataset?: (number | null) | Dataset;
+  /**
+   * Reference to the scheduled import that triggered this file
+   */
+  scheduledImport?: (number | null) | ScheduledImport;
   quotaInfo?:
     | {
         [k: string]: unknown;
@@ -1186,73 +1316,6 @@ export interface ImportFile {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
-}
-/**
- * Immutable audit trail of account deletions
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "deletion-audit-log".
- */
-export interface DeletionAuditLog {
-  id: number;
-  /**
-   * The ID of the deleted user
-   */
-  deletedUserId: number;
-  /**
-   * SHA256 hash of the deleted user's email (for privacy)
-   */
-  deletedUserEmailHash: string;
-  /**
-   * When the account was permanently deleted
-   */
-  deletedAt: string;
-  /**
-   * When the user requested deletion
-   */
-  deletionRequestedAt?: string | null;
-  /**
-   * User who initiated the deletion (null for self-deletion after grace period)
-   */
-  deletedBy?: (number | null) | User;
-  /**
-   * How the deletion was initiated
-   */
-  deletionType: 'self' | 'admin' | 'scheduled';
-  /**
-   * Optional reason for deletion (admin-initiated only)
-   */
-  reason?: string | null;
-  /**
-   * Summary of public data transferred to system user
-   */
-  dataTransferred?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Summary of private data permanently deleted
-   */
-  dataDeleted?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Hashed IP address of the requester (for security)
-   */
-  ipAddressHash?: string | null;
-  updatedAt: string;
-  createdAt: string;
 }
 /**
  * Manage scheduled URL imports that run automatically
@@ -1373,6 +1436,14 @@ export interface ScheduledImport {
    * Template for generated import names. Available variables: {{name}}, {{date}}, {{time}}, {{url}}
    */
   importNameTemplate?: string | null;
+  /**
+   * How to handle schema changes during scheduled executions. Strict: fail if schema differs. Additive: auto-accept new fields. Flexible: require approval for changes.
+   */
+  schemaMode?: ('strict' | 'additive' | 'flexible') | null;
+  /**
+   * The original import file this schedule was created from (via wizard)
+   */
+  sourceImportFile?: (number | null) | ImportFile;
   /**
    * Enable webhook URL for triggering this import on-demand
    */
@@ -1501,6 +1572,73 @@ export interface ScheduledImport {
   createdAt: string;
   deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * Immutable audit trail of account deletions
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "deletion-audit-log".
+ */
+export interface DeletionAuditLog {
+  id: number;
+  /**
+   * The ID of the deleted user
+   */
+  deletedUserId: number;
+  /**
+   * SHA256 hash of the deleted user's email (for privacy)
+   */
+  deletedUserEmailHash: string;
+  /**
+   * When the account was permanently deleted
+   */
+  deletedAt: string;
+  /**
+   * When the user requested deletion
+   */
+  deletionRequestedAt?: string | null;
+  /**
+   * User who initiated the deletion (null for self-deletion after grace period)
+   */
+  deletedBy?: (number | null) | User;
+  /**
+   * How the deletion was initiated
+   */
+  deletionType: 'self' | 'admin' | 'scheduled';
+  /**
+   * Optional reason for deletion (admin-initiated only)
+   */
+  reason?: string | null;
+  /**
+   * Summary of public data transferred to system user
+   */
+  dataTransferred?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Summary of private data permanently deleted
+   */
+  dataDeleted?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Hashed IP address of the requester (for security)
+   */
+  ipAddressHash?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2232,6 +2370,196 @@ export interface Page {
   _status?: ('draft' | 'published') | null;
 }
 /**
+ * Configure UI views with custom data scope, filters, and branding
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "views".
+ */
+export interface View {
+  id: number;
+  /**
+   * Internal name for this view
+   */
+  name: string;
+  /**
+   * URL-friendly identifier (auto-generated from name if not provided)
+   */
+  slug?: string | null;
+  /**
+   * Use as default view when no view specified
+   */
+  isDefault?: boolean | null;
+  /**
+   * Which data is visible in this view
+   */
+  dataScope?: {
+    mode?: ('all' | 'catalogs' | 'datasets') | null;
+    /**
+     * Only show data from these catalogs
+     */
+    catalogs?: (number | Catalog)[] | null;
+    /**
+     * Only show data from these datasets
+     */
+    datasets?: (number | Dataset)[] | null;
+  };
+  /**
+   * Configure which fields appear as filters
+   */
+  filterConfig?: {
+    mode?: ('auto' | 'manual' | 'disabled') | null;
+    /**
+     * Maximum number of filter dropdowns to display
+     */
+    maxFilters?: number | null;
+    /**
+     * Configure which fields appear as filters
+     */
+    fields?:
+      | {
+          /**
+           * Field path from dataset's fieldMetadata (e.g., 'status', 'category')
+           */
+          fieldPath: string;
+          /**
+           * Show this field as a filter
+           */
+          enabled?: boolean | null;
+          /**
+           * Custom display label (auto-generated if empty)
+           */
+          label?: string | null;
+          /**
+           * Sort order (lower numbers appear first)
+           */
+          displayOrder?: number | null;
+          /**
+           * Maximum values to show in dropdown
+           */
+          maxValues?: number | null;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Pre-set filter values on load (e.g., {"status": ["active"]})
+     */
+    defaultFilters?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+  /**
+   * Custom branding for this view
+   */
+  branding?: {
+    /**
+     * Custom domain (e.g., events.city.gov)
+     */
+    domain?: string | null;
+    /**
+     * Page title (defaults to app name)
+     */
+    title?: string | null;
+    /**
+     * Custom logo image
+     */
+    logo?: (number | null) | Media;
+    /**
+     * Custom favicon
+     */
+    favicon?: (number | null) | Media;
+    /**
+     * Custom color scheme
+     */
+    colors?: {
+      /**
+       * Primary color (hex, e.g., #3b82f6)
+       */
+      primary?: string | null;
+      /**
+       * Secondary color (hex)
+       */
+      secondary?: string | null;
+      /**
+       * Background color (hex)
+       */
+      background?: string | null;
+    };
+    /**
+     * Custom HTML for header (analytics scripts, etc.)
+     */
+    headerHtml?: string | null;
+  };
+  /**
+   * Default map configuration
+   */
+  mapSettings?: {
+    /**
+     * Initial map bounds (leave empty for auto-fit to data)
+     */
+    defaultBounds?: {
+      /**
+       * North latitude
+       */
+      north?: number | null;
+      /**
+       * South latitude
+       */
+      south?: number | null;
+      /**
+       * East longitude
+       */
+      east?: number | null;
+      /**
+       * West longitude
+       */
+      west?: number | null;
+    };
+    /**
+     * Default zoom level (0-22)
+     */
+    defaultZoom?: number | null;
+    /**
+     * Default map center
+     */
+    defaultCenter?: {
+      /**
+       * Center latitude
+       */
+      latitude?: number | null;
+      /**
+       * Center longitude
+       */
+      longitude?: number | null;
+    };
+    /**
+     * Base map style
+     */
+    baseMapStyle?: ('default' | 'light' | 'dark' | 'satellite') | null;
+    /**
+     * Custom MapLibre style URL (overrides baseMapStyle)
+     */
+    customStyleUrl?: string | null;
+  };
+  /**
+   * Allow public access to this view
+   */
+  isPublic?: boolean | null;
+  /**
+   * User who created this view
+   */
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs".
  */
@@ -2439,6 +2767,14 @@ export interface PayloadLockedDocument {
         value: number | Page;
       } | null)
     | ({
+        relationTo: 'views';
+        value: number | View;
+      } | null)
+    | ({
+        relationTo: 'schema-detectors';
+        value: number | SchemaDetector;
+      } | null)
+    | ({
         relationTo: 'payload-jobs';
         value: number | PayloadJob;
       } | null);
@@ -2565,17 +2901,6 @@ export interface DatasetsSelect<T extends boolean = true> {
         strategy?: T;
       };
   fieldMetadata?: T;
-  typeTransformations?:
-    | T
-    | {
-        fieldPath?: T;
-        fromType?: T;
-        toType?: T;
-        transformStrategy?: T;
-        customTransform?: T;
-        enabled?: T;
-        id?: T;
-      };
   importTransforms?:
     | T
     | {
@@ -2583,6 +2908,20 @@ export interface DatasetsSelect<T extends boolean = true> {
         type?: T;
         from?: T;
         to?: T;
+        inputFormat?: T;
+        outputFormat?: T;
+        timezone?: T;
+        operation?: T;
+        pattern?: T;
+        replacement?: T;
+        fromFields?: T;
+        separator?: T;
+        delimiter?: T;
+        toFields?: T;
+        fromType?: T;
+        toType?: T;
+        strategy?: T;
+        customFunction?: T;
         active?: T;
         addedAt?: T;
         addedBy?: T;
@@ -2613,6 +2952,7 @@ export interface DatasetsSelect<T extends boolean = true> {
         longitudePath?: T;
         locationPath?: T;
       };
+  schemaDetector?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
@@ -2725,6 +3065,9 @@ export interface ImportFilesSelect<T extends boolean = true> {
   errorLog?: T;
   rateLimitInfo?: T;
   metadata?: T;
+  processingOptions?: T;
+  targetDataset?: T;
+  scheduledImport?: T;
   quotaInfo?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -2856,6 +3199,8 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
   frequency?: T;
   cronExpression?: T;
   importNameTemplate?: T;
+  schemaMode?: T;
+  sourceImportFile?: T;
   webhookEnabled?: T;
   webhookToken?: T;
   webhookUrl?: T;
@@ -3338,6 +3683,102 @@ export interface PagesSelect<T extends boolean = true> {
   createdAt?: T;
   deletedAt?: T;
   _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "views_select".
+ */
+export interface ViewsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  isDefault?: T;
+  dataScope?:
+    | T
+    | {
+        mode?: T;
+        catalogs?: T;
+        datasets?: T;
+      };
+  filterConfig?:
+    | T
+    | {
+        mode?: T;
+        maxFilters?: T;
+        fields?:
+          | T
+          | {
+              fieldPath?: T;
+              enabled?: T;
+              label?: T;
+              displayOrder?: T;
+              maxValues?: T;
+              id?: T;
+            };
+        defaultFilters?: T;
+      };
+  branding?:
+    | T
+    | {
+        domain?: T;
+        title?: T;
+        logo?: T;
+        favicon?: T;
+        colors?:
+          | T
+          | {
+              primary?: T;
+              secondary?: T;
+              background?: T;
+            };
+        headerHtml?: T;
+      };
+  mapSettings?:
+    | T
+    | {
+        defaultBounds?:
+          | T
+          | {
+              north?: T;
+              south?: T;
+              east?: T;
+              west?: T;
+            };
+        defaultZoom?: T;
+        defaultCenter?:
+          | T
+          | {
+              latitude?: T;
+              longitude?: T;
+            };
+        baseMapStyle?: T;
+        customStyleUrl?: T;
+      };
+  isPublic?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "schema-detectors_select".
+ */
+export interface SchemaDetectorsSelect<T extends boolean = true> {
+  name?: T;
+  label?: T;
+  description?: T;
+  enabled?: T;
+  priority?: T;
+  options?: T;
+  statistics?:
+    | T
+    | {
+        totalRuns?: T;
+        lastUsed?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

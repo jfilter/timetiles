@@ -43,9 +43,11 @@ export const verifyDatabaseSchema = async (connectionString: string): Promise<vo
       "media",
       "location_cache",
       "geocoding_providers",
+      "views",
       "payload_migrations",
       "payload_jobs",
       "payload_jobs_log",
+      "payload_locked_documents",
     ];
 
     for (const tableName of requiredTables) {
