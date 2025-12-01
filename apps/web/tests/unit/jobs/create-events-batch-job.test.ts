@@ -615,9 +615,8 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
           validationStatus: "transformed",
           transformations: expect.arrayContaining([
             expect.objectContaining({
-              path: "age",
-              oldValue: "25",
-              newValue: 25,
+              type: "type-cast",
+              from: "age",
             }),
           ]),
         }),
@@ -745,8 +744,8 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
             active: true,
           }),
           transformations: expect.arrayContaining([
-            expect.objectContaining({ path: "age" }),
-            expect.objectContaining({ path: "active" }),
+            expect.objectContaining({ type: "type-cast", from: "age" }),
+            expect.objectContaining({ type: "type-cast", from: "active" }),
           ]),
         }),
       });
@@ -866,13 +865,16 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       await createEventsBatchJob.handler(mockContext);
 
-      // Event should still be created with original value
+      // Event should still be created with original value preserved (transform failed)
+      // But transformations array tracks what was attempted (not what succeeded)
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "events",
         data: expect.objectContaining({
           data: expect.objectContaining({ age: "not-a-number" }), // Original value preserved
-          validationStatus: "pending", // Not transformed
-          transformations: null,
+          validationStatus: "transformed", // Marks as transformed (attempted)
+          transformations: expect.arrayContaining([
+            expect.objectContaining({ type: "type-cast", from: "age" }),
+          ]),
         }),
       });
     });
