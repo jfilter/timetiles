@@ -78,6 +78,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
     // Mock schema builder instance (job-specific)
     mockSchemaBuilderInstance = {
       processBatch: vi.fn(),
+      detectEnumFields: vi.fn(),
       getState: vi.fn(),
       getSchema: vi.fn(),
     };
@@ -229,12 +230,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
           },
         },
         recordCount: 2,
-        detectedGeoFields: {
-          locationField: "address",
-          latitude: "latitude",
-          longitude: "longitude",
-          confidence: 1,
-        },
+        typeConflicts: [],
       };
 
       // Setup mocks

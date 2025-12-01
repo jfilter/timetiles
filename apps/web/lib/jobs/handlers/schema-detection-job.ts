@@ -31,32 +31,30 @@ import type { SchemaDetectionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
 import { extractDuplicateRows, loadJobAndFilePath } from "../utils/resource-loading";
 
-// Type for valid transform
-type ValidTransform = {
-  id: string;
-  type: string;
-  from: string;
-  to: string;
-  active?: boolean | null;
-  autoDetected?: boolean | null;
-};
-
 // Helper to extract active transforms from dataset
 const extractActiveTransforms = (dataset: Dataset): ImportTransform[] => {
-  return (dataset.importTransforms ?? [])
-    .filter(
-      (t: unknown): t is ValidTransform =>
-        typeof t === "object" && t !== null && "type" in t && "from" in t && "to" in t && "id" in t
-    )
-    .filter((t) => t.active === true)
-    .map((t) => ({
-      id: t.id,
-      type: t.type as "rename",
-      from: t.from,
-      to: t.to,
-      active: true,
-      autoDetected: t.autoDetected ?? false,
-    }));
+  const transforms: ImportTransform[] = [];
+  for (const t of dataset.importTransforms ?? []) {
+    if (
+      typeof t === "object" &&
+      t !== null &&
+      typeof t.id === "string" &&
+      typeof t.type === "string" &&
+      typeof t.from === "string" &&
+      typeof t.to === "string" &&
+      t.active === true
+    ) {
+      transforms.push({
+        id: t.id,
+        type: t.type as "rename",
+        from: t.from,
+        to: t.to,
+        active: true,
+        autoDetected: Boolean(t.autoDetected),
+      });
+    }
+  }
+  return transforms;
 };
 
 // Helper to load dataset and extract active transforms
@@ -85,9 +83,10 @@ const loadDatasetAndTransforms = async (
   logger.info("Loaded import transforms", {
     transformCount: transforms.length,
     transforms: transforms.map((t) => ({
-      from: t.from,
-      to: t.to,
       type: t.type,
+      // For logging, show from/to for rename-like transforms
+      ...("from" in t && { from: t.from }),
+      ...("to" in t && { to: t.to }),
     })),
   });
 
@@ -117,15 +116,15 @@ const mergeFieldMappings = (
   locationPath: dataset?.fieldMappingOverrides?.locationPath ?? detectedMappings.locationPath,
 });
 
-// Helper to detect and store field mappings
-const detectAndStoreFieldMappings = async (
+// Helper to finalize schema detection: runs enum detection, saves state, detects field mappings
+const finalizeSchemaDetection = async (
   payload: Payload,
   importJobId: number | string,
-  fieldStats: Record<string, FieldStatistics> | undefined,
+  schemaBuilder: ProgressiveSchemaBuilder | null,
   dataset: Dataset | null,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<void> => {
-  if (!fieldStats) {
+  if (!schemaBuilder) {
     // No schema state - just transition
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
@@ -135,8 +134,23 @@ const detectAndStoreFieldMappings = async (
     return;
   }
 
+  // Run enum detection once at the true end of schema detection
+  schemaBuilder.detectEnumFields();
+  const finalState = schemaBuilder.getState();
+
+  // Save final state with enum info to database
+  const updatedSchema = await schemaBuilder.getSchema();
+  await payload.update({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: importJobId,
+    data: {
+      schema: updatedSchema,
+      schemaBuilderState: finalState as unknown as Record<string, unknown>,
+    },
+  });
+
   // Detect field mappings or use overrides
-  const detectedMappings = detectFieldMappings(fieldStats, dataset?.language ?? "eng");
+  const detectedMappings = detectFieldMappings(finalState.fieldStats, dataset?.language ?? "eng");
   const fieldMappings = mergeFieldMappings(detectedMappings, dataset);
 
   logger.info("Field mappings detected", {
@@ -164,7 +178,7 @@ const detectAndStoreFieldMappings = async (
   });
 };
 
-// Helper to handle batch completion
+// Helper to handle batch completion (when reading 0 rows - file was exact multiple of batch size)
 const handleBatchCompletion = async (
   payload: Payload,
   importJobId: number | string,
@@ -174,7 +188,8 @@ const handleBatchCompletion = async (
   batchNumber: number
 ): Promise<{ output: { completed: true; batchNumber: number; rowsProcessed: number; hasMore: false } }> => {
   const previousState = getSchemaBuilderState(job);
-  await detectAndStoreFieldMappings(payload, importJobId, previousState?.fieldStats, dataset, logger);
+  const schemaBuilder = previousState ? new ProgressiveSchemaBuilder(previousState) : null;
+  await finalizeSchemaDetection(payload, importJobId, schemaBuilder, dataset, logger);
   return { output: { completed: true, batchNumber, rowsProcessed: 0, hasMore: false } };
 };
 
@@ -196,17 +211,15 @@ const queueNextBatch = async (
 const completeLastBatch = async (
   payload: Payload,
   importJobId: number | string,
-  currentState: { fieldStats?: Record<string, FieldStatistics> } | null,
+  schemaBuilder: ProgressiveSchemaBuilder,
   dataset: Dataset | null,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<void> => {
-  logger.info("Last batch - detecting field mappings", {
-    hasFieldStats: Boolean(currentState?.fieldStats),
-    fieldStatsKeys: currentState?.fieldStats ? Object.keys(currentState.fieldStats) : [],
+  logger.info("Last batch - finalizing schema detection", {
     datasetLanguage: dataset?.language ?? "eng",
   });
 
-  await detectAndStoreFieldMappings(payload, importJobId, currentState?.fieldStats, dataset, logger);
+  await finalizeSchemaDetection(payload, importJobId, schemaBuilder, dataset, logger);
 };
 
 // Helper to process batch and update schema
@@ -311,12 +324,12 @@ const handleNextBatch = async (
 const handleCompletion = async (
   payload: Payload,
   importJobId: number | string,
-  currentState: { fieldStats?: Record<string, FieldStatistics> } | null,
+  schemaBuilder: ProgressiveSchemaBuilder,
   dataset: Dataset | null,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<void> => {
   await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.DETECT_SCHEMA);
-  await completeLastBatch(payload, importJobId, currentState, dataset, logger);
+  await completeLastBatch(payload, importJobId, schemaBuilder, dataset, logger);
 };
 
 export const schemaDetectionJob = {
@@ -368,18 +381,21 @@ export const schemaDetectionJob = {
         totalRows: rows.length,
       });
 
-      // Get current state and update progress
-      const currentState = schemaBuilder.getState();
+      // Check if this is the last batch
       const hasMore = rows.length === BATCH_SIZE;
 
+      // Update progress
       await updateBatchProgress(payload, importJobId, batchNumber, rows.length, nonDuplicateRows.length);
-      await updateSchemaState(payload, importJobId, updatedSchema, currentState);
 
       // Handle next batch or completion
       if (hasMore) {
+        // Save intermediate state for next batch
+        const currentState = schemaBuilder.getState();
+        await updateSchemaState(payload, importJobId, updatedSchema, currentState);
         await handleNextBatch(payload, importJobId, batchNumber, logger);
       } else {
-        await handleCompletion(payload, importJobId, currentState, dataset, logger);
+        // Final state (with enum detection) saved by finalizeSchemaDetection
+        await handleCompletion(payload, importJobId, schemaBuilder, dataset, logger);
       }
 
       logPerformance("Schema detection batch", Date.now() - startTime, {
