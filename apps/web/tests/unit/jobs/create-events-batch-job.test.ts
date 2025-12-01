@@ -507,13 +507,15 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: false },
-        typeTransformations: [
+        importTransforms: [
           {
-            fieldPath: "age",
+            id: "transform-age",
+            type: "type-cast",
+            from: "age",
             fromType: "string",
             toType: "number",
-            transformStrategy: "parse",
-            enabled: true,
+            strategy: "parse",
+            active: false,
           },
         ],
       };
@@ -540,7 +542,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       await createEventsBatchJob.handler(mockContext);
 
-      // Verify age is still string (not transformed)
+      // Verify age is still string (transform is inactive)
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "events",
         data: expect.objectContaining({
@@ -568,13 +570,15 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        typeTransformations: [
+        importTransforms: [
           {
-            fieldPath: "age",
+            id: "transform-age",
+            type: "type-cast",
+            from: "age",
             fromType: "string",
             toType: "number",
-            transformStrategy: "parse",
-            enabled: true,
+            strategy: "parse",
+            active: true,
           },
         ],
       };
@@ -637,7 +641,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        typeTransformations: [],
+        importTransforms: [],
       };
 
       const mockImportFile = createMockImportFile();
@@ -689,20 +693,24 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        typeTransformations: [
+        importTransforms: [
           {
-            fieldPath: "age",
+            id: "transform-age",
+            type: "type-cast",
+            from: "age",
             fromType: "string",
             toType: "number",
-            transformStrategy: "parse",
-            enabled: true,
+            strategy: "parse",
+            active: true,
           },
           {
-            fieldPath: "active",
+            id: "transform-active",
+            type: "type-cast",
+            from: "active",
             fromType: "string",
             toType: "boolean",
-            transformStrategy: "parse",
-            enabled: true,
+            strategy: "parse",
+            active: true,
           },
         ],
       };
@@ -761,13 +769,15 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        typeTransformations: [
+        importTransforms: [
           {
-            fieldPath: "age",
+            id: "transform-age",
+            type: "type-cast",
+            from: "age",
             fromType: "string",
             toType: "number",
-            transformStrategy: "parse",
-            enabled: false, // Disabled
+            strategy: "parse",
+            active: false, // Disabled
           },
         ],
       };
@@ -820,13 +830,15 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        typeTransformations: [
+        importTransforms: [
           {
-            fieldPath: "age",
+            id: "transform-age",
+            type: "type-cast",
+            from: "age",
             fromType: "string",
             toType: "number",
-            transformStrategy: "parse",
-            enabled: true,
+            strategy: "parse",
+            active: true,
           },
         ],
       };

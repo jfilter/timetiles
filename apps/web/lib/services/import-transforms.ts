@@ -13,7 +13,19 @@
  * @category Services
  */
 
-import type { ImportTransform } from "@/lib/types/import-transforms";
+import type {
+  CastableType,
+  ConcatenateTransform,
+  DateParseTransform,
+  ImportTransform,
+  RenameTransform,
+  SplitTransform,
+  StringOpTransform,
+  TypeCastTransform,
+} from "@/lib/types/import-transforms";
+import { isValidDate } from "@/lib/utils/date";
+
+import { logger } from "../logger";
 
 /**
  * Apply transform rules to a data object.
@@ -47,10 +59,26 @@ export const applyTransforms = (
   const activeTransforms = transforms.filter((t) => t.active);
 
   for (const transform of activeTransforms) {
-    if (transform.type === "rename") {
-      applyRenameTransform(result, transform);
+    switch (transform.type) {
+      case "rename":
+        applyRenameTransform(result, transform);
+        break;
+      case "date-parse":
+        applyDateParseTransform(result, transform);
+        break;
+      case "string-op":
+        applyStringOpTransform(result, transform);
+        break;
+      case "concatenate":
+        applyConcatenateTransform(result, transform);
+        break;
+      case "split":
+        applySplitTransform(result, transform);
+        break;
+      case "type-cast":
+        applyTypeCastTransform(result, transform);
+        break;
     }
-    // Future: handle other transform types (split, merge, compute)
   }
 
   return result;
@@ -63,17 +91,231 @@ export const applyTransforms = (
  * If the source field doesn't exist, the transform is skipped.
  * If the source field exists, it's moved to the target path and
  * removed from the source path.
- *
- * @param data - The data object to transform (mutated in place)
- * @param transform - The rename transform to apply
  */
-const applyRenameTransform = (data: Record<string, unknown>, transform: ImportTransform): void => {
+const applyRenameTransform = (data: Record<string, unknown>, transform: RenameTransform): void => {
   const value = getByPath(data, transform.from);
 
   // Only apply if source field exists
   if (value !== undefined) {
     setByPath(data, transform.to, value);
     deleteByPath(data, transform.from);
+  }
+};
+
+/**
+ * Apply a date parse transform to convert date strings.
+ *
+ * Note: This is a basic implementation. In production, you'd want to use
+ * a proper date parsing library like dayjs or date-fns for format handling.
+ */
+const applyDateParseTransform = (data: Record<string, unknown>, transform: DateParseTransform): void => {
+  const value = getByPath(data, transform.from);
+
+  if (value === undefined || typeof value !== "string") return;
+
+  // Basic date parsing - in production use dayjs/date-fns
+  // For now, try to parse as ISO and standardize
+  try {
+    const parsed = new Date(value);
+    if (!isNaN(parsed.getTime())) {
+      // Output in ISO format (YYYY-MM-DD)
+      const isoDate = parsed.toISOString().split("T")[0];
+      setByPath(data, transform.from, isoDate);
+    }
+  } catch {
+    // Keep original value if parsing fails
+  }
+};
+
+/**
+ * Apply a string operation transform.
+ */
+const applyStringOpTransform = (data: Record<string, unknown>, transform: StringOpTransform): void => {
+  const value = getByPath(data, transform.from);
+
+  if (value === undefined || typeof value !== "string") return;
+
+  let result: string;
+  switch (transform.operation) {
+    case "uppercase":
+      result = value.toUpperCase();
+      break;
+    case "lowercase":
+      result = value.toLowerCase();
+      break;
+    case "trim":
+      result = value.trim();
+      break;
+    case "replace":
+      if (transform.pattern !== undefined) {
+        result = value.replaceAll(transform.pattern, transform.replacement ?? "");
+      } else {
+        result = value;
+      }
+      break;
+    default:
+      result = value;
+  }
+
+  setByPath(data, transform.from, result);
+};
+
+/**
+ * Apply a concatenate transform to join multiple fields.
+ */
+const applyConcatenateTransform = (data: Record<string, unknown>, transform: ConcatenateTransform): void => {
+  const values: string[] = [];
+
+  for (const field of transform.fromFields) {
+    const value = getByPath(data, field);
+    if (value !== undefined && value !== null) {
+      values.push(String(value));
+    }
+  }
+
+  if (values.length > 0) {
+    setByPath(data, transform.to, values.join(transform.separator));
+  }
+};
+
+/**
+ * Apply a split transform to separate a field into multiple fields.
+ */
+const applySplitTransform = (data: Record<string, unknown>, transform: SplitTransform): void => {
+  const value = getByPath(data, transform.from);
+
+  if (value === undefined || typeof value !== "string") return;
+
+  const parts = value.split(transform.delimiter);
+
+  for (let i = 0; i < transform.toFields.length && i < parts.length; i++) {
+    const targetField = transform.toFields[i];
+    const part = parts[i];
+    if (targetField && part !== undefined) {
+      setByPath(data, targetField, part.trim());
+    }
+  }
+};
+
+/**
+ * Apply a type-cast transform to convert values from one type to another.
+ */
+const applyTypeCastTransform = (data: Record<string, unknown>, transform: TypeCastTransform): void => {
+  const value = getByPath(data, transform.from);
+
+  // Skip null/undefined values
+  if (value === undefined || value === null) return;
+
+  // Check if value matches expected source type
+  const actualType = getActualType(value);
+  if (actualType !== transform.fromType) return;
+
+  try {
+    let newValue: unknown;
+
+    switch (transform.strategy) {
+      case "parse":
+        newValue = parseValue(value, transform.toType);
+        break;
+      case "cast":
+        newValue = castValue(value, transform.toType);
+        break;
+      case "custom":
+        newValue = runCustomTransform(value, transform.customFunction ?? "");
+        break;
+      case "reject":
+        throw new Error(`Type mismatch: expected ${transform.toType}, got ${actualType}`);
+      default:
+        return;
+    }
+
+    setByPath(data, transform.from, newValue);
+  } catch (error) {
+    // Log but don't throw - keep original value
+    logger.warn({ error, transform }, "Type cast transform failed");
+  }
+};
+
+/**
+ * Get the actual type of a value for type casting.
+ */
+const getActualType = (value: unknown): CastableType => {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  if (value instanceof Date) return "date";
+  const type = typeof value;
+  if (type === "string" || type === "number" || type === "boolean" || type === "object") {
+    return type as CastableType;
+  }
+  return "string"; // Default fallback
+};
+
+/**
+ * Parse a value intelligently to a target type.
+ */
+const parseValue = (value: unknown, toType: CastableType): unknown => {
+  switch (toType) {
+    case "number": {
+      const num = Number(value);
+      if (Number.isNaN(num)) throw new Error(`Cannot parse "${String(value)}" as number`);
+      return num;
+    }
+    case "boolean": {
+      if (typeof value === "string") {
+        const lower = value.toLowerCase();
+        if (lower === "true" || lower === "1" || lower === "yes") return true;
+        if (lower === "false" || lower === "0" || lower === "no") return false;
+      }
+      throw new Error(`Cannot parse "${String(value)}" as boolean`);
+    }
+    case "date": {
+      const date = new Date(String(value));
+      if (!isValidDate(date)) throw new Error(`Cannot parse "${String(value)}" as date`);
+      return date.toISOString();
+    }
+    case "string":
+      return String(value);
+    default:
+      throw new Error(`Cannot parse to type: ${toType}`);
+  }
+};
+
+/**
+ * Cast a value directly to a target type.
+ */
+const castValue = (value: unknown, toType: CastableType): unknown => {
+  switch (toType) {
+    case "string":
+      return String(value);
+    case "number":
+      return Number(value);
+    case "boolean":
+      return Boolean(value);
+    default:
+      throw new Error(`Cannot cast to type: ${toType}`);
+  }
+};
+
+/**
+ * Run a custom transformation function.
+ */
+const runCustomTransform = (value: unknown, customCode: string): unknown => {
+  try {
+    // Create a simple function context (synchronous for performance)
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const fn = new Function("value", "context", customCode) as (value: unknown, context: unknown) => unknown;
+
+    const context = {
+      parse: {
+        date: (v: unknown) => new Date(v as string | number | Date),
+        number: (v: unknown) => Number(v),
+        boolean: (v: unknown) => Boolean(v),
+      },
+    };
+
+    return fn(value, context);
+  } catch (error) {
+    throw new Error(`Custom transform failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 

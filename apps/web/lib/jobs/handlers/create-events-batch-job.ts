@@ -30,9 +30,103 @@ import { readBatchFromFile } from "@/lib/utils/file-readers";
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 
 import type { CreateEventsBatchJobInput } from "../types/job-inputs";
-import { applyTypeTransformations, createEventData } from "../utils/event-creation-helpers";
+import { createEventData } from "../utils/event-creation-helpers";
 import type { JobHandlerContext } from "../utils/job-context";
 import { extractDuplicateRows } from "../utils/resource-loading";
+
+/**
+ * Build ImportTransform array from dataset configuration.
+ * Handles all transform types: rename, date-parse, string-op, concatenate, split, type-cast
+ */
+const buildTransformsFromDataset = (dataset: Dataset): ImportTransform[] => {
+  const transforms: ImportTransform[] = [];
+
+  for (const t of dataset.importTransforms ?? []) {
+    if (typeof t !== "object" || !t?.id || !t.type || t.active !== true) {
+      continue;
+    }
+
+    const base = {
+      id: t.id,
+      active: true,
+      autoDetected: Boolean(t.autoDetected),
+    };
+
+    switch (t.type) {
+      case "rename":
+        if (t.from && t.to) {
+          transforms.push({ ...base, type: "rename", from: t.from, to: t.to });
+        }
+        break;
+
+      case "date-parse":
+        if (t.from && t.inputFormat && t.outputFormat) {
+          transforms.push({
+            ...base,
+            type: "date-parse",
+            from: t.from,
+            inputFormat: t.inputFormat,
+            outputFormat: t.outputFormat,
+            timezone: t.timezone ?? undefined,
+          });
+        }
+        break;
+
+      case "string-op":
+        if (t.from && t.operation) {
+          transforms.push({
+            ...base,
+            type: "string-op",
+            from: t.from,
+            operation: t.operation,
+            pattern: t.pattern ?? undefined,
+            replacement: t.replacement ?? undefined,
+          });
+        }
+        break;
+
+      case "concatenate":
+        if (Array.isArray(t.fromFields) && t.fromFields.length >= 2 && t.to) {
+          transforms.push({
+            ...base,
+            type: "concatenate",
+            fromFields: t.fromFields as string[],
+            separator: t.separator ?? " ",
+            to: t.to,
+          });
+        }
+        break;
+
+      case "split":
+        if (t.from && t.delimiter && Array.isArray(t.toFields) && t.toFields.length > 0) {
+          transforms.push({
+            ...base,
+            type: "split",
+            from: t.from,
+            delimiter: t.delimiter,
+            toFields: t.toFields as string[],
+          });
+        }
+        break;
+
+      case "type-cast":
+        if (t.from && t.fromType && t.toType && t.strategy) {
+          transforms.push({
+            ...base,
+            type: "type-cast",
+            from: t.from,
+            fromType: t.fromType,
+            toType: t.toType as "string" | "number" | "boolean" | "date" | "array" | "object" | "null",
+            strategy: t.strategy,
+            customFunction: t.customFunction ?? undefined,
+          });
+        }
+        break;
+    }
+  }
+
+  return transforms;
+};
 
 /**
  * Updates import file status based on the status of all associated jobs.
@@ -107,49 +201,19 @@ const processEventBatch = async (
     }
 
     try {
-      // Apply import transforms first (field renames)
-      const importTransforms: ImportTransform[] = (dataset.importTransforms ?? [])
-        .filter(
-          (
-            t: unknown
-          ): t is {
-            id: string;
-            type: string;
-            from: string;
-            to: string;
-            active: boolean | null | undefined;
-            autoDetected: boolean | null | undefined;
-          } => {
-            return (
-              typeof t === "object" &&
-              t !== null &&
-              "active" in t &&
-              "type" in t &&
-              "from" in t &&
-              "to" in t &&
-              "id" in t &&
-              "autoDetected" in t
-            );
-          }
-        )
-        .filter((t) => t.active === true)
-        .map((t) => ({
-          id: t.id,
-          type: t.type as "rename",
-          from: t.from,
-          to: t.to,
-          active: true,
-          autoDetected: t.autoDetected ?? false,
-        }));
+      // Build unified transforms from dataset configuration
+      const transforms = buildTransformsFromDataset(dataset);
 
-      const rowAfterImportTransforms = importTransforms.length > 0 ? applyTransforms(row, importTransforms) : row;
+      // Apply all transforms in one pass
+      const transformedRow = transforms.length > 0 ? applyTransforms(row, transforms) : row;
 
-      // Apply type transformations
-      const { transformedRow, transformationChanges } = await applyTypeTransformations(
-        rowAfterImportTransforms,
-        dataset,
-        logger
-      );
+      // Track if any transforms were applied
+      const transformationChanges =
+        transforms.length > 0 ? transforms.map((t) => ({ type: t.type, from: "from" in t ? t.from : "" })) : null;
+
+      if (transformationChanges) {
+        logger.debug("Applied transforms", { transformCount: transforms.length });
+      }
 
       // Create event with coordinates from field mappings or geocoded locations
       const eventData = createEventData(
@@ -158,7 +222,7 @@ const processEventBatch = async (
         importJobId,
         job,
         geocodingResults,
-        transformationChanges
+        transformationChanges as Array<{ path: string; oldValue: unknown; newValue: unknown }> | null
       );
 
       await payload.create({

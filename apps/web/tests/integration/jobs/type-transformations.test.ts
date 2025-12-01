@@ -69,20 +69,24 @@ describe.sequential("Type Transformations Integration", () => {
         schemaConfig: {
           allowTransformations: true,
         },
-        typeTransformations: [
+        importTransforms: [
           {
-            fieldPath: "age",
+            id: "transform-age",
+            type: "type-cast",
+            from: "age",
             fromType: "string",
             toType: "number",
-            transformStrategy: "parse",
-            enabled: true,
+            strategy: "parse",
+            active: true,
           },
           {
-            fieldPath: "temperature",
+            id: "transform-temperature",
+            type: "type-cast",
+            from: "temperature",
             fromType: "string",
             toType: "number",
-            transformStrategy: "parse",
-            enabled: true,
+            strategy: "parse",
+            active: true,
           },
         ],
         idStrategy: {
@@ -151,13 +155,15 @@ describe.sequential("Type Transformations Integration", () => {
         schemaConfig: {
           allowTransformations: false,
         },
-        typeTransformations: [
+        importTransforms: [
           {
-            fieldPath: "age",
+            id: "transform-age-disabled",
+            type: "type-cast",
+            from: "age",
             fromType: "string",
             toType: "number",
-            transformStrategy: "parse",
-            enabled: true,
+            strategy: "parse",
+            active: false,
           },
         ],
         idStrategy: {

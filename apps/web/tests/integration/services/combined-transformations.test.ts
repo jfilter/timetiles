@@ -147,14 +147,14 @@ describe.sequential("Combined Transformations Integration", () => {
           active: true,
           autoDetected: false,
         },
-      ],
-      typeTransformations: [
         {
-          fieldPath: "Teilnehmer_Anzahl",
+          id: "transform-2",
+          type: "type-cast",
+          from: "Teilnehmer_Anzahl",
           fromType: "string",
           toType: "number",
-          transformStrategy: "parse",
-          enabled: true,
+          strategy: "parse",
+          active: true,
         },
       ],
       idStrategy: {
@@ -284,7 +284,7 @@ describe.sequential("Combined Transformations Integration", () => {
       schemaConfig: {
         allowTransformations: true,
       },
-      // First: rename attendee_count → Teilnehmer_Anzahl
+      // First: rename attendee_count → Teilnehmer_Anzahl, then convert to number
       importTransforms: [
         {
           id: "transform-1",
@@ -294,15 +294,14 @@ describe.sequential("Combined Transformations Integration", () => {
           active: true,
           autoDetected: false,
         },
-      ],
-      // Then: convert Teilnehmer_Anzahl string → number
-      typeTransformations: [
         {
-          fieldPath: "Teilnehmer_Anzahl",
+          id: "transform-2",
+          type: "type-cast",
+          from: "Teilnehmer_Anzahl",
           fromType: "string",
           toType: "number",
-          transformStrategy: "parse",
-          enabled: true,
+          strategy: "parse",
+          active: true,
         },
       ],
       idStrategy: {
@@ -481,14 +480,14 @@ Workshop,Learning session,2024-02-20`;
           active: true,
           autoDetected: false,
         },
-      ],
-      typeTransformations: [
         {
-          fieldPath: "anzahl", // Transformed field name
+          id: "transform-2",
+          type: "type-cast",
+          from: "anzahl", // Transformed field name
           fromType: "string",
           toType: "number",
-          transformStrategy: "parse",
-          enabled: true,
+          strategy: "parse",
+          active: true,
         },
       ],
       idStrategy: {

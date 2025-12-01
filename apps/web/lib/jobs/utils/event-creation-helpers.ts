@@ -1,78 +1,16 @@
 /**
  * Helper utilities for creating events from imported data.
  *
- * Provides functions for extracting coordinates, timestamps, applying transformations,
+ * Provides functions for extracting coordinates, timestamps,
  * and creating event data structures during the import process.
  *
  * @module
  * @category Jobs
  */
-import type { createJobLogger } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
-import { TypeTransformationService } from "@/lib/services/type-transformation";
 import type { getGeocodingResults } from "@/lib/types/geocoding";
 import { isValidDate } from "@/lib/utils/date";
 import type { Dataset } from "@/payload-types";
-
-/**
- * Apply type transformations to a row based on dataset configuration.
- * Note: This works on data that hasn't been auto-typed by Papa Parse.
- * For CSV files with dynamicTyping: true, transformations may not apply.
- */
-export const applyTypeTransformations = async (
-  row: Record<string, unknown>,
-  dataset: Dataset,
-  logger: ReturnType<typeof createJobLogger>
-): Promise<{
-  transformedRow: Record<string, unknown>;
-  transformationChanges: Array<{ path: string; oldValue: unknown; newValue: unknown; error?: string }> | null;
-}> => {
-  const allowTransformations = dataset.schemaConfig?.allowTransformations ?? true;
-  const transformations = dataset.typeTransformations ?? [];
-
-  if (!allowTransformations || transformations.length === 0) {
-    return { transformedRow: row, transformationChanges: null };
-  }
-
-  try {
-    const transformationRules = transformations.map((t) => ({
-      fieldPath: t.fieldPath,
-      fromType: t.fromType,
-      toType: t.toType,
-      transformStrategy: t.transformStrategy,
-      customTransform: t.customTransform ?? undefined,
-      enabled: t.enabled ?? true,
-    }));
-
-    const service = new TypeTransformationService(transformationRules);
-    const result = await service.transformRecord(row);
-
-    const successfulChanges = result.changes.filter((change) => !change.error);
-    const failedChanges = result.changes.filter((change) => change.error);
-
-    if (successfulChanges.length > 0) {
-      logger.debug("Applied type transformations", {
-        fieldCount: successfulChanges.length,
-        changes: successfulChanges,
-      });
-    }
-
-    if (failedChanges.length > 0) {
-      logger.warn("Some transformations failed", {
-        fieldCount: failedChanges.length,
-        changes: failedChanges,
-      });
-    }
-
-    return {
-      transformedRow: result.transformed,
-      transformationChanges: successfulChanges.length > 0 ? successfulChanges : null,
-    };
-  } catch (error) {
-    logger.error("Type transformation failed", { error });
-    return { transformedRow: row, transformationChanges: null };
-  }
-};
 
 /**
  * Extract coordinates from a row based on field mappings and geocoding results.

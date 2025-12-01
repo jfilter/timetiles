@@ -390,7 +390,6 @@ export const withDataset = async (
     };
     description?: any;
     importTransforms?: any[];
-    typeTransformations?: any[];
   }
 ): Promise<TestEnvironment & { dataset: any }> => {
   const timestamp = Date.now();
@@ -411,7 +410,6 @@ export const withDataset = async (
       idStrategy: options?.idStrategy,
       description: options?.description,
       importTransforms: options?.importTransforms,
-      typeTransformations: options?.typeTransformations,
     },
   });
 
