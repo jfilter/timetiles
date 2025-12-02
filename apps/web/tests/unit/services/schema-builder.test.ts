@@ -2,8 +2,10 @@
  * Unit tests for the ProgressiveSchemaBuilder service.
  *
  * Tests cover schema detection, field statistics tracking, type inference,
- * enum detection, geographic field detection, format detection, and schema
- * comparison capabilities.
+ * enum detection, format detection, and schema comparison capabilities.
+ *
+ * Note: Geographic and ID field detection is handled by the schema detection
+ * plugin after all batches are processed. See plugin tests for those.
  *
  * @module
  * @category Tests
@@ -141,6 +143,7 @@ describe("ProgressiveSchemaBuilder", () => {
         }));
 
       builder.processBatch(records);
+      builder.detectEnumFields(); // Call once after all batches
       const state = builder.getState();
 
       expect(state.fieldStats["status"]?.isEnumCandidate).toBe(true);
@@ -162,280 +165,11 @@ describe("ProgressiveSchemaBuilder", () => {
         }));
 
       percentageBuilder.processBatch(records);
+      percentageBuilder.detectEnumFields(); // Call once after all batches
       const state = percentageBuilder.getState();
 
       expect(state.fieldStats["type"]?.isEnumCandidate).toBe(true);
       expect(state.fieldStats["type"]?.uniqueValues).toBe(2);
-    });
-  });
-
-  describe("geographic field detection", () => {
-    it("detects standard lat/lng fields", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { location: { lat: 40.7128, lng: -74.006 } },
-        { location: { lat: 51.5074, lng: -0.1278 } },
-        { location: { lat: 35.6762, lng: 139.6503 } },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      expect(state.detectedGeoFields.latitude).toBe("location.lat");
-      expect(state.detectedGeoFields.longitude).toBe("location.lng");
-      expect(state.detectedGeoFields.confidence).toBeGreaterThan(0.8); // High confidence for valid nested fields
-    });
-
-    it("detects various lat/lng field patterns", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { latitude: 40.7128, longitude: -74.006 },
-        { latitude: 51.5074, longitude: -0.1278 },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      expect(state.detectedGeoFields.latitude).toBe("latitude");
-      expect(state.detectedGeoFields.longitude).toBe("longitude");
-    });
-
-    it("validates coordinate ranges", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { lat: 200, lng: 300 }, // Invalid ranges
-        { lat: 40.7128, lng: -74.006 },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      // Should not detect invalid coordinates
-      expect(state.detectedGeoFields.confidence).toBe(0);
-    });
-
-    it("detects address fields", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { address: "123 Main St, New York, NY", latitude: 40.7128, longitude: -74.006 },
-        { address: "456 Oak Ave, San Francisco, CA", latitude: 37.7749, longitude: -122.4194 },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      expect(state.detectedGeoFields.locationField).toBe("address");
-      expect(state.detectedGeoFields.latitude).toBe("latitude");
-      expect(state.detectedGeoFields.longitude).toBe("longitude");
-      expect(state.detectedGeoFields.confidence).toBeGreaterThan(0.8); // High confidence for valid coordinate fields
-    });
-
-    it("detects address field without coordinates", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { street: "123 Main St", city: "New York", state: "NY" },
-        { street: "456 Oak Ave", city: "San Francisco", state: "CA" },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      // Should detect street as location field (matches /^(address|addr|location|place|street|city|state|zip|postal|country)/i)
-      expect(state.detectedGeoFields.locationField).toBe("street");
-      // No coordinates detected
-      expect(state.detectedGeoFields.latitude).toBeUndefined();
-      expect(state.detectedGeoFields.longitude).toBeUndefined();
-      expect(state.detectedGeoFields.confidence).toBe(0);
-    });
-
-    it("detects expanded coordinate patterns (lat_deg, long_deg)", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { lat_deg: 40.7128, long_deg: -74.006 },
-        { lat_deg: 51.5074, long_deg: -0.1278 },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      expect(state.detectedGeoFields.latitude).toBe("lat_deg");
-      expect(state.detectedGeoFields.longitude).toBe("long_deg");
-      expect(state.detectedGeoFields.confidence).toBeGreaterThan(0.7);
-    });
-
-    it("detects coordinate column patterns (x_coord, y_coord)", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { y_coord: 40.7128, x_coord: -74.006 },
-        { y_coord: 51.5074, x_coord: -0.1278 },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      expect(state.detectedGeoFields.latitude).toBe("y_coord");
-      expect(state.detectedGeoFields.longitude).toBe("x_coord");
-    });
-
-    it("detects WGS84 patterns", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { wgs84_lat: 40.7128, wgs84_lon: -74.006 },
-        { wgs84_lat: 51.5074, wgs84_lon: -0.1278 },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      expect(state.detectedGeoFields.latitude).toBe("wgs84_lat");
-      expect(state.detectedGeoFields.longitude).toBe("wgs84_lon");
-    });
-
-    it("detects decimal coordinate patterns", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { decimal_lat: 40.7128, decimal_lon: -74.006 },
-        { decimal_lat: 51.5074, decimal_lon: -0.1278 },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      expect(state.detectedGeoFields.latitude).toBe("decimal_lat");
-      expect(state.detectedGeoFields.longitude).toBe("decimal_lon");
-    });
-
-    it("parses DMS format coordinates", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { lat: "40°42'46\"N", lon: "74°0'21\"W" },
-        { lat: "51°30'26\"N", lon: "0°7'39\"W" },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      expect(state.detectedGeoFields.latitude).toBe("lat");
-      expect(state.detectedGeoFields.longitude).toBe("lon");
-    });
-
-    it("parses directional format coordinates", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { latitude: "40.7128 N", longitude: "74.0060 W" },
-        { latitude: "51.5074 N", longitude: "0.1278 W" },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      expect(state.detectedGeoFields.latitude).toBe("latitude");
-      expect(state.detectedGeoFields.longitude).toBe("longitude");
-    });
-
-    it("detects combined coordinates (comma-separated)", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { coordinates: "40.7128,-74.0060", title: "NYC" },
-        { coordinates: "51.5074,-0.1278", title: "London" },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      expect(state.detectedGeoFields.combinedField).toBe("coordinates");
-      expect(state.detectedGeoFields.combinedFormat).toBe("combined_comma");
-      expect(state.detectedGeoFields.confidence).toBeGreaterThan(0.7);
-    });
-
-    it("detects combined coordinates (space-separated)", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { position: "40.7128 -74.0060", name: "NYC" },
-        { position: "51.5074 -0.1278", name: "London" },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      expect(state.detectedGeoFields.combinedField).toBe("position");
-      expect(state.detectedGeoFields.combinedFormat).toBe("combined_space");
-      expect(state.detectedGeoFields.confidence).toBeGreaterThan(0.7);
-    });
-
-    it("detects GeoJSON format", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        {
-          location: JSON.stringify({
-            type: "Point",
-            coordinates: [-74.006, 40.7128],
-          }),
-        },
-        {
-          location: JSON.stringify({
-            type: "Point",
-            coordinates: [-0.1278, 51.5074],
-          }),
-        },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      expect(state.detectedGeoFields.combinedField).toBe("location");
-      expect(state.detectedGeoFields.combinedFormat).toBe("geojson");
-    });
-
-    it("prefers separate fields over combined fields", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { lat: 40.7128, lon: -74.006, coordinates: "40.7128,-74.0060" },
-        { lat: 51.5074, lon: -0.1278, coordinates: "51.5074,-0.1278" },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      // Should prefer separate lat/lon fields over combined
-      expect(state.detectedGeoFields.latitude).toBe("lat");
-      expect(state.detectedGeoFields.longitude).toBe("lon");
-      expect(state.detectedGeoFields.combinedField).toBeUndefined();
-    });
-
-    it("calculates confidence scores based on pattern quality", () => {
-      const builder1 = new ProgressiveSchemaBuilder();
-      builder1.processBatch([
-        { lat: 40.7128, lon: -74.006 },
-        { lat: 51.5074, lon: -0.1278 },
-      ]);
-      const highConfidence = builder1.getState().detectedGeoFields.confidence;
-
-      const builder2 = new ProgressiveSchemaBuilder();
-      builder2.processBatch([
-        { wgs84_latitude: 40.7128, wgs84_longitude: -74.006 },
-        { wgs84_latitude: 51.5074, wgs84_longitude: -0.1278 },
-      ]);
-      const mediumConfidence = builder2.getState().detectedGeoFields.confidence;
-
-      // Simple "lat"/"lon" should have higher confidence than more obscure patterns
-      expect(highConfidence).toBeGreaterThan(mediumConfidence);
-    });
-
-    it("handles mixed data types with advanced parsing", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { lat: 40.7128, lon: -74.006 }, // Numbers
-        { lat: "51.5074", lon: "-0.1278" }, // Strings
-        { lat: "48°51'24\"N", lon: "2°21'8\"E" }, // DMS
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      expect(state.detectedGeoFields.latitude).toBe("lat");
-      expect(state.detectedGeoFields.longitude).toBe("lon");
-      expect(state.detectedGeoFields.confidence).toBeGreaterThan(0.5);
     });
   });
 
@@ -774,22 +508,6 @@ describe("ProgressiveSchemaBuilder", () => {
       const state2 = builder2.getState();
       expect(state2.recordCount).toBe(2);
       expect(state2.batchCount).toBe(2);
-    });
-  });
-
-  describe("ID field detection", () => {
-    it("detects common ID field patterns", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      const records = [
-        { id: "123", uuid: "550e8400-e29b-41d4-a716-446655440000", name: "Test" },
-        { id: "456", uuid: "6ba7b810-9dad-11d1-80b4-00c04fd430c8", name: "Test2" },
-      ];
-
-      builder.processBatch(records);
-      const state = builder.getState();
-
-      expect(state.detectedIdFields).toContain("id");
-      expect(state.detectedIdFields).toContain("uuid");
     });
   });
 

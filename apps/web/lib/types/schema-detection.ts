@@ -73,17 +73,6 @@ export interface SchemaBuilderState {
   dataSamples: unknown[]; // Keep rotating buffer of N samples
   maxSamples: number;
 
-  // Detected patterns
-  detectedIdFields: string[]; // Fields that look like IDs
-  detectedGeoFields: {
-    latitude?: string;
-    longitude?: string;
-    combinedField?: string;
-    combinedFormat?: string;
-    locationField?: string; // Location field for geocoding (address, city, venue, etc.)
-    confidence: number;
-  };
-
   // Type conflicts
   typeConflicts: Array<{
     path: string;
@@ -136,8 +125,6 @@ export const isValidSchemaBuilderState = (state: unknown): state is SchemaBuilde
     (s.lastUpdated instanceof Date || typeof s.lastUpdated === "string") &&
     Array.isArray(s.dataSamples) &&
     typeof s.maxSamples === "number" &&
-    Array.isArray(s.detectedIdFields) &&
-    typeof s.detectedGeoFields === "object" &&
     Array.isArray(s.typeConflicts)
   );
 };

@@ -1,0 +1,16 @@
+{
+  "extends": "@timetiles/typescript-config/base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@timetiles/payload-schema-detection/*": ["./src/*"]
+    },
+    "moduleResolution": "bundler",
+    "module": "ESNext",
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["."],
+  "exclude": ["node_modules", "dist"]
+}

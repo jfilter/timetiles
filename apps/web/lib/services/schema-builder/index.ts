@@ -8,9 +8,11 @@
  * Key features:
  * - Processes data in batches to build up a schema over time.
  * - Uses `quicktype-core` to generate a formal JSON schema from data samples.
- * - Detects potential ID fields, geographic coordinate fields, and enumerations (enums).
  * - Tracks field statistics and type conflicts.
  * - Can compare the generated schema against a previous version to detect changes.
+ *
+ * Note: Field mapping detection (title, timestamp, geo) is handled separately by
+ * the schema detection plugin after all batches are processed.
  *
  * @module
  * @category Services
@@ -21,7 +23,7 @@ import { logger } from "@/lib/logger";
 import type { FieldStatistics, SchemaBuilderState, SchemaChange, SchemaComparison } from "@/lib/types/schema-detection";
 
 import { createFieldStats, getValueType, updateFieldStats } from "./field-statistics";
-import { detectEnums, detectGeoFields, detectIdFields } from "./pattern-detection";
+import { detectEnums } from "./pattern-detection";
 import { compareSchemas } from "./schema-comparison";
 
 type DataRecord = Record<string, unknown>;
@@ -55,8 +57,6 @@ export class ProgressiveSchemaBuilder {
       lastUpdated: new Date(),
       dataSamples: [],
       maxSamples: this.config.maxSamples,
-      detectedIdFields: [],
-      detectedGeoFields: { confidence: 0 },
       typeConflicts: [],
     };
   }
@@ -81,10 +81,7 @@ export class ProgressiveSchemaBuilder {
     this.state.batchCount++;
     this.state.lastUpdated = new Date();
 
-    // Detect patterns
-    this.state.detectedIdFields = detectIdFields(this.state);
-    this.state.detectedGeoFields = detectGeoFields(this.state);
-    detectEnums(this.state, this.config);
+    // Note: Pattern detection (enums, geo, ID) runs once at end, not per-batch
 
     // Increment version if schema changed
     const schemaChanged = changes.some((c) => c.type === "new_field" || c.type === "type_change");
@@ -339,14 +336,6 @@ export class ProgressiveSchemaBuilder {
       }
     }
 
-    // Add detected patterns as metadata
-    if (this.state.detectedIdFields.length > 0) {
-      schema["x-id-fields"] = this.state.detectedIdFields;
-    }
-
-    if (this.state.detectedGeoFields.latitude) {
-      schema["x-geo-fields"] = this.state.detectedGeoFields;
-    }
   }
 
   private processArrayPart(current: unknown, fieldName: string): unknown {
@@ -530,19 +519,19 @@ export class ProgressiveSchemaBuilder {
     return { ...this.state.fieldStats };
   }
 
+  /**
+   * Detect enum candidates in field statistics.
+   * Call once after all batches are processed.
+   */
+  detectEnumFields(): void {
+    detectEnums(this.state, this.config);
+  }
+
   getSummary(): {
     recordCount: number;
     fieldCount: number;
     version: number;
-    detectedPatterns: {
-      idFields: string[];
-      geoFields: {
-        latitude?: string;
-        longitude?: string;
-        confidence: number;
-      };
-      enumFields: string[];
-    };
+    enumFields: string[];
   } {
     const enumFields = Object.entries(this.state.fieldStats)
       .filter(([_, stats]) => stats.isEnumCandidate)
@@ -552,15 +541,10 @@ export class ProgressiveSchemaBuilder {
       recordCount: this.state.recordCount,
       fieldCount: Object.keys(this.state.fieldStats).length,
       version: this.state.version,
-      detectedPatterns: {
-        idFields: this.state.detectedIdFields,
-        geoFields: this.state.detectedGeoFields,
-        enumFields,
-      },
+      enumFields,
     };
   }
 }
 
-export { detectEnums, detectGeoFields, detectIdFields } from "./pattern-detection";
 export { compareSchemas } from "./schema-comparison";
 export type { FieldStatistics, SchemaBuilderState, SchemaChange, SchemaComparison } from "@/lib/types/schema-detection";

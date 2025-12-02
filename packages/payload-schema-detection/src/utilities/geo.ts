@@ -1,30 +1,33 @@
 /**
- * Pattern detection utilities for schema building.
+ * Structural pattern detection utilities.
  *
- * Contains functions for detecting ID fields, enumerations, and other
- * data patterns in schema analysis. Geo field detection is handled by
- * the @timetiles/payload-schema-detection plugin.
+ * Provides detection of ID fields and enumeration fields
+ * based on data characteristics (not column names).
  *
  * @module
- * @category Services/SchemaBuilder
+ * @category Utilities
  */
 
-import type { SchemaBuilderState } from "@/lib/types/schema-detection";
+import type { FieldStatistics, PatternResult } from "../types";
+
+/**
+ * ID field name patterns.
+ */
+const ID_PATTERNS = [/^id$/i, /_id$/i, /^uuid$/i, /^guid$/i, /^key$/i, /_key$/i];
 
 /**
  * Detects potential ID fields based on naming patterns and characteristics.
  */
-export const detectIdFields = (state: SchemaBuilderState): string[] => {
+export const detectIdFields = (fieldStats: Record<string, FieldStatistics>): string[] => {
   const idFields: string[] = [];
-  const idPatterns = [/^id$/i, /_id$/i, /^uuid$/i, /^guid$/i, /^key$/i, /_key$/i];
 
-  for (const [fieldPath, stats] of Object.entries(state.fieldStats)) {
+  for (const [fieldPath, stats] of Object.entries(fieldStats)) {
     const fieldName = fieldPath.split(".").pop() ?? "";
 
     // Check naming patterns
-    const matchesPattern = idPatterns.some((pattern) => pattern.test(fieldName));
+    const matchesPattern = ID_PATTERNS.some((pattern) => pattern.test(fieldName));
 
-    // Check characteristics
+    // Check characteristics: unique values and appropriate type
     const hasIdCharacteristics =
       stats.uniqueValues === stats.occurrences &&
       stats.occurrences > 1 &&
@@ -41,35 +44,44 @@ export const detectIdFields = (state: SchemaBuilderState): string[] => {
 };
 
 /**
- * Detects enumeration fields based on unique value ratios.
+ * Detects enumeration fields based on low cardinality.
  */
-export const detectEnums = (
-  state: SchemaBuilderState,
-  config: { enumThreshold: number; enumMode: "count" | "percentage" }
-): void => {
-  for (const stats of Object.values(state.fieldStats)) {
+export const detectEnumFields = (
+  fieldStats: Record<string, FieldStatistics>,
+  config: { enumThreshold?: number; enumMode?: "count" | "percentage" } = {}
+): string[] => {
+  const { enumThreshold = 50, enumMode = "count" } = config;
+  const enumFields: string[] = [];
+
+  for (const [fieldPath, stats] of Object.entries(fieldStats)) {
     const hasStringType = (stats.typeDistribution["string"] ?? 0) > 0;
+
     if (hasStringType && stats.uniqueSamples) {
       const shouldBeEnum =
-        config.enumMode === "count"
-          ? stats.uniqueValues <= config.enumThreshold
-          : stats.uniqueValues / stats.occurrences <= config.enumThreshold / 100;
+        enumMode === "count"
+          ? stats.uniqueValues <= enumThreshold
+          : stats.uniqueValues / stats.occurrences <= enumThreshold / 100;
 
       if (shouldBeEnum && stats.uniqueValues > 1 && stats.uniqueValues < stats.occurrences) {
-        stats.isEnumCandidate = true;
-        // Create enum values from unique samples
-        const valueCounts = new Map<unknown, number>();
-        for (const sample of stats.uniqueSamples) {
-          valueCounts.set(sample, (valueCounts.get(sample) ?? 0) + 1);
-        }
-        stats.enumValues = Array.from(valueCounts.entries()).map(([value, count]) => ({
-          value,
-          count,
-          percent: (count / stats.occurrences) * 100,
-        }));
+        enumFields.push(fieldPath);
       }
     }
   }
+
+  return enumFields;
+};
+
+/**
+ * Detect all structural patterns in field statistics.
+ */
+export const detectPatterns = (
+  fieldStats: Record<string, FieldStatistics>,
+  config?: { enumThreshold?: number; enumMode?: "count" | "percentage" }
+): PatternResult => {
+  return {
+    idFields: detectIdFields(fieldStats),
+    enumFields: detectEnumFields(fieldStats, config),
+  };
 };
 
 /**

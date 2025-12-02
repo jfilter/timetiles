@@ -1,0 +1,37 @@
+{
+  "name": "@timetiles/payload-schema-detection",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "description": "Payload CMS plugin for schema detection with language-aware field mapping",
+  "scripts": {
+    "build": "tsc --build",
+    "build:watch": "tsc --build --watch",
+    "lint": "eslint . --cache --format json --output-file .lint-results.json; eslint . --cache",
+    "format": "eslint . --fix --quiet --cache && prettier --write . --log-level error",
+    "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "franc": "^6.2.0"
+  },
+  "peerDependencies": {
+    "payload": "^3.0.0"
+  },
+  "devDependencies": {
+    "@timetiles/eslint-config": "workspace:*",
+    "@timetiles/typescript-config": "workspace:*",
+    "@types/node": "^20",
+    "@vitest/coverage-v8": "^2.1.8",
+    "eslint": "^9.20.1",
+    "payload": "^3.53.0",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./utilities": "./src/utilities/index.ts",
+    "./detectors": "./src/detectors/index.ts"
+  }
+}
