@@ -138,6 +138,7 @@ const handleFetchSuccess = async (
     processingOptions: {
       skipDuplicateChecking: scheduledImport?.advancedOptions?.skipDuplicateChecking ?? false,
       autoApproveSchema: scheduledImport?.advancedOptions?.autoApproveSchema ?? false,
+      schemaMode: scheduledImport?.schemaMode ?? undefined,
     },
   };
 
