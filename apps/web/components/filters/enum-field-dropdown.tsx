@@ -18,9 +18,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@timetiles/ui/components/dropdown-menu";
-import { ChevronDown, X } from "lucide-react";
-
 import { cn } from "@timetiles/ui/lib/utils";
+import { ChevronDown, X } from "lucide-react";
 
 interface EnumValue {
   value: string;
@@ -85,14 +84,10 @@ export const EnumFieldDropdown = ({
             className={cn(
               "flex w-full items-center justify-between gap-2 rounded-sm border px-3 py-2 text-sm transition-colors",
               "bg-background hover:bg-accent",
-              hasSelection
-                ? "border-cartographic-blue/30 text-foreground"
-                : "border-input text-muted-foreground"
+              hasSelection ? "border-cartographic-blue/30 text-foreground" : "border-input text-muted-foreground"
             )}
           >
-            <span className="truncate">
-              {hasSelection ? `${selectedValues.length} selected` : "Any"}
-            </span>
+            <span className="truncate">{hasSelection ? `${selectedValues.length} selected` : "Any"}</span>
             <div className="flex items-center gap-1">
               {hasSelection && (
                 <span

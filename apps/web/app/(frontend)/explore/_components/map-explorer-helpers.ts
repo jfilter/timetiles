@@ -78,8 +78,7 @@ export const getFilterLabels = (
     name: getDatasetName(datasets, id),
   })),
   dateRange: formatDateRange(filters.startDate, filters.endDate),
-  fieldFilters:
-    filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,
+  fieldFilters: filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,
 });
 
 /** Format dataset names for display in description */

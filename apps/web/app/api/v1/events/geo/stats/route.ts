@@ -73,7 +73,7 @@ const calculateGlobalStats = async (
 
   // Build field filters SQL - for each field, event data must match one of the values
   let fieldFiltersSql;
-  if (fieldFilters != null && typeof fieldFilters === "object" && Object.keys(fieldFilters as object).length > 0) {
+  if (fieldFilters != null && typeof fieldFilters === "object" && Object.keys(fieldFilters).length > 0) {
     const fieldConditions = Object.entries(fieldFilters as Record<string, string[]>).map(([fieldKey, values]) => {
       if (!Array.isArray(values) || values.length === 0) return sql`TRUE`;
       return sql`e.data->>${fieldKey} IN (${sql.join(

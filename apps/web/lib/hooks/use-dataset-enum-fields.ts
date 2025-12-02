@@ -87,9 +87,7 @@ const selectTopEnumFields = (
 /**
  * Fetch dataset and extract fieldMetadata.
  */
-const fetchDatasetFieldMetadata = async (
-  datasetId: string
-): Promise<Record<string, FieldStatistics> | null> => {
+const fetchDatasetFieldMetadata = async (datasetId: string): Promise<Record<string, FieldStatistics> | null> => {
   const response = await fetch(`/api/datasets/${datasetId}?depth=0`);
 
   if (!response.ok) {

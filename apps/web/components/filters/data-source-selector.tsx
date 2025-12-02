@@ -51,6 +51,11 @@ interface DataSourceSelectorProps {
   eventCountsByDataset?: Record<string, number>;
 }
 
+/** Number of catalogs to show before collapsing */
+const CATALOG_COLLAPSE_THRESHOLD = 6;
+/** Number of catalogs to show when collapsed */
+const CATALOG_VISIBLE_WHEN_COLLAPSED = 4;
+
 /** Number of datasets to show before collapsing */
 const DATASET_COLLAPSE_THRESHOLD = 10;
 
@@ -161,6 +166,7 @@ const DatasetChip = ({ dataset, isActive, eventCount, onToggle }: DatasetChipPro
 
 export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset }: DataSourceSelectorProps) => {
   const { filters, setCatalog, setDatasets } = useFilters();
+  const [catalogsExpanded, setCatalogsExpanded] = useState(false);
   const [datasetsExpanded, setDatasetsExpanded] = useState(false);
 
   // Fetch lightweight catalog/dataset data
@@ -211,14 +217,14 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
       if (catalogId === filters.catalog) {
         // Toggle off: show all data
         setCatalog(null);
-        void setDatasets([]);
+        setDatasets([]);
       } else {
         // Select catalog and auto-select all its datasets
         setCatalog(catalogId);
         const catalogDatasets = datasets
           .filter((d) => d.catalogId != null && String(d.catalogId) === catalogId)
           .map((d) => String(d.id));
-        void setDatasets(catalogDatasets);
+        setDatasets(catalogDatasets);
       }
     },
     [datasets, filters.catalog, setCatalog, setDatasets]
@@ -231,20 +237,29 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
       const newDatasets = current.includes(datasetId)
         ? current.filter((id) => id !== datasetId)
         : [...current, datasetId];
-      void setDatasets(newDatasets);
+      setDatasets(newDatasets);
     },
     [filters.datasets, setDatasets]
   );
 
+  // Catalog expand/collapse handler
+  const handleToggleCatalogsExpanded = useCallback(() => {
+    setCatalogsExpanded((prev) => !prev);
+  }, []);
+
   // Dataset expand/collapse handler
-  const handleToggleExpanded = useCallback(() => {
+  const handleToggleDatasetsExpanded = useCallback(() => {
     setDatasetsExpanded((prev) => !prev);
   }, []);
 
+  // Catalog visibility - use CSS overflow instead of slicing to maintain stable positions
+  const useCatalogCollapse = sortedCatalogs.length > CATALOG_COLLAPSE_THRESHOLD;
+  const hiddenCatalogCount = sortedCatalogs.length - CATALOG_VISIBLE_WHEN_COLLAPSED;
+
   // Dataset visibility
-  const useCollapse = filteredDatasets.length > DATASET_COLLAPSE_THRESHOLD;
-  const visibleDatasets = useCollapse && !datasetsExpanded ? filteredDatasets.slice(0, 4) : filteredDatasets;
-  const hiddenCount = filteredDatasets.length - 4;
+  const useDatasetCollapse = filteredDatasets.length > DATASET_COLLAPSE_THRESHOLD;
+  const visibleDatasets = useDatasetCollapse && !datasetsExpanded ? filteredDatasets.slice(0, 4) : filteredDatasets;
+  const hiddenDatasetCount = filteredDatasets.length - 4;
 
   // Calculate active dataset count
   const activeDatasetCount = filters.datasets.filter((id) => filteredDatasets.some((d) => String(d.id) === id)).length;
@@ -255,8 +270,13 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
       <div>
         <div className="text-cartographic-navy/60 mb-2 font-mono text-xs uppercase tracking-wider">Catalogs</div>
 
-        {/* Masonry layout for catalogs */}
-        <div className="columns-2 gap-2 space-y-2">
+        {/* Grid layout for catalogs - flows left-to-right so top items stay visible when collapsed */}
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-2 transition-[max-height] duration-200",
+            useCatalogCollapse && !catalogsExpanded && "max-h-[180px] overflow-hidden"
+          )}
+        >
           {sortedCatalogs.map((catalog) => (
             <CatalogCard
               key={catalog.id}
@@ -268,6 +288,27 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
             />
           ))}
         </div>
+
+        {/* Expand/collapse button for many catalogs */}
+        {useCatalogCollapse && (
+          <button
+            type="button"
+            onClick={handleToggleCatalogsExpanded}
+            className="text-cartographic-blue hover:text-cartographic-blue/80 mt-2 flex items-center gap-1 font-mono text-xs transition-colors"
+          >
+            {catalogsExpanded ? (
+              <>
+                <ChevronUp className="h-3 w-3" />
+                Show less
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-3 w-3" />
+                Show all ({hiddenCatalogCount} more)
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Dataset Selection - only show when a catalog is selected */}
@@ -300,16 +341,18 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
                 ))}
 
                 {/* Show "+X more" indicator when collapsed */}
-                {useCollapse && !datasetsExpanded && hiddenCount > 0 && (
-                  <span className="text-cartographic-navy/40 self-center font-mono text-xs">+{hiddenCount} more</span>
+                {useDatasetCollapse && !datasetsExpanded && hiddenDatasetCount > 0 && (
+                  <span className="text-cartographic-navy/40 self-center font-mono text-xs">
+                    +{hiddenDatasetCount} more
+                  </span>
                 )}
               </div>
 
               {/* Expand/collapse button for many datasets */}
-              {useCollapse && (
+              {useDatasetCollapse && (
                 <button
                   type="button"
-                  onClick={handleToggleExpanded}
+                  onClick={handleToggleDatasetsExpanded}
                   className="text-cartographic-blue hover:text-cartographic-blue/80 mt-2 flex items-center gap-1 font-mono text-xs transition-colors"
                 >
                   {datasetsExpanded ? (

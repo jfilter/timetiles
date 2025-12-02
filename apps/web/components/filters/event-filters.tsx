@@ -15,8 +15,8 @@ import { X } from "lucide-react";
 import { useCallback } from "react";
 
 import { useFilters } from "@/lib/filters";
-import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
 import { useDataSourceStatsQuery } from "@/lib/hooks/use-data-source-stats";
+import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
 
 import { CategoricalFilters } from "./categorical-filters";
 import { DataSourceSelector } from "./data-source-selector";
