@@ -1,9 +1,10 @@
 /**
  * API endpoint for previewing file schema.
  *
- * POST /api/wizard/preview-schema - Upload file and get schema preview
+ * POST /api/wizard/preview-schema - Upload file or fetch from URL and get schema preview
  *
  * Returns detected sheets with headers and sample data for wizard preview.
+ * Supports both file upload and URL fetching with optional authentication.
  *
  * @module
  * @category API Routes
@@ -13,6 +14,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { FIELD_PATTERNS, LATITUDE_PATTERNS, LONGITUDE_PATTERNS } from "@timetiles/payload-schema-detection";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import Papa from "papaparse";
@@ -20,6 +22,8 @@ import { getPayload } from "payload";
 import { v4 as uuidv4 } from "uuid";
 import { read, utils } from "xlsx";
 
+import { buildAuthHeaders } from "@/lib/jobs/handlers/url-fetch-job/auth";
+import { detectFileTypeFromResponse, fetchUrlData } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
 import { createLogger } from "@/lib/logger";
 import {
   detectLanguageFromSamples,
@@ -73,41 +77,16 @@ interface SheetInfo {
   suggestedMappings?: SuggestedMappings;
 }
 
-/**
- * Field name patterns for different languages
- */
-const FIELD_PATTERNS: Record<string, Record<string, RegExp[]>> = {
-  title: {
-    eng: [/^title$/i, /^name$/i, /^event.*name$/i, /^event.*title$/i, /^event$/i],
-    deu: [/^titel$/i, /^name$/i, /^bezeichnung$/i, /^veranstaltung$/i],
-    default: [/^title$/i, /^name$/i, /^titel$/i],
-  },
-  description: {
-    eng: [/^description$/i, /^details$/i, /^summary$/i, /^notes$/i, /^text$/i],
-    deu: [/^beschreibung$/i, /^details$/i, /^zusammenfassung$/i, /^text$/i],
-    default: [/^description$/i, /^beschreibung$/i, /^details$/i],
-  },
-  timestamp: {
-    eng: [/^date$/i, /^timestamp$/i, /^datetime$/i, /^time$/i, /^when$/i],
-    deu: [/^datum$/i, /^zeitstempel$/i, /^zeit$/i, /^wann$/i],
-    default: [/^date$/i, /^datum$/i, /^timestamp$/i, /^time$/i],
-  },
-  location: {
-    eng: [/^address$/i, /^location$/i, /^place$/i, /^venue$/i, /^city$/i],
-    deu: [/^adresse$/i, /^ort$/i, /^standort$/i, /^platz$/i, /^stadt$/i],
-    default: [/^address$/i, /^location$/i, /^ort$/i, /^adresse$/i],
-  },
-  latitude: {
-    eng: [/^lat$/i, /^latitude$/i, /^lat.*coord$/i, /^y$/i],
-    deu: [/^lat$/i, /^breitengrad$/i, /^breite$/i],
-    default: [/^lat$/i, /^latitude$/i, /^breitengrad$/i],
-  },
-  longitude: {
-    eng: [/^lon$/i, /^lng$/i, /^longitude$/i, /^long$/i, /^lon.*coord$/i, /^x$/i],
-    deu: [/^lon$/i, /^lng$/i, /^längengrad$/i, /^laengengrad$/i, /^länge$/i],
-    default: [/^lon$/i, /^lng$/i, /^longitude$/i, /^längengrad$/i],
-  },
-};
+/** Auth configuration for URL fetching (matches ScheduledImport authConfig structure) */
+interface AuthConfig {
+  type: "none" | "api-key" | "bearer" | "basic";
+  apiKey?: string;
+  apiKeyHeader?: string;
+  bearerToken?: string;
+  username?: string;
+  password?: string;
+  customHeaders?: string | Record<string, string>;
+}
 
 /**
  * Get confidence level from confidence score
@@ -119,18 +98,30 @@ const getConfidenceLevel = (confidence: number): ConfidenceLevel => {
   return "none";
 };
 
+type FieldPatternType = keyof typeof FIELD_PATTERNS;
+
 /**
- * Detect a field mapping from headers based on patterns
+ * Detect a field mapping from headers based on patterns.
+ * Uses patterns from the schema detection plugin.
  */
 const detectFieldFromHeaders = (headers: string[], fieldType: string, language: string): FieldMappingSuggestion => {
-  const patterns = FIELD_PATTERNS[fieldType];
-  if (!patterns) {
+  // Handle coordinate fields using dedicated patterns
+  if (fieldType === "latitude") {
+    return detectCoordinateField(headers, LATITUDE_PATTERNS);
+  }
+  if (fieldType === "longitude") {
+    return detectCoordinateField(headers, LONGITUDE_PATTERNS);
+  }
+
+  // Handle semantic fields using FIELD_PATTERNS from plugin
+  const fieldPatterns = FIELD_PATTERNS[fieldType as FieldPatternType];
+  if (!fieldPatterns) {
     return { path: null, confidence: 0, confidenceLevel: "none" };
   }
 
-  // Get patterns for language, fallback to default
-  const langPatterns = patterns[language] ?? patterns.default ?? [];
-  const defaultPatterns = patterns.default ?? [];
+  // Get patterns for language, fallback to English
+  const langPatterns = fieldPatterns[language as keyof typeof fieldPatterns] ?? fieldPatterns.eng;
+  const engPatterns = fieldPatterns.eng;
 
   // Try language-specific patterns first
   for (let i = 0; i < langPatterns.length; i++) {
@@ -138,7 +129,6 @@ const detectFieldFromHeaders = (headers: string[], fieldType: string, language: 
     if (!pattern) continue;
     const match = headers.find((h) => pattern.test(h));
     if (match) {
-      // Higher confidence for earlier patterns (more specific)
       const confidence = 0.9 - i * 0.1;
       return {
         path: match,
@@ -148,21 +138,43 @@ const detectFieldFromHeaders = (headers: string[], fieldType: string, language: 
     }
   }
 
-  // Try default patterns as fallback
-  for (let i = 0; i < defaultPatterns.length; i++) {
-    const pattern = defaultPatterns[i];
+  // Try English patterns as fallback (if not already using English)
+  if (language !== "eng") {
+    for (let i = 0; i < engPatterns.length; i++) {
+      const pattern = engPatterns[i];
+      if (!pattern) continue;
+      const match = headers.find((h) => pattern.test(h));
+      if (match) {
+        const confidence = 0.7 - i * 0.1;
+        return {
+          path: match,
+          confidence: Math.max(0.3, confidence),
+          confidenceLevel: getConfidenceLevel(confidence),
+        };
+      }
+    }
+  }
+
+  return { path: null, confidence: 0, confidenceLevel: "none" };
+};
+
+/**
+ * Detect coordinate fields using dedicated patterns.
+ */
+const detectCoordinateField = (headers: string[], patterns: RegExp[]): FieldMappingSuggestion => {
+  for (let i = 0; i < patterns.length; i++) {
+    const pattern = patterns[i];
     if (!pattern) continue;
     const match = headers.find((h) => pattern.test(h));
     if (match) {
-      const confidence = 0.7 - i * 0.1;
+      const confidence = 0.9 - i * 0.05;
       return {
         path: match,
-        confidence: Math.max(0.3, confidence),
+        confidence: Math.max(0.5, confidence),
         confidenceLevel: getConfidenceLevel(confidence),
       };
     }
   }
-
   return { path: null, confidence: 0, confidenceLevel: "none" };
 };
 
@@ -292,10 +304,59 @@ const parseExcelPreview = (filePath: string): SheetInfo[] => {
 };
 
 /**
+ * Validates and parses a URL string.
+ */
+const validateUrl = (urlString: string): URL | null => {
+  try {
+    const url = new URL(urlString);
+    if (!["http:", "https:"].includes(url.protocol)) {
+      return null;
+    }
+    return url;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Parses auth config from form data.
+ */
+const parseAuthConfig = (formData: FormData): AuthConfig | null => {
+  const authType = formData.get("authType") as string | null;
+  if (!authType || authType === "none") {
+    return null;
+  }
+
+  const authConfig: AuthConfig = { type: authType as AuthConfig["type"] };
+
+  switch (authType) {
+    case "api-key":
+      authConfig.apiKey = (formData.get("apiKey") as string) || undefined;
+      authConfig.apiKeyHeader = (formData.get("apiKeyHeader") as string) || "X-API-Key";
+      break;
+    case "bearer":
+      authConfig.bearerToken = (formData.get("bearerToken") as string) || undefined;
+      break;
+    case "basic":
+      authConfig.username = (formData.get("username") as string) || undefined;
+      authConfig.password = (formData.get("password") as string) || undefined;
+      break;
+  }
+
+  return authConfig;
+};
+
+/**
  * Preview file schema endpoint.
  *
- * Accepts a file upload and returns detected sheets with headers and sample data.
+ * Accepts either a file upload OR a source URL and returns detected sheets with headers and sample data.
  * The file is stored temporarily with a previewId for later use.
+ *
+ * For URL sources, optional authentication can be provided via form data:
+ * - authType: "none" | "api-key" | "bearer" | "basic"
+ * - apiKey, apiKeyHeader (for api-key type)
+ * - bearerToken (for bearer type)
+ * - username, password (for basic type)
  */
 export const POST = async (req: NextRequest) => {
   try {
@@ -311,44 +372,113 @@ export const POST = async (req: NextRequest) => {
     // Parse multipart form data
     const formData = await req.formData();
     const file = formData.get("file");
+    const sourceUrl = formData.get("sourceUrl") as string | null;
 
-    if (!file || !(file instanceof File)) {
-      return badRequest("No file provided");
+    // Must have either file or sourceUrl
+    if ((!file || !(file instanceof File)) && !sourceUrl) {
+      return badRequest("Either a file or sourceUrl is required");
     }
 
-    // Validate file size
-    if (file.size > MAX_FILE_SIZE) {
-      return badRequest(`File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`);
-    }
-
-    // Validate mime type
-    const fileExtensionRegex = /\.(csv|xls|xlsx|ods)$/i;
-    if (!ALLOWED_MIME_TYPES.includes(file.type) && !fileExtensionRegex.test(file.name)) {
-      return badRequest("Unsupported file type. Please upload a CSV, Excel, or ODS file.");
-    }
-
-    // Generate preview ID and save file
     const previewId = uuidv4();
-    const fileExtension = path.extname(file.name).toLowerCase();
-
-    // Security: Validate extension matches allowed pattern before constructing path
-    if (!fileExtensionRegex.test(file.name)) {
-      return badRequest("Unsupported file extension. Please upload a CSV, Excel, or ODS file.");
-    }
-
     const previewDir = getPreviewDir();
-    const previewFilePath = path.join(previewDir, `${previewId}${fileExtension}`);
+    const fileExtensionRegex = /\.(csv|xls|xlsx|ods)$/i;
 
-    // Save file to temp directory
-    const arrayBuffer = await file.arrayBuffer();
-    fs.writeFileSync(previewFilePath, Buffer.from(arrayBuffer));
+    let previewFilePath: string;
+    let originalName: string;
+    let mimeType: string;
+    let fileSize: number;
+    let fileExtension: string;
 
-    logger.info("File saved for preview", {
-      previewId,
-      fileName: file.name,
-      fileSize: file.size,
-      userId: user.id,
-    });
+    if (sourceUrl) {
+      // URL-based fetch
+      const parsedUrl = validateUrl(sourceUrl);
+      if (!parsedUrl) {
+        return badRequest("Invalid URL. Please provide a valid HTTP or HTTPS URL.");
+      }
+
+      // Parse auth config from form data
+      const authConfig = parseAuthConfig(formData);
+      // Cast to the ScheduledImport authConfig type expected by buildAuthHeaders
+      const authHeaders = buildAuthHeaders(authConfig as Parameters<typeof buildAuthHeaders>[0]);
+
+      logger.info("Fetching data from URL", {
+        url: sourceUrl,
+        hasAuth: authConfig?.type !== "none" && authConfig !== null,
+        userId: user.id,
+      });
+
+      try {
+        const fetchResult = await fetchUrlData(sourceUrl, {
+          headers: authHeaders,
+          timeout: 60000, // 60 second timeout for preview
+          maxSize: MAX_FILE_SIZE,
+        });
+
+        // Detect file type from response
+        const detectedType = detectFileTypeFromResponse(fetchResult.contentType, fetchResult.data, sourceUrl);
+        fileExtension = detectedType.fileExtension;
+        mimeType = detectedType.mimeType;
+
+        // Validate detected file type
+        if (![".csv", ".xls", ".xlsx", ".ods"].includes(fileExtension)) {
+          return badRequest(
+            `Unsupported file type detected: ${mimeType}. The URL must return CSV, Excel, or ODS data.`
+          );
+        }
+
+        // Save fetched data to temp file
+        previewFilePath = path.join(previewDir, `${previewId}${fileExtension}`);
+        fs.writeFileSync(previewFilePath, fetchResult.data);
+
+        originalName = path.basename(parsedUrl.pathname) || `url-import${fileExtension}`;
+        fileSize = fetchResult.data.length;
+
+        logger.info("URL data fetched and saved for preview", {
+          previewId,
+          sourceUrl,
+          detectedType: mimeType,
+          fileSize,
+          userId: user.id,
+        });
+      } catch (fetchError) {
+        const errorMessage = fetchError instanceof Error ? fetchError.message : "Unknown error";
+        logger.error("Failed to fetch URL", { sourceUrl, error: fetchError });
+        return badRequest(`Failed to fetch URL: ${errorMessage}`);
+      }
+    } else if (file instanceof File) {
+      // File upload (existing logic)
+      if (file.size > MAX_FILE_SIZE) {
+        return badRequest(`File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+      }
+
+      if (!ALLOWED_MIME_TYPES.includes(file.type) && !fileExtensionRegex.test(file.name)) {
+        return badRequest("Unsupported file type. Please upload a CSV, Excel, or ODS file.");
+      }
+
+      fileExtension = path.extname(file.name).toLowerCase();
+
+      if (!fileExtensionRegex.test(file.name)) {
+        return badRequest("Unsupported file extension. Please upload a CSV, Excel, or ODS file.");
+      }
+
+      previewFilePath = path.join(previewDir, `${previewId}${fileExtension}`);
+
+      const arrayBuffer = await file.arrayBuffer();
+      fs.writeFileSync(previewFilePath, Buffer.from(arrayBuffer));
+
+      originalName = file.name;
+      mimeType = file.type;
+      fileSize = file.size;
+
+      logger.info("File saved for preview", {
+        previewId,
+        fileName: file.name,
+        fileSize: file.size,
+        userId: user.id,
+      });
+    } else {
+      return badRequest("Invalid request");
+    }
 
     // Parse file to get sheet info
     let sheets: SheetInfo[];
@@ -366,17 +496,19 @@ export const POST = async (req: NextRequest) => {
       return badRequest("Failed to parse file. Please check the file format.");
     }
 
-    // Store preview metadata (could use cache or session)
+    // Store preview metadata
     const previewMetaPath = path.join(previewDir, `${previewId}.meta.json`);
     fs.writeFileSync(
       previewMetaPath,
       JSON.stringify({
         previewId,
         userId: user.id,
-        originalName: file.name,
+        originalName,
         filePath: previewFilePath,
-        mimeType: file.type,
-        fileSize: file.size,
+        mimeType,
+        fileSize,
+        sourceUrl: sourceUrl ?? undefined, // Store source URL if provided
+        authConfig: sourceUrl ? parseAuthConfig(formData) : undefined, // Store auth config for URL sources
         createdAt: new Date().toISOString(),
         expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour expiry
       })
@@ -386,11 +518,13 @@ export const POST = async (req: NextRequest) => {
       previewId,
       sheetsCount: sheets.length,
       totalRows: sheets.reduce((sum, s) => sum + s.rowCount, 0),
+      isUrlSource: !!sourceUrl,
     });
 
     return NextResponse.json({
       previewId,
       sheets,
+      sourceUrl: sourceUrl ?? undefined, // Return source URL so UI knows this was a URL-based preview
     });
   } catch (error) {
     logger.error("Failed to preview schema", { error });

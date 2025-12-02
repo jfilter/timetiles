@@ -90,6 +90,26 @@ export interface FieldMapping {
 
 export type CatalogSelection = number | "new" | null;
 
+/** Auth configuration for URL imports */
+export interface UrlAuthConfig {
+  type: "none" | "api-key" | "bearer" | "basic";
+  apiKey?: string;
+  apiKeyHeader?: string;
+  bearerToken?: string;
+  username?: string;
+  password?: string;
+}
+
+/** Schedule configuration for creating scheduled imports */
+export interface ScheduleConfig {
+  enabled: boolean;
+  name: string;
+  scheduleType: "frequency" | "cron";
+  frequency: "hourly" | "daily" | "weekly" | "monthly";
+  cronExpression: string;
+  schemaMode: "strict" | "additive" | "flexible";
+}
+
 export interface WizardState {
   // Navigation
   currentStep: WizardStep;
@@ -105,6 +125,10 @@ export interface WizardState {
   previewId: string | null;
   file: { name: string; size: number; mimeType: string } | null;
   sheets: SheetInfo[];
+  /** Source URL if data was fetched from URL instead of file upload */
+  sourceUrl: string | null;
+  /** Auth configuration for URL imports */
+  authConfig: UrlAuthConfig | null;
 
   // Step 3: Dataset Selection
   selectedCatalogId: CatalogSelection;
@@ -117,9 +141,13 @@ export interface WizardState {
   // Step 5: Review
   deduplicationStrategy: "skip" | "update" | "version";
   geocodingEnabled: boolean;
+  /** Schedule configuration (only available if sourceUrl is set) */
+  scheduleConfig: ScheduleConfig | null;
 
   // Step 6: Processing
   importFileId: number | null;
+  /** ID of the created scheduled import (if schedule was created) */
+  scheduledImportId: number | null;
   isProcessing: boolean;
   error: string | null;
 
@@ -137,13 +165,17 @@ const initialState: WizardState = {
   previewId: null,
   file: null,
   sheets: [],
+  sourceUrl: null,
+  authConfig: null,
   selectedCatalogId: null,
   newCatalogName: "",
   sheetMappings: [],
   fieldMappings: [],
   deduplicationStrategy: "skip",
   geocodingEnabled: true,
+  scheduleConfig: null,
   importFileId: null,
+  scheduledImportId: null,
   isProcessing: false,
   error: null,
   lastSavedAt: null,
@@ -155,7 +187,9 @@ type WizardAction =
   | { type: "NEXT_STEP" }
   | { type: "PREV_STEP" }
   | { type: "SET_AUTH"; isAuthenticated: boolean; isEmailVerified: boolean; userId: number | null }
-  | { type: "SET_FILE"; file: WizardState["file"]; sheets: SheetInfo[]; previewId: string }
+  | { type: "SET_FILE"; file: WizardState["file"]; sheets: SheetInfo[]; previewId: string; sourceUrl?: string }
+  | { type: "SET_SOURCE_URL"; sourceUrl: string | null; authConfig?: UrlAuthConfig | null }
+  | { type: "SET_SCHEDULE_CONFIG"; scheduleConfig: ScheduleConfig | null }
   | { type: "CLEAR_FILE" }
   | { type: "SET_CATALOG"; catalogId: number | "new" | null; newCatalogName?: string }
   | { type: "SET_SHEET_MAPPING"; sheetIndex: number; mapping: Partial<SheetMapping> }
@@ -167,7 +201,7 @@ type WizardAction =
       deduplicationStrategy?: WizardState["deduplicationStrategy"];
       geocodingEnabled?: boolean;
     }
-  | { type: "START_PROCESSING"; importFileId: number }
+  | { type: "START_PROCESSING"; importFileId: number; scheduledImportId?: number }
   | { type: "SET_ERROR"; error: string | null }
   | { type: "COMPLETE" }
   | { type: "RESET" }
@@ -220,6 +254,7 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
           file: action.file,
           sheets: action.sheets,
           previewId: action.previewId,
+          sourceUrl: action.sourceUrl ?? state.sourceUrl, // Preserve or update source URL
           // Initialize sheet mappings for each sheet
           sheetMappings: action.sheets.map((sheet) => ({
             sheetIndex: sheet.index,
@@ -247,14 +282,30 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
         };
       }
 
+      case "SET_SOURCE_URL":
+        return {
+          ...state,
+          sourceUrl: action.sourceUrl,
+          authConfig: action.authConfig ?? state.authConfig,
+        };
+
+      case "SET_SCHEDULE_CONFIG":
+        return {
+          ...state,
+          scheduleConfig: action.scheduleConfig,
+        };
+
       case "CLEAR_FILE":
         return {
           ...state,
           file: null,
           sheets: [],
           previewId: null,
+          sourceUrl: null,
+          authConfig: null,
           sheetMappings: [],
           fieldMappings: [],
+          scheduleConfig: null,
         };
 
       case "SET_CATALOG":
@@ -309,6 +360,7 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
         return {
           ...state,
           importFileId: action.importFileId,
+          scheduledImportId: action.scheduledImportId ?? null,
           isProcessing: true,
           error: null,
         };
@@ -348,7 +400,9 @@ interface WizardContextValue {
   nextStep: () => void;
   prevStep: () => void;
   setAuth: (isAuthenticated: boolean, isEmailVerified: boolean, userId: number | null) => void;
-  setFile: (file: WizardState["file"], sheets: SheetInfo[], previewId: string) => void;
+  setFile: (file: WizardState["file"], sheets: SheetInfo[], previewId: string, sourceUrl?: string) => void;
+  setSourceUrl: (sourceUrl: string | null, authConfig?: UrlAuthConfig | null) => void;
+  setScheduleConfig: (config: ScheduleConfig | null) => void;
   clearFile: () => void;
   setCatalog: (catalogId: number | "new" | null, newCatalogName?: string) => void;
   setSheetMapping: (sheetIndex: number, mapping: Partial<SheetMapping>) => void;
@@ -357,7 +411,7 @@ interface WizardContextValue {
     deduplicationStrategy?: WizardState["deduplicationStrategy"];
     geocodingEnabled?: boolean;
   }) => void;
-  startProcessing: (importFileId: number) => void;
+  startProcessing: (importFileId: number, scheduledImportId?: number) => void;
   setError: (error: string | null) => void;
   complete: () => void;
   reset: () => void;
@@ -486,10 +540,10 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
         startedAuthenticated: wasAuthenticatedOnStart ?? false,
         // Adjust step based on current auth state
         currentStep: (wasAuthenticatedOnStart
-          ? Math.max(saved.currentStep, 2)
+          ? Math.max(saved.currentStep ?? 2, 2)
           : !initialAuth?.isAuthenticated
             ? 1
-            : saved.currentStep) as WizardStep,
+            : (saved.currentStep ?? 1)) as WizardStep,
       };
       dispatch({ type: "RESTORE", state: restoredState });
     }
@@ -554,8 +608,19 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
     dispatch({ type: "SET_AUTH", isAuthenticated, isEmailVerified, userId });
   }, []);
 
-  const setFile = useCallback((file: WizardState["file"], sheets: SheetInfo[], previewId: string) => {
-    dispatch({ type: "SET_FILE", file, sheets, previewId });
+  const setFile = useCallback(
+    (file: WizardState["file"], sheets: SheetInfo[], previewId: string, sourceUrl?: string) => {
+      dispatch({ type: "SET_FILE", file, sheets, previewId, sourceUrl });
+    },
+    []
+  );
+
+  const setSourceUrl = useCallback((sourceUrl: string | null, authConfig?: UrlAuthConfig | null) => {
+    dispatch({ type: "SET_SOURCE_URL", sourceUrl, authConfig });
+  }, []);
+
+  const setScheduleConfig = useCallback((config: ScheduleConfig | null) => {
+    dispatch({ type: "SET_SCHEDULE_CONFIG", scheduleConfig: config });
   }, []);
 
   const clearFile = useCallback(() => {
@@ -581,8 +646,8 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
     []
   );
 
-  const startProcessing = useCallback((importFileId: number) => {
-    dispatch({ type: "START_PROCESSING", importFileId });
+  const startProcessing = useCallback((importFileId: number, scheduledImportId?: number) => {
+    dispatch({ type: "START_PROCESSING", importFileId, scheduledImportId });
   }, []);
 
   const setError = useCallback((error: string | null) => {
@@ -636,6 +701,8 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       prevStep,
       setAuth,
       setFile,
+      setSourceUrl,
+      setScheduleConfig,
       clearFile,
       setCatalog,
       setSheetMapping,
@@ -657,6 +724,8 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       prevStep,
       setAuth,
       setFile,
+      setSourceUrl,
+      setScheduleConfig,
       clearFile,
       setCatalog,
       setSheetMapping,

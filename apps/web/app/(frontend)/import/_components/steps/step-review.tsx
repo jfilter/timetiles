@@ -3,6 +3,7 @@
  *
  * Shows a summary of all configuration before starting the import.
  * Organized into clear sections: data flow, field mappings, record handling.
+ * Shows schedule configuration when importing from a URL.
  *
  * @module
  * @category Components
@@ -10,20 +11,24 @@
 /* eslint-disable complexity -- Review component displays many configuration sections */
 "use client";
 
-import { Card, CardContent } from "@timetiles/ui";
+import { Button, Card, CardContent, Input, Label } from "@timetiles/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { cn } from "@timetiles/ui/lib/utils";
 import {
   ArrowDownIcon,
   CalendarIcon,
+  ClockIcon,
   DatabaseIcon,
   FingerprintIcon,
   FolderIcon,
+  GlobeIcon,
   MapPinIcon,
   SparklesIcon,
   TextIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import type { ScheduleConfig } from "../wizard-context";
 import { useWizard } from "../wizard-context";
 
 export interface StepReviewProps {
@@ -43,9 +48,19 @@ const DUPLICATE_LABELS: Record<string, string> = {
   version: "New version",
 };
 
+// Default schedule config
+const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
+  enabled: false,
+  name: "",
+  scheduleType: "frequency",
+  frequency: "daily",
+  cronExpression: "",
+  schemaMode: "additive",
+};
+
 // eslint-disable-next-line complexity -- Review component displays many configuration sections
 export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
-  const { state, startProcessing, nextStep, setError, setNavigationConfig } = useWizard();
+  const { state, startProcessing, nextStep, setError, setNavigationConfig, setScheduleConfig } = useWizard();
   const {
     file,
     sheets,
@@ -55,9 +70,60 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     fieldMappings,
     deduplicationStrategy,
     geocodingEnabled,
+    sourceUrl,
+    authConfig,
+    scheduleConfig,
   } = state;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Local schedule config state (initialized from context or defaults)
+  const [localScheduleConfig, setLocalScheduleConfig] = useState<ScheduleConfig>(
+    scheduleConfig ?? { ...DEFAULT_SCHEDULE_CONFIG, name: file?.name?.replace(/\.[^/.]+$/, "") ?? "" }
+  );
+
+  // Sync local state back to context
+  useEffect(() => {
+    if (sourceUrl) {
+      setScheduleConfig(localScheduleConfig.enabled ? localScheduleConfig : null);
+    }
+  }, [localScheduleConfig, sourceUrl, setScheduleConfig]);
+
+  // Handler for toggle button click
+  const handleToggleScheduleEnabled = useCallback(() => {
+    setLocalScheduleConfig((prev) => ({ ...prev, enabled: !prev.enabled }));
+  }, []);
+
+  // Handler for schedule name change
+  const handleScheduleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalScheduleConfig((prev) => ({ ...prev, name: e.target.value }));
+  }, []);
+
+  // Handler for schedule type change
+  const handleScheduleTypeChange = useCallback((value: string) => {
+    setLocalScheduleConfig((prev) => ({ ...prev, scheduleType: value as "frequency" | "cron" }));
+  }, []);
+
+  // Handler for frequency change
+  const handleFrequencyChange = useCallback((value: string) => {
+    setLocalScheduleConfig((prev) => ({
+      ...prev,
+      frequency: value as "hourly" | "daily" | "weekly" | "monthly",
+    }));
+  }, []);
+
+  // Handler for cron expression change
+  const handleCronExpressionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalScheduleConfig((prev) => ({ ...prev, cronExpression: e.target.value }));
+  }, []);
+
+  // Handler for schema mode change
+  const handleSchemaModeChange = useCallback((value: string) => {
+    setLocalScheduleConfig((prev) => ({
+      ...prev,
+      schemaMode: value as "strict" | "additive" | "flexible",
+    }));
+  }, []);
 
   // Handle the import start - called from navigation
   const handleStartImport = useCallback(async () => {
@@ -65,19 +131,36 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     setError(null);
 
     try {
+      // Build request body
+      const requestBody: Record<string, unknown> = {
+        previewId: state.previewId,
+        catalogId: selectedCatalogId,
+        newCatalogName: selectedCatalogId === "new" ? newCatalogName : undefined,
+        sheetMappings,
+        fieldMappings,
+        deduplicationStrategy,
+        geocodingEnabled,
+      };
+
+      // Add schedule creation config if enabled
+      if (sourceUrl && localScheduleConfig.enabled) {
+        requestBody.createSchedule = {
+          enabled: true,
+          sourceUrl,
+          name: localScheduleConfig.name,
+          scheduleType: localScheduleConfig.scheduleType,
+          frequency: localScheduleConfig.scheduleType === "frequency" ? localScheduleConfig.frequency : undefined,
+          cronExpression: localScheduleConfig.scheduleType === "cron" ? localScheduleConfig.cronExpression : undefined,
+          schemaMode: localScheduleConfig.schemaMode,
+          authConfig: authConfig ?? undefined,
+        };
+      }
+
       const response = await fetch("/api/wizard/configure-import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          previewId: state.previewId,
-          catalogId: selectedCatalogId,
-          newCatalogName: selectedCatalogId === "new" ? newCatalogName : undefined,
-          sheetMappings,
-          fieldMappings,
-          deduplicationStrategy,
-          geocodingEnabled,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -86,7 +169,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
       }
 
       const data = await response.json();
-      startProcessing(data.importFileId);
+      startProcessing(data.importFileId, data.scheduledImportId);
       nextStep();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start import");
@@ -101,6 +184,9 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     fieldMappings,
     deduplicationStrategy,
     geocodingEnabled,
+    sourceUrl,
+    authConfig,
+    localScheduleConfig,
     startProcessing,
     nextStep,
     setError,
@@ -346,6 +432,119 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Schedule Configuration (only shown when importing from URL) */}
+      {sourceUrl && (
+        <Card className="overflow-hidden">
+          <div className="border-cartographic-navy/10 bg-cartographic-cream/30 flex items-center justify-between border-b px-6 py-4">
+            <div className="flex items-center gap-3">
+              <ClockIcon className="text-cartographic-navy h-5 w-5" />
+              <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">Scheduled Import</h3>
+            </div>
+            <Button
+              type="button"
+              variant={localScheduleConfig.enabled ? "default" : "outline"}
+              size="sm"
+              onClick={handleToggleScheduleEnabled}
+              aria-label="Enable scheduled import"
+            >
+              {localScheduleConfig.enabled ? "Enabled" : "Disabled"}
+            </Button>
+          </div>
+          {localScheduleConfig.enabled && (
+            <CardContent className="space-y-6 p-6">
+              {/* Source URL display */}
+              <div className="flex items-start gap-3">
+                <GlobeIcon className="text-cartographic-navy/40 mt-0.5 h-4 w-4" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-cartographic-navy/70 text-xs">Source URL</p>
+                  <p className="text-cartographic-charcoal truncate font-mono text-sm">{sourceUrl}</p>
+                </div>
+              </div>
+
+              {/* Schedule name */}
+              <div className="space-y-2">
+                <Label htmlFor="schedule-name">Schedule Name</Label>
+                <Input
+                  id="schedule-name"
+                  placeholder="My scheduled import"
+                  value={localScheduleConfig.name}
+                  onChange={handleScheduleNameChange}
+                />
+              </div>
+
+              {/* Schedule type and frequency */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="schedule-type">Schedule Type</Label>
+                  <Select value={localScheduleConfig.scheduleType} onValueChange={handleScheduleTypeChange}>
+                    <SelectTrigger id="schedule-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="frequency">Simple frequency</SelectItem>
+                      <SelectItem value="cron">Cron expression</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {localScheduleConfig.scheduleType === "frequency" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="frequency">Frequency</Label>
+                    <Select value={localScheduleConfig.frequency} onValueChange={handleFrequencyChange}>
+                      <SelectTrigger id="frequency">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hourly">Hourly</SelectItem>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="cron-expression">Cron Expression</Label>
+                    <Input
+                      id="cron-expression"
+                      placeholder="0 0 * * *"
+                      value={localScheduleConfig.cronExpression}
+                      onChange={handleCronExpressionChange}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Schema mode */}
+              <div className="space-y-2">
+                <Label htmlFor="schema-mode">Schema Change Handling</Label>
+                <Select value={localScheduleConfig.schemaMode} onValueChange={handleSchemaModeChange}>
+                  <SelectTrigger id="schema-mode">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="strict">
+                      <span className="font-medium">Strict</span>
+                      <span className="text-muted-foreground ml-2 text-xs">— fail if schema changes</span>
+                    </SelectItem>
+                    <SelectItem value="additive">
+                      <span className="font-medium">Additive</span>
+                      <span className="text-muted-foreground ml-2 text-xs">— auto-accept new fields</span>
+                    </SelectItem>
+                    <SelectItem value="flexible">
+                      <span className="font-medium">Flexible</span>
+                      <span className="text-muted-foreground ml-2 text-xs">— re-analyze each time</span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-muted-foreground text-xs">
+                  How to handle schema changes when the source data structure changes.
+                </p>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {state.error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{state.error}</div>}
     </div>

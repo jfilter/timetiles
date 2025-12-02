@@ -49,6 +49,29 @@ interface FieldMapping {
   longitudeField: string | null;
 }
 
+/** Auth configuration for scheduled imports (matches ScheduledImport authConfig structure) */
+interface AuthConfig {
+  type: "none" | "api-key" | "bearer" | "basic";
+  apiKey?: string;
+  apiKeyHeader?: string;
+  bearerToken?: string;
+  username?: string;
+  password?: string;
+  customHeaders?: string | Record<string, string>;
+}
+
+/** Schedule creation configuration */
+interface CreateScheduleConfig {
+  enabled: boolean;
+  sourceUrl: string;
+  name: string;
+  scheduleType: "frequency" | "cron";
+  frequency?: "hourly" | "daily" | "weekly" | "monthly";
+  cronExpression?: string;
+  schemaMode: "strict" | "additive" | "flexible";
+  authConfig?: AuthConfig;
+}
+
 interface ConfigureImportRequest {
   previewId: string;
   catalogId: number | "new";
@@ -57,6 +80,7 @@ interface ConfigureImportRequest {
   fieldMappings: FieldMapping[];
   deduplicationStrategy: "skip" | "update" | "version";
   geocodingEnabled: boolean;
+  createSchedule?: CreateScheduleConfig;
 }
 
 interface DatasetMappingEntry {
@@ -74,6 +98,8 @@ interface PreviewMetadata {
   fileSize: number;
   createdAt: string;
   expiresAt: string;
+  sourceUrl?: string; // Present if preview was from URL
+  authConfig?: AuthConfig; // Auth config if URL source had authentication
 }
 
 // Helper functions
@@ -242,6 +268,109 @@ const buildDatasetMapping = (sheetMappings: SheetMapping[], datasetMappingEntrie
     return { mappingType: "single", singleDataset: datasetMappingEntries[0]?.dataset };
   }
   return { mappingType: "multiple", sheetMappings: datasetMappingEntries };
+};
+
+/**
+ * Translate user-friendly schema mode to dataset schemaConfig fields.
+ */
+const translateSchemaMode = (mode: CreateScheduleConfig["schemaMode"]) => {
+  switch (mode) {
+    case "strict":
+      return { locked: true, autoGrow: false, autoApproveNonBreaking: false };
+    case "additive":
+      return { locked: false, autoGrow: true, autoApproveNonBreaking: true };
+    case "flexible":
+      return { locked: false, autoGrow: true, autoApproveNonBreaking: false };
+    default:
+      return { locked: false, autoGrow: true, autoApproveNonBreaking: true };
+  }
+};
+
+/**
+ * Create scheduled import from wizard configuration.
+ */
+const createScheduledImport = async (
+  payload: Payload,
+  scheduleConfig: CreateScheduleConfig,
+  catalogId: number,
+  datasetMappingEntries: DatasetMappingEntry[],
+  userId: number,
+  importFileId: number,
+  previewMeta: PreviewMetadata
+): Promise<number | null> => {
+  if (!scheduleConfig.enabled || !scheduleConfig.sourceUrl) {
+    return null;
+  }
+
+  // Determine if single or multi-sheet
+  const isSingleSheet = datasetMappingEntries.length === 1;
+  const firstDatasetId = datasetMappingEntries[0]?.dataset;
+
+  // Build auth config for scheduled import (use from schedule config or fall back to preview auth)
+  const authConfig = scheduleConfig.authConfig ?? previewMeta.authConfig ?? { type: "none" as const };
+
+  // Update datasets with schema config based on schema mode
+  const schemaConfig = translateSchemaMode(scheduleConfig.schemaMode);
+  for (const entry of datasetMappingEntries) {
+    await payload.update({
+      collection: "datasets",
+      id: entry.dataset,
+      data: { schemaConfig },
+    });
+    logger.info("Updated dataset schema config for schedule", {
+      datasetId: entry.dataset,
+      schemaMode: scheduleConfig.schemaMode,
+      schemaConfig,
+    });
+  }
+
+  // Build base scheduled import data
+  const baseData = {
+    name: scheduleConfig.name,
+    sourceUrl: scheduleConfig.sourceUrl,
+    catalog: catalogId,
+    createdBy: userId,
+    enabled: true,
+    scheduleType: scheduleConfig.scheduleType,
+    schemaMode: scheduleConfig.schemaMode,
+    sourceImportFile: importFileId,
+    authConfig,
+    // Set frequency or cron based on schedule type
+    frequency: scheduleConfig.scheduleType === "frequency" ? scheduleConfig.frequency : undefined,
+    cronExpression: scheduleConfig.scheduleType === "cron" ? scheduleConfig.cronExpression : undefined,
+    // Set dataset reference (single sheet case)
+    dataset: isSingleSheet && firstDatasetId ? firstDatasetId : undefined,
+    // Set multi-sheet config if needed
+    multiSheetConfig:
+      !isSingleSheet && datasetMappingEntries.length > 0
+        ? {
+            enabled: true,
+            sheets: datasetMappingEntries.map((entry) => ({
+              sheetIdentifier: entry.sheetIdentifier,
+              dataset: entry.dataset,
+              skipIfMissing: false,
+            })),
+          }
+        : undefined,
+  };
+
+  const scheduledImport = await payload.create({
+    collection: "scheduled-imports",
+    data: baseData,
+  });
+
+  logger.info("Created scheduled import from wizard", {
+    scheduledImportId: scheduledImport.id,
+    name: scheduleConfig.name,
+    sourceUrl: scheduleConfig.sourceUrl,
+    schemaMode: scheduleConfig.schemaMode,
+    scheduleType: scheduleConfig.scheduleType,
+    frequency: scheduleConfig.frequency,
+    catalogId,
+    datasetIds: datasetMappingEntries.map((e) => e.dataset),
+  });
+
+  return scheduledImport.id;
 };
 
 // Create catalog if needed
@@ -421,6 +550,21 @@ export const POST = async (req: NextRequest) => {
       userId: user.id,
     });
 
+    // Create scheduled import if requested
+    let scheduledImportId: number | null = null;
+    if (body.createSchedule?.enabled) {
+      logger.debug("Creating scheduled import", { createSchedule: body.createSchedule });
+      scheduledImportId = await createScheduledImport(
+        payload,
+        body.createSchedule,
+        finalCatalogId,
+        datasetMappingEntries,
+        user.id,
+        importFile.id,
+        previewMeta!
+      );
+    }
+
     cleanupPreview(body.previewId);
 
     return NextResponse.json({
@@ -428,6 +572,7 @@ export const POST = async (req: NextRequest) => {
       importFileId: importFile.id,
       catalogId: finalCatalogId,
       datasets: Object.fromEntries(datasetIdMap),
+      scheduledImportId: scheduledImportId ?? undefined, // Include if schedule was created
     });
   } catch (error) {
     logger.error("Failed to configure import", {
