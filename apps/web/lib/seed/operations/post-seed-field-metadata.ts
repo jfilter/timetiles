@@ -50,10 +50,7 @@ const analyzeEventData = (
 /**
  * Finalize field statistics after analyzing all events.
  */
-const finalizeFieldStats = (
-  fieldStats: Record<string, FieldStatistics>,
-  totalEvents: number
-): void => {
+const finalizeFieldStats = (fieldStats: Record<string, FieldStatistics>, totalEvents: number): void => {
   // Calculate occurrence percentages
   for (const stats of Object.values(fieldStats)) {
     stats.occurrencePercent = (stats.occurrences / totalEvents) * 100;

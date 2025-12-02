@@ -253,6 +253,37 @@ export const databaseExists = async (databaseName: string): Promise<boolean> => 
 };
 
 /**
+ * Clone a database from a template.
+ *
+ * Creates a new database as a copy of an existing template database.
+ * This is much faster than running migrations (~2s vs ~30s) for test setup.
+ *
+ * Note: Terminates connections to the template before cloning, as PostgreSQL
+ * requires no active connections to the template database.
+ *
+ * @param templateName - Name of the template database to clone from
+ * @param newName - Name of the new database to create
+ *
+ * @example
+ * ```typescript
+ * // Clone a template database for a test worker
+ * await cloneDatabase('timetiles_test_e2e_template', 'timetiles_test_e2e_0');
+ * ```
+ */
+export const cloneDatabase = async (templateName: string, newName: string): Promise<void> => {
+  // PostgreSQL requires no active connections to the template
+  await terminateConnections(templateName);
+
+  const client = createDatabaseClient({ database: "postgres" });
+  try {
+    await client.connect();
+    await client.query(`CREATE DATABASE "${newName}" WITH TEMPLATE "${templateName}"`);
+  } finally {
+    await client.end();
+  }
+};
+
+/**
  * Options for truncating tables
  */
 export interface TruncateTablesOptions {

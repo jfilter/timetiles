@@ -12,10 +12,11 @@
 import { postgresAdapter } from "@payloadcms/db-postgres";
 import { nodemailerAdapter } from "@payloadcms/email-nodemailer";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
+import { schemaDetectionPlugin } from "@timetiles/payload-schema-detection";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import nodemailer from "nodemailer";
 import { join } from "path";
-import type { Config } from "payload";
+import type { Config, Plugin } from "payload";
 import { buildConfig } from "payload";
 import sharp from "sharp";
 
@@ -64,6 +65,9 @@ export interface PayloadConfigOptions {
 
   // Migration configuration
   runMigrations?: boolean;
+
+  // Additional plugins (schema detection is always included)
+  plugins?: Plugin[];
 }
 
 // Cache file for ethereal.email credentials (dev only)
@@ -175,6 +179,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     poolConfig,
     logLevel,
     runMigrations = true,
+    plugins = [],
   } = options;
 
   // Select collections based on the provided list
@@ -202,6 +207,13 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
       // In development, run `make jobs` to process jobs every 10s
       // In production, use external cron or Vercel Cron to call /api/payload-jobs/run
     },
+    plugins: [
+      // Schema detection plugin (always enabled, provides language-aware field detection)
+      schemaDetectionPlugin({
+        extendDatasets: collections?.includes("datasets") ?? false,
+      }),
+      ...plugins,
+    ],
     editor: lexicalEditor({}),
     typescript: DEFAULT_TYPESCRIPT_CONFIG,
     db: createDbAdapter(databaseUrl, environment, poolConfig, runMigrations),

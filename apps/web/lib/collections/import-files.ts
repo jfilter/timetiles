@@ -274,6 +274,33 @@ const ImportFiles: CollectionConfig = {
       },
     },
     {
+      name: "processingOptions",
+      type: "json",
+      admin: {
+        description: "Processing options for scheduled imports (schemaMode, skipDuplicateChecking, etc.)",
+      },
+    },
+    {
+      name: "targetDataset",
+      type: "relationship",
+      relationTo: "datasets",
+      required: false,
+      hasMany: false,
+      admin: {
+        description: "Target dataset for scheduled imports",
+      },
+    },
+    {
+      name: "scheduledImport",
+      type: "relationship",
+      relationTo: "scheduled-imports",
+      required: false,
+      hasMany: false,
+      admin: {
+        description: "Reference to the scheduled import that triggered this file",
+      },
+    },
+    {
       name: "quotaInfo",
       type: "json",
       virtual: true,

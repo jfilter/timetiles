@@ -14,8 +14,6 @@
 import { createLogger } from "@/lib/logger";
 import { SchemaInferenceService } from "@/lib/services/schema-inference-service";
 
-import { generateFieldMetadataForAllDatasets } from "./post-seed-field-metadata";
-
 import {
   type CollectionConfig,
   getCollectionConfig,
@@ -25,6 +23,7 @@ import {
 } from "../seed.config";
 import type { SeedManager } from "../seed-manager";
 import type { SeedOptions } from "../types";
+import { generateFieldMetadataForAllDatasets } from "./post-seed-field-metadata";
 
 const logger = createLogger("seed");
 

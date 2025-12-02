@@ -102,7 +102,90 @@ const getCurrentSchema = async (payload: Payload, datasetId: number | string): P
     : {};
 };
 
-// Helper function to determine if approval is required
+type SchemaMode = "strict" | "additive" | "flexible";
+
+interface ProcessingOptions {
+  skipDuplicateChecking?: boolean;
+  autoApproveSchema?: boolean;
+  schemaMode?: SchemaMode;
+}
+
+// Schema mode result: determines if import should fail, require approval, or auto-approve
+interface SchemaModeResult {
+  shouldFail: boolean;
+  requiresApproval: boolean;
+  failureReason?: string;
+  approvalReason?: string;
+}
+
+/**
+ * Determine the schema validation outcome based on schema mode
+ * - strict: Any schema change = FAIL the import
+ * - additive: Breaking changes = FAIL, Non-breaking (new fields) = AUTO-APPROVE
+ * - flexible: All non-breaking = AUTO-APPROVE, Breaking = FAIL
+ */
+const evaluateSchemaMode = (
+  schemaMode: SchemaMode | undefined,
+  comparison: SchemaComparison,
+  hasHighConfidenceTransforms: boolean
+): SchemaModeResult => {
+  const hasChanges = comparison.changes.length > 0;
+
+  // If no schema mode specified, use default dataset-based logic
+  if (!schemaMode) {
+    return { shouldFail: false, requiresApproval: false };
+  }
+
+  switch (schemaMode) {
+    case "strict":
+      // Any schema change causes failure
+      if (hasChanges) {
+        return {
+          shouldFail: true,
+          requiresApproval: false,
+          failureReason: `Schema mismatch in strict mode: ${comparison.changes.length} change(s) detected`,
+        };
+      }
+      return { shouldFail: false, requiresApproval: false };
+
+    case "additive":
+      // Breaking changes cause failure, non-breaking auto-approve
+      if (comparison.isBreaking) {
+        return {
+          shouldFail: true,
+          requiresApproval: false,
+          failureReason: "Breaking schema changes not allowed in additive mode",
+        };
+      }
+      // High-confidence transforms suggest field renames - require approval
+      if (hasHighConfidenceTransforms) {
+        return {
+          shouldFail: false,
+          requiresApproval: true,
+          approvalReason: "Potential field renames detected - please confirm transforms",
+        };
+      }
+      // Non-breaking changes auto-approve
+      return { shouldFail: false, requiresApproval: false };
+
+    case "flexible":
+      // Breaking changes still fail, but all non-breaking changes auto-approve
+      if (comparison.isBreaking) {
+        return {
+          shouldFail: true,
+          requiresApproval: false,
+          failureReason: "Breaking schema changes detected",
+        };
+      }
+      // All non-breaking changes auto-approve (including transforms)
+      return { shouldFail: false, requiresApproval: false };
+
+    default:
+      return { shouldFail: false, requiresApproval: false };
+  }
+};
+
+// Helper function to determine if approval is required (for non-scheduled imports)
 const checkRequiresApproval = (
   comparison: SchemaComparison,
   dataset: { schemaConfig?: { locked?: boolean | null; autoApproveNonBreaking?: boolean | null } | null }
@@ -256,13 +339,67 @@ export const validateSchemaJob = {
 
       // Require approval if there are high-confidence transform suggestions
       const hasHighConfidenceTransforms = transformSuggestions.some((s) => s.confidence >= 80);
-      const requiresApproval = checkRequiresApproval(comparison, dataset) || hasHighConfidenceTransforms;
 
       // Extract changes
       const { breakingChanges, newFields } = extractSchemaChanges(comparison, detectedSchema);
+      const hasChanges = comparison.changes.length > 0;
+
+      // Check for schema mode from processingOptions (used by scheduled imports)
+      const processingOptions = (importFile.processingOptions as ProcessingOptions) ?? {};
+      const schemaMode = processingOptions.schemaMode;
+
+      // Evaluate schema mode if present
+      const schemaModeResult = evaluateSchemaMode(schemaMode, comparison, hasHighConfidenceTransforms);
+
+      // Handle schema mode failure
+      if (schemaModeResult.shouldFail) {
+        logger.warn("Schema validation failed due to schema mode", {
+          schemaMode,
+          reason: schemaModeResult.failureReason,
+          changes: comparison.changes.length,
+          isBreaking: comparison.isBreaking,
+        });
+
+        await payload.update({
+          collection: COLLECTION_NAMES.IMPORT_JOBS,
+          id: jobIdTyped,
+          data: {
+            schema: detectedSchema,
+            schemaValidation: {
+              isCompatible: false,
+              breakingChanges,
+              newFields,
+              transformSuggestions,
+              requiresApproval: false,
+              approvalReason: schemaModeResult.failureReason,
+            },
+            stage: PROCESSING_STAGE.FAILED,
+            errors: [{ row: 0, error: schemaModeResult.failureReason ?? "Schema validation failed" }],
+          },
+        });
+
+        await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
+
+        return {
+          output: {
+            requiresApproval: false,
+            hasBreakingChanges: comparison.isBreaking,
+            newFields: newFields.length,
+            failed: true,
+            failureReason: schemaModeResult.failureReason,
+          },
+        };
+      }
+
+      // Determine approval requirement
+      // If schema mode specifies approval is required, use that; otherwise fall back to dataset config
+      const requiresApproval = schemaModeResult.requiresApproval
+        ? true
+        : schemaMode
+          ? false // Schema mode handled it, no approval needed
+          : checkRequiresApproval(comparison, dataset) || hasHighConfidenceTransforms;
 
       // Determine next stage based on approval requirement and whether schema changed
-      const hasChanges = comparison.changes.length > 0;
       let nextStage: (typeof PROCESSING_STAGE)[keyof typeof PROCESSING_STAGE];
       if (requiresApproval) {
         nextStage = PROCESSING_STAGE.AWAIT_APPROVAL;
@@ -271,6 +408,17 @@ export const validateSchemaJob = {
       } else {
         nextStage = PROCESSING_STAGE.GEOCODE_BATCH;
       }
+
+      logger.info("Schema validation determined next stage", {
+        schemaMode,
+        hasChanges,
+        requiresApproval,
+        nextStage,
+      });
+
+      // Determine approval reason
+      const approvalReason =
+        schemaModeResult.approvalReason ?? getApprovalReason(hasHighConfidenceTransforms, comparison.isBreaking);
 
       // Update job with validation results
       await payload.update({
@@ -284,7 +432,7 @@ export const validateSchemaJob = {
             newFields,
             transformSuggestions, // Store transform suggestions
             requiresApproval,
-            approvalReason: getApprovalReason(hasHighConfidenceTransforms, comparison.isBreaking),
+            approvalReason,
           },
           stage: nextStage,
         },
