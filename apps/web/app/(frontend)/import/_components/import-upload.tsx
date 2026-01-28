@@ -78,6 +78,7 @@ const FileInput = ({
     <input
       ref={fileInputRef}
       id="file"
+      name="file"
       type="file"
       accept=".csv,.xlsx,.xls"
       onChange={onFileSelect}
@@ -113,11 +114,13 @@ const CatalogInput = ({
       </label>
       <input
         id="catalogId"
+        name="catalogId"
         type="text"
         placeholder="Enter catalog ID"
         value={catalogId}
         onChange={handleChange}
         disabled={disabled}
+        autoComplete="off"
         className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
       />
     </div>

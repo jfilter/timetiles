@@ -17,6 +17,27 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { create } from "zustand";
 
+/**
+ * Hook to check if user prefers reduced motion
+ */
+const usePrefersReducedMotion = () => {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mediaQuery.matches);
+
+    const handler = (event: MediaQueryListEvent) => {
+      setPrefersReducedMotion(event.matches);
+    };
+
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, []);
+
+  return prefersReducedMotion;
+};
+
 interface AnimatedNavigationStore {
   pendingNavigation: string | null;
   setPendingNavigation: (href: string | null) => void;
@@ -51,6 +72,7 @@ const FADE_IN_DURATION = 250;
 export const AnimatedView = ({ children }: AnimatedViewProps) => {
   const router = useRouter();
   const pathname = usePathname();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const pendingNavigation = useAnimatedNavigationStore((s) => s.pendingNavigation);
   const setPendingNavigation = useAnimatedNavigationStore((s) => s.setPendingNavigation);
@@ -64,6 +86,14 @@ export const AnimatedView = ({ children }: AnimatedViewProps) => {
   // Handle fade out when navigation is requested
   useEffect(() => {
     if (pendingNavigation) {
+      // Skip animation if user prefers reduced motion
+      if (prefersReducedMotion) {
+        setIsNavigating(true);
+        router.push(pendingNavigation);
+        setPendingNavigation(null);
+        return;
+      }
+
       // Start fade out
       setTransition(`opacity ${FADE_OUT_DURATION}ms ease-in`);
       setOpacity(0);
@@ -77,7 +107,7 @@ export const AnimatedView = ({ children }: AnimatedViewProps) => {
 
       return () => clearTimeout(navTimer);
     }
-  }, [pendingNavigation, router, setPendingNavigation, setIsNavigating]);
+  }, [pendingNavigation, router, setPendingNavigation, setIsNavigating, prefersReducedMotion]);
 
   // Detect when pathname changes (navigation completed)
   useEffect(() => {
@@ -85,6 +115,12 @@ export const AnimatedView = ({ children }: AnimatedViewProps) => {
       setLastPathname(pathname);
 
       if (isNavigating) {
+        // Skip animation if user prefers reduced motion
+        if (prefersReducedMotion) {
+          setIsNavigating(false);
+          return;
+        }
+
         // We just navigated - start invisible, then fade in
         setOpacity(0);
         setTransition("none"); // No transition for initial invisible state
@@ -99,7 +135,7 @@ export const AnimatedView = ({ children }: AnimatedViewProps) => {
         });
       }
     }
-  }, [pathname, lastPathname, isNavigating, setIsNavigating]);
+  }, [pathname, lastPathname, isNavigating, setIsNavigating, prefersReducedMotion]);
 
   const style = useMemo(() => ({ opacity, transition }), [opacity, transition]);
 

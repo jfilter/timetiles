@@ -20,6 +20,7 @@ import {
 } from "@timetiles/ui/components/dropdown-menu";
 import { cn } from "@timetiles/ui/lib/utils";
 import { ChevronDown, X } from "lucide-react";
+import { memo, useCallback } from "react";
 
 interface EnumValue {
   value: string;
@@ -40,6 +41,38 @@ interface EnumFieldDropdownProps {
   onSelectionChange: (values: string[]) => void;
 }
 
+interface EnumCheckboxItemProps {
+  value: string;
+  count: number;
+  percent: number;
+  checked: boolean;
+  onToggle: (value: string) => void;
+  onPreventSelect: (e: Event) => void;
+}
+
+/**
+ * Memoized checkbox item for enum value selection.
+ */
+const EnumCheckboxItem = memo(
+  ({ value, count, percent, checked, onToggle, onPreventSelect }: EnumCheckboxItemProps) => {
+    const handleCheckedChange = useCallback(() => {
+      onToggle(value);
+    }, [onToggle, value]);
+
+    return (
+      <DropdownMenuCheckboxItem checked={checked} onCheckedChange={handleCheckedChange} onSelect={onPreventSelect}>
+        <div className="flex w-full items-center justify-between gap-2">
+          <span className="truncate">{value}</span>
+          <span className="text-muted-foreground shrink-0 font-mono text-xs">
+            {count.toLocaleString()} ({Math.round(percent)}%)
+          </span>
+        </div>
+      </DropdownMenuCheckboxItem>
+    );
+  }
+);
+EnumCheckboxItem.displayName = "EnumCheckboxItem";
+
 /**
  * Multi-select dropdown for a single enum field.
  *
@@ -47,7 +80,7 @@ interface EnumFieldDropdownProps {
  * Shows value counts and allows clearing all selections.
  */
 export const EnumFieldDropdown = ({
-  fieldPath,
+  fieldPath: _fieldPath,
   label,
   values,
   selectedValues,
@@ -55,19 +88,33 @@ export const EnumFieldDropdown = ({
 }: EnumFieldDropdownProps) => {
   const hasSelection = selectedValues.length > 0;
 
-  const handleToggle = (value: string) => {
-    if (selectedValues.includes(value)) {
-      onSelectionChange(selectedValues.filter((v) => v !== value));
-    } else {
-      onSelectionChange([...selectedValues, value]);
-    }
-  };
+  const handleToggle = useCallback(
+    (value: string) => {
+      if (selectedValues.includes(value)) {
+        onSelectionChange(selectedValues.filter((v) => v !== value));
+      } else {
+        onSelectionChange([...selectedValues, value]);
+      }
+    },
+    [selectedValues, onSelectionChange]
+  );
 
-  const handleClear = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleClear = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onSelectionChange([]);
+    },
+    [onSelectionChange]
+  );
+
+  const handleClearAll = useCallback(() => {
     onSelectionChange([]);
-  };
+  }, [onSelectionChange]);
+
+  const handlePreventSelect = useCallback((e: Event) => {
+    e.preventDefault();
+  }, []);
 
   // Limit display to top 15 values by count
   const displayValues = values.slice(0, 15);
@@ -90,21 +137,16 @@ export const EnumFieldDropdown = ({
             <span className="truncate">{hasSelection ? `${selectedValues.length} selected` : "Any"}</span>
             <div className="flex items-center gap-1">
               {hasSelection && (
-                <span
-                  role="button"
-                  tabIndex={0}
+                <button
+                  type="button"
                   onClick={handleClear}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      handleClear(e as unknown as React.MouseEvent);
-                    }
-                  }}
                   className="hover:bg-muted rounded p-0.5"
+                  aria-label={`Clear ${label} filter`}
                 >
-                  <X className="h-3 w-3" />
-                </span>
+                  <X className="h-3 w-3" aria-hidden="true" />
+                </button>
               )}
-              <ChevronDown className="h-4 w-4 opacity-50" />
+              <ChevronDown className="h-4 w-4 opacity-50" aria-hidden="true" />
             </div>
           </button>
         </DropdownMenuTrigger>
@@ -117,7 +159,7 @@ export const EnumFieldDropdown = ({
             {hasSelection && (
               <button
                 type="button"
-                onClick={() => onSelectionChange([])}
+                onClick={handleClearAll}
                 className="text-cartographic-terracotta text-xs hover:underline"
               >
                 Clear
@@ -126,19 +168,15 @@ export const EnumFieldDropdown = ({
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           {displayValues.map(({ value, count, percent }) => (
-            <DropdownMenuCheckboxItem
+            <EnumCheckboxItem
               key={value}
+              value={value}
+              count={count}
+              percent={percent}
               checked={selectedValues.includes(value)}
-              onCheckedChange={() => handleToggle(value)}
-              onSelect={(e) => e.preventDefault()}
-            >
-              <div className="flex w-full items-center justify-between gap-2">
-                <span className="truncate">{value}</span>
-                <span className="text-muted-foreground shrink-0 font-mono text-xs">
-                  {count.toLocaleString()} ({Math.round(percent)}%)
-                </span>
-              </div>
-            </DropdownMenuCheckboxItem>
+              onToggle={handleToggle}
+              onPreventSelect={handlePreventSelect}
+            />
           ))}
           {values.length > displayValues.length && (
             <>

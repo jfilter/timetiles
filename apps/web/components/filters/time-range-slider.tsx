@@ -315,7 +315,7 @@ export const TimeRangeSlider = ({
 
         {/* Selected range highlight */}
         <div
-          className="bg-cartographic-terracotta/60 dark:bg-cartographic-terracotta/50 absolute top-1/2 h-1 -translate-y-1/2 rounded-full transition-all duration-75"
+          className="bg-cartographic-terracotta/60 dark:bg-cartographic-terracotta/50 absolute top-1/2 h-1 -translate-y-1/2 rounded-full transition-[left,right] duration-75"
           style={rangeStyle}
         />
 
@@ -390,15 +390,19 @@ export const TimeRangeSlider = ({
                 onChange={handleStartDateInputChange}
                 min={formatISODate(minTimestamp)}
                 max={endDate ?? formatISODate(maxTimestamp)}
+                aria-label="Start date"
                 className="border-cartographic-navy/20 focus:border-cartographic-terracotta focus:ring-cartographic-terracotta/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:outline-none focus:ring-1"
               />
-              <span className="text-cartographic-navy/40 dark:text-cartographic-charcoal/40 text-xs">→</span>
+              <span className="text-cartographic-navy/40 dark:text-cartographic-charcoal/40 text-xs" aria-hidden="true">
+                →
+              </span>
               <input
                 type="date"
                 value={endDate ?? formatISODate(maxTimestamp)}
                 onChange={handleEndDateInputChange}
                 min={startDate ?? formatISODate(minTimestamp)}
                 max={formatISODate(maxTimestamp)}
+                aria-label="End date"
                 className="border-cartographic-navy/20 focus:border-cartographic-terracotta focus:ring-cartographic-terracotta/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:outline-none focus:ring-1"
               />
             </div>

@@ -273,7 +273,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
         {/* Grid layout for catalogs - flows left-to-right so top items stay visible when collapsed */}
         <div
           className={cn(
-            "grid grid-cols-2 gap-2 transition-[max-height] duration-200",
+            "grid grid-cols-2 gap-2 transition-[max-height] duration-200 motion-reduce:transition-none",
             useCatalogCollapse && !catalogsExpanded && "max-h-[180px] overflow-hidden"
           )}
         >
