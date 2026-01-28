@@ -87,3 +87,4 @@ apps/docs/content/reference/api/**/_meta.js
 # Keep only the manual index file
 !apps/docs/content/reference/api/index.mdx
 .playwright-mcp
+.agents
