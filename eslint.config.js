@@ -1,9 +1,10 @@
-import baseConfig from "@timetiles/eslint-config/base";
+import baseConfig, { defaultIgnores } from "@timetiles/eslint-config/base";
 
 /**
  * ESLint configuration for root-level files
  */
 export default [
+  defaultIgnores,
   ...baseConfig,
   {
     // Override the base tsconfigRootDir for root files

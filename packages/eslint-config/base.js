@@ -47,6 +47,8 @@ export const defaultIgnores = globalIgnores([
   "**/.turbo/**",
   "**/payload-types.ts",
   "**/.eslintcache",
+  "**/*.d.ts", // TypeScript declaration files (auto-generated, should not be linted)
+  "**/*.d.ts.map", // Source maps for declaration files
 ]);
 
 /**
