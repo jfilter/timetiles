@@ -23,6 +23,34 @@ import config from "@/payload.config";
 
 const handleError = createErrorHandler("calculating cluster stats", logger);
 
+const buildCatalogFilterSql = (catalog: unknown, accessibleCatalogIds: unknown) => {
+  if (catalog != null) {
+    return sql`AND d.catalog_id = ${parseInt(catalog as string)}`;
+  }
+  if (accessibleCatalogIds != null && Array.isArray(accessibleCatalogIds) && accessibleCatalogIds.length > 0) {
+    return sql`AND d.catalog_id IN (${sql.join(
+      accessibleCatalogIds.map((id) => sql`${id}`),
+      sql`, `
+    )})`;
+  }
+  return sql``;
+};
+
+const buildFieldFiltersSql = (fieldFilters: unknown) => {
+  if (fieldFilters != null && typeof fieldFilters === "object" && Object.keys(fieldFilters).length > 0) {
+    const fieldConditions = Object.entries(fieldFilters as Record<string, string[]>).map(([fieldKey, values]) => {
+      if (!Array.isArray(values) || values.length === 0) return sql`TRUE`;
+      return sql`e.data->>${fieldKey} IN (${sql.join(
+        values.map((v) => sql`${v}`),
+        sql`, `
+      )})`;
+    });
+    const joinedConditions = sql.join(fieldConditions, sql` AND `);
+    return sql`AND (${joinedConditions})`;
+  }
+  return sql``;
+};
+
 export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown) => {
   try {
     const payload = await getPayload({ config });
@@ -58,33 +86,8 @@ const calculateGlobalStats = async (
 ) => {
   const { catalog, datasets, startDate, endDate, accessibleCatalogIds, fieldFilters } = filters;
 
-  // Build catalog filter SQL
-  let catalogFilter;
-  if (catalog != null) {
-    catalogFilter = sql`AND d.catalog_id = ${parseInt(catalog as string)}`;
-  } else if (accessibleCatalogIds != null && Array.isArray(accessibleCatalogIds) && accessibleCatalogIds.length > 0) {
-    catalogFilter = sql`AND d.catalog_id IN (${sql.join(
-      accessibleCatalogIds.map((id) => sql`${id}`),
-      sql`, `
-    )})`;
-  } else {
-    catalogFilter = sql``;
-  }
-
-  // Build field filters SQL - for each field, event data must match one of the values
-  let fieldFiltersSql;
-  if (fieldFilters != null && typeof fieldFilters === "object" && Object.keys(fieldFilters).length > 0) {
-    const fieldConditions = Object.entries(fieldFilters as Record<string, string[]>).map(([fieldKey, values]) => {
-      if (!Array.isArray(values) || values.length === 0) return sql`TRUE`;
-      return sql`e.data->>${fieldKey} IN (${sql.join(
-        values.map((v) => sql`${v}`),
-        sql`, `
-      )})`;
-    });
-    fieldFiltersSql = sql`AND (${sql.join(fieldConditions, sql` AND `)})`;
-  } else {
-    fieldFiltersSql = sql``;
-  }
+  const catalogFilter = buildCatalogFilterSql(catalog, accessibleCatalogIds);
+  const fieldFiltersSql = buildFieldFiltersSql(fieldFilters);
 
   // Query to get event counts grouped by location (simulating clustering at high zoom)
   const result = (await payload.db.drizzle.execute(sql`
