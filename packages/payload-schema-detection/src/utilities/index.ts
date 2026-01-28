@@ -8,29 +8,21 @@
  * @category Utilities
  */
 
+export { detectEnumFields, detectIdFields, detectPatterns, looksLikeCoordinate, looksLikeId } from "./geo";
 export {
   detectLanguage,
   detectLanguageFromText,
   extractTextForLanguageDetection,
   isSupportedLanguage,
-  SUPPORTED_LANGUAGES,
   LANGUAGE_NAMES,
+  SUPPORTED_LANGUAGES,
 } from "./language";
-
 export {
+  COMBINED_COORDINATE_PATTERNS,
+  COORDINATE_BOUNDS,
   detectFieldMappings,
   detectGeoFields,
   FIELD_PATTERNS,
   LATITUDE_PATTERNS,
   LONGITUDE_PATTERNS,
-  COMBINED_COORDINATE_PATTERNS,
-  COORDINATE_BOUNDS,
 } from "./patterns";
-
-export {
-  detectPatterns,
-  detectIdFields,
-  detectEnumFields,
-  looksLikeId,
-  looksLikeCoordinate,
-} from "./geo";

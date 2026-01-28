@@ -8,7 +8,7 @@
  * @category Types
  */
 
-import type { Config, CollectionConfig } from "payload";
+import type { Config } from "payload";
 
 // Re-export FieldStatistics type that detectors need
 export interface FieldStatistics {

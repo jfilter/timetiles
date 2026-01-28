@@ -5,13 +5,14 @@
  */
 
 import { describe, expect, it } from "vitest";
+
 import {
   detectLanguage,
   detectLanguageFromText,
   extractTextForLanguageDetection,
   isSupportedLanguage,
-  SUPPORTED_LANGUAGES,
   LANGUAGE_NAMES,
+  SUPPORTED_LANGUAGES,
 } from "./language";
 
 describe("extractTextForLanguageDetection", () => {
@@ -73,8 +74,7 @@ describe("detectLanguageFromText", () => {
   });
 
   it("detects German text", () => {
-    const text =
-      "Dies ist ein Test des Spracherkennungssystems. Es sollte deutschen Text korrekt erkennen.";
+    const text = "Dies ist ein Test des Spracherkennungssystems. Es sollte deutschen Text korrekt erkennen.";
     const result = detectLanguageFromText(text);
 
     expect(result.code).toBe("deu");

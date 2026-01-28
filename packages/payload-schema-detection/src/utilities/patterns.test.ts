@@ -5,16 +5,17 @@
  */
 
 import { describe, expect, it } from "vitest";
+
 import type { FieldStatistics } from "../types";
 import {
+  ADDRESS_PATTERNS,
+  COMBINED_COORDINATE_PATTERNS,
+  COORDINATE_BOUNDS,
   detectFieldMappings,
   detectGeoFields,
   FIELD_PATTERNS,
   LATITUDE_PATTERNS,
   LONGITUDE_PATTERNS,
-  COMBINED_COORDINATE_PATTERNS,
-  ADDRESS_PATTERNS,
-  COORDINATE_BOUNDS,
 } from "./patterns";
 
 const createFieldStats = (overrides: Partial<FieldStatistics> = {}): FieldStatistics => ({

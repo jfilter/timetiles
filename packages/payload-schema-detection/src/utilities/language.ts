@@ -9,6 +9,7 @@
  */
 
 import { francAll } from "franc";
+
 import type { LanguageResult } from "../types";
 
 /**
@@ -88,10 +89,7 @@ const isUsefulForLanguageDetection = (value: string): boolean => {
  * @param headers - Column headers
  * @returns Combined text content for language detection
  */
-export const extractTextForLanguageDetection = (
-  sampleData: Record<string, unknown>[],
-  headers: string[]
-): string => {
+export const extractTextForLanguageDetection = (sampleData: Record<string, unknown>[], headers: string[]): string => {
   const textParts: string[] = [];
 
   // Include headers as they often contain language-specific terms
@@ -170,10 +168,7 @@ export const detectLanguageFromText = (text: string): LanguageResult => {
  * @param headers - Column headers from uploaded file
  * @returns Language detection result
  */
-export const detectLanguage = (
-  sampleData: Record<string, unknown>[],
-  headers: string[]
-): LanguageResult => {
+export const detectLanguage = (sampleData: Record<string, unknown>[], headers: string[]): LanguageResult => {
   const text = extractTextForLanguageDetection(sampleData, headers);
   return detectLanguageFromText(text);
 };

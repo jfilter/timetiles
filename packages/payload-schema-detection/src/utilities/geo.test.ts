@@ -5,8 +5,9 @@
  */
 
 import { describe, expect, it } from "vitest";
+
 import type { FieldStatistics } from "../types";
-import { detectIdFields, detectEnumFields, detectPatterns, looksLikeId, looksLikeCoordinate } from "./geo";
+import { detectEnumFields, detectIdFields, detectPatterns, looksLikeCoordinate, looksLikeId } from "./geo";
 
 const createFieldStats = (overrides: Partial<FieldStatistics> = {}): FieldStatistics => ({
   path: "test",

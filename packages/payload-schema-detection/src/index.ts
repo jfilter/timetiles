@@ -24,18 +24,18 @@
 
 // Core types
 export type {
-  SchemaDetector,
   DetectionContext,
   DetectionResult,
-  LanguageResult,
-  FieldMapping,
-  GeoFieldMapping,
-  FieldMappingsResult,
-  PatternResult,
   DetectorConfig,
+  FieldMapping,
+  FieldMappingsResult,
   FieldStatistics,
-  SchemaDetectionPluginOptions,
+  GeoFieldMapping,
+  LanguageResult,
+  PatternResult,
   SchemaDetectionPlugin,
+  SchemaDetectionPluginOptions,
+  SchemaDetector,
 } from "./types";
 
 // Detection service
@@ -49,15 +49,15 @@ export { schemaDetectionPlugin } from "./plugin";
 
 // Pattern constants for external use
 export {
-  FIELD_PATTERNS,
-  LATITUDE_PATTERNS,
-  LONGITUDE_PATTERNS,
-  COMBINED_COORDINATE_PATTERNS,
   ADDRESS_PATTERNS,
+  COMBINED_COORDINATE_PATTERNS,
   COORDINATE_BOUNDS,
   detectFieldMappings,
   detectGeoFields,
+  FIELD_PATTERNS,
+  LATITUDE_PATTERNS,
+  LONGITUDE_PATTERNS,
 } from "./utilities/patterns";
 
 // Language detection utility
-export { detectLanguage, SUPPORTED_LANGUAGES, LANGUAGE_NAMES } from "./utilities/language";
+export { detectLanguage, LANGUAGE_NAMES, SUPPORTED_LANGUAGES } from "./utilities/language";

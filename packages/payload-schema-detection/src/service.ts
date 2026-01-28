@@ -9,7 +9,7 @@
  * @category Services
  */
 
-import type { SchemaDetector, DetectionContext, DetectionResult, DetectorConfig } from "./types";
+import type { DetectionContext, DetectionResult, SchemaDetector } from "./types";
 
 /**
  * Service for managing and executing schema detectors.
@@ -27,7 +27,7 @@ import type { SchemaDetector, DetectionContext, DetectionResult, DetectorConfig 
  * ```
  */
 export class SchemaDetectionService {
-  private detectors: Map<string, SchemaDetector> = new Map();
+  private readonly detectors: Map<string, SchemaDetector> = new Map();
   private defaultDetector: SchemaDetector | null = null;
 
   /**

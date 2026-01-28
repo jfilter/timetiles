@@ -5,8 +5,9 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { defaultDetector } from "./default-detector";
+
 import type { DetectionContext, FieldStatistics } from "../types";
+import { defaultDetector } from "./default-detector";
 
 const createFieldStats = (overrides: Partial<FieldStatistics> = {}): FieldStatistics => ({
   path: "test",

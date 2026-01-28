@@ -12,10 +12,10 @@
  * @category Detectors
  */
 
-import type { SchemaDetector, DetectionContext, DetectionResult } from "../types";
+import type { DetectionContext, DetectionResult, SchemaDetector } from "../types";
+import { detectPatterns } from "../utilities/geo";
 import { detectLanguage } from "../utilities/language";
 import { detectFieldMappings } from "../utilities/patterns";
-import { detectPatterns } from "../utilities/geo";
 
 /**
  * Default schema detector that handles all input types.
@@ -41,7 +41,8 @@ import { detectPatterns } from "../utilities/geo";
 export const defaultDetector: SchemaDetector = {
   name: "default",
   label: "Default Schema Detector",
-  description: "Multi-language detection with standard field patterns for title, description, timestamp, and location fields",
+  description:
+    "Multi-language detection with standard field patterns for title, description, timestamp, and location fields",
 
   /**
    * Default detector always handles input.

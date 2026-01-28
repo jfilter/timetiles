@@ -9,19 +9,17 @@
  * @category Plugins
  */
 
-import type { Config, CollectionConfig } from "payload";
-import type { SchemaDetectionPluginOptions, SchemaDetector } from "./types";
-import { SchemaDetectionService } from "./service";
+import type { CollectionConfig, Config } from "payload";
+
+import { createDetectorSelectionField, createSchemaDetectorsCollection } from "./collection";
 import { defaultDetector } from "./detectors/default-detector";
-import { createSchemaDetectorsCollection, createDetectorSelectionField } from "./collection";
+import { SchemaDetectionService } from "./service";
+import type { SchemaDetectionPluginOptions, SchemaDetector } from "./types";
 
 /**
  * Chain onInit handlers without losing existing handler.
  */
-const chainOnInit = (
-  existingOnInit: Config["onInit"],
-  newOnInit: NonNullable<Config["onInit"]>
-): Config["onInit"] => {
+const chainOnInit = (existingOnInit: Config["onInit"], newOnInit: NonNullable<Config["onInit"]>): Config["onInit"] => {
   return async (payload) => {
     if (existingOnInit) {
       await existingOnInit(payload);
@@ -71,10 +69,7 @@ const seedDefaultDetectors = async (
 /**
  * Extend the Datasets collection with a detector selection field.
  */
-const extendDatasetsCollection = (
-  collection: CollectionConfig,
-  collectionSlug: string
-): CollectionConfig => {
+const extendDatasetsCollection = (collection: CollectionConfig, collectionSlug: string): CollectionConfig => {
   return {
     ...collection,
     fields: [...collection.fields, createDetectorSelectionField(collectionSlug)],
@@ -126,13 +121,10 @@ export const schemaDetectionPlugin = (options: SchemaDetectionPluginOptions = {}
     const service = new SchemaDetectionService(detectors);
 
     // Start building the modified config
-    let config: Config = { ...incomingConfig };
+    const config: Config = { ...incomingConfig };
 
     // Add the schema-detectors collection
-    config.collections = [
-      ...(config.collections ?? []),
-      createSchemaDetectorsCollection(collectionSlug),
-    ];
+    config.collections = [...(config.collections ?? []), createSchemaDetectorsCollection(collectionSlug)];
 
     // Optionally extend the Datasets collection
     if (extendDatasets) {

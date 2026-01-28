@@ -9,7 +9,7 @@
  * @category Utilities
  */
 
-import type { FieldStatistics, FieldMapping, FieldMappingsResult, GeoFieldMapping } from "../types";
+import type { FieldMapping, FieldMappingsResult, FieldStatistics, GeoFieldMapping } from "../types";
 
 /**
  * Language-specific field name patterns.
@@ -404,12 +404,9 @@ const parseCoordinate = (value: string): number | null => {
 /**
  * Check if a field contains valid coordinate values.
  */
-const isValidCoordinateField = (
-  stats: FieldStatistics,
-  bounds: { min: number; max: number }
-): boolean => {
-  const hasNumericType =
-    (stats.typeDistribution["number"] ?? 0) > 0 || (stats.typeDistribution["integer"] ?? 0) > 0;
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Coordinate validation requires checking multiple conditions
+const isValidCoordinateField = (stats: FieldStatistics, bounds: { min: number; max: number }): boolean => {
+  const hasNumericType = (stats.typeDistribution["number"] ?? 0) > 0 || (stats.typeDistribution["integer"] ?? 0) > 0;
 
   if (hasNumericType && stats.numericStats) {
     return stats.numericStats.min >= bounds.min && stats.numericStats.max <= bounds.max;
@@ -468,9 +465,7 @@ const findCoordinateField = (
 /**
  * Check if samples contain comma-separated coordinates.
  */
-const checkCommaFormat = (
-  samples: unknown[]
-): { format: string; confidence: number } | null => {
+const checkCommaFormat = (samples: unknown[]): { format: string; confidence: number } | null => {
   let matches = 0;
   let latLngOrder = 0;
   let lngLatOrder = 0;
@@ -582,7 +577,7 @@ export const detectGeoFields = (fieldStats: Record<string, FieldStatistics>): Ge
   }
 
   // If only one coordinate found, still return it with lower confidence
-  if (latitude || longitude) {
+  if (latitude ?? longitude) {
     const field = latitude ?? longitude;
     return {
       type: "separate",
