@@ -10,9 +10,11 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as ImportConstants from "@/lib/constants/import-constants";
+
 // Mock BATCH_SIZES to use small values for testing
 vi.mock("@/lib/constants/import-constants", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@/lib/constants/import-constants")>();
+  const original = await importOriginal<typeof ImportConstants>();
   return {
     ...original,
     BATCH_SIZES: {
@@ -33,11 +35,39 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
+const TEST_FILENAME = "edge-case-test.csv";
+
+/** Run jobs until schema detection is complete */
+const runJobsUntilSchemaComplete = async (
+  payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"],
+  importFileId: number,
+  maxIterations: number
+): Promise<void> => {
+  for (let i = 0; i < maxIterations; i++) {
+    await payload.jobs.run({ allQueues: true, limit: 100 });
+
+    const importJobs = await payload.find({
+      collection: "import-jobs",
+      where: { importFile: { equals: importFileId } },
+      overrideAccess: true,
+    });
+
+    if (importJobs.docs.length > 0) {
+      const stage = importJobs.docs[0].stage;
+      if (stage === "validate-schema" || stage === "await-approval" || stage === "geocode-batch") {
+        break;
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+};
+
 describe.sequential("Schema Detection - Edge Cases", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   let testCatalogId: number;
-  let testDatasetId: number;
+  let _testDatasetId: number;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment();
@@ -61,7 +91,7 @@ describe.sequential("Schema Detection - Edge Cases", () => {
     testCatalogId = catalog.id;
 
     const { dataset } = await withDataset(testEnv, testCatalogId, {
-      name: "edge-case-test.csv",
+      name: TEST_FILENAME,
       language: "eng",
       schemaConfig: {
         locked: false,
@@ -69,7 +99,7 @@ describe.sequential("Schema Detection - Edge Cases", () => {
         autoApproveNonBreaking: true,
       },
     });
-    testDatasetId = dataset.id;
+    _testDatasetId = dataset.id;
   });
 
   it("correctly detects enums when file has exactly BATCH_SIZE rows (0-row final batch)", async () => {
@@ -84,31 +114,12 @@ Event 2,2024-01-02,pending
 Event 3,2024-01-03,active`;
 
     const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
-      filename: "edge-case-test.csv",
+      filename: TEST_FILENAME,
       mimeType: "text/csv",
-      additionalData: { originalName: "edge-case-test.csv" },
+      additionalData: { originalName: TEST_FILENAME },
     });
 
-    // Run jobs until schema detection is complete
-    for (let i = 0; i < 10; i++) {
-      await payload.jobs.run({ allQueues: true, limit: 100 });
-
-      const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
-        overrideAccess: true,
-      });
-
-      if (importJobs.docs.length > 0) {
-        const stage = importJobs.docs[0].stage;
-        // Stop when we've passed schema detection
-        if (stage === "validate-schema" || stage === "await-approval" || stage === "geocode-batch") {
-          break;
-        }
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
+    await runJobsUntilSchemaComplete(payload, importFile.id, 10);
 
     // Get the import job and check the schemaBuilderState
     const importJobs = await payload.find({
@@ -150,30 +161,12 @@ Event 5,2024-01-05,A
 Event 6,2024-01-06,B`;
 
     const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
-      filename: "edge-case-test.csv",
+      filename: TEST_FILENAME,
       mimeType: "text/csv",
-      additionalData: { originalName: "edge-case-test.csv" },
+      additionalData: { originalName: TEST_FILENAME },
     });
 
-    // Run jobs until schema detection is complete
-    for (let i = 0; i < 15; i++) {
-      await payload.jobs.run({ allQueues: true, limit: 100 });
-
-      const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
-        overrideAccess: true,
-      });
-
-      if (importJobs.docs.length > 0) {
-        const stage = importJobs.docs[0].stage;
-        if (stage === "validate-schema" || stage === "await-approval" || stage === "geocode-batch") {
-          break;
-        }
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
+    await runJobsUntilSchemaComplete(payload, importFile.id, 15);
 
     // Get the import job
     const importJobs = await payload.find({
@@ -195,7 +188,9 @@ Event 6,2024-01-06,B`;
 
     // The 'category' field should be detected as an enum candidate
     // (2 unique values: 'A', 'B' in 6 occurrences)
-    const categoryStats = fieldStats?.category as { isEnumCandidate?: boolean; uniqueValues?: number; occurrences?: number } | undefined;
+    const categoryStats = fieldStats?.category as
+      | { isEnumCandidate?: boolean; uniqueValues?: number; occurrences?: number }
+      | undefined;
     expect(categoryStats).toBeDefined();
     expect(categoryStats?.occurrences).toBe(6);
     expect(categoryStats?.uniqueValues).toBe(2);

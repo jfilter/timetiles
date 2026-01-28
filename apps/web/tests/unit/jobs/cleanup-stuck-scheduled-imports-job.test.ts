@@ -2,14 +2,43 @@
  * Unit tests for cleanup stuck scheduled imports job.
  * @module
  */
-//Import centralized logger mock FIRST
-import "@/tests/mocks/services/logger";
-
 import type { BasePayload } from "payload";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// Use vi.hoisted to ensure mock functions are available when vi.mock runs
+const { mockLoggerInfo, mockLoggerWarn, mockLoggerError, mockLoggerDebug, mockLogError } = vi.hoisted(() => ({
+  mockLoggerInfo: vi.fn(),
+  mockLoggerWarn: vi.fn(),
+  mockLoggerError: vi.fn(),
+  mockLoggerDebug: vi.fn(),
+  mockLogError: vi.fn(),
+}));
+
+vi.mock("@/lib/logger", () => ({
+  logger: {
+    info: mockLoggerInfo,
+    warn: mockLoggerWarn,
+    error: mockLoggerError,
+    debug: mockLoggerDebug,
+    trace: vi.fn(),
+    fatal: vi.fn(),
+    child: vi.fn(() => ({
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    })),
+  },
+  logError: mockLogError,
+  createJobLogger: vi.fn(() => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  })),
+}));
+
 import { cleanupStuckScheduledImportsJob } from "@/lib/jobs/handlers/cleanup-stuck-scheduled-imports-job";
-import { mockLogger } from "@/tests/mocks/services/logger";
 
 type MockPayload = {
   find: ReturnType<typeof vi.fn>;
@@ -293,12 +322,9 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
       });
 
       // Should have initial log and completion log
-      expect(mockLogger.logger.info).toHaveBeenCalledTimes(3);
-      expect(mockLogger.logger.info).toHaveBeenCalledWith(
-        "Starting cleanup stuck scheduled imports job",
-        expect.any(Object)
-      );
-      expect(mockLogger.logger.info).toHaveBeenCalledWith(
+      expect(mockLoggerInfo).toHaveBeenCalledTimes(3);
+      expect(mockLoggerInfo).toHaveBeenCalledWith("Starting cleanup stuck scheduled imports job", expect.any(Object));
+      expect(mockLoggerInfo).toHaveBeenCalledWith(
         "Found running scheduled imports",
         expect.objectContaining({
           count: 0,
@@ -317,7 +343,7 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
         })
       ).rejects.toThrow("Database connection failed");
 
-      expect(mockLogger.logError).toHaveBeenCalledWith(
+      expect(mockLogError).toHaveBeenCalledWith(
         error,
         "Cleanup stuck scheduled imports job failed",
         expect.any(Object)

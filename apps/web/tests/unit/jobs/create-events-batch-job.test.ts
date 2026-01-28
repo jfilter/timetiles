@@ -872,9 +872,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         data: expect.objectContaining({
           data: expect.objectContaining({ age: "not-a-number" }), // Original value preserved
           validationStatus: "transformed", // Marks as transformed (attempted)
-          transformations: expect.arrayContaining([
-            expect.objectContaining({ type: "type-cast", from: "age" }),
-          ]),
+          transformations: expect.arrayContaining([expect.objectContaining({ type: "type-cast", from: "age" })]),
         }),
       });
     });
