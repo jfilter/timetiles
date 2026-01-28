@@ -11,9 +11,15 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import dynamic from "next/dynamic";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { type ReactNode, useState } from "react";
+
+// Lazy load DevTools - only in development to reduce production bundle
+const ReactQueryDevtools = dynamic(
+  () => import("@tanstack/react-query-devtools").then((mod) => mod.ReactQueryDevtools),
+  { ssr: false }
+);
 
 import { ThemeProvider } from "./theme-provider";
 
@@ -48,7 +54,7 @@ export const Providers = ({ children }: Readonly<{ children: ReactNode }>) => {
       <NuqsAdapter>
         <ThemeProvider>{children}</ThemeProvider>
       </NuqsAdapter>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {process.env.NODE_ENV === "development" && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   );
 };

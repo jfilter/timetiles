@@ -9,8 +9,18 @@
  */
 
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 
-import { FlowEditorClient } from "./_components/flow-editor-client";
+// Dynamic import for heavy @xyflow/react library (~300KB)
+// This reduces initial bundle size for pages that don't use the flow editor
+const FlowEditorClient = dynamic(() => import("./_components/flow-editor-client").then((mod) => mod.FlowEditorClient), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center">
+      <div className="text-muted-foreground">Loading flow editor...</div>
+    </div>
+  ),
+});
 
 export const metadata: Metadata = {
   title: "Visual Field Mapping | TimeTiles",

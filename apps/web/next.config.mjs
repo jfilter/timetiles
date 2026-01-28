@@ -44,6 +44,9 @@ const nextConfig = {
   ],
   experimental: {
     reactCompiler: false,
+    // Optimize barrel file imports for faster builds and smaller bundles
+    // See: https://vercel.com/blog/how-we-optimized-package-imports-in-next-js
+    optimizePackageImports: ["lucide-react", "@xyflow/react", "@timetiles/ui", "@tanstack/react-query", "date-fns"],
   },
   turbopack: {
     rules: {

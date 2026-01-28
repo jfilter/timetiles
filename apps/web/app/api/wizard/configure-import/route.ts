@@ -237,26 +237,38 @@ const processSheetMappings = async (
   deduplicationStrategy: ConfigureImportRequest["deduplicationStrategy"],
   geocodingEnabled: boolean
 ): Promise<{ datasetIdMap: Map<number, number>; datasetMappingEntries: DatasetMappingEntry[] }> => {
+  // Process all sheet mappings in parallel for better performance
+  const results = await Promise.all(
+    sheetMappings.map(async (sheetMapping) => {
+      const fieldMapping = fieldMappings.find((fm) => fm.sheetIndex === sheetMapping.sheetIndex);
+      const datasetId = await processDataset(
+        payload,
+        sheetMapping,
+        fieldMapping,
+        catalogId,
+        deduplicationStrategy,
+        geocodingEnabled
+      );
+
+      return {
+        sheetIndex: sheetMapping.sheetIndex,
+        datasetId,
+        entry: {
+          sheetIdentifier: String(sheetMapping.sheetIndex),
+          dataset: datasetId,
+          skipIfMissing: false,
+        } as DatasetMappingEntry,
+      };
+    })
+  );
+
+  // Build maps from parallel results
   const datasetIdMap = new Map<number, number>();
   const datasetMappingEntries: DatasetMappingEntry[] = [];
 
-  for (const sheetMapping of sheetMappings) {
-    const fieldMapping = fieldMappings.find((fm) => fm.sheetIndex === sheetMapping.sheetIndex);
-    const datasetId = await processDataset(
-      payload,
-      sheetMapping,
-      fieldMapping,
-      catalogId,
-      deduplicationStrategy,
-      geocodingEnabled
-    );
-
-    datasetIdMap.set(sheetMapping.sheetIndex, datasetId);
-    datasetMappingEntries.push({
-      sheetIdentifier: String(sheetMapping.sheetIndex),
-      dataset: datasetId,
-      skipIfMissing: false,
-    });
+  for (const result of results) {
+    datasetIdMap.set(result.sheetIndex, result.datasetId);
+    datasetMappingEntries.push(result.entry);
   }
 
   return { datasetIdMap, datasetMappingEntries };
@@ -310,19 +322,22 @@ const createScheduledImport = async (
   const authConfig = scheduleConfig.authConfig ?? previewMeta.authConfig ?? { type: "none" as const };
 
   // Update datasets with schema config based on schema mode
+  // Use Promise.all for parallel execution (performance optimization)
   const schemaConfig = translateSchemaMode(scheduleConfig.schemaMode);
-  for (const entry of datasetMappingEntries) {
-    await payload.update({
-      collection: "datasets",
-      id: entry.dataset,
-      data: { schemaConfig },
-    });
-    logger.info("Updated dataset schema config for schedule", {
-      datasetId: entry.dataset,
-      schemaMode: scheduleConfig.schemaMode,
-      schemaConfig,
-    });
-  }
+  await Promise.all(
+    datasetMappingEntries.map(async (entry) => {
+      await payload.update({
+        collection: "datasets",
+        id: entry.dataset,
+        data: { schemaConfig },
+      });
+      logger.info("Updated dataset schema config for schedule", {
+        datasetId: entry.dataset,
+        schemaMode: scheduleConfig.schemaMode,
+        schemaConfig,
+      });
+    })
+  );
 
   // Build base scheduled import data
   const baseData = {
@@ -445,7 +460,7 @@ const validateRequest = (
  * Takes the wizard configuration (previewId, catalog, datasets, field mappings)
  * and creates the import file record to start processing.
  */
-// eslint-disable-next-line sonarjs/max-lines-per-function -- Import configuration requires many sequential setup steps
+
 export const POST = async (req: NextRequest) => {
   logger.debug("Configure import request received");
 
