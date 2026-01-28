@@ -131,7 +131,7 @@ export class ImportPage {
    */
   async goto(): Promise<void> {
     // Clear localStorage first by going to any page on the domain
-    await this.page.goto("/import");
+    await this.page.goto("/import", { timeout: 10000 });
     await this.page.waitForLoadState("domcontentloaded");
 
     // Clear wizard draft from localStorage to ensure clean state
@@ -207,7 +207,7 @@ export class ImportPage {
 
     // Click login button and wait for API response
     const [response] = await Promise.all([
-      this.page.waitForResponse((resp) => resp.url().includes("/api/users/login"), { timeout: 15000 }),
+      this.page.waitForResponse((resp) => resp.url().includes("/api/users/login"), { timeout: 5000 }),
       this.loginButton.click(),
     ]);
 
@@ -340,7 +340,7 @@ export class ImportPage {
   /**
    * Wait for import to complete.
    */
-  async waitForImportComplete(timeout = 60000): Promise<void> {
+  async waitForImportComplete(timeout = 10000): Promise<void> {
     await this.completionMessage.waitFor({ state: "visible", timeout });
   }
 

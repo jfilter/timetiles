@@ -9,10 +9,10 @@
  * @module
  * @category E2E Tests
  */
-import { expect, test } from "@playwright/test";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { expect, test } from "../fixtures";
 import { ImportPage } from "../pages/import.page";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -31,10 +31,9 @@ test.describe("Import Wizard - Full Flow", () => {
       // Increase timeout for job processing
       test.setTimeout(180000); // 3 minutes
 
-      // Use a unique catalog/dataset name to avoid conflicts
+      // Use a unique catalog name to avoid conflicts
       const uniqueId = Date.now();
       const catalogName = `E2E English Catalog ${uniqueId}`;
-      const datasetName = `E2E English Dataset ${uniqueId}`;
 
       // Step 1: Navigate and login
       await importPage.goto();
@@ -48,9 +47,9 @@ test.describe("Import Wizard - Full Flow", () => {
       const fileInput = page.locator('input[type="file"]');
       await fileInput.setInputFiles(csvPath);
 
-      // Wait for file processing to complete - look for sheet detection
-      const sheetInfo = page.getByText(/detected.*sheet/i);
-      await expect(sheetInfo).toBeVisible({ timeout: 15000 });
+      // Wait for file processing to complete - look for ready indicator
+      const fileReady = page.getByText(/file ready for import|detected.*sheet/i);
+      await expect(fileReady).toBeVisible({ timeout: 5000 });
 
       // Verify file name is shown
       await expect(page.getByText("valid-events.csv")).toBeVisible();
@@ -63,27 +62,13 @@ test.describe("Import Wizard - Full Flow", () => {
       const destinationHeading = page.getByRole("heading", { name: /select destination/i });
       await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-      // Wait for catalog selection to appear
-      const catalogSelect = page.locator("#catalog-select");
-      await expect(catalogSelect).toBeVisible({ timeout: 10000 });
+      // New UI: Catalog name input is shown directly
+      const catalogNameInput = page.getByLabel(/catalog name/i);
+      await expect(catalogNameInput).toBeVisible({ timeout: 10000 });
 
-      // Select "Create new catalog"
-      await catalogSelect.selectOption("new");
-
-      // Fill in new catalog name
-      const newCatalogInput = page.locator("#new-catalog-name");
-      await expect(newCatalogInput).toBeVisible();
-      await newCatalogInput.fill(catalogName);
-
-      // Wait for dataset mapping section to appear
-      await page.waitForTimeout(500);
-
-      // The sheet mapping should automatically show "Create new dataset"
-      // Fill in the dataset name if visible
-      const datasetNameInput = page.locator('[id^="dataset-name-"]').first();
-      if (await datasetNameInput.isVisible()) {
-        await datasetNameInput.fill(datasetName);
-      }
+      // Clear and fill with our catalog name
+      await catalogNameInput.clear();
+      await catalogNameInput.fill(catalogName);
 
       // Click Next to go to Field Mapping (Step 4)
       await importPage.clickNext();
@@ -142,7 +127,7 @@ test.describe("Import Wizard - Full Flow", () => {
       // Listen for API response
       const responsePromise = page.waitForResponse(
         (response) => response.url().includes("/api/wizard/configure-import"),
-        { timeout: 30000 }
+        { timeout: 10000 }
       );
 
       // Click Start Import to begin processing (Step 6)
@@ -168,40 +153,9 @@ test.describe("Import Wizard - Full Flow", () => {
       const processingIndicator = page.getByText(/importing your data/i);
       await expect(processingIndicator).toBeVisible({ timeout: 10000 });
 
-      // Get base URL for API calls
-      const baseUrl = page.url().split("/import")[0];
-
-      // Trigger job processing via admin API (for E2E test environment)
-      // Run jobs multiple times with small batches to allow UI to poll updates
-
-      // Run jobs in batches, waiting for UI to poll between runs
-      for (let batch = 0; batch < 10; batch++) {
-        const runJobsResponse = await page.request.post(`${baseUrl}/api/admin/jobs/run`, {
-          data: { limit: 100, iterations: 5 },
-          timeout: 30000,
-        });
-
-        if (!runJobsResponse.ok()) {
-          const jobsError = await runJobsResponse.text();
-          throw new Error(`Failed to run jobs (batch ${batch}): ${jobsError}`);
-        }
-
-        // Wait for UI to poll for progress updates
-        await page.waitForTimeout(3000);
-
-        // Check if import is complete
-        const isComplete = await page
-          .getByText(/import complete/i)
-          .isVisible()
-          .catch(() => false);
-        if (isComplete) {
-          break;
-        }
-      }
-
-      // Wait for completion indicator to be visible
+      // Wait for import to complete (job worker processes jobs automatically every 2s)
       const completionIndicator = page.getByText(/import complete/i);
-      await expect(completionIndicator).toBeVisible({ timeout: 30000 });
+      await expect(completionIndicator).toBeVisible({ timeout: 60000 });
 
       // Verify success message shows events were created (must be > 0)
       // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
@@ -219,10 +173,9 @@ test.describe("Import Wizard - Full Flow", () => {
       // Increase timeout for job processing
       test.setTimeout(180000); // 3 minutes
 
-      // Use a unique catalog/dataset name to avoid conflicts
+      // Use a unique catalog name to avoid conflicts
       const uniqueId = Date.now();
       const catalogName = `E2E German Catalog ${uniqueId}`;
-      const datasetName = `E2E German Dataset ${uniqueId}`;
 
       // Step 1: Navigate and login
       await importPage.goto();
@@ -235,9 +188,9 @@ test.describe("Import Wizard - Full Flow", () => {
       const fileInput = page.locator('input[type="file"]');
       await fileInput.setInputFiles(csvPath);
 
-      // Wait for file processing to complete
-      const sheetInfo = page.getByText(/detected.*sheet/i);
-      await expect(sheetInfo).toBeVisible({ timeout: 15000 });
+      // Wait for file processing to complete (UI shows "File ready for import")
+      const fileReady = page.getByText("File ready for import");
+      await expect(fileReady).toBeVisible({ timeout: 5000 });
 
       // Verify file name is shown
       await expect(page.getByText("events-german-locations.csv")).toBeVisible();
@@ -249,22 +202,13 @@ test.describe("Import Wizard - Full Flow", () => {
       const destinationHeading = page.getByRole("heading", { name: /select destination/i });
       await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-      const catalogSelect = page.locator("#catalog-select");
-      await expect(catalogSelect).toBeVisible({ timeout: 10000 });
+      // New UI: Catalog name input is shown directly
+      const catalogNameInput = page.getByLabel(/catalog name/i);
+      await expect(catalogNameInput).toBeVisible({ timeout: 10000 });
 
-      // Select "Create new catalog"
-      await catalogSelect.selectOption("new");
-
-      const newCatalogInput = page.locator("#new-catalog-name");
-      await expect(newCatalogInput).toBeVisible();
-      await newCatalogInput.fill(catalogName);
-
-      await page.waitForTimeout(500);
-
-      const datasetNameInput = page.locator('[id^="dataset-name-"]').first();
-      if (await datasetNameInput.isVisible()) {
-        await datasetNameInput.fill(datasetName);
-      }
+      // Clear and fill with our catalog name
+      await catalogNameInput.clear();
+      await catalogNameInput.fill(catalogName);
 
       // Click Next to go to Field Mapping (Step 4)
       await importPage.clickNext();
@@ -320,7 +264,7 @@ test.describe("Import Wizard - Full Flow", () => {
       // Listen for API response
       const responsePromise = page.waitForResponse(
         (response) => response.url().includes("/api/wizard/configure-import"),
-        { timeout: 30000 }
+        { timeout: 10000 }
       );
 
       // Click Start Import
@@ -345,34 +289,9 @@ test.describe("Import Wizard - Full Flow", () => {
       const processingIndicator = page.getByText(/importing your data/i);
       await expect(processingIndicator).toBeVisible({ timeout: 10000 });
 
-      const baseUrl = page.url().split("/import")[0];
-
-      // Run jobs in batches
-      for (let batch = 0; batch < 10; batch++) {
-        const runJobsResponse = await page.request.post(`${baseUrl}/api/admin/jobs/run`, {
-          data: { limit: 100, iterations: 5 },
-          timeout: 30000,
-        });
-
-        if (!runJobsResponse.ok()) {
-          const jobsError = await runJobsResponse.text();
-          throw new Error(`Failed to run jobs (batch ${batch}): ${jobsError}`);
-        }
-
-        await page.waitForTimeout(3000);
-
-        const isComplete = await page
-          .getByText(/import complete/i)
-          .isVisible()
-          .catch(() => false);
-        if (isComplete) {
-          break;
-        }
-      }
-
-      // Verify completion
+      // Wait for import to complete (job worker processes jobs automatically every 2s)
       const completionIndicator = page.getByText(/import complete/i);
-      await expect(completionIndicator).toBeVisible({ timeout: 30000 });
+      await expect(completionIndicator).toBeVisible({ timeout: 60000 });
 
       // Verify success message shows events were created (must be > 0)
       // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
@@ -403,14 +322,13 @@ test.describe("Import Wizard - Full Flow", () => {
       await importPage.clickNext();
       await page.waitForTimeout(1000);
 
-      // Select create new catalog
-      const catalogSelect = page.locator("#catalog-select");
-      await expect(catalogSelect).toBeVisible({ timeout: 10000 });
-      await catalogSelect.selectOption("new");
+      // New UI: Catalog name input is shown directly
+      const catalogNameInput = page.getByLabel(/catalog name/i);
+      await expect(catalogNameInput).toBeVisible({ timeout: 10000 });
 
-      const newCatalogInput = page.locator("#new-catalog-name");
-      await expect(newCatalogInput).toBeVisible();
-      await newCatalogInput.fill("Persistence Test Catalog");
+      // Clear and fill with our catalog name
+      await catalogNameInput.clear();
+      await catalogNameInput.fill("Persistence Test Catalog");
 
       // Refresh the page
       await page.reload();

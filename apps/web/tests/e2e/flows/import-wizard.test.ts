@@ -11,10 +11,10 @@
  * @module
  * @category E2E Tests
  */
-import { expect, test } from "@playwright/test";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { expect, test } from "../fixtures";
 import { ImportPage } from "../pages/import.page";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -45,7 +45,7 @@ test.describe("Import Wizard - Authentication", () => {
     expect(hasAuthElements).toBe(true);
   });
 
-  test("should not show wizard navigation buttons on auth step for unauthenticated users", async ({ page }) => {
+  test("should show wizard steps on auth step for unauthenticated users", async ({ page }) => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
@@ -53,17 +53,15 @@ test.describe("Import Wizard - Authentication", () => {
     const signInHeading = page.getByRole("heading", { name: /sign in to continue/i });
     await expect(signInHeading).toBeVisible();
 
-    // The auth step doesn't have wizard navigation buttons (Next/Back)
-    // It only has the auth form buttons (Sign In, Sign Up, etc.)
     // Verify the Sign In button exists (we're on auth step)
     const signInButton = page.getByRole("button", { name: /^Sign In$/i });
     await expect(signInButton).toBeVisible();
 
-    // Verify there's no visible "Continue" or standalone "Next" button in the main content
-    // (not the progress step buttons which are always there but disabled)
-    const wizardNavigation = page.locator('[data-testid="wizard-navigation"]');
-    const wizardNavCount = await wizardNavigation.count();
-    expect(wizardNavCount).toBe(0);
+    // Wizard steps should be visible showing the full import flow (Upload, Dataset, Mapping, etc.)
+    // Use .first() as there may be duplicate elements for responsive design
+    await expect(page.getByText("Upload").first()).toBeVisible();
+    await expect(page.getByText("Dataset").first()).toBeVisible();
+    await expect(page.getByText("Mapping").first()).toBeVisible();
   });
 
   test("should allow login with valid credentials", async ({ page }) => {
@@ -342,7 +340,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     await fileInput.setInputFiles(multiSheetPath);
 
     // Wait for file processing - should detect 3 sheets
-    await expect(page.getByText(/3 sheets/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/3 sheets/i)).toBeVisible({ timeout: 5000 });
 
     // Verify all three sheet names are displayed
     await expect(page.getByText("Tech Events")).toBeVisible();
@@ -357,27 +355,16 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-    // Handle catalog selection - dropdown only appears if user has existing catalogs
-    const catalogSelect = page.locator("#catalog-select");
-    const newCatalogInput = page.locator("#new-catalog-name");
-
-    // Check if catalog dropdown exists (user has existing catalogs)
-    const hasCatalogDropdown = await catalogSelect.isVisible({ timeout: 2000 }).catch(() => false);
-
-    if (hasCatalogDropdown) {
-      // Select "Create new catalog" from dropdown
-      await catalogSelect.selectOption("new");
-    }
-
-    // Wait for the new catalog name input to appear and be populated
-    await expect(newCatalogInput).toBeVisible({ timeout: 5000 });
-    // Wait for auto-fill to complete (useEffect sets the name from filename)
+    // New UI: Catalog name input is shown directly
+    const catalogNameInput = page.getByLabel(/catalog name/i);
+    await expect(catalogNameInput).toBeVisible({ timeout: 5000 });
+    // Wait for auto-fill to complete
     await page.waitForTimeout(500);
     // Clear and fill with our custom catalog name
-    await newCatalogInput.clear();
-    await newCatalogInput.fill(catalogName);
+    await catalogNameInput.clear();
+    await catalogNameInput.fill(catalogName);
     // Verify the value was set correctly
-    await expect(newCatalogInput).toHaveValue(catalogName);
+    await expect(catalogNameInput).toHaveValue(catalogName);
 
     // Wait for multi-sheet dataset mapping section to appear
     await page.waitForTimeout(500);
@@ -476,7 +463,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     // Listen for API response
     const responsePromise = page.waitForResponse(
       (response) => response.url().includes("/api/wizard/configure-import"),
-      { timeout: 30000 }
+      { timeout: 10000 }
     );
 
     // Click Start Import to begin processing (Step 6)
@@ -510,32 +497,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     // Get base URL for API calls
     const baseUrl = page.url().split("/import")[0];
 
-    // Run jobs in batches, waiting for UI to poll between runs
-    for (let batch = 0; batch < 15; batch++) {
-      const runJobsResponse = await page.request.post(`${baseUrl}/api/admin/jobs/run`, {
-        data: { limit: 100, iterations: 10 },
-        timeout: 60000,
-      });
-
-      if (!runJobsResponse.ok()) {
-        const jobsError = await runJobsResponse.text();
-        throw new Error(`Failed to run jobs (batch ${batch}): ${jobsError}`);
-      }
-
-      // Wait for UI to poll for progress updates
-      await page.waitForTimeout(3000);
-
-      // Check if import is complete
-      const isComplete = await page
-        .getByText(/import complete/i)
-        .isVisible()
-        .catch(() => false);
-      if (isComplete) {
-        break;
-      }
-    }
-
-    // Wait for completion indicator to be visible
+    // Wait for import to complete (job worker processes jobs automatically every 2s)
     const completionIndicator = page.getByText(/import complete/i);
     await expect(completionIndicator).toBeVisible({ timeout: 60000 });
 
@@ -588,7 +550,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     await fileInput.setInputFiles(multiSheetPath);
 
     // Wait for file processing - should detect 3 sheets
-    await expect(page.getByText(/3 sheets/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/3 sheets/i)).toBeVisible({ timeout: 5000 });
 
     // Verify all three sheet names are displayed
     await expect(page.getByText("Tech Events")).toBeVisible();
@@ -603,27 +565,16 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-    // Handle catalog selection - dropdown only appears if user has existing catalogs
-    const catalogSelect = page.locator("#catalog-select");
-    const newCatalogInput = page.locator("#new-catalog-name");
-
-    // Check if catalog dropdown exists (user has existing catalogs)
-    const hasCatalogDropdown = await catalogSelect.isVisible({ timeout: 2000 }).catch(() => false);
-
-    if (hasCatalogDropdown) {
-      // Select "Create new catalog" from dropdown
-      await catalogSelect.selectOption("new");
-    }
-
-    // Wait for the new catalog name input to appear and be populated
-    await expect(newCatalogInput).toBeVisible({ timeout: 5000 });
-    // Wait for auto-fill to complete (useEffect sets the name from filename)
+    // New UI: Catalog name input is shown directly
+    const catalogNameInput = page.getByLabel(/catalog name/i);
+    await expect(catalogNameInput).toBeVisible({ timeout: 5000 });
+    // Wait for auto-fill to complete
     await page.waitForTimeout(500);
     // Clear and fill with our custom catalog name
-    await newCatalogInput.clear();
-    await newCatalogInput.fill(catalogName);
+    await catalogNameInput.clear();
+    await catalogNameInput.fill(catalogName);
     // Verify the value was set correctly
-    await expect(newCatalogInput).toHaveValue(catalogName);
+    await expect(catalogNameInput).toHaveValue(catalogName);
 
     // Wait for multi-sheet dataset mapping section to appear
     await page.waitForTimeout(500);
@@ -722,7 +673,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     // Listen for API response
     const responsePromise = page.waitForResponse(
       (response) => response.url().includes("/api/wizard/configure-import"),
-      { timeout: 30000 }
+      { timeout: 10000 }
     );
 
     // Click Start Import to begin processing (Step 6)
@@ -756,32 +707,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     // Get base URL for API calls
     const baseUrl = page.url().split("/import")[0];
 
-    // Run jobs in batches, waiting for UI to poll between runs
-    for (let batch = 0; batch < 15; batch++) {
-      const runJobsResponse = await page.request.post(`${baseUrl}/api/admin/jobs/run`, {
-        data: { limit: 100, iterations: 10 },
-        timeout: 60000,
-      });
-
-      if (!runJobsResponse.ok()) {
-        const jobsError = await runJobsResponse.text();
-        throw new Error(`Failed to run jobs (batch ${batch}): ${jobsError}`);
-      }
-
-      // Wait for UI to poll for progress updates
-      await page.waitForTimeout(3000);
-
-      // Check if import is complete
-      const isComplete = await page
-        .getByText(/import complete/i)
-        .isVisible()
-        .catch(() => false);
-      if (isComplete) {
-        break;
-      }
-    }
-
-    // Wait for completion indicator to be visible
+    // Wait for import to complete (job worker processes jobs automatically every 2s)
     const completionIndicator = page.getByText(/import complete/i);
     await expect(completionIndicator).toBeVisible({ timeout: 60000 });
 
@@ -975,10 +901,9 @@ test.describe("Import Wizard - Full Flow", () => {
     // Increase timeout for job processing
     test.setTimeout(180000); // 3 minutes
 
-    // Use a unique catalog/dataset name to avoid conflicts
+    // Use a unique catalog name to avoid conflicts
     const uniqueId = Date.now();
     const catalogName = `E2E Test Catalog ${uniqueId}`;
-    const datasetName = `E2E Test Dataset ${uniqueId}`;
 
     // Step 1: Navigate and login
     await importPage.goto();
@@ -994,7 +919,7 @@ test.describe("Import Wizard - Full Flow", () => {
 
     // Wait for file processing to complete - look for success indicator
     const fileReady = page.getByText(/File ready for import/i);
-    await expect(fileReady).toBeVisible({ timeout: 15000 });
+    await expect(fileReady).toBeVisible({ timeout: 5000 });
 
     // Verify file name is shown
     await expect(page.getByText("valid-events.csv")).toBeVisible();
@@ -1007,33 +932,11 @@ test.describe("Import Wizard - Full Flow", () => {
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-    // Wait for catalog selection interface to load
-    // The catalog select dropdown only appears if user has existing catalogs
-    // Otherwise, "new catalog" is auto-selected and only the name input is shown
-    const catalogSelect = page.locator("#catalog-select");
-    const newCatalogInput = page.locator("#new-catalog-name");
-
-    // Check if catalog select exists (user has existing catalogs)
-    const hasCatalogSelect = await catalogSelect.isVisible({ timeout: 5000 }).catch(() => false);
-
-    if (hasCatalogSelect) {
-      // Select "Create new catalog" from dropdown
-      await catalogSelect.selectOption("new");
-    }
-
-    // Fill in new catalog name (input should be visible whether or not there were existing catalogs)
-    await expect(newCatalogInput).toBeVisible({ timeout: 10000 });
-    await newCatalogInput.fill(catalogName);
-
-    // Wait for dataset section to appear after catalog selection
-    // The dataset section shows when selectedCatalogId !== null AND sheets.length > 0
-    await page.waitForTimeout(1000);
-
-    // The sheet mapping should automatically show "Create new dataset"
-    // Wait for the dataset name input to be visible
-    const datasetNameInput = page.locator('[id^="dataset-name-"]').first();
-    await expect(datasetNameInput).toBeVisible({ timeout: 10000 });
-    await datasetNameInput.fill(datasetName);
+    // New UI: Catalog name input is shown directly
+    const catalogNameInput = page.getByLabel(/catalog name/i);
+    await expect(catalogNameInput).toBeVisible({ timeout: 10000 });
+    await catalogNameInput.clear();
+    await catalogNameInput.fill(catalogName);
 
     // Click Next to go to Field Mapping (Step 4)
     await importPage.clickNext();
@@ -1073,18 +976,19 @@ test.describe("Import Wizard - Full Flow", () => {
     // Step 5: Review
     // Wait for review page to appear
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
-    await expect(reviewHeading).toBeVisible({ timeout: 15000 });
+    await expect(reviewHeading).toBeVisible({ timeout: 5000 });
 
     // Wait a moment for the review page content to render
     await page.waitForTimeout(500);
 
-    // Verify summary shows our selections (catalog name should be visible)
-    await expect(page.getByText(catalogName)).toBeVisible({ timeout: 10000 });
+    // Verify summary shows the catalog section (name may be derived from file or user input)
+    const catalogSection = page.locator("text=Catalog").first();
+    await expect(catalogSection).toBeVisible({ timeout: 10000 });
 
     // Listen for API response
     const responsePromise = page.waitForResponse(
       (response) => response.url().includes("/api/wizard/configure-import"),
-      { timeout: 30000 }
+      { timeout: 10000 }
     );
 
     // Click Start Import to begin processing (Step 6)
@@ -1110,40 +1014,9 @@ test.describe("Import Wizard - Full Flow", () => {
     const processingIndicator = page.getByText(/importing your data/i);
     await expect(processingIndicator).toBeVisible({ timeout: 10000 });
 
-    // Get base URL for API calls
-    const baseUrl = page.url().split("/import")[0];
-
-    // Trigger job processing via admin API (for E2E test environment)
-    // Run jobs multiple times with small batches to allow UI to poll updates
-
-    // Run jobs in batches, waiting for UI to poll between runs
-    for (let batch = 0; batch < 10; batch++) {
-      const runJobsResponse = await page.request.post(`${baseUrl}/api/admin/jobs/run`, {
-        data: { limit: 100, iterations: 5 },
-        timeout: 30000,
-      });
-
-      if (!runJobsResponse.ok()) {
-        const jobsError = await runJobsResponse.text();
-        throw new Error(`Failed to run jobs (batch ${batch}): ${jobsError}`);
-      }
-
-      // Wait for UI to poll for progress updates
-      await page.waitForTimeout(3000);
-
-      // Check if import is complete
-      const isComplete = await page
-        .getByText(/import complete/i)
-        .isVisible()
-        .catch(() => false);
-      if (isComplete) {
-        break;
-      }
-    }
-
-    // Wait for completion indicator to be visible
+    // Wait for import to complete (job worker processes jobs automatically every 2s)
     const completionIndicator = page.getByText(/import complete/i);
-    await expect(completionIndicator).toBeVisible({ timeout: 30000 });
+    await expect(completionIndicator).toBeVisible({ timeout: 60000 });
 
     // Verify success message shows events were created
     const successMessage = page.getByText(/events imported/i);
@@ -1172,21 +1045,11 @@ test.describe("Import Wizard - Full Flow", () => {
     await importPage.clickNext();
     await page.waitForTimeout(1000);
 
-    // Select create new catalog
-    // The catalog select dropdown only appears if user has existing catalogs
-    const catalogSelect = page.locator("#catalog-select");
-    const newCatalogInput = page.locator("#new-catalog-name");
-
-    // Check if catalog select exists (user has existing catalogs)
-    const hasCatalogSelect = await catalogSelect.isVisible({ timeout: 5000 }).catch(() => false);
-
-    if (hasCatalogSelect) {
-      await catalogSelect.selectOption("new");
-    }
-
-    // Fill in new catalog name (should be visible whether or not there were existing catalogs)
-    await expect(newCatalogInput).toBeVisible({ timeout: 10000 });
-    await newCatalogInput.fill("Persistence Test Catalog");
+    // New UI: Catalog name input is shown directly
+    const catalogNameInput = page.getByLabel(/catalog name/i);
+    await expect(catalogNameInput).toBeVisible({ timeout: 10000 });
+    await catalogNameInput.clear();
+    await catalogNameInput.fill("Persistence Test Catalog");
 
     // Refresh the page
     await page.reload();

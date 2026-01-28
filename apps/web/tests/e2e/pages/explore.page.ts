@@ -50,20 +50,27 @@ export class ExplorePage {
       .first();
     this.loadingIndicator = page.getByText("Loading events...").first();
     // New UI shows "Showing all 0 events" or "Showing 0 of X events" when no events match
-    this.noEventsMessage = page.locator("p").filter({ hasText: /Showing (?:all )?0|No events/ }).first();
-    this.noDatasetsMessage = page.getByText("No datasets available");
+    this.noEventsMessage = page
+      .locator("p")
+      .filter({ hasText: /Showing (?:all )?0|No events/ })
+      .first();
+    this.noDatasetsMessage = page.getByText(/No data(sets)? available/).first();
   }
 
   async goto() {
-    await this.page.goto("/explore", { timeout: 30000 });
+    await this.page.goto("/explore", { timeout: 10000 });
     // Wait for key elements to be visible instead of networkidle
     // (networkidle is unreliable with SPAs that have polling/websockets)
-    await this.map.waitFor({ state: "visible", timeout: 30000 });
-    await this.dataSourcesSection.waitFor({ state: "visible", timeout: 15000 });
+    await this.map.waitFor({ state: "visible", timeout: 10000 });
+    await this.dataSourcesSection.waitFor({ state: "visible", timeout: 5000 });
+
+    // Wait for catalog data to actually load (buttons with "X datasets" text)
+    // This ensures the API has returned before tests proceed
+    await this.page.waitForSelector('button:has-text("datasets")', { timeout: 10000 });
   }
 
   async waitForMapLoad() {
-    await this.map.waitFor({ state: "visible", timeout: 30000 });
+    await this.map.waitFor({ state: "visible", timeout: 10000 });
     // Wait for map to be fully loaded and interactive
     await this.page.waitForFunction(
       () => {
@@ -73,7 +80,7 @@ export class ExplorePage {
         );
         return mapContainer !== null;
       },
-      { timeout: 15000 }
+      { timeout: 10000 }
     );
   }
 
@@ -87,7 +94,7 @@ export class ExplorePage {
   async waitForTimelineReady() {
     // First, wait for "Loading timeline..." to disappear (if present)
     const loadingText = this.page.getByText("Loading timeline...");
-    await loadingText.waitFor({ state: "hidden", timeout: 30000 }).catch(() => {
+    await loadingText.waitFor({ state: "hidden", timeout: 10000 }).catch(() => {
       // If not visible, that's fine - timeline might already be loaded or not yet started
     });
 
@@ -97,8 +104,8 @@ export class ExplorePage {
 
     // Wait for one of these states
     await Promise.race([
-      dateRangeButton.waitFor({ state: "visible", timeout: 15000 }),
-      noEventsText.waitFor({ state: "visible", timeout: 15000 }),
+      dateRangeButton.waitFor({ state: "visible", timeout: 5000 }),
+      noEventsText.waitFor({ state: "visible", timeout: 5000 }),
     ]).catch(() => {
       // If neither appears, continue anyway - might be a timing issue
     });
@@ -121,26 +128,20 @@ export class ExplorePage {
       }
     }
 
-    // Not in edit mode - find and click the date range button to open it
+    // Wait for timeline to be loaded first
+    await this.waitForTimelineReady();
+
     // The date range button shows format like "Jan 2024 → Dec 2025"
-    // It's a button containing "→" but NOT in the slider track (those have aria-label with "date:")
-    const allArrowButtons = this.page.getByRole("button", { name: /→/ });
-    const buttonCount = await allArrowButtons.count();
+    // It's inside the Time Range section and contains "→" text
+    // Look for a button with text containing months and arrow
+    const dateRangeButton = this.page
+      .locator("button")
+      .filter({ hasText: /\w{3} \d{4} → \w{3} \d{4}/ })
+      .first();
 
-    // Find the button that is the date range display (not slider handles)
-    for (let i = 0; i < buttonCount; i++) {
-      const button = allArrowButtons.nth(i);
-      const ariaLabel = await button.getAttribute("aria-label");
-
-      // Skip slider handles (they have aria-label starting with date info)
-      if (ariaLabel && (ariaLabel.includes("date:") || ariaLabel.includes("valuemin"))) {
-        continue;
-      }
-
-      // This is likely the date range button - click it
-      await button.click();
-      break;
-    }
+    // Wait for button to be visible and click it
+    await dateRangeButton.waitFor({ state: "visible", timeout: 10000 });
+    await dateRangeButton.click({ force: true, timeout: 10000 });
 
     // Wait for edit mode to open (date inputs to appear)
     await dateInputs.first().waitFor({ state: "visible", timeout: 5000 });
@@ -154,7 +155,9 @@ export class ExplorePage {
   async openFilterDrawer() {
     // Check if filter drawer is already open by looking for a catalog button
     // (Catalog buttons show "X datasets" in their text content)
-    const catalogButton = this.page.locator("button").filter({ hasText: /\d+ datasets?/ }).first();
+    const buttonLocator = this.page.locator("button");
+    // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
+    const catalogButton = buttonLocator.filter({ hasText: /\d+ datasets?/ }).first();
     const isAlreadyOpen = await catalogButton.isVisible({ timeout: 2000 }).catch(() => false);
 
     if (isAlreadyOpen) {
@@ -178,8 +181,10 @@ export class ExplorePage {
     await this.openFilterDrawer();
 
     // Wait for catalogs to load from API (buttons with "X datasets" text)
-    const anyCatalogButton = this.page.locator("button").filter({ hasText: /\d+ datasets?/ }).first();
-    await anyCatalogButton.waitFor({ state: "visible", timeout: 15000 });
+    const buttonLoc = this.page.locator("button");
+    // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
+    const anyCatalogButton = buttonLoc.filter({ hasText: /\d+ datasets?/ }).first();
+    await anyCatalogButton.waitFor({ state: "visible", timeout: 5000 });
 
     // New UI: catalogs are displayed as buttons under "Data Sources" section
     // Each button shows: "CatalogName X datasets Y events"
@@ -188,8 +193,17 @@ export class ExplorePage {
     // Use force: true to click through any potential overlays or animations
     await catalogButton.click({ force: true, timeout: 10000 });
 
-    // Wait for UI to update after selection
-    await this.page.waitForTimeout(500);
+    // Wait for DATASETS section to appear (it only renders when a catalog is selected)
+    // The section has a header "Datasets" with optional "(X/Y active)" count
+    const datasetsHeader = this.page.locator("text=Datasets").first();
+    await datasetsHeader.waitFor({ state: "visible", timeout: 10000 });
+
+    // Also wait for URL to update with catalog parameter
+    await this.page
+      .waitForFunction(() => new URL(window.location.href).searchParams.has("catalog"), { timeout: 5000 })
+      .catch(() => {
+        // URL might not update immediately, continue anyway
+      });
   }
 
   /**
@@ -197,8 +211,12 @@ export class ExplorePage {
    * Returns array of catalog names (without dataset/event counts).
    */
   async getAvailableCatalogs(): Promise<string[]> {
+    // First ensure the filter drawer is open
+    await this.openFilterDrawer();
+
     // Wait for catalogs to load - catalog buttons contain "X datasets" text
-    await this.page.waitForSelector('button:has-text("datasets")', { timeout: 15000 });
+    // Use longer timeout as API can be slow during server startup
+    await this.page.waitForSelector('button:has-text("datasets")', { timeout: 10000 });
 
     // Get all catalog buttons
     const buttons = await this.catalogButtons.allTextContents();
@@ -217,10 +235,11 @@ export class ExplorePage {
       // New UI: datasets are shown as buttons with event counts (e.g., "Air Quality Measurements5")
       // Use partial name match since buttons have numbers appended
       const datasetButton = this.page.getByRole("button", { name: new RegExp(datasetName, "i") }).first();
-      await datasetButton.waitFor({ state: "visible", timeout: 5000 });
-      await datasetButton.click();
+      await datasetButton.waitFor({ state: "visible", timeout: 10000 });
+      // Use force: true to handle any overlay/animation issues
+      await datasetButton.click({ force: true, timeout: 10000 });
       // Wait for UI to update after selection
-      await this.page.waitForTimeout(300);
+      await this.page.waitForTimeout(500);
     }
   }
 
@@ -393,7 +412,7 @@ export class ExplorePage {
   async waitForEventsToLoad() {
     // Wait for loading indicator to disappear
     // Use longer timeout to handle server resource constraints
-    await expect(this.loadingIndicator).not.toBeVisible({ timeout: 30000 });
+    await expect(this.loadingIndicator).not.toBeVisible({ timeout: 10000 });
   }
 
   async waitForApiResponse() {
