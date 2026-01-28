@@ -11,10 +11,29 @@
  */
 
 import { execSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { createLogger, logError } from "../lib/logger.js";
 
 const logger = createLogger("payload-generate");
+
+/**
+ * Add @ts-nocheck directive to the top of the generated schema file.
+ * This is needed because the generated file contains circular type references
+ * that cause TypeScript errors but are unavoidable in the generated schema.
+ */
+const addTsNoCheck = (filePath: string) => {
+  const fullPath = join(process.cwd(), filePath);
+  const content = readFileSync(fullPath, "utf-8");
+
+  // Only add if not already present
+  if (!content.startsWith("// @ts-nocheck")) {
+    const updatedContent = `// @ts-nocheck\n${content}`;
+    writeFileSync(fullPath, updatedContent, "utf-8");
+    logger.debug(`Added @ts-nocheck to ${filePath}`);
+  }
+};
 
 const generate = () => {
   try {
@@ -29,6 +48,9 @@ const generate = () => {
     logger.info("🗄️ Generating database schema...");
     execSync("payload generate:db-schema", { stdio: "pipe" });
     logger.info("✓ Database schema generated");
+
+    // Add @ts-nocheck to schema file to handle circular type references
+    addTsNoCheck("payload-generated-schema.ts");
 
     // Format both files with Prettier to ensure consistent formatting
     logger.info("✨ Formatting generated files with Prettier...");
