@@ -1,0 +1,30 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="clean5-wave" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0ea5e9"/>
+      <stop offset="100%" style="stop-color:#0284c7"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(60, 60)">
+    <!-- Wave showing temporal rhythm/pattern -->
+    <path d="M -40,-20 Q -28,-32 -16,-20 T 8,-20 T 32,-20"
+          stroke="#0284c7" stroke-width="2" fill="none" opacity="0.4"/>
+    <path d="M -40,20 Q -28,8 -16,20 T 8,20 T 32,20"
+          stroke="#0891b2" stroke-width="2" fill="none" opacity="0.4"/>
+
+    <!-- Tiles at wave peaks/troughs (representing events in time) -->
+    <g opacity="0.9">
+      <rect x="-34" y="-28" width="12" height="16" fill="url(#clean5-wave)" rx="2"/>
+      <rect x="-22" y="-14" width="12" height="16" fill="url(#clean5-wave)" opacity="0.8" rx="2"/>
+      <rect x="-4" y="-28" width="12" height="16" fill="url(#clean5-wave)" rx="2"/>
+      <rect x="8" y="-14" width="12" height="16" fill="url(#clean5-wave)" opacity="0.8" rx="2"/>
+      <rect x="26" y="-28" width="12" height="16" fill="url(#clean5-wave)" rx="2"/>
+
+      <rect x="-34" y="12" width="12" height="16" fill="#06b6d4" opacity="0.7" rx="2"/>
+      <rect x="-22" y="26" width="12" height="16" fill="#06b6d4" rx="2"/>
+      <rect x="-4" y="12" width="12" height="16" fill="#06b6d4" opacity="0.7" rx="2"/>
+      <rect x="8" y="26" width="12" height="16" fill="#06b6d4" rx="2"/>
+    </g>
+  </g>
+</svg>

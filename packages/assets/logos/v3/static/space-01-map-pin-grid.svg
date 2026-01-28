@@ -1,0 +1,36 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="space1-pin" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9"/>
+      <stop offset="100%" style="stop-color:#0284c7"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(60, 60)">
+    <!-- Grid reference -->
+    <g stroke="#cbd5e1" stroke-width="1" opacity="0.4">
+      <line x1="-30" y1="-40" x2="-30" y2="40"/>
+      <line x1="0" y1="-40" x2="0" y2="40"/>
+      <line x1="30" y1="-40" x2="30" y2="40"/>
+      <line x1="-40" y1="-30" x2="40" y2="-30"/>
+      <line x1="-40" y1="0" x2="40" y2="0"/>
+      <line x1="-40" y1="30" x2="40" y2="30"/>
+    </g>
+
+    <!-- Map pins (location markers) -->
+    <g fill="url(#space1-pin)">
+      <path d="M -24,-30 C -24,-36 -18,-36 -18,-30 C -18,-26 -24,-20 -24,-20 C -24,-20 -24,-26 -24,-30 Z"/>
+      <path d="M 6,-18 C 6,-24 12,-24 12,-18 C 12,-14 6,-8 6,-8 C 6,-8 6,-14 6,-18 Z"/>
+      <path d="M -12,8 C -12,2 -6,2 -6,8 C -6,12 -12,18 -12,18 C -12,18 -12,12 -12,8 Z"/>
+      <path d="M 20,16 C 20,10 26,10 26,16 C 26,20 20,26 20,26 C 20,26 20,20 20,16 Z"/>
+    </g>
+
+    <!-- Pin centers -->
+    <g fill="#fff">
+      <circle cx="-21" cy="-32" r="2"/>
+      <circle cx="9" cy="-20" r="2"/>
+      <circle cx="-9" cy="6" r="2"/>
+      <circle cx="23" cy="14" r="2"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,15 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Zigzag pattern (time zigzagging through grid) -->
+    <path d="M -40,-30 L -10,-30 L -10,0 L 10,0 L 10,30 L 40,30"
+          fill="none" stroke="#4a5568" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Accent tiles at turns -->
+    <rect x="-16" y="-36" width="12" height="12" fill="#6495ed" rx="2"/>
+    <rect x="4" y="-6" width="12" height="12" fill="#6495ed" rx="2"/>
+    <rect x="34" y="24" width="12" height="12" fill="#6495ed" rx="2"/>
+  </g>
+</svg>

@@ -50,7 +50,7 @@ export const POST = withRateLimit(
         const { id } = await context.params;
 
         // Only admins can reset stages
-        if (!request.user || request.user.role !== "admin") {
+        if (request.user?.role !== "admin") {
           return forbidden("Only administrators can reset import job stages");
         }
 

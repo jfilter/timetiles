@@ -4,12 +4,12 @@
 // Import centralized mocks FIRST (before anything that uses them)
 import "@/tests/mocks/services/logger";
 import "@/tests/mocks/services/path";
-import { mockPath } from "@/tests/mocks/services/path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { analyzeDuplicatesJob } from "@/lib/jobs/handlers/analyze-duplicates-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
+import { mockPath } from "@/tests/mocks/services/path";
 import { createMockImportFile } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories

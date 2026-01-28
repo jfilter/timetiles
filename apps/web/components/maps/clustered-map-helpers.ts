@@ -4,8 +4,8 @@
  * @module
  * @category Components
  */
-import type { Feature } from "geojson";
 import { cartographicColors } from "@timetiles/ui/lib/chart-themes";
+import type { Feature } from "geojson";
 import type { MapRef } from "react-map-gl/maplibre";
 
 import { type ClusterStats, DEFAULT_CLUSTER_STATS, ensureAscendingPercentiles } from "@/lib/constants/map";

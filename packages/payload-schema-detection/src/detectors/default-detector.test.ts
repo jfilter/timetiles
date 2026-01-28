@@ -25,6 +25,7 @@ const createFieldStats = (overrides: Partial<FieldStatistics> = {}): FieldStatis
   ...overrides,
 });
 
+// eslint-disable-next-line sonarjs/max-lines-per-function -- Test suite with many test cases
 describe("defaultDetector", () => {
   describe("metadata", () => {
     it("has correct name", () => {
@@ -50,6 +51,7 @@ describe("defaultDetector", () => {
     });
   });
 
+  // eslint-disable-next-line sonarjs/max-lines-per-function -- Test suite with comprehensive detection scenarios
   describe("detect", () => {
     it("detects English from sample data", async () => {
       const context: DetectionContext = {

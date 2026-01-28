@@ -1,0 +1,22 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Pinwheel from tiles -->
+    <!-- Top-left blade -->
+    <path d="M -4,-4 L -4,-36 L -36,-36 L -4,-4 Z" fill="#4a5568"/>
+
+    <!-- Top-right blade -->
+    <path d="M 4,-4 L 36,-4 L 36,-36 L 4,-4 Z" fill="#6495ed"/>
+
+    <!-- Bottom-right blade -->
+    <path d="M 4,4 L 4,36 L 36,36 L 4,4 Z" fill="#4a5568"/>
+
+    <!-- Bottom-left blade -->
+    <path d="M -4,4 L -36,4 L -36,36 L -4,4 Z" fill="#4a5568"/>
+
+    <!-- Center -->
+    <circle cx="0" cy="0" r="4" fill="#6495ed"/>
+  </g>
+</svg>

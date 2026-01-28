@@ -91,6 +91,7 @@ const createContext = (): DetectionContext => ({
   config: { enabled: true, priority: 100 },
 });
 
+// eslint-disable-next-line sonarjs/max-lines-per-function -- Test suite with extensive service tests
 describe("SchemaDetectionService", () => {
   describe("constructor", () => {
     it("registers detectors by name", () => {

@@ -1,0 +1,36 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="clean4-vert" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4"/>
+      <stop offset="100%" style="stop-color:#0e7490"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(60, 60)">
+    <!-- Vertical timeline -->
+    <rect x="-3" y="-42" width="6" height="84" fill="#0284c7" opacity="0.3" rx="3"/>
+
+    <!-- Tiles branching from timeline (left and right) -->
+    <g opacity="0.9">
+      <!-- Top (past) -->
+      <rect x="-32" y="-36" width="20" height="14" fill="#0e7490" opacity="0.6" rx="2"/>
+      <circle cx="-8" cy="-29" r="2.5" fill="#06b6d4"/>
+
+      <!-- Upper middle -->
+      <rect x="12" y="-20" width="24" height="14" fill="#0891b2" opacity="0.7" rx="2"/>
+      <circle cx="8" cy="-13" r="2.5" fill="#06b6d4"/>
+
+      <!-- Middle -->
+      <rect x="-30" y="-4" width="22" height="14" fill="url(#clean4-vert)" opacity="0.8" rx="2"/>
+      <circle cx="-6" cy="3" r="2.5" fill="#06b6d4"/>
+
+      <!-- Lower middle -->
+      <rect x="14" y="12" width="26" height="14" fill="url(#clean4-vert)" opacity="0.9" rx="2"/>
+      <circle cx="10" cy="19" r="2.5" fill="#06b6d4"/>
+
+      <!-- Bottom (present) -->
+      <rect x="-34" y="28" width="28" height="14" fill="#06b6d4" rx="2"/>
+      <circle cx="-4" cy="35" r="2.5" fill="#0ea5e9"/>
+    </g>
+  </g>
+</svg>

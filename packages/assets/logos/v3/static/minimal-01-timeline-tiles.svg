@@ -1,0 +1,20 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="min1-blue" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0ea5e9"/>
+      <stop offset="100%" style="stop-color:#0284c7"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(60, 60)">
+    <!-- Simple timeline with 3 tiles growing along it -->
+
+    <!-- Timeline base -->
+    <line x1="-40" y1="0" x2="40" y2="0" stroke="#0284c7" stroke-width="2" opacity="0.5"/>
+
+    <!-- Three tiles along timeline, increasing in size (time progression) -->
+    <rect x="-35" y="-8" width="12" height="16" fill="url(#min1-blue)" rx="2"/>
+    <rect x="-8" y="-12" width="16" height="24" fill="url(#min1-blue)" rx="2"/>
+    <rect x="19" y="-16" width="20" height="32" fill="url(#min1-blue)" rx="2"/>
+  </g>
+</svg>

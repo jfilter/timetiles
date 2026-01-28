@@ -1,0 +1,14 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Stacked chevrons pointing right -->
+    <path d="M -30,-35 L -10,-35 L 10,-15 L -10,-15 Z" fill="#4a5568"/>
+    <path d="M -20,-15 L 0,-15 L 20,5 L 0,5 Z" fill="#4a5568"/>
+    <path d="M -10,5 L 10,5 L 30,25 L 10,25 Z" fill="#4a5568"/>
+
+    <!-- Accent chevron -->
+    <path d="M 0,-25 L 20,-25 L 40,-5 L 20,-5 Z" fill="#6495ed"/>
+  </g>
+</svg>

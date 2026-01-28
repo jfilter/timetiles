@@ -1,0 +1,24 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Grid with perspective feel -->
+    <g stroke="#4a5568" stroke-width="0.4" opacity="0.15">
+      <line x1="-36" y1="-24" x2="36" y2="-24"/>
+      <line x1="-36" y1="-8" x2="36" y2="-8"/>
+      <line x1="-36" y1="8" x2="36" y2="8"/>
+      <line x1="-36" y1="24" x2="36" y2="24"/>
+      <line x1="-24" y1="-36" x2="-24" y2="36"/>
+      <line x1="-8" y1="-36" x2="-8" y2="36"/>
+      <line x1="8" y1="-36" x2="8" y2="36"/>
+      <line x1="24" y1="-36" x2="24" y2="36"/>
+    </g>
+
+    <!-- 4 tiles clustered with slight gaps -->
+    <rect x="-26" y="-26" width="20" height="20" fill="#4a5568" rx="1"/>
+    <rect x="6" y="-26" width="20" height="20" fill="#6495ed" rx="1"/>
+    <rect x="-26" y="6" width="20" height="20" fill="#5f9e6e" rx="1"/>
+    <rect x="6" y="6" width="20" height="20" fill="#cd853f" rx="1"/>
+  </g>
+</svg>

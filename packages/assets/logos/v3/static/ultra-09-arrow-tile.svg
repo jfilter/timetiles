@@ -1,0 +1,10 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Arrow pointing right (time forward) made from tiles -->
+    <rect x="-32" y="-12" width="48" height="24" fill="#4a5568" rx="2"/>
+    <path d="M 16,-24 L 40,0 L 16,24 Z" fill="#6495ed"/>
+  </g>
+</svg>

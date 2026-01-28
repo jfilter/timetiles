@@ -1,0 +1,11 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Three squares in stair-step pattern (time progression) -->
+    <rect x="-32" y="8" width="24" height="24" fill="#4a5568" rx="2"/>
+    <rect x="-4" y="-8" width="24" height="24" fill="#6495ed" rx="2"/>
+    <rect x="24" y="-24" width="24" height="24" fill="#5f9e6e" rx="2"/>
+  </g>
+</svg>

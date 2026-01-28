@@ -1,0 +1,21 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Bold grid lines -->
+    <g stroke="#404040" stroke-width="2" opacity="0.4">
+      <line x1="-36" y1="0" x2="36" y2="0"/>
+      <line x1="0" y1="-36" x2="0" y2="36"/>
+    </g>
+
+    <!-- 4 tiles in quadrants -->
+    <rect x="-32" y="-32" width="26" height="26" fill="#4a5568" rx="1"/>
+    <rect x="6" y="-32" width="26" height="26" fill="#6495ed" rx="1"/>
+    <rect x="-32" y="6" width="26" height="26" fill="#5f9e6e" rx="1"/>
+    <rect x="6" y="6" width="26" height="26" fill="#cd853f" rx="1"/>
+
+    <!-- Center marker -->
+    <circle cx="0" cy="0" r="3" fill="#404040"/>
+  </g>
+</svg>

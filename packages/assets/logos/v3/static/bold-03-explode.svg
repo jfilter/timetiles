@@ -1,0 +1,20 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Center core -->
+    <rect x="-8" y="-8" width="16" height="16" fill="#6495ed" rx="2"/>
+
+    <!-- Exploding tiles outward -->
+    <rect x="-36" y="-4" width="10" height="8" fill="#4a5568" rx="1"/>
+    <rect x="26" y="-4" width="10" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-4" y="-36" width="8" height="10" fill="#4a5568" rx="1"/>
+    <rect x="-4" y="26" width="8" height="10" fill="#4a5568" rx="1"/>
+
+    <rect x="-30" y="-30" width="12" height="12" fill="#4a5568" rx="1" transform="rotate(45, -24, -24)"/>
+    <rect x="18" y="-30" width="12" height="12" fill="#4a5568" rx="1" transform="rotate(45, 24, -24)"/>
+    <rect x="-30" y="18" width="12" height="12" fill="#4a5568" rx="1" transform="rotate(45, -24, 24)"/>
+    <rect x="18" y="18" width="12" height="12" fill="#4a5568" rx="1" transform="rotate(45, 24, 24)"/>
+  </g>
+</svg>

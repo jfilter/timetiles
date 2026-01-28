@@ -1,0 +1,23 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Tetris-like interlocking shapes -->
+    <!-- L-shape -->
+    <rect x="-36" y="-36" width="12" height="36" fill="#4a5568" rx="1"/>
+    <rect x="-36" y="0" width="24" height="12" fill="#4a5568" rx="1"/>
+
+    <!-- T-shape -->
+    <rect x="-10" y="-24" width="32" height="12" fill="#6495ed" rx="1"/>
+    <rect x="6" y="-12" width="12" height="24" fill="#6495ed" rx="1"/>
+
+    <!-- Z-shape -->
+    <rect x="-24" y="14" width="24" height="12" fill="#4a5568" rx="1"/>
+    <rect x="0" y="26" width="24" height="12" fill="#4a5568" rx="1"/>
+
+    <!-- Square -->
+    <rect x="24" y="14" width="12" height="12" fill="#4a5568" rx="1"/>
+    <rect x="24" y="26" width="12" height="12" fill="#4a5568" rx="1"/>
+  </g>
+</svg>

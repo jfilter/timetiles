@@ -1,0 +1,19 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="min4-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9"/>
+      <stop offset="100%" style="stop-color:#0284c7"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(60, 60)">
+    <!-- Circular time reference (clock-like) -->
+    <circle cx="0" cy="0" r="35" stroke="#0284c7" stroke-width="2" fill="none" opacity="0.3"/>
+
+    <!-- Four tiles at cardinal positions (12, 3, 6, 9 o'clock) -->
+    <rect x="-8" y="-40" width="16" height="12" fill="url(#min4-blue)" rx="2"/>
+    <rect x="28" y="-8" width="12" height="16" fill="url(#min4-blue)" opacity="0.8" rx="2"/>
+    <rect x="-8" y="28" width="16" height="12" fill="url(#min4-blue)" opacity="0.6" rx="2"/>
+    <rect x="-40" y="-8" width="12" height="16" fill="url(#min4-blue)" opacity="0.9" rx="2"/>
+  </g>
+</svg>

@@ -1,0 +1,37 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grid1-fill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9"/>
+      <stop offset="100%" style="stop-color:#0284c7"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(60, 60)">
+    <!-- Clean 4x4 grid of tiles -->
+    <g opacity="0.9">
+      <!-- Row 1 -->
+      <rect x="-36" y="-36" width="14" height="14" fill="url(#grid1-fill)" opacity="0.5" rx="2"/>
+      <rect x="-18" y="-36" width="14" height="14" fill="url(#grid1-fill)" opacity="0.6" rx="2"/>
+      <rect x="0" y="-36" width="14" height="14" fill="url(#grid1-fill)" opacity="0.7" rx="2"/>
+      <rect x="18" y="-36" width="14" height="14" fill="url(#grid1-fill)" opacity="0.8" rx="2"/>
+
+      <!-- Row 2 -->
+      <rect x="-36" y="-18" width="14" height="14" fill="url(#grid1-fill)" opacity="0.6" rx="2"/>
+      <rect x="-18" y="-18" width="14" height="14" fill="url(#grid1-fill)" opacity="0.7" rx="2"/>
+      <rect x="0" y="-18" width="14" height="14" fill="url(#grid1-fill)" opacity="0.8" rx="2"/>
+      <rect x="18" y="-18" width="14" height="14" fill="url(#grid1-fill)" opacity="0.9" rx="2"/>
+
+      <!-- Row 3 -->
+      <rect x="-36" y="0" width="14" height="14" fill="url(#grid1-fill)" opacity="0.7" rx="2"/>
+      <rect x="-18" y="0" width="14" height="14" fill="url(#grid1-fill)" opacity="0.8" rx="2"/>
+      <rect x="0" y="0" width="14" height="14" fill="url(#grid1-fill)" opacity="0.9" rx="2"/>
+      <rect x="18" y="0" width="14" height="14" fill="url(#grid1-fill)" rx="2"/>
+
+      <!-- Row 4 -->
+      <rect x="-36" y="18" width="14" height="14" fill="url(#grid1-fill)" opacity="0.8" rx="2"/>
+      <rect x="-18" y="18" width="14" height="14" fill="url(#grid1-fill)" opacity="0.9" rx="2"/>
+      <rect x="0" y="18" width="14" height="14" fill="url(#grid1-fill)" rx="2"/>
+      <rect x="18" y="18" width="14" height="14" fill="#06b6d4" rx="2"/>
+    </g>
+  </g>
+</svg>

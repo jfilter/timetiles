@@ -52,6 +52,7 @@ export const defaultDetector: SchemaDetector = {
   /**
    * Perform full schema detection.
    */
+  // eslint-disable-next-line @typescript-eslint/require-await -- Returns Promise for interface compatibility
   detect: async (context: DetectionContext): Promise<DetectionResult> => {
     // Step 1: Detect language from sample data
     const language = detectLanguage(context.sampleData, context.headers);

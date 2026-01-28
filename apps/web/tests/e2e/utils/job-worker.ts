@@ -43,7 +43,7 @@ process.on("SIGINT", () => {
   isRunning = false;
 });
 
-async function main() {
+const main = async () => {
   console.log("[job-worker] Starting job worker...");
   // Log database URL (redacted) to verify correct database
   const dbUrl = process.env.DATABASE_URL ?? "";
@@ -71,7 +71,7 @@ async function main() {
 
   console.log("[job-worker] Shutting down...");
   process.exit(0);
-}
+};
 
 main().catch((error) => {
   console.error("[job-worker] Fatal error:", error);

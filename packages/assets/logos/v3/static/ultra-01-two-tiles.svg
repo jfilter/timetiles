@@ -1,0 +1,10 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Just 2 tiles showing time progression (past → present) -->
+    <rect x="-32" y="-24" width="24" height="48" fill="#4a5568" rx="2"/>
+    <rect x="8" y="-32" width="32" height="64" fill="#6495ed" rx="2"/>
+  </g>
+</svg>

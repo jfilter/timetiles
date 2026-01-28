@@ -1,0 +1,22 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Fine grid -->
+    <g stroke="#4a5568" stroke-width="0.4" opacity="0.12">
+      <line x1="-40" y1="-20" x2="40" y2="-20"/>
+      <line x1="-40" y1="0" x2="40" y2="0"/>
+      <line x1="-40" y1="20" x2="40" y2="20"/>
+      <line x1="-20" y1="-40" x2="-20" y2="40"/>
+      <line x1="0" y1="-40" x2="0" y2="40"/>
+      <line x1="20" y1="-40" x2="20" y2="40"/>
+    </g>
+
+    <!-- 4 tiles slightly offset creating movement -->
+    <rect x="-30" y="-30" width="22" height="22" fill="#4a5568" rx="1"/>
+    <rect x="10" y="-26" width="22" height="22" fill="#6495ed" rx="1"/>
+    <rect x="-26" y="10" width="22" height="22" fill="#cd853f" rx="1"/>
+    <rect x="14" y="14" width="22" height="22" fill="#5f9e6e" rx="1"/>
+  </g>
+</svg>

@@ -29,8 +29,11 @@ interface FlowEditorWrapperProps {
   datasetId: number | null;
 }
 
-export function FlowEditorWrapper({ previewId, sheetIndex, scheduleId, datasetId }: Readonly<FlowEditorWrapperProps>) {
-  return (
-    <FlowEditorClient previewId={previewId} sheetIndex={sheetIndex} scheduleId={scheduleId} datasetId={datasetId} />
-  );
-}
+export const FlowEditorWrapper = ({
+  previewId,
+  sheetIndex,
+  scheduleId,
+  datasetId,
+}: Readonly<FlowEditorWrapperProps>) => (
+  <FlowEditorClient previewId={previewId} sheetIndex={sheetIndex} scheduleId={scheduleId} datasetId={datasetId} />
+);

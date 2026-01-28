@@ -54,9 +54,11 @@ const isNonTextValue = (value: string): boolean => {
   if (/^https?:\/\//i.test(value)) return true;
 
   // ISO dates
+  // eslint-disable-next-line security/detect-unsafe-regex -- Simple date pattern with no backtracking risk
   if (/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?/.test(value)) return true;
 
   // Numeric values
+  // eslint-disable-next-line security/detect-unsafe-regex -- Simple numeric pattern with no backtracking risk
   if (/^-?\d+(\.\d+)?$/.test(value)) return true;
 
   // Coordinate-like values

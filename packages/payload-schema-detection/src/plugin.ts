@@ -32,6 +32,7 @@ const chainOnInit = (existingOnInit: Config["onInit"], newOnInit: NonNullable<Co
  * Seed default detector configurations into the database.
  */
 const seedDefaultDetectors = async (
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type -- Using simplified type for Payload operations
   payload: { create: Function; find: Function },
   collectionSlug: string,
   detectors: SchemaDetector[]
@@ -62,6 +63,7 @@ const seedDefaultDetectors = async (
     }
   } catch (error) {
     // Don't fail startup if seeding fails
+    // eslint-disable-next-line no-console -- Startup warning for plugin initialization
     console.warn("[schema-detection] Failed to seed default detectors:", error);
   }
 };
@@ -148,6 +150,7 @@ export const schemaDetectionPlugin = (options: SchemaDetectionPluginOptions = {}
     // Chain onInit to seed default detector configs
     config.onInit = chainOnInit(config.onInit, async (payload) => {
       await seedDefaultDetectors(payload, collectionSlug, detectors);
+      // eslint-disable-next-line no-console -- Startup message for plugin initialization
       console.log(`[schema-detection] Plugin initialized with ${detectors.length} detector(s)`);
     });
 

@@ -1,0 +1,49 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Wavy cascade pattern -->
+
+    <!-- Row 1 (center) -->
+    <rect x="-4" y="-40" width="8" height="8" fill="#6495ed" rx="1"/>
+
+    <!-- Row 2 (shift right) -->
+    <rect x="4" y="-30" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="12" y="-30" width="8" height="8" fill="#4a5568" rx="1"/>
+
+    <!-- Row 3 (wider right) -->
+    <rect x="12" y="-20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="20" y="-20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="28" y="-20" width="8" height="8" fill="#4a5568" rx="1"/>
+
+    <!-- Row 4 (peak right) -->
+    <rect x="20" y="-10" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="28" y="-10" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="36" y="-10" width="8" height="8" fill="#4a5568" rx="1"/>
+
+    <!-- Row 5 (shift back center) -->
+    <rect x="12" y="0" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="20" y="0" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="28" y="0" width="8" height="8" fill="#4a5568" rx="1"/>
+
+    <!-- Row 6 (shift left) -->
+    <rect x="-4" y="10" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="4" y="10" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="12" y="10" width="8" height="8" fill="#4a5568" rx="1"/>
+
+    <!-- Row 7 (further left) -->
+    <rect x="-20" y="20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-12" y="20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-4" y="20" width="8" height="8" fill="#4a5568" rx="1"/>
+
+    <!-- Row 8 (peak left) -->
+    <rect x="-36" y="30" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-28" y="30" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-20" y="30" width="8" height="8" fill="#4a5568" rx="1"/>
+
+    <!-- Row 9 (back center) -->
+    <rect x="-12" y="40" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-4" y="40" width="8" height="8" fill="#6495ed" rx="1"/>
+  </g>
+</svg>

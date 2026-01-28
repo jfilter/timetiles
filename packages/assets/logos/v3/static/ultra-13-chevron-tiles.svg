@@ -1,0 +1,11 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Chevron pattern made from tiles (time direction) -->
+    <rect x="-36" y="-16" width="20" height="32" fill="#4a5568" rx="2" transform="rotate(-15, -26, 0)"/>
+    <rect x="-6" y="-20" width="20" height="40" fill="#6495ed" rx="2"/>
+    <rect x="24" y="-16" width="20" height="32" fill="#5f9e6e" rx="2" transform="rotate(15, 34, 0)"/>
+  </g>
+</svg>

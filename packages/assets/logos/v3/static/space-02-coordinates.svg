@@ -1,0 +1,32 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="space2-coord" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9"/>
+      <stop offset="100%" style="stop-color:#0284c7"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(60, 60)">
+    <!-- Coordinate axes -->
+    <g stroke="#64748b" stroke-width="2" opacity="0.5">
+      <line x1="-42" y1="0" x2="42" y2="0" stroke-linecap="round"/>
+      <line x1="0" y1="-42" x2="0" y2="42" stroke-linecap="round"/>
+    </g>
+
+    <!-- Axis arrows -->
+    <g fill="#64748b" opacity="0.5">
+      <path d="M 42,0 L 38,-3 L 38,3 Z"/>
+      <path d="M 0,-42 L -3,-38 L 3,-38 Z"/>
+    </g>
+
+    <!-- Coordinate tiles in quadrants -->
+    <rect x="-34" y="-34" width="16" height="16" fill="url(#space2-coord)" opacity="0.7" rx="2"/>
+    <rect x="18" y="-34" width="16" height="16" fill="url(#space2-coord)" opacity="0.8" rx="2"/>
+    <rect x="-34" y="18" width="16" height="16" fill="url(#space2-coord)" opacity="0.6" rx="2"/>
+    <rect x="18" y="18" width="16" height="16" fill="url(#space2-coord)" opacity="0.9" rx="2"/>
+
+    <!-- Origin marker -->
+    <circle cx="0" cy="0" r="4" fill="#0ea5e9"/>
+    <circle cx="0" cy="0" r="2" fill="#fff"/>
+  </g>
+</svg>
