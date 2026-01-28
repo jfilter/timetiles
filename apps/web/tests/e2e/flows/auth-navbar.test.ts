@@ -10,24 +10,24 @@
  * @module
  * @category E2E Tests
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures";
 
 test.describe("Navbar Authentication", () => {
   test.describe("Sign In Flow", () => {
     test("should show Sign In button for unauthenticated users", async ({ page }) => {
       // Go to home page
-      await page.goto("/");
-      await page.waitForLoadState("networkidle");
+      await page.goto("/", { timeout: 10000 });
+      await page.waitForLoadState("domcontentloaded");
 
       // Should see Sign In button in navbar
       const signInButton = page.getByRole("link", { name: /sign in/i });
-      await expect(signInButton).toBeVisible({ timeout: 10000 });
+      await expect(signInButton).toBeVisible({ timeout: 5000 });
     });
 
     test("should navigate to login page when clicking Sign In", async ({ page }) => {
       // Go to home page
-      await page.goto("/");
-      await page.waitForLoadState("networkidle");
+      await page.goto("/", { timeout: 10000 });
+      await page.waitForLoadState("domcontentloaded");
 
       // Click Sign In button
       const signInButton = page.getByRole("link", { name: /sign in/i });
@@ -51,8 +51,8 @@ test.describe("Navbar Authentication", () => {
 
     test("should complete login from navbar and show user menu", async ({ page }) => {
       // Go to home page
-      await page.goto("/");
-      await page.waitForLoadState("networkidle");
+      await page.goto("/", { timeout: 10000 });
+      await page.waitForLoadState("domcontentloaded");
 
       // Click Sign In button
       const signInButton = page.getByRole("link", { name: /sign in/i });
@@ -80,11 +80,11 @@ test.describe("Navbar Authentication", () => {
       await expect(page.getByRole("button", { name: /signing in/i })).toBeVisible({ timeout: 5000 });
 
       // Wait for redirect away from /login page (this confirms successful login)
-      await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 15000 });
+      await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 5000 });
 
       // Navigate to home page explicitly and reload to update server components
-      await page.goto("/");
-      await page.waitForLoadState("networkidle");
+      await page.goto("/", { timeout: 10000 });
+      await page.waitForLoadState("domcontentloaded");
 
       // Should NOT see Sign In button anymore
       const signInAfterLogin = page.getByRole("link", { name: /sign in/i });
@@ -97,8 +97,8 @@ test.describe("Navbar Authentication", () => {
 
     test("should show user dropdown menu when clicking user avatar", async ({ page }) => {
       // Go to home page
-      await page.goto("/");
-      await page.waitForLoadState("networkidle");
+      await page.goto("/", { timeout: 10000 });
+      await page.waitForLoadState("domcontentloaded");
 
       // Login first
       const signInButton = page.getByRole("link", { name: /sign in/i });
@@ -113,7 +113,7 @@ test.describe("Navbar Authentication", () => {
 
       // Reload to update server components with new auth state
       await page.reload();
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       // Click on user menu button
       const userMenuButton = page.getByRole("button", { name: /admin user/i });
@@ -132,8 +132,8 @@ test.describe("Navbar Authentication", () => {
 
     test("should sign out user when clicking Sign Out", async ({ page }) => {
       // Go to home page and login
-      await page.goto("/");
-      await page.waitForLoadState("networkidle");
+      await page.goto("/", { timeout: 10000 });
+      await page.waitForLoadState("domcontentloaded");
 
       const signInButton = page.getByRole("link", { name: /sign in/i });
       await signInButton.click();
@@ -147,7 +147,7 @@ test.describe("Navbar Authentication", () => {
 
       // Reload to update server components with new auth state
       await page.reload();
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       // Open user menu
       const userMenuButton = page.getByRole("button", { name: /admin user/i });
@@ -160,7 +160,7 @@ test.describe("Navbar Authentication", () => {
       // Wait for logout to process and reload page to update server components
       await page.waitForTimeout(1000);
       await page.reload();
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       // Should see Sign In button again
       const signInButtonAfterLogout = page.getByRole("link", { name: /sign in/i });
@@ -170,8 +170,8 @@ test.describe("Navbar Authentication", () => {
 
   test.describe("Login Errors", () => {
     test("should show error for invalid credentials", async ({ page }) => {
-      await page.goto("/login");
-      await page.waitForLoadState("networkidle");
+      await page.goto("/login", { timeout: 10000 });
+      await page.waitForLoadState("domcontentloaded");
 
       const emailInput = page.locator("#login-email");
       const passwordInput = page.locator("#login-password");
@@ -191,8 +191,8 @@ test.describe("Navbar Authentication", () => {
     });
 
     test("should require email and password fields", async ({ page }) => {
-      await page.goto("/login");
-      await page.waitForLoadState("networkidle");
+      await page.goto("/login", { timeout: 10000 });
+      await page.waitForLoadState("domcontentloaded");
 
       // Both inputs should have required attribute
       const emailInput = page.locator("#login-email");
@@ -206,8 +206,8 @@ test.describe("Navbar Authentication", () => {
   test.describe("Redirect After Login", () => {
     test("should redirect to specified page after login", async ({ page }) => {
       // Go to login with redirect parameter
-      await page.goto("/login?redirect=/explore");
-      await page.waitForLoadState("networkidle");
+      await page.goto("/login?redirect=/explore", { timeout: 10000 });
+      await page.waitForLoadState("domcontentloaded");
 
       // Login
       await page.locator("#login-email").fill("admin@example.com");

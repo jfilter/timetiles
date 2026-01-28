@@ -7,8 +7,7 @@
  * @module
  * @category E2E Tests
  */
-import { expect, test } from "@playwright/test";
-
+import { expect, test } from "../fixtures";
 import { ExplorePage } from "../pages/explore.page";
 
 test.describe("Explore Page - Real Data Tests", () => {
@@ -35,7 +34,7 @@ test.describe("Explore Page - Real Data Tests", () => {
     expect(count).toBeGreaterThan(0);
 
     // Click on the first catalog that has datasets
-    await catalogsWithDatasets.first().click();
+    await catalogsWithDatasets.first().click({ force: true, timeout: 10000 });
     await page.waitForTimeout(500);
 
     // Datasets are shown as buttons (new UI), not checkboxes

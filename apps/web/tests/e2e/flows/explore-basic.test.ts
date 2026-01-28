@@ -7,8 +7,7 @@
  * @module
  * @category E2E Tests
  */
-import { expect, test } from "@playwright/test";
-
+import { expect, test } from "../fixtures";
 import { ExplorePage } from "../pages/explore.page";
 
 test.describe("Explore Page - Basic Functionality", () => {
@@ -100,8 +99,9 @@ test.describe("Explore Page - Basic Functionality", () => {
   });
 
   test("should persist state in URL", async ({ page }) => {
-    // Initial URL should be clean
-    expect(page.url()).toBe("http://localhost:3002/explore");
+    // Initial URL should contain /explore path (may include map state params)
+    const initialUrl = new URL(page.url());
+    expect(initialUrl.pathname).toBe("/explore");
 
     // Select a catalog (new button-based UI)
     await explorePage.selectCatalog("Environmental Data");
@@ -178,7 +178,7 @@ test.describe("Explore Page - Basic Functionality", () => {
         .locator("p")
         .filter({ hasText: /Showing .* event/ })
         .first();
-      await expect(eventsCount).toBeVisible({ timeout: 15000 });
+      await expect(eventsCount).toBeVisible({ timeout: 5000 });
     }
   });
 });

@@ -23,12 +23,13 @@ jobs:
           - 5432:5432
 
     env:
-      DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles_test
+      # Base connection for database operations (globalSetup creates per-worker DBs)
+      DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/postgres
       PAYLOAD_SECRET: test-secret-key
       PGPASSWORD: timetiles_password
-      NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3002
-      NODE_ENV: production
+      NODE_ENV: test
       PAYLOAD_CONFIG_PATH: ./payload.config.ts
+      CI: true
 
     steps:
       - uses: actions/checkout@v4
@@ -50,36 +51,16 @@ jobs:
           name: web-build
           path: apps/web/.next
 
-      - name: Setup E2E database
-        run: |
-          psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles_test_e2e;"
-          psql -h localhost -U timetiles_user -d timetiles_test_e2e -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE SCHEMA IF NOT EXISTS payload;"
-
-      - name: Setup E2E environment
-        timeout-minutes: 10
+      - name: Setup Playwright
+        timeout-minutes: 5
         run: |
           pnpm playwright install chromium --with-deps
-          pnpm payload:migrate
-          pnpm seed e2e
           mkdir -p uploads
         working-directory: apps/web
 
-      - name: Start server and run E2E tests
-        timeout-minutes: 15
-        run: |
-          # Start server on port 3002
-          PORT=3002 nohup pnpm start > server.log 2>&1 &
-          echo $! > .server.pid
-
-          # Wait for server
-          npx wait-on http-get://localhost:3002/api/health --timeout 60000 || {
-            echo "Server failed to start. Logs:"
-            cat server.log
-            exit 1
-          }
-
-          # Run E2E tests
-          pnpm test:e2e
+      - name: Run E2E tests (parallel workers)
+        timeout-minutes: 20
+        run: pnpm test:e2e
         working-directory: apps/web
 
       - name: Upload E2E test results
@@ -89,10 +70,3 @@ jobs:
           name: playwright-results
           path: apps/web/test-results
           retention-days: 7
-
-      - name: Cleanup
-        if: always()
-        run: |
-          if [ -f apps/web/.server.pid ]; then
-            kill "$(cat apps/web/.server.pid)" || true
-          fi

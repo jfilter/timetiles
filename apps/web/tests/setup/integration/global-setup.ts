@@ -19,11 +19,50 @@ import dotenv from "dotenv";
 // Load environment variables from .env.local
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
+import { cloneDatabase, databaseExists, dropDatabase } from "@/lib/database/operations";
 import { checkPostgreSQLConnection } from "@/lib/database/setup";
 import { logger } from "@/lib/logger";
 
 import { createTestDatabase } from "./database";
 import { verifyDatabaseSchema } from "./schema-verification";
+
+const TEMPLATE_DB_NAME = "timetiles_test_template";
+
+/**
+ * Fallback: Setup database with migrations (original behavior).
+ * Used when template cloning fails or template doesn't exist.
+ */
+const setupDatabaseWithMigrations = async (dbName: string, dbUrl: string, workerId: string): Promise<void> => {
+  // Create test database if it doesn't exist (includes PostGIS setup)
+  await createTestDatabase(dbName);
+
+  // Run migrations only if schema verification fails
+  try {
+    await verifyDatabaseSchema(dbUrl);
+    if (process.env.LOG_LEVEL === "debug") {
+      logger.info(`Using existing schema for worker ${workerId}`);
+    }
+  } catch (schemaError) {
+    if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
+      logger.info(`Running migrations for worker ${workerId}`, {
+        reason: schemaError instanceof Error ? schemaError.message : "Schema verification failed",
+      });
+    }
+    const { execSync } = await import("child_process");
+    execSync("pnpm --filter web payload migrate", { stdio: "inherit" });
+
+    // Verify again after migration
+    await verifyDatabaseSchema(dbUrl);
+  }
+
+  if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
+    logger.info(`Database setup completed for worker ${workerId}`, {
+      dbName,
+      dbUrl: dbUrl.replace(/:[^:@]+@/, ":***@"),
+      method: "migrations",
+    });
+  }
+};
 
 // Set test environment
 if (!process.env.NODE_ENV) {
@@ -119,45 +158,46 @@ beforeAll(async () => {
     throw error;
   }
 
-  // Create test database if it doesn't exist (includes PostGIS setup)
-  // This will now truncate if the database already exists
-  await createTestDatabase(testDbName);
+  // Try to clone from template database (fast path - created by globalSetup)
+  // This is ~2s vs ~30s for running migrations
+  const templateExists = await databaseExists(TEMPLATE_DB_NAME);
 
-  // Run migrations only if schema verification fails
-  // This avoids running migrations on every test run
-  try {
-    // Try to verify schema first
+  if (templateExists) {
+    // Fast path: Clone from template
     try {
-      await verifyDatabaseSchema(dbUrl);
-      // Schema is valid, no need to run migrations
-      if (process.env.LOG_LEVEL === "debug") {
-        logger.info(`Using existing schema for worker ${workerId}`);
+      // Drop existing worker database if it exists
+      if (await databaseExists(testDbName)) {
+        await dropDatabase(testDbName, { ifExists: true });
       }
-    } catch (schemaError) {
-      // Schema verification failed, run migrations
+
+      await cloneDatabase(TEMPLATE_DB_NAME, testDbName);
+
       if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
-        logger.info(`Running migrations for worker ${workerId}`, {
-          reason: schemaError instanceof Error ? schemaError.message : "Schema verification failed",
+        logger.info(`Cloned template to ${testDbName} for worker ${workerId}`);
+      }
+
+      // Verify the cloned database has valid schema
+      await verifyDatabaseSchema(dbUrl);
+
+      if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
+        logger.info(`Database setup completed for worker ${workerId}`, {
+          dbName: testDbName,
+          dbUrl: dbUrl.replace(/:[^:@]+@/, ":***@"),
+          method: "template_clone",
         });
       }
-      const { execSync } = await import("child_process");
-      execSync("pnpm --filter web payload migrate", { stdio: "inherit" });
-
-      // Verify again after migration
-      await verifyDatabaseSchema(dbUrl);
+    } catch (cloneError) {
+      // Clone failed - fall back to original behavior
+      logger.warn(`Clone failed for worker ${workerId}, falling back to migrations:`, cloneError);
+      await setupDatabaseWithMigrations(testDbName, dbUrl, workerId);
     }
-
-    // Log successful setup for debugging
+  } else {
+    // No template exists - use original behavior
+    // This handles the case where globalSetup didn't run (e.g., unit tests)
     if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
-      logger.info(`Database setup completed for worker ${workerId}`, {
-        dbName: testDbName,
-        dbUrl: dbUrl.replace(/:[^:@]+@/, ":***@"), // Hide password
-      });
+      logger.info(`No template found, using migrations for worker ${workerId}`);
     }
-  } catch (error) {
-    // Always show migration errors, regardless of log level
-    logger.error(`Migration FAILED for global setup ${testDbName}:`, error);
-    throw error;
+    await setupDatabaseWithMigrations(testDbName, dbUrl, workerId);
   }
 });
 

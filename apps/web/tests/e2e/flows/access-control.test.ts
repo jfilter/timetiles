@@ -7,8 +7,7 @@
  * @module
  * @category E2E Tests
  */
-import { expect, test } from "@playwright/test";
-
+import { expect, test } from "../fixtures";
 import { ExplorePage } from "../pages/explore.page";
 
 test.describe("Access Control - User Perspective", () => {
@@ -48,8 +47,8 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should return 401 when trying to access admin API endpoints", async ({ request }) => {
       // Try to access admin-only API endpoint
-      const response = await request.get("http://localhost:3002/api/admin/schedule-service", {
-        timeout: 30000, // Increase timeout to handle server resource constraints
+      const response = await request.get("/api/admin/schedule-service", {
+        timeout: 10000, // Increase timeout to handle server resource constraints
       });
 
       // Should be unauthorized (401) or forbidden (403)
@@ -62,8 +61,8 @@ test.describe("Access Control - User Perspective", () => {
       // We'll try to access events from a catalog that doesn't exist or is private
 
       // Try to access with an ID that likely doesn't exist or is private
-      const response = await request.get("http://localhost:3002/api/catalogs/999999", {
-        timeout: 30000, // Increase timeout to handle server resource constraints
+      const response = await request.get("/api/catalogs/999999", {
+        timeout: 10000, // Increase timeout to handle server resource constraints
       });
 
       // Should return 403 (forbidden) or 404 (not found)
@@ -71,7 +70,7 @@ test.describe("Access Control - User Perspective", () => {
     });
 
     test("should not display admin navigation elements", async ({ page }) => {
-      await page.goto("http://localhost:3002/", { timeout: 30000 });
+      await page.goto("/", { timeout: 10000 });
 
       // Should not see dashboard link
       const adminLink = page.locator('a[href="/dashboard"]').first();
@@ -85,7 +84,7 @@ test.describe("Access Control - User Perspective", () => {
   test.describe("API Access Control Enforcement", () => {
     test("should enforce access control on catalog list endpoint", async ({ request }) => {
       // Unauthenticated request
-      const response = await request.get("http://localhost:3002/api/catalogs");
+      const response = await request.get("/api/catalogs");
 
       // Should succeed but only return public catalogs
       expect(response.status()).toBe(200);
@@ -105,7 +104,7 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should enforce access control on dataset list endpoint", async ({ request }) => {
       // Unauthenticated request
-      const response = await request.get("http://localhost:3002/api/datasets");
+      const response = await request.get("/api/datasets");
 
       // Should succeed but only return public datasets (or datasets in public catalogs)
       expect(response.status()).toBe(200);
@@ -126,7 +125,7 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should enforce access control on event list endpoint", async ({ request }) => {
       // Unauthenticated request
-      const response = await request.get("http://localhost:3002/api/v1/events");
+      const response = await request.get("/api/v1/events");
 
       // Should succeed and return only events from accessible datasets
       expect(response.status()).toBe(200);
@@ -140,7 +139,7 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should block create operations without authentication", async ({ request }) => {
       // Try to create a catalog without authentication
-      const createResponse = await request.post("http://localhost:3002/api/catalogs", {
+      const createResponse = await request.post("/api/catalogs", {
         data: {
           name: "Unauthorized Catalog",
           description: "Should not be created",
@@ -154,7 +153,7 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should block update operations without authentication", async ({ request }) => {
       // Try to update a catalog without authentication
-      const updateResponse = await request.patch("http://localhost:3002/api/catalogs/1", {
+      const updateResponse = await request.patch("/api/catalogs/1", {
         data: {
           name: "Hacked Catalog Name",
         },
@@ -166,7 +165,7 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should block delete operations without authentication", async ({ request }) => {
       // Try to delete a catalog without authentication
-      const deleteResponse = await request.delete("http://localhost:3002/api/catalogs/1");
+      const deleteResponse = await request.delete("/api/catalogs/1");
 
       // Should be unauthorized
       expect([401, 403, 404]).toContain(deleteResponse.status());
@@ -176,7 +175,7 @@ test.describe("Access Control - User Perspective", () => {
   test.describe("Import File Access Control", () => {
     test("should not allow accessing other users' import files", async ({ request }) => {
       // Try to access an import file that might exist
-      const response = await request.get("http://localhost:3002/api/import-files/1");
+      const response = await request.get("/api/import-files/1");
 
       // Should return 401 (unauthorized) or 404 (not found due to access control)
       expect([401, 403, 404]).toContain(response.status());
@@ -184,7 +183,7 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should require authentication for import file creation", async ({ request }) => {
       // Unauthenticated uploads are no longer supported - all imports require authentication
-      const response = await request.post("http://localhost:3002/api/import-files", {
+      const response = await request.post("/api/import-files", {
         data: {
           originalName: "test-unauthenticated.csv",
           status: "pending",
@@ -198,7 +197,7 @@ test.describe("Access Control - User Perspective", () => {
 
   test.describe("Scheduled Import Access Control", () => {
     test("should prevent creating scheduled imports without authentication", async ({ request }) => {
-      const response = await request.post("http://localhost:3002/api/scheduled-imports", {
+      const response = await request.post("/api/scheduled-imports", {
         data: {
           name: "Unauthorized Schedule",
           sourceUrl: "https://example.com/data.csv",
@@ -213,7 +212,7 @@ test.describe("Access Control - User Perspective", () => {
     });
 
     test("should not list scheduled imports without authentication", async ({ request }) => {
-      const response = await request.get("http://localhost:3002/api/scheduled-imports");
+      const response = await request.get("/api/scheduled-imports");
 
       // Should be unauthorized or return empty list
       expect([200, 401, 403]).toContain(response.status());
@@ -288,7 +287,7 @@ test.describe("Access Control - User Perspective", () => {
 
   test.describe("Cross-Origin and Security Headers", () => {
     test("should include proper security headers in API responses", async ({ request }) => {
-      const response = await request.get("http://localhost:3002/api/v1/events");
+      const response = await request.get("/api/v1/events");
 
       // Check for security headers (these might vary based on Next.js config)
       const headers = response.headers();
@@ -305,7 +304,7 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should handle CORS properly for API endpoints", async ({ request }) => {
       // Test CORS preflight
-      const response = await request.fetch("http://localhost:3002/api/v1/events/list", {
+      const response = await request.fetch("/api/v1/events/list", {
         method: "OPTIONS",
       });
 
@@ -318,12 +317,12 @@ test.describe("Access Control - User Perspective", () => {
 test.describe("Access Control - Error Handling", () => {
   test("should show user-friendly error for unauthorized access", async ({ page }) => {
     // Try to navigate to dashboard with increased timeout for JS bundle loading
-    await page.goto("http://localhost:3002/dashboard", { timeout: 30000 });
+    await page.goto("/dashboard", { timeout: 10000 });
 
     // Should redirect to login page - wait for login form to appear
     // instead of waiting for networkidle (which times out with admin panel JS bundles)
     // Use .first() to avoid strict mode violation (there are 2 email inputs on the page)
-    await page.locator('input[type="email"]').first().waitFor({ timeout: 15000 });
+    await page.locator('input[type="email"]').first().waitFor({ timeout: 5000 });
 
     const url = page.url();
     console.log("Redirect URL after admin access attempt:", url);
@@ -350,7 +349,7 @@ test.describe("Access Control - Error Handling", () => {
       });
     });
 
-    await page.goto("http://localhost:3002/explore");
+    await page.goto("/explore");
 
     // Page should still load, but might show error state
     await page.waitForLoadState("networkidle");

@@ -7,8 +7,7 @@
  * @module
  * @category E2E Tests
  */
-import { expect, test } from "@playwright/test";
-
+import { expect, test } from "../fixtures";
 import { ExplorePage } from "../pages/explore.page";
 
 test.describe("Explore Page - Map Interactions", () => {

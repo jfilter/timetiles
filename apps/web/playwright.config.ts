@@ -1,72 +1,79 @@
 /**
- * Playwright E2E test configuration.
+ * Playwright E2E test configuration for parallel test execution.
  *
- * Configures Playwright for end-to-end testing with dedicated test database,
- * browser settings, and test environment variables.
+ * Configures Playwright for end-to-end testing with:
+ * - Per-worker isolated databases (via fixtures)
+ * - Per-worker Next.js servers (via fixtures)
+ * - Global setup for template database creation
+ * - Worktree isolation for simultaneous test runs
  *
  * @module
  */
 import { defineConfig, devices } from "@playwright/test";
 import { config as loadEnv } from "dotenv";
 
-import { E2E_DATABASE_URL } from "./tests/e2e/config";
-
-// Load environment variables from .env.local before accessing DATABASE_URL
+// Load environment variables from .env.local
 loadEnv({ path: ".env.local" });
 
-// Common environment variables for all E2E tests
-const TEST_ENV = {
-  DATABASE_URL: E2E_DATABASE_URL,
-  // Note: This is a test-only secret, not a real credential.
-  // IMPORTANT: Force the test secret - don't use .env.local value since E2E tests
-  // expect a consistent secret for JWT signing/validation
-  PAYLOAD_SECRET: "test-secret-key",
-  NEXT_PUBLIC_PAYLOAD_URL: "http://localhost:3002",
-  NODE_ENV: "test",
-  // Ensure database setup errors are visible even in test mode
-  LOG_LEVEL: "info",
-};
-
-// Set environment variables for Playwright process
-Object.assign(process.env, TEST_ENV);
+const isCI = process.env.CI != null && process.env.CI !== "";
 
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
   testDir: "./tests/e2e",
-  /* Run tests in files in parallel */
-  fullyParallel: true,
+
+  /* Run test files in parallel, but tests within a file run sequentially on same worker */
+  fullyParallel: false,
+
   /* Fail the build on CI if you accidentally left test.only in the source code. */
-  forbidOnly: process.env.CI != null && process.env.CI !== "",
+  forbidOnly: isCI,
+
   /* Retry on CI only */
-  retries: process.env.CI != null && process.env.CI !== "" ? 2 : 0,
-  /* Limit workers to prevent resource contention */
-  workers: 1,
+  retries: isCI ? 2 : 0,
+
+  /* Enable parallel workers: 4 in CI, 2 locally */
+  workers: isCI ? 4 : 2,
+
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [["list"], ["json", { outputFile: "test-results/results.json" }]],
+
   /* Explicit output directory for test artifacts */
   outputDir: "./test-results",
+
   /* Test timeout - 60 seconds locally, 120 seconds in CI */
-  timeout: process.env.CI != null && process.env.CI !== "" ? 120000 : 60000,
+  timeout: isCI ? 120000 : 60000,
+
   /* Expect timeout - shorter expect assertions timeout */
   expect: {
-    timeout: process.env.CI != null && process.env.CI !== "" ? 10000 : 5000,
+    timeout: isCI ? 10000 : 5000,
   },
+
+  /* Global setup creates template database with migrations and seed data */
+  globalSetup: "./tests/e2e/global-setup.ts",
+
+  /* Global teardown cleans up template and worker databases */
+  globalTeardown: "./tests/e2e/global-teardown.ts",
+
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: "http://localhost:3002",
+    /* baseURL is set per-worker via fixture - don't set here */
+
     /* Collect trace on failure for better debugging. See https://playwright.dev/docs/trace-viewer */
     trace: "retain-on-failure",
+
     /* Take screenshot on failure */
     screenshot: "only-on-failure",
+
     /* Record video on failure */
     video: "retain-on-failure",
+
     /* Navigation timeout */
-    navigationTimeout: process.env.CI != null && process.env.CI !== "" ? 30000 : 15000,
+    navigationTimeout: isCI ? 30000 : 15000,
+
     /* Action timeout - for click, fill, etc */
-    actionTimeout: process.env.CI != null && process.env.CI !== "" ? 8000 : 5000,
+    actionTimeout: isCI ? 8000 : 5000,
+
     /* Run tests in headless mode */
     headless: true,
   },
@@ -106,18 +113,5 @@ export default defineConfig({
           },
         ],
 
-  /* Run your local dev server before starting the tests */
-  webServer:
-    process.env.CI != null && process.env.CI !== ""
-      ? undefined // In CI, the server is already running
-      : {
-          command: "pnpm setup:e2e-db && pnpm dev --port 3002",
-          url: "http://localhost:3002/explore", // Test against the explore page
-          reuseExistingServer: false,
-          timeout: 120 * 1000, // 2 minutes for database setup, migrations, and server start
-          env: {
-            ...process.env, // Inherit all current environment variables
-            ...TEST_ENV, // Override with test environment variables
-          },
-        },
+  /* webServer is managed per-worker via fixtures - don't configure here */
 });
