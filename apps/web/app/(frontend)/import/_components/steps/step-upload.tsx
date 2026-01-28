@@ -158,7 +158,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to process file");
+        throw new Error(data.error ?? "Failed to process file");
       }
 
       const data = await response.json();
@@ -205,7 +205,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to fetch URL");
+        throw new Error(data.error ?? "Failed to fetch URL");
       }
 
       const data = await response.json();
@@ -216,9 +216,9 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       // Set file info from URL response
       setFile(
         {
-          name: data.fileName || new URL(urlInput).pathname.split("/").pop() || "url-import",
-          size: data.contentLength || 0,
-          mimeType: data.contentType || "application/octet-stream",
+          name: data.fileName ?? new URL(urlInput).pathname.split("/").pop() ?? "url-import",
+          size: data.contentLength ?? 0,
+          mimeType: data.contentType ?? "application/octet-stream",
         },
         data.sheets,
         data.previewId,

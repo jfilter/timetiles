@@ -144,6 +144,7 @@ export default async function globalSetup(): Promise<void> {
   const fs = await import("fs");
   if (!fs.existsSync(buildIdPath)) {
     console.log(`🔨 Building application (compile mode)...`);
+    // eslint-disable-next-line sonarjs/os-command -- Controlled build command in test setup with validated directory path
     execSync(`cd "${webDir}" && pnpm build:compile`, {
       env: serverEnv,
       stdio: "inherit",

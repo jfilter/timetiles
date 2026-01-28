@@ -291,7 +291,7 @@ const uploadImport = async (
 
   const result = await response.json();
   return {
-    importId: result.doc?.id || result.id,
+    importId: result.doc?.id ?? result.id,
     success: true,
   };
 };

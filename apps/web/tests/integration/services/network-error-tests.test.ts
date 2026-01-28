@@ -155,7 +155,7 @@ describe.sequential("Network Error Handling Tests", () => {
     it("should handle URLs with spaces (encoded properly)", async () => {
       // Create a test server that returns 404 for paths with spaces
       await createTestServer((req, res) => {
-        if (req.url?.includes("file%20with%20spaces.csv") || req.url?.includes("file with spaces.csv")) {
+        if (req.url?.includes("file%20with%20spaces.csv") ?? req.url?.includes("file with spaces.csv")) {
           res.writeHead(404, { "Content-Type": "text/plain" });
           res.end("Not Found");
         } else {
@@ -639,7 +639,7 @@ describe.sequential("Network Error Handling Tests", () => {
       // Create test server that always redirects (infinite loop)
       await createTestServer((req, res) => {
         // Always redirect to a slightly different URL
-        const currentPath = req.url || "/";
+        const currentPath = req.url ?? "/";
         const nextPath = currentPath + "x";
         res.writeHead(302, { Location: `${testServerUrl}${nextPath}` });
         res.end();

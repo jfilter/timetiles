@@ -344,7 +344,7 @@ Event 2,2024-03-16
       const parsedData = rawData.slice(1).map((row: any[]) => {
         const obj: any = {};
         headers.forEach((header, index) => {
-          obj[header] = row[index] || "";
+          obj[header] = row[index] ?? "";
         });
         return obj;
       });

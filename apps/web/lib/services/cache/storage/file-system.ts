@@ -362,7 +362,7 @@ export class FileSystemCacheStorage implements CacheStorage {
         const entry = JSON.parse(data);
         entries.push({
           key,
-          lastAccessed: new Date(entry.metadata.lastAccessedAt || entry.metadata.createdAt).getTime(),
+          lastAccessed: new Date(entry.metadata.lastAccessedAt ?? entry.metadata.createdAt).getTime(),
           size: indexEntry.size,
         });
       } catch {

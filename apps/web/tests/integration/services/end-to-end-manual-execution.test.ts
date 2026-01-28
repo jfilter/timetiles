@@ -125,7 +125,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
             limit: 100,
           });
 
-          logger.info(`   → Executed ${jobResults?.length || 0} jobs`);
+          logger.info(`   → Executed ${jobResults?.length ?? 0} jobs`);
 
           // Check pipeline status
           const updatedImportFile = await payload.findByID({

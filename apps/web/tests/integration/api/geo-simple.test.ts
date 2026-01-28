@@ -48,7 +48,7 @@ describe("Geo API test", () => {
       const data = await response.json();
 
       if (response.status !== 200) {
-        throw new Error(`API returned ${response.status}: ${data.error || "Unknown error"} - ${data.details || ""}`);
+        throw new Error(`API returned ${response.status}: ${data.error ?? "Unknown error"} - ${data.details ?? ""}`);
       }
 
       expect(data).toBeDefined();

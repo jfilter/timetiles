@@ -90,6 +90,7 @@ export default [
       "@typescript-eslint/no-unsafe-return": "off",
       "@typescript-eslint/no-unsafe-argument": "off",
       "sonarjs/no-duplicate-string": "off",
+      "jsdoc/require-file-overview": "off", // Generated files don't need JSDoc
     },
   },
   // Config files - relax strict typing and allow environment variables

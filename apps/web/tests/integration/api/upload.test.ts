@@ -56,7 +56,7 @@ describe.sequential("Import Files Collection", () => {
     expect(importFile.filename).toBeDefined(); // Payload auto-generated
     expect(importFile.mimeType).toBe("text/csv"); // Should match our file
     expect(importFile.filesize).toBe(fileBuffer.length); // Should match file size
-    expect(importFile.catalog.id || importFile.catalog).toBe(parseInt(testCatalogId, 10));
+    expect(importFile.catalog.id ?? importFile.catalog).toBe(parseInt(testCatalogId, 10));
     expect(importFile.status).toBe("pending");
   });
 

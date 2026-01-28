@@ -171,21 +171,21 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
 
   // Fetch lightweight catalog/dataset data
   const { data: dataSources } = useDataSourcesQuery();
-  const catalogs = dataSources?.catalogs ?? [];
-  const datasets = dataSources?.datasets ?? [];
 
   // Sort catalogs by event count (descending), then by name
   const sortedCatalogs = useMemo(() => {
+    const catalogs = dataSources?.catalogs ?? [];
     return [...catalogs].sort((a, b) => {
       const countA = eventCountsByCatalog?.[String(a.id)] ?? 0;
       const countB = eventCountsByCatalog?.[String(b.id)] ?? 0;
       if (countB !== countA) return countB - countA;
       return a.name.localeCompare(b.name);
     });
-  }, [catalogs, eventCountsByCatalog]);
+  }, [dataSources?.catalogs, eventCountsByCatalog]);
 
   // Get datasets for selected catalog, sorted by event count
   const filteredDatasets = useMemo(() => {
+    const datasets = dataSources?.datasets ?? [];
     const catalogDatasets =
       filters.catalog != null
         ? datasets.filter((d) => d.catalogId != null && String(d.catalogId) === filters.catalog)
@@ -197,10 +197,11 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
       if (countB !== countA) return countB - countA;
       return a.name.localeCompare(b.name);
     });
-  }, [datasets, filters.catalog, eventCountsByDataset]);
+  }, [dataSources?.datasets, filters.catalog, eventCountsByDataset]);
 
   // Count datasets per catalog
   const datasetCountByCatalog = useMemo(() => {
+    const datasets = dataSources?.datasets ?? [];
     const counts: Record<string, number> = {};
     for (const dataset of datasets) {
       if (dataset.catalogId != null) {
@@ -209,7 +210,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
       }
     }
     return counts;
-  }, [datasets]);
+  }, [dataSources?.datasets]);
 
   // Handle catalog selection - auto-select all datasets in that catalog
   const handleCatalogSelect = useCallback(
@@ -221,13 +222,14 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
       } else {
         // Select catalog and auto-select all its datasets
         setCatalog(catalogId);
+        const datasets = dataSources?.datasets ?? [];
         const catalogDatasets = datasets
           .filter((d) => d.catalogId != null && String(d.catalogId) === catalogId)
           .map((d) => String(d.id));
         setDatasets(catalogDatasets);
       }
     },
-    [datasets, filters.catalog, setCatalog, setDatasets]
+    [dataSources?.datasets, filters.catalog, setCatalog, setDatasets]
   );
 
   // Handle dataset toggle

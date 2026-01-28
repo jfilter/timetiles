@@ -40,9 +40,7 @@ const analyzeEventData = (
     }
 
     // Initialize or update field stats
-    if (!fieldStats[path]) {
-      fieldStats[path] = createFieldStats(path);
-    }
+    fieldStats[path] ??= createFieldStats(path);
     updateFieldStats(fieldStats[path], value, MAX_UNIQUE_VALUES);
   }
 };

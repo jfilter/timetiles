@@ -227,7 +227,7 @@ describe("/api/v1/events/geo", () => {
           ],
         },
         properties: {
-          id: row.cluster_id || row.event_id,
+          id: row.cluster_id ?? row.event_id,
           type: isCluster ? "event-cluster" : "event-point",
           ...(isCluster ? { count: Number(row.event_count) } : {}),
           ...(row.event_title

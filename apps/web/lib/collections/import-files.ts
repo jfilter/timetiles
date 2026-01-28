@@ -507,7 +507,7 @@ const ImportFiles: CollectionConfig = {
           metadata: {
             uploadSource: "api",
             userAgent,
-            ...(data.metadata || {}),
+            ...(data.metadata ?? {}),
           },
           importedAt: new Date().toISOString(),
         };

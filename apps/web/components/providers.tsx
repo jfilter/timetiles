@@ -17,7 +17,10 @@ import { type ReactNode, useState } from "react";
 
 // Lazy load DevTools - only in development to reduce production bundle
 const ReactQueryDevtools = dynamic(
-  () => import("@tanstack/react-query-devtools").then((mod) => mod.ReactQueryDevtools),
+  async () => {
+    const mod = await import("@tanstack/react-query-devtools");
+    return mod.ReactQueryDevtools;
+  },
   { ssr: false }
 );
 

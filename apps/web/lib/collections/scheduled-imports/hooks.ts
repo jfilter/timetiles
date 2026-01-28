@@ -70,7 +70,7 @@ const handleWebhookToken = (data: Record<string, unknown>, originalDoc?: Record<
  * Handle schedule initialization and statistics.
  */
 const handleScheduleInitialization = (data: Record<string, unknown>, operation: string): void => {
-  if ((operation === "create" || (operation === "update" && data.enabled)) && (data.cronExpression || data.frequency)) {
+  if ((operation === "create" || (operation === "update" && data.enabled)) && (data.cronExpression ?? data.frequency)) {
     // Calculate initial nextRun based on frequency or cron
     if (!data.nextRun && data.frequency) {
       data.nextRun = calculateNextRunByFrequency(data.frequency as string);
@@ -78,14 +78,12 @@ const handleScheduleInitialization = (data: Record<string, unknown>, operation: 
 
     // This would be calculated by the schedule manager
     // For now, just ensure the fields exist
-    if (!data.statistics) {
-      data.statistics = {
-        totalRuns: 0,
-        successfulRuns: 0,
-        failedRuns: 0,
-        averageDuration: 0,
-      };
-    }
+    data.statistics ??= {
+      totalRuns: 0,
+      successfulRuns: 0,
+      failedRuns: 0,
+      averageDuration: 0,
+    };
   }
 };
 

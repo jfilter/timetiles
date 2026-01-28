@@ -92,7 +92,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
             setStatus("success");
             onSuccess?.();
           } else {
-            const message = data.error || "Registration failed. Please try again.";
+            const message = data.error ?? "Registration failed. Please try again.";
             setStatus("error");
             setErrorMessage(message);
             onError?.(message);

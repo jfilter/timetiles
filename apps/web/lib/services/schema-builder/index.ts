@@ -193,7 +193,7 @@ export class ProgressiveSchemaBuilder {
 
     if (depth >= this.config.maxDepth) return changes;
 
-    for (const [key, value] of Object.entries(obj || {})) {
+    for (const [key, value] of Object.entries(obj ?? {})) {
       const fieldPath = pathPrefix ? `${pathPrefix}.${key}` : key;
 
       // Initialize field stats if new
@@ -285,12 +285,8 @@ export class ProgressiveSchemaBuilder {
       }
 
       // Ensure schema has the required top-level structure
-      if (!schema.type) {
-        schema.type = "object";
-      }
-      if (!schema.properties) {
-        schema.properties = {};
-      }
+      schema.type ??= "object";
+      schema.properties ??= {};
 
       // For first import (no current schema), mark all fields as optional
       // Only mark fields as required if they appear in 90%+ of records
@@ -414,9 +410,7 @@ export class ProgressiveSchemaBuilder {
 
       if (part.endsWith("[]")) {
         const fieldName = part.slice(0, -2);
-        if (!current[fieldName]) {
-          current[fieldName] = this.createArrayProperty();
-        }
+        current[fieldName] ??= this.createArrayProperty();
         current = (current[fieldName] as { items: { properties: Record<string, unknown> } }).items.properties;
       } else if (isLast) {
         current[part] = this.buildPropertySchema(stats);
@@ -425,9 +419,7 @@ export class ProgressiveSchemaBuilder {
           required.push(part);
         }
       } else {
-        if (!current[part]) {
-          current[part] = this.createObjectProperty();
-        }
+        current[part] ??= this.createObjectProperty();
         current = (current[part] as { properties: Record<string, unknown> }).properties;
       }
     }

@@ -20,12 +20,8 @@ const __dirname = path.dirname(__filename);
 loadEnv({ path: path.resolve(__dirname, "../../../.env.local") });
 
 // Ensure required env vars are set (will be overridden by E2E setup)
-if (!process.env.PAYLOAD_SECRET) {
-  process.env.PAYLOAD_SECRET = "test-secret-key";
-}
-if (!process.env.NEXT_PUBLIC_PAYLOAD_URL) {
-  process.env.NEXT_PUBLIC_PAYLOAD_URL = "http://localhost:3000";
-}
+process.env.PAYLOAD_SECRET ??= "test-secret-key";
+process.env.NEXT_PUBLIC_PAYLOAD_URL ??= "http://localhost:3000";
 
 const POLL_INTERVAL_MS = 2000; // Run jobs every 2 seconds
 const MAX_JOBS_PER_RUN = 50;

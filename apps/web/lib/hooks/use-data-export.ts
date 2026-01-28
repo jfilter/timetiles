@@ -63,7 +63,7 @@ const fetchDataExports = async (): Promise<ExportListResponse> => {
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "Failed to fetch exports");
+    throw new Error(error.error ?? "Failed to fetch exports");
   }
 
   return response.json();

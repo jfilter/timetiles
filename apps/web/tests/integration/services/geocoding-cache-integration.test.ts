@@ -456,9 +456,7 @@ describe.sequential("Geocoding Cache Integration", () => {
       const eventsByLocation: Record<string, any[]> = {};
       for (const event of events.docs) {
         const location = event.data.location;
-        if (!eventsByLocation[location]) {
-          eventsByLocation[location] = [];
-        }
+        eventsByLocation[location] ??= [];
         eventsByLocation[location].push(event);
       }
 

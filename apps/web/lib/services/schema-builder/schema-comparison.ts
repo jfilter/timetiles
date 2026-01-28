@@ -270,7 +270,7 @@ const getFieldType = (prop: unknown): string => {
     return property.type as string;
   }
 
-  if (property.oneOf || property.anyOf) {
+  if (property.oneOf ?? property.anyOf) {
     return "union";
   }
 

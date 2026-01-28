@@ -44,7 +44,7 @@ const shouldSkipQuotaChecks = (
   process.env.NODE_ENV === "test" ||
   process.env.VITEST === "true" ||
   !req.user ||
-  Boolean(context?.skipQuotaChecks || req.context?.skipQuotaChecks);
+  Boolean(context?.skipQuotaChecks ?? req.context?.skipQuotaChecks);
 
 // Helper to check active schedules quota
 const checkActiveSchedulesQuota = async (

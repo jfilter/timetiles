@@ -62,7 +62,7 @@ export const useInferSchemaForDataset = () => {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(error.error || `Failed to infer schema: ${response.statusText}`);
+        throw new Error(error.error ?? `Failed to infer schema: ${response.statusText}`);
       }
 
       return response.json();

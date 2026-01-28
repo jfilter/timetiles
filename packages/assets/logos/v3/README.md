@@ -4,7 +4,7 @@
 
 ## Overview
 
-This collection contains **47 logo variants** organized by design approach:
+This collection contains **89 logo variants** organized by design approach:
 
 ### 1. **Ultra-Minimal** (15 variants) ⭐ NEW!
 
@@ -105,14 +105,84 @@ Combining time, space, and tiles into integrated designs.
 - `moderate-02-layered-grid.svg` - Time layers with grid
 - `moderate-03-flowing-tiles.svg` - Tiles along curved flows
 
+### 7. **Quad Variations** (10 variants)
+
+4 tiles + grid concepts following the cartographic design system.
+
+**Files:**
+- `quad-01-simple-four.svg` - Four tiles in perfect grid
+- `quad-02-grid-emphasis.svg` - Grid lines with tiles
+- `quad-03-corner-accent.svg` - Accent on one corner
+- `quad-04-diagonal-flow.svg` - Diagonal progression through tiles
+- `quad-05-center-gap.svg` - Center spacing with grid
+- `quad-06-staggered.svg` - Offset tile arrangement
+- `quad-07-nested.svg` - Tiles within larger grid
+- `quad-08-radiating.svg` - Tiles radiating from center
+- `quad-09-asymmetric.svg` - Intentional imbalance
+- `quad-10-minimal-frame.svg` - Frame around four tiles
+
+### 8. **Bold Experimental** (12 variants) ⭐ NEW!
+
+Max 2 colors with creative structural variations. More experimental patterns while maintaining design system colors.
+
+**Files:**
+- `bold-01-cascade-steps.svg` - Cascading stepped pattern
+- `bold-02-diagonal-slash.svg` - Bold diagonal cut
+- `bold-03-l-bracket.svg` - L-shaped bracket form
+- `bold-04-inverse-corner.svg` - Negative space corner
+- `bold-05-stacked-bars.svg` - Horizontal bar stack
+- `bold-06-zigzag.svg` - Angular zigzag pattern
+- `bold-07-corner-blocks.svg` - Corner block emphasis
+- `bold-08-vertical-split.svg` - Vertical division
+- `bold-09-pixel-wave.svg` - Wave-like pixel pattern
+- `bold-10-nested-frames.svg` - Concentric frame layers
+- `bold-11-diagonal-bars.svg` - Diagonal bar pattern
+- `bold-12-corner-cascade.svg` - Corner to corner cascade
+
+### 9. **Pixel Cascade** (10 variants) ⭐ NEW!
+
+Exploring waterfall/cascade patterns with pixel-like tiles flowing diagonally or vertically.
+
+**Files:**
+- `cascade-01-diagonal-flow.svg` - Classic diagonal cascade
+- `cascade-02-stepped-waterfall.svg` - Stepped waterfall descent
+- `cascade-03-corner-origin.svg` - Cascade from corner
+- `cascade-04-dual-flow.svg` - Two cascading streams
+- `cascade-05-vertical-drop.svg` - Vertical falling pattern
+- `cascade-06-scattered-fall.svg` - Irregular cascade spacing
+- `cascade-07-symmetric-cascade.svg` - Mirrored waterfall
+- `cascade-08-dense-flow.svg` - Tightly packed cascade
+- `cascade-09-wave-cascade.svg` - Wave-like falling pattern
+- `cascade-10-corner-burst.svg` - Bursting from corner
+
+### 10. **Symmetric Patterns** (10 variants) ⭐ NEW!
+
+Exploring balanced, mirrored, and radial patterns conveying stability and harmony.
+
+**Files:**
+- `symmetric-01-double-diamond.svg` - Two stacked diamond shapes
+- `symmetric-02-cross-bloom.svg` - Cross pattern blooming from center
+- `symmetric-03-mirror-steps.svg` - Mirrored staircase expanding outward
+- `symmetric-04-x-pattern.svg` - X-pattern expanding diagonally
+- `symmetric-05-snowflake.svg` - 6-point snowflake pattern
+- `symmetric-06-concentric-squares.svg` - Concentric square rings
+- `symmetric-07-butterfly.svg` - Butterfly/mirror pattern with wings
+- `symmetric-08-mandala.svg` - Mandala-like radial symmetric pattern
+- `symmetric-09-aztec.svg` - Aztec/geometric symmetric pattern
+- `symmetric-10-kaleidoscope.svg` - 8-way kaleidoscope symmetry
+
 ## Viewing
 
 Open these HTML files in a browser:
 
 1. **`preview-ultra.html`** ⭐ **START HERE!** - Ultra-minimal variants with size comparison (16px-120px)
 2. **`preview-cartographic.html`** - Design system variants with color palette
-3. **`preview-complete.html`** - All 47 variants organized by category
-4. **`preview.html`** - Original preview
+3. **`preview-quad.html`** - 4 tiles + grid variations
+4. **`preview-bold.html`** - Bold experimental 2-color structures
+5. **`preview-cascade.html`** - Pixel cascade/waterfall patterns
+6. **`preview-symmetric.html`** ⭐ **NEW!** - Symmetric & balanced patterns
+7. **`preview-complete.html`** - All 89 variants organized by category
+8. **`preview.html`** - Original preview
 
 ## Design Principles
 
@@ -170,5 +240,5 @@ These logos follow 2026 best practices:
 
 **Created:** 2026-01-28
 **Version:** v3
-**Total Variants:** 47
-**Latest Addition:** Ultra-minimal series (15 variants)
+**Total Variants:** 89
+**Latest Addition:** Symmetric patterns (10 variants)

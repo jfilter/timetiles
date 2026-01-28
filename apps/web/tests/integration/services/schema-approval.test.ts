@@ -653,7 +653,7 @@ describe.sequential("Schema Approval Workflow", () => {
 
       // Editor should not have access to approve this schema
       expect(editorUser.role).toBe("editor");
-      expect(otherCatalog.editors || []).not.toContain(editorUser.id);
+      expect(otherCatalog.editors ?? []).not.toContain(editorUser.id);
     });
   });
 });

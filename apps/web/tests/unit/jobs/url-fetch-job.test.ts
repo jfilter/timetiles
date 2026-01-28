@@ -596,9 +596,7 @@ describe.sequential("urlFetchJob", () => {
       });
 
       // Add find method to mockPayload if it doesn't exist
-      if (!mockPayload.find) {
-        mockPayload.find = vi.fn();
-      }
+      mockPayload.find ??= vi.fn();
 
       // Mock previous successful import with same content hash
       // The hash for "data" is:

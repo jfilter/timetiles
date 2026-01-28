@@ -64,7 +64,7 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
             // Don't reload the page - let the parent handle the state update
             onSuccess?.();
           } else {
-            const message = data.errors?.[0]?.message || data.message || "Invalid email or password";
+            const message = data.errors?.[0]?.message ?? data.message ?? "Invalid email or password";
             setStatus("error");
             setErrorMessage(message);
             onError?.(message);

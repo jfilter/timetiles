@@ -163,12 +163,10 @@ export class CacheManager {
   /**
    * Destroy all cache instances
    */
-  static async destroyAll(): Promise<void> {
-    const promises = [];
+  static destroyAll(): void {
     for (const cache of this.instances.values()) {
-      promises.push(cache.destroy());
+      cache.destroy();
     }
-    await Promise.all(promises);
     this.instances.clear();
     logger.info("All cache instances destroyed");
   }

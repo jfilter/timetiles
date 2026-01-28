@@ -13,9 +13,7 @@ class MockMap {
   }
 
   on(event: string, handler: (...args: any[]) => void) {
-    if (!this.listeners[event]) {
-      this.listeners[event] = [];
-    }
+    this.listeners[event] ??= [];
     this.listeners[event].push(handler);
 
     // Immediately trigger load event

@@ -380,7 +380,7 @@ describe.sequential("Data Integrity Tests", () => {
           importFileId: null,
         };
 
-        const executionHistory = [...(currentScheduled.executionHistory || []), executionEntry].slice(-10);
+        const executionHistory = [...(currentScheduled.executionHistory ?? []), executionEntry].slice(-10);
 
         await payload.update({
           collection: "scheduled-imports",
@@ -475,7 +475,7 @@ describe.sequential("Data Integrity Tests", () => {
             id: scheduledImport.id,
           });
 
-          const stats = currentScheduled.statistics || {
+          const stats = currentScheduled.statistics ?? {
             totalRuns: 0,
             successfulRuns: 0,
             failedRuns: 0,
@@ -564,7 +564,7 @@ describe.sequential("Data Integrity Tests", () => {
           id: scheduledImport.id,
         });
 
-        const stats = currentScheduled.statistics || {
+        const stats = currentScheduled.statistics ?? {
           totalRuns: 0,
           successfulRuns: 0,
           failedRuns: 0,
@@ -584,7 +584,7 @@ describe.sequential("Data Integrity Tests", () => {
           importFileId: null,
         };
 
-        const executionHistory = [...(currentScheduled.executionHistory || []), executionEntry].slice(-10);
+        const executionHistory = [...(currentScheduled.executionHistory ?? []), executionEntry].slice(-10);
 
         await payload.update({
           collection: "scheduled-imports",

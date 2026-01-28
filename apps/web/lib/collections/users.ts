@@ -380,7 +380,7 @@ const Users: CollectionConfig = {
 
           if (defaultQuotas && !data.customQuotas) {
             // Merge with defaults, filtering out undefined values from Payload's group initialization
-            const providedQuotas = data.quotas || {};
+            const providedQuotas = data.quotas ?? {};
             const filteredProvidedQuotas: Record<string, number> = {};
 
             for (const key in providedQuotas) {
@@ -399,12 +399,12 @@ const Users: CollectionConfig = {
         // Initialize quotas on user creation
         // Note: usage tracking is handled via user-usage collection (created in afterChange hook)
         if (operation === "create") {
-          const trustLevel = Number(data?.trustLevel || TRUST_LEVELS.REGULAR);
+          const trustLevel = Number(data?.trustLevel ?? TRUST_LEVELS.REGULAR);
           const defaultQuotas = DEFAULT_QUOTAS[trustLevel as keyof typeof DEFAULT_QUOTAS];
 
           // Merge with defaults, filtering out undefined values from Payload's group initialization
           // Payload initializes group fields with all fields set to undefined
-          const providedQuotas = data.quotas || {};
+          const providedQuotas = data.quotas ?? {};
           const filteredProvidedQuotas: Record<string, number> = {};
 
           for (const key in providedQuotas) {

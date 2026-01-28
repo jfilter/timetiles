@@ -72,7 +72,7 @@ vi.mock("../../../lib/hooks/use-chart-filters", () => ({
 // Mock ECharts component
 vi.mock("echarts-for-react", () => ({
   default: ({ option }: any) => {
-    return <div data-testid="echarts-mock">{JSON.stringify(option?.series?.[0]?.data || [])}</div>;
+    return <div data-testid="echarts-mock">{JSON.stringify(option?.series?.[0]?.data ?? [])}</div>;
   },
 }));
 

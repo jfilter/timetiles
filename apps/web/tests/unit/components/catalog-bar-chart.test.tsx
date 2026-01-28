@@ -87,7 +87,7 @@ vi.mock("../../../lib/hooks/use-events-queries", () => {
 // Mock ECharts component
 vi.mock("echarts-for-react", () => ({
   default: ({ option }: any) => {
-    const data = option.series?.[0]?.data || [];
+    const data = option.series?.[0]?.data ?? [];
     return (
       <div data-testid="echarts-bar-mock">
         {data.map((value: number, index: number) => (

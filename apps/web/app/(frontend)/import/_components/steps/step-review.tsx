@@ -164,7 +164,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to start import");
+        throw new Error(data.error ?? "Failed to start import");
       }
 
       const data = await response.json();

@@ -405,9 +405,14 @@ export class DataExportService {
       const archive = archiver("zip", { zlib: { level: 6 } });
 
       output.on("close", () => {
-        stat(outputPath)
-          .then((stats) => resolve({ filePath: outputPath, fileSize: stats.size }))
-          .catch((err: Error) => reject(err));
+        void (async () => {
+          try {
+            const stats = await stat(outputPath);
+            resolve({ filePath: outputPath, fileSize: stats.size });
+          } catch (err) {
+            reject(err as Error);
+          }
+        })();
       });
 
       archive.on("error", (err: Error) => reject(err));
@@ -436,9 +441,14 @@ export class DataExportService {
       archive.append(JSON.stringify(baseData.media, null, 2), { name: "media/metadata.json" });
 
       // Process events and media asynchronously, then finalize
-      this.addEventsAndMediaToArchive(archive, baseData)
-        .then(() => archive.finalize())
-        .catch((err: Error) => reject(err));
+      void (async () => {
+        try {
+          await this.addEventsAndMediaToArchive(archive, baseData);
+          await archive.finalize();
+        } catch (err) {
+          reject(err as Error);
+        }
+      })();
     });
   }
 

@@ -77,7 +77,7 @@ export class Cache {
    */
   async set<T>(key: string, value: T, options?: CacheSetOptions): Promise<void> {
     const fullKey = this.makeKey(key);
-    const ttl = options?.ttl !== undefined ? options.ttl : this.config.defaultTTL;
+    const ttl = options?.ttl ?? this.config.defaultTTL;
     try {
       await this.storage.set(fullKey, value, { ...options, ttl });
     } catch (error) {

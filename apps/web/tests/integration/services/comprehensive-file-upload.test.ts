@@ -196,7 +196,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         });
 
         importJobs.docs.forEach((job: any, index: number) => {
-          logger.debug(`Job ${index + 1}: stage=${job.stage}, errors=${job.errors?.length || 0}`);
+          logger.debug(`Job ${index + 1}: stage=${job.stage}, errors=${job.errors?.length ?? 0}`);
           if (job.errors?.length > 0) {
             logger.debug(`  Errors:`, job.errors);
           }
@@ -277,7 +277,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         });
 
         importJobs.docs.forEach((job: any, index: number) => {
-          logger.debug(`Job ${index + 1}: stage=${job.stage}, errors=${job.errors?.length || 0}`);
+          logger.debug(`Job ${index + 1}: stage=${job.stage}, errors=${job.errors?.length ?? 0}`);
           if (job.errors?.length > 0) {
             logger.debug(`  Errors:`, job.errors);
           }
