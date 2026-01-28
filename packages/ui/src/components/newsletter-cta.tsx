@@ -102,7 +102,7 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
           setEmail("");
         } else {
           setStatus("error");
-          setMessage(data.error || "Subscription failed. Please try again.");
+          setMessage(data.error ?? "Subscription failed. Please try again.");
         }
       } catch (error) {
         setStatus("error");
