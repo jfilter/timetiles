@@ -191,6 +191,26 @@ const checkRequiresApproval = (
   dataset: { schemaConfig?: { locked?: boolean | null; autoApproveNonBreaking?: boolean | null } | null }
 ): boolean => comparison.isBreaking || !!dataset.schemaConfig?.locked || !dataset.schemaConfig?.autoApproveNonBreaking;
 
+// Helper function to determine approval requirement based on schema mode and dataset config
+const determineRequiresApproval = (
+  schemaModeRequiresApproval: boolean | undefined,
+  schemaMode: string | undefined,
+  comparison: SchemaComparison,
+  dataset: { schemaConfig?: { locked?: boolean | null; autoApproveNonBreaking?: boolean | null } | null },
+  hasHighConfidenceTransforms: boolean
+): boolean => {
+  // If schema mode explicitly requires approval, return true
+  if (schemaModeRequiresApproval) {
+    return true;
+  }
+  // If schema mode is set but doesn't require approval, it handled the decision
+  if (schemaMode) {
+    return false;
+  }
+  // Fall back to dataset config check
+  return checkRequiresApproval(comparison, dataset) || hasHighConfidenceTransforms;
+};
+
 // Helper function to get approval reason
 const getApprovalReason = (hasHighConfidenceTransforms: boolean, isBreaking: boolean): string => {
   if (hasHighConfidenceTransforms) {
@@ -284,6 +304,7 @@ const extractSchemaChanges = (comparison: SchemaComparison, detectedSchema: Reco
 
 export const validateSchemaJob = {
   slug: JOB_TYPES.VALIDATE_SCHEMA,
+  // eslint-disable-next-line complexity, sonarjs/max-lines-per-function
   handler: async (context: JobHandlerContext) => {
     const payload = (context.req?.payload ?? context.payload) as Payload;
     const input = (context.input ?? context.job?.input) as ValidateSchemaJobInput["input"];
@@ -393,11 +414,13 @@ export const validateSchemaJob = {
 
       // Determine approval requirement
       // If schema mode specifies approval is required, use that; otherwise fall back to dataset config
-      const requiresApproval = schemaModeResult.requiresApproval
-        ? true
-        : schemaMode
-          ? false // Schema mode handled it, no approval needed
-          : checkRequiresApproval(comparison, dataset) || hasHighConfidenceTransforms;
+      const requiresApproval = determineRequiresApproval(
+        schemaModeResult.requiresApproval,
+        schemaMode,
+        comparison,
+        dataset,
+        hasHighConfidenceTransforms
+      );
 
       // Determine next stage based on approval requirement and whether schema changed
       let nextStage: (typeof PROCESSING_STAGE)[keyof typeof PROCESSING_STAGE];

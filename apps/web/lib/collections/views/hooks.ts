@@ -15,7 +15,7 @@ import type { View } from "@/payload-types";
 /**
  * Sets the createdBy field to the current user on creation.
  */
-export const setCreatedBy: CollectionBeforeChangeHook<View> = async ({ data, req, operation }) => {
+export const setCreatedBy: CollectionBeforeChangeHook<View> = ({ data, req, operation }) => {
   if (operation === "create" && req.user) {
     data.createdBy = req.user.id;
   }

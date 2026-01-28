@@ -13,6 +13,8 @@ import { getPayload } from "payload";
 import { logError } from "@/lib/logger";
 import config from "@/payload.config";
 
+const COLLECTION_SCHEDULED_IMPORTS = "scheduled-imports";
+
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
@@ -38,7 +40,7 @@ export const GET = async (_request: Request, context: RouteContext) => {
     }
 
     const schedule = await payload.findByID({
-      collection: "scheduled-imports",
+      collection: COLLECTION_SCHEDULED_IMPORTS,
       id: scheduleId,
       depth: 1,
     });
@@ -82,7 +84,7 @@ export const PATCH = async (request: Request, context: RouteContext) => {
 
     // Check existing schedule and ownership
     const existingSchedule = await payload.findByID({
-      collection: "scheduled-imports",
+      collection: COLLECTION_SCHEDULED_IMPORTS,
       id: scheduleId,
     });
 
@@ -101,7 +103,7 @@ export const PATCH = async (request: Request, context: RouteContext) => {
 
     // Update the schedule
     const updatedSchedule = await payload.update({
-      collection: "scheduled-imports",
+      collection: COLLECTION_SCHEDULED_IMPORTS,
       id: scheduleId,
       data: {
         enabled: body.enabled,
@@ -137,7 +139,7 @@ export const DELETE = async (_request: Request, context: RouteContext) => {
 
     // Check existing schedule and ownership
     const existingSchedule = await payload.findByID({
-      collection: "scheduled-imports",
+      collection: COLLECTION_SCHEDULED_IMPORTS,
       id: scheduleId,
     });
 
@@ -153,7 +155,7 @@ export const DELETE = async (_request: Request, context: RouteContext) => {
 
     // Delete the schedule
     await payload.delete({
-      collection: "scheduled-imports",
+      collection: COLLECTION_SCHEDULED_IMPORTS,
       id: scheduleId,
     });
 

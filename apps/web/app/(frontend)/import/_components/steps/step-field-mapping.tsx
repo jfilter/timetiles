@@ -1,4 +1,3 @@
-/* eslint-disable sonarjs/max-lines -- Complex wizard step with many field mapping options */
 /**
  * Field mapping step for the import wizard.
  *
@@ -23,7 +22,7 @@ import {
   TableIcon,
   TextIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import { type ConfidenceLevel, type FieldMapping, type SuggestedMappings, useWizard } from "../wizard-context";
 
@@ -205,6 +204,43 @@ const FieldSelect = ({
     </div>
   );
 };
+
+interface SheetTabButtonProps {
+  sheetIndex: number;
+  displayName: string;
+  rowCount: number;
+  isComplete: boolean;
+  isActive: boolean;
+  onSelect: (index: number) => void;
+}
+
+const SheetTabButton = memo(
+  ({ sheetIndex, displayName, rowCount, isComplete, isActive, onSelect }: Readonly<SheetTabButtonProps>) => {
+    const handleClick = useCallback(() => {
+      onSelect(sheetIndex);
+    }, [onSelect, sheetIndex]);
+
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        data-testid={`sheet-tab-${sheetIndex}`}
+        className={cn(
+          "flex items-center gap-2 rounded-sm border px-3 py-2 text-sm transition-colors",
+          isActive
+            ? "border-cartographic-blue bg-cartographic-blue/10 text-cartographic-blue"
+            : "border-cartographic-navy/20 hover:border-cartographic-navy/40 text-cartographic-charcoal",
+          isComplete && !isActive && "border-cartographic-forest/40 bg-cartographic-forest/5"
+        )}
+      >
+        {isComplete && <CheckCircleIcon className="text-cartographic-forest h-4 w-4" />}
+        <span>{displayName}</span>
+        <span className="text-cartographic-navy/50 font-mono text-xs">({rowCount})</span>
+      </button>
+    );
+  }
+);
+SheetTabButton.displayName = "SheetTabButton";
 
 interface IdStrategyCardProps {
   idStrategy: FieldMapping["idStrategy"];
@@ -428,23 +464,15 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
               const sheetMapping = sheetMappings.find((m) => m.sheetIndex === sheet.index);
 
               return (
-                <button
+                <SheetTabButton
                   key={sheet.index}
-                  type="button"
-                  onClick={() => setActiveSheetIndex(sheet.index)}
-                  data-testid={`sheet-tab-${sheet.index}`}
-                  className={cn(
-                    "flex items-center gap-2 rounded-sm border px-3 py-2 text-sm transition-colors",
-                    isActive
-                      ? "border-cartographic-blue bg-cartographic-blue/10 text-cartographic-blue"
-                      : "border-cartographic-navy/20 hover:border-cartographic-navy/40 text-cartographic-charcoal",
-                    isComplete && !isActive && "border-cartographic-forest/40 bg-cartographic-forest/5"
-                  )}
-                >
-                  {isComplete && <CheckCircleIcon className="text-cartographic-forest h-4 w-4" />}
-                  <span>{sheetMapping?.newDatasetName || sheet.name}</span>
-                  <span className="text-cartographic-navy/50 font-mono text-xs">({sheet.rowCount})</span>
-                </button>
+                  sheetIndex={sheet.index}
+                  displayName={sheetMapping?.newDatasetName ?? sheet.name}
+                  rowCount={sheet.rowCount}
+                  isComplete={isComplete}
+                  isActive={isActive}
+                  onSelect={setActiveSheetIndex}
+                />
               );
             })}
           </div>

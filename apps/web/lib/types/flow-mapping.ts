@@ -326,6 +326,7 @@ const inferDataType = (values: unknown[]): SourceColumnNodeData["inferredType"] 
           return "date";
         }
         // Check if it's a number string
+        // eslint-disable-next-line security/detect-unsafe-regex -- Safe: used only on short sample values for type inference
         if (/^-?\d+(?:\.\d*)?$/.test(v)) {
           return "number";
         }

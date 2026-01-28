@@ -9,10 +9,7 @@
  * @category Services/SchemaBuilder
  */
 
-import {
-  FIELD_PATTERNS,
-  detectGeoFields as detectGeoFieldsFromPlugin,
-} from "@timetiles/payload-schema-detection";
+import { detectGeoFields as detectGeoFieldsFromPlugin, FIELD_PATTERNS } from "@timetiles/payload-schema-detection";
 
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 import { isValidDate } from "@/lib/utils/date";
@@ -390,4 +387,3 @@ const validateLocationField = (stats: FieldStatistics, stringPct: number): numbe
   // Default score if no samples
   return 0.5;
 };
-

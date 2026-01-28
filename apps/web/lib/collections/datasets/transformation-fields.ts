@@ -11,6 +11,16 @@
  */
 import type { Field } from "payload";
 
+/** Transform type constants to avoid string duplication */
+const TRANSFORM_TYPES = {
+  RENAME: "rename",
+  DATE_PARSE: "date-parse",
+  STRING_OP: "string-op",
+  CONCATENATE: "concatenate",
+  SPLIT: "split",
+  TYPE_CAST: "type-cast",
+} as const;
+
 export const transformationFields: Field[] = [
   // Unified Import Transform Rules
   {
@@ -36,14 +46,14 @@ export const transformationFields: Field[] = [
         type: "select",
         required: true,
         options: [
-          { label: "Rename Field", value: "rename" },
-          { label: "Parse Date", value: "date-parse" },
-          { label: "String Operation", value: "string-op" },
-          { label: "Concatenate Fields", value: "concatenate" },
-          { label: "Split Field", value: "split" },
-          { label: "Convert Type", value: "type-cast" },
+          { label: "Rename Field", value: TRANSFORM_TYPES.RENAME },
+          { label: "Parse Date", value: TRANSFORM_TYPES.DATE_PARSE },
+          { label: "String Operation", value: TRANSFORM_TYPES.STRING_OP },
+          { label: "Concatenate Fields", value: TRANSFORM_TYPES.CONCATENATE },
+          { label: "Split Field", value: TRANSFORM_TYPES.SPLIT },
+          { label: "Convert Type", value: TRANSFORM_TYPES.TYPE_CAST },
         ],
-        defaultValue: "rename",
+        defaultValue: TRANSFORM_TYPES.RENAME,
         admin: {
           description: "Type of transformation to apply",
         },
@@ -54,7 +64,14 @@ export const transformationFields: Field[] = [
         type: "text",
         admin: {
           description: "Source field path in import file (e.g., 'date' or 'user.email')",
-          condition: (data) => ["rename", "date-parse", "string-op", "split", "type-cast"].includes(data?.type),
+          condition: (data) =>
+            [
+              TRANSFORM_TYPES.RENAME,
+              TRANSFORM_TYPES.DATE_PARSE,
+              TRANSFORM_TYPES.STRING_OP,
+              TRANSFORM_TYPES.SPLIT,
+              TRANSFORM_TYPES.TYPE_CAST,
+            ].includes(data?.type),
         },
       },
       // Target field - used by rename, concatenate
@@ -63,7 +80,7 @@ export const transformationFields: Field[] = [
         type: "text",
         admin: {
           description: "Target field path in dataset schema (e.g., 'start_date' or 'contact.email')",
-          condition: (data) => ["rename", "concatenate"].includes(data?.type),
+          condition: (data) => [TRANSFORM_TYPES.RENAME, TRANSFORM_TYPES.CONCATENATE].includes(data?.type),
         },
       },
       // Date parse specific fields
@@ -80,7 +97,7 @@ export const transformationFields: Field[] = [
         ],
         admin: {
           description: "Expected input date format",
-          condition: (data) => data?.type === "date-parse",
+          condition: (data) => data?.type === TRANSFORM_TYPES.DATE_PARSE,
         },
       },
       {
@@ -94,7 +111,7 @@ export const transformationFields: Field[] = [
         ],
         admin: {
           description: "Output date format",
-          condition: (data) => data?.type === "date-parse",
+          condition: (data) => data?.type === TRANSFORM_TYPES.DATE_PARSE,
         },
       },
       {
@@ -102,7 +119,7 @@ export const transformationFields: Field[] = [
         type: "text",
         admin: {
           description: "Optional timezone (e.g., 'America/New_York')",
-          condition: (data) => data?.type === "date-parse",
+          condition: (data) => data?.type === TRANSFORM_TYPES.DATE_PARSE,
         },
       },
       // String operation specific fields
@@ -117,7 +134,7 @@ export const transformationFields: Field[] = [
         ],
         admin: {
           description: "String operation to apply",
-          condition: (data) => data?.type === "string-op",
+          condition: (data) => data?.type === TRANSFORM_TYPES.STRING_OP,
         },
       },
       {
@@ -125,7 +142,7 @@ export const transformationFields: Field[] = [
         type: "text",
         admin: {
           description: "Text pattern to find (for replace operation)",
-          condition: (data) => data?.type === "string-op" && data?.operation === "replace",
+          condition: (data) => data?.type === TRANSFORM_TYPES.STRING_OP && data?.operation === "replace",
         },
       },
       {
@@ -133,7 +150,7 @@ export const transformationFields: Field[] = [
         type: "text",
         admin: {
           description: "Replacement text",
-          condition: (data) => data?.type === "string-op" && data?.operation === "replace",
+          condition: (data) => data?.type === TRANSFORM_TYPES.STRING_OP && data?.operation === "replace",
         },
       },
       // Concatenate specific fields
@@ -142,7 +159,7 @@ export const transformationFields: Field[] = [
         type: "json",
         admin: {
           description: 'Array of source field paths to concatenate (e.g., ["first_name", "last_name"])',
-          condition: (data) => data?.type === "concatenate",
+          condition: (data) => data?.type === TRANSFORM_TYPES.CONCATENATE,
         },
       },
       {
@@ -151,7 +168,7 @@ export const transformationFields: Field[] = [
         defaultValue: " ",
         admin: {
           description: "Separator between concatenated values",
-          condition: (data) => data?.type === "concatenate",
+          condition: (data) => data?.type === TRANSFORM_TYPES.CONCATENATE,
         },
       },
       // Split specific fields
@@ -161,7 +178,7 @@ export const transformationFields: Field[] = [
         defaultValue: ",",
         admin: {
           description: "Delimiter to split on",
-          condition: (data) => data?.type === "split",
+          condition: (data) => data?.type === TRANSFORM_TYPES.SPLIT,
         },
       },
       {
@@ -169,7 +186,7 @@ export const transformationFields: Field[] = [
         type: "json",
         admin: {
           description: 'Array of target field names for split values (e.g., ["first_name", "last_name"])',
-          condition: (data) => data?.type === "split",
+          condition: (data) => data?.type === TRANSFORM_TYPES.SPLIT,
         },
       },
       // Type-cast specific fields
@@ -187,7 +204,7 @@ export const transformationFields: Field[] = [
         ],
         admin: {
           description: "Expected source type",
-          condition: (data) => data?.type === "type-cast",
+          condition: (data) => data?.type === TRANSFORM_TYPES.TYPE_CAST,
         },
       },
       {
@@ -203,7 +220,7 @@ export const transformationFields: Field[] = [
         ],
         admin: {
           description: "Target type to convert to",
-          condition: (data) => data?.type === "type-cast",
+          condition: (data) => data?.type === TRANSFORM_TYPES.TYPE_CAST,
         },
       },
       {
@@ -218,7 +235,7 @@ export const transformationFields: Field[] = [
         defaultValue: "parse",
         admin: {
           description: "Strategy for performing the conversion",
-          condition: (data) => data?.type === "type-cast",
+          condition: (data) => data?.type === TRANSFORM_TYPES.TYPE_CAST,
         },
       },
       {
@@ -227,7 +244,7 @@ export const transformationFields: Field[] = [
         admin: {
           language: "javascript",
           description: "Custom JavaScript: (value, context) => transformedValue",
-          condition: (data) => data?.type === "type-cast" && data?.strategy === "custom",
+          condition: (data) => data?.type === TRANSFORM_TYPES.TYPE_CAST && data?.strategy === "custom",
         },
       },
       {

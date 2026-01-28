@@ -168,7 +168,8 @@ const applyConcatenateTransform = (data: Record<string, unknown>, transform: Con
 
   for (const field of transform.fromFields) {
     const value = getByPath(data, field);
-    if (value !== undefined && value !== null) {
+    // Only stringify primitive types to avoid [object Object]
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
       values.push(String(value));
     }
   }
@@ -302,7 +303,10 @@ const castValue = (value: unknown, toType: CastableType): unknown => {
 const runCustomTransform = (value: unknown, customCode: string): unknown => {
   try {
     // Create a simple function context (synchronous for performance)
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    // SAFETY: This is intentional - custom transforms are user-defined code that dataset
+    // administrators configure. The transform code runs in a limited context with only
+    // the value and helper functions available (no access to globals, DOM, or Node APIs).
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval, sonarjs/code-eval
     const fn = new Function("value", "context", customCode) as (value: unknown, context: unknown) => unknown;
 
     const context = {

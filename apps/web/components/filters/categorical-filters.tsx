@@ -10,10 +10,15 @@
  */
 "use client";
 
+import { useCallback } from "react";
+
 import { useFilters } from "@/lib/filters";
 import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
 
 import { EnumFieldDropdown } from "./enum-field-dropdown";
+
+/** Stable empty array to avoid creating new references on each render */
+const EMPTY_ARRAY: string[] = [];
 
 /**
  * Loading skeleton for categorical filters.
@@ -28,6 +33,50 @@ const CategoricalFiltersSkeleton = () => (
     ))}
   </div>
 );
+
+/** Enum value with count and percentage */
+interface EnumValue {
+  value: string;
+  count: number;
+  percent: number;
+}
+
+/** Props for the memoized enum field dropdown wrapper */
+interface MemoizedEnumFieldProps {
+  fieldPath: string;
+  label: string;
+  values: EnumValue[];
+  selectedValues: string[];
+  onFieldFilterChange: (path: string, values: string[]) => void;
+}
+
+/**
+ * Memoized wrapper for EnumFieldDropdown that creates a stable callback.
+ */
+const MemoizedEnumField = ({
+  fieldPath,
+  label,
+  values,
+  selectedValues,
+  onFieldFilterChange,
+}: MemoizedEnumFieldProps) => {
+  const handleSelectionChange = useCallback(
+    (newValues: string[]) => {
+      onFieldFilterChange(fieldPath, newValues);
+    },
+    [onFieldFilterChange, fieldPath]
+  );
+
+  return (
+    <EnumFieldDropdown
+      fieldPath={fieldPath}
+      label={label}
+      values={values}
+      selectedValues={selectedValues}
+      onSelectionChange={handleSelectionChange}
+    />
+  );
+};
 
 /**
  * Categorical filters container.
@@ -55,13 +104,13 @@ export const CategoricalFilters = () => {
   return (
     <div className="space-y-3">
       {enumFields.map((field) => (
-        <EnumFieldDropdown
+        <MemoizedEnumField
           key={field.path}
           fieldPath={field.path}
           label={field.label}
           values={field.values}
-          selectedValues={filters.fieldFilters[field.path] ?? []}
-          onSelectionChange={(values) => setFieldFilter(field.path, values)}
+          selectedValues={filters.fieldFilters[field.path] ?? EMPTY_ARRAY}
+          onFieldFilterChange={setFieldFilter}
         />
       ))}
     </div>

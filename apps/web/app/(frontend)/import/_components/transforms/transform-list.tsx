@@ -29,7 +29,7 @@ import {
   Trash2,
   Type,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { memo, useCallback, useState } from "react";
 
 import {
   createTransform,
@@ -64,6 +64,123 @@ const TRANSFORM_COLORS: Record<TransformType, string> = {
   split: "text-purple-600",
   "type-cast": "text-amber-600",
 };
+
+// Separate component for dropdown menu items
+interface AddTransformMenuItemProps {
+  type: TransformType;
+  onAdd: (type: TransformType) => void;
+}
+
+const AddTransformMenuItem = memo(({ type, onAdd }: Readonly<AddTransformMenuItemProps>) => {
+  const Icon = TRANSFORM_ICONS[type];
+  const handleClick = useCallback(() => onAdd(type), [onAdd, type]);
+
+  return (
+    <DropdownMenuItem onClick={handleClick}>
+      <Icon className={cn("mr-2 h-4 w-4", TRANSFORM_COLORS[type])} />
+      {TRANSFORM_TYPE_LABELS[type]}
+    </DropdownMenuItem>
+  );
+});
+AddTransformMenuItem.displayName = "AddTransformMenuItem";
+
+// Separate component for each transform item
+interface TransformItemProps {
+  transform: ImportTransform;
+  isEditing: boolean;
+  sourceColumns: string[];
+  onToggleEdit: (id: string | null) => void;
+  onToggleActive: (id: string) => void;
+  onDelete: (id: string) => void;
+  onUpdate: (id: string, updates: Partial<ImportTransform>) => void;
+}
+
+const TransformItem = memo(
+  ({
+    transform,
+    isEditing,
+    sourceColumns,
+    onToggleEdit,
+    onToggleActive,
+    onDelete,
+    onUpdate,
+  }: Readonly<TransformItemProps>) => {
+    const Icon = TRANSFORM_ICONS[transform.type];
+    const isValid = isTransformValid(transform);
+
+    const handleEditClick = useCallback(() => {
+      onToggleEdit(isEditing ? null : transform.id);
+    }, [isEditing, transform.id, onToggleEdit]);
+
+    const handleToggleActive = useCallback(() => {
+      onToggleActive(transform.id);
+    }, [transform.id, onToggleActive]);
+
+    const handleDelete = useCallback(() => {
+      onDelete(transform.id);
+    }, [transform.id, onDelete]);
+
+    const handleUpdate = useCallback(
+      (updates: Partial<ImportTransform>) => {
+        onUpdate(transform.id, updates);
+      },
+      [transform.id, onUpdate]
+    );
+
+    return (
+      <div
+        className={cn(
+          "rounded-lg border p-3 transition-colors",
+          !transform.active && "opacity-50",
+          isEditing && "ring-cartographic-blue ring-2"
+        )}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <button type="button" className="flex flex-1 items-start gap-3 text-left" onClick={handleEditClick}>
+            <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", TRANSFORM_COLORS[transform.type])} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-foreground font-medium">{TRANSFORM_TYPE_LABELS[transform.type]}</span>
+                {!isValid && (
+                  <span className="bg-cartographic-terracotta/10 text-cartographic-terracotta rounded px-1.5 py-0.5 text-[10px] font-medium">
+                    Incomplete
+                  </span>
+                )}
+              </div>
+              <TransformSummary transform={transform} />
+            </div>
+          </button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={handleToggleActive}
+              title={transform.active ? "Disable" : "Enable"}
+            >
+              <span className={cn("h-2 w-2 rounded-full", transform.active ? "bg-cartographic-forest" : "bg-muted")} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
+              onClick={handleDelete}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {isEditing && (
+          <div className="mt-3 border-t pt-3">
+            <TransformEditor transform={transform} onChange={handleUpdate} sourceColumns={sourceColumns} />
+          </div>
+        )}
+      </div>
+    );
+  }
+);
+TransformItem.displayName = "TransformItem";
 
 export const TransformList = ({ transforms, onTransformsChange, sourceColumns }: Readonly<TransformListProps>) => {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -115,15 +232,9 @@ export const TransformList = ({ transforms, onTransformsChange, sourceColumns }:
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              {(Object.keys(TRANSFORM_TYPE_LABELS) as TransformType[]).map((type) => {
-                const Icon = TRANSFORM_ICONS[type];
-                return (
-                  <DropdownMenuItem key={type} onClick={() => addTransform(type)}>
-                    <Icon className={cn("mr-2 h-4 w-4", TRANSFORM_COLORS[type])} />
-                    {TRANSFORM_TYPE_LABELS[type]}
-                  </DropdownMenuItem>
-                );
-              })}
+              {(Object.keys(TRANSFORM_TYPE_LABELS) as TransformType[]).map((type) => (
+                <AddTransformMenuItem key={type} type={type} onAdd={addTransform} />
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -134,74 +245,18 @@ export const TransformList = ({ transforms, onTransformsChange, sourceColumns }:
             No transforms configured. Add a transform to process your data.
           </div>
         ) : (
-          transforms.map((transform) => {
-            const Icon = TRANSFORM_ICONS[transform.type];
-            const isValid = isTransformValid(transform);
-            const isEditing = editingId === transform.id;
-
-            return (
-              <div
-                key={transform.id}
-                className={cn(
-                  "rounded-lg border p-3 transition-colors",
-                  !transform.active && "opacity-50",
-                  isEditing && "ring-cartographic-blue ring-2"
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <button
-                    type="button"
-                    className="flex flex-1 items-start gap-3 text-left"
-                    onClick={() => setEditingId(isEditing ? null : transform.id)}
-                  >
-                    <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", TRANSFORM_COLORS[transform.type])} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-foreground font-medium">{TRANSFORM_TYPE_LABELS[transform.type]}</span>
-                        {!isValid && (
-                          <span className="bg-cartographic-terracotta/10 text-cartographic-terracotta rounded px-1.5 py-0.5 text-[10px] font-medium">
-                            Incomplete
-                          </span>
-                        )}
-                      </div>
-                      <TransformSummary transform={transform} />
-                    </div>
-                  </button>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => toggleActive(transform.id)}
-                      title={transform.active ? "Disable" : "Enable"}
-                    >
-                      <span
-                        className={cn("h-2 w-2 rounded-full", transform.active ? "bg-cartographic-forest" : "bg-muted")}
-                      />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
-                      onClick={() => deleteTransform(transform.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {isEditing && (
-                  <div className="mt-3 border-t pt-3">
-                    <TransformEditor
-                      transform={transform}
-                      onChange={(updates) => updateTransform(transform.id, updates)}
-                      sourceColumns={sourceColumns}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })
+          transforms.map((transform) => (
+            <TransformItem
+              key={transform.id}
+              transform={transform}
+              isEditing={editingId === transform.id}
+              sourceColumns={sourceColumns}
+              onToggleEdit={setEditingId}
+              onToggleActive={toggleActive}
+              onDelete={deleteTransform}
+              onUpdate={updateTransform}
+            />
+          ))
         )}
       </CardContent>
     </Card>

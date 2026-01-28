@@ -14,7 +14,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import type { LngLatBounds } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ClusteredMap, type ClusteredMapHandle, type MapViewState } from "@/components/maps/clustered-map";
+import { ClusteredMap, type ClusteredMapHandle } from "@/components/maps/clustered-map";
 import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
 import { useFilters, useMapPosition, useSelectedEvent } from "@/lib/filters";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
@@ -34,7 +34,15 @@ import { ChartSection } from "./chart-section";
 import { EventDetailModal } from "./event-detail-modal";
 import { EventsList } from "./events-list";
 import { FilterDrawer } from "./filter-drawer";
-import { buildEventsDescription, getFilterLabels, getLoadingStates, simplifyBounds } from "./map-explorer-helpers";
+import {
+  buildEventsDescription,
+  getFilterLabels,
+  getInitialViewState,
+  getLoadingStates,
+  isDataBoundsOutsideViewport,
+  shouldShowZoomToData,
+  simplifyBounds,
+} from "./map-explorer-helpers";
 import { MobileFilterSheet } from "./mobile-filter-sheet";
 
 export const MapExplorer = () => {
@@ -65,16 +73,10 @@ export const MapExplorer = () => {
   const { mapPosition, hasMapPosition, setMapPosition } = useMapPosition();
 
   // Convert URL map position to initial view state for ClusteredMap
-  const initialViewState: MapViewState | null = useMemo(() => {
-    if (hasMapPosition && mapPosition.latitude != null && mapPosition.longitude != null && mapPosition.zoom != null) {
-      return {
-        latitude: mapPosition.latitude,
-        longitude: mapPosition.longitude,
-        zoom: mapPosition.zoom,
-      };
-    }
-    return null;
-  }, [hasMapPosition, mapPosition.latitude, mapPosition.longitude, mapPosition.zoom]);
+  const initialViewState = useMemo(
+    () => getInitialViewState(hasMapPosition, mapPosition),
+    [hasMapPosition, mapPosition]
+  );
 
   // Get UI state from Zustand store
   const isFilterDrawerOpen = useUIStore((state) => state.ui.isFilterDrawerOpen);
@@ -182,19 +184,17 @@ export const MapExplorer = () => {
   // Show "zoom to data" button when:
   // 1. User has panned away from data, OR
   // 2. Data bounds exist and map viewport doesn't fully contain them (e.g., after filter change)
-  const dataBoundsOutsideViewport = useMemo(() => {
-    if (!boundsData?.bounds || !mapBounds) return false;
-    const dataBounds = boundsData.bounds;
-    // Check if any edge of data bounds is outside current viewport
-    return (
-      dataBounds.west < mapBounds.west ||
-      dataBounds.south < mapBounds.south ||
-      dataBounds.east > mapBounds.east ||
-      dataBounds.north > mapBounds.north
-    );
-  }, [boundsData, mapBounds]);
+  const dataBoundsOutsideViewport = useMemo(
+    () => isDataBoundsOutsideViewport(boundsData?.bounds, mapBounds),
+    [boundsData, mapBounds]
+  );
 
-  const showZoomToData = (hasUserPanned || dataBoundsOutsideViewport) && boundsData?.bounds != null && !boundsLoading;
+  const showZoomToData = shouldShowZoomToData(
+    hasUserPanned,
+    dataBoundsOutsideViewport,
+    boundsData?.bounds != null,
+    boundsLoading
+  );
 
   // Handler to zoom to data bounds
   const handleZoomToData = useCallback(() => {

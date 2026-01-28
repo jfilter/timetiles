@@ -28,7 +28,7 @@ const getPreviewDir = (): string => {
 /**
  * Validate that a preview file exists.
  */
-export const GET = async (req: NextRequest) => {
+export const GET = (req: NextRequest) => {
   const previewId = req.nextUrl.searchParams.get("previewId");
 
   if (!previewId || !isValidUUID(previewId)) {

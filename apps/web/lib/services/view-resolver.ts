@@ -140,6 +140,7 @@ export const findDefaultView = async (payload: Payload): Promise<View | null> =>
     });
 
     const view = result.docs[0] ?? null;
+    // eslint-disable-next-line require-atomic-updates -- Race condition is acceptable for caching; concurrent calls fetch same data
     defaultViewCache = view;
     return view;
   } catch (error) {

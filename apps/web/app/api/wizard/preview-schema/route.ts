@@ -358,6 +358,7 @@ const parseAuthConfig = (formData: FormData): AuthConfig | null => {
  * - bearerToken (for bearer type)
  * - username, password (for basic type)
  */
+// eslint-disable-next-line complexity, sonarjs/cognitive-complexity, sonarjs/max-lines-per-function
 export const POST = async (req: NextRequest) => {
   try {
     const payload = await getPayload({ config });

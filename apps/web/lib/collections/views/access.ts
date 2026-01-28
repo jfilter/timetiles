@@ -34,10 +34,7 @@ export const read: Access = ({ req: { user } }): boolean | Where => {
  * Create access: Any authenticated user can create views.
  * Admin and editor roles can always create.
  */
-export const create: Access = ({ req: { user } }) => {
-  if (!user) return false;
-  return true;
-};
+export const create: Access = ({ req: { user } }) => !!user;
 
 /**
  * Update access: Admins/editors can update all views, creators can update their own.
@@ -53,15 +50,9 @@ export const update: Access = ({ req: { user } }): boolean | Where => {
 
 /**
  * Delete access: Admins/editors can delete all views, creators can delete their own.
+ * Uses same logic as update access.
  */
-// eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
-export const deleteAccess: Access = ({ req: { user } }): boolean | Where => {
-  if (!user) return false;
-  if (user.role === "admin" || user.role === "editor") return true;
-
-  // Creator can delete their own views
-  return { createdBy: { equals: user.id } } as Where;
-};
+export const deleteAccess: Access = update;
 
 /**
  * ReadVersions access: Only admins and editors can read version history.

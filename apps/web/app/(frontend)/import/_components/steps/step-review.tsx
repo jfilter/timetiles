@@ -8,7 +8,7 @@
  * @module
  * @category Components
  */
-/* eslint-disable complexity -- Review component displays many configuration sections */
+
 "use client";
 
 import { Button, Card, CardContent, Input, Label } from "@timetiles/ui";
@@ -58,7 +58,6 @@ const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
   schemaMode: "additive",
 };
 
-// eslint-disable-next-line complexity -- Review component displays many configuration sections
 export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   const { state, startProcessing, nextStep, setError, setNavigationConfig, setScheduleConfig } = useWizard();
   const {

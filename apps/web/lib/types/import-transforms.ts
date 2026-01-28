@@ -281,7 +281,8 @@ export const isTransformValid = (transform: ImportTransform): boolean => {
     case "string-op":
       return Boolean(transform.from && transform.operation);
     case "concatenate":
-      return Boolean(transform.fromFields.length >= 2 && transform.separator !== undefined && transform.to);
+      // separator is always a string per the type definition, so we just validate the other required fields
+      return Boolean(transform.fromFields.length >= 2 && transform.to);
     case "split":
       return Boolean(transform.from && transform.delimiter && transform.toFields.length >= 1);
     case "type-cast":

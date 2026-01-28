@@ -530,6 +530,18 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
     if (saved) {
       // Never restore auth state from localStorage - always use server-provided initialAuth
       // This prevents issues when user logs out but localStorage still has isAuthenticated: true
+
+      // Determine the restored step based on current auth state
+      const getRestoredStep = (): WizardStep => {
+        if (wasAuthenticatedOnStart) {
+          return Math.max(saved.currentStep ?? 2, 2) as WizardStep;
+        }
+        if (!initialAuth?.isAuthenticated) {
+          return 1;
+        }
+        return saved.currentStep ?? 1;
+      };
+
       const restoredState = {
         ...saved,
         // Always use current auth state from server
@@ -539,11 +551,7 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
         // startedAuthenticated is based on initial page load, not restored state
         startedAuthenticated: wasAuthenticatedOnStart ?? false,
         // Adjust step based on current auth state
-        currentStep: (wasAuthenticatedOnStart
-          ? Math.max(saved.currentStep ?? 2, 2)
-          : !initialAuth?.isAuthenticated
-            ? 1
-            : (saved.currentStep ?? 1)) as WizardStep,
+        currentStep: getRestoredStep(),
       };
       dispatch({ type: "RESTORE", state: restoredState });
     }
@@ -566,8 +574,14 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
           dispatch({ type: "CLEAR_FILE" });
           // If we were past the upload step, go back to it
           if (state.currentStep > 2) {
-            const targetStep = wasAuthenticatedOnStart ? 2 : Math.max(state.currentStep > 1 ? 2 : 1, 1);
-            dispatch({ type: "SET_STEP", step: targetStep as WizardStep });
+            // Determine the target step when preview is invalid
+            const getTargetStep = (): WizardStep => {
+              if (wasAuthenticatedOnStart) {
+                return 2;
+              }
+              return state.currentStep > 1 ? 2 : 1;
+            };
+            dispatch({ type: "SET_STEP", step: getTargetStep() });
           }
           // Clear invalid state from storage
           clearStorage();

@@ -112,6 +112,7 @@ const getMediaUrl = (media: NonNullable<View["branding"]>["logo"]): string | und
  * ```
  */
 export const ViewProvider = ({ view, children }: ViewProviderProps): React.ReactElement => {
+  // eslint-disable-next-line complexity
   const value = useMemo((): ViewContextValue => {
     // Extract catalog/dataset IDs from relationships
     const catalogIds = view?.dataScope?.catalogs?.map((c) => (typeof c === "number" ? c : c.id));

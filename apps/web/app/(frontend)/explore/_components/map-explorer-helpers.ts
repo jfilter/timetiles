@@ -174,3 +174,46 @@ export const getLoadingStates = (
   isUpdating: isLoading && hasLoadedOnce,
   shouldMarkLoaded: !isLoading && !hasLoadedOnce && (eventsCount > 0 || clustersCount > 0),
 });
+
+/** Check if data bounds are outside the current viewport */
+export const isDataBoundsOutsideViewport = (
+  dataBounds: MapBounds | null | undefined,
+  mapBounds: MapBounds | null | undefined
+): boolean => {
+  if (!dataBounds || !mapBounds) return false;
+  // Check if any edge of data bounds is outside current viewport
+  return (
+    dataBounds.west < mapBounds.west ||
+    dataBounds.south < mapBounds.south ||
+    dataBounds.east > mapBounds.east ||
+    dataBounds.north > mapBounds.north
+  );
+};
+
+interface MapPosition {
+  latitude: number | null;
+  longitude: number | null;
+  zoom: number | null;
+}
+
+/** Convert map position to initial view state, returns null if incomplete */
+export const getInitialViewState = (
+  hasMapPosition: boolean,
+  mapPosition: MapPosition
+): { latitude: number; longitude: number; zoom: number } | null => {
+  if (!hasMapPosition) return null;
+  if (mapPosition.latitude == null || mapPosition.longitude == null || mapPosition.zoom == null) return null;
+  return {
+    latitude: mapPosition.latitude,
+    longitude: mapPosition.longitude,
+    zoom: mapPosition.zoom,
+  };
+};
+
+/** Check if zoom to data button should be shown */
+export const shouldShowZoomToData = (
+  hasUserPanned: boolean,
+  dataBoundsOutsideViewport: boolean,
+  boundsExist: boolean,
+  boundsLoading: boolean
+): boolean => (hasUserPanned || dataBoundsOutsideViewport) && boundsExist && !boundsLoading;
