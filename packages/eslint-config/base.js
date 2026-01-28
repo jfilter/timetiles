@@ -12,9 +12,8 @@
  *
  * @module
  */
-import { globalIgnores } from "eslint/config";
-
 import js from "@eslint/js";
+import { globalIgnores } from "eslint/config";
 import eslintConfigPrettier from "eslint-config-prettier";
 import boundariesPlugin from "eslint-plugin-boundaries";
 import importPlugin from "eslint-plugin-import";
