@@ -26,6 +26,7 @@ jobs:
       # Base connection for database operations (globalSetup creates per-worker DBs)
       DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/postgres
       PAYLOAD_SECRET: test-secret-key
+      NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
       PGPASSWORD: timetiles_password
       NODE_ENV: test
       PAYLOAD_CONFIG_PATH: ./payload.config.ts
