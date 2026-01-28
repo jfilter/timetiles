@@ -28,9 +28,14 @@ export default defineConfig({
     // Default to "node" for safety with Payload/jose; only use jsdom for component tests
     environment: isComponentTest ? "jsdom" : "node",
     exclude: ["**/node_modules/**"],
+    // Global setup runs ONCE before all workers (creates template database)
+    globalSetup: ["tests/setup/integration/vitest-global-setup.ts"],
+    // Setup files run per-worker (clones template to worker database)
     setupFiles: ["tests/setup/integration/global-setup.ts"],
-    testTimeout: isUnitTest ? 10000 : 30000, // Shorter timeout for unit tests
-    hookTimeout: isUnitTest ? 10000 : 30000,
+    // Timeouts: unit tests are fast, integration tests need more time for DB operations
+    testTimeout: isUnitTest ? 10000 : 30000,
+    // Integration test hooks need time for database setup (cloning + first Payload init per worker)
+    hookTimeout: isUnitTest ? 10000 : 45000,
     reporters: ["verbose"],
     silent: false,
     // Reduce console output noise
@@ -63,10 +68,13 @@ export default defineConfig({
       forks: {
         isolate: !isUnitTest, // Disable isolation for unit tests, keep for integration
         execArgv: ["--no-warnings"], // Suppress Node.js warnings
+        // Limit workers to prevent database connection exhaustion during parallel test runs
+        // Use 4 workers consistently for stability (matches CI)
+        maxForks: 4,
+        minForks: 1,
       },
     },
     fileParallelism: true,
-    maxWorkers: process.env.CI ? 4 : undefined,
     sequence: {
       concurrent: true,
     },

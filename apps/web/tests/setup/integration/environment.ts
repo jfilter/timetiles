@@ -33,6 +33,11 @@ import { TestServer } from "./http-server";
 
 const logger = createLogger("test-env");
 
+// Cache Payload instance per worker to avoid repeated initialization overhead
+// This is critical for test performance - Payload initialization is expensive
+let cachedPayload: any = null;
+let cachedPayloadDbUrl: string | null = null;
+
 export interface TestEnvironmentOptions {
   /** Collections to include in the test environment */
   collections?: CollectionName[];
@@ -117,28 +122,43 @@ export class TestEnvironmentBuilder {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    // Create optimized Payload config for testing
-    logger.info("Creating test config", { dbName });
-    const testConfig = await createTestConfig({
-      databaseUrl: dbUrl,
-      collections,
-      logLevel: (process.env.LOG_LEVEL as any) || "silent",
-    });
-    logger.info("Test config created", { dbName });
+    // Use cached Payload instance if available for the same database URL
+    // This dramatically speeds up test initialization by avoiding repeated Payload setup
+    let payload: any;
+    if (cachedPayload && cachedPayloadDbUrl === dbUrl) {
+      logger.info("Using cached Payload instance", { dbName, workerId });
+      payload = cachedPayload;
+    } else {
+      // Create optimized Payload config for testing
+      logger.info("Creating test config", { dbName });
+      const testConfig = await createTestConfig({
+        databaseUrl: dbUrl,
+        collections,
+        logLevel: (process.env.LOG_LEVEL as "silent" | "error" | "warn" | "info" | "debug") ?? "silent",
+      });
+      logger.info("Test config created", { dbName });
 
-    logger.info("Getting Payload instance", { dbName, workerId });
-    const payload = await getPayload({ config: testConfig });
+      logger.info("Getting Payload instance", { dbName, workerId });
+      payload = await getPayload({ config: testConfig });
 
-    // Log Payload singleton state for debugging
-    const poolState = (payload.db as any)?.pool ? "active" : "no-pool";
-    const drizzleState = (payload.db as any)?.drizzle ? "active" : "no-drizzle";
-    logger.info("Payload instance acquired", {
-      dbName,
-      workerId,
-      poolState,
-      drizzleState,
-      payloadId: (payload as any)._id ?? "no-id",
-    });
+      // Cache for subsequent test files in the same worker
+      // eslint-disable-next-line require-atomic-updates
+      cachedPayload = payload;
+      // eslint-disable-next-line require-atomic-updates
+      cachedPayloadDbUrl = dbUrl;
+
+      // Log Payload singleton state for debugging
+      const db = payload.db as { pool?: unknown; drizzle?: unknown; _id?: string };
+      const poolState = db?.pool ? "active" : "no-pool";
+      const drizzleState = db?.drizzle ? "active" : "no-drizzle";
+      logger.info("Payload instance acquired and cached", {
+        dbName,
+        workerId,
+        poolState,
+        drizzleState,
+        payloadId: db?._id ?? "no-id",
+      });
+    }
 
     // prodMigrations automatically runs migrations on initialization
     // No need to call payload.db.migrate() explicitly
