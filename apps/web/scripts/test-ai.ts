@@ -56,6 +56,9 @@ interface TestSummary {
   numSkippedTests?: number;
   numPendingTests?: number;
   duration?: number;
+  wallClockDuration?: number;
+  startTime?: number;
+  endTime?: number;
   testResults: TestResult[];
 }
 
@@ -91,7 +94,8 @@ const vitestCmd = [
   .filter(Boolean)
   .join(" ");
 
-// Run vitest
+// Run vitest and track wall-clock time
+const startTime = Date.now();
 try {
   // eslint-disable-next-line sonarjs/os-command -- vitestCmd is constructed from safe, controlled values only (no user input)
   execSync(vitestCmd, {
@@ -103,6 +107,8 @@ try {
   // Vitest exits non-zero on test failures, that's expected
   // We'll check the results JSON for actual status
 }
+const endTime = Date.now();
+const wallClockDuration = endTime - startTime;
 
 // Read and display summary
 const resultsPath = path.join(process.cwd(), ".test-results.json");
@@ -110,13 +116,27 @@ const resultsPath = path.join(process.cwd(), ".test-results.json");
 try {
   const results = JSON.parse(fs.readFileSync(resultsPath, "utf-8")) as TestSummary;
 
-  const duration = results.duration ?? results.testResults?.reduce((sum, t) => sum + (t.duration ?? 0), 0) ?? 0;
+  // Add wall-clock duration to results and save back
+  const enhancedResults = {
+    ...results,
+    wallClockDuration,
+    startTime,
+    endTime,
+  };
+  fs.writeFileSync(resultsPath, JSON.stringify(enhancedResults, null, 2));
+
   const status = results.success ? "✅" : "❌";
   const skipped = results.numSkippedTests ?? results.numPendingTests ?? 0;
 
+  // Format duration as Xm Ys or just Xs
+  const durationSec = wallClockDuration / 1000;
+  const durationStr =
+    durationSec >= 60
+      ? ` (${Math.floor(durationSec / 60)}m ${Math.round(durationSec % 60)}s)`
+      : ` (${durationSec.toFixed(1)}s)`;
+
   // Single line summary
   const skippedStr = skipped > 0 ? `, ${skipped} skipped` : "";
-  const durationStr = duration > 0 ? ` (${(duration / 1000).toFixed(1)}s)` : "";
   console.log(
     `${status} ${results.numPassedTests} passed, ${results.numFailedTests} failed${skippedStr}${durationStr}`
   );

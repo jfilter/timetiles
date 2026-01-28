@@ -30,6 +30,12 @@ services:
         effective_cache_size = 8GB
         huge_pages = off
 
+        # Durability - DISABLED for dev/testing speed (35% faster)
+        # DO NOT use in production!
+        synchronous_commit = off
+        fsync = off
+        full_page_writes = off
+
         # Query planner - NVMe SSD optimized
         random_page_cost = 1.1
         effective_io_concurrency = 200
