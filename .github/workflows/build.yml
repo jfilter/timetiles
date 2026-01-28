@@ -27,13 +27,13 @@ jobs:
         run: pnpm docs:api
         working-directory: apps/docs
 
-      - name: Lint code
-        timeout-minutes: 3
-        run: pnpm lint --filter=!docs
+      - name: Lint code (ESLint full)
+        timeout-minutes: 5
+        run: pnpm lint:full --filter=!docs
 
-      - name: Type check
-        timeout-minutes: 3
-        run: pnpm typecheck
+      - name: Type check (tsc full)
+        timeout-minutes: 5
+        run: pnpm typecheck:full
 
       - name: Lint infrastructure
         timeout-minutes: 2

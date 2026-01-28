@@ -1,0 +1,100 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "import", "promise"],
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2024": true
+  },
+  "rules": {
+    "no-async-promise-executor": "error",
+    "no-case-declarations": "error",
+    "no-console": "error",
+    "no-empty": ["error", { "allowEmptyCatch": false }],
+    "max-params": ["error", { "max": 7 }],
+    "complexity": ["error", { "max": 20 }],
+    "max-nested-callbacks": ["error", { "max": 5 }],
+
+    "typescript/no-floating-promises": "error",
+    "typescript/await-thenable": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/require-await": "error",
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-unused-vars": ["warn", { "varsIgnorePattern": "^_" }],
+    "typescript/prefer-nullish-coalescing": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
+    "typescript/no-base-to-string": "error",
+    "typescript/no-meaningless-void-operator": "error",
+    "typescript/no-mixed-enums": "error",
+    "typescript/no-unnecessary-template-expression": "error",
+    "typescript/only-throw-error": "error",
+    "typescript/prefer-promise-reject-errors": "error",
+    "typescript/no-duplicate-type-constituents": "error",
+    "typescript/no-useless-empty-export": "error",
+
+    "unicorn/no-instanceof-array": "error",
+    "unicorn/prefer-includes": "error",
+    "unicorn/prefer-string-starts-ends-with": "error",
+    "unicorn/throw-new-error": "error",
+    "unicorn/filename-case": [
+      "error",
+      {
+        "case": "kebabCase",
+        "ignore": [
+          "^page\\.tsx?$",
+          "^layout\\.tsx?$",
+          "^loading\\.tsx?$",
+          "^error\\.tsx?$",
+          "^not-found\\.tsx?$",
+          "^route\\.ts$",
+          "^middleware\\.ts$",
+          "^instrumentation\\.ts$",
+          "\\.config\\.(js|ts|mjs)$",
+          "\\.d\\.ts$",
+          "\\.test\\.tsx?$",
+          "^README\\.md$",
+          "^CLAUDE\\.md$",
+          "^\\d{8}_.*\\.ts$"
+        ]
+      }
+    ],
+
+    "import/no-cycle": "error",
+    "import/no-self-import": "error",
+
+    "promise/catch-or-return": "error",
+    "promise/no-new-statics": "error",
+    "promise/no-return-wrap": "error",
+    "promise/param-names": "error",
+    "promise/valid-params": "error"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.config.{js,ts,mjs}", "**/eslint.config.{js,ts}", "packages/eslint-config/*.js"],
+      "rules": {}
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/tests/**/*"],
+      "rules": {
+        "typescript/no-explicit-any": "off",
+        "max-nested-callbacks": "off",
+        "no-console": "off",
+        "complexity": "off"
+      }
+    },
+    {
+      "files": ["**/migrations/**/*.ts"],
+      "rules": {
+        "unicorn/filename-case": "off"
+      }
+    },
+    {
+      "files": ["**/scripts/**/*.ts", "**/scripts/**/*.js"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ],
+  "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/.next/**", "**/coverage/**", "**/.turbo/**", "*.d.ts", "**/importMap.js", "**/payload-types.ts"]
+}

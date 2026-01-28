@@ -74,6 +74,22 @@
       ],
       "outputs": [".typecheck-results.json"]
     },
+    "typecheck:fast": {
+      "dependsOn": ["^typecheck:fast"],
+      "inputs": [
+        "**/*.{ts,tsx}",
+        "tsconfig.json",
+        "tsconfig.*.json"
+      ],
+      "outputs": []
+    },
+    "lint:fast": {
+      "inputs": [
+        "**/*.{ts,tsx,js,jsx}",
+        "../../.oxlintrc.json"
+      ],
+      "outputs": []
+    },
     "dev": {
       "cache": false,
       "persistent": true

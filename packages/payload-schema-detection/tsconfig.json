@@ -1,7 +1,6 @@
 {
   "extends": "@timetiles/typescript-config/base.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@timetiles/payload-schema-detection/*": ["./src/*"]
     },

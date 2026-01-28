@@ -1,7 +1,6 @@
 {
   "extends": "@timetiles/typescript-config/nextjs.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "moduleResolution": "bundler",
     "paths": {
       "@timetiles/ui/*": ["../../packages/ui/src/*"]
@@ -24,6 +23,10 @@
   ],
   "exclude": [
     "node_modules",
+    ".next",
+    ".turbo",
+    "coverage",
+    "dist",
     "content/reference/api/**/*.md",
     "content/reference/api/**/*.mdx",
     "!content/reference/api/index.mdx"

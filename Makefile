@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint typecheck format test test-ai test-e2e test-coverage coverage coverage-check migrate migrate-create check check-ai help
+.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint lint-full typecheck typecheck-full format test test-ai test-e2e test-coverage coverage coverage-check migrate migrate-create check check-full check-ai help
 
 all: help
 
@@ -146,13 +146,24 @@ kill-dev:
 build:
 	pnpm build
 
-# Run linting
+# Run linting with oxlint (fast, for development)
+# ~165x faster than ESLint
 lint:
 	pnpm lint
 
-# Run typecheck
+# Run full linting with ESLint (for CI)
+# Includes specialized plugins: boundaries, jsdoc, sonarjs, react-compiler, etc.
+lint-full:
+	pnpm lint:full
+
+# Run typecheck with tsgo (fast, for development)
+# ~10x faster than tsc
 typecheck:
 	pnpm typecheck
+
+# Run full typecheck with tsc (for CI)
+typecheck-full:
+	pnpm typecheck:full
 
 # Format code
 format:
@@ -250,9 +261,13 @@ migrate-create:
 	@echo "📝 Creating new database migration..."
 	pnpm --filter web payload:migrate:create
 
-# Run combined lint and typecheck
+# Run combined lint + typecheck (fast, for development)
 check:
 	pnpm check
+
+# Run combined full lint + typecheck (for CI)
+check-full:
+	pnpm check:full
 
 # Show help
 help:
@@ -271,9 +286,12 @@ help:
 		'  reset       - Reset database (wipe db + migrate + seed)' \
 		'  build       - Build the project' '' \
 		'🔍 Code Quality:' \
-		'  lint        - Run ESLint' \
-		'  typecheck   - Run TypeScript type checking' \
-		'  check       - Run lint + typecheck combined' \
+		'  lint        - Run oxlint (fast, ~1s for dev)' \
+		'  lint-full   - Run ESLint (thorough, ~3min for CI)' \
+		'  typecheck   - Run tsgo (fast, ~15s for dev)' \
+		'  typecheck-full - Run tsc (thorough, for CI)' \
+		'  check       - Run lint + typecheck (fast, for dev)' \
+		'  check-full  - Run lint-full + typecheck-full (for CI)' \
 		'  check-ai    - Run code quality checks with AI-friendly output' \
 		'                Usage: make check-ai [PACKAGE=web|docs|ui]' \
 		'  format      - Format code with Prettier' '' \

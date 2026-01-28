@@ -8,7 +8,7 @@
  * @category Test Setup
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, type RenderOptions } from "@testing-library/react";
+import { render, type RenderOptions, type RenderResult } from "@testing-library/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import React from "react";
 
@@ -49,10 +49,7 @@ const AllTheProviders = ({
   );
 };
 
-export const renderWithProviders = (
-  ui: React.ReactElement,
-  options?: CustomRenderOptions
-): ReturnType<typeof render> => {
+export const renderWithProviders = (ui: React.ReactElement, options?: CustomRenderOptions): RenderResult => {
   const { searchParams, ...renderOptions } = options ?? {};
 
   return render(ui, {

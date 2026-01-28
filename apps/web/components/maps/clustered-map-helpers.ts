@@ -4,6 +4,7 @@
  * @module
  * @category Components
  */
+import type { Feature } from "geojson";
 import { cartographicColors } from "@timetiles/ui/lib/chart-themes";
 import type { MapRef } from "react-map-gl/maplibre";
 
@@ -45,7 +46,7 @@ export const eventPointLayerConfig = {
 };
 
 /** Extract valid coordinates from a GeoJSON feature */
-export const getValidCoordinates = (feature: GeoJSON.Feature): [number, number] | null => {
+export const getValidCoordinates = (feature: Feature): [number, number] | null => {
   const coordinates = feature.geometry?.type === "Point" ? feature.geometry.coordinates : null;
   if (coordinates && coordinates.length >= 2) {
     const [lng, lat] = coordinates as [number, number];

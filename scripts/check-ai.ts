@@ -3,7 +3,7 @@
 /**
  * Repository-wide code quality check with AI-friendly output.
  *
- * Uses Turbo to run lint/typecheck in parallel across all packages,
+ * Runs fast lint (oxlint) and typecheck (tsgo) with JSON output,
  * then collects results and provides a clean summary.
  *
  * @module
@@ -42,17 +42,40 @@ const PACKAGES = [
   { name: "packages/typescript-config", hasLint: true, hasTypecheck: false },
 ];
 
-// Main execution
+const scriptsDir = path.dirname(new URL(import.meta.url).pathname);
 
-// Run Turbo to execute lint and typecheck in parallel across all packages
-// Use --output-logs=errors-only to suppress verbose output
-// Use --continue to run all tasks even if some fail
-try {
-  execSync("pnpm turbo lint typecheck --continue --output-logs=errors-only", {
-    stdio: "pipe", // Suppress Turbo's output, we'll show our own summary
-  });
-} catch {
-  // Turbo exits with non-zero if any task fails, which is expected
+// Run checks for each package
+// Note: Running sequentially to avoid overwhelming the system
+// The fast tools (oxlint, tsgo) are already very fast
+for (const pkg of PACKAGES) {
+  const pkgPath = path.join(process.cwd(), pkg.name);
+  if (!fs.existsSync(pkgPath)) {
+    continue;
+  }
+
+  // Run lint with JSON output
+  if (pkg.hasLint) {
+    try {
+      execSync(`tsx ${path.join(scriptsDir, "lint-fast-with-json.ts")}`, {
+        cwd: pkgPath,
+        stdio: "pipe",
+      });
+    } catch {
+      // Expected to fail if there are lint errors
+    }
+  }
+
+  // Run typecheck with JSON output
+  if (pkg.hasTypecheck) {
+    try {
+      execSync(`tsx ${path.join(scriptsDir, "typecheck-fast-with-json.ts")}`, {
+        cwd: pkgPath,
+        stdio: "pipe",
+      });
+    } catch {
+      // Expected to fail if there are type errors
+    }
+  }
 }
 
 const results: PackageResults[] = [];
@@ -126,9 +149,7 @@ if (allPassed && totalWarnings === 0) {
 } else if (allPassed) {
   console.log(`⚠️  ${totalWarnings} warnings (no errors)`);
 } else {
-  console.log(
-    `❌ ${totalErrors} errors, ${totalWarnings} warnings across ${failedPackages.length} packages`
-  );
+  console.log(`❌ ${totalErrors} errors, ${totalWarnings} warnings across ${failedPackages.length} packages`);
 }
 console.log("=".repeat(70));
 
@@ -158,7 +179,9 @@ if (totalErrors > 0) {
             for (const error of typecheckData.errors.slice(0, maxErrors - errorCount)) {
               const relPath = path.relative(process.cwd(), error.file);
               console.log(`  ${packageName}/${relPath}:${error.line}`);
-              console.log(`    ${error.code}: ${error.message.substring(0, 80)}${error.message.length > 80 ? "..." : ""}`);
+              console.log(
+                `    ${error.code}: ${error.message.substring(0, 80)}${error.message.length > 80 ? "..." : ""}`
+              );
               errorCount++;
             }
           }

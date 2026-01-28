@@ -2,7 +2,6 @@
   "extends": "@timetiles/typescript-config/nextjs.json",
   "compilerOptions": {
     "checkJs": false,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
       "@/components/*": ["./components/*"],
@@ -18,5 +17,14 @@
     "types": ["vitest/globals", "node"]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "app/(payload)/dashboard/importMap.js"]
+  "exclude": [
+    "node_modules",
+    ".next",
+    ".turbo",
+    "coverage",
+    "playwright-report",
+    "test-results",
+    "dist",
+    "app/(payload)/dashboard/importMap.js"
+  ]
 }

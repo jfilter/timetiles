@@ -45,7 +45,7 @@ const getEnvValue = (key: string): string | undefined => {
   return undefined;
 };
 
-const checkEnvironmentVariables = (): HealthCheckResult => {
+const checkEnvironmentVariables = async (): Promise<HealthCheckResult> => {
   logger.debug("Checking environment variables");
   const requiredVars = ["PAYLOAD_SECRET", "DATABASE_URL"];
   const missingVars = requiredVars.filter((v) => {
@@ -310,7 +310,7 @@ const checkDatabaseFunctions = async (): Promise<HealthCheckResult> => {
   }
 };
 
-const checkEmailConfiguration = (): HealthCheckResult => {
+const checkEmailConfiguration = async (): Promise<HealthCheckResult> => {
   logger.debug("Checking email configuration");
 
   const hasSmtpHost = Boolean(getEnvValue("EMAIL_SMTP_HOST"));
@@ -412,10 +412,10 @@ export const runHealthChecks = async () => {
   const startTime = Date.now();
 
   const [env, uploads, geocoding, email, cms, migrations, postgis, dbFunctions, dbSize] = await Promise.all([
-    wrapHealthCheck(() => Promise.resolve(checkEnvironmentVariables()), "Environment"),
+    wrapHealthCheck(checkEnvironmentVariables, "Environment"),
     wrapHealthCheck(checkUploadsDirectory, "Uploads directory"),
     wrapHealthCheck(checkGeocodingService, "Geocoding service"),
-    wrapHealthCheck(() => Promise.resolve(checkEmailConfiguration()), "Email"),
+    wrapHealthCheck(checkEmailConfiguration, "Email"),
     wrapHealthCheck(checkPayloadCMS, "Payload CMS"),
     wrapHealthCheck(checkMigrations, "Migrations"),
     wrapHealthCheck(checkPostGIS, "PostGIS"),

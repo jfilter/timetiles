@@ -1,7 +1,6 @@
 {
   "extends": "@timetiles/typescript-config/react-library.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@timetiles/ui/*": ["./src/*"]
     },

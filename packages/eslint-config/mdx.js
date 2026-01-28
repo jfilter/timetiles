@@ -8,6 +8,8 @@
  */
 import * as mdx from "eslint-plugin-mdx";
 
+// Re-export defaultIgnores for apps to use
+export { defaultIgnores } from "./base.js";
 import baseConfig from "./base.js";
 
 /**

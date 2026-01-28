@@ -6,13 +6,20 @@
  * promises, and more. It also defines architectural boundaries between different parts of the
  * monorepo to prevent incorrect dependencies.
  *
+ * The configuration uses eslint-plugin-oxlint to automatically disable ESLint rules that
+ * oxlint already handles, enabling a hybrid linting approach (oxlint for speed + ESLint
+ * for specialized plugins).
+ *
  * @module
  */
+import { globalIgnores } from "eslint/config";
+
 import js from "@eslint/js";
 import eslintConfigPrettier from "eslint-config-prettier";
 import boundariesPlugin from "eslint-plugin-boundaries";
 import importPlugin from "eslint-plugin-import";
 import jsdocPlugin from "eslint-plugin-jsdoc";
+import oxlint from "eslint-plugin-oxlint";
 import preferArrowFunctions from "eslint-plugin-prefer-arrow-functions";
 import prettierPlugin from "eslint-plugin-prettier";
 import promisePlugin from "eslint-plugin-promise";
@@ -24,6 +31,24 @@ import turboPlugin from "eslint-plugin-turbo";
 import unicornPlugin from "eslint-plugin-unicorn";
 import unusedImports from "eslint-plugin-unused-imports";
 import tseslint from "typescript-eslint";
+
+/**
+ * Default global ignores for the monorepo.
+ * Apps should include this as the FIRST item in their config array.
+ *
+ * @example
+ * import baseConfig, { defaultIgnores } from "@timetiles/eslint-config/base";
+ * export default [defaultIgnores, ...baseConfig];
+ */
+export const defaultIgnores = globalIgnores([
+  "**/node_modules/**",
+  "**/dist/**",
+  "**/.next/**",
+  "**/coverage/**",
+  "**/.turbo/**",
+  "**/payload-types.ts",
+  "**/.eslintcache",
+]);
 
 /**
  * A shared ESLint configuration for the repository.
@@ -368,7 +393,7 @@ export default [
       "import/no-default-export": "off",
     },
   },
-  {
-    ignores: ["dist/**", "node_modules/**", ".next/**", "coverage/**"],
-  },
+  // Add oxlint bridge at the END to auto-disable ESLint rules that oxlint handles
+  // This enables hybrid linting: oxlint (fast) + ESLint (specialized plugins)
+  ...oxlint.configs["flat/recommended"],
 ];
