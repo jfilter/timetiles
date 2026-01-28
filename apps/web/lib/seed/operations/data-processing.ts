@@ -93,7 +93,7 @@ export class DataProcessing {
   generateTestSlug(originalSlug: unknown): string {
     const timestamp = Date.now();
     // Math.random is acceptable here as this is only for test seed data generation
-    // eslint-disable-next-line sonarjs/pseudo-random
+
     const random = Math.random().toString(36).substring(2, 8);
 
     if (typeof originalSlug === "string") {
@@ -186,9 +186,9 @@ export class DataProcessing {
           : ({} as Record<string, unknown>);
       // Simple geographic spreading logic for seed data
       // Math.random is acceptable here as this is only for test data generation
-      // eslint-disable-next-line sonarjs/pseudo-random
+
       const lat = 40.7128 + (Math.random() - 0.5) * 0.2; // Around NYC
-      // eslint-disable-next-line sonarjs/pseudo-random
+
       const lng = -74.006 + (Math.random() - 0.5) * 0.2;
 
       if (typeof newItem === "object" && newItem != null) {
@@ -213,7 +213,7 @@ export class DataProcessing {
           : ({} as Record<string, unknown>);
       // Distribute events over the past 30 days
       // Math.random is acceptable here as this is only for test data generation
-      // eslint-disable-next-line sonarjs/pseudo-random
+
       const daysAgo = Math.random() * 30;
       const eventDate = new Date(now.getTime() - daysAgo * dayInMs);
 

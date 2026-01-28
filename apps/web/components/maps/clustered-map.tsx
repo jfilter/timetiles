@@ -86,7 +86,6 @@ const MapLoadingOverlay = () => (
   </div>
 );
 
-// eslint-disable-next-line sonarjs/max-lines-per-function -- Map setup requires many sequential configuration steps
 export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
   (
     { onBoundsChange, clusters = DEFAULT_CLUSTERS, clusterStats, initialBounds, initialViewState, isLoadingBounds },

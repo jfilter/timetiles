@@ -58,7 +58,7 @@ const ImportFiles: CollectionConfig = {
   },
   access: {
     // Import files can be read by their owner or admins
-    // eslint-disable-next-line sonarjs/function-return-type
+
     read: async ({ req, id }): Promise<boolean | Where> => {
       const { user, payload } = req;
 

@@ -165,7 +165,6 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
   );
 };
 
-// eslint-disable-next-line complexity -- Progress polling and status handling requires multiple state transitions
 export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => {
   const { state, complete, reset, setNavigationConfig } = useWizard();
   const { importFileId, error: wizardError } = state;

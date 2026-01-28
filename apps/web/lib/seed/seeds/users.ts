@@ -33,7 +33,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
   const baseUsers: UserSeed[] = [
     {
       email: "admin@example.com",
-      // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+
       password: "admin123", // Development seed password only
       firstName: "Admin",
       lastName: "User",
@@ -44,7 +44,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
     },
     {
       email: "editor@example.com",
-      // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+
       password: "editor123", // Development seed password only
       firstName: "Data",
       lastName: "Editor",
@@ -61,7 +61,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
       // Demo user with simple credentials for quick testing
       {
         email: "demo@example.com",
-        // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+
         password: "demo", // Development seed password only
         firstName: "Demo",
         lastName: "User",
@@ -72,7 +72,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
       },
       {
         email: "john.doe@example.com",
-        // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+
         password: "password123", // Development seed password only
         firstName: "John",
         lastName: "Doe",
@@ -83,7 +83,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
       },
       {
         email: "jane.smith@example.com",
-        // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+
         password: "password123", // Development seed password only
         firstName: "Jane",
         lastName: "Smith",
@@ -94,7 +94,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
       },
       {
         email: "inactive.user@example.com",
-        // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+
         password: "password123", // Development seed password only
         firstName: "Inactive",
         lastName: "User",

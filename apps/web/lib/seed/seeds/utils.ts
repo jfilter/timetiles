@@ -288,16 +288,14 @@ export const generateCoordinate = (
   const regionData = GEOGRAPHIC_REGIONS[region];
   const { cluster = true, clusterRadius = 0.1 } = options;
 
-  // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
   if (cluster && Math.random() < 0.7) {
     // 70% chance to cluster around a center
-    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+
     const center = regionData.centers[Math.floor(Math.random() * regionData.centers.length)];
     if (center) {
       return {
-        // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
         latitude: center.lat + (Math.random() - 0.5) * clusterRadius * 2,
-        // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+
         longitude: center.lng + (Math.random() - 0.5) * clusterRadius * 2,
       };
     }
@@ -305,9 +303,8 @@ export const generateCoordinate = (
 
   // Random within bounds (fallback)
   return {
-    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
     latitude: regionData.bounds.south + Math.random() * (regionData.bounds.north - regionData.bounds.south),
-    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+
     longitude: regionData.bounds.west + Math.random() * (regionData.bounds.east - regionData.bounds.west),
   };
 };
@@ -394,7 +391,7 @@ const generateGovernmentMetadata = (index: number): Record<string, unknown> => {
   const severity = severities[index % severities.length];
   const reference = `REF-2024-${String(index + 1000).padStart(5, "0")}`;
   const category = CATEGORIES.government[index % CATEGORIES.government.length] ?? "Compliance";
-  // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+
   const tags = pickRandom(TAGS.government, 2 + Math.floor(Math.random() * 3));
 
   const description = [
@@ -453,16 +450,16 @@ const generateEnvironmentalMetadata = (index: number): Record<string, unknown> =
   ];
 
   const measurement = measurements[index % measurements.length];
-  // eslint-disable-next-line sonarjs/pseudo-random -- Test data generation, not security-sensitive
+
   const value = Math.round(Math.random() * 100 * 10) / 10;
   const unit = units[index % units.length];
-  // eslint-disable-next-line sonarjs/pseudo-random -- Test data generation, not security-sensitive
+
   const quality = qualities[Math.floor(Math.random() * qualities.length)] ?? "good";
   const qualityIndex = qualities.indexOf(quality);
   const timestamp = new Date(Date.now() - index * 3600000).toISOString();
   const conditions = weatherConditions[index % weatherConditions.length] ?? "Clear";
   const category = CATEGORIES.environmental[index % CATEGORIES.environmental.length] ?? "Air Quality";
-  // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+
   const tags = pickRandom(TAGS.environmental, 2 + Math.floor(Math.random() * 3));
 
   const description = [
@@ -530,7 +527,7 @@ const generateAcademicMetadata = (index: number): Record<string, unknown> => {
   const funding = funders[index % funders.length];
   const sampleSize = 100 + index * 50;
   const category = CATEGORIES.academic[index % CATEGORIES.academic.length] ?? "Study";
-  // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+
   const tags = pickRandom(TAGS.academic, 2 + Math.floor(Math.random() * 3));
 
   const description = [
@@ -600,7 +597,7 @@ const generateCulturalMetadata = (index: number): Record<string, unknown> => {
   const durationMinutes = 90 + (index % 6) * 30;
   const ageRestriction = index % 3 === 0 ? "21+" : "All Ages";
   const category = CATEGORIES.cultural[index % CATEGORIES.cultural.length] ?? "Concert";
-  // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+
   const tags = pickRandom(TAGS.cultural, 2 + Math.floor(Math.random() * 3));
 
   const description = [
@@ -667,11 +664,11 @@ const generateEconomicMetadata = (index: number): Record<string, unknown> => {
   const region = regions[index % regions.length];
   const sector = sectors[index % sectors.length];
   const period = `Q${(index % 4) + 1} 2024`;
-  // eslint-disable-next-line sonarjs/pseudo-random -- Test data generation, not security-sensitive
+
   const value = Math.round(Math.random() * 1000) / 10;
   const confidence = ["high", "medium", "low"][index % 3] ?? "medium";
   const category = CATEGORIES.economic[index % CATEGORIES.economic.length] ?? "Report";
-  // eslint-disable-next-line sonarjs/pseudo-random -- Safe for seed data generation
+
   const tags = pickRandom(TAGS.economic, 2 + Math.floor(Math.random() * 3));
 
   const description = [

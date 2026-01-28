@@ -335,7 +335,6 @@ export class ProgressiveSchemaBuilder {
         prop.maximum = stats.numericStats.max;
       }
     }
-
   }
 
   private processArrayPart(current: unknown, fieldName: string): unknown {

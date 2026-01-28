@@ -36,8 +36,8 @@ const extractActiveTransforms = (dataset: Dataset): ImportTransform[] => {
   const transforms: ImportTransform[] = [];
   for (const t of dataset.importTransforms ?? []) {
     if (
+      t != null &&
       typeof t === "object" &&
-      t !== null &&
       typeof t.id === "string" &&
       typeof t.type === "string" &&
       typeof t.from === "string" &&
@@ -93,7 +93,6 @@ const loadDatasetAndTransforms = async (
   return { dataset, transforms };
 };
 
-// eslint-disable-next-line complexity -- Merging detected mappings with overrides has many conditional cases
 // Helper to merge detected mappings with overrides
 const mergeFieldMappings = (
   detectedMappings: {

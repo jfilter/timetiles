@@ -219,7 +219,7 @@ const generateEventsForDataset = (
 
     // For economic data, some events don't need location
     // Math.random is acceptable here as this is only for test seed data generation
-    // eslint-disable-next-line sonarjs/pseudo-random
+
     const needsLocation = config.catalogType !== "economic" || Math.random() > 0.5;
 
     // Extract location name from metadata based on catalog type
@@ -303,7 +303,7 @@ const determineEventTimestamp = (catalogType: string, metadata: Record<string, u
 
   // Default: spread events over the past year
   // Math.random is acceptable here as this is only for test seed data generation
-  // eslint-disable-next-line sonarjs/pseudo-random
+
   const daysAgo = Math.floor(Math.random() * 365);
   return new Date(Date.now() - daysAgo * 86400000);
 };

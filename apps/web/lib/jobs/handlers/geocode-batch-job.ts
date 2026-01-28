@@ -171,7 +171,7 @@ const getJobResources = async (
 
 export const geocodeBatchJob = {
   slug: JOB_TYPES.GEOCODE_BATCH,
-  // eslint-disable-next-line sonarjs/max-lines-per-function -- Batch geocoding requires sequential processing steps
+
   handler: async (context: JobHandlerContext): Promise<{ output: Record<string, unknown> }> => {
     const payload = (context.req?.payload ?? context.payload) as Payload;
     const input = (context.input ?? context.job?.input) as GeocodingBatchJobInput["input"];

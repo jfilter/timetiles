@@ -313,7 +313,6 @@ const EventMetadataCard = ({ event }: { event: Event }) => (
   </Card>
 );
 
-// eslint-disable-next-line complexity -- Event detail rendering has many conditional display sections
 export const EventDetailContent = ({
   event,
   variant = "modal",
