@@ -4,6 +4,7 @@
 // Import centralized mocks FIRST (before anything that uses them)
 import "@/tests/mocks/services/logger";
 import "@/tests/mocks/services/path";
+import { mockPath } from "@/tests/mocks/services/path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -45,8 +46,13 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
   let mockContext: JobHandlerContext;
 
   beforeEach(() => {
-    // Reset all mocks
+    // Reset all mocks and restore mock implementations
     vi.clearAllMocks();
+    vi.restoreAllMocks();
+
+    // Reset path mock implementations to ensure consistent behavior
+    mockPath.resolve.mockReturnValue("/mock/import-files");
+    mockPath.join.mockImplementation((dir: string, filename: string) => `${dir}/${filename}`);
 
     // Mock payload
     mockPayload = {
