@@ -185,6 +185,26 @@ const cleanupFileContent = (filePath: string): void => {
     modified = true;
   }
 
+  // Convert escaped object types to code blocks to prevent MDX parsing issues
+  // Pattern: \{ `key`: `type`; ... \} -> `{ key: type; ... }`
+  if (content.includes("\\{") && content.includes("\\}")) {
+    content = content.replace(/\\{([^}]+)\\}/g, (match, inner) => {
+      // Remove backticks around keys/types and create a proper code span
+      const cleaned = inner.replace(/`([^`]+)`/g, "$1").trim();
+      return "`{ " + cleaned + " }`";
+    });
+    modified = true;
+  }
+
+  // Also handle unescaped object-like patterns in text (not already in backticks)
+  // Pattern: { key, key, key } -> `{ key, key, key }`
+  // Only match simple comma-separated identifiers to avoid false positives
+  const objectPatternRegex = /(?<!`)(\{ [a-z][a-z0-9]*(?:, [a-z][a-z0-9]*)+ \})(?!`)/gi;
+  if (objectPatternRegex.test(content)) {
+    content = content.replace(objectPatternRegex, "`$1`");
+    modified = true;
+  }
+
   // Escape <= and >= symbols in MDX content (outside code blocks)
   // These can cause MDX parsing errors when interpreted as JSX
   const lines = content.split("\n");
