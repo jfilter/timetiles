@@ -121,3 +121,47 @@ setup() {
 
     rm -f "$counter_file"
 }
+
+# =============================================================================
+# Verification Functions (used by timetiles check)
+# =============================================================================
+
+@test "verify_docker returns 0 when docker is running" {
+    skip_if_no_command "docker"
+    if ! docker info &>/dev/null; then
+        skip "Docker daemon not running"
+    fi
+
+    run verify_docker
+    [ "$status" -eq 0 ]
+    [[ "$CHECK_MSG" == *"Docker"* ]]
+}
+
+@test "verify_docker_compose returns 0 when compose available" {
+    skip_if_no_command "docker"
+    if ! docker compose version &>/dev/null; then
+        skip "Docker Compose not available"
+    fi
+
+    run verify_docker_compose
+    [ "$status" -eq 0 ]
+    [[ "$CHECK_MSG" == *"Compose"* ]]
+}
+
+@test "verify_swap sets CHECK_MSG with swap info" {
+    # This test just verifies the function runs and sets CHECK_MSG
+    # Actual swap presence depends on system
+    verify_swap || true
+    [[ -n "$CHECK_MSG" ]]
+}
+
+@test "verify_backup_cron sets CHECK_MSG" {
+    # Just verify function runs
+    verify_backup_cron || true
+    [[ -n "$CHECK_MSG" ]]
+}
+
+@test "verify_log_rotation sets CHECK_MSG" {
+    verify_log_rotation || true
+    [[ -n "$CHECK_MSG" ]]
+}
