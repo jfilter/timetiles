@@ -1,0 +1,122 @@
+# TimeTiles All-in-One Dockerfile
+# Bundles PostgreSQL 17 + PostGIS, Nginx, and Next.js in a single container
+# Designed for demos, small teams, and single-server deployments
+#
+# Usage:
+#   docker build -f deployment/Dockerfile.allinone -t timetiles:allinone .
+#   docker run -d -p 80:80 -p 443:443 -v timetiles-data:/data timetiles:allinone
+
+FROM ubuntu:24.04 AS base
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # PostgreSQL and PostGIS
+    postgresql-17 \
+    postgresql-17-postgis-3 \
+    # Web server and process manager
+    nginx \
+    supervisor \
+    # SSL and utilities
+    openssl \
+    curl \
+    ca-certificates \
+    gnupg \
+    # Clean up
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 22 from NodeSource
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create nextjs user for running the application
+RUN groupadd --system --gid 1001 nodejs \
+    && useradd --system --uid 1001 --gid nodejs nextjs
+
+# Copy configuration files
+COPY deployment/allinone/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY deployment/allinone/nginx.conf /etc/nginx/nginx.conf
+COPY deployment/allinone/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Enable corepack and install pnpm
+RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
+
+# Build stage: compile the application
+FROM base AS builder
+
+WORKDIR /build
+
+# Copy package files first for better caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/ui/package.json ./packages/ui/
+COPY packages/assets/package.json ./packages/assets/
+COPY packages/eslint-config/package.json ./packages/eslint-config/
+COPY packages/typescript-config/package.json ./packages/typescript-config/
+
+# Install dependencies
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile --ignore-scripts
+
+# Copy full source code
+COPY . .
+
+# Build arguments for Payload CMS (dummy values for compilation)
+ARG DATABASE_URL=postgresql://user:pass@localhost:5432/db
+ARG PAYLOAD_SECRET=dummy_secret_for_build_only
+ARG NEXT_PUBLIC_PAYLOAD_URL=http://localhost
+
+# Set build environment
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV DATABASE_URL=${DATABASE_URL}
+ENV PAYLOAD_SECRET=${PAYLOAD_SECRET}
+ENV NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL}
+
+# Build the application with experimental compile mode (no DB connection needed)
+WORKDIR /build/apps/web
+RUN pnpm exec next build --experimental-build-mode compile
+
+# Production stage: final image
+FROM base AS production
+
+WORKDIR /app
+
+# Copy standalone output from builder
+COPY --from=builder --chown=nextjs:nodejs /build/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /build/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /build/apps/web/public ./apps/web/public
+
+# Create directories for data, certbot, and supervisor logs
+RUN mkdir -p /data/postgresql /data/uploads /data/ssl /var/www/certbot /var/log/supervisor \
+    && chown -R postgres:postgres /data/postgresql \
+    && chown -R nextjs:nodejs /data/uploads
+
+# Expose ports
+EXPOSE 80 443
+
+# Declare volume for persistent data
+VOLUME ["/data"]
+
+# Environment defaults
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV POSTGRES_USER=timetiles
+ENV POSTGRES_PASSWORD=timetiles
+ENV POSTGRES_DB=timetiles
+ENV PAYLOAD_SECRET=change_me_in_production
+ENV NEXT_PUBLIC_PAYLOAD_URL=http://localhost
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost/api/health || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]
