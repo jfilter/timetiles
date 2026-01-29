@@ -45,7 +45,7 @@
     "@payloadcms/richtext-lexical": "^3.53.0",
     "@payloadcms/ui": "3.53.0",
     "@tanstack/react-query": "^5.83.0",
-    "@tanstack/react-query-devtools": "^5.83.0",
+    "@tanstack/react-query-devtools": "^5.91.2",
     "@timetiles/assets": "workspace:*",
     "@timetiles/payload-schema-detection": "workspace:*",
     "@timetiles/ui": "workspace:*",
