@@ -4,11 +4,14 @@ on:
   push:
     tags:
       - 'v*'
+  schedule:
+    # Daily at 3:00 AM UTC (4:00 AM Berlin time)
+    - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to build (e.g., v1.0.0)'
-        required: true
+        description: 'Tag to build (e.g., v1.0.0, or leave empty for edge build)'
+        required: false
         type: string
 
 permissions:
@@ -50,9 +53,12 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
+            # For tagged releases: v1.0.0, 1.0, latest
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+            # For scheduled/manual builds: edge
+            type=raw,value=edge,enable=${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag == '') }}
 
       - name: Build and push main image
         uses: docker/build-push-action@v6
@@ -98,9 +104,12 @@ jobs:
           flavor: |
             suffix=-allinone,onlatest=true
           tags: |
+            # For tagged releases: v1.0.0-allinone, 1.0-allinone, latest-allinone
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+            # For scheduled/manual builds: edge-allinone
+            type=raw,value=edge,enable=${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag == '') }}
 
       - name: Build and push all-in-one image
         uses: docker/build-push-action@v6
@@ -134,13 +143,19 @@ jobs:
       - name: Get image tag
         id: tag
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            VERSION="edge"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TAG="${{ github.event.inputs.tag }}"
+            if [ -z "$TAG" ]; then
+              VERSION="edge"
+            else
+              VERSION="${TAG#v}"
+            fi
           else
             TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG#v}"
           fi
-          # Remove 'v' prefix for semver tag
-          VERSION="${TAG#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Using version: $VERSION"
 
