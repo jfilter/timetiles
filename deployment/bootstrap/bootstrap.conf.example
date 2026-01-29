@@ -26,11 +26,21 @@ DOMAIN_NAME=""
 LETSENCRYPT_EMAIL=""
 
 # ============================================================================
-# SECRETS (Optional - auto-generated if empty)
+# DATABASE SETTINGS (Optional - auto-generated if empty)
 # ============================================================================
 
 # Database password - leave empty to auto-generate a secure password
 DB_PASSWORD=""
+
+# Database name (default: timetiles)
+# DB_NAME="timetiles"
+
+# Database user (default: timetiles_user)
+# DB_USER="timetiles_user"
+
+# ============================================================================
+# SECRETS (Optional - auto-generated if empty)
+# ============================================================================
 
 # Payload CMS secret key - leave empty to auto-generate
 # Generate manually with: openssl rand -base64 32
@@ -68,6 +78,11 @@ APP_USER="timetiles"
 # Defaults to LETSENCRYPT_EMAIL if not set
 # ALERT_EMAIL=""
 
+# SMTP settings for email alerts (optional - alerts logged to file if not set)
+# EMAIL_SMTP_HOST="smtp.example.com"
+# EMAIL_SMTP_PORT="587"
+# EMAIL_FROM="noreply@example.com"
+
 # ============================================================================
 # ADVANCED SETTINGS
 # ============================================================================
@@ -93,3 +108,7 @@ APP_USER="timetiles"
 
 # Enable non-interactive mode (fails if required values missing)
 # NON_INTERACTIVE="false"
+
+# Swap file size (default: 4G)
+# Set to 0 to skip swap creation
+# SWAP_SIZE="4G"
