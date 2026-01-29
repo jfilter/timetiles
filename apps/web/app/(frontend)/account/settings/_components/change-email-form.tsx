@@ -37,7 +37,7 @@ export const ChangeEmailForm = ({ currentEmail, onEmailChanged }: ChangeEmailFor
   }, []);
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    (e: React.SyntheticEvent<HTMLFormElement>) => {
       e.preventDefault();
 
       // Validation
