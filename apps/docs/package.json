@@ -20,25 +20,25 @@
   "dependencies": {
     "@timetiles/assets": "workspace:*",
     "@timetiles/ui": "workspace:*",
-    "next": "^15.2.9",
-    "nextra": "^4.3.0",
-    "nextra-theme-docs": "^4.3.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "next": "^15.5.9",
+    "nextra": "^4.6.1",
+    "nextra-theme-docs": "^4.6.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@svgr/webpack": "^8.1.0",
     "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
     "@types/node": "^20",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "eslint": "^9.20.1",
-    "glob": "^11.0.3",
-    "nodemon": "^3.1.10",
-    "tsx": "^4.20.5",
-    "typedoc": "^0.28.8",
-    "typedoc-plugin-markdown": "^4.8.0",
-    "typescript": "^5.7.3"
+    "@types/react": "^19.2.9",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.2",
+    "glob": "^11.1.0",
+    "nodemon": "^3.1.11",
+    "tsx": "^4.21.0",
+    "typedoc": "^0.28.16",
+    "typedoc-plugin-markdown": "^4.9.0",
+    "typescript": "^5.9.3"
   }
 }
