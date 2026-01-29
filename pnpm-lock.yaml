@@ -561,8 +561,8 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       tailwind-merge:
-        specifier: ^3.0.1
-        version: 3.0.1
+        specifier: ^3.4.0
+        version: 3.4.0
       tw-animate-css:
         specifier: ^1.2.4
         version: 1.2.4
@@ -9961,11 +9961,8 @@ packages:
   tabbable@6.2.0:
     resolution: {integrity: sha512-Cat63mxsVJlzYvN51JmVXIgNoUokrIaT2zLclCXjRd8boZ0004U4KCs/sToJ75C6sdlByWxpYnb5Boif1VSFew==}
 
-  tailwind-merge@3.0.1:
-    resolution: {integrity: sha512-AvzE8FmSoXC7nC+oU5GlQJbip2UO7tmOhOfQyOmPhrStOGXHU08j8mZEHZ4BmCqY5dWTCo4ClWkNyRNx1wpT0g==}
-
-  tailwind-merge@3.3.1:
-    resolution: {integrity: sha512-gBXpgUm/3rp1lMZZrM/w7D8GKqshif0zAymAhbCyIt8KMe+0v9DQ7cdYLR4FHH/cKpdTXb+A/tKKU3eolfsI+g==}
+  tailwind-merge@3.4.0:
+    resolution: {integrity: sha512-uSaO4gnW+b3Y2aWoWfFpX62vn2sR3skfhbjsEnaBI81WD1wBLlHZe5sWf0AqjksNdYTbGBEd0UasQMT3SNV15g==}
 
   tailwindcss@3.4.18:
     resolution: {integrity: sha512-6A2rnmW5xZMdw11LYjhcI5846rt9pbLSabY5XPxo+XWdxwZaFEn47Go4NzFiHu9sNNmr/kXivP1vStfvMaK1GQ==}
@@ -15494,7 +15491,7 @@ snapshots:
 
   '@types/yauzl@2.10.3':
     dependencies:
-      '@types/node': 25.1.0
+      '@types/node': 20.17.19
     optional: true
 
   '@typescript-eslint/eslint-plugin@8.54.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.4.2))(typescript@5.9.3))(eslint@9.31.0(jiti@2.4.2))(typescript@5.9.3)':
@@ -15900,6 +15897,7 @@ snapshots:
     optionalDependencies:
       msw: 2.10.4(@types/node@25.1.0)(typescript@5.9.3)
       vite: 5.4.19(@types/node@25.1.0)(lightningcss@1.29.1)(sass@1.77.4)
+    optional: true
 
   '@vitest/pretty-format@2.1.9':
     dependencies:
@@ -15929,7 +15927,7 @@ snapshots:
       sirv: 3.0.1
       tinyglobby: 0.2.14
       tinyrainbow: 1.2.0
-      vitest: 2.1.9(@types/node@25.1.0)(@vitest/ui@2.1.9)(happy-dom@18.0.1)(jsdom@26.1.0)(lightningcss@1.29.1)(msw@2.10.4(@types/node@25.1.0)(typescript@5.9.3))(sass@1.77.4)
+      vitest: 2.1.9(@types/node@20.17.19)(@vitest/ui@2.1.9)(happy-dom@18.0.1)(jsdom@26.1.0)(lightningcss@1.29.1)(msw@2.10.4(@types/node@20.17.19)(typescript@5.7.3))(sass@1.77.4)
 
   '@vitest/utils@2.1.9':
     dependencies:
@@ -15984,7 +15982,7 @@ snapshots:
       ramda: 0.28.0
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
-      tailwind-merge: 3.3.1
+      tailwind-merge: 3.4.0
       tailwindcss: 3.4.18(tsx@4.20.5)(yaml@2.8.1)
     transitivePeerDependencies:
       - '@babel/core'
@@ -22459,9 +22457,7 @@ snapshots:
 
   tabbable@6.2.0: {}
 
-  tailwind-merge@3.0.1: {}
-
-  tailwind-merge@3.3.1: {}
+  tailwind-merge@3.4.0: {}
 
   tailwindcss@3.4.18(tsx@4.20.5)(yaml@2.8.1):
     dependencies:
@@ -23202,6 +23198,7 @@ snapshots:
       - sugarss
       - supports-color
       - terser
+    optional: true
 
   vite@5.4.19(@types/node@20.17.19)(lightningcss@1.29.1)(sass@1.77.4):
     dependencies:
@@ -23224,6 +23221,7 @@ snapshots:
       fsevents: 2.3.3
       lightningcss: 1.29.1
       sass: 1.77.4
+    optional: true
 
   vitest@2.1.9(@types/node@20.17.19)(@vitest/ui@2.1.9)(happy-dom@18.0.1)(jsdom@26.1.0)(lightningcss@1.29.1)(msw@2.10.4(@types/node@20.17.19)(typescript@5.7.3))(sass@1.77.4):
     dependencies:
@@ -23300,6 +23298,7 @@ snapshots:
       - sugarss
       - supports-color
       - terser
+    optional: true
 
   vscode-jsonrpc@8.2.0: {}
 
