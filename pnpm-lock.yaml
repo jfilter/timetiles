@@ -388,8 +388,8 @@ importers:
         specifier: ^9.31.0
         version: 9.31.0(jiti@2.4.2)
       eslint-config-prettier:
-        specifier: ^9.1.0
-        version: 9.1.0(eslint@9.31.0(jiti@2.4.2))
+        specifier: ^10.1.8
+        version: 10.1.8(eslint@9.31.0(jiti@2.4.2))
       eslint-plugin-boundaries:
         specifier: ^5.0.1
         version: 5.0.1(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.4.2))(typescript@5.9.3))(eslint@9.31.0(jiti@2.4.2))
@@ -410,7 +410,7 @@ importers:
         version: 3.6.2(eslint@9.31.0(jiti@2.4.2))(typescript@5.9.3)
       eslint-plugin-prettier:
         specifier: ^5.2.1
-        version: 5.5.1(eslint-config-prettier@9.1.0(eslint@9.31.0(jiti@2.4.2)))(eslint@9.31.0(jiti@2.4.2))(prettier@3.6.2)
+        version: 5.5.1(eslint-config-prettier@10.1.8(eslint@9.31.0(jiti@2.4.2)))(eslint@9.31.0(jiti@2.4.2))(prettier@3.6.2)
       eslint-plugin-promise:
         specifier: ^7.2.1
         version: 7.2.1(eslint@9.31.0(jiti@2.4.2))
@@ -6170,8 +6170,8 @@ packages:
     engines: {node: '>=6.0'}
     hasBin: true
 
-  eslint-config-prettier@9.1.0:
-    resolution: {integrity: sha512-NSWl5BFQWEPi1j4TjVNItzYV7dZXZ+wP6I6ZhrBGpChQhZRUaElihE9uRRkcbRnNb76UMKDF3r+WTmNcGPKsqw==}
+  eslint-config-prettier@10.1.8:
+    resolution: {integrity: sha512-82GZUjRS0p/jganf6q1rEO25VSoHH0hKPCTrgillPjdI/3bgBhAE1QzHrHTizjpRvy6pGAvKjDJtk2pF9NDq8w==}
     hasBin: true
     peerDependencies:
       eslint: '>=7.0.0'
@@ -15494,7 +15494,7 @@ snapshots:
 
   '@types/yauzl@2.10.3':
     dependencies:
-      '@types/node': 25.1.0
+      '@types/node': 20.17.19
     optional: true
 
   '@typescript-eslint/eslint-plugin@8.54.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.4.2))(typescript@5.9.3))(eslint@9.31.0(jiti@2.4.2))(typescript@5.9.3)':
@@ -15900,6 +15900,7 @@ snapshots:
     optionalDependencies:
       msw: 2.10.4(@types/node@25.1.0)(typescript@5.9.3)
       vite: 5.4.19(@types/node@25.1.0)(lightningcss@1.29.1)(sass@1.77.4)
+    optional: true
 
   '@vitest/pretty-format@2.1.9':
     dependencies:
@@ -15929,7 +15930,7 @@ snapshots:
       sirv: 3.0.1
       tinyglobby: 0.2.14
       tinyrainbow: 1.2.0
-      vitest: 2.1.9(@types/node@25.1.0)(@vitest/ui@2.1.9)(happy-dom@18.0.1)(jsdom@26.1.0)(lightningcss@1.29.1)(msw@2.10.4(@types/node@25.1.0)(typescript@5.9.3))(sass@1.77.4)
+      vitest: 2.1.9(@types/node@20.17.19)(@vitest/ui@2.1.9)(happy-dom@18.0.1)(jsdom@26.1.0)(lightningcss@1.29.1)(msw@2.10.4(@types/node@20.17.19)(typescript@5.7.3))(sass@1.77.4)
 
   '@vitest/utils@2.1.9':
     dependencies:
@@ -17538,7 +17539,7 @@ snapshots:
     optionalDependencies:
       source-map: 0.6.1
 
-  eslint-config-prettier@9.1.0(eslint@9.31.0(jiti@2.4.2)):
+  eslint-config-prettier@10.1.8(eslint@9.31.0(jiti@2.4.2)):
     dependencies:
       eslint: 9.31.0(jiti@2.4.2)
 
@@ -17679,14 +17680,14 @@ snapshots:
       - supports-color
       - typescript
 
-  eslint-plugin-prettier@5.5.1(eslint-config-prettier@9.1.0(eslint@9.31.0(jiti@2.4.2)))(eslint@9.31.0(jiti@2.4.2))(prettier@3.6.2):
+  eslint-plugin-prettier@5.5.1(eslint-config-prettier@10.1.8(eslint@9.31.0(jiti@2.4.2)))(eslint@9.31.0(jiti@2.4.2))(prettier@3.6.2):
     dependencies:
       eslint: 9.31.0(jiti@2.4.2)
       prettier: 3.6.2
       prettier-linter-helpers: 1.0.0
       synckit: 0.11.8
     optionalDependencies:
-      eslint-config-prettier: 9.1.0(eslint@9.31.0(jiti@2.4.2))
+      eslint-config-prettier: 10.1.8(eslint@9.31.0(jiti@2.4.2))
 
   eslint-plugin-promise@7.2.1(eslint@9.31.0(jiti@2.4.2)):
     dependencies:
@@ -23202,6 +23203,7 @@ snapshots:
       - sugarss
       - supports-color
       - terser
+    optional: true
 
   vite@5.4.19(@types/node@20.17.19)(lightningcss@1.29.1)(sass@1.77.4):
     dependencies:
@@ -23224,6 +23226,7 @@ snapshots:
       fsevents: 2.3.3
       lightningcss: 1.29.1
       sass: 1.77.4
+    optional: true
 
   vitest@2.1.9(@types/node@20.17.19)(@vitest/ui@2.1.9)(happy-dom@18.0.1)(jsdom@26.1.0)(lightningcss@1.29.1)(msw@2.10.4(@types/node@20.17.19)(typescript@5.7.3))(sass@1.77.4):
     dependencies:
@@ -23300,6 +23303,7 @@ snapshots:
       - sugarss
       - supports-color
       - terser
+    optional: true
 
   vscode-jsonrpc@8.2.0: {}
 
