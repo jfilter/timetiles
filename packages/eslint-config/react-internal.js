@@ -78,7 +78,7 @@ export default [
       // @eslint-react rules for modern React patterns
       "@eslint-react/no-unstable-default-props": "warn",
       "@eslint-react/no-leaked-conditional-rendering": "warn",
-      "@eslint-react/ensure-forward-ref-using-ref": "error",
+      "@eslint-react/no-useless-forward-ref": "error",
       "@eslint-react/no-access-state-in-setstate": "error",
       "@eslint-react/no-array-index-key": "warn",
       "@eslint-react/no-children-count": "warn",
