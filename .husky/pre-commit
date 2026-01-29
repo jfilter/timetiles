@@ -3,5 +3,5 @@
 # Regenerate Payload types if migrations or collections changed
 ./scripts/pre-commit-payload-types.sh
 
-# Run linting and TypeScript checking sequentially to ensure proper exit codes
-pnpm lint && pnpm typecheck
+# Run fast checks first (oxlint + tsgo), then full checks (eslint + tsc) only if fast passes.
+pnpm lint && pnpm typecheck && pnpm lint:full && pnpm typecheck:full
