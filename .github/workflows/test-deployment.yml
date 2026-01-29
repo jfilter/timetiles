@@ -190,11 +190,11 @@ jobs:
           cd deployment
           DC_CMD="docker compose -f docker-compose.prod.yml -f docker-compose.test.yml --env-file .env.production"
 
-          # Check PostGIS is installed (use -h localhost to force TCP/IP instead of peer auth)
-          $DC_CMD exec -T postgres psql -h localhost -U timetiles_user -d timetiles -c "SELECT PostGIS_Version();"
+          # Check PostGIS is installed (use PGPASSWORD with TCP/IP connection)
+          $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U timetiles_user -d timetiles -c "SELECT PostGIS_Version();"'
 
           # Check Payload schema exists
-          $DC_CMD exec -T postgres psql -h localhost -U timetiles_user -d timetiles -c "\dn payload"
+          $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U timetiles_user -d timetiles -c "\dn payload"'
           cd ..
 
       - name: Test container restart

@@ -27,6 +27,7 @@ jobs:
       PAYLOAD_SECRET: test-secret-key
       PGPASSWORD: timetiles_password
       NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
+      NODE_OPTIONS: "--max-old-space-size=4096"
 
     steps:
       - uses: actions/checkout@v4
