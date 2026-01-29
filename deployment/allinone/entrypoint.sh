@@ -2,7 +2,7 @@
 # TimeTiles All-in-One Container Entrypoint
 # Initializes PostgreSQL, generates SSL certs, and starts supervisord
 
-set -e
+set -eo pipefail
 
 echo "=== TimeTiles All-in-One Container Starting ==="
 
@@ -43,21 +43,23 @@ EOF
     su - postgres -c "/usr/lib/postgresql/17/bin/pg_ctl -D /data/postgresql -w start"
 
     # Create database user and database
+    # Use DB_USER/DB_PASSWORD/DB_NAME for consistency with docker-compose.prod.yml
+    # Fall back to POSTGRES_* for backwards compatibility
     echo "Creating database user and database..."
-    POSTGRES_USER="${POSTGRES_USER:-timetiles}"
-    POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-timetiles}"
-    POSTGRES_DB="${POSTGRES_DB:-timetiles}"
+    DB_USER="${DB_USER:-${POSTGRES_USER:-timetiles}}"
+    DB_PASSWORD="${DB_PASSWORD:-${POSTGRES_PASSWORD:-timetiles}}"
+    DB_NAME="${DB_NAME:-${POSTGRES_DB:-timetiles}}"
 
     # Use heredoc to avoid shell injection - psql reads from stdin
     su - postgres -c "psql" << EOSQL || { echo "Failed to create database user/database"; exit 1; }
-CREATE USER "${POSTGRES_USER}" WITH PASSWORD '${POSTGRES_PASSWORD}';
-CREATE DATABASE "${POSTGRES_DB}" OWNER "${POSTGRES_USER}";
-\\c "${POSTGRES_DB}"
+CREATE USER "${DB_USER}" WITH PASSWORD '${DB_PASSWORD}';
+CREATE DATABASE "${DB_NAME}" OWNER "${DB_USER}";
+\\c "${DB_NAME}"
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE SCHEMA IF NOT EXISTS payload;
-GRANT ALL PRIVILEGES ON DATABASE "${POSTGRES_DB}" TO "${POSTGRES_USER}";
-GRANT ALL ON SCHEMA public TO "${POSTGRES_USER}";
-GRANT ALL ON SCHEMA payload TO "${POSTGRES_USER}";
+GRANT ALL PRIVILEGES ON DATABASE "${DB_NAME}" TO "${DB_USER}";
+GRANT ALL ON SCHEMA public TO "${DB_USER}";
+GRANT ALL ON SCHEMA payload TO "${DB_USER}";
 EOSQL
 
     # Stop PostgreSQL (supervisord will start it properly)
@@ -87,12 +89,13 @@ else
 fi
 
 # Build DATABASE_URL from components
-POSTGRES_USER="${POSTGRES_USER:-timetiles}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-timetiles}"
-POSTGRES_DB="${POSTGRES_DB:-timetiles}"
+# Use DB_* for consistency, fall back to POSTGRES_* for backwards compatibility
+DB_USER="${DB_USER:-${POSTGRES_USER:-timetiles}}"
+DB_PASSWORD="${DB_PASSWORD:-${POSTGRES_PASSWORD:-timetiles}}"
+DB_NAME="${DB_NAME:-${POSTGRES_DB:-timetiles}}"
 
 # Export environment variables for the Next.js app
-export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}"
+export DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}"
 export UPLOAD_DIR="/data/uploads"
 
 # Write environment to file for supervisord child processes

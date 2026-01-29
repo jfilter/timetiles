@@ -6,7 +6,7 @@
 # This script should be run as the 'timetiles' user (or root, which will
 # automatically switch to timetiles). Running as other users will fail.
 
-set -e
+set -eo pipefail
 
 # =============================================================================
 # User & Permission Handling
@@ -524,12 +524,13 @@ EOF
         
     status)
         check_env
+        source "$ENV_FILE"
         echo -e "${YELLOW}Checking service status...${NC}"
         echo ""
 
         # Check PostgreSQL
         echo -n "PostgreSQL: "
-        if $DC_CMD exec postgres pg_isready -U timetiles_user -d timetiles > /dev/null 2>&1; then
+        if $DC_CMD exec postgres pg_isready -U "${DB_USER:-timetiles_user}" -d "${DB_NAME:-timetiles}" > /dev/null 2>&1; then
             echo -e "${GREEN}✓ Healthy${NC}"
         else
             echo -e "${RED}✗ Unhealthy${NC}"
@@ -654,7 +655,7 @@ EOF
             fi
 
             # Check database connection
-            if $DC_CMD exec -T postgres pg_isready -U timetiles_user -d timetiles > /dev/null 2>&1; then
+            if $DC_CMD exec -T postgres pg_isready -U "${DB_USER:-timetiles_user}" -d "${DB_NAME:-timetiles}" > /dev/null 2>&1; then
                 print_ok "Database connection working"
             else
                 print_fail "Database connection failed"
