@@ -13,7 +13,6 @@
  * @module
  */
 import js from "@eslint/js";
-import { globalIgnores } from "eslint/config";
 import eslintConfigPrettier from "eslint-config-prettier";
 import boundariesPlugin from "eslint-plugin-boundaries";
 import importPlugin from "eslint-plugin-import";
@@ -39,17 +38,19 @@ import tseslint from "typescript-eslint";
  * import baseConfig, { defaultIgnores } from "@timetiles/eslint-config/base";
  * export default [defaultIgnores, ...baseConfig];
  */
-export const defaultIgnores = globalIgnores([
-  "**/node_modules/**",
-  "**/dist/**",
-  "**/.next/**",
-  "**/coverage/**",
-  "**/.turbo/**",
-  "**/payload-types.ts",
-  "**/.eslintcache",
-  "**/*.d.ts", // TypeScript declaration files (auto-generated, should not be linted)
-  "**/*.d.ts.map", // Source maps for declaration files
-]);
+export const defaultIgnores = {
+  ignores: [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.next/**",
+    "**/coverage/**",
+    "**/.turbo/**",
+    "**/payload-types.ts",
+    "**/.eslintcache",
+    "**/*.d.ts", // TypeScript declaration files (auto-generated, should not be linted)
+    "**/*.d.ts.map", // Source maps for declaration files
+  ],
+};
 
 /**
  * A shared ESLint configuration for the repository.
