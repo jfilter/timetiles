@@ -48,13 +48,17 @@ EOF
     POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-timetiles}"
     POSTGRES_DB="${POSTGRES_DB:-timetiles}"
 
-    su - postgres -c "psql -c \"CREATE USER ${POSTGRES_USER} WITH PASSWORD '${POSTGRES_PASSWORD}';\""
-    su - postgres -c "psql -c \"CREATE DATABASE ${POSTGRES_DB} OWNER ${POSTGRES_USER};\""
-    su - postgres -c "psql -d ${POSTGRES_DB} -c \"CREATE EXTENSION IF NOT EXISTS postgis;\""
-    su - postgres -c "psql -d ${POSTGRES_DB} -c \"CREATE SCHEMA IF NOT EXISTS payload;\""
-    su - postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE ${POSTGRES_DB} TO ${POSTGRES_USER};\""
-    su - postgres -c "psql -d ${POSTGRES_DB} -c \"GRANT ALL ON SCHEMA public TO ${POSTGRES_USER};\""
-    su - postgres -c "psql -d ${POSTGRES_DB} -c \"GRANT ALL ON SCHEMA payload TO ${POSTGRES_USER};\""
+    # Use heredoc to avoid shell injection - psql reads from stdin
+    su - postgres -c "psql" << EOSQL || { echo "Failed to create database user/database"; exit 1; }
+CREATE USER "${POSTGRES_USER}" WITH PASSWORD '${POSTGRES_PASSWORD}';
+CREATE DATABASE "${POSTGRES_DB}" OWNER "${POSTGRES_USER}";
+\\c "${POSTGRES_DB}"
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE SCHEMA IF NOT EXISTS payload;
+GRANT ALL PRIVILEGES ON DATABASE "${POSTGRES_DB}" TO "${POSTGRES_USER}";
+GRANT ALL ON SCHEMA public TO "${POSTGRES_USER}";
+GRANT ALL ON SCHEMA payload TO "${POSTGRES_USER}";
+EOSQL
 
     # Stop PostgreSQL (supervisord will start it properly)
     echo "Stopping temporary PostgreSQL..."
@@ -92,17 +96,24 @@ export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhos
 export UPLOAD_DIR="/data/uploads"
 
 # Write environment to file for supervisord child processes
-cat > /etc/environment << EOF
+# Restrict permissions - only root can read
+umask 077
+cat > /etc/timetiles.env << EOF
 DATABASE_URL=${DATABASE_URL}
 UPLOAD_DIR=${UPLOAD_DIR}
 PAYLOAD_SECRET=${PAYLOAD_SECRET:-default_secret_change_me}
 NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost}
 NODE_ENV=production
 EOF
+chmod 600 /etc/timetiles.env
 
-# Update supervisord config with environment variables
-# Replace the nextjs program environment line to include all vars
-sed -i "s|environment=NODE_ENV=\"production\",PORT=\"3000\",HOSTNAME=\"0.0.0.0\"|environment=NODE_ENV=\"production\",PORT=\"3000\",HOSTNAME=\"0.0.0.0\",DATABASE_URL=\"${DATABASE_URL}\",UPLOAD_DIR=\"${UPLOAD_DIR}\",PAYLOAD_SECRET=\"${PAYLOAD_SECRET:-default_secret_change_me}\",NEXT_PUBLIC_PAYLOAD_URL=\"${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost}\"|" /etc/supervisor/conf.d/supervisord.conf
+# Update supervisord config with runtime environment variables
+# Escape special characters for sed replacement
+ESCAPED_DB_URL=$(printf '%s\n' "${DATABASE_URL}" | sed 's/[&/\]/\\&/g')
+ESCAPED_SECRET=$(printf '%s\n' "${PAYLOAD_SECRET:-default_secret_change_me}" | sed 's/[&/\]/\\&/g')
+ESCAPED_URL=$(printf '%s\n' "${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost}" | sed 's/[&/\]/\\&/g')
+
+sed -i "s|environment=NODE_ENV=\"production\",PORT=\"3000\",HOSTNAME=\"0.0.0.0\"|environment=NODE_ENV=\"production\",PORT=\"3000\",HOSTNAME=\"0.0.0.0\",DATABASE_URL=\"${ESCAPED_DB_URL}\",UPLOAD_DIR=\"/data/uploads\",PAYLOAD_SECRET=\"${ESCAPED_SECRET}\",NEXT_PUBLIC_PAYLOAD_URL=\"${ESCAPED_URL}\"|" /etc/supervisor/conf.d/supervisord.conf
 
 echo "=== Starting Supervisord ==="
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
