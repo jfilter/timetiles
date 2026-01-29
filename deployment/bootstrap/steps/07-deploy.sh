@@ -1,6 +1,6 @@
 #!/bin/bash
 # TimeTiles Bootstrap - Step 07: Deploy Application
-# Builds and starts the application using deploy.sh
+# Pulls and starts the application using deploy.sh
 
 run_step() {
     local install_dir="${INSTALL_DIR:-/opt/timetiles}"
@@ -20,15 +20,15 @@ run_step() {
     # Nginx requires SSL certs to start - Let's Encrypt (Step 08) will replace these if DNS is configured
     setup_self_signed_ssl "$app_dir" "$user"
 
-    # Build Docker images
-    print_step "Building Docker images..."
-    print_info "This may take several minutes on first run..."
+    # Pull Docker images from registry
+    print_step "Pulling Docker images from registry..."
+    print_info "This may take a few minutes on first run..."
 
-    if ! run_as_user "./deployment/deploy.sh build"; then
-        die "Failed to build Docker images"
+    if ! run_as_user "./deployment/deploy.sh pull"; then
+        die "Failed to pull Docker images"
     fi
 
-    print_success "Docker images built"
+    print_success "Docker images pulled"
 
     # Start services
     print_step "Starting services..."
