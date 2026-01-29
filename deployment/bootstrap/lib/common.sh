@@ -270,9 +270,9 @@ check_dns_resolution() {
 # ============================================================================
 # Substitute DOMAIN_NAME in nginx config files
 configure_nginx() {
-    local app_dir="$1"
+    local install_dir="$1"
     local domain="$2"
-    local nginx_dir="$app_dir/deployment/nginx"
+    local nginx_dir="$install_dir/nginx"
 
     if [[ ! -d "$nginx_dir/sites-enabled" ]]; then
         print_warning "Nginx config directory not found: $nginx_dir/sites-enabled"

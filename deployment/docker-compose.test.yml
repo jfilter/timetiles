@@ -1,5 +1,5 @@
 # Test override - adds Mailpit for local SMTP
-# Used automatically by deploy.sh when this file exists
+# Used automatically by timetiles when this file exists
 
 services:
   # Override web to use mailpit for SMTP

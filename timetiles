@@ -1,0 +1,3 @@
+#!/bin/bash
+# Convenience wrapper for deployment/timetiles (development use)
+cd "$(dirname "$0")/deployment" && exec ./timetiles "$@"

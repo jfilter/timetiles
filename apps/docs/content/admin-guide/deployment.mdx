@@ -27,11 +27,11 @@ nano deployment/.env.production
 # Set: DOMAIN_NAME, DB_PASSWORD, PAYLOAD_SECRET, LETSENCRYPT_EMAIL
 
 # 3. Pull and start
-./deploy.sh pull
-./deploy.sh up
+timetiles pull
+timetiles up
 
 # 4. Initialize SSL (after DNS is configured)
-./deploy.sh ssl
+timetiles ssl
 ```
 
 ### Option 2: All-in-One Container
@@ -88,16 +88,18 @@ See [Installation Guide](/admin-guide/installation) for complete system requirem
 
 ## File Structure
 
+After bootstrap or manual setup, files are in `/opt/timetiles/`:
+
 ```
-deployment/
-├── Dockerfile.prod              # Multi-stage production build
-├── docker-compose.prod.yml      # Service orchestration
-├── deploy.sh                    # Deployment helper script
-├── .env.production.example      # Environment template
-├── .env.production             # Your configuration (create from .example)
-└── nginx/                       # Nginx configuration
-    ├── nginx.conf              # Main configuration
-    └── sites-enabled/          # Site-specific configs
+/opt/timetiles/
+├── timetiles                   # CLI script (symlinked to /usr/local/bin/timetiles)
+├── docker-compose.prod.yml     # Service orchestration
+├── .env.production.example     # Environment template
+├── .env.production             # Your configuration
+├── nginx/                      # Nginx configuration
+│   ├── nginx.conf             # Main configuration
+│   └── sites-enabled/         # Site-specific configs
+└── backups/                    # Backup files
 ```
 
 ## Configuration
@@ -124,7 +126,7 @@ Automatic SSL certificates:
 
 ```bash
 # After DNS is configured and services are running
-./deploy.sh ssl
+timetiles ssl
 ```
 
 Certificates auto-renew every 12 hours via Certbot.
@@ -139,18 +141,18 @@ Certificates auto-renew every 12 hours via Certbot.
 
 ## Deployment Commands
 
-### Using deploy.sh Script
+### Using timetiles CLI
 
 ```bash
 # Service Management
-./deploy.sh up        # Start all services
-./deploy.sh down      # Stop all services
-./deploy.sh restart   # Restart services
-./deploy.sh status    # Check service health
+timetiles up        # Start all services
+timetiles down      # Stop all services
+timetiles restart   # Restart services
+timetiles status    # Check service health
 
 # Maintenance
-./deploy.sh logs      # View logs
-./deploy.sh update    # Pull updates and redeploy
+timetiles logs      # View logs
+timetiles update    # Pull updates and redeploy
 
 # Note: Database migrations run automatically on container startup
 ```
@@ -199,7 +201,7 @@ Verify deployment:
 
 ```bash
 # Check all services
-./deploy.sh status
+timetiles status
 
 # Check application health
 curl https://your-domain.com/api/health
@@ -254,7 +256,7 @@ After successful deployment:
 # TIMETILES_VERSION=v1.2.0
 
 # Pull new images and restart
-./deploy.sh update
+timetiles update
 ```
 
 ### With Local Builds
@@ -263,8 +265,8 @@ If using `docker-compose.override.yml` for local builds:
 
 ```bash
 git pull
-./deploy.sh build
-./deploy.sh up
+timetiles build
+timetiles up
 ```
 
 See [Maintenance Guide](/admin-guide/maintenance) for routine operations.

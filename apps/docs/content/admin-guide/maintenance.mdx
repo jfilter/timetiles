@@ -19,7 +19,7 @@ docker-compose -f deployment/docker-compose.prod.yml ps
 docker-compose -f deployment/docker-compose.prod.yml exec postgres pg_isready
 
 # View recent logs
-./deploy.sh logs --tail=100
+timetiles logs --tail=100
 ```
 
 ### Backup Procedures
@@ -28,32 +28,32 @@ docker-compose -f deployment/docker-compose.prod.yml exec postgres pg_isready
 
 ```bash
 # Database backup (default)
-./deploy.sh backup
+timetiles backup
 
 # Full backup (database + uploads)
-./deploy.sh backup full
+timetiles backup full
 
 # Setup automatic daily backups at 2 AM
-./deploy.sh backup auto
+timetiles backup auto
 
 # List available backups
-./deploy.sh backup list
+timetiles backup list
 
 # Clean old backups (>30 days)
-./deploy.sh backup clean
+timetiles backup clean
 ```
 
 #### Restore from Backup
 
 ```bash
 # List available backups
-./deploy.sh restore
+timetiles restore
 
 # Restore database
-./deploy.sh restore db-20241220-143022.sql.gz
+timetiles restore db-20241220-143022.sql.gz
 
 # Restore database and uploads
-./deploy.sh restore db-20241220-143022.sql.gz uploads-20241220-143022.tar.gz
+timetiles restore db-20241220-143022.sql.gz uploads-20241220-143022.tar.gz
 ```
 
 The backup system automatically:
@@ -79,13 +79,13 @@ See [Deployment Commands](./deployment#deployment-commands) for detailed command
 
 ```bash
 # 1. Backup first
-./deploy.sh backup
+timetiles backup
 
 # 2. Pull latest code
 git pull origin main
 
 # 3. Use update command (handles rebuild, migrations, restart)
-./deploy.sh update
+timetiles update
 
 # 4. Verify health
 curl https://your-domain.com/api/health
@@ -102,7 +102,7 @@ Database migrations run automatically on container startup in production via Pay
 curl https://your-domain.com/api/health | jq '.migrations'
 
 # View migration logs
-./deploy.sh logs | grep -i migrat
+timetiles logs | grep -i migrat
 ```
 
 **Note**: Migrations are applied automatically when the web container starts, so no manual intervention is needed.
@@ -163,7 +163,7 @@ Monitor application health regularly:
 curl https://your-domain.com/api/health
 
 # Check service status
-./deploy.sh status
+timetiles status
 
 # Verify services are running
 docker-compose -f deployment/docker-compose.prod.yml ps
@@ -180,7 +180,7 @@ docker-compose -f deployment/docker-compose.prod.yml ps
 
 ```bash
 # View live logs
-./deploy.sh logs -f
+timetiles logs -f
 
 # Check specific service
 docker-compose -f deployment/docker-compose.prod.yml logs web --tail=100
@@ -232,7 +232,7 @@ docker-compose -f deployment/docker-compose.prod.yml exec postgres \
 
 ```bash
 # Check logs
-./deploy.sh logs web
+timetiles logs web
 
 # Verify environment
 docker-compose -f deployment/docker-compose.prod.yml exec web env | grep -E "DATABASE|PAYLOAD"
@@ -296,10 +296,10 @@ Enable detailed logging for troubleshooting:
 LOG_LEVEL=debug
 
 # Restart application
-./deploy.sh restart
+timetiles restart
 
 # View debug logs
-./deploy.sh logs web | grep DEBUG
+timetiles logs web | grep DEBUG
 ```
 
 ## Security Updates
@@ -323,8 +323,8 @@ docker-compose -f deployment/docker-compose.prod.yml exec certbot \
 ```bash
 # Update base images
 docker-compose -f deployment/docker-compose.prod.yml pull
-./deploy.sh down
-./deploy.sh up
+timetiles down
+timetiles up
 
 # Check for vulnerabilities
 pnpm audit
@@ -335,4 +335,4 @@ pnpm audit
 - **Documentation**: Review this guide and [deployment docs](./deployment)
 - **Issues**: [GitHub Issues](https://github.com/jfilter/timetiles/issues)
 - **Community**: [GitHub Discussions](https://github.com/jfilter/timetiles/discussions)
-- **Logs**: Always check logs first with `./deploy.sh logs`
+- **Logs**: Always check logs first with `timetiles logs`
