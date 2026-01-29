@@ -365,14 +365,13 @@ describe.sequential("getRateLimitService", () => {
     }
   });
 
-  it("should return new instances in test environment for isolation", () => {
+  it("should return singleton instance", () => {
     const service1 = getRateLimitService(payload);
     const service2 = getRateLimitService(payload);
 
-    // In test environment, should return new instances for isolation
-    expect(service1).not.toBe(service2);
+    // getRateLimitService is a singleton - returns the same instance
+    expect(service1).toBe(service2);
     expect(service1).toBeInstanceOf(RateLimitService);
-    expect(service2).toBeInstanceOf(RateLimitService);
   });
 });
 
