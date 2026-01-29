@@ -269,7 +269,7 @@ test-deploy-ci:
 
 ## Run all deployment tests in Multipass VM
 test-deploy:
-	@cd deployment/bootstrap && ./test-multipass.sh
+	@cd deployment/tests && ./run-vm.sh
 
 # Run database migrations (web-specific, bypasses turbo)
 migrate:

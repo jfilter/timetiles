@@ -3,10 +3,10 @@
 # Runs the full test suite inside an Ubuntu VM for production-like testing
 #
 # Usage:
-#   ./test-multipass.sh              # Run all tests in VM
-#   ./test-multipass.sh --keep       # Keep VM after tests
-#   ./test-multipass.sh --shell      # Shell into existing VM
-#   ./test-multipass.sh --destroy    # Destroy test VM
+#   ./run-vm.sh              # Run all tests in VM
+#   ./run-vm.sh --keep       # Keep VM after tests
+#   ./run-vm.sh --shell      # Shell into existing VM
+#   ./run-vm.sh --destroy    # Destroy test VM
 
 set -eo pipefail
 
@@ -160,8 +160,8 @@ if ! $KEEP_VM; then
 else
     echo ""
     echo "VM kept for debugging:"
-    echo "  Shell: ./test-multipass.sh --shell"
-    echo "  Destroy: ./test-multipass.sh --destroy"
+    echo "  Shell: ./run-vm.sh --shell"
+    echo "  Destroy: ./run-vm.sh --destroy"
 fi
 
 exit $TEST_EXIT
