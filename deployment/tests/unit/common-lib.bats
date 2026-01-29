@@ -127,24 +127,28 @@ setup() {
 # =============================================================================
 
 @test "verify_docker returns 0 when docker is running" {
-    skip_if_no_command "docker"
-    if ! docker info &>/dev/null; then
-        skip "Docker daemon not running"
-    fi
+    # Check if docker command exists
+    command -v docker &>/dev/null || skip "Docker command not found"
+    # Check if docker daemon is running (this might hang or error on some systems)
+    timeout 5 docker info &>/dev/null 2>&1 || skip "Docker daemon not running"
 
-    run verify_docker
-    [ "$status" -eq 0 ]
+    # Call directly (not with run) to capture CHECK_MSG variable
+    verify_docker
+    local status_code=$?
+    [ "$status_code" -eq 0 ]
     [[ "$CHECK_MSG" == *"Docker"* ]]
 }
 
 @test "verify_docker_compose returns 0 when compose available" {
-    skip_if_no_command "docker"
-    if ! docker compose version &>/dev/null; then
-        skip "Docker Compose not available"
-    fi
+    # Check if docker command exists
+    command -v docker &>/dev/null || skip "Docker command not found"
+    # Check if docker compose is available
+    timeout 5 docker compose version &>/dev/null 2>&1 || skip "Docker Compose not available"
 
-    run verify_docker_compose
-    [ "$status" -eq 0 ]
+    # Call directly (not with run) to capture CHECK_MSG variable
+    verify_docker_compose
+    local status_code=$?
+    [ "$status_code" -eq 0 ]
     [[ "$CHECK_MSG" == *"Compose"* ]]
 }
 
