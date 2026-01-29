@@ -87,5 +87,9 @@ APP_USER="timetiles"
 # Skip alerting setup
 # SKIP_ALERTING="false"
 
+# Skip git clone (use pre-existing files in INSTALL_DIR)
+# Useful for testing with local codebase
+# SKIP_CLONE="false"
+
 # Enable non-interactive mode (fails if required values missing)
 # NON_INTERACTIVE="false"
