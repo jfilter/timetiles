@@ -13,25 +13,73 @@ TimeTiles provides a production-ready Docker deployment with:
 
 ## Quick Start
 
+### Option 1: Docker Compose (Recommended)
+
 ```bash
-# 1. Clone the repository
-git clone https://github.com/jfilter/timetiles.git
+# 1. Clone deployment files
+git clone --depth 1 --filter=blob:none --sparse https://github.com/jfilter/timetiles.git
 cd timetiles
+git sparse-checkout set deployment
 
-# 2. Run setup script
-./deploy.sh setup
-
-# 3. Configure environment
+# 2. Configure environment
+cp deployment/.env.production.example deployment/.env.production
 nano deployment/.env.production
-# Set your domain, passwords, and email
+# Set: DOMAIN_NAME, DB_PASSWORD, PAYLOAD_SECRET, LETSENCRYPT_EMAIL
 
-# 4. Build and deploy
-./deploy.sh build
+# 3. Pull and start
+./deploy.sh pull
 ./deploy.sh up
-# Migrations run automatically on container startup
 
-# 5. Initialize SSL (after DNS is configured)
+# 4. Initialize SSL (after DNS is configured)
 ./deploy.sh ssl
+```
+
+### Option 2: All-in-One Container
+
+For demos, small teams, or quick trials:
+
+```bash
+docker run -d \
+  -p 80:80 -p 443:443 \
+  -v timetiles-data:/data \
+  -e PAYLOAD_SECRET=$(openssl rand -base64 32) \
+  -e DB_PASSWORD=$(openssl rand -base64 16) \
+  ghcr.io/jfilter/timetiles:latest-allinone
+```
+
+### Option 3: Automated Server Setup (Ubuntu 24.04)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/jfilter/timetiles/main/deployment/bootstrap/install.sh | sudo bash
+```
+
+## Deployment Options
+
+| Option | Best For | Scaling | Maintenance |
+|--------|----------|---------|-------------|
+| **Docker Compose** | Production, teams | Horizontal (multiple instances) | Standard Docker ops |
+| **All-in-One** | Demos, small teams, personal | Single server only | Simple, self-contained |
+| **Bootstrap Script** | Fresh Ubuntu servers | Same as Compose | Includes security hardening |
+
+### Docker Compose Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Nginx     │────▶│   Next.js   │────▶│  PostgreSQL │
+│  (SSL/TLS)  │     │    App      │     │  + PostGIS  │
+└─────────────┘     └─────────────┘     └─────────────┘
+```
+
+### All-in-One Architecture
+
+```
+┌─────────────────────────────────────────┐
+│           Single Container              │
+│  ┌───────┐  ┌────────┐  ┌───────────┐  │
+│  │ Nginx │──│Next.js │──│ PostgreSQL│  │
+│  └───────┘  └────────┘  └───────────┘  │
+│         (supervisord manages all)       │
+└─────────────────────────────────────────┘
 ```
 
 ## Prerequisites
@@ -199,20 +247,24 @@ After successful deployment:
 
 ## Updating Production
 
-To deploy updates:
+### With Pre-built Images (Default)
 
 ```bash
-# Pull latest changes
-git pull
+# Edit version in .env.production
+# TIMETILES_VERSION=v1.2.0
 
-# Rebuild and redeploy
+# Pull new images and restart
 ./deploy.sh update
+```
 
-# Or manually:
-./deploy.sh down
+### With Local Builds
+
+If using `docker-compose.override.yml` for local builds:
+
+```bash
+git pull
 ./deploy.sh build
 ./deploy.sh up
-# Migrations run automatically on container startup
 ```
 
 See [Maintenance Guide](/admin-guide/maintenance) for routine operations.
