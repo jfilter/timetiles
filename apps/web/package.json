@@ -108,7 +108,7 @@
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.2",
     "eslint": "^9.19.0",
-    "happy-dom": "^18.0.1",
+    "happy-dom": "^20.3.4",
     "jsdom": "^26.1.0",
     "msw": "^2.10.4",
     "playwright": "^1.54.1",
