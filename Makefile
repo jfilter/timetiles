@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint lint-full typecheck typecheck-full format test test-ai test-e2e test-coverage coverage coverage-check migrate migrate-create check check-full check-ai help
+.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint lint-full typecheck typecheck-full format test test-ai test-e2e test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai help
 
 all: help
 
@@ -251,6 +251,26 @@ else
 	pnpm --filter web test:e2e
 endif
 
+# =============================================================================
+# Deployment Tests
+# =============================================================================
+
+## Run deployment unit tests (fast, no Docker)
+test-deploy-unit:
+	@cd deployment/tests && ./run-unit.sh
+
+## Run deployment integration tests (requires Docker)
+test-deploy-integration:
+	@cd deployment/tests && ./run-integration.sh
+
+## Run all deployment tests (for CI - no VM)
+test-deploy-ci:
+	@cd deployment/tests && ./run-all.sh
+
+## Run all deployment tests in Multipass VM
+test-deploy:
+	@cd deployment/bootstrap && ./test-multipass.sh
+
 # Run database migrations (web-specific, bypasses turbo)
 migrate:
 	@echo "🔄 Running database migrations..."
@@ -308,6 +328,11 @@ help:
 		'  test-coverage - Run tests and generate coverage report' \
 		'  coverage      - Show last coverage summary (quick)' \
 		'  coverage-check - Show files below 80% coverage threshold' '' \
+		'🚀 Deployment Tests:' \
+		'  test-deploy-unit        - Run unit tests (fast, no Docker)' \
+		'  test-deploy-integration - Run integration tests (requires Docker)' \
+		'  test-deploy-ci          - Run all tests for CI (no VM)' \
+		'  test-deploy             - Run all tests in Multipass VM' '' \
 		'🌱 Database:' \
 		'  seed          - Seed database with sample data' \
 		'                  Usage: make seed ARGS='"'"'development users'"'"'' \
