@@ -39,7 +39,8 @@ services:
       - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
       # Use -h localhost to force TCP connection (avoids peer auth issues with kartoza/postgis)
-      test: ["CMD-SHELL", "pg_isready -h localhost -U ${DB_USER:-timetiles_user} -d ${DB_NAME:-timetiles}"]
+      # Don't check for specific database (-d) as it may not exist yet during initial startup
+      test: ["CMD-SHELL", "pg_isready -h localhost -U ${DB_USER:-timetiles_user}"]
       interval: 10s
       timeout: 5s
       retries: 5
