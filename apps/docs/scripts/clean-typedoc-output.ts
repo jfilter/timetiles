@@ -199,6 +199,7 @@ const cleanupFileContent = (filePath: string): void => {
   // Also handle unescaped object-like patterns in text (not already in backticks)
   // Pattern: { key, key, key } -> `{ key, key, key }`
   // Only match simple comma-separated identifiers to avoid false positives
+  // eslint-disable-next-line security/detect-unsafe-regex -- bounded input from TypeDoc output
   const objectPatternRegex = /(?<!`)(\{ [a-z][a-z0-9]*(?:, [a-z][a-z0-9]*)+ \})(?!`)/gi;
   if (objectPatternRegex.test(content)) {
     content = content.replace(objectPatternRegex, "`$1`");
