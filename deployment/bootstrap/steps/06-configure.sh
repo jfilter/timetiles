@@ -105,8 +105,8 @@ Admin Panel: https://$DOMAIN_NAME/admin
 Database:
   Host: postgres (internal Docker network)
   Port: 5432
-  Database: timetiles
-  Username: timetiles_user
+  Database: ${DB_NAME:-timetiles}
+  Username: ${DB_USER:-timetiles_user}
   Password: $DB_PASSWORD
 
 Payload CMS:
