@@ -29,6 +29,12 @@ run_step() {
         save_config_to_state "PAYLOAD_SECRET" "$PAYLOAD_SECRET"
     fi
 
+    if [[ -z "${RESTIC_PASSWORD:-}" ]]; then
+        RESTIC_PASSWORD=$(generate_secret 32)
+        print_info "Generated restic backup password"
+        save_config_to_state "RESTIC_PASSWORD" "$RESTIC_PASSWORD"
+    fi
+
     # Create .env.production from template
     print_step "Creating .env.production..."
     cp "$env_template" "$env_file"
@@ -41,6 +47,9 @@ run_step() {
     sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD|" "$env_file"
     sed -i "s|PAYLOAD_SECRET=.*|PAYLOAD_SECRET=$PAYLOAD_SECRET|" "$env_file"
     sed -i "s|LETSENCRYPT_EMAIL=.*|LETSENCRYPT_EMAIL=$LETSENCRYPT_EMAIL|" "$env_file"
+
+    # Backup configuration
+    sed -i "s|RESTIC_PASSWORD=.*|RESTIC_PASSWORD=$RESTIC_PASSWORD|" "$env_file"
 
     # Set NEXT_PUBLIC_PAYLOAD_URL (derived from domain)
     sed -i "s|NEXT_PUBLIC_PAYLOAD_URL=.*|NEXT_PUBLIC_PAYLOAD_URL=https://$DOMAIN_NAME|" "$env_file"
@@ -113,6 +122,10 @@ Payload CMS:
 
 Let's Encrypt:
   Email: $LETSENCRYPT_EMAIL
+
+Backup Encryption:
+  Password: $RESTIC_PASSWORD
+  CRITICAL: Without this password, backups cannot be restored!
 
 # ============================================================================
 # After first login, create an admin user at:

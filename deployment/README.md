@@ -97,6 +97,23 @@ Key variables in `.env.production`:
 | `DOMAIN_NAME` | Your domain (e.g., `app.example.com`) |
 | `LETSENCRYPT_EMAIL` | Email for SSL notifications |
 
+## Backup System
+
+Uses restic for encrypted, deduplicated backups.
+
+```bash
+./timetiles backup              # Full backup (db + uploads)
+./timetiles backup --offsite    # Include S3 offsite sync
+./timetiles backup list         # Show snapshots
+./timetiles backup prune        # Apply retention policy
+./timetiles restore latest      # Restore most recent
+```
+
+Configuration in `.env.production`:
+- `RESTIC_PASSWORD` - Encryption key (auto-generated)
+- `RESTIC_REPOSITORY` - Local repo path
+- `RESTIC_OFFSITE_REPOSITORY` - S3 URL (optional)
+
 ## Troubleshooting
 
 ### PostgreSQL Connection Issues

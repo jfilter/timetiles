@@ -79,6 +79,66 @@ send_alert() {
     fi
 }
 
+# Restic configuration
+load_restic_config() {
+    RESTIC_PASSWORD="${RESTIC_PASSWORD:-}"
+    RESTIC_REPOSITORY="${RESTIC_REPOSITORY:-$SCRIPT_DIR/backups/restic-repo}"
+    RESTIC_OFFSITE_REPOSITORY="${RESTIC_OFFSITE_REPOSITORY:-}"
+    AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}"
+    AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}"
+    AWS_ENDPOINT_URL="${AWS_ENDPOINT_URL:-}"
+    BACKUP_KEEP_DAILY="${BACKUP_KEEP_DAILY:-7}"
+    BACKUP_KEEP_WEEKLY="${BACKUP_KEEP_WEEKLY:-4}"
+    BACKUP_KEEP_MONTHLY="${BACKUP_KEEP_MONTHLY:-12}"
+
+    if [[ -z "$RESTIC_PASSWORD" ]]; then
+        echo -e "${RED}Error: RESTIC_PASSWORD not set in .env.production${NC}"
+        echo "Run bootstrap or manually set RESTIC_PASSWORD"
+        exit 1
+    fi
+
+    export RESTIC_PASSWORD
+    export AWS_ACCESS_KEY_ID
+    export AWS_SECRET_ACCESS_KEY
+}
+
+# Initialize restic repo if needed
+init_restic_repo() {
+    local repo="$1"
+    local name="$2"
+
+    if [[ "$repo" == s3:* ]]; then
+        export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+        [[ -n "$AWS_ENDPOINT_URL" ]] && export AWS_ENDPOINT_URL
+    fi
+
+    # Check if repo exists
+    if ! restic -r "$repo" snapshots &>/dev/null; then
+        echo -e "${YELLOW}Initializing $name restic repository...${NC}"
+        if ! restic -r "$repo" init 2>&1; then
+            # Might already be initialized (race condition or permissions)
+            if ! restic -r "$repo" snapshots &>/dev/null; then
+                echo -e "${RED}Failed to initialize $name repository${NC}"
+                return 1
+            fi
+        fi
+    fi
+    return 0
+}
+
+# Run restic with proper environment
+run_restic() {
+    local repo="$1"
+    shift
+
+    if [[ "$repo" == s3:* ]]; then
+        export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+        [[ -n "$AWS_ENDPOINT_URL" ]] && export AWS_ENDPOINT_URL
+    fi
+
+    restic -r "$repo" "$@"
+}
+
 # Functions
 print_usage() {
     echo "Usage: $0 [command]"
@@ -220,222 +280,254 @@ case "$1" in
         
     backup)
         check_env
-        BACKUP_DIR="${BACKUP_DIR:-$SCRIPT_DIR/backups}"
-        mkdir -p "$BACKUP_DIR"
-        
-        # Parse sub-command (default to full backup for safety)
-        case "${2:-full}" in
+        load_restic_config
+
+        OFFSITE=false
+        WHAT="full"
+
+        # Parse arguments
+        while [[ $# -gt 1 ]]; do
+            case "$2" in
+                --offsite) OFFSITE=true; shift ;;
+                db|database) WHAT="db"; shift ;;
+                uploads) WHAT="uploads"; shift ;;
+                list|prune|verify|auto) WHAT="$2"; shift; break ;;
+                *) shift ;;
+            esac
+        done
+
+        case "$WHAT" in
             db|database)
-                echo -e "${YELLOW}Backing up database...${NC}"
-                BACKUP_FILE="$BACKUP_DIR/db-$(date +%Y%m%d-%H%M%S).sql.gz"
-                # --clean adds DROP statements, --if-exists prevents errors if objects don't exist
-                # -h localhost forces TCP connection (avoids peer auth issues with kartoza/postgis)
-                # PGPASSWORD uses the password from the container environment
-                if ! $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASS pg_dump -h localhost -U $POSTGRES_USER --clean --if-exists $POSTGRES_DBNAME' | gzip > "$BACKUP_FILE"; then
-                    echo -e "${RED}Database backup FAILED${NC}"
-                    send_alert "Backup Failed" "Database backup failed at $(date). Please check the backup logs."
+                # Initialize local repo
+                if ! init_restic_repo "$RESTIC_REPOSITORY" "local"; then
                     exit 1
                 fi
-                echo -e "${GREEN}Database backup saved to $BACKUP_FILE${NC}"
 
-                # Keep only last 30 backups
-                ls -t "$BACKUP_DIR"/db-*.sql.gz 2>/dev/null | tail -n +31 | xargs rm -f 2>/dev/null || true
+                echo -e "${YELLOW}Backing up database...${NC}"
+
+                # Create temp SQL dump
+                TEMP_DUMP=$(mktemp)
+                trap "rm -f $TEMP_DUMP" EXIT
+
+                if ! $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASS pg_dump -h localhost -U $POSTGRES_USER --clean --if-exists $POSTGRES_DBNAME' > "$TEMP_DUMP"; then
+                    echo -e "${RED}Database dump failed${NC}"
+                    send_alert "Backup Failed" "Database dump failed at $(date)"
+                    exit 1
+                fi
+
+                # Backup to local restic repo
+                if ! run_restic "$RESTIC_REPOSITORY" backup --tag db --stdin --stdin-filename "database.sql" < "$TEMP_DUMP"; then
+                    echo -e "${RED}Restic backup failed${NC}"
+                    send_alert "Backup Failed" "Restic backup failed at $(date)"
+                    exit 1
+                fi
+
+                echo -e "${GREEN}Database backup complete${NC}"
+
+                # Offsite sync
+                if $OFFSITE && [[ -n "$RESTIC_OFFSITE_REPOSITORY" ]]; then
+                    echo -e "${YELLOW}Syncing to offsite...${NC}"
+                    if init_restic_repo "$RESTIC_OFFSITE_REPOSITORY" "offsite" 2>/dev/null; then
+                        if run_restic "$RESTIC_OFFSITE_REPOSITORY" backup --tag db --stdin --stdin-filename "database.sql" < "$TEMP_DUMP" 2>/dev/null; then
+                            echo -e "${GREEN}Offsite sync complete${NC}"
+                        else
+                            echo -e "${YELLOW}Offsite sync failed (continuing - local backup succeeded)${NC}"
+                        fi
+                    else
+                        echo -e "${YELLOW}Offsite init failed (write-only credentials?) - skipping${NC}"
+                    fi
+                fi
                 ;;
 
             uploads)
-                echo -e "${YELLOW}Backing up uploads...${NC}"
-                BACKUP_FILE="$BACKUP_DIR/uploads-$(date +%Y%m%d-%H%M%S).tar.gz"
-                UPLOAD_VOL=$(docker volume ls -q | grep -E 'timetiles.*uploads' | head -1)
-                if [ -n "$UPLOAD_VOL" ]; then
-                    if ! docker run --rm -v "$UPLOAD_VOL:/data" -v "$BACKUP_DIR:/backup" alpine \
-                        tar czf "/backup/$(basename "$BACKUP_FILE")" -C /data .; then
-                        echo -e "${RED}Uploads backup FAILED${NC}"
-                        send_alert "Backup Failed" "Uploads backup failed at $(date). Please check the backup logs."
-                        exit 1
-                    fi
-                    echo -e "${GREEN}Uploads backup saved to $BACKUP_FILE${NC}"
-
-                    # Keep only last 30 backups
-                    ls -t "$BACKUP_DIR"/uploads-*.tar.gz 2>/dev/null | tail -n +31 | xargs rm -f 2>/dev/null || true
-                else
-                    echo -e "${RED}Error: Upload volume not found${NC}"
-                    send_alert "Backup Failed" "Uploads backup failed - upload volume not found at $(date)."
+                if ! init_restic_repo "$RESTIC_REPOSITORY" "local"; then
                     exit 1
+                fi
+
+                echo -e "${YELLOW}Backing up uploads...${NC}"
+
+                UPLOAD_VOL=$(docker volume ls -q | grep -E 'timetiles.*uploads' | head -1)
+                if [[ -z "$UPLOAD_VOL" ]]; then
+                    echo -e "${RED}Upload volume not found${NC}"
+                    exit 1
+                fi
+
+                # Backup uploads via docker
+                if ! docker run --rm \
+                    -v "$UPLOAD_VOL:/data:ro" \
+                    -e RESTIC_PASSWORD="$RESTIC_PASSWORD" \
+                    -v "$RESTIC_REPOSITORY:/repo" \
+                    restic/restic -r /repo backup --tag uploads /data; then
+                    echo -e "${RED}Uploads backup failed${NC}"
+                    send_alert "Backup Failed" "Uploads backup failed at $(date)"
+                    exit 1
+                fi
+
+                echo -e "${GREEN}Uploads backup complete${NC}"
+
+                # Offsite sync for uploads
+                if $OFFSITE && [[ -n "$RESTIC_OFFSITE_REPOSITORY" ]]; then
+                    echo -e "${YELLOW}Syncing uploads to offsite...${NC}"
+                    # For S3 offsite, run restic directly with volume mount
+                    if docker run --rm \
+                        -v "$UPLOAD_VOL:/data:ro" \
+                        -e RESTIC_PASSWORD="$RESTIC_PASSWORD" \
+                        -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
+                        -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
+                        ${AWS_ENDPOINT_URL:+-e AWS_ENDPOINT_URL="$AWS_ENDPOINT_URL"} \
+                        restic/restic -r "$RESTIC_OFFSITE_REPOSITORY" backup --tag uploads /data 2>/dev/null; then
+                        echo -e "${GREEN}Offsite uploads sync complete${NC}"
+                    else
+                        echo -e "${YELLOW}Offsite uploads sync failed (continuing)${NC}"
+                    fi
                 fi
                 ;;
 
             full)
                 echo -e "${YELLOW}Creating full backup (database + uploads)...${NC}"
-                TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-                BACKUP_FAILED=false
 
-                # Backup database
-                # -h localhost forces TCP connection (avoids peer auth issues with kartoza/postgis)
-                # PGPASSWORD uses the password from the container environment
-                echo "Backing up database..."
-                if ! $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASS pg_dump -h localhost -U $POSTGRES_USER --clean --if-exists $POSTGRES_DBNAME' | gzip > "$BACKUP_DIR/db-$TIMESTAMP.sql.gz"; then
-                    echo -e "${RED}Database backup FAILED${NC}"
-                    BACKUP_FAILED=true
+                # Run both backups
+                BACKUP_ARGS=""
+                $OFFSITE && BACKUP_ARGS="--offsite"
+
+                "$0" backup db $BACKUP_ARGS || exit 1
+                "$0" backup uploads $BACKUP_ARGS || exit 1
+
+                echo -e "${GREEN}Full backup complete${NC}"
+                ;;
+
+            list)
+                REPO="$RESTIC_REPOSITORY"
+                if [[ "$2" == "--offsite" ]]; then
+                    if [[ -z "$RESTIC_OFFSITE_REPOSITORY" ]]; then
+                        echo -e "${RED}No offsite repository configured${NC}"
+                        exit 1
+                    fi
+                    REPO="$RESTIC_OFFSITE_REPOSITORY"
+                    echo -e "${YELLOW}Listing offsite snapshots...${NC}"
+                    echo -e "${YELLOW}(Requires read permissions - may fail with write-only credentials)${NC}"
                 fi
 
-                # Backup uploads
-                echo "Backing up uploads..."
-                UPLOAD_VOL=$(docker volume ls -q | grep -E 'timetiles.*uploads' | head -1)
-                if [ -n "$UPLOAD_VOL" ]; then
-                    if ! docker run --rm -v "$UPLOAD_VOL:/data" -v "$BACKUP_DIR:/backup" alpine \
-                        tar czf "/backup/uploads-$TIMESTAMP.tar.gz" -C /data .; then
-                        echo -e "${RED}Uploads backup FAILED${NC}"
-                        BACKUP_FAILED=true
+                if ! run_restic "$REPO" snapshots 2>/dev/null; then
+                    if [[ "$REPO" == "$RESTIC_OFFSITE_REPOSITORY" ]]; then
+                        echo -e "${YELLOW}Cannot list offsite snapshots (read permissions required)${NC}"
+                        echo "Use AWS console or a machine with read access to view offsite backups"
+                    else
+                        echo -e "${RED}Failed to list snapshots${NC}"
+                        exit 1
                     fi
                 fi
-
-                if [ "$BACKUP_FAILED" = true ]; then
-                    send_alert "Backup Failed" "Full backup failed at $(date). Please check the backup logs."
-                    exit 1
-                fi
-
-                echo -e "${GREEN}Full backup completed:${NC}"
-                echo "  Database: $BACKUP_DIR/db-$TIMESTAMP.sql.gz"
-                echo "  Uploads: $BACKUP_DIR/uploads-$TIMESTAMP.tar.gz"
-                ;;
-                
-            auto)
-                echo -e "${YELLOW}Setting up automatic daily backups...${NC}"
-                
-                # Create cron script
-                cat > "$BACKUP_DIR/auto-backup.sh" << EOF
-#!/bin/bash
-cd "$SCRIPT_DIR"
-./timetiles backup db
-EOF
-                chmod +x "$BACKUP_DIR/auto-backup.sh"
-                
-                # Add to crontab (daily at 2 AM)
-                CRON_CMD="0 2 * * * $BACKUP_DIR/auto-backup.sh"
-                (crontab -l 2>/dev/null | grep -v "$BACKUP_DIR/auto-backup.sh"; echo "$CRON_CMD") | crontab -
-                
-                echo -e "${GREEN}Automatic backups configured (daily at 2 AM)${NC}"
-                echo "To disable: crontab -e (and remove the TimeTiles backup line)"
-                ;;
-                
-            list)
-                echo -e "${YELLOW}Available backups:${NC}"
-                echo ""
-                echo "Database backups:"
-                ls -lh "$BACKUP_DIR"/db-*.sql.gz 2>/dev/null | tail -10 || echo "  No database backups found"
-                echo ""
-                echo "Upload backups:"
-                ls -lh "$BACKUP_DIR"/uploads-*.tar.gz 2>/dev/null | tail -10 || echo "  No upload backups found"
-                ;;
-                
-            clean)
-                # Clean backups older than N days (default: 30)
-                CLEAN_DAYS="${3:-30}"
-                echo -e "${YELLOW}Cleaning old backups (keeping last $CLEAN_DAYS days)...${NC}"
-                DB_DELETED=$(find "$BACKUP_DIR" -name "db-*.sql.gz" -mtime +$CLEAN_DAYS -delete -print | wc -l)
-                UPLOADS_DELETED=$(find "$BACKUP_DIR" -name "uploads-*.tar.gz" -mtime +$CLEAN_DAYS -delete -print | wc -l)
-                echo "  Removed $DB_DELETED database backup(s)"
-                echo "  Removed $UPLOADS_DELETED uploads backup(s)"
-                echo -e "${GREEN}Cleanup complete${NC}"
                 ;;
 
             prune)
-                # Keep only N most recent backups (default: 5)
-                # Verifies newest backup is valid before deleting older ones
-                KEEP_COUNT="${3:-5}"
-                echo -e "${YELLOW}Pruning backups (keeping $KEEP_COUNT most recent)...${NC}"
+                echo -e "${YELLOW}Applying retention policy...${NC}"
+                echo "Keeping: $BACKUP_KEEP_DAILY daily, $BACKUP_KEEP_WEEKLY weekly, $BACKUP_KEEP_MONTHLY monthly"
 
-                # Verify newest db backup
-                NEWEST_DB=$(ls -t "$BACKUP_DIR"/db-*.sql.gz 2>/dev/null | head -1)
-                if [ -n "$NEWEST_DB" ]; then
-                    echo -n "Verifying newest database backup... "
-                    if gunzip -t "$NEWEST_DB" 2>/dev/null; then
-                        echo -e "${GREEN}valid${NC}"
-                        # Delete all but newest N
-                        DELETED=$(ls -t "$BACKUP_DIR"/db-*.sql.gz 2>/dev/null | tail -n +$((KEEP_COUNT + 1)) | wc -l)
-                        ls -t "$BACKUP_DIR"/db-*.sql.gz 2>/dev/null | tail -n +$((KEEP_COUNT + 1)) | xargs rm -f 2>/dev/null || true
-                        echo "  Removed $DELETED old database backup(s)"
-                    else
-                        echo -e "${RED}CORRUPTED - skipping database backup pruning${NC}"
-                    fi
+                # Prune local
+                if run_restic "$RESTIC_REPOSITORY" forget \
+                    --keep-daily "$BACKUP_KEEP_DAILY" \
+                    --keep-weekly "$BACKUP_KEEP_WEEKLY" \
+                    --keep-monthly "$BACKUP_KEEP_MONTHLY" \
+                    --prune; then
+                    echo -e "${GREEN}Local repository pruned${NC}"
                 else
-                    echo "  No database backups found"
+                    echo -e "${RED}Local prune failed${NC}"
+                    exit 1
                 fi
 
-                # Verify newest uploads backup
-                NEWEST_UPLOADS=$(ls -t "$BACKUP_DIR"/uploads-*.tar.gz 2>/dev/null | head -1)
-                if [ -n "$NEWEST_UPLOADS" ]; then
-                    echo -n "Verifying newest uploads backup... "
-                    if tar tzf "$NEWEST_UPLOADS" &>/dev/null; then
-                        echo -e "${GREEN}valid${NC}"
-                        # Delete all but newest N
-                        DELETED=$(ls -t "$BACKUP_DIR"/uploads-*.tar.gz 2>/dev/null | tail -n +$((KEEP_COUNT + 1)) | wc -l)
-                        ls -t "$BACKUP_DIR"/uploads-*.tar.gz 2>/dev/null | tail -n +$((KEEP_COUNT + 1)) | xargs rm -f 2>/dev/null || true
-                        echo "  Removed $DELETED old uploads backup(s)"
+                # Prune offsite (may fail with write-only)
+                if [[ -n "$RESTIC_OFFSITE_REPOSITORY" ]]; then
+                    echo -e "${YELLOW}Pruning offsite repository...${NC}"
+                    if run_restic "$RESTIC_OFFSITE_REPOSITORY" forget \
+                        --keep-daily "$BACKUP_KEEP_DAILY" \
+                        --keep-weekly "$BACKUP_KEEP_WEEKLY" \
+                        --keep-monthly "$BACKUP_KEEP_MONTHLY" \
+                        --prune 2>/dev/null; then
+                        echo -e "${GREEN}Offsite repository pruned${NC}"
                     else
-                        echo -e "${RED}CORRUPTED - skipping uploads backup pruning${NC}"
+                        echo -e "${YELLOW}Offsite prune skipped (delete permissions required)${NC}"
+                        echo "Use S3 lifecycle rules to expire old offsite backups"
                     fi
-                else
-                    echo "  No uploads backups found"
                 fi
-
-                echo -e "${GREEN}Prune complete${NC}"
                 ;;
 
             verify)
-                echo -e "${YELLOW}Verifying all backups...${NC}"
+                echo -e "${YELLOW}Verifying backup repository...${NC}"
+
+                if run_restic "$RESTIC_REPOSITORY" check; then
+                    echo -e "${GREEN}Local repository verified${NC}"
+                else
+                    echo -e "${RED}Local repository has errors${NC}"
+                    send_alert "Backup Verify Failed" "Local backup repository verification failed"
+                    exit 1
+                fi
+
+                # Show recent snapshots
                 echo ""
-                echo "Database backups:"
-                for f in "$BACKUP_DIR"/db-*.sql.gz; do
-                    [ -f "$f" ] || continue
-                    echo -n "  $(basename "$f"): "
+                echo "Recent snapshots:"
+                run_restic "$RESTIC_REPOSITORY" snapshots --last 5
+                ;;
 
-                    # Check 1: gzip integrity
-                    if ! gunzip -t "$f" 2>/dev/null; then
-                        echo -e "${RED}CORRUPTED (gzip invalid)${NC}"
-                        continue
-                    fi
+            auto)
+                CRON_OFFSITE=""
+                DISABLE=false
 
-                    # Check 2: pg_dump header present
-                    if ! gunzip -c "$f" 2>/dev/null | head -20 | grep -q "PostgreSQL database dump"; then
-                        echo -e "${RED}INVALID (missing pg_dump header)${NC}"
-                        continue
-                    fi
-
-                    # Check 3: pg_dump completion marker (dump wasn't truncated)
-                    if ! gunzip -c "$f" 2>/dev/null | tail -20 | grep -q "PostgreSQL database dump complete"; then
-                        echo -e "${YELLOW}WARNING (possibly truncated - missing completion marker)${NC}"
-                        continue
-                    fi
-
-                    # Check 4: count tables for info
-                    TABLE_COUNT=$(gunzip -c "$f" 2>/dev/null | grep -c "^CREATE TABLE" || echo 0)
-                    echo -e "${GREEN}valid${NC} ($TABLE_COUNT tables)"
+                for arg in "${@:2}"; do
+                    case "$arg" in
+                        --offsite) CRON_OFFSITE="--offsite" ;;
+                        --disable) DISABLE=true ;;
+                    esac
                 done
-                echo ""
-                echo "Upload backups:"
-                for f in "$BACKUP_DIR"/uploads-*.tar.gz; do
-                    [ -f "$f" ] || continue
-                    echo -n "  $(basename "$f"): "
-                    if tar tzf "$f" &>/dev/null; then
-                        FILE_COUNT=$(tar tzf "$f" 2>/dev/null | wc -l)
-                        echo -e "${GREEN}valid${NC} ($FILE_COUNT files)"
-                    else
-                        echo -e "${RED}CORRUPTED${NC}"
-                    fi
-                done
+
+                CRON_SCRIPT="$SCRIPT_DIR/backups/auto-backup.sh"
+                mkdir -p "$SCRIPT_DIR/backups"
+
+                if $DISABLE; then
+                    echo -e "${YELLOW}Disabling automatic backups...${NC}"
+                    crontab -l 2>/dev/null | grep -v "$CRON_SCRIPT" | crontab -
+                    rm -f "$CRON_SCRIPT"
+                    echo -e "${GREEN}Automatic backups disabled${NC}"
+                else
+                    echo -e "${YELLOW}Setting up automatic daily backups...${NC}"
+
+                    cat > "$CRON_SCRIPT" << EOF
+#!/bin/bash
+cd "$SCRIPT_DIR"
+./timetiles backup $CRON_OFFSITE
+./timetiles backup prune
+EOF
+                    chmod +x "$CRON_SCRIPT"
+
+                    # Add to crontab (daily at 2 AM)
+                    CRON_CMD="0 2 * * * $CRON_SCRIPT >> /var/log/timetiles-backup.log 2>&1"
+                    (crontab -l 2>/dev/null | grep -v "$CRON_SCRIPT"; echo "$CRON_CMD") | crontab -
+
+                    echo -e "${GREEN}Automatic backups configured (daily at 2 AM)${NC}"
+                    [[ -n "$CRON_OFFSITE" ]] && echo "Offsite sync enabled"
+                    echo "Logs: /var/log/timetiles-backup.log"
+                    echo "To disable: timetiles backup auto --disable"
+                fi
                 ;;
 
             *)
-                echo "Usage: $0 backup [full|db|uploads|auto|list|prune|verify|clean]"
-                echo "  full    - Backup database and uploads (default)"
-                echo "  db      - Backup database only"
-                echo "  uploads - Backup uploads only"
-                echo "  auto    - Setup automatic daily backups"
-                echo "  list    - List available backups"
-                echo "  prune N - Keep only N most recent backups (default: 5), verify before deleting"
-                echo "  verify  - Check integrity of all backup files"
-                echo "  clean N - Remove backups older than N days (default: 30)"
+                echo "Usage: $0 backup [--offsite] [db|uploads|full]"
+                echo "       $0 backup list [--offsite]"
+                echo "       $0 backup prune"
+                echo "       $0 backup verify"
+                echo "       $0 backup auto [--offsite] [--disable]"
+                echo ""
+                echo "Commands:"
+                echo "  full      - Backup database and uploads (default)"
+                echo "  db        - Backup database only"
+                echo "  uploads   - Backup uploads only"
+                echo "  list      - List snapshots"
+                echo "  prune     - Apply retention policy"
+                echo "  verify    - Check repository integrity"
+                echo "  auto      - Setup automatic daily backups"
+                echo ""
+                echo "Options:"
+                echo "  --offsite - Also sync to S3 (for backup/auto)"
+                echo "            - List from S3 (for list)"
                 exit 1
                 ;;
         esac
@@ -443,82 +535,113 @@ EOF
         
     restore)
         check_env
-        BACKUP_DIR="${BACKUP_DIR:-$SCRIPT_DIR/backups}"
+        load_restic_config
 
-        if [ -z "$2" ]; then
-            echo "Usage: $0 restore <backup-file> [uploads-file]"
-            echo ""
-            echo "Available backups:"
-            echo "  Database:"
-            ls -1 "$BACKUP_DIR"/db-*.sql.gz 2>/dev/null | tail -10 || echo "    No database backups found"
-            echo "  Uploads:"
-            ls -1 "$BACKUP_DIR"/uploads-*.tar.gz 2>/dev/null | tail -10 || echo "    No upload backups found"
-            exit 1
-        fi
+        SNAPSHOT="${2:-}"
+        OFFSITE=false
 
-        # Validate database backup file
-        DB_BACKUP="$2"
-        if [ ! -f "$DB_BACKUP" ]; then
-            # Try in backup directory
-            DB_BACKUP="$BACKUP_DIR/$2"
-            if [ ! -f "$DB_BACKUP" ]; then
-                echo -e "${RED}Error: Database backup file not found: $2${NC}"
+        # Check for --offsite flag
+        for arg in "$@"; do
+            [[ "$arg" == "--offsite" ]] && OFFSITE=true
+        done
+
+        REPO="$RESTIC_REPOSITORY"
+        if $OFFSITE; then
+            if [[ -z "$RESTIC_OFFSITE_REPOSITORY" ]]; then
+                echo -e "${RED}No offsite repository configured${NC}"
                 exit 1
             fi
+            REPO="$RESTIC_OFFSITE_REPOSITORY"
+            echo -e "${YELLOW}Restoring from offsite repository...${NC}"
+            echo -e "${YELLOW}(Requires read permissions)${NC}"
         fi
 
-        # Validate uploads backup file if provided
-        UPLOADS_BACKUP=""
-        if [ -n "$3" ]; then
-            UPLOADS_BACKUP="$3"
-            if [ ! -f "$UPLOADS_BACKUP" ]; then
-                # Try in backup directory
-                UPLOADS_BACKUP="$BACKUP_DIR/$3"
-                if [ ! -f "$UPLOADS_BACKUP" ]; then
-                    echo -e "${RED}Error: Uploads backup file not found: $3${NC}"
-                    exit 1
+        # If no snapshot specified, list and prompt
+        if [[ -z "$SNAPSHOT" ]] || [[ "$SNAPSHOT" == "--offsite" ]]; then
+            echo -e "${YELLOW}Available snapshots:${NC}"
+            if ! run_restic "$REPO" snapshots 2>/dev/null; then
+                if $OFFSITE; then
+                    echo -e "${RED}Cannot list offsite snapshots (read permissions required)${NC}"
+                    echo "Use AWS console to find snapshot ID, then run:"
+                    echo "  timetiles restore <snapshot-id> --offsite"
                 fi
+                exit 1
             fi
-        fi
-
-        # Show what will be restored
-        echo ""
-        echo -e "${YELLOW}Files to restore:${NC}"
-        echo "  Database: $DB_BACKUP"
-        if [ -n "$UPLOADS_BACKUP" ]; then
-            echo "  Uploads:  $UPLOADS_BACKUP"
-        fi
-        echo ""
-
-        # Warning about data loss
-        echo -e "${RED}WARNING: This will REPLACE ALL EXISTING DATA!${NC}"
-        echo -e "${RED}  - Database: All tables will be dropped and recreated${NC}"
-        if [ -n "$UPLOADS_BACKUP" ]; then
-            echo -e "${RED}  - Uploads: All uploaded files will be deleted${NC}"
-        fi
-        echo ""
-        read -r -p "Are you sure? (yes/no): " confirm
-        if [ "$confirm" != "yes" ]; then
-            echo "Restore cancelled"
+            echo ""
+            echo "Usage: timetiles restore <snapshot-id> [--offsite]"
+            echo "       timetiles restore latest [--offsite]"
             exit 0
         fi
 
-        # Restore database
-        # -h localhost forces TCP connection (avoids peer auth issues with kartoza/postgis)
-        # PGPASSWORD uses the password from the container environment
-        echo -e "${YELLOW}Restoring database from $DB_BACKUP...${NC}"
-        gunzip < "$DB_BACKUP" | $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASS psql -h localhost -U $POSTGRES_USER $POSTGRES_DBNAME'
-
-        # Restore uploads if provided
-        if [ -n "$UPLOADS_BACKUP" ]; then
-            echo -e "${YELLOW}Restoring uploads from $UPLOADS_BACKUP...${NC}"
-            UPLOAD_VOL=$(docker volume ls -q | grep -E 'timetiles.*uploads' | head -1)
-            if [ -n "$UPLOAD_VOL" ]; then
-                docker run --rm -v "$UPLOAD_VOL:/data" -v "$(dirname "$UPLOADS_BACKUP"):/backup" alpine \
-                    sh -c "rm -rf /data/* && tar xzf /backup/$(basename "$UPLOADS_BACKUP") -C /data"
-            else
-                echo -e "${YELLOW}Warning: Upload volume not found, skipping uploads restore${NC}"
+        # Handle 'latest' keyword
+        if [[ "$SNAPSHOT" == "latest" ]]; then
+            SNAPSHOT=$(run_restic "$REPO" snapshots --json --latest 1 2>/dev/null | jq -r '.[0].short_id // empty')
+            if [[ -z "$SNAPSHOT" ]]; then
+                echo -e "${RED}No snapshots found${NC}"
+                exit 1
             fi
+            echo "Latest snapshot: $SNAPSHOT"
+        fi
+
+        # Get snapshot info
+        SNAPSHOT_INFO=$(run_restic "$REPO" snapshots --json "$SNAPSHOT" 2>/dev/null)
+        if [[ -z "$SNAPSHOT_INFO" ]] || [[ "$SNAPSHOT_INFO" == "[]" ]]; then
+            echo -e "${RED}Snapshot not found: $SNAPSHOT${NC}"
+            exit 1
+        fi
+
+        TAGS=$(echo "$SNAPSHOT_INFO" | jq -r '.[0].tags // [] | join(",")')
+        echo "Snapshot $SNAPSHOT tags: $TAGS"
+
+        # Confirm restore
+        echo ""
+        echo -e "${YELLOW}WARNING: This will overwrite current data!${NC}"
+        read -p "Continue with restore? [y/N] " -n 1 -r
+        echo
+        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 0
+
+        RESTORE_DIR=$(mktemp -d)
+        trap "rm -rf $RESTORE_DIR" EXIT
+
+        # Restore snapshot to temp directory
+        echo -e "${YELLOW}Extracting snapshot...${NC}"
+        if ! run_restic "$REPO" restore "$SNAPSHOT" --target "$RESTORE_DIR"; then
+            echo -e "${RED}Failed to extract snapshot${NC}"
+            exit 1
+        fi
+
+        # Check what was restored
+        if [[ -f "$RESTORE_DIR/database.sql" ]]; then
+            echo -e "${YELLOW}Restoring database...${NC}"
+
+            # Restore database
+            if ! $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASS psql -h localhost -U $POSTGRES_USER $POSTGRES_DBNAME' < "$RESTORE_DIR/database.sql"; then
+                echo -e "${RED}Database restore failed${NC}"
+                send_alert "Restore Failed" "Database restore failed at $(date)"
+                exit 1
+            fi
+            echo -e "${GREEN}Database restored${NC}"
+        fi
+
+        if [[ -d "$RESTORE_DIR/data" ]]; then
+            echo -e "${YELLOW}Restoring uploads...${NC}"
+
+            UPLOAD_VOL=$(docker volume ls -q | grep -E 'timetiles.*uploads' | head -1)
+            if [[ -z "$UPLOAD_VOL" ]]; then
+                echo -e "${RED}Upload volume not found${NC}"
+                exit 1
+            fi
+
+            # Restore uploads via docker
+            if ! docker run --rm \
+                -v "$UPLOAD_VOL:/data" \
+                -v "$RESTORE_DIR/data:/restore:ro" \
+                alpine sh -c "rm -rf /data/* && cp -a /restore/. /data/"; then
+                echo -e "${RED}Uploads restore failed${NC}"
+                send_alert "Restore Failed" "Uploads restore failed at $(date)"
+                exit 1
+            fi
+            echo -e "${GREEN}Uploads restored${NC}"
         fi
 
         echo -e "${GREEN}Restore complete!${NC}"

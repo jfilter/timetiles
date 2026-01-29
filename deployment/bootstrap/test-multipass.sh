@@ -315,7 +315,6 @@ verify_deployment() {
 test_backup_restore() {
     print_header "Testing Backup/Restore"
 
-    # timetiles now auto-switches to timetiles user when run as root
     local deploy_cmd="cd /opt/timetiles && sudo ./timetiles"
 
     # Test database backup
@@ -327,7 +326,7 @@ test_backup_restore() {
         return 1
     fi
 
-    # Test uploads-only backup
+    # Test uploads backup
     print_step "Creating uploads backup..."
     if multipass exec "$VM_NAME" -- bash -c "${deploy_cmd} backup uploads"; then
         print_success "Uploads backup created"
@@ -336,52 +335,28 @@ test_backup_restore() {
         return 1
     fi
 
-    # Test full backup (database + uploads)
-    print_step "Creating full backup..."
-    if multipass exec "$VM_NAME" -- bash -c "${deploy_cmd} backup full"; then
-        print_success "Full backup created"
-    else
-        print_error "Full backup failed"
-        return 1
-    fi
-
-    # List backups
-    print_step "Listing backups..."
+    # List snapshots
+    print_step "Listing snapshots..."
     multipass exec "$VM_NAME" -- bash -c "${deploy_cmd} backup list"
 
-    # Verify backup files exist
-    # Expected: 2 db backups (from db + full), 2 uploads backups (from uploads + full)
-    print_step "Verifying backup files..."
-    local backup_dir="/opt/timetiles/backups"
-    local backup_count
-    backup_count=$(multipass exec "$VM_NAME" -- ls -1 "$backup_dir"/*.gz 2>/dev/null | wc -l)
-    if [[ "$backup_count" -ge 4 ]]; then
-        print_success "Found $backup_count backup files"
-    else
-        print_error "Expected at least 4 backup files, found $backup_count"
-        return 1
-    fi
-
-    # Test backup verify
-    print_step "Verifying backups..."
+    # Verify repository
+    print_step "Verifying backup repository..."
     if multipass exec "$VM_NAME" -- bash -c "${deploy_cmd} backup verify"; then
         print_success "Backup verification passed"
     else
-        print_warning "Backup verification had warnings"
+        print_warning "Backup verification had issues"
     fi
 
-    # Get latest backup files
-    local latest_db
-    local latest_uploads
-    latest_db=$(multipass exec "$VM_NAME" -- ls -t "$backup_dir"/db-*.sql.gz 2>/dev/null | head -1)
-    latest_uploads=$(multipass exec "$VM_NAME" -- ls -t "$backup_dir"/uploads-*.tar.gz 2>/dev/null | head -1)
-
-    print_info "Latest DB backup: $latest_db"
-    print_info "Latest uploads backup: $latest_uploads"
-
-    # Test restore (non-destructive - just verify command works)
-    print_step "Testing restore command (dry validation)..."
-    print_info "Restore commands are available but skipped to preserve data"
+    # Count snapshots (should have at least 2: db + uploads)
+    print_step "Checking snapshot count..."
+    local snapshot_count
+    snapshot_count=$(multipass exec "$VM_NAME" -- bash -c "cd /opt/timetiles && RESTIC_PASSWORD=\$(grep RESTIC_PASSWORD .env.production | cut -d= -f2) restic -r /opt/timetiles/backups/restic-repo snapshots --json 2>/dev/null | jq length")
+    if [[ "$snapshot_count" -ge 2 ]]; then
+        print_success "Found $snapshot_count snapshots"
+    else
+        print_error "Expected at least 2 snapshots, found $snapshot_count"
+        return 1
+    fi
 
     print_success "Backup/Restore tests passed"
 }

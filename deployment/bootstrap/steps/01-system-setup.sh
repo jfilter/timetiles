@@ -26,7 +26,8 @@ run_step() {
         dnsutils \
         fail2ban \
         unattended-upgrades \
-        logrotate
+        logrotate \
+        restic
 
     # Check memory and create swap if needed
     if ! check_memory; then

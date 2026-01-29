@@ -24,44 +24,72 @@ timetiles logs --tail=100
 
 ### Backup Procedures
 
+TimeTiles uses [restic](https://restic.net/) for encrypted, deduplicated backups with optional offsite storage.
+
 #### Quick Commands
 
 ```bash
-# Database backup (default)
+# Full backup (database + uploads)
 timetiles backup
 
-# Full backup (database + uploads)
-timetiles backup full
+# Full backup with offsite sync
+timetiles backup --offsite
 
-# Setup automatic daily backups at 2 AM
-timetiles backup auto
+# Database only
+timetiles backup db
 
-# List available backups
+# Uploads only
+timetiles backup uploads
+
+# List snapshots
 timetiles backup list
 
-# Clean old backups (>30 days)
-timetiles backup clean
+# Verify backup integrity
+timetiles backup verify
+
+# Apply retention policy
+timetiles backup prune
+
+# Setup automatic daily backups
+timetiles backup auto
+
+# Setup daily backups with offsite sync
+timetiles backup auto --offsite
 ```
 
 #### Restore from Backup
 
 ```bash
-# List available backups
+# List available snapshots
 timetiles restore
 
-# Restore database
-timetiles restore db-20241220-143022.sql.gz
+# Restore latest snapshot
+timetiles restore latest
 
-# Restore database and uploads
-timetiles restore db-20241220-143022.sql.gz uploads-20241220-143022.tar.gz
+# Restore specific snapshot
+timetiles restore abc123
+
+# Restore from offsite (if local unavailable)
+timetiles restore abc123 --offsite
 ```
+
+#### Offsite Backups (S3)
+
+Configure S3-compatible offsite storage in `.env.production`:
+
+```bash
+RESTIC_OFFSITE_REPOSITORY=s3:s3.amazonaws.com/your-bucket/timetiles
+AWS_ACCESS_KEY_ID=your-key
+AWS_SECRET_ACCESS_KEY=your-secret
+```
+
+For write-only credentials (recommended for security), use S3 lifecycle rules to expire old backups instead of `timetiles backup prune`.
 
 The backup system automatically:
 
-- Keeps only the last 30 database backups
-- Stores backups in `deployment/backups/`
-- Names files with timestamps for easy identification
-- Compresses backups to save space
+- Encrypts all backups with RESTIC_PASSWORD
+- Deduplicates data to save space
+- Applies retention policy: 7 daily, 4 weekly, 12 monthly
 
 ## Updates & Upgrades
 

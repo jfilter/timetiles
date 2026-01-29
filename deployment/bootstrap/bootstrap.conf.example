@@ -112,3 +112,34 @@ APP_USER="timetiles"
 # Swap file size (default: 4G)
 # Set to 0 to skip swap creation
 # SWAP_SIZE="4G"
+
+# ============================================================================
+# BACKUP SETTINGS
+# ============================================================================
+
+# Backup encryption password (required - auto-generated if empty)
+# CRITICAL: Store this password securely - without it, backups cannot be restored
+RESTIC_PASSWORD=""
+
+# Local backup repository path
+RESTIC_REPOSITORY="/opt/timetiles/backups/restic-repo"
+
+# Offsite S3-compatible storage (optional)
+# Examples:
+#   AWS S3: "s3:s3.amazonaws.com/bucket-name/timetiles"
+#   Backblaze B2: "s3:s3.us-west-000.backblazeb2.com/bucket-name/timetiles"
+#   Wasabi: "s3:s3.wasabisys.com/bucket-name/timetiles"
+#   MinIO: "s3:minio.example.com/bucket-name/timetiles"
+# RESTIC_OFFSITE_REPOSITORY=""
+
+# S3 credentials (required if using offsite)
+# AWS_ACCESS_KEY_ID=""
+# AWS_SECRET_ACCESS_KEY=""
+
+# For non-AWS S3-compatible storage, set endpoint URL:
+# AWS_ENDPOINT_URL=""
+
+# Retention policy (how many snapshots to keep)
+# BACKUP_KEEP_DAILY="7"
+# BACKUP_KEEP_WEEKLY="4"
+# BACKUP_KEEP_MONTHLY="12"
