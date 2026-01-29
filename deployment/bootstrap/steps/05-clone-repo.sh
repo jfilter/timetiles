@@ -12,9 +12,8 @@ run_step() {
 
     # Check if we should skip cloning (local files already present)
     if [[ "$skip_clone" == "true" ]]; then
-        if [[ -d "$app_dir" ]] && [[ -f "$app_dir/package.json" ]]; then
+        if [[ -d "$app_dir" ]] && [[ -f "$app_dir/deployment/deploy.sh" ]]; then
             print_info "Skipping clone - local files already present"
-            # Just fix ownership
             chown -R "$user:$user" "$app_dir"
             print_success "Repository setup complete (using local files)"
             return 0
@@ -24,7 +23,7 @@ run_step() {
         fi
     fi
 
-    print_step "Cloning repository..."
+    print_step "Cloning deployment files..."
     print_info "URL: $repo_url"
     print_info "Branch: $repo_branch"
     print_info "Target: $app_dir"
@@ -32,15 +31,10 @@ run_step() {
     # Check if already cloned
     if [[ -d "$app_dir/.git" ]]; then
         print_info "Repository already exists, updating..."
-
-        # Update existing repository
         cd "$app_dir" || die "Cannot change to $app_dir"
-
-        # Fetch and checkout
         sudo -u "$user" git fetch origin
         sudo -u "$user" git checkout "$repo_branch"
         sudo -u "$user" git pull origin "$repo_branch"
-
         print_success "Repository updated"
     else
         # Remove directory if it exists but isn't a git repo
@@ -48,18 +42,25 @@ run_step() {
             rm -rf "$app_dir"
         fi
 
-        # Clone repository
-        print_step "Cloning fresh copy..."
-        retry 3 5 git clone --branch "$repo_branch" "$repo_url" "$app_dir"
+        # Sparse checkout - only deployment folder
+        print_step "Cloning deployment files only (sparse checkout)..."
+        mkdir -p "$app_dir"
+        cd "$app_dir" || die "Cannot change to $app_dir"
 
-        # Set ownership
+        git init
+        git remote add origin "$repo_url"
+        git config core.sparseCheckout true
+        echo "deployment/" > .git/info/sparse-checkout
+
+        retry 3 5 git fetch --depth 1 origin "$repo_branch"
+        git checkout "$repo_branch"
+
         chown -R "$user:$user" "$app_dir"
-
-        print_success "Repository cloned"
+        print_success "Deployment files cloned"
     fi
 
     # Verify critical files exist
-    print_step "Verifying repository structure..."
+    print_step "Verifying deployment structure..."
 
     local required_files=(
         "deployment/deploy.sh"
@@ -73,21 +74,7 @@ run_step() {
         fi
     done
 
-    print_success "Repository structure verified"
-
-    # Make deploy.sh executable
+    print_success "Deployment structure verified"
     chmod +x "$app_dir/deployment/deploy.sh"
-
-    # Initialize Git LFS and pull files
-    if check_command git-lfs; then
-        print_step "Initializing Git LFS and pulling files..."
-        cd "$app_dir" || die "Cannot change to $app_dir"
-        sudo -u "$user" git lfs install --local
-        sudo -u "$user" git lfs pull
-        print_success "Git LFS files pulled"
-    else
-        print_warning "git-lfs not installed - binary assets may be missing"
-    fi
-
-    print_success "Repository setup complete"
+    print_success "Deployment files ready"
 }
