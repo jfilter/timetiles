@@ -86,8 +86,7 @@ const testimonialAvatarVariants = cva([
 ]);
 
 export interface TestimonialsProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof testimonialsVariants> {
+  extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof testimonialsVariants> {
   children: React.ReactNode;
 }
 
@@ -125,7 +124,7 @@ export const TestimonialCard = React.forwardRef<HTMLDivElement, TestimonialCardP
       <div ref={ref} className={cn(testimonialCardVariants(), className)} style={style} {...props}>
         {/* Editorial background number */}
         <div
-          className="text-accent/[0.04] pointer-events-none absolute -right-4 -top-2 select-none font-serif text-[120px] font-bold leading-none"
+          className="text-accent/[0.04] pointer-events-none absolute -top-2 -right-4 font-serif text-[120px] leading-none font-bold select-none"
           aria-hidden="true"
         >
           {displayNumber}

@@ -53,14 +53,14 @@ const Footer = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement> &
         <div className="pointer-events-none absolute inset-0 opacity-[0.03]" style={gridOverlayStyle} />
 
         {/* Decorative corner coordinates */}
-        <div className="text-charcoal/30 pointer-events-none absolute left-8 top-8 font-mono text-[10px] tracking-widest">
+        <div className="text-charcoal/30 pointer-events-none absolute top-8 left-8 font-mono text-[10px] tracking-widest">
           40.7128°N, 74.0060°W
         </div>
-        <div className="text-charcoal/30 pointer-events-none absolute right-8 top-8 font-mono text-[10px] tracking-widest">
+        <div className="text-charcoal/30 pointer-events-none absolute top-8 right-8 font-mono text-[10px] tracking-widest">
           SCALE 1:1,000,000
         </div>
 
-        <div className="container relative mx-auto max-w-7xl px-8">{children}</div>
+        <div className="relative container mx-auto max-w-7xl px-8">{children}</div>
       </footer>
     );
   }
@@ -103,7 +103,7 @@ const FooterBrand = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
   ({ className, children, ...props }, ref) => (
     <div ref={ref} className={cn("relative", className)} {...props}>
       {/* Decorative compass rose in background */}
-      <div className="pointer-events-none absolute -left-4 -top-4 h-32 w-32 opacity-[0.04]">
+      <div className="pointer-events-none absolute -top-4 -left-4 h-32 w-32 opacity-[0.04]">
         <svg viewBox="0 0 100 100" fill="currentColor">
           <circle cx="50" cy="50" r="2" />
           <path d="M50 10 L52 48 L50 50 L48 48 Z" />
@@ -156,7 +156,7 @@ const FooterSectionTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttrib
     <h3
       ref={ref}
       className={cn(
-        "text-navy dark:text-parchment mb-6 font-serif text-sm font-bold uppercase tracking-[0.2em]",
+        "text-navy dark:text-parchment mb-6 font-serif text-sm font-bold tracking-[0.2em] uppercase",
         "relative pb-2",
         "after:bg-terracotta/40 after:absolute after:bottom-0 after:left-0 after:h-[1px] after:w-8",
         className
@@ -203,7 +203,7 @@ const FooterBottom = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLD
       ref={ref}
       className={cn(
         "border-charcoal/10 relative mt-16 border-t pt-10",
-        "before:via-terracotta/20 before:absolute before:left-0 before:top-0 before:h-[1px] before:w-full before:bg-gradient-to-r before:from-transparent before:to-transparent",
+        "before:via-terracotta/20 before:absolute before:top-0 before:left-0 before:h-[1px] before:w-full before:bg-gradient-to-r before:from-transparent before:to-transparent",
         className
       )}
       {...props}

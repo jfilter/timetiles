@@ -82,7 +82,7 @@ export const BaseChart = ({
       )}
       {/* Subtle corner badge when updating */}
       {isUpdating && (
-        <div className="absolute right-3 top-3 z-10">
+        <div className="absolute top-3 right-3 z-10">
           <div className="bg-card/95 border-border flex items-center gap-2 rounded-sm border px-3 py-1.5 text-xs shadow-sm backdrop-blur-sm">
             <div className="border-cartographic-blue h-3 w-3 animate-spin rounded-full border-2 border-t-transparent" />
             <span className="text-muted-foreground font-medium">Updating</span>

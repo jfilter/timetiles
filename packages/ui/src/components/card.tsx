@@ -49,7 +49,7 @@ CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-foreground font-serif text-2xl font-bold leading-tight", className)} {...props} />
+    <h3 ref={ref} className={cn("text-foreground font-serif text-2xl leading-tight font-bold", className)} {...props} />
   )
 );
 CardTitle.displayName = "CardTitle";
@@ -83,7 +83,7 @@ const CardVersion = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
     <div
       ref={ref}
       className={cn(
-        "text-cartographic-blue dark:text-cartographic-blue mb-2 font-mono text-xs font-bold uppercase tracking-wide",
+        "text-cartographic-blue dark:text-cartographic-blue mb-2 font-mono text-xs font-bold tracking-wide uppercase",
         className
       )}
       {...props}
@@ -101,7 +101,7 @@ const CardLabel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivE
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wide opacity-60", className)}
+      className={cn("text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase opacity-60", className)}
       {...props}
     />
   )
@@ -143,7 +143,7 @@ const CardSpecItem = React.forwardRef<HTMLDivElement, CardSpecItemProps>(
       )}
       {...props}
     >
-      <div className="text-foreground mb-1 text-[0.625rem] font-bold uppercase tracking-wider opacity-70">{label}</div>
+      <div className="text-foreground mb-1 text-[0.625rem] font-bold tracking-wider uppercase opacity-70">{label}</div>
       <div className="text-muted-foreground text-sm">{children}</div>
     </div>
   )

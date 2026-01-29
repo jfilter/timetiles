@@ -88,8 +88,7 @@ const detailsValueVariants = cva([
 ]);
 
 export interface DetailsGridProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof detailsGridVariants> {
+  extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof detailsGridVariants> {
   children: React.ReactNode;
 }
 

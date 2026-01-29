@@ -52,7 +52,7 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
     const [status, setStatus] = React.useState<SubmitStatus>("idle");
     const [message, setMessage] = React.useState("");
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
       e.preventDefault();
 
       if (!email) return;
@@ -115,7 +115,7 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
         />
 
         {/* Decorative coordinate marker */}
-        <div className="pointer-events-none absolute right-4 top-4 font-mono text-[9px] tracking-widest opacity-20">
+        <div className="pointer-events-none absolute top-4 right-4 font-mono text-[9px] tracking-widest opacity-20">
           {status === "success" ? "✓ PLOTTED" : "— —.— —°"}
         </div>
 
@@ -139,7 +139,7 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
                   "text-foreground font-mono text-sm",
                   "placeholder:text-muted-foreground placeholder:font-sans",
                   "transition-all duration-200",
-                  "focus:border-navy focus:ring-navy/20 focus:outline-none focus:ring-2",
+                  "focus:border-navy focus:ring-navy/20 focus:ring-2 focus:outline-none",
                   "disabled:cursor-not-allowed disabled:opacity-50",
                   status === "success" && "border-forest"
                 )}
@@ -150,7 +150,7 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
               {status !== "idle" && (
                 <div
                   className={cn(
-                    "absolute right-3 top-1/2 -translate-y-1/2",
+                    "absolute top-1/2 right-3 -translate-y-1/2",
                     "transition-all duration-300",
                     status === "loading" && "animate-pulse",
                     status === "success" && "animate-[plot-point_0.6s_ease-out]"
@@ -187,7 +187,7 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
                 "font-sans text-sm font-medium tracking-wide",
                 "transition-all duration-300",
                 "hover:bg-navy/90 hover:shadow-lg",
-                "focus:ring-navy focus:outline-none focus:ring-2 focus:ring-offset-2",
+                "focus:ring-navy focus:ring-2 focus:ring-offset-2 focus:outline-none",
                 "disabled:cursor-not-allowed disabled:opacity-50",
                 "active:scale-[0.98]",
                 status === "success" && "bg-forest hover:bg-forest/90"

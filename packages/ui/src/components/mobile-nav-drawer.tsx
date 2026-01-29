@@ -35,7 +35,7 @@ const MobileNavDrawerTrigger = React.forwardRef<
     className={cn(
       "hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 rounded-sm p-2 transition-colors md:hidden",
       "text-cartographic-navy dark:text-cartographic-charcoal",
-      "focus:ring-cartographic-navy/50 focus:outline-none focus:ring-2 focus:ring-offset-2",
+      "focus:ring-cartographic-navy/50 focus:ring-2 focus:ring-offset-2 focus:outline-none",
       className
     )}
     aria-label="Open navigation menu"
@@ -102,7 +102,7 @@ const MobileNavDrawerContent = React.forwardRef<
           className={cn(
             "hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 rounded-sm p-2 transition-colors",
             "text-cartographic-navy dark:text-cartographic-charcoal",
-            "focus:ring-cartographic-navy/50 focus:outline-none focus:ring-2 focus:ring-offset-2"
+            "focus:ring-cartographic-navy/50 focus:ring-2 focus:ring-offset-2 focus:outline-none"
           )}
           aria-label="Close navigation menu"
         >
@@ -139,7 +139,7 @@ const MobileNavDrawerItem = React.forwardRef<HTMLAnchorElement, MobileNavDrawerI
           "text-cartographic-charcoal dark:text-cartographic-charcoal",
           "border-cartographic-navy/10 dark:border-cartographic-navy/20 border-b",
           "hover:bg-cartographic-navy/5 dark:hover:bg-cartographic-charcoal/5",
-          "focus:ring-cartographic-navy/50 focus:outline-none focus:ring-2 focus:ring-inset",
+          "focus:ring-cartographic-navy/50 focus:ring-2 focus:outline-none focus:ring-inset",
           active && [
             "border-l-cartographic-terracotta border-l-[3px]",
             "bg-cartographic-navy/5 dark:bg-cartographic-charcoal/5",
@@ -175,7 +175,7 @@ const MobileNavDrawerLink = React.forwardRef<
       "text-cartographic-charcoal dark:text-cartographic-charcoal",
       "border-cartographic-navy/10 dark:border-cartographic-navy/20 border-b",
       "hover:bg-cartographic-navy/5 dark:hover:bg-cartographic-charcoal/5",
-      "focus:ring-cartographic-navy/50 focus:outline-none focus:ring-2 focus:ring-inset",
+      "focus:ring-cartographic-navy/50 focus:ring-2 focus:outline-none focus:ring-inset",
       active && [
         "border-l-cartographic-terracotta border-l-[3px]",
         "bg-cartographic-navy/5 dark:bg-cartographic-charcoal/5",

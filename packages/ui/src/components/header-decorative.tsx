@@ -125,7 +125,7 @@ const HeaderDecorative = React.forwardRef<HTMLDivElement, HeaderDecorativeProps>
         <div
           ref={ref}
           className={cn(
-            "absolute right-24 top-1/2 -translate-y-1/2",
+            "absolute top-1/2 right-24 -translate-y-1/2",
             "pointer-events-none select-none",
             "opacity-30 dark:opacity-20",
             "transition-transform duration-300 ease-out",

@@ -72,9 +72,9 @@ const HeaderNavItem = React.forwardRef<HTMLAnchorElement, HeaderNavItemProps>(
           "relative font-sans text-sm tracking-wide transition-colors duration-200",
           "text-cartographic-navy dark:text-cartographic-charcoal/80",
           "hover:text-cartographic-blue dark:hover:text-cartographic-blue",
-          "dark:focus:ring-offset-background focus:ring-cartographic-blue focus:outline-none focus:ring-2 focus:ring-offset-2",
+          "dark:focus:ring-offset-background focus:ring-cartographic-blue focus:ring-2 focus:ring-offset-2 focus:outline-none",
           active &&
-            "text-cartographic-blue dark:text-cartographic-blue after:bg-cartographic-blue dark:after:bg-cartographic-blue after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5",
+            "text-cartographic-blue dark:text-cartographic-blue after:bg-cartographic-blue dark:after:bg-cartographic-blue after:absolute after:right-0 after:bottom-0 after:left-0 after:h-0.5",
           className
         )}
         {...props}

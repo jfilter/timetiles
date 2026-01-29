@@ -56,7 +56,7 @@ const Hero = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement> & V
         )}
 
         {/* Content container */}
-        <div className="container relative z-10 mx-auto w-full max-w-5xl px-6">{children}</div>
+        <div className="relative z-10 container mx-auto w-full max-w-5xl px-6">{children}</div>
       </section>
     );
   }
@@ -77,7 +77,7 @@ const HeroHeadline = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<H
     <h1
       ref={ref}
       className={cn(
-        "text-foreground mb-8 font-serif text-6xl font-bold leading-[1.1] tracking-tight md:text-8xl",
+        "text-foreground mb-8 font-serif text-6xl leading-[1.1] font-bold tracking-tight md:text-8xl",
         "drop-shadow-sm",
         "animate-in fade-in slide-in-from-bottom-6 duration-700",
         className

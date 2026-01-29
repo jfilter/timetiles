@@ -79,7 +79,7 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
     const [status, setStatus] = React.useState<SubmitStatus>("idle");
     const [message, setMessage] = React.useState("");
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
       e.preventDefault();
 
       if (!email) return;
@@ -142,7 +142,7 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
         />
 
         {/* Decorative compass rose */}
-        <div className="pointer-events-none absolute left-12 top-12 h-24 w-24 opacity-[0.06] dark:opacity-[0.04]">
+        <div className="pointer-events-none absolute top-12 left-12 h-24 w-24 opacity-[0.06] dark:opacity-[0.04]">
           <svg viewBox="0 0 100 100" fill="currentColor" className="text-navy dark:text-parchment">
             <circle cx="50" cy="50" r="3" />
             {/* North point */}
@@ -166,17 +166,17 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
         </div>
 
         {/* Decorative coordinates */}
-        <div className="pointer-events-none absolute right-12 top-12 space-y-1 font-mono text-[10px] tracking-widest opacity-20">
+        <div className="pointer-events-none absolute top-12 right-12 space-y-1 font-mono text-[10px] tracking-widest opacity-20">
           <div>NEWSLETTER</div>
           <div>— —.— —°N</div>
           <div>— —.— —°W</div>
         </div>
 
-        <div className="container relative mx-auto max-w-4xl">
+        <div className="relative container mx-auto max-w-4xl">
           {/* Content */}
           <div className="mb-12 text-center">
             {headline && (
-              <h2 className="text-navy dark:text-parchment mb-6 font-serif text-4xl font-bold leading-tight md:text-5xl">
+              <h2 className="text-navy dark:text-parchment mb-6 font-serif text-4xl leading-tight font-bold md:text-5xl">
                 {headline}
               </h2>
             )}
@@ -206,7 +206,7 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
                       "text-foreground font-mono text-base",
                       "placeholder:text-muted-foreground placeholder:font-sans placeholder:text-sm",
                       "transition-all duration-300",
-                      "focus:border-navy focus:ring-navy/20 focus:outline-none focus:ring-2",
+                      "focus:border-navy focus:ring-navy/20 focus:ring-2 focus:outline-none",
                       "disabled:cursor-not-allowed disabled:opacity-50",
                       status === "success" && "border-forest ring-forest/20 ring-2"
                     )}
@@ -215,7 +215,7 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
 
                   {/* Animated status indicator */}
                   {status !== "idle" && (
-                    <div className={cn("absolute right-4 top-1/2 -translate-y-1/2", "transition-all duration-300")}>
+                    <div className={cn("absolute top-1/2 right-4 -translate-y-1/2", "transition-all duration-300")}>
                       {status === "loading" && (
                         <div className="border-navy h-5 w-5 animate-spin rounded-full border-2 border-t-transparent" />
                       )}
@@ -251,7 +251,7 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
                     "font-sans text-base font-semibold tracking-wide",
                     "transition-all duration-300",
                     "hover:bg-navy/90 hover:scale-[1.02] hover:shadow-xl",
-                    "focus:ring-navy focus:outline-none focus:ring-2 focus:ring-offset-2",
+                    "focus:ring-navy focus:ring-2 focus:ring-offset-2 focus:outline-none",
                     "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100",
                     "active:scale-[0.98]",
                     status === "success" && "bg-forest hover:bg-forest/90"
@@ -310,7 +310,7 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
                   </div>
                   <p
                     className={cn(
-                      "text-sm font-medium leading-relaxed",
+                      "text-sm leading-relaxed font-medium",
                       status === "success" && "text-forest dark:text-forest",
                       status === "error" && "text-destructive"
                     )}
