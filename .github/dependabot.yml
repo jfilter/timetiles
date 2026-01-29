@@ -16,19 +16,14 @@ updates:
       default-days: 7
     # Group by risk level
     groups:
-      # All patch updates together (bug fixes, low risk)
-      patches:
-        patterns:
-          - "*"
-        update-types:
-          - "patch"
-      # All minor updates together (new features, medium risk)
-      minor:
+      # All minor and patch updates together (low-medium risk)
+      minor-and-patch:
         patterns:
           - "*"
         update-types:
           - "minor"
-    # Major updates get individual PRs (no ignore, no grouping)
+          - "patch"
+    # Major updates get individual PRs (high risk, no grouping)
 
   # GitHub Actions updates
   - package-ecosystem: "github-actions"
