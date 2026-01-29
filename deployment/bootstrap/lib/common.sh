@@ -309,3 +309,179 @@ generate_self_signed_ssl() {
         return 1
     fi
 }
+
+# ============================================================================
+# VERIFICATION FUNCTIONS
+# ============================================================================
+# These functions verify that bootstrap steps are properly configured.
+# Used by both bootstrap validation and deploy.sh check command.
+# Return: 0 = OK, 1 = warning, 2 = error
+# Output: Sets CHECK_MSG with details
+
+# Check Ubuntu version
+verify_ubuntu() {
+    if [[ ! -f /etc/os-release ]]; then
+        CHECK_MSG="Cannot detect OS"
+        return 1
+    fi
+    source /etc/os-release
+    if [[ "$ID" == "ubuntu" ]] && [[ "${VERSION_ID%%.*}" -ge 24 ]]; then
+        CHECK_MSG="Ubuntu $VERSION_ID"
+        return 0
+    else
+        CHECK_MSG="Expected Ubuntu 24.04+ (found: $ID $VERSION_ID)"
+        return 1
+    fi
+}
+
+# Check swap configuration
+verify_swap() {
+    local swap_size
+    swap_size=$(free -m | awk '/^Swap:/ {print $2}')
+    if [[ "$swap_size" -ge 1024 ]]; then
+        CHECK_MSG="Swap configured (${swap_size}MB)"
+        return 0
+    elif [[ "$swap_size" -gt 0 ]]; then
+        CHECK_MSG="Swap is small (${swap_size}MB, recommend 2GB+)"
+        return 1
+    else
+        CHECK_MSG="No swap configured"
+        return 1
+    fi
+}
+
+# Check UFW firewall
+verify_ufw() {
+    if ! command -v ufw &>/dev/null; then
+        CHECK_MSG="UFW not installed"
+        return 2
+    fi
+    if ! sudo ufw status 2>/dev/null | grep -q "Status: active"; then
+        CHECK_MSG="UFW not active"
+        return 2
+    fi
+    # Check required ports
+    local ufw_rules
+    ufw_rules=$(sudo ufw status 2>/dev/null)
+    for port in 22 80 443; do
+        if ! echo "$ufw_rules" | grep -qE "^$port(/tcp)?\s+ALLOW"; then
+            CHECK_MSG="UFW enabled but missing port $port"
+            return 1
+        fi
+    done
+    CHECK_MSG="UFW enabled (ports: 22, 80, 443)"
+    return 0
+}
+
+# Check SSH hardening
+verify_ssh_hardening() {
+    local sshd_config="/etc/ssh/sshd_config"
+    if [[ ! -f "$sshd_config" ]]; then
+        CHECK_MSG="Cannot check SSH config"
+        return 1
+    fi
+    local issues=""
+    if grep -qE "^PasswordAuthentication\s+yes" "$sshd_config" 2>/dev/null; then
+        issues="password auth enabled"
+    fi
+    if grep -qE "^PermitRootLogin\s+yes" "$sshd_config" 2>/dev/null; then
+        issues="${issues:+$issues, }root login enabled"
+    fi
+    if [[ -z "$issues" ]]; then
+        CHECK_MSG="SSH hardened (password auth disabled, root login disabled)"
+        return 0
+    else
+        CHECK_MSG="SSH not fully hardened: $issues"
+        return 1
+    fi
+}
+
+# Check fail2ban
+verify_fail2ban() {
+    if ! command -v fail2ban-client &>/dev/null; then
+        CHECK_MSG="fail2ban not installed"
+        return 2
+    fi
+    if ! systemctl is-active --quiet fail2ban 2>/dev/null; then
+        CHECK_MSG="fail2ban not running"
+        return 2
+    fi
+    local jails
+    jails=$(sudo fail2ban-client status 2>/dev/null | grep "Jail list" | cut -d: -f2 | tr -d ' \t')
+    if [[ -n "$jails" ]]; then
+        CHECK_MSG="fail2ban running (jails: $jails)"
+        return 0
+    else
+        CHECK_MSG="fail2ban running but no jails configured"
+        return 1
+    fi
+}
+
+# Check Docker
+verify_docker() {
+    if ! docker info &>/dev/null 2>&1; then
+        CHECK_MSG="Docker daemon not accessible"
+        return 2
+    fi
+    local version
+    version=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
+    CHECK_MSG="Docker daemon running (v$version)"
+    return 0
+}
+
+# Check Docker Compose
+verify_docker_compose() {
+    if ! docker compose version &>/dev/null 2>&1; then
+        CHECK_MSG="Docker Compose not available"
+        return 2
+    fi
+    local version
+    version=$(docker compose version --short 2>/dev/null)
+    CHECK_MSG="Docker Compose available (v$version)"
+    return 0
+}
+
+# Check user in docker group
+verify_docker_group() {
+    if groups 2>/dev/null | grep -q docker; then
+        CHECK_MSG="User in docker group"
+        return 0
+    else
+        CHECK_MSG="User not in docker group"
+        return 1
+    fi
+}
+
+# Check backup cron
+verify_backup_cron() {
+    if crontab -l 2>/dev/null | grep -q "deploy.sh backup"; then
+        CHECK_MSG="Backup cron configured"
+        return 0
+    else
+        CHECK_MSG="Backup cron not configured"
+        return 1
+    fi
+}
+
+# Check log rotation
+verify_log_rotation() {
+    if [[ -f /etc/logrotate.d/timetiles ]] || [[ -f /etc/logrotate.d/docker-container ]]; then
+        CHECK_MSG="Log rotation configured"
+        return 0
+    else
+        CHECK_MSG="Log rotation not configured"
+        return 1
+    fi
+}
+
+# Check alerting
+verify_alerting() {
+    local alert_script="${1:-/opt/timetiles/scripts/alert.sh}"
+    if [[ -x "$alert_script" ]]; then
+        CHECK_MSG="Alerting configured"
+        return 0
+    else
+        CHECK_MSG="Alerting not configured"
+        return 1
+    fi
+}

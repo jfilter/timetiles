@@ -94,6 +94,7 @@ print_usage() {
     echo "  status    - Check service status"
     echo "  ssl       - Initialize Let's Encrypt SSL certificate"
     echo "  update    - Pull latest code and redeploy"
+    echo "  check     - Verify all deployment aspects are properly configured"
     echo ""
     echo "Note: Database migrations run automatically on container startup."
     echo ""
@@ -525,7 +526,7 @@ EOF
         check_env
         echo -e "${YELLOW}Checking service status...${NC}"
         echo ""
-        
+
         # Check PostgreSQL
         echo -n "PostgreSQL: "
         if $DC_CMD exec postgres pg_isready -U timetiles_user -d timetiles > /dev/null 2>&1; then
@@ -533,7 +534,7 @@ EOF
         else
             echo -e "${RED}✗ Unhealthy${NC}"
         fi
-        
+
         # Check Web App
         echo -n "Web App: "
         if curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then
@@ -541,9 +542,184 @@ EOF
         else
             echo -e "${RED}✗ Unhealthy${NC}"
         fi
-        
+
         echo ""
         $DC_CMD ps
+        ;;
+
+    check)
+        # Comprehensive deployment health check
+        # Verifies all bootstrap steps are properly configured
+        # Uses shared verification functions from bootstrap/lib/common.sh
+
+        # Source shared verification functions
+        BOOTSTRAP_LIB="$SCRIPT_DIR/bootstrap/lib/common.sh"
+        if [[ -f "$BOOTSTRAP_LIB" ]]; then
+            # Disable trap handler from common.sh (we handle our own exit)
+            trap - EXIT INT TERM
+            source "$BOOTSTRAP_LIB"
+        fi
+
+        ERRORS=0
+        WARNINGS=0
+
+        print_ok() { echo -e "${GREEN}✓${NC} $1"; }
+        print_warn() { echo -e "${YELLOW}⚠${NC} $1"; WARNINGS=$((WARNINGS + 1)); }
+        print_fail() { echo -e "${RED}✗${NC} $1"; ERRORS=$((ERRORS + 1)); }
+        print_section() { echo -e "\n${YELLOW}=== $1 ===${NC}"; }
+
+        # Run a verify function and print result
+        # Usage: run_check verify_function_name
+        run_check() {
+            local func="$1"
+            if type "$func" &>/dev/null; then
+                "$func"
+                local result=$?
+                case $result in
+                    0) print_ok "$CHECK_MSG" ;;
+                    1) print_warn "$CHECK_MSG" ;;
+                    *) print_fail "$CHECK_MSG" ;;
+                esac
+            else
+                print_warn "Check function not available: $func"
+            fi
+        }
+
+        # Load env file if exists
+        if [[ -f "$ENV_FILE" ]]; then
+            source "$ENV_FILE"
+        fi
+
+        print_section "System"
+        run_check verify_ubuntu
+        run_check verify_swap
+
+        print_section "Security"
+        run_check verify_ufw
+        run_check verify_ssh_hardening
+        run_check verify_fail2ban
+
+        print_section "Docker"
+        run_check verify_docker
+        run_check verify_docker_compose
+        run_check verify_docker_group
+
+        print_section "Configuration"
+
+        # Check env file (inline - specific to deploy.sh)
+        if [[ -f "$ENV_FILE" ]]; then
+            print_ok "Configuration file exists (.env.production)"
+
+            # Check required vars
+            MISSING_VARS=""
+            for var in PAYLOAD_SECRET DB_PASSWORD DOMAIN_NAME; do
+                val=$(grep "^$var=" "$ENV_FILE" 2>/dev/null | cut -d= -f2-)
+                if [[ -z "$val" ]] || [[ "$val" == *"CHANGE_ME"* ]] || [[ "$val" == *"your-domain"* ]]; then
+                    MISSING_VARS="${MISSING_VARS:+$MISSING_VARS, }$var"
+                fi
+            done
+            if [[ -z "$MISSING_VARS" ]]; then
+                print_ok "Required env vars configured"
+            else
+                print_fail "Missing/unconfigured vars: $MISSING_VARS"
+            fi
+        else
+            print_fail "Configuration file missing (.env.production)"
+        fi
+
+        print_section "Application"
+
+        # Check containers (inline - requires DC_CMD)
+        if [[ -f "$ENV_FILE" ]]; then
+            for container in postgres web nginx; do
+                STATUS=$($DC_CMD ps --format '{{.Status}}' $container 2>/dev/null | head -1)
+                if [[ "$STATUS" == *"Up"* ]]; then
+                    if [[ "$STATUS" == *"healthy"* ]] || [[ "$container" == "nginx" ]]; then
+                        print_ok "$container container healthy"
+                    elif [[ "$STATUS" == *"unhealthy"* ]]; then
+                        print_fail "$container container unhealthy"
+                    else
+                        print_ok "$container container running"
+                    fi
+                else
+                    print_fail "$container container not running"
+                fi
+            done
+
+            # Check health endpoint
+            if curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then
+                print_ok "Health endpoint responding"
+            else
+                print_fail "Health endpoint not responding"
+            fi
+
+            # Check database connection
+            if $DC_CMD exec -T postgres pg_isready -U timetiles_user -d timetiles > /dev/null 2>&1; then
+                print_ok "Database connection working"
+            else
+                print_fail "Database connection failed"
+            fi
+        else
+            print_warn "Skipping container checks (no config)"
+        fi
+
+        print_section "SSL"
+
+        # Check SSL certificate (inline - requires DC_CMD and DOMAIN_NAME)
+        if [[ -n "$DOMAIN_NAME" ]]; then
+            CERT_PATH="/etc/letsencrypt/live/$DOMAIN_NAME/fullchain.pem"
+            # Check via docker if volume mounted
+            CERT_INFO=$($DC_CMD exec -T nginx openssl x509 -in "$CERT_PATH" -noout -dates -subject 2>/dev/null)
+            if [[ -n "$CERT_INFO" ]]; then
+                EXPIRY=$(echo "$CERT_INFO" | grep "notAfter" | cut -d= -f2)
+                EXPIRY_EPOCH=$(date -d "$EXPIRY" +%s 2>/dev/null || date -j -f "%b %d %T %Y %Z" "$EXPIRY" +%s 2>/dev/null)
+                NOW_EPOCH=$(date +%s)
+                DAYS_LEFT=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
+
+                if [[ "$DAYS_LEFT" -gt 30 ]]; then
+                    print_ok "SSL certificate valid (expires in $DAYS_LEFT days)"
+                elif [[ "$DAYS_LEFT" -gt 0 ]]; then
+                    print_warn "SSL certificate expiring soon ($DAYS_LEFT days)"
+                else
+                    print_fail "SSL certificate expired"
+                fi
+            else
+                # Check for self-signed fallback
+                if [[ -f "$SCRIPT_DIR/ssl/live/$DOMAIN_NAME/fullchain.pem" ]]; then
+                    print_warn "Using self-signed SSL certificate"
+                else
+                    print_fail "No SSL certificate found"
+                fi
+            fi
+        else
+            print_warn "DOMAIN_NAME not set, skipping SSL check"
+        fi
+
+        # Check certbot renewal
+        if $DC_CMD ps certbot 2>/dev/null | grep -q "Up"; then
+            print_ok "Certbot auto-renewal running"
+        else
+            print_warn "Certbot container not running"
+        fi
+
+        print_section "Monitoring"
+        run_check verify_backup_cron
+        run_check verify_log_rotation
+        run_check "verify_alerting $ALERT_SCRIPT"
+
+        # Summary
+        echo ""
+        echo "======================================"
+        if [[ $ERRORS -eq 0 ]] && [[ $WARNINGS -eq 0 ]]; then
+            echo -e "${GREEN}ALL CHECKS PASSED${NC}"
+            exit 0
+        elif [[ $ERRORS -eq 0 ]]; then
+            echo -e "${YELLOW}PASSED WITH $WARNINGS WARNING(S)${NC}"
+            exit 0
+        else
+            echo -e "${RED}FAILED: $ERRORS ERROR(S), $WARNINGS WARNING(S)${NC}"
+            exit 1
+        fi
         ;;
         
     ssl)
