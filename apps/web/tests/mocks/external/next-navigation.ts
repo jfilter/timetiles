@@ -1,7 +1,9 @@
 /**
  * @module
  */
-export const mockNextNavigation = {
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const mockNextNavigation: any = {
   redirect: vi.fn(),
   notFound: vi.fn(),
   useRouter: vi.fn(() => ({

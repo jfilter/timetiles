@@ -10,6 +10,7 @@
  * @module
  * @category Test Setup
  */
+import type { MockInstance } from "vitest";
 import { vi } from "vitest";
 
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
@@ -271,7 +272,8 @@ export const TEST_FILENAMES = {
  * mockPayload.findByID.mockResolvedValueOnce({ id: "123", name: "Test" });
  * ```
  */
-export const createMockPayload = (overrides: Partial<any> = {}) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const createMockPayload = (overrides: Partial<any> = {}): any => {
   return {
     findByID: vi.fn(),
     find: vi.fn(),

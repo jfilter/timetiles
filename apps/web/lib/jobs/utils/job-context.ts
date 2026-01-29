@@ -56,7 +56,7 @@ export type JobHandlerContext<T = unknown> = {
   };
   req?: {
     payload: Payload;
-    [key: string]: unknown;
+    user?: unknown;
   };
   // Legacy test support - payload directly on context
   payload?: Payload;

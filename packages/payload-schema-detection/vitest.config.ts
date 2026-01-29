@@ -10,11 +10,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     pool: "forks",
-    poolOptions: {
-      forks: {
-        execArgv: ["--no-warnings"], // Suppress Node.js warnings
-      },
-    },
+    execArgv: ["--no-warnings"], // Suppress Node.js warnings
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],

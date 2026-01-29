@@ -16,9 +16,8 @@
     "lint": "eslint . --ext .js --cache --format json --output-file .lint-results.json; eslint . --ext .js --cache",
     "format": "eslint . --ext .js --cache --fix --quiet && prettier --write . --log-level error"
   },
-  "dependencies": {},
   "devDependencies": {
-    "eslint": "^9.19.0"
+    "eslint": "^9.39.2"
   },
   "peerDependencies": {
     "prettier": "^3.6.2",

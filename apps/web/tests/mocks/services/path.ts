@@ -31,3 +31,7 @@ export const mockPath = {
 vi.mock("path", () => ({
   default: mockPath,
 }));
+
+vi.mock("node:path", () => ({
+  default: mockPath,
+}));

@@ -55,7 +55,7 @@ export const EventItemSchema = z
       title: z.string().optional(),
       catalog: z.string().optional(),
     }),
-    data: z.record(z.unknown()),
+    data: z.record(z.string(), z.unknown()),
     location: z
       .object({
         longitude: z.number(),
