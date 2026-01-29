@@ -89,3 +89,4 @@ apps/docs/content/reference/api/**/_meta.js
 .playwright-mcp
 .agents
 .worktrees/
+.vagrant/
