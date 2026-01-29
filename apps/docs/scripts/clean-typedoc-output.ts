@@ -145,6 +145,7 @@ const cleanupFileContent = (filePath: string): void => {
   const bracketPattern = /\[([^\]]+)\]\(([^)[\]]*[[\]][^)]*)\)/g;
   if (bracketPattern.test(content)) {
     content = content.replace(bracketPattern, (match, text, url) => {
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- boolean OR is intentional
       if (url.includes("[") || url.includes("]")) {
         console.log(`  Removing invalid reference in ${path.basename(filePath)}: ${url}`);
         return text; // Just keep the text, remove the link

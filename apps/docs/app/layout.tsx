@@ -19,7 +19,7 @@ const navbar = (
   <Navbar
     logo={
       <div style={{ display: "flex", alignItems: "center" }}>
-        <img src={logoHorizontal.src || logoHorizontal} alt="TimeTiles" style={{ height: "32px", width: "auto" }} />
+        <img src={logoHorizontal.src ?? logoHorizontal} alt="TimeTiles" style={{ height: "32px", width: "auto" }} />
       </div>
     }
     projectLink="https://github.com/jfilter/timetiles"
