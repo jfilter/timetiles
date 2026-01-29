@@ -1,0 +1,20 @@
+# Docker Compose Override for Local Builds
+#
+# Copy to docker-compose.override.yml to build locally instead of pulling from registry.
+# Useful for development or customization.
+#
+# Usage:
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+#   ./deploy.sh build
+#   ./deploy.sh up
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.prod
+      args:
+        DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
+        PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+        NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
+    image: timetiles-web:local
