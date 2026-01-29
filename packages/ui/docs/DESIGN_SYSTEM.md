@@ -61,8 +61,9 @@ What am I styling?
 
 | Topic | Location |
 |-------|----------|
-| Component patterns (shadcn/ui) | Line 284 (below) |
-| Color usage guidelines | Line 125 (below) |
+| Component patterns (shadcn/ui) | Line 306 (below) |
+| Color usage guidelines | Line 130 (below) |
+| Logo system & brand assets | [LOGOS.md](LOGOS.md) |
 | Content & voice guidelines | [CONTENT_VOICE.md](CONTENT_VOICE.md) |
 | Design patterns (forms, errors, loading) | [PATTERNS.md](PATTERNS.md) |
 | Icon system | [ICONS.md](ICONS.md) |
@@ -155,10 +156,10 @@ All colors are defined in OKLCH color space for perceptual uniformity and better
 
 ### Dark Mode Strategy
 
-The cartographic design system uses the **same color variables** in both light and dark modes. This works because:
+The cartographic design system uses the **same color variables** in both light and dark modes for most components. This works because:
 
 1. **OKLCH perceptual uniformity**: Colors maintain consistent perceived brightness
-2. **Inverted logo strategy**: Logos use `dark:invert` and `dark:opacity-90`
+2. **Explicit logo variants**: Logos use dedicated dark mode SVG files (not CSS inversion) — see [Logos & Brand Assets](#logos--brand-assets) section
 3. **Selective background changes**: Only specific sections change (e.g., parchment backgrounds remain parchment even in dark mode for consistent brand experience)
 4. **Contrast maintenance**: All color combinations maintain WCAG AA contrast in both modes
 
@@ -241,6 +242,23 @@ text-cartographic-charcoal dark:text-cartographic-charcoal/90
    - Subheadings: `font-semibold` (600)
    - Body text: `font-normal` (400)
    - De-emphasized text: `font-normal` with opacity
+
+## Logos & Brand Assets
+
+See [LOGOS.md](LOGOS.md) for complete logo documentation including:
+
+- **4 themes** (light/dark × clean/grid) × **3 formats** (square/compact/horizontal)
+- Directory structure and file naming conventions
+- Dark mode implementation with explicit logo variants
+- Usage examples for headers, hero sections, and favicons
+- Available PNG sizes and when to use each format
+
+**Quick Reference**: Use explicit dark mode logo variants (not CSS inversion) for consistent branding:
+
+```tsx
+<Image src="/logos/light/no-grid/wordmark_horizontal.svg" className="dark:hidden" />
+<Image src="/logos/dark/no-grid/wordmark_horizontal.svg" className="hidden dark:block" />
+```
 
 ## Spacing System
 

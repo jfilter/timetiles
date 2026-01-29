@@ -1,0 +1,29 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Compressed tight double diamonds -->
+
+    <!-- Top diamond -->
+    <rect x="-4" y="-24" width="8" height="8" fill="#6495ed" rx="1"/>
+    <rect x="-12" y="-16" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-4" y="-16" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="4" y="-16" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-12" y="-8" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-4" y="-8" width="8" height="8" fill="#6495ed" rx="1"/>
+    <rect x="4" y="-8" width="8" height="8" fill="#4a5568" rx="1"/>
+
+    <!-- Very tight center -->
+    <rect x="-4" y="0" width="8" height="8" fill="#6495ed" rx="1"/>
+
+    <!-- Bottom diamond -->
+    <rect x="-12" y="8" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-4" y="8" width="8" height="8" fill="#6495ed" rx="1"/>
+    <rect x="4" y="8" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-12" y="16" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-4" y="16" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="4" y="16" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-4" y="24" width="8" height="8" fill="#6495ed" rx="1"/>
+  </g>
+</svg>

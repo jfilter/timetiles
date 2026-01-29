@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TimeTiles Logo V3 - Symmetric Exploration</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #f8f5f0;
+      padding: 3rem;
+      line-height: 1.6;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid rgba(248, 245, 240, 0.2);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 300;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: #a0a0a0;
+      font-weight: 400;
+    }
+
+    .description {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 1.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border-left: 3px solid #6495ed;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 2rem;
+      margin-bottom: 3rem;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 2rem;
+      border: 1px solid rgba(248, 245, 240, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+      border-color: rgba(100, 149, 237, 0.3);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(248, 245, 240, 0.1);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #6495ed;
+    }
+
+    .card-number {
+      font-size: 0.875rem;
+      color: #a0a0a0;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    .logo-display {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 1.5rem;
+      padding: 2rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+    }
+
+    .logo-size {
+      text-align: center;
+    }
+
+    .logo-label {
+      font-size: 0.75rem;
+      color: #a0a0a0;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .size-tests {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+
+    .size-test {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .size-test-label {
+      font-size: 0.7rem;
+      color: #808080;
+    }
+
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .feature-tag {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      background: rgba(100, 149, 237, 0.15);
+      border: 1px solid rgba(100, 149, 237, 0.3);
+      border-radius: 12px;
+      color: #6495ed;
+    }
+
+    .comparison-section {
+      margin-top: 3rem;
+      padding-top: 3rem;
+      border-top: 1px solid rgba(248, 245, 240, 0.2);
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .comparison-item {
+      text-align: center;
+      padding: 1.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .comparison-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: scale(1.05);
+    }
+
+    .comparison-label {
+      font-size: 0.75rem;
+      color: #a0a0a0;
+      margin-top: 0.5rem;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 400;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>TimeTiles Logo V3</h1>
+    <p class="subtitle">Symmetric Exploration – Balance & Harmony</p>
+
+    <div class="description">
+      <strong>Exploring symmetric patterns:</strong> These variations focus on balanced, mirrored, and radial patterns that create visual harmony. Each design uses 2-color palettes (Navy #4a5568 + Blue #6495ed accents) on Parchment background (#f8f5f0). Symmetric designs convey stability, order, and timeless elegance – perfect for a geospatial platform focused on organizing events in space and time.
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- 01: Double Diamond -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Double Diamond</div>
+        <div class="card-number">symmetric-01</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="symmetric-01-double-diamond.svg" width="120" height="120" alt="Double Diamond">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="symmetric-01-double-diamond.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-01-double-diamond.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-01-double-diamond.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Vertical Mirror</span>
+        <span class="feature-tag">2 Diamonds</span>
+        <span class="feature-tag">Navy + Blue</span>
+      </div>
+    </div>
+
+    <!-- 02: Cross Bloom -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Cross Bloom</div>
+        <div class="card-number">symmetric-02</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="symmetric-02-cross-bloom.svg" width="120" height="120" alt="Cross Bloom">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="symmetric-02-cross-bloom.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-02-cross-bloom.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-02-cross-bloom.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">4-way Symmetry</span>
+        <span class="feature-tag">Cross Pattern</span>
+        <span class="feature-tag">Radial Growth</span>
+      </div>
+    </div>
+
+    <!-- 03: Mirror Steps -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Mirror Steps</div>
+        <div class="card-number">symmetric-03</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="symmetric-03-mirror-steps.svg" width="120" height="120" alt="Mirror Steps">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="symmetric-03-mirror-steps.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-03-mirror-steps.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-03-mirror-steps.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Staircase Pattern</span>
+        <span class="feature-tag">4-way Mirror</span>
+        <span class="feature-tag">Expanding</span>
+      </div>
+    </div>
+
+    <!-- 04: X-Pattern -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">X-Pattern</div>
+        <div class="card-number">symmetric-04</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="symmetric-04-x-pattern.svg" width="120" height="120" alt="X-Pattern">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="symmetric-04-x-pattern.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-04-x-pattern.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-04-x-pattern.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Diagonal Symmetry</span>
+        <span class="feature-tag">X-Shape</span>
+        <span class="feature-tag">4-way Balance</span>
+      </div>
+    </div>
+
+    <!-- 05: Snowflake -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Snowflake</div>
+        <div class="card-number">symmetric-05</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="symmetric-05-snowflake.svg" width="120" height="120" alt="Snowflake">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="symmetric-05-snowflake.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-05-snowflake.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-05-snowflake.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">6-point Radial</span>
+        <span class="feature-tag">Crystalline</span>
+        <span class="feature-tag">Natural Form</span>
+      </div>
+    </div>
+
+    <!-- 06: Concentric Squares -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Concentric Squares</div>
+        <div class="card-number">symmetric-06</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="symmetric-06-concentric-squares.svg" width="120" height="120" alt="Concentric Squares">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="symmetric-06-concentric-squares.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-06-concentric-squares.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-06-concentric-squares.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Concentric Rings</span>
+        <span class="feature-tag">Layered</span>
+        <span class="feature-tag">Expanding Focus</span>
+      </div>
+    </div>
+
+    <!-- 07: Butterfly -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Butterfly</div>
+        <div class="card-number">symmetric-07</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="symmetric-07-butterfly.svg" width="120" height="120" alt="Butterfly">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="symmetric-07-butterfly.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-07-butterfly.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-07-butterfly.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Left-Right Mirror</span>
+        <span class="feature-tag">Wing Pattern</span>
+        <span class="feature-tag">Organic Shape</span>
+      </div>
+    </div>
+
+    <!-- 08: Mandala -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Mandala</div>
+        <div class="card-number">symmetric-08</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="symmetric-08-mandala.svg" width="120" height="120" alt="Mandala">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="symmetric-08-mandala.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-08-mandala.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-08-mandala.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Radial Rings</span>
+        <span class="feature-tag">Multi-layer</span>
+        <span class="feature-tag">Meditative</span>
+      </div>
+    </div>
+
+    <!-- 09: Aztec -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Aztec</div>
+        <div class="card-number">symmetric-09</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="symmetric-09-aztec.svg" width="120" height="120" alt="Aztec">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="symmetric-09-aztec.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-09-aztec.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-09-aztec.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Geometric</span>
+        <span class="feature-tag">Stepped Border</span>
+        <span class="feature-tag">Ancient Pattern</span>
+      </div>
+    </div>
+
+    <!-- 10: Kaleidoscope -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Kaleidoscope</div>
+        <div class="card-number">symmetric-10</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="symmetric-10-kaleidoscope.svg" width="120" height="120" alt="Kaleidoscope">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="symmetric-10-kaleidoscope.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-10-kaleidoscope.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="symmetric-10-kaleidoscope.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">8-way Symmetry</span>
+        <span class="feature-tag">Quadrant Mirrors</span>
+        <span class="feature-tag">Complex Pattern</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="comparison-section">
+    <h2 class="section-title">All 10 Variations at 64px</h2>
+    <div class="comparison-grid">
+      <div class="comparison-item">
+        <img src="symmetric-01-double-diamond.svg" width="64" height="64" alt="Double Diamond">
+        <div class="comparison-label">01: Double Diamond</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-02-cross-bloom.svg" width="64" height="64" alt="Cross Bloom">
+        <div class="comparison-label">02: Cross Bloom</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-03-mirror-steps.svg" width="64" height="64" alt="Mirror Steps">
+        <div class="comparison-label">03: Mirror Steps</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-04-x-pattern.svg" width="64" height="64" alt="X-Pattern">
+        <div class="comparison-label">04: X-Pattern</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-05-snowflake.svg" width="64" height="64" alt="Snowflake">
+        <div class="comparison-label">05: Snowflake</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-06-concentric-squares.svg" width="64" height="64" alt="Concentric Squares">
+        <div class="comparison-label">06: Concentric Squares</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-07-butterfly.svg" width="64" height="64" alt="Butterfly">
+        <div class="comparison-label">07: Butterfly</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-08-mandala.svg" width="64" height="64" alt="Mandala">
+        <div class="comparison-label">08: Mandala</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-09-aztec.svg" width="64" height="64" alt="Aztec">
+        <div class="comparison-label">09: Aztec</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-10-kaleidoscope.svg" width="64" height="64" alt="Kaleidoscope">
+        <div class="comparison-label">10: Kaleidoscope</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="comparison-section">
+    <h2 class="section-title">Favicon Test (32px)</h2>
+    <div class="comparison-grid">
+      <div class="comparison-item">
+        <img src="symmetric-01-double-diamond.svg" width="32" height="32" alt="Double Diamond">
+        <div class="comparison-label">01</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-02-cross-bloom.svg" width="32" height="32" alt="Cross Bloom">
+        <div class="comparison-label">02</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-03-mirror-steps.svg" width="32" height="32" alt="Mirror Steps">
+        <div class="comparison-label">03</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-04-x-pattern.svg" width="32" height="32" alt="X-Pattern">
+        <div class="comparison-label">04</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-05-snowflake.svg" width="32" height="32" alt="Snowflake">
+        <div class="comparison-label">05</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-06-concentric-squares.svg" width="32" height="32" alt="Concentric Squares">
+        <div class="comparison-label">06</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-07-butterfly.svg" width="32" height="32" alt="Butterfly">
+        <div class="comparison-label">07</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-08-mandala.svg" width="32" height="32" alt="Mandala">
+        <div class="comparison-label">08</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-09-aztec.svg" width="32" height="32" alt="Aztec">
+        <div class="comparison-label">09</div>
+      </div>
+      <div class="comparison-item">
+        <img src="symmetric-10-kaleidoscope.svg" width="32" height="32" alt="Kaleidoscope">
+        <div class="comparison-label">10</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

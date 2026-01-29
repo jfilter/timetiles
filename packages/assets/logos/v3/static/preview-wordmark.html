@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TimeTiles Logo V3 - Wordmark Variations</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #f8f5f0;
+      padding: 3rem;
+      line-height: 1.6;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid rgba(248, 245, 240, 0.2);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 300;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: #a0a0a0;
+      font-weight: 400;
+    }
+
+    .description {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 1.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border-left: 3px solid #6495ed;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      margin-bottom: 3rem;
+      max-width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 2rem;
+      border: 1px solid rgba(248, 245, 240, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+      border-color: rgba(100, 149, 237, 0.3);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(248, 245, 240, 0.1);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #6495ed;
+    }
+
+    .card-number {
+      font-size: 0.875rem;
+      color: #a0a0a0;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    .logo-display {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+
+    .logo-display img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .feature-tag {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      background: rgba(100, 149, 237, 0.15);
+      border: 1px solid rgba(100, 149, 237, 0.3);
+      border-radius: 12px;
+      color: #6495ed;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 400;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .favorite {
+      border-color: rgba(100, 149, 237, 0.5);
+      background: rgba(100, 149, 237, 0.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>TimeTiles Logo V3</h1>
+    <p class="subtitle">Wordmark Variations – Compact Diamond + Text</p>
+
+    <div class="description">
+      <strong>Logo with name:</strong> These variations combine the compact double diamond logo with the TimeTiles name in different layouts and typography. Explore horizontal, vertical, and stacked arrangements using the design system fonts (DM Sans, Playfair Display, Space Mono) on Parchment background (#f8f5f0).
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- 01: Horizontal -->
+    <div class="card favorite">
+      <div class="card-header">
+        <div class="card-title">Horizontal ⭐</div>
+        <div class="card-number">wordmark-01</div>
+      </div>
+
+      <div class="logo-display">
+        <img src="wordmark-01-horizontal.svg" alt="Horizontal">
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Side by Side</span>
+        <span class="feature-tag">DM Sans</span>
+        <span class="feature-tag">Standard</span>
+      </div>
+    </div>
+
+    <!-- 02: Horizontal Space -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Horizontal with Space</div>
+        <div class="card-number">wordmark-02</div>
+      </div>
+
+      <div class="logo-display">
+        <img src="wordmark-02-horizontal-space.svg" alt="Horizontal Space">
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Time Tiles</span>
+        <span class="feature-tag">Two Words</span>
+        <span class="feature-tag">DM Sans</span>
+      </div>
+    </div>
+
+    <!-- 03: Vertical -->
+    <div class="card favorite">
+      <div class="card-header">
+        <div class="card-title">Vertical ⭐</div>
+        <div class="card-number">wordmark-03</div>
+      </div>
+
+      <div class="logo-display">
+        <img src="wordmark-03-vertical.svg" alt="Vertical">
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Logo Above</span>
+        <span class="feature-tag">Centered</span>
+        <span class="feature-tag">DM Sans</span>
+      </div>
+    </div>
+
+    <!-- 04: Vertical Stacked -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Vertical Stacked</div>
+        <div class="card-number">wordmark-04</div>
+      </div>
+
+      <div class="logo-display">
+        <img src="wordmark-04-vertical-stacked.svg" alt="Vertical Stacked">
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Two Lines</span>
+        <span class="feature-tag">Time / Tiles</span>
+        <span class="feature-tag">DM Sans</span>
+      </div>
+    </div>
+
+    <!-- 05: Horizontal Tight -->
+    <div class="card favorite">
+      <div class="card-header">
+        <div class="card-title">Horizontal Tight ⭐</div>
+        <div class="card-number">wordmark-05</div>
+      </div>
+
+      <div class="logo-display">
+        <img src="wordmark-05-horizontal-tight.svg" alt="Horizontal Tight">
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Compact</span>
+        <span class="feature-tag">Close Spacing</span>
+        <span class="feature-tag">DM Sans</span>
+      </div>
+    </div>
+
+    <!-- 06: Horizontal Serif -->
+    <div class="card favorite">
+      <div class="card-header">
+        <div class="card-title">Horizontal Serif ⭐</div>
+        <div class="card-number">wordmark-06</div>
+      </div>
+
+      <div class="logo-display">
+        <img src="wordmark-06-horizontal-serif.svg" alt="Horizontal Serif">
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Editorial</span>
+        <span class="feature-tag">Playfair Display</span>
+        <span class="feature-tag">Classic</span>
+      </div>
+    </div>
+
+    <!-- 07: Vertical Serif -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Vertical Serif</div>
+        <div class="card-number">wordmark-07</div>
+      </div>
+
+      <div class="logo-display">
+        <img src="wordmark-07-vertical-serif.svg" alt="Vertical Serif">
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Editorial</span>
+        <span class="feature-tag">Playfair Display</span>
+        <span class="feature-tag">Centered</span>
+      </div>
+    </div>
+
+    <!-- 08: Horizontal Mono -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Horizontal Mono</div>
+        <div class="card-number">wordmark-08</div>
+      </div>
+
+      <div class="logo-display">
+        <img src="wordmark-08-horizontal-mono.svg" alt="Horizontal Mono">
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Technical</span>
+        <span class="feature-tag">Space Mono</span>
+        <span class="feature-tag">Code</span>
+      </div>
+    </div>
+
+    <!-- 09: Minimal -->
+    <div class="card favorite">
+      <div class="card-header">
+        <div class="card-title">Minimal ⭐</div>
+        <div class="card-number">wordmark-09</div>
+      </div>
+
+      <div class="logo-display">
+        <img src="wordmark-09-minimal.svg" alt="Minimal">
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Smaller Logo</span>
+        <span class="feature-tag">Lighter Weight</span>
+        <span class="feature-tag">DM Sans</span>
+      </div>
+    </div>
+
+    <!-- 10: Square -->
+    <div class="card favorite">
+      <div class="card-header">
+        <div class="card-title">Square Format ⭐</div>
+        <div class="card-number">wordmark-10</div>
+      </div>
+
+      <div class="logo-display">
+        <img src="wordmark-10-square.svg" alt="Square">
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">1:1 Ratio</span>
+        <span class="feature-tag">Social Media</span>
+        <span class="feature-tag">DM Sans</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

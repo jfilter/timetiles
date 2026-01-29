@@ -1,0 +1,33 @@
+<svg width="200" height="80" viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="200" height="80" fill="#f8f5f0"/>
+
+  <!-- Compact diamond logo (smaller) -->
+  <g transform="translate(30, 40) scale(0.8)">
+    <!-- Top diamond -->
+    <rect x="-4" y="-28" width="8" height="8" fill="#6495ed" rx="1"/>
+    <rect x="-12" y="-20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="4" y="-20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-20" y="-12" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-4" y="-12" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="12" y="-12" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-12" y="-4" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="4" y="-4" width="8" height="8" fill="#4a5568" rx="1"/>
+
+    <!-- Center -->
+    <rect x="-4" y="4" width="8" height="8" fill="#6495ed" rx="1"/>
+
+    <!-- Bottom diamond -->
+    <rect x="-12" y="12" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="4" y="12" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-20" y="20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-4" y="20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="12" y="20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-12" y="28" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="4" y="28" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-4" y="36" width="8" height="8" fill="#6495ed" rx="1"/>
+  </g>
+
+  <!-- Text: TimeTiles (minimal, smaller) -->
+  <text x="60" y="45" font-family="DM Sans, sans-serif" font-size="22" font-weight="400" fill="#404040" letter-spacing="-0.01em">TimeTiles</text>
+</svg>

@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TimeTiles Logo V3 - Square Variations</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #f8f5f0;
+      padding: 3rem;
+      line-height: 1.6;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid rgba(248, 245, 240, 0.2);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 300;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: #a0a0a0;
+      font-weight: 400;
+    }
+
+    .description {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 1.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border-left: 3px solid #6495ed;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 2rem;
+      margin-bottom: 3rem;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 2rem;
+      border: 1px solid rgba(248, 245, 240, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+      border-color: rgba(100, 149, 237, 0.3);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(248, 245, 240, 0.1);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #6495ed;
+    }
+
+    .card-number {
+      font-size: 0.875rem;
+      color: #a0a0a0;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    .logo-display {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 1.5rem;
+      padding: 2rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+    }
+
+    .logo-size {
+      text-align: center;
+    }
+
+    .logo-label {
+      font-size: 0.75rem;
+      color: #a0a0a0;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .size-tests {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+
+    .size-test {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .size-test-label {
+      font-size: 0.7rem;
+      color: #808080;
+    }
+
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .feature-tag {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      background: rgba(100, 149, 237, 0.15);
+      border: 1px solid rgba(100, 149, 237, 0.3);
+      border-radius: 12px;
+      color: #6495ed;
+    }
+
+    .comparison-section {
+      margin-top: 3rem;
+      padding-top: 3rem;
+      border-top: 1px solid rgba(248, 245, 240, 0.2);
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .comparison-item {
+      text-align: center;
+      padding: 1.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .comparison-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: scale(1.05);
+    }
+
+    .comparison-label {
+      font-size: 0.75rem;
+      color: #a0a0a0;
+      margin-top: 0.5rem;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 400;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>TimeTiles Logo V3</h1>
+    <p class="subtitle">Square Variations – Geometric Precision</p>
+
+    <div class="description">
+      <strong>Exploring square-based patterns:</strong> These variations focus on square and rectangular shapes arranged in geometric patterns. Building on the symmetric cascade concept, each design uses precise square grids, concentric frames, and balanced layouts. All use 2-color palettes (Navy #4a5568 + Blue #6495ed accents) on Parchment background (#f8f5f0). Square patterns convey structure, organization, and mathematical precision – ideal for a data-driven geospatial platform.
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- 01: Concentric -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Concentric</div>
+        <div class="card-number">square-01</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="square-01-concentric.svg" width="120" height="120" alt="Concentric">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="square-01-concentric.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-01-concentric.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-01-concentric.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Expanding Rings</span>
+        <span class="feature-tag">Corner Accents</span>
+        <span class="feature-tag">Centered</span>
+      </div>
+    </div>
+
+    <!-- 02: Stepped Box -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Stepped Box</div>
+        <div class="card-number">square-02</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="square-02-stepped-box.svg" width="120" height="120" alt="Stepped Box">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="square-02-stepped-box.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-02-stepped-box.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-02-stepped-box.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Layered Growth</span>
+        <span class="feature-tag">Blue Center</span>
+        <span class="feature-tag">Stepped Border</span>
+      </div>
+    </div>
+
+    <!-- 03: Corner Squares -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Corner Squares</div>
+        <div class="card-number">square-03</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="square-03-corner-squares.svg" width="120" height="120" alt="Corner Squares">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="square-03-corner-squares.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-03-corner-squares.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-03-corner-squares.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">4 Quadrants</span>
+        <span class="feature-tag">2x2 Blocks</span>
+        <span class="feature-tag">Spatial Division</span>
+      </div>
+    </div>
+
+    <!-- 04: Nested Frames -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Nested Frames</div>
+        <div class="card-number">square-04</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="square-04-nested-frames.svg" width="120" height="120" alt="Nested Frames">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="square-04-nested-frames.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-04-nested-frames.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-04-nested-frames.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Frame Layers</span>
+        <span class="feature-tag">Blue Corners</span>
+        <span class="feature-tag">Depth</span>
+      </div>
+    </div>
+
+    <!-- 05: Grid Expansion -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Grid Expansion</div>
+        <div class="card-number">square-05</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="square-05-grid-expansion.svg" width="120" height="120" alt="Grid Expansion">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="square-05-grid-expansion.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-05-grid-expansion.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-05-grid-expansion.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">2x2 Core</span>
+        <span class="feature-tag">Growing Grid</span>
+        <span class="feature-tag">Cardinal Points</span>
+      </div>
+    </div>
+
+    <!-- 06: Checkerboard -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Checkerboard</div>
+        <div class="card-number">square-06</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="square-06-checkerboard.svg" width="120" height="120" alt="Checkerboard">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="square-06-checkerboard.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-06-checkerboard.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-06-checkerboard.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Alternating Pattern</span>
+        <span class="feature-tag">Expanding Rows</span>
+        <span class="feature-tag">Tessellation</span>
+      </div>
+    </div>
+
+    <!-- 07: Rotated Squares -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Rotated Squares</div>
+        <div class="card-number">square-07</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="square-07-rotated-squares.svg" width="120" height="120" alt="Rotated Squares">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="square-07-rotated-squares.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-07-rotated-squares.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-07-rotated-squares.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Diamond Orientation</span>
+        <span class="feature-tag">45° Rotation</span>
+        <span class="feature-tag">Radial Layout</span>
+      </div>
+    </div>
+
+    <!-- 08: Border Build -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Border Build</div>
+        <div class="card-number">square-08</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="square-08-border-build.svg" width="120" height="120" alt="Border Build">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="square-08-border-build.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-08-border-build.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-08-border-build.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Solid Core</span>
+        <span class="feature-tag">3x3 Center</span>
+        <span class="feature-tag">Frame Border</span>
+      </div>
+    </div>
+
+    <!-- 09: Cross Squares -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Cross Squares</div>
+        <div class="card-number">square-09</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="square-09-cross-squares.svg" width="120" height="120" alt="Cross Squares">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="square-09-cross-squares.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-09-cross-squares.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-09-cross-squares.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Plus Shape</span>
+        <span class="feature-tag">Cardinal Arms</span>
+        <span class="feature-tag">Blue Endpoints</span>
+      </div>
+    </div>
+
+    <!-- 10: Pyramid -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Pyramid</div>
+        <div class="card-number">square-10</div>
+      </div>
+
+      <div class="logo-display">
+        <div class="logo-size">
+          <img src="square-10-pyramid.svg" width="120" height="120" alt="Pyramid">
+        </div>
+      </div>
+
+      <div class="size-tests">
+        <div class="size-test">
+          <img src="square-10-pyramid.svg" width="32" height="32" alt="32px">
+          <span class="size-test-label">32px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-10-pyramid.svg" width="48" height="48" alt="48px">
+          <span class="size-test-label">48px</span>
+        </div>
+        <div class="size-test">
+          <img src="square-10-pyramid.svg" width="64" height="64" alt="64px">
+          <span class="size-test-label">64px</span>
+        </div>
+      </div>
+
+      <div class="features">
+        <span class="feature-tag">Triangular Build</span>
+        <span class="feature-tag">Expanding Rows</span>
+        <span class="feature-tag">Hierarchical</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="comparison-section">
+    <h2 class="section-title">All 10 Variations at 64px</h2>
+    <div class="comparison-grid">
+      <div class="comparison-item">
+        <img src="square-01-concentric.svg" width="64" height="64" alt="Concentric">
+        <div class="comparison-label">01: Concentric</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-02-stepped-box.svg" width="64" height="64" alt="Stepped Box">
+        <div class="comparison-label">02: Stepped Box</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-03-corner-squares.svg" width="64" height="64" alt="Corner Squares">
+        <div class="comparison-label">03: Corner Squares</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-04-nested-frames.svg" width="64" height="64" alt="Nested Frames">
+        <div class="comparison-label">04: Nested Frames</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-05-grid-expansion.svg" width="64" height="64" alt="Grid Expansion">
+        <div class="comparison-label">05: Grid Expansion</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-06-checkerboard.svg" width="64" height="64" alt="Checkerboard">
+        <div class="comparison-label">06: Checkerboard</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-07-rotated-squares.svg" width="64" height="64" alt="Rotated Squares">
+        <div class="comparison-label">07: Rotated Squares</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-08-border-build.svg" width="64" height="64" alt="Border Build">
+        <div class="comparison-label">08: Border Build</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-09-cross-squares.svg" width="64" height="64" alt="Cross Squares">
+        <div class="comparison-label">09: Cross Squares</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-10-pyramid.svg" width="64" height="64" alt="Pyramid">
+        <div class="comparison-label">10: Pyramid</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="comparison-section">
+    <h2 class="section-title">Favicon Test (32px)</h2>
+    <div class="comparison-grid">
+      <div class="comparison-item">
+        <img src="square-01-concentric.svg" width="32" height="32" alt="Concentric">
+        <div class="comparison-label">01</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-02-stepped-box.svg" width="32" height="32" alt="Stepped Box">
+        <div class="comparison-label">02</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-03-corner-squares.svg" width="32" height="32" alt="Corner Squares">
+        <div class="comparison-label">03</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-04-nested-frames.svg" width="32" height="32" alt="Nested Frames">
+        <div class="comparison-label">04</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-05-grid-expansion.svg" width="32" height="32" alt="Grid Expansion">
+        <div class="comparison-label">05</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-06-checkerboard.svg" width="32" height="32" alt="Checkerboard">
+        <div class="comparison-label">06</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-07-rotated-squares.svg" width="32" height="32" alt="Rotated Squares">
+        <div class="comparison-label">07</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-08-border-build.svg" width="32" height="32" alt="Border Build">
+        <div class="comparison-label">08</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-09-cross-squares.svg" width="32" height="32" alt="Cross Squares">
+        <div class="comparison-label">09</div>
+      </div>
+      <div class="comparison-item">
+        <img src="square-10-pyramid.svg" width="32" height="32" alt="Pyramid">
+        <div class="comparison-label">10</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

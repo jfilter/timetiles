@@ -1,0 +1,32 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Expanding grid from center -->
+
+    <!-- Center 2x2 -->
+    <rect x="-12" y="-12" width="8" height="8" fill="#6495ed" rx="1"/>
+    <rect x="4" y="-12" width="8" height="8" fill="#6495ed" rx="1"/>
+    <rect x="-12" y="4" width="8" height="8" fill="#6495ed" rx="1"/>
+    <rect x="4" y="4" width="8" height="8" fill="#6495ed" rx="1"/>
+
+    <!-- Next layer (partial) -->
+    <rect x="-20" y="-20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="12" y="-20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-20" y="12" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="12" y="12" width="8" height="8" fill="#4a5568" rx="1"/>
+
+    <!-- Outer layer (corners) -->
+    <rect x="-28" y="-28" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="20" y="-28" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-28" y="20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="20" y="20" width="8" height="8" fill="#4a5568" rx="1"/>
+
+    <!-- Mid connectors -->
+    <rect x="-4" y="-28" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="20" y="-4" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-4" y="20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-28" y="-4" width="8" height="8" fill="#4a5568" rx="1"/>
+  </g>
+</svg>

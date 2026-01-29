@@ -1,0 +1,31 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Parchment background -->
+  <rect width="120" height="120" fill="#f8f5f0"/>
+
+  <g transform="translate(60, 60)">
+    <!-- Horizontal double diamonds (rotated 90°) -->
+
+    <!-- Left diamond -->
+    <rect x="-40" y="-4" width="8" height="8" fill="#6495ed" rx="1"/>
+    <rect x="-30" y="-12" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-30" y="4" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-20" y="-20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-20" y="-4" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-20" y="12" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-10" y="-12" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="-10" y="4" width="8" height="8" fill="#4a5568" rx="1"/>
+
+    <!-- Center point -->
+    <rect x="0" y="-4" width="8" height="8" fill="#6495ed" rx="1"/>
+
+    <!-- Right diamond (mirror) -->
+    <rect x="10" y="-12" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="10" y="4" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="20" y="-20" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="20" y="-4" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="20" y="12" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="30" y="-12" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="30" y="4" width="8" height="8" fill="#4a5568" rx="1"/>
+    <rect x="40" y="-4" width="8" height="8" fill="#6495ed" rx="1"/>
+  </g>
+</svg>
