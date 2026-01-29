@@ -179,8 +179,8 @@ importers:
         specifier: ^4.2.6
         version: 4.2.6
       '@types/papaparse':
-        specifier: ^5.3.16
-        version: 5.3.16
+        specifier: ^5.5.2
+        version: 5.5.2
       '@types/uuid':
         specifier: ^10.0.0
         version: 10.0.0
@@ -4315,8 +4315,8 @@ packages:
   '@types/node@20.17.19':
     resolution: {integrity: sha512-LEwC7o1ifqg/6r2gn9Dns0f1rhK+fPFDoMiceTJ6kWmVk6bgXBI/9IOWfVan4WiAavK9pIVWdX0/e3J+eEUh5A==}
 
-  '@types/node@22.16.5':
-    resolution: {integrity: sha512-bJFoMATwIGaxxx8VJPeM8TonI8t579oRvgAuT8zFugJsJZgzqv0Fu8Mhp68iecjzG7cnN3mO2dJQ5uUM2EFrgQ==}
+  '@types/node@22.19.7':
+    resolution: {integrity: sha512-MciR4AKGHWl7xwxkBa6xUGxQJ4VBOmPTF7sL+iGzuahOFaO0jHCsuEfS80pan1ef4gWId1oWOweIhrDEYLuaOw==}
 
   '@types/node@25.1.0':
     resolution: {integrity: sha512-t7frlewr6+cbx+9Ohpl0NOTKXZNV9xHRmNOvql47BFJKcEG1CxtxlPEEe+gR9uhVWM4DwhnvTF110mIL4yP9RA==}
@@ -4324,8 +4324,8 @@ packages:
   '@types/nodemailer@7.0.4':
     resolution: {integrity: sha512-ee8fxWqOchH+Hv6MDDNNy028kwvVnLplrStm4Zf/3uHWw5zzo8FoYYeffpJtGs2wWysEumMH0ZIdMGMY1eMAow==}
 
-  '@types/papaparse@5.3.16':
-    resolution: {integrity: sha512-T3VuKMC2H0lgsjI9buTB3uuKj3EMD2eap1MOuEQuBQ44EnDx/IkGhU6EwiTf9zG3za4SKlmwKAImdDKdNnCsXg==}
+  '@types/papaparse@5.5.2':
+    resolution: {integrity: sha512-gFnFp/JMzLHCwRf7tQHrNnfhN4eYBVYYI897CGX4MY1tzY9l2aLkVyx2IlKZ/SAqDbB3I1AOZW5gTMGGsqWliA==}
 
   '@types/parse-json@4.0.2':
     resolution: {integrity: sha512-dISoDXWWQwUquiKsyZ4Ng+HX2KsPL7LyHKHQwgGFEA3IaKac4Obd+h2a/a6waisAoepJlBcx9paWqjA8/HVjCw==}
@@ -15414,7 +15414,7 @@ snapshots:
     dependencies:
       undici-types: 6.19.8
 
-  '@types/node@22.16.5':
+  '@types/node@22.19.7':
     dependencies:
       undici-types: 6.21.0
 
@@ -15429,7 +15429,7 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@types/papaparse@5.3.16':
+  '@types/papaparse@5.5.2':
     dependencies:
       '@types/node': 20.17.19
 
@@ -15494,7 +15494,7 @@ snapshots:
 
   '@types/yauzl@2.10.3':
     dependencies:
-      '@types/node': 25.1.0
+      '@types/node': 20.17.19
     optional: true
 
   '@typescript-eslint/eslint-plugin@8.54.0(@typescript-eslint/parser@8.54.0(eslint@9.31.0(jiti@2.4.2))(typescript@5.9.3))(eslint@9.31.0(jiti@2.4.2))(typescript@5.9.3)':
@@ -15900,6 +15900,7 @@ snapshots:
     optionalDependencies:
       msw: 2.10.4(@types/node@25.1.0)(typescript@5.9.3)
       vite: 5.4.19(@types/node@25.1.0)(lightningcss@1.29.1)(sass@1.77.4)
+    optional: true
 
   '@vitest/pretty-format@2.1.9':
     dependencies:
@@ -15929,7 +15930,7 @@ snapshots:
       sirv: 3.0.1
       tinyglobby: 0.2.14
       tinyrainbow: 1.2.0
-      vitest: 2.1.9(@types/node@25.1.0)(@vitest/ui@2.1.9)(happy-dom@18.0.1)(jsdom@26.1.0)(lightningcss@1.29.1)(msw@2.10.4(@types/node@25.1.0)(typescript@5.9.3))(sass@1.77.4)
+      vitest: 2.1.9(@types/node@20.17.19)(@vitest/ui@2.1.9)(happy-dom@18.0.1)(jsdom@26.1.0)(lightningcss@1.29.1)(msw@2.10.4(@types/node@20.17.19)(typescript@5.7.3))(sass@1.77.4)
 
   '@vitest/utils@2.1.9':
     dependencies:
@@ -22925,7 +22926,7 @@ snapshots:
       '@types/concat-stream': 2.0.3
       '@types/debug': 4.1.12
       '@types/is-empty': 1.2.3
-      '@types/node': 22.16.5
+      '@types/node': 22.19.7
       '@types/unist': 3.0.3
       concat-stream: 2.0.0
       debug: 4.4.1(supports-color@5.5.0)
@@ -23202,6 +23203,7 @@ snapshots:
       - sugarss
       - supports-color
       - terser
+    optional: true
 
   vite@5.4.19(@types/node@20.17.19)(lightningcss@1.29.1)(sass@1.77.4):
     dependencies:
@@ -23224,6 +23226,7 @@ snapshots:
       fsevents: 2.3.3
       lightningcss: 1.29.1
       sass: 1.77.4
+    optional: true
 
   vitest@2.1.9(@types/node@20.17.19)(@vitest/ui@2.1.9)(happy-dom@18.0.1)(jsdom@26.1.0)(lightningcss@1.29.1)(msw@2.10.4(@types/node@20.17.19)(typescript@5.7.3))(sass@1.77.4):
     dependencies:
@@ -23300,6 +23303,7 @@ snapshots:
       - sugarss
       - supports-color
       - terser
+    optional: true
 
   vscode-jsonrpc@8.2.0: {}
 
