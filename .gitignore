@@ -88,3 +88,4 @@ apps/docs/content/reference/api/**/_meta.js
 !apps/docs/content/reference/api/index.mdx
 .playwright-mcp
 .agents
+.worktrees/
