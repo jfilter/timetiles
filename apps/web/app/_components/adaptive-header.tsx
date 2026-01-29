@@ -10,8 +10,8 @@
  */
 "use client";
 
-import LogoDark from "@timetiles/assets/logos/final/dark/logo-128.png";
-import LogoLight from "@timetiles/assets/logos/final/light/logo-128.png";
+import LogoDark from "@timetiles/assets/logos/latest/dark/no-grid/png/wordmark_horizontal_512.png";
+import LogoLight from "@timetiles/assets/logos/latest/light/no-grid/png/wordmark_horizontal_512.png";
 import {
   Header,
   HeaderActions,
@@ -313,8 +313,7 @@ const ExploreFullHeader = ({ catalogs, datasets, currentView }: ExploreNavigatio
 /**
  * Adaptive header that shows different content based on current route.
  *
- * - Landing page: Shows site navigation with decorative grid overlay
- * - Other marketing pages: Shows site navigation without decorative elements
+ * - Marketing pages: Shows site navigation
  * - Explore page: Shows app controls with clean functional design
  *
  * @example
@@ -330,7 +329,6 @@ export const AdaptiveHeader = ({
 }: Readonly<AdaptiveHeaderProps>) => {
   const pathname = usePathname();
   const isExplorePage = pathname === "/explore" || pathname === "/explore/list";
-  const isLandingPage = pathname === "/";
   const currentView: "map" | "list" = pathname === "/explore/list" ? "list" : "map";
   const { resolvedTheme } = useTheme();
   const mounted = useMounted();
@@ -347,15 +345,11 @@ export const AdaptiveHeader = ({
   }
 
   // Marketing pages use standard brand/nav/actions layout
-  // Only show decorative grid on landing page
   return (
-    <Header variant="marketing" decorative={isLandingPage}>
+    <Header variant="marketing">
       <HeaderBrand>
-        <Link href="/" className="flex items-center gap-3">
-          <Image src={logo} alt="TimeTiles" className="h-9 w-9 shrink-0" width={128} height={128} />
-          <span className="text-cartographic-navy dark:text-cartographic-charcoal font-sans text-xl font-bold tracking-tight">
-            TimeTiles
-          </span>
+        <Link href="/">
+          <Image src={logo} alt="TimeTiles" className="h-9 w-auto" width={640} height={134} />
         </Link>
       </HeaderBrand>
 

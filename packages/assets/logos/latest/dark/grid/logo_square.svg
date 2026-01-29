@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="667" height="667" viewBox="0 0 667 667" xmlns="http://www.w3.org/2000/svg">
+  <!-- Centered Diamond - Perfect 4-fold rotational symmetry (Dark Theme, Grid variant) -->
+  <rect width="667" height="667" fill="#4a5d6e"/>
+
+  <!-- Cartographic Grid Background -->
+  <g opacity="0.2">
+    <!-- Vertical grid lines -->
+    <line x1="83.5" y1="0" x2="83.5" y2="667" style="stroke:#e8d5c4;stroke-width:1;"/>
+    <line x1="167" y1="0" x2="167" y2="667" style="stroke:#e8d5c4;stroke-width:1;"/>
+    <line x1="250.5" y1="0" x2="250.5" y2="667" style="stroke:#e8d5c4;stroke-width:1;"/>
+    <line x1="333.5" y1="0" x2="333.5" y2="667" style="stroke:#e8d5c4;stroke-width:1.5;"/>
+    <line x1="417" y1="0" x2="417" y2="667" style="stroke:#e8d5c4;stroke-width:1;"/>
+    <line x1="500.5" y1="0" x2="500.5" y2="667" style="stroke:#e8d5c4;stroke-width:1;"/>
+    <line x1="584" y1="0" x2="584" y2="667" style="stroke:#e8d5c4;stroke-width:1;"/>
+
+    <!-- Horizontal grid lines -->
+    <line x1="0" y1="83.5" x2="667" y2="83.5" style="stroke:#e8d5c4;stroke-width:1;"/>
+    <line x1="0" y1="167" x2="667" y2="167" style="stroke:#e8d5c4;stroke-width:1;"/>
+    <line x1="0" y1="250.5" x2="667" y2="250.5" style="stroke:#e8d5c4;stroke-width:1;"/>
+    <line x1="0" y1="333.5" x2="667" y2="333.5" style="stroke:#e8d5c4;stroke-width:1.5;"/>
+    <line x1="0" y1="417" x2="667" y2="417" style="stroke:#e8d5c4;stroke-width:1;"/>
+    <line x1="0" y1="500.5" x2="667" y2="500.5" style="stroke:#e8d5c4;stroke-width:1;"/>
+    <line x1="0" y1="584" x2="667" y2="584" style="stroke:#e8d5c4;stroke-width:1;"/>
+
+    <!-- Corner markers -->
+    <circle cx="83.5" cy="83.5" r="2" style="fill:#e8d5c4;"/>
+    <circle cx="584" cy="83.5" r="2" style="fill:#e8d5c4;"/>
+    <circle cx="83.5" cy="584" r="2" style="fill:#e8d5c4;"/>
+    <circle cx="584" cy="584" r="2" style="fill:#e8d5c4;"/>
+  </g>
+
+  <!-- Diamond pattern tiles -->
+  <!-- Center tile (accent) -->
+  <rect x="308.5" y="308.5" width="50" height="50" rx="6" fill="#7da3c6"/>
+
+  <!-- Ring 1: 4 tiles around center -->
+  <rect x="308.5" y="241.83" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="375.17" y="308.5" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="308.5" y="375.17" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="241.83" y="308.5" width="50" height="50" rx="6" fill="#e8d5c4"/>
+
+  <!-- Ring 2: 4 corner tiles (diagonal) - accent color -->
+  <rect x="241.83" y="241.83" width="50" height="50" rx="6" fill="#7da3c6"/>
+  <rect x="375.17" y="241.83" width="50" height="50" rx="6" fill="#7da3c6"/>
+  <rect x="375.17" y="375.17" width="50" height="50" rx="6" fill="#7da3c6"/>
+  <rect x="241.83" y="375.17" width="50" height="50" rx="6" fill="#7da3c6"/>
+
+  <!-- Ring 2: 4 cardinal tiles -->
+  <rect x="308.5" y="175.17" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="441.83" y="308.5" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="308.5" y="441.83" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="175.17" y="308.5" width="50" height="50" rx="6" fill="#e8d5c4"/>
+
+  <!-- Ring 3: outer diagonal tiles -->
+  <rect x="175.17" y="241.83" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="241.83" y="175.17" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="375.17" y="175.17" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="441.83" y="241.83" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="441.83" y="375.17" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="375.17" y="441.83" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="241.83" y="441.83" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="175.17" y="375.17" width="50" height="50" rx="6" fill="#e8d5c4"/>
+
+  <!-- Outer tips (cardinal directions) - accent -->
+  <rect x="308.5" y="108.5" width="50" height="50" rx="6" fill="#7da3c6"/>
+  <rect x="508.5" y="308.5" width="50" height="50" rx="6" fill="#7da3c6"/>
+  <rect x="308.5" y="508.5" width="50" height="50" rx="6" fill="#7da3c6"/>
+  <rect x="108.5" y="308.5" width="50" height="50" rx="6" fill="#7da3c6"/>
+</svg>

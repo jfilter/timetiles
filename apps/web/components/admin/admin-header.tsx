@@ -13,8 +13,8 @@
 "use client";
 
 import { useTheme } from "@payloadcms/ui";
-import LogoDark from "@timetiles/assets/logos/final/dark/logo-128.png";
-import LogoLight from "@timetiles/assets/logos/final/light/logo-128.png";
+import LogoDark from "@timetiles/assets/logos/latest/dark/no-grid/png/wordmark_compact_256.png";
+import LogoLight from "@timetiles/assets/logos/latest/light/no-grid/png/wordmark_compact_256.png";
 import { ArrowLeft, Moon, Sun } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";

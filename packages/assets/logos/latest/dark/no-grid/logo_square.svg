@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="667" height="667" viewBox="0 0 667 667" xmlns="http://www.w3.org/2000/svg">
+  <!-- Centered Diamond - Perfect 4-fold rotational symmetry (Dark Theme) -->
+  <rect width="667" height="667" fill="#4a5d6e"/>
+
+  <!-- Grid of tiles forming a symmetrical diamond, centered in canvas -->
+  <!-- Using 50px tiles with gaps, centered at 333.5, 333.5 -->
+
+  <!-- Center tile (accent) -->
+  <rect x="308.5" y="308.5" width="50" height="50" rx="6" fill="#7da3c6"/>
+
+  <!-- Ring 1: 4 tiles around center -->
+  <rect x="308.5" y="241.83" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="375.17" y="308.5" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="308.5" y="375.17" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="241.83" y="308.5" width="50" height="50" rx="6" fill="#e8d5c4"/>
+
+  <!-- Ring 2: 4 corner tiles (diagonal) - accent color -->
+  <rect x="241.83" y="241.83" width="50" height="50" rx="6" fill="#7da3c6"/>
+  <rect x="375.17" y="241.83" width="50" height="50" rx="6" fill="#7da3c6"/>
+  <rect x="375.17" y="375.17" width="50" height="50" rx="6" fill="#7da3c6"/>
+  <rect x="241.83" y="375.17" width="50" height="50" rx="6" fill="#7da3c6"/>
+
+  <!-- Ring 2: 4 cardinal tiles -->
+  <rect x="308.5" y="175.17" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="441.83" y="308.5" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="308.5" y="441.83" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="175.17" y="308.5" width="50" height="50" rx="6" fill="#e8d5c4"/>
+
+  <!-- Ring 3: outer diagonal tiles -->
+  <rect x="175.17" y="241.83" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="241.83" y="175.17" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="375.17" y="175.17" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="441.83" y="241.83" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="441.83" y="375.17" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="375.17" y="441.83" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="241.83" y="441.83" width="50" height="50" rx="6" fill="#e8d5c4"/>
+  <rect x="175.17" y="375.17" width="50" height="50" rx="6" fill="#e8d5c4"/>
+
+  <!-- Outer tips (cardinal directions) - accent -->
+  <rect x="308.5" y="108.5" width="50" height="50" rx="6" fill="#7da3c6"/>
+  <rect x="508.5" y="308.5" width="50" height="50" rx="6" fill="#7da3c6"/>
+  <rect x="308.5" y="508.5" width="50" height="50" rx="6" fill="#7da3c6"/>
+  <rect x="108.5" y="308.5" width="50" height="50" rx="6" fill="#7da3c6"/>
+</svg>

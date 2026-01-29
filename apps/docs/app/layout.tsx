@@ -4,8 +4,8 @@
  */
 import "nextra-theme-docs/style.css";
 
-import faviconPng from "@timetiles/assets/logos/final/light/logo-256.png";
-import logoHorizontal from "@timetiles/assets/logos/final/light/logo-horizontal.svg";
+import faviconPng from "@timetiles/assets/logos/latest/light/no-grid/png/logo_square_256.png";
+import logoHorizontal from "@timetiles/assets/logos/latest/light/no-grid/wordmark_horizontal.svg";
 import { Banner, Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import { Footer, Layout, Navbar } from "nextra-theme-docs";
@@ -18,8 +18,8 @@ export const metadata = {
 const navbar = (
   <Navbar
     logo={
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <img src={logoHorizontal} alt="TimeTiles" style={{ height: "64px" }} />
+      <div style={{ display: "flex", alignItems: "center" }}>
+        <img src={logoHorizontal.src || logoHorizontal} alt="TimeTiles" style={{ height: "32px", width: "auto" }} />
       </div>
     }
     projectLink="https://github.com/jfilter/timetiles"

@@ -4,23 +4,46 @@ Shared logos and visual assets for the TimeTiles monorepo. All assets are automa
 
 ## Available Assets
 
-### Final Logo Versions
+### Latest Logo Versions
 
-The recommended logos are in the `final/` directory:
+The recommended logos are in the `latest/` directory:
 
-**Light theme:**
+**Structure:**
+```
+latest/
+├── light/
+│   ├── no-grid/           # Clean versions without grid overlay
+│   │   ├── logo_square.svg
+│   │   ├── wordmark_horizontal.svg
+│   │   ├── wordmark_compact.svg
+│   │   └── png/
+│   └── grid/              # Versions with cartographic grid overlay
+│       └── (same files)
+└── dark/
+    ├── no-grid/
+    └── grid/
+```
 
-- `logo.svg` - Base logo
-- `logo-horizontal.svg` - Horizontal layout with text
-- `logo-vertical.svg` - Vertical layout with text
-- `logo-{16,32,48,64,128,256,512,1024,2048}.png` - Raster versions
+**Files:**
 
-**Dark theme:**
+- `logo_square.svg` - Square logo icon (no text)
+- `wordmark_horizontal.svg` - Horizontal wordmark (icon + "TimeTiles")
+- `wordmark_compact.svg` - Compact wordmark (icon + stacked "Time/Tiles")
+- `png/logo_square_{16,32,48,64,128,256,512,1024,2000}.png` - Square PNG exports
+- `png/wordmark_horizontal_{256,512,1024,2000}.png` - Horizontal wordmark exports
+- `png/wordmark_compact_{256,512,1024,2000}.png` - Compact wordmark exports
+- `png/favicon.ico` - Favicon
 
-- `logo.svg` - Base logo (dark variant)
-- `logo-horizontal-dark.svg` - Horizontal layout with text
-- `logo-vertical-dark.svg` - Vertical layout with text
-- `logo-{16,32,48,64,128,256,512,1024,2048}.png` - Raster versions
+### Logo Variations (v3)
+
+Additional logo variations are available in `v3/static/` with many design options:
+
+- `diamond-XX-*.svg` - Diamond-based designs
+- `square-XX-*.svg` - Square-based designs
+- `symmetric-XX-*.svg` - Symmetric patterns
+- `wordmark-XX-*.svg` - Text-based logos
+- `carto-XX-*.svg` - Cartographic-themed designs
+- `bold-XX-*.svg` - Bold geometric designs
 
 ### Legacy Logo Versions
 
@@ -31,9 +54,9 @@ Historical logo versions are available in `v1/` and `v2/` directories for backwa
 Import assets directly in your code:
 
 ```typescript
-import logo from "@timetiles/assets/logos/final/light/logo.svg";
-import logoHorizontal from "@timetiles/assets/logos/final/light/logo-horizontal.svg";
-import favicon from "@timetiles/assets/logos/final/light/logo-256.png";
+import logo from "@timetiles/assets/logos/latest/light/no-grid/logo_square.svg";
+import logoHorizontal from "@timetiles/assets/logos/latest/light/no-grid/wordmark_horizontal.svg";
+import favicon from "@timetiles/assets/logos/latest/light/no-grid/png/logo_square_256.png";
 
 // Use in React components
 <img src={logo} alt="TimeTiles" />

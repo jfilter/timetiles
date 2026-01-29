@@ -10,6 +10,8 @@
  */
 import "@timetiles/ui/globals.css";
 
+import LogoCompactDark from "@timetiles/assets/logos/latest/dark/no-grid/png/wordmark_compact_512.png";
+import LogoCompactLight from "@timetiles/assets/logos/latest/light/no-grid/png/wordmark_compact_512.png";
 import {
   Footer,
   FooterBottom,
@@ -28,6 +30,7 @@ import {
 } from "@timetiles/ui";
 import type { Metadata } from "next";
 import { DM_Sans, Playfair_Display, Space_Mono } from "next/font/google";
+import Image from "next/image";
 import Link from "next/link";
 import { getPayload } from "payload";
 
@@ -112,8 +115,21 @@ export default async function FrontendLayout({
             >
               <FooterBrand className="md:col-span-2">
                 <FooterLogo>
-                  <Link href="/" className="text-foreground font-serif text-2xl font-bold">
-                    TimeTiles
+                  <Link href="/">
+                    <Image
+                      src={LogoCompactLight}
+                      alt="TimeTiles"
+                      className="h-16 w-auto dark:hidden"
+                      width={739}
+                      height={334}
+                    />
+                    <Image
+                      src={LogoCompactDark}
+                      alt="TimeTiles"
+                      className="hidden h-16 w-auto dark:block"
+                      width={739}
+                      height={334}
+                    />
                   </Link>
                 </FooterLogo>
                 <FooterTagline>{footerData.tagline}</FooterTagline>
