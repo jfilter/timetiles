@@ -83,7 +83,8 @@ print_usage() {
     echo ""
     echo "Commands:"
     echo "  setup     - Initial setup (copy env file, generate secrets)"
-    echo "  build     - Build Docker images"
+    echo "  build     - Build Docker images (or pull from registry)"
+    echo "  pull      - Pull images from registry"
     echo "  up        - Start all services"
     echo "  down      - Stop all services"
     echo "  restart   - Restart all services"
@@ -167,11 +168,24 @@ case "$1" in
         
     build)
         check_env
-        echo -e "${YELLOW}Building Docker images...${NC}"
-        $DC_CMD build
-        echo -e "${GREEN}Build complete!${NC}"
+        if [ -f "$SCRIPT_DIR/docker-compose.override.yml" ]; then
+            echo -e "${YELLOW}Building Docker images locally (override detected)...${NC}"
+            $DC_CMD build
+            echo -e "${GREEN}Build complete!${NC}"
+        else
+            echo -e "${YELLOW}Pulling Docker images from registry...${NC}"
+            $DC_CMD pull
+            echo -e "${GREEN}Pull complete!${NC}"
+        fi
         ;;
-        
+
+    pull)
+        check_env
+        echo -e "${YELLOW}Pulling Docker images from registry...${NC}"
+        $DC_CMD pull
+        echo -e "${GREEN}Pull complete!${NC}"
+        ;;
+
     up)
         check_env
         echo -e "${YELLOW}Starting services...${NC}"
@@ -539,11 +553,16 @@ EOF
         
     update)
         check_env
-        echo -e "${YELLOW}Updating and redeploying...${NC}"
+        echo -e "${YELLOW}Updating TimeTiles...${NC}"
         git pull origin main
-        $DC_CMD build web
+        if [ -f "$SCRIPT_DIR/docker-compose.override.yml" ]; then
+            echo -e "${YELLOW}Rebuilding local images...${NC}"
+            $DC_CMD build web
+        else
+            echo -e "${YELLOW}Pulling latest images from registry...${NC}"
+            $DC_CMD pull
+        fi
         $DC_CMD up -d --no-deps web
-        # Migrations run automatically on container startup via prodMigrations
         echo -e "${GREEN}Update complete! Migrations will run automatically.${NC}"
         ;;
         
