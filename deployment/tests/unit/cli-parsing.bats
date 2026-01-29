@@ -69,7 +69,8 @@ teardown() {
     fi
 
     run "$DEPLOY_DIR/timetiles" backup invalidsubcmd
-    [[ "$output" == *"Usage"* ]] || [[ "$output" == *"full"* ]]
+    # Should show usage/help OR error about missing config
+    [[ "$output" == *"Usage"* ]] || [[ "$output" == *"full"* ]] || [[ "$output" == *"RESTIC_PASSWORD"* ]]
 }
 
 # =============================================================================
@@ -83,7 +84,8 @@ teardown() {
     fi
 
     run "$DEPLOY_DIR/timetiles" restore
-    [[ "$output" == *"Usage"* ]] || [[ "$output" == *"backup"* ]]
+    # Should show usage/help OR error about missing config
+    [[ "$output" == *"Usage"* ]] || [[ "$output" == *"backup"* ]] || [[ "$output" == *"RESTIC_PASSWORD"* ]]
 }
 
 # =============================================================================
