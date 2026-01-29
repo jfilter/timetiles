@@ -49,14 +49,7 @@ services:
 
   # Web application
   web:
-    build:
-      context: ..
-      dockerfile: ${DOCKERFILE_PATH:-deployment/Dockerfile.prod}
-      args:
-        DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
-        PAYLOAD_SECRET: ${PAYLOAD_SECRET}
-        NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
-    image: ${IMAGE_NAME:-timetiles-web}:${IMAGE_TAG:-latest}
+    image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-web
     restart: unless-stopped
     # No ports exposed directly - nginx handles this
