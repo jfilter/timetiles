@@ -314,7 +314,7 @@ generate_self_signed_ssl() {
 # VERIFICATION FUNCTIONS
 # ============================================================================
 # These functions verify that bootstrap steps are properly configured.
-# Used by both bootstrap validation and deploy.sh check command.
+# Used by both bootstrap validation and timetiles check command.
 # Return: 0 = OK, 1 = warning, 2 = error
 # Output: Sets CHECK_MSG with details
 
@@ -454,7 +454,7 @@ verify_docker_group() {
 
 # Check backup cron
 verify_backup_cron() {
-    if crontab -l 2>/dev/null | grep -q "deploy.sh backup"; then
+    if crontab -l 2>/dev/null | grep -q "timetiles backup"; then
         CHECK_MSG="Backup cron configured"
         return 0
     else

@@ -4,13 +4,12 @@
 
 run_step() {
     local install_dir="${INSTALL_DIR:-/opt/timetiles}"
-    local app_dir="$install_dir/app"
     local user="${APP_USER:-timetiles}"
 
     # Check if SSL should be skipped
     if [[ "${SKIP_SSL:-false}" == "true" ]]; then
         print_skip "SSL setup skipped (SKIP_SSL=true)"
-        print_info "You can set up SSL later with: ./deploy.sh ssl"
+        print_info "You can set up SSL later with: timetiles ssl"
         return 0
     fi
 
@@ -23,29 +22,29 @@ run_step() {
 
         if is_interactive; then
             if ! prompt_yn "Continue with SSL setup anyway?" "n"; then
-                print_skip "SSL setup skipped - run './deploy.sh ssl' after fixing DNS"
+                print_skip "SSL setup skipped - run 'timetiles ssl' after fixing DNS"
                 return 0
             fi
         else
             print_warning "Skipping SSL setup in non-interactive mode"
-            print_info "Run './deploy.sh ssl' after DNS is configured"
+            print_info "Run 'timetiles ssl' after DNS is configured"
             return 0
         fi
     fi
 
-    # Change to app directory
-    cd "$app_dir" || die "Cannot change to $app_dir"
+    # Change to install directory
+    cd "$install_dir" || die "Cannot change to $install_dir"
 
     # Run SSL setup
     print_step "Requesting SSL certificate from Let's Encrypt..."
     print_info "Domain: $DOMAIN_NAME"
     print_info "Email: $LETSENCRYPT_EMAIL"
 
-    if ! sudo -u "$user" ./deployment/deploy.sh ssl; then
+    if ! sudo -u "$user" ./timetiles ssl; then
         print_warning "SSL setup failed"
         print_info "This is often due to DNS not being configured yet"
         print_info "Your application is still accessible via HTTP"
-        print_info "Run './deploy.sh ssl' after DNS is properly configured"
+        print_info "Run 'timetiles ssl' after DNS is properly configured"
 
         # Don't fail the bootstrap - SSL can be set up later
         return 0

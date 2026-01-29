@@ -357,7 +357,7 @@ verify_deployment() {
 
     if [[ $attempts -ge $max_attempts ]]; then
         print_warning "Health check timed out - checking logs..."
-        multipass exec "$VM_NAME" -- bash -c "cd /opt/timetiles/app && ./deployment/deploy.sh logs 2>&1 | tail -30"
+        multipass exec "$VM_NAME" -- bash -c "cd /opt/timetiles/app && ./deployment/timetiles logs 2>&1 | tail -30"
         return 1
     fi
 
@@ -371,8 +371,8 @@ verify_deployment() {
 test_backup_restore() {
     print_header "Testing Backup/Restore"
 
-    # deploy.sh now auto-switches to timetiles user when run as root
-    local deploy_cmd="cd /opt/timetiles/app/deployment && sudo ./deploy.sh"
+    # timetiles now auto-switches to timetiles user when run as root
+    local deploy_cmd="cd /opt/timetiles/app/deployment && sudo ./timetiles"
 
     # Test database backup
     print_step "Creating database backup..."
@@ -550,10 +550,10 @@ show_access_info() {
     echo "  multipass shell $VM_NAME"
     echo ""
     echo "View logs:"
-    echo "  multipass exec $VM_NAME -- bash -c 'cd /opt/timetiles/app && ./deployment/deploy.sh logs'"
+    echo "  multipass exec $VM_NAME -- bash -c 'cd /opt/timetiles/app && ./deployment/timetiles logs'"
     echo ""
     echo "Check status:"
-    echo "  multipass exec $VM_NAME -- bash -c 'cd /opt/timetiles/app && ./deployment/deploy.sh status'"
+    echo "  multipass exec $VM_NAME -- bash -c 'cd /opt/timetiles/app && ./deployment/timetiles status'"
     echo ""
 
     if [[ "$KEEP_VM" == "false" ]]; then

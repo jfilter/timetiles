@@ -4,11 +4,10 @@
 
 run_step() {
     local install_dir="${INSTALL_DIR:-/opt/timetiles}"
-    local app_dir="$install_dir/app"
     local user="${APP_USER:-timetiles}"
 
-    local env_template="$app_dir/deployment/.env.production.example"
-    local env_file="$app_dir/deployment/.env.production"
+    local env_template="$install_dir/.env.production.example"
+    local env_file="$install_dir/.env.production"
 
     print_step "Configuring environment..."
 
@@ -52,7 +51,7 @@ run_step() {
 
     # Configure nginx with domain name
     print_step "Configuring nginx with domain: $DOMAIN_NAME"
-    configure_nginx "$app_dir" "$DOMAIN_NAME"
+    configure_nginx "$install_dir" "$DOMAIN_NAME"
 
     # Verify configuration
     print_step "Verifying configuration..."

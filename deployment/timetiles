@@ -1,10 +1,12 @@
 #!/bin/bash
 
-# TimeTiles Production Deployment Script
-# Usage: ./deploy.sh [command]
+# TimeTiles CLI - Production Management
+# Usage: timetiles [command]
 #
 # This script should be run as the 'timetiles' user (or root, which will
 # automatically switch to timetiles). Running as other users will fail.
+#
+# Install: sudo ln -sf /opt/timetiles/timetiles /usr/local/bin/timetiles
 
 set -eo pipefail
 
@@ -31,7 +33,7 @@ if ! docker info &>/dev/null 2>&1; then
     echo "Warning: Cannot connect to Docker. You may need to:"
     echo "  1. Start Docker daemon"
     echo "  2. Add user to docker group: sudo usermod -aG docker $USER"
-    echo "  3. Re-login or run: sg docker -c './deploy.sh $*'"
+    echo "  3. Re-login or run: sg docker -c './timetiles $*'"
 fi
 
 # Configuration
@@ -304,7 +306,7 @@ case "$1" in
                 cat > "$BACKUP_DIR/auto-backup.sh" << EOF
 #!/bin/bash
 cd "$SCRIPT_DIR"
-./deploy.sh backup db
+./timetiles backup db
 EOF
                 chmod +x "$BACKUP_DIR/auto-backup.sh"
                 
@@ -607,7 +609,7 @@ EOF
 
         print_section "Configuration"
 
-        # Check env file (inline - specific to deploy.sh)
+        # Check env file (inline - specific to timetiles)
         if [[ -f "$ENV_FILE" ]]; then
             print_ok "Configuration file exists (.env.production)"
 

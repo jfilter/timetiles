@@ -4,7 +4,6 @@
 
 run_step() {
     local install_dir="${INSTALL_DIR:-/opt/timetiles}"
-    local app_dir="$install_dir/app"
     local user="${APP_USER:-timetiles}"
 
     # Create health check script
@@ -18,6 +17,9 @@ run_step() {
 
     # Create systemd service
     create_systemd_service
+
+    # Create CLI symlink
+    create_cli_symlink
 
     # Print final summary
     print_final_summary
@@ -82,7 +84,6 @@ EOF
 
 setup_cron_jobs() {
     local install_dir="${INSTALL_DIR:-/opt/timetiles}"
-    local app_dir="$install_dir/app"
     local user="${APP_USER:-timetiles}"
 
     print_step "Setting up cron jobs..."
@@ -96,13 +97,13 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 */5 * * * * root $install_dir/scripts/health-check.sh
 
 # Daily database backup at 2 AM
-0 2 * * * $user cd $app_dir && ./deployment/deploy.sh backup db >> /var/log/timetiles/backup.log 2>&1
+0 2 * * * $user $install_dir/timetiles backup db >> /var/log/timetiles/backup.log 2>&1
 
 # Weekly full backup (Sunday at 3 AM)
-0 3 * * 0 $user cd $app_dir && ./deployment/deploy.sh backup full >> /var/log/timetiles/backup.log 2>&1
+0 3 * * 0 $user $install_dir/timetiles backup full >> /var/log/timetiles/backup.log 2>&1
 
 # Monthly backup cleanup (1st of month at 4 AM)
-0 4 1 * * $user cd $app_dir && ./deployment/deploy.sh backup clean >> /var/log/timetiles/backup.log 2>&1
+0 4 1 * * $user $install_dir/timetiles backup clean >> /var/log/timetiles/backup.log 2>&1
 EOF
 
     chmod 644 /etc/cron.d/timetiles
@@ -140,7 +141,6 @@ EOF
 
 create_systemd_service() {
     local install_dir="${INSTALL_DIR:-/opt/timetiles}"
-    local app_dir="$install_dir/app"
     local user="${APP_USER:-timetiles}"
 
     print_step "Creating systemd service..."
@@ -158,10 +158,10 @@ Type=oneshot
 RemainAfterExit=yes
 User=$user
 Group=$user
-WorkingDirectory=$app_dir
-ExecStart=$app_dir/deployment/deploy.sh up
-ExecStop=$app_dir/deployment/deploy.sh down
-ExecReload=$app_dir/deployment/deploy.sh restart
+WorkingDirectory=$install_dir
+ExecStart=$install_dir/timetiles up
+ExecStop=$install_dir/timetiles down
+ExecReload=$install_dir/timetiles restart
 TimeoutStartSec=300
 TimeoutStopSec=120
 StandardOutput=journal
@@ -181,6 +181,18 @@ EOF
     print_info "  - Status: systemctl status timetiles"
 }
 
+create_cli_symlink() {
+    local install_dir="${INSTALL_DIR:-/opt/timetiles}"
+
+    print_step "Creating CLI symlink..."
+
+    # Create symlink to /usr/local/bin for system-wide access
+    ln -sf "$install_dir/timetiles" /usr/local/bin/timetiles
+
+    print_success "CLI symlink created: /usr/local/bin/timetiles"
+    print_info "  You can now run 'timetiles' from anywhere"
+}
+
 print_final_summary() {
     local install_dir="${INSTALL_DIR:-/opt/timetiles}"
 
@@ -193,10 +205,11 @@ print_final_summary() {
     echo "  - Admin Panel: https://$DOMAIN_NAME/admin"
     echo ""
     echo "Useful commands:"
-    echo "  - View logs: cd $install_dir/app && ./deployment/deploy.sh logs"
-    echo "  - Check status: cd $install_dir/app && ./deployment/deploy.sh status"
-    echo "  - Create backup: cd $install_dir/app && ./deployment/deploy.sh backup"
-    echo "  - Update app: cd $install_dir/app && ./deployment/deploy.sh update"
+    echo "  - View logs: timetiles logs"
+    echo "  - Check status: timetiles status"
+    echo "  - Create backup: timetiles backup"
+    echo "  - Update app: timetiles update"
+    echo "  - Full health check: timetiles check"
     echo ""
     echo "Credentials saved to: $install_dir/credentials.txt"
     echo ""

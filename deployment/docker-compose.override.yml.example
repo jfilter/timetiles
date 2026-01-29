@@ -5,8 +5,8 @@
 #
 # Usage:
 #   cp docker-compose.override.yml.example docker-compose.override.yml
-#   ./deploy.sh build
-#   ./deploy.sh up
+#   ./timetiles build
+#   ./timetiles up
 
 services:
   web:

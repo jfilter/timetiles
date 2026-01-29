@@ -31,7 +31,7 @@ SUBJECT="${1:-Alert}"
 MESSAGE="${2:-No message provided}"
 
 # Load environment from .env.production
-ENV_FILE="/opt/timetiles/app/deployment/.env.production"
+ENV_FILE="/opt/timetiles/.env.production"
 if [[ -f "$ENV_FILE" ]]; then
     # Extract EMAIL and ALERT variables
     while IFS='=' read -r key value; do
@@ -101,9 +101,9 @@ ALERT_SCRIPT
     fi
 
     # Check if SMTP is configured
-    if [[ -f "$install_dir/app/deployment/.env.production" ]]; then
+    if [[ -f "$install_dir/.env.production" ]]; then
         local smtp_host
-        smtp_host=$(grep "^EMAIL_SMTP_HOST=" "$install_dir/app/deployment/.env.production" 2>/dev/null | cut -d= -f2 || echo "")
+        smtp_host=$(grep "^EMAIL_SMTP_HOST=" "$install_dir/.env.production" 2>/dev/null | cut -d= -f2 || echo "")
         if [[ -n "$smtp_host" ]] && [[ "$smtp_host" != "localhost" ]] && [[ "$smtp_host" != "smtp.example.com" ]]; then
             print_success "SMTP configured: $smtp_host"
         else

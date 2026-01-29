@@ -1,30 +1,29 @@
 #!/bin/bash
 # TimeTiles Bootstrap - Step 07: Deploy Application
-# Pulls and starts the application using deploy.sh
+# Pulls and starts the application using timetiles CLI
 
 run_step() {
     local install_dir="${INSTALL_DIR:-/opt/timetiles}"
-    local app_dir="$install_dir/app"
     local user="${APP_USER:-timetiles}"
 
-    # Change to app directory
-    cd "$app_dir" || die "Cannot change to $app_dir"
+    # Change to install directory
+    cd "$install_dir" || die "Cannot change to $install_dir"
 
     # Helper to run commands as app user with docker group
     # Using 'sg docker' ensures the docker group is active in the session
     run_as_user() {
-        sudo -u "$user" sg docker -c "cd $app_dir && $*"
+        sudo -u "$user" sg docker -c "cd $install_dir && $*"
     }
 
     # Always generate self-signed SSL certificate as a fallback
     # Nginx requires SSL certs to start - Let's Encrypt (Step 08) will replace these if DNS is configured
-    setup_self_signed_ssl "$app_dir" "$user"
+    setup_self_signed_ssl "$install_dir" "$user"
 
     # Pull Docker images from registry
     print_step "Pulling Docker images from registry..."
     print_info "This may take a few minutes on first run..."
 
-    if ! run_as_user "./deployment/deploy.sh pull"; then
+    if ! run_as_user "./timetiles pull"; then
         die "Failed to pull Docker images"
     fi
 
@@ -33,7 +32,7 @@ run_step() {
     # Start services
     print_step "Starting services..."
 
-    if ! run_as_user "./deployment/deploy.sh up"; then
+    if ! run_as_user "./timetiles up"; then
         die "Failed to start services"
     fi
 
@@ -49,13 +48,13 @@ run_step() {
     if ! wait_for_health "http://localhost:3000/api/health" 300 10; then
         print_error "Application failed to become healthy"
         print_info "Checking logs..."
-        run_as_user "./deployment/deploy.sh logs 2>&1 | tail -50"
+        run_as_user "./timetiles logs 2>&1 | tail -50"
         die "Application health check failed"
     fi
 
     # Verify all services
     print_step "Verifying services..."
-    run_as_user "./deployment/deploy.sh status"
+    run_as_user "./timetiles status"
 
     print_success "Application deployed successfully"
 }
@@ -63,10 +62,9 @@ run_step() {
 # Set up self-signed SSL as a fallback
 # Nginx requires SSL certs to start - these get replaced by Let's Encrypt if DNS is configured
 setup_self_signed_ssl() {
-    local app_dir="$1"
+    local install_dir="$1"
     local user="$2"
-    local deployment_dir="$app_dir/deployment"
-    local ssl_dir="$deployment_dir/ssl"
+    local ssl_dir="$install_dir/ssl"
 
     print_step "Setting up self-signed SSL as fallback..."
 
@@ -79,7 +77,7 @@ setup_self_signed_ssl() {
     chown -R "$user:$user" "$ssl_dir"
 
     # Create docker-compose override to use local ssl directory instead of volume
-    local override_file="$deployment_dir/docker-compose.ssl-override.yml"
+    local override_file="$install_dir/docker-compose.ssl-override.yml"
 
     cat > "$override_file" << EOF
 # Auto-generated override for self-signed SSL fallback
@@ -90,6 +88,7 @@ services:
       - certbot-webroot:/var/www/certbot:ro
       - \${NGINX_CONF_PATH:-./nginx/nginx.conf}:/etc/nginx/nginx.conf:ro
       - ./nginx/sites-enabled:/etc/nginx/sites-enabled:ro
+      - ./nginx/proxy-headers.conf:/etc/nginx/proxy-headers.conf:ro
 
 volumes:
   certbot-webroot:
