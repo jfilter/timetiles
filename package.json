@@ -27,7 +27,7 @@
     "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
     "@typescript/native-preview": "7.0.0-dev.20260128.1",
-    "chalk": "^5.6.0",
+    "chalk": "^5.6.2",
     "glob": "^11.0.3",
     "husky": "^9.1.7",
     "nyc": "^17.1.0",
