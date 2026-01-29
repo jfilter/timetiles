@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint lint-full typecheck typecheck-full format test test-ai test-e2e test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai help
+.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint lint-full typecheck typecheck-full format test test-ai test-e2e test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai image image-allinone help
 
 all: help
 
@@ -289,6 +289,32 @@ check:
 check-full:
 	pnpm check:full
 
+# =============================================================================
+# Docker Images (local builds)
+# =============================================================================
+
+# Default image name and tag
+IMAGE_REGISTRY ?= ghcr.io/jfilter/timetiles
+IMAGE_TAG ?= local
+
+## Build main production Docker image locally
+## Usage: make image [IMAGE_TAG=...] [PLATFORM=linux/amd64]
+image:
+ifdef PLATFORM
+	docker build --platform $(PLATFORM) -f deployment/Dockerfile.prod -t $(IMAGE_REGISTRY):$(IMAGE_TAG) .
+else
+	docker build -f deployment/Dockerfile.prod -t $(IMAGE_REGISTRY):$(IMAGE_TAG) .
+endif
+
+## Build all-in-one Docker image locally
+## Usage: make image-allinone [IMAGE_TAG=...] [PLATFORM=linux/amd64]
+image-allinone:
+ifdef PLATFORM
+	docker build --platform $(PLATFORM) -f deployment/Dockerfile.allinone -t $(IMAGE_REGISTRY):$(IMAGE_TAG)-allinone .
+else
+	docker build -f deployment/Dockerfile.allinone -t $(IMAGE_REGISTRY):$(IMAGE_TAG)-allinone .
+endif
+
 # Show help
 help:
 	@printf '%s\n' \
@@ -344,6 +370,11 @@ help:
 		'  db-logs       - View PostgreSQL logs (live tail)' \
 		'  db-reset      - Reset database (removes all data)' \
 		'  db-reset-tests - Reset all test databases (drop + recreate e2e)' '' \
+		'📦 Docker Images:' \
+		'  image          - Build main production image locally' \
+		'  image-allinone - Build all-in-one image locally' \
+		'                   Override defaults: IMAGE_REGISTRY=... IMAGE_TAG=...' \
+		'                   Cross-build: PLATFORM=linux/amd64' '' \
 		'🐳 Infrastructure:' \
 		'  up          - Start development environment (docker compose)' \
 		'  down        - Stop development environment' \

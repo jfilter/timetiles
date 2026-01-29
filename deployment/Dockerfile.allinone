@@ -68,6 +68,7 @@ COPY packages/ui/package.json ./packages/ui/
 COPY packages/assets/package.json ./packages/assets/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 COPY packages/typescript-config/package.json ./packages/typescript-config/
+COPY packages/payload-schema-detection/package.json ./packages/payload-schema-detection/
 
 # Install dependencies
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
