@@ -23,7 +23,7 @@
     "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
     "@types/node": "^20",
-    "@vitest/coverage-v8": "^2.1.8",
+    "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^9.20.1",
     "payload": "^3.53.0",
     "typescript": "^5.7.3",
