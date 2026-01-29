@@ -41,7 +41,7 @@
     "@cfworker/json-schema": "^4.1.1",
     "@payloadcms/db-postgres": "^3.53.0",
     "@payloadcms/email-nodemailer": "^3.65.0",
-    "@payloadcms/next": "^3.53.0",
+    "@payloadcms/next": "^3.72.0",
     "@payloadcms/richtext-lexical": "^3.53.0",
     "@payloadcms/ui": "3.53.0",
     "@tanstack/react-query": "^5.83.0",
