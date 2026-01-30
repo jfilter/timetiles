@@ -10,12 +10,12 @@
  * @category API Routes
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { createLogger } from "@/lib/logger";
-import { internalError, unauthorized } from "@/lib/utils/api-response";
+import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
+import { internalError } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 const logger = createLogger("api-wizard-catalogs");
@@ -32,16 +32,10 @@ interface CatalogWithDatasets {
  * Returns all catalogs owned by the authenticated user along with
  * their associated datasets for use in the import wizard.
  */
-export const GET = async (req: NextRequest) => {
+export const GET = withAuth(async (req: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
-
-    // Get user from session
-    const { user } = await payload.auth({ headers: req.headers });
-
-    if (!user) {
-      return unauthorized();
-    }
+    const user = req.user!;
 
     // Fetch user's catalogs and datasets in parallel (2 queries instead of N+1)
     const [catalogsResult, datasetsResult] = await Promise.all([
@@ -89,4 +83,4 @@ export const GET = async (req: NextRequest) => {
     logger.error("Failed to fetch catalogs", { error });
     return internalError("Failed to fetch catalogs");
   }
-};
+});

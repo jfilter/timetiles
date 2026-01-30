@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { logError } from "@/lib/logger";
+import { internalError } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 export interface DataSourceCatalog {
@@ -66,6 +67,6 @@ export const GET = async (): Promise<NextResponse<DataSourcesResponse | { error:
     return NextResponse.json({ catalogs, datasets });
   } catch (error) {
     logError(error, "Failed to fetch data sources");
-    return NextResponse.json({ error: "Failed to fetch data sources" }, { status: 500 });
+    return internalError("Failed to fetch data sources");
   }
 };

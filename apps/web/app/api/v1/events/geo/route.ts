@@ -6,6 +6,12 @@
  * performant way to visualize large numbers of points on a map, as it offloads the
  * clustering work to the database and only sends the aggregated cluster information to the client.
  * The endpoint returns a GeoJSON FeatureCollection that can be directly consumed by map libraries.
+ *
+ * **Architecture note:** Uses raw SQL with PostGIS functions instead of Payload's
+ * query API for performance. Access control is enforced via `getAllAccessibleCatalogIds()`
+ * which filters by catalog visibility and user ownership, ensuring equivalent
+ * security to Payload's built-in access control.
+ *
  * @module
  */
 import { sql } from "@payloadcms/db-postgres";

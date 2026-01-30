@@ -11,23 +11,17 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
+import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import { badRequest, internalError, unauthorized } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
 
-export const POST = async (request: Request): Promise<Response> => {
+export const POST = withAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
-
-    // Authenticate user from session
-    const { user } = await payload.auth({
-      headers: request.headers,
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    const user = request.user!;
 
     // Rate limiting
     const clientId = getClientIdentifier(request);
@@ -51,21 +45,21 @@ export const POST = async (request: Request): Promise<Response> => {
       newEmail = body.newEmail?.trim().toLowerCase();
       password = body.password;
     } catch {
-      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+      return badRequest("Invalid request body");
     }
 
     if (!newEmail || !password) {
-      return NextResponse.json({ error: "New email and password are required" }, { status: 400 });
+      return badRequest("New email and password are required");
     }
 
     // Validate email format
     if (!EMAIL_REGEX.test(newEmail)) {
-      return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
+      return badRequest("Invalid email format");
     }
 
     // Check if email is same as current
     if (newEmail === user.email.toLowerCase()) {
-      return NextResponse.json({ error: "New email must be different from current email" }, { status: 400 });
+      return badRequest("New email must be different from current email");
     }
 
     // Verify password via login attempt
@@ -79,7 +73,7 @@ export const POST = async (request: Request): Promise<Response> => {
       });
     } catch {
       logger.warn({ userId: user.id, clientId }, "Failed password verification for email change");
-      return NextResponse.json({ error: "Password is incorrect" }, { status: 401 });
+      return unauthorized("Password is incorrect");
     }
 
     // Check if new email is already in use
@@ -92,7 +86,7 @@ export const POST = async (request: Request): Promise<Response> => {
     });
 
     if (existingUser.docs.length > 0) {
-      return NextResponse.json({ error: "Email is already in use" }, { status: 400 });
+      return badRequest("Email is already in use");
     }
 
     // Update the email
@@ -113,6 +107,6 @@ export const POST = async (request: Request): Promise<Response> => {
     });
   } catch (error) {
     logError(error, "Failed to change email");
-    return NextResponse.json({ error: "Failed to change email" }, { status: 500 });
+    return internalError("Failed to change email");
   }
-};
+});

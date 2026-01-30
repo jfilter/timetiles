@@ -11,6 +11,11 @@
  * - Stage transition validation
  * - Centralized job queuing logic.
  *
+ * **Deployment note:** The `transitioningJobs` Set uses in-memory state to prevent
+ * duplicate transitions within a single process. This works correctly for the current
+ * single-instance deployment model. A distributed lock (e.g., Redis or Postgres advisory
+ * locks) would be needed for multi-instance or serverless deployments.
+ *
  * @module
  */
 import type { Payload } from "payload";

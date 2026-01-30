@@ -15,22 +15,20 @@ import os from "node:os";
 import path from "node:path";
 
 import { FIELD_PATTERNS, LATITUDE_PATTERNS, LONGITUDE_PATTERNS } from "@timetiles/payload-schema-detection";
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import Papa from "papaparse";
-import { getPayload } from "payload";
 import { v4 as uuidv4 } from "uuid";
 import { read, utils } from "xlsx";
 
 import { buildAuthHeaders } from "@/lib/jobs/handlers/url-fetch-job/auth";
 import { detectFileTypeFromResponse, fetchUrlData } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
 import { createLogger } from "@/lib/logger";
+import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import {
   detectLanguageFromSamples,
   type LanguageDetectionResult,
 } from "@/lib/services/schema-builder/language-detection";
-import { badRequest, internalError, unauthorized } from "@/lib/utils/api-response";
-import config from "@/payload.config";
+import { badRequest, internalError } from "@/lib/utils/api-response";
 
 const logger = createLogger("api-wizard-preview-schema");
 
@@ -359,16 +357,9 @@ const parseAuthConfig = (formData: FormData): AuthConfig | null => {
  * - username, password (for basic type)
  */
 // eslint-disable-next-line complexity, sonarjs/cognitive-complexity, sonarjs/max-lines-per-function
-export const POST = async (req: NextRequest) => {
+export const POST = withAuth(async (req: AuthenticatedRequest) => {
   try {
-    const payload = await getPayload({ config });
-
-    // Get user from session
-    const { user } = await payload.auth({ headers: req.headers });
-
-    if (!user) {
-      return unauthorized();
-    }
+    const user = req.user!;
 
     // Parse multipart form data
     const formData = await req.formData();
@@ -531,4 +522,4 @@ export const POST = async (req: NextRequest) => {
     logger.error("Failed to preview schema", { error });
     return internalError("Failed to preview file schema");
   }
-};
+});

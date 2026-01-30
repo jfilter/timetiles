@@ -12,22 +12,16 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
+import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { DELETION_GRACE_PERIOD_DAYS, getAccountDeletionService } from "@/lib/services/account-deletion-service";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import { badRequest, internalError, unauthorized } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
-export const POST = async (request: Request): Promise<Response> => {
+export const POST = withAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
-
-    // Authenticate user from session
-    const { user } = await payload.auth({
-      headers: request.headers,
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    const user = request.user!;
 
     // Rate limiting
     const clientId = getClientIdentifier(request);
@@ -49,11 +43,11 @@ export const POST = async (request: Request): Promise<Response> => {
       const body = await request.json();
       password = body.password;
     } catch {
-      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+      return badRequest("Invalid request body");
     }
 
     if (!password) {
-      return NextResponse.json({ error: "Password is required" }, { status: 400 });
+      return badRequest("Password is required");
     }
 
     // Check password attempt rate limit
@@ -80,7 +74,7 @@ export const POST = async (request: Request): Promise<Response> => {
       });
     } catch {
       logger.warn({ userId: user.id }, "Failed deletion password verification");
-      return NextResponse.json({ error: "Invalid password" }, { status: 401 });
+      return unauthorized("Invalid password");
     }
 
     // Check if user can be deleted
@@ -88,7 +82,7 @@ export const POST = async (request: Request): Promise<Response> => {
     const canDelete = await deletionService.canDeleteUser(user.id);
 
     if (!canDelete.allowed) {
-      return NextResponse.json({ error: canDelete.reason }, { status: 400 });
+      return badRequest(canDelete.reason ?? "Account cannot be deleted");
     }
 
     // Check if already pending deletion
@@ -122,6 +116,6 @@ export const POST = async (request: Request): Promise<Response> => {
     });
   } catch (error) {
     logError(error, "Failed to schedule account deletion");
-    return NextResponse.json({ error: "Failed to schedule deletion" }, { status: 500 });
+    return internalError("Failed to schedule deletion");
   }
-};
+});

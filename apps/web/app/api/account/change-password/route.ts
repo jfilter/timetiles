@@ -11,23 +11,17 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
+import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import { badRequest, internalError, unauthorized } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 const MIN_PASSWORD_LENGTH = 8;
 
-export const POST = async (request: Request): Promise<Response> => {
+export const POST = withAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
-
-    // Authenticate user from session
-    const { user } = await payload.auth({
-      headers: request.headers,
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    const user = request.user!;
 
     // Rate limiting
     const clientId = getClientIdentifier(request);
@@ -54,19 +48,16 @@ export const POST = async (request: Request): Promise<Response> => {
       currentPassword = body.currentPassword;
       newPassword = body.newPassword;
     } catch {
-      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+      return badRequest("Invalid request body");
     }
 
     if (!currentPassword || !newPassword) {
-      return NextResponse.json({ error: "Current password and new password are required" }, { status: 400 });
+      return badRequest("Current password and new password are required");
     }
 
     // Validate new password
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      return NextResponse.json(
-        { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` },
-        { status: 400 }
-      );
+      return badRequest(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
     }
 
     // Verify current password via login attempt
@@ -80,7 +71,7 @@ export const POST = async (request: Request): Promise<Response> => {
       });
     } catch {
       logger.warn({ userId: user.id }, "Failed password verification for password change");
-      return NextResponse.json({ error: "Current password is incorrect" }, { status: 401 });
+      return unauthorized("Current password is incorrect");
     }
 
     // Update the password
@@ -100,6 +91,6 @@ export const POST = async (request: Request): Promise<Response> => {
     });
   } catch (error) {
     logError(error, "Failed to change password");
-    return NextResponse.json({ error: "Failed to change password" }, { status: 500 });
+    return internalError("Failed to change password");
   }
-};
+});

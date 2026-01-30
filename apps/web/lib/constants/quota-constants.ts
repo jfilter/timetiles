@@ -4,6 +4,11 @@
  * This file defines trust levels, default quotas, and quota-related constants
  * used throughout the application to control resource usage and enforce limits.
  *
+ * **Design note:** `QUOTA_TYPES` and `USAGE_TYPES` are intentionally separate constants.
+ * `QUOTA_TYPES` maps to limit fields (e.g., `maxFileUploadsPerDay`) while `USAGE_TYPES`
+ * maps to consumption tracking fields (e.g., `fileUploadsToday`). This distinction
+ * reflects the domain model: quotas define ceilings, usage tracks current consumption.
+ *
  * @module
  */
 

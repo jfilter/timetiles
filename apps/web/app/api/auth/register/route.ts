@@ -18,6 +18,7 @@ import { getPayload } from "payload";
 import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { logError, logger } from "@/lib/logger";
 import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
+import { badRequest, forbidden, internalError } from "@/lib/utils/api-response";
 import { maskEmail } from "@/lib/utils/masking";
 import config from "@/payload.config";
 
@@ -75,7 +76,7 @@ export const POST = async (request: Request): Promise<Response> => {
     // Check if registration is enabled
     const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
     if (!(await isFeatureEnabled(payload, "enableRegistration"))) {
-      return NextResponse.json({ error: "Registration is currently disabled." }, { status: 403 });
+      return forbidden("Registration is currently disabled.");
     }
 
     // Apply rate limiting
@@ -98,22 +99,22 @@ export const POST = async (request: Request): Promise<Response> => {
 
     // Validate required fields
     if (!email || typeof email !== "string") {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+      return badRequest("Email is required");
     }
 
     if (!password || typeof password !== "string") {
-      return NextResponse.json({ error: "Password is required" }, { status: 400 });
+      return badRequest("Password is required");
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
+      return badRequest("Invalid email address");
     }
 
     // Password validation
     if (password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+      return badRequest("Password must be at least 8 characters");
     }
 
     // Normalize email
@@ -199,6 +200,6 @@ export const POST = async (request: Request): Promise<Response> => {
     }
   } catch (error) {
     logError(error, "Registration error");
-    return NextResponse.json({ error: "Registration failed. Please try again." }, { status: 500 });
+    return internalError("Registration failed. Please try again.");
   }
 };

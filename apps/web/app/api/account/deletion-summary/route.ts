@@ -11,21 +11,15 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
+import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { getAccountDeletionService } from "@/lib/services/account-deletion-service";
+import { internalError } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
-export const GET = async (request: Request): Promise<Response> => {
+export const GET = withAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
-
-    // Authenticate user from session
-    const { user } = await payload.auth({
-      headers: request.headers,
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    const user = request.user!;
 
     logger.debug({ userId: user.id }, "Fetching deletion summary");
 
@@ -45,6 +39,6 @@ export const GET = async (request: Request): Promise<Response> => {
     });
   } catch (error) {
     logError(error, "Failed to get deletion summary");
-    return NextResponse.json({ error: "Failed to get deletion summary" }, { status: 500 });
+    return internalError("Failed to get deletion summary");
   }
-};
+});

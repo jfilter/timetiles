@@ -5,6 +5,11 @@
  * with access control applied. This is used to fit the map to show all relevant
  * events on initial load or after filter changes.
  *
+ * **Architecture note:** Uses raw SQL with PostGIS functions instead of Payload's
+ * query API for performance. Access control is enforced via `getAllAccessibleCatalogIds()`
+ * which filters by catalog visibility and user ownership, ensuring equivalent
+ * security to Payload's built-in access control.
+ *
  * @module
  * @category API
  */

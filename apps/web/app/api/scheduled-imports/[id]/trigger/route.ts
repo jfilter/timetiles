@@ -4,11 +4,12 @@
  * @module
  * @category API
  */
-import { headers as nextHeaders } from "next/headers";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { logError } from "@/lib/logger";
+import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
+import { badRequest, forbidden, internalError, notFound } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 interface RouteContext {
@@ -19,20 +20,15 @@ interface RouteContext {
  * POST /api/scheduled-imports/[id]/trigger
  * Manually trigger a scheduled import
  */
-export const POST = async (_request: Request, context: RouteContext) => {
+export const POST = withAuth(async (_request: AuthenticatedRequest, context: RouteContext) => {
   try {
     const payload = await getPayload({ config });
-    const headers = await nextHeaders();
+    const user = _request.user!;
     const { id } = await context.params;
-
-    const { user } = await payload.auth({ headers });
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const scheduleId = parseInt(id, 10);
     if (isNaN(scheduleId)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+      return badRequest("Invalid ID");
     }
 
     // Check existing schedule and ownership
@@ -43,13 +39,13 @@ export const POST = async (_request: Request, context: RouteContext) => {
     });
 
     if (!existingSchedule) {
-      return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
+      return notFound("Schedule not found");
     }
 
     const createdById =
       typeof existingSchedule.createdBy === "object" ? existingSchedule.createdBy?.id : existingSchedule.createdBy;
     if (user.role !== "admin" && createdById !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return forbidden();
     }
 
     // Queue the URL fetch job for manual trigger
@@ -77,6 +73,6 @@ export const POST = async (_request: Request, context: RouteContext) => {
     return NextResponse.json({ success: true, message: "Import triggered" });
   } catch (error) {
     logError(error, "Error triggering scheduled import");
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return internalError();
   }
-};
+});

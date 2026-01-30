@@ -15,6 +15,7 @@ import { getPayload } from "payload";
 import { type MapBounds, parseBoundsParameter } from "@/lib/geospatial";
 import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
+import { internalError } from "@/lib/utils/api-response";
 import { extractListParameters } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 import type { Event, User } from "@/payload-types";
@@ -197,7 +198,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _conte
     return NextResponse.json(response);
   } catch (error) {
     logError(error, "Failed to fetch events list", { user: request.user?.id });
-    return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
+    return internalError("Failed to fetch events");
   }
 });
 

@@ -20,6 +20,7 @@ import type { Payload } from "payload";
 import { getPayload } from "payload";
 
 import { createLogger } from "@/lib/logger";
+import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { badRequest, unauthorized } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 import type { User } from "@/payload-types";
@@ -461,19 +462,15 @@ const validateRequest = (
  * and creates the import file record to start processing.
  */
 
-export const POST = async (req: NextRequest) => {
+export const POST = withAuth(async (req: AuthenticatedRequest) => {
   logger.debug("Configure import request received");
 
   try {
     const payload = await getPayload({ config });
     logger.debug("Payload initialized");
 
-    const { user } = await payload.auth({ headers: req.headers });
-    logger.debug("Auth check complete", { userId: user?.id });
-
-    if (!user) {
-      return unauthorized();
-    }
+    const user = req.user!;
+    logger.debug("Auth check complete", { userId: user.id });
 
     const body = (await req.json()) as ConfigureImportRequest;
     logger.debug("Request body parsed", {
@@ -608,4 +605,4 @@ export const POST = async (req: NextRequest) => {
       { status: 500 }
     );
   }
-};
+});

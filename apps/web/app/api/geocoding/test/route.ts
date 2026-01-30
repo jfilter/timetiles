@@ -11,27 +11,23 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { logError } from "@/lib/logger";
+import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
+import { badRequest, internalError } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 interface TestRequest {
   address: string;
 }
 
-export const POST = async (request: Request) => {
+export const POST = withAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
-
-    // Check authentication
-    const { user } = await payload.auth({ headers: request.headers });
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const body = (await request.json()) as TestRequest;
     const { address } = body;
 
     if (!address || typeof address !== "string") {
-      return NextResponse.json({ error: "Address is required" }, { status: 400 });
+      return badRequest("Address is required");
     }
 
     // Import the geocoding service
@@ -43,6 +39,6 @@ export const POST = async (request: Request) => {
     return NextResponse.json(results);
   } catch (error) {
     logError(error, "Geocoding test error");
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return internalError("Geocoding test error");
   }
-};
+});

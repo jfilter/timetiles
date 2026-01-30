@@ -9,6 +9,11 @@
  * This is used to power the date histogram chart in the application, providing a
  * performance-optimized way to visualize the distribution of events over time.
  *
+ * **Architecture note:** Uses raw SQL with PostGIS functions instead of Payload's
+ * query API for performance. Access control is enforced via `getAllAccessibleCatalogIds()`
+ * which filters by catalog visibility and user ownership, ensuring equivalent
+ * security to Payload's built-in access control.
+ *
  * @module
  */
 import { sql } from "@payloadcms/db-postgres";

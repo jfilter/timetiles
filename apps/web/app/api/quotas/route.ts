@@ -6,15 +6,15 @@
  * @module
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
+import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { getQuotaService } from "@/lib/services/quota-service";
-import { internalError, unauthorized } from "@/lib/utils/api-response";
+import { internalError } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 const logger = createLogger("api-quotas");
@@ -29,16 +29,10 @@ const logger = createLogger("api-quotas");
  * - Reset times for daily quotas
  */
 export const GET = withRateLimit(
-  async (req: NextRequest, _context: unknown) => {
+  withAuth(async (req: AuthenticatedRequest) => {
     try {
       const payload = await getPayload({ config });
-
-      // Get user from session
-      const { user } = await payload.auth({ headers: req.headers });
-
-      if (!user) {
-        return unauthorized();
-      }
+      const user = req.user!;
 
       const quotaService = getQuotaService(payload);
 
@@ -116,6 +110,6 @@ export const GET = withRateLimit(
       logger.error("Failed to get quota status", { error });
       return internalError("Failed to retrieve quota information");
     }
-  },
+  }),
   { type: "API_GENERAL" }
 );

@@ -5,6 +5,11 @@
  * the entire dataset (with filters applied). These stats are used to maintain
  * consistent cluster visualization across all zoom levels and viewports.
  *
+ * **Architecture note:** Uses raw SQL with PostGIS functions instead of Payload's
+ * query API for performance. Access control is enforced via `getAllAccessibleCatalogIds()`
+ * which filters by catalog visibility and user ownership, ensuring equivalent
+ * security to Payload's built-in access control.
+ *
  * @module
  * @category API
  */

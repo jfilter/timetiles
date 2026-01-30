@@ -11,24 +11,20 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
+import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { getDataExportService } from "@/lib/services/data-export-service";
 import { getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import { internalError } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 /**
  * POST /api/account/download-data
  * Request a new data export.
  */
-export const POST = async (request: Request): Promise<Response> => {
+export const POST = withAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
-
-    // Authenticate user
-    const { user } = await payload.auth({ headers: request.headers });
-
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    const user = request.user!;
 
     // Rate limiting
     const rateLimitService = getRateLimitService(payload);
@@ -106,24 +102,18 @@ export const POST = async (request: Request): Promise<Response> => {
     );
   } catch (error) {
     logError(error, "Failed to initiate data export");
-    return NextResponse.json({ error: "Failed to start export" }, { status: 500 });
+    return internalError("Failed to start export");
   }
-};
+});
 
 /**
  * GET /api/account/download-data
  * List user's export history.
  */
-export const GET = async (request: Request): Promise<Response> => {
+export const GET = withAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
-
-    // Authenticate user
-    const { user } = await payload.auth({ headers: request.headers });
-
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    const user = request.user!;
 
     // Get user's exports
     const exports = await payload.find({
@@ -153,6 +143,6 @@ export const GET = async (request: Request): Promise<Response> => {
     });
   } catch (error) {
     logError(error, "Failed to list data exports");
-    return NextResponse.json({ error: "Failed to list exports" }, { status: 500 });
+    return internalError("Failed to list exports");
   }
-};
+});
