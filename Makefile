@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint lint-full typecheck typecheck-full format test test-ai test-e2e test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai image image-allinone help
+.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint lint-full typecheck typecheck-full format test test-ai test-e2e test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai images help
 
 all: help
 
@@ -290,30 +290,58 @@ check-full:
 	pnpm check:full
 
 # =============================================================================
-# Docker Images (local builds)
+# Docker Images
 # =============================================================================
 
-# Default image name and tag
+# Configuration (override via environment or command line)
 IMAGE_REGISTRY ?= ghcr.io/jfilter/timetiles
-IMAGE_TAG ?= local
+IMAGE_TAG ?= edge
+IMAGE_PLATFORMS ?= linux/amd64,linux/arm64
+IMAGE ?= both
+PUSH ?= true
 
-## Build main production Docker image locally
-## Usage: make image [IMAGE_TAG=...] [PLATFORM=linux/amd64]
-image:
-ifdef PLATFORM
-	docker build --platform $(PLATFORM) -f deployment/Dockerfile.prod -t $(IMAGE_REGISTRY):$(IMAGE_TAG) .
-else
-	docker build -f deployment/Dockerfile.prod -t $(IMAGE_REGISTRY):$(IMAGE_TAG) .
-endif
+# Load GHCR_TOKEN from .env if present
+-include .env
+export GHCR_TOKEN
 
-## Build all-in-one Docker image locally
-## Usage: make image-allinone [IMAGE_TAG=...] [PLATFORM=linux/amd64]
-image-allinone:
-ifdef PLATFORM
-	docker build --platform $(PLATFORM) -f deployment/Dockerfile.allinone -t $(IMAGE_REGISTRY):$(IMAGE_TAG)-allinone .
-else
-	docker build -f deployment/Dockerfile.allinone -t $(IMAGE_REGISTRY):$(IMAGE_TAG)-allinone .
-endif
+## Build and push Docker images to GHCR
+## Usage: make images [IMAGE=main|allinone|both] [IMAGE_TAG=edge] [PUSH=true|false]
+##        make images IMAGE_PLATFORMS=linux/arm64 IMAGE_TAG=1.2.0
+##        make images PUSH=false  # local build only
+images:
+	@# Ensure buildx builder exists
+	@docker buildx inspect multiplatform >/dev/null 2>&1 || \
+		docker buildx create --name multiplatform --use
+	@docker buildx use multiplatform
+	@# Login to GHCR if pushing
+	@if [ "$(PUSH)" = "true" ]; then \
+		if [ -z "$(GHCR_TOKEN)" ]; then \
+			echo "❌ GHCR_TOKEN not set. Add it to .env or export it."; \
+			echo "   Create a PAT with write:packages at:"; \
+			echo "   https://github.com/settings/tokens/new?scopes=write:packages"; \
+			exit 1; \
+		fi; \
+		echo "$(GHCR_TOKEN)" | docker login ghcr.io -u $(shell gh api user -q .login 2>/dev/null || echo jfilter) --password-stdin; \
+	fi
+	@# Build main image
+	@if [ "$(IMAGE)" = "main" ] || [ "$(IMAGE)" = "both" ]; then \
+		echo "📦 Building main image ($(IMAGE_PLATFORMS))..."; \
+		docker buildx build \
+			--platform $(IMAGE_PLATFORMS) \
+			-f deployment/Dockerfile.prod \
+			-t $(IMAGE_REGISTRY):$(IMAGE_TAG) \
+			$(if $(filter true,$(PUSH)),--push,--load) .; \
+	fi
+	@# Build all-in-one image
+	@if [ "$(IMAGE)" = "allinone" ] || [ "$(IMAGE)" = "both" ]; then \
+		echo "📦 Building all-in-one image ($(IMAGE_PLATFORMS))..."; \
+		docker buildx build \
+			--platform $(IMAGE_PLATFORMS) \
+			-f deployment/Dockerfile.allinone \
+			-t $(IMAGE_REGISTRY):$(IMAGE_TAG)-allinone \
+			$(if $(filter true,$(PUSH)),--push,--load) .; \
+	fi
+	@echo "✅ Done!"
 
 # Show help
 help:
@@ -371,10 +399,10 @@ help:
 		'  db-reset      - Reset database (removes all data)' \
 		'  db-reset-tests - Reset all test databases (drop + recreate e2e)' '' \
 		'📦 Docker Images:' \
-		'  image          - Build main production image locally' \
-		'  image-allinone - Build all-in-one image locally' \
-		'                   Override defaults: IMAGE_REGISTRY=... IMAGE_TAG=...' \
-		'                   Cross-build: PLATFORM=linux/amd64' '' \
+		'  images         - Build and push Docker images to GHCR' \
+		'                   Usage: make images [IMAGE=main|allinone|both]' \
+		'                   Options: IMAGE_TAG=edge, PUSH=true|false' \
+		'                   Platforms: IMAGE_PLATFORMS=linux/amd64,linux/arm64' '' \
 		'🐳 Infrastructure:' \
 		'  up          - Start development environment (docker compose)' \
 		'  down        - Stop development environment' \
