@@ -110,6 +110,19 @@ describe("Store Helper Functions", () => {
       expect(getActiveFilterCount(filters)).toBe(0);
     });
 
+    it("should count field filter values", () => {
+      const filters: FilterState = {
+        catalog: null,
+        datasets: [],
+        startDate: null,
+        endDate: null,
+        fieldFilters: { category: ["A", "B"], type: ["X"] },
+      };
+
+      // fieldFilters: 2 + 1 = 3
+      expect(getActiveFilterCount(filters)).toBe(3);
+    });
+
     it("should count all filter types together", () => {
       const filters: FilterState = {
         catalog: "catalog-1",
@@ -232,6 +245,30 @@ describe("Store Helper Functions", () => {
       };
 
       expect(hasActiveFilters(filters)).toBe(true);
+    });
+
+    it("should return true when fieldFilters have values", () => {
+      const filters: FilterState = {
+        catalog: null,
+        datasets: [],
+        startDate: null,
+        endDate: null,
+        fieldFilters: { category: ["A"] },
+      };
+
+      expect(hasActiveFilters(filters)).toBe(true);
+    });
+
+    it("should return false when fieldFilters are empty arrays", () => {
+      const filters: FilterState = {
+        catalog: null,
+        datasets: [],
+        startDate: null,
+        endDate: null,
+        fieldFilters: { category: [] },
+      };
+
+      expect(hasActiveFilters(filters)).toBe(false);
     });
   });
 
@@ -477,6 +514,92 @@ describe("Store Helper Functions", () => {
         expect(filters.endDate).toBe("2024-12-31");
         expect(result).not.toBe(filters);
       });
+    });
+  });
+
+  describe("fieldFilters removal", () => {
+    it("should remove specific field filter value with colon syntax", () => {
+      const filters: FilterState = {
+        catalog: null,
+        datasets: [],
+        startDate: null,
+        endDate: null,
+        fieldFilters: { category: ["A", "B"], type: ["X"] },
+      };
+
+      const result = removeFilter(filters, "fieldFilters", "category:A");
+
+      expect(result.fieldFilters).toEqual({ category: ["B"], type: ["X"] });
+    });
+
+    it("should remove entire field when last value removed", () => {
+      const filters: FilterState = {
+        catalog: null,
+        datasets: [],
+        startDate: null,
+        endDate: null,
+        fieldFilters: { category: ["A"] },
+      };
+
+      const result = removeFilter(filters, "fieldFilters", "category:A");
+
+      expect(result.fieldFilters).toEqual({});
+    });
+
+    it("should clear all field values for a field path without colon", () => {
+      const filters: FilterState = {
+        catalog: null,
+        datasets: [],
+        startDate: null,
+        endDate: null,
+        fieldFilters: { category: ["A", "B"], type: ["X"] },
+      };
+
+      const result = removeFilter(filters, "fieldFilters", "category");
+
+      expect(result.fieldFilters).toEqual({ type: ["X"] });
+    });
+
+    it("should clear all field filters when no value provided", () => {
+      const filters: FilterState = {
+        catalog: null,
+        datasets: [],
+        startDate: null,
+        endDate: null,
+        fieldFilters: { category: ["A"], type: ["X"] },
+      };
+
+      const result = removeFilter(filters, "fieldFilters");
+
+      expect(result.fieldFilters).toEqual({});
+    });
+
+    it("should also clear fieldFilters when removing catalog", () => {
+      const filters: FilterState = {
+        catalog: "catalog-1",
+        datasets: ["dataset-1"],
+        startDate: null,
+        endDate: null,
+        fieldFilters: { category: ["A"] },
+      };
+
+      const result = removeFilter(filters, "catalog");
+
+      expect(result.fieldFilters).toEqual({});
+    });
+
+    it("should also clear fieldFilters when removing datasets", () => {
+      const filters: FilterState = {
+        catalog: null,
+        datasets: ["dataset-1"],
+        startDate: null,
+        endDate: null,
+        fieldFilters: { category: ["A"] },
+      };
+
+      const result = removeFilter(filters, "datasets");
+
+      expect(result.fieldFilters).toEqual({});
     });
   });
 
