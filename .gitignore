@@ -90,3 +90,9 @@ apps/docs/content/reference/api/**/_meta.js
 .agents
 .worktrees/
 .vagrant/
+
+# Agent skills (installed by skills CLI)
+.agent/
+.gemini/
+.github/skills/
+.opencode/
