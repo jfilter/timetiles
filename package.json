@@ -33,11 +33,11 @@
     "nyc": "^17.1.0",
     "oxlint": "^1.42.0",
     "oxlint-tsgolint": "^0.11.3",
-    "prettier": "^3.8.1",
+    "prettier": "catalog:",
     "prettier-plugin-tailwindcss": "^0.7.2",
-    "tsx": "^4.21.0",
+    "tsx": "catalog:",
     "turbo": "^2.8.0",
-    "typescript": "^5.9.3"
+    "typescript": "catalog:"
   },
   "packageManager": "pnpm@10.12.4",
   "engines": {
@@ -53,6 +53,17 @@
       "cross-spawn": "^7.0.6",
       "dompurify": "^3.2.3",
       "esbuild": "^0.25.0"
+    },
+    "peerDependencyRules": {
+      "ignoreMissing": [
+        "monaco-editor",
+        "yjs",
+        "puppeteer"
+      ],
+      "allowedVersions": {
+        "@theguild/remark-mermaid>react": "^19",
+        "@typescript-eslint/utils>eslint": "^9"
+      }
     }
   }
 }

@@ -11,7 +11,7 @@
     "format": "eslint . --ext .ts,.tsx,.js,.jsx --cache --fix --quiet && prettier --write . --log-level error"
   },
   "devDependencies": {
-    "eslint": "^9.39.2",
-    "prettier": "^3.8.1"
+    "eslint": "catalog:",
+    "prettier": "catalog:"
   }
 }

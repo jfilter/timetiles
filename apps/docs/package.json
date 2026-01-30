@@ -20,25 +20,25 @@
   "dependencies": {
     "@timetiles/assets": "workspace:*",
     "@timetiles/ui": "workspace:*",
-    "next": "^16.1.6",
+    "next": "catalog:",
     "nextra": "^4.6.1",
     "nextra-theme-docs": "^4.6.1",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react": "catalog:",
+    "react-dom": "catalog:"
   },
   "devDependencies": {
-    "@svgr/webpack": "^8.1.0",
+    "@svgr/webpack": "catalog:",
     "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
-    "@types/node": "^25.1.0",
-    "@types/react": "^19.2.10",
-    "@types/react-dom": "^19.2.3",
-    "eslint": "^9.39.2",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "eslint": "catalog:",
     "glob": "^13.0.0",
     "nodemon": "^3.1.11",
-    "tsx": "^4.21.0",
+    "tsx": "catalog:",
     "typedoc": "^0.28.16",
     "typedoc-plugin-markdown": "^4.9.0",
-    "typescript": "^5.9.3"
+    "typescript": "catalog:"
   }
 }

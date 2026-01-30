@@ -17,7 +17,7 @@
     "format": "eslint . --ext .js --cache --fix --quiet && prettier --write . --log-level error"
   },
   "devDependencies": {
-    "eslint": "^9.39.2"
+    "eslint": "catalog:"
   },
   "peerDependencies": {
     "prettier": "^3.6.2",
