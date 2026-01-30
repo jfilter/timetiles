@@ -19,7 +19,7 @@ TimeTiles follows a **full-stack monorepo architecture** with clear separation o
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │   Backend       │    │   Database      │
 │                 │    │                 │    │                 │
-│ • Next.js 15    │◄──►│ • Payload CMS   │◄──►│ • PostgreSQL    │
+│ • Next.js 16    │◄──►│ • Payload CMS   │◄──►│ • PostgreSQL    │
 │ • React 19      │    │ • Node.js       │    │ • PostGIS       │
 │ • TypeScript    │    │ • TypeScript    │    │ • Spatial Index │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
@@ -29,7 +29,7 @@ TimeTiles follows a **full-stack monorepo architecture** with clear separation o
 
 ### Frontend Framework
 
-**Next.js 15 with Turbopack**
+**Next.js 16 with Turbopack**
 
 - **Why**: Full-stack React framework with excellent DX and performance
 - **Features**: App Router, Server Components, Turbopack bundler for faster builds
@@ -166,7 +166,7 @@ File Upload → Parsing → Coordinate Detection → Geocoding → Event Creatio
 **Technologies**:
 
 - **CSV/Excel Parsing**: Built-in Node.js libraries
-- **Geocoding**: Google Maps API with OpenStreetMap fallback
+- **Geocoding**: Multi-provider (Nominatim, Google Maps, OpenCage) with priority-based fallback
 - **Progress Tracking**: React Query polling with automatic termination
 - **Batch Processing**: Queue-based system with Payload jobs
 

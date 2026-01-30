@@ -243,7 +243,7 @@ export const geocodeBatchJob = {
         // Build detailed error message with failed locations (limit to first 5 for readability)
         const failedLocationsPreview = failures.slice(0, 5).map((f) => `"${f.location}": ${f.error}`);
         const moreCount = failures.length > 5 ? ` (and ${failures.length - 5} more)` : "";
-        const errorMessage = `Geocoding failed for all ${failureCount} locations. Please check your Google Maps API key is configured correctly.`;
+        const errorMessage = `Geocoding failed for all ${failureCount} locations. Please check your geocoding provider configuration in the admin panel.`;
         const detailedError = `${errorMessage}\n\nFailed locations${moreCount}:\n${failedLocationsPreview.join("\n")}`;
 
         await payload.update({

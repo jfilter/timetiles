@@ -182,7 +182,7 @@ export const pagesSeed: PageSeed[] = [
             icon: "insights",
             title: "Modern Stack",
             description:
-              "Built with Next.js 15, Payload CMS 3, PostGIS, and MapLibre GL JS. Self-hostable with Docker, fully typed with TypeScript.",
+              "Built with Next.js 16, Payload CMS 3, PostGIS, and MapLibre GL JS. Self-hostable with Docker, fully typed with TypeScript.",
             accent: "accent",
           },
         ],
