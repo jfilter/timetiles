@@ -10,6 +10,7 @@
  */
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 import {
@@ -18,16 +19,16 @@ import {
   useImportUploadMutation,
 } from "@/lib/hooks/use-events-queries";
 
-const getStatusIcon = (status: string): string => {
+const getStatusIcon = (status: string) => {
   switch (status) {
     case "completed":
-      return "✅";
+      return <span>✅</span>;
     case "failed":
-      return "❌";
+      return <span>❌</span>;
     case "processing":
-      return "⏳";
+      return <Loader2 className="h-5 w-5 animate-spin" />;
     default:
-      return "📄";
+      return <span>📄</span>;
   }
 };
 
@@ -159,7 +160,7 @@ const UploadButtons = ({
       >
         {uploading ? (
           <>
-            <span className="animate-spin">⏳</span>
+            <Loader2 className="h-4 w-4 animate-spin" />
             <span>Uploading...</span>
           </>
         ) : (
@@ -227,9 +228,9 @@ const JobsProgress = ({ jobs }: { jobs: ImportProgressResponse["jobs"] }) => {
               {job.rowsProcessed} / {job.rowsTotal} rows
             </span>
           </div>
-          <div className="h-1 w-full rounded-full bg-gray-200">
+          <div className="bg-muted h-1 w-full rounded-full">
             <div
-              className="h-1 rounded-full bg-green-600 transition-all duration-300"
+              className="bg-primary h-1 rounded-full transition-all duration-300"
               style={getProgressBarStyle(job.progress)}
             />
           </div>
@@ -257,9 +258,9 @@ const ProgressSection = ({ progress }: { progress: ImportProgressResponse | null
             <span>Overall Progress</span>
             <span>{progress.overallProgress}%</span>
           </div>
-          <div className="h-2 w-full rounded-full bg-gray-200">
+          <div className="bg-muted h-2 w-full rounded-full">
             <div
-              className="h-2 rounded-full bg-blue-600 transition-all duration-300"
+              className="bg-primary h-2 rounded-full transition-all duration-300"
               style={getProgressBarStyle(progress.overallProgress)}
             />
           </div>

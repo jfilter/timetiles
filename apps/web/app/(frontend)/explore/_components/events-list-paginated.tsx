@@ -10,6 +10,7 @@
 "use client";
 
 import { Button, ContentState } from "@timetiles/ui";
+import { Loader2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
 import type { FilterState } from "@/lib/filters";
@@ -107,7 +108,7 @@ export const EventsListPaginated = ({
           <Button variant="outline" onClick={handleLoadMore} disabled={isFetchingNextPage} className="min-w-48">
             {isFetchingNextPage ? (
               <>
-                <div className="border-primary mr-2 h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Loading...
               </>
             ) : (

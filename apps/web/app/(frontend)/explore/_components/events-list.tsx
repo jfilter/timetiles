@@ -14,6 +14,8 @@ import { useCallback } from "react";
 
 import type { Event } from "@/payload-types";
 
+import { EventsListSkeleton } from "./events-list-skeleton";
+
 interface EventsListProps {
   events: Event[];
   isInitialLoad?: boolean;
@@ -209,11 +211,7 @@ export const EventsList = ({
   onEventClick,
 }: Readonly<EventsListProps>) => {
   if (isInitialLoad) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-muted-foreground">Loading events...</div>
-      </div>
-    );
+    return <EventsListSkeleton count={6} />;
   }
 
   if (error) {
