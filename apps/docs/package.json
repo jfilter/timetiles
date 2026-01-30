@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm docs:api && next dev --port 3001",
-    "build": "pnpm docs:api && next build",
+    "build": "pnpm docs:api && next build --webpack",
     "docs:api": "cd ../web && pnpm exec typedoc && tsx ../docs/scripts/clean-typedoc-output.ts && tsx ../docs/scripts/generate-api-meta.ts",
     "docs:api:watch": "nodemon --watch ../web/lib --ext ts --exec \"pnpm docs:api\"",
     "start": "next start --port 3001",

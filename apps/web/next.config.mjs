@@ -14,6 +14,7 @@ const isProduction = process.env.NODE_ENV === "production";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@timetiles/ui", "@timetiles/assets"],
+  serverExternalPackages: ["sharp"],
   redirects: async () => [
     // Redirect Payload dashboard auth routes to main app
     {
