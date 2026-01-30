@@ -21,6 +21,7 @@ export {
   cardVariants,
   CardVersion,
 } from "./components/card";
+export { Checkbox } from "./components/checkbox";
 export { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./components/collapsible";
 export type { ContentStateProps } from "./components/content-state";
 export { ContentState } from "./components/content-state";
@@ -96,6 +97,16 @@ export {
   MobileNavDrawerOverlay,
   MobileNavDrawerTrigger,
 } from "./components/mobile-nav-drawer";
+export {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./components/table";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/tabs";
 
 // Page blocks - generic CMS components
