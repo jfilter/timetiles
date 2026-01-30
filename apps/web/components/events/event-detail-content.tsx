@@ -11,20 +11,9 @@
 /* eslint-disable complexity -- Event detail rendering has many conditional display sections */
 "use client";
 
-import { Button, Card, CardContent } from "@timetiles/ui";
+import { Button, Card, CardContent, ContentState } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import {
-  AlertTriangle,
-  Calendar,
-  Check,
-  Copy,
-  ExternalLink,
-  Loader2,
-  MapPin,
-  RefreshCw,
-  Share2,
-  X,
-} from "lucide-react";
+import { AlertTriangle, Calendar, Check, Copy, ExternalLink, Loader2, MapPin, Share2, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 
@@ -172,27 +161,27 @@ export const EventDetailSkeleton = () => (
 );
 
 // Error state component
-export const EventDetailError = ({ error, onRetry }: { error: Error | null; onRetry?: () => void }) => (
-  <div className="flex flex-col items-center justify-center py-12 text-center">
-    <div className="bg-destructive/10 mb-4 rounded-full p-4">
-      <AlertTriangle className="text-destructive h-8 w-8" />
-    </div>
-    <h3 className="mb-2 font-serif text-xl font-bold">
-      {error?.message?.includes("not found") ? "Event Not Found" : "Failed to Load Event"}
-    </h3>
-    <p className="text-muted-foreground mb-6 max-w-sm">
-      {error?.message?.includes("not found")
-        ? "This event may have been deleted or you don't have permission to view it."
-        : "There was a problem loading the event details. Please try again."}
-    </p>
-    {onRetry && !error?.message?.includes("not found") && (
-      <Button variant="outline" onClick={onRetry}>
-        <RefreshCw className="mr-2 h-4 w-4" />
-        Try Again
-      </Button>
-    )}
-  </div>
-);
+export const EventDetailError = ({ error, onRetry }: { error: Error | null; onRetry?: () => void }) => {
+  const isNotFound = error?.message?.includes("not found");
+  return (
+    <ContentState
+      variant="error"
+      icon={
+        <div className="bg-destructive/10 rounded-full p-4">
+          <AlertTriangle className="text-destructive h-8 w-8" />
+        </div>
+      }
+      title={isNotFound ? "Event Not Found" : "Failed to Load Event"}
+      subtitle={
+        isNotFound
+          ? "This event may have been deleted or you don't have permission to view it."
+          : "There was a problem loading the event details. Please try again."
+      }
+      onRetry={isNotFound ? undefined : onRetry}
+      className="py-12"
+    />
+  );
+};
 
 // Share button with internal state management
 const ShareButton = ({ title }: { title: string }) => {
