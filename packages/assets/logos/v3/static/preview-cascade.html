@@ -1,231 +1,251 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pixel Cascade Variations</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'DM Sans', -apple-system, sans-serif;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
-      padding: 40px 20px;
-      min-height: 100vh;
-    }
-    .container { max-width: 1600px; margin: 0 auto; }
-    h1 {
-      font-family: 'Playfair Display', serif;
-      color: white;
-      text-align: center;
-      margin-bottom: 10px;
-      font-size: 3.5rem;
-      text-shadow: 0 0 20px rgba(100, 149, 237, 0.5);
-      letter-spacing: -1px;
-    }
-    .subtitle {
-      color: rgba(255,255,255,0.9);
-      text-align: center;
-      margin-bottom: 50px;
-      font-size: 1.3rem;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-      gap: 30px;
-      margin-bottom: 60px;
-    }
-    .logo-card {
-      background: rgba(255,255,255,0.98);
-      border-radius: 16px;
-      padding: 35px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      position: relative;
-      overflow: hidden;
-    }
-    .logo-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, #6495ed, #0ea5e9, #06b6d4);
-      transform: scaleX(0);
-      transform-origin: left;
-      transition: transform 0.4s;
-    }
-    .logo-card:hover::before { transform: scaleX(1); }
-    .logo-card:hover {
-      transform: translateY(-12px) scale(1.03);
-      box-shadow: 0 30px 80px rgba(100, 149, 237, 0.5);
-    }
-    .logo-container {
-      width: 240px; height: 240px;
-      display: flex; align-items: center; justify-content: center;
-      background: #f8f5f0;
-      border-radius: 12px;
-      margin: 0 auto 25px;
-      border: 2px solid #e5e7eb;
-    }
-    .logo-container img { width: 120px; height: 120px; }
-    .logo-name {
-      font-weight: 800;
-      color: #1e293b;
-      text-align: center;
-      font-size: 1.25rem;
-      margin-bottom: 8px;
-      letter-spacing: -0.5px;
-    }
-    .logo-desc {
-      font-size: 0.95rem;
-      color: #64748b;
-      text-align: center;
-      line-height: 1.6;
-    }
-    .pattern-badge {
-      display: inline-block;
-      background: linear-gradient(135deg, #6495ed, #4a5568);
-      color: white;
-      padding: 5px 12px;
-      border-radius: 8px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      margin-top: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .section-title {
-      color: white;
-      font-family: 'Playfair Display', serif;
-      font-size: 2.2rem;
-      text-align: center;
-      margin: 60px 0 30px;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>💧 Pixel Cascade</h1>
-    <p class="subtitle">10 variations exploring different flow patterns — 2 colors max</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pixel Cascade Variations</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          "DM Sans",
+          -apple-system,
+          sans-serif;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+        padding: 40px 20px;
+        min-height: 100vh;
+      }
+      .container {
+        max-width: 1600px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-family: "Playfair Display", serif;
+        color: white;
+        text-align: center;
+        margin-bottom: 10px;
+        font-size: 3.5rem;
+        text-shadow: 0 0 20px rgba(100, 149, 237, 0.5);
+        letter-spacing: -1px;
+      }
+      .subtitle {
+        color: rgba(255, 255, 255, 0.9);
+        text-align: center;
+        margin-bottom: 50px;
+        font-size: 1.3rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 30px;
+        margin-bottom: 60px;
+      }
+      .logo-card {
+        background: rgba(255, 255, 255, 0.98);
+        border-radius: 16px;
+        padding: 35px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+      }
+      .logo-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #6495ed, #0ea5e9, #06b6d4);
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.4s;
+      }
+      .logo-card:hover::before {
+        transform: scaleX(1);
+      }
+      .logo-card:hover {
+        transform: translateY(-12px) scale(1.03);
+        box-shadow: 0 30px 80px rgba(100, 149, 237, 0.5);
+      }
+      .logo-container {
+        width: 240px;
+        height: 240px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f5f0;
+        border-radius: 12px;
+        margin: 0 auto 25px;
+        border: 2px solid #e5e7eb;
+      }
+      .logo-container img {
+        width: 120px;
+        height: 120px;
+      }
+      .logo-name {
+        font-weight: 800;
+        color: #1e293b;
+        text-align: center;
+        font-size: 1.25rem;
+        margin-bottom: 8px;
+        letter-spacing: -0.5px;
+      }
+      .logo-desc {
+        font-size: 0.95rem;
+        color: #64748b;
+        text-align: center;
+        line-height: 1.6;
+      }
+      .pattern-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #6495ed, #4a5568);
+        color: white;
+        padding: 5px 12px;
+        border-radius: 8px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        margin-top: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .section-title {
+        color: white;
+        font-family: "Playfair Display", serif;
+        font-size: 2.2rem;
+        text-align: center;
+        margin: 60px 0 30px;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>💧 Pixel Cascade</h1>
+      <p class="subtitle">10 variations exploring different flow patterns — 2 colors max</p>
 
-    <div class="grid">
-      <div class="logo-card">
-        <div class="logo-container">
-          <img src="cascade-01-symmetric.svg" alt="Symmetric">
+      <div class="grid">
+        <div class="logo-card">
+          <div class="logo-container">
+            <img src="cascade-01-symmetric.svg" alt="Symmetric" />
+          </div>
+          <div class="logo-name">Symmetric</div>
+          <div class="logo-desc">Center cascade expanding both ways</div>
+          <div class="pattern-badge">Balanced</div>
         </div>
-        <div class="logo-name">Symmetric</div>
-        <div class="logo-desc">Center cascade expanding both ways</div>
-        <div class="pattern-badge">Balanced</div>
+
+        <div class="logo-card">
+          <div class="logo-container">
+            <img src="cascade-02-left-flow.svg" alt="Left Flow" />
+          </div>
+          <div class="logo-name">Left Flow</div>
+          <div class="logo-desc">Diagonal cascade top-right to bottom-left</div>
+          <div class="pattern-badge">Directional</div>
+        </div>
+
+        <div class="logo-card">
+          <div class="logo-container">
+            <img src="cascade-03-double-stream.svg" alt="Double Stream" />
+          </div>
+          <div class="logo-name">Double Stream</div>
+          <div class="logo-desc">Two streams merging into one</div>
+          <div class="pattern-badge">Convergence</div>
+        </div>
+
+        <div class="logo-card">
+          <div class="logo-container">
+            <img src="cascade-04-wave-flow.svg" alt="Wave Flow" />
+          </div>
+          <div class="logo-name">Wave Flow</div>
+          <div class="logo-desc">Sinusoidal wave pattern cascade</div>
+          <div class="pattern-badge">Dynamic</div>
+        </div>
+
+        <div class="logo-card">
+          <div class="logo-container">
+            <img src="cascade-05-dense.svg" alt="Dense" />
+          </div>
+          <div class="logo-name">Dense</div>
+          <div class="logo-desc">High-density pixel waterfall</div>
+          <div class="pattern-badge">Complex</div>
+        </div>
+
+        <div class="logo-card">
+          <div class="logo-container">
+            <img src="cascade-06-spiral-cascade.svg" alt="Spiral" />
+          </div>
+          <div class="logo-name">Spiral Cascade</div>
+          <div class="logo-desc">Outward spiral from center</div>
+          <div class="pattern-badge">Radial</div>
+        </div>
+
+        <div class="logo-card">
+          <div class="logo-container">
+            <img src="cascade-07-split.svg" alt="Split" />
+          </div>
+          <div class="logo-name">Split</div>
+          <div class="logo-desc">Single stream splitting into two paths</div>
+          <div class="pattern-badge">Divergence</div>
+        </div>
+
+        <div class="logo-card">
+          <div class="logo-container">
+            <img src="cascade-08-stepped.svg" alt="Stepped" />
+          </div>
+          <div class="logo-name">Stepped</div>
+          <div class="logo-desc">Discrete stepped levels</div>
+          <div class="pattern-badge">Layered</div>
+        </div>
+
+        <div class="logo-card">
+          <div class="logo-container">
+            <img src="cascade-09-lightning.svg" alt="Lightning" />
+          </div>
+          <div class="logo-name">Lightning</div>
+          <div class="logo-desc">Electric zigzag bolt pattern</div>
+          <div class="pattern-badge">Sharp</div>
+        </div>
+
+        <div class="logo-card">
+          <div class="logo-container">
+            <img src="cascade-10-hourglass.svg" alt="Hourglass" />
+          </div>
+          <div class="logo-name">Hourglass</div>
+          <div class="logo-desc">Wide-narrow-wide time metaphor</div>
+          <div class="pattern-badge">Temporal</div>
+        </div>
       </div>
 
-      <div class="logo-card">
-        <div class="logo-container">
-          <img src="cascade-02-left-flow.svg" alt="Left Flow">
+      <h2 class="section-title">⭐ Top 3 Cascade Picks</h2>
+      <div class="grid">
+        <div class="logo-card">
+          <div class="logo-container" style="width: 280px; height: 280px">
+            <img src="cascade-10-hourglass.svg" style="width: 160px; height: 160px" />
+          </div>
+          <div class="logo-name">✨ Hourglass</div>
+          <div class="logo-desc">Perfect time metaphor with symmetric beauty</div>
         </div>
-        <div class="logo-name">Left Flow</div>
-        <div class="logo-desc">Diagonal cascade top-right to bottom-left</div>
-        <div class="pattern-badge">Directional</div>
-      </div>
 
-      <div class="logo-card">
-        <div class="logo-container">
-          <img src="cascade-03-double-stream.svg" alt="Double Stream">
+        <div class="logo-card">
+          <div class="logo-container" style="width: 280px; height: 280px">
+            <img src="cascade-07-split.svg" style="width: 160px; height: 160px" />
+          </div>
+          <div class="logo-name">✨ Split</div>
+          <div class="logo-desc">Diverging paths — multiple timelines concept</div>
         </div>
-        <div class="logo-name">Double Stream</div>
-        <div class="logo-desc">Two streams merging into one</div>
-        <div class="pattern-badge">Convergence</div>
-      </div>
 
-      <div class="logo-card">
-        <div class="logo-container">
-          <img src="cascade-04-wave-flow.svg" alt="Wave Flow">
+        <div class="logo-card">
+          <div class="logo-container" style="width: 280px; height: 280px">
+            <img src="cascade-01-symmetric.svg" style="width: 160px; height: 160px" />
+          </div>
+          <div class="logo-name">✨ Symmetric</div>
+          <div class="logo-desc">Clean, balanced, instantly recognizable</div>
         </div>
-        <div class="logo-name">Wave Flow</div>
-        <div class="logo-desc">Sinusoidal wave pattern cascade</div>
-        <div class="pattern-badge">Dynamic</div>
-      </div>
-
-      <div class="logo-card">
-        <div class="logo-container">
-          <img src="cascade-05-dense.svg" alt="Dense">
-        </div>
-        <div class="logo-name">Dense</div>
-        <div class="logo-desc">High-density pixel waterfall</div>
-        <div class="pattern-badge">Complex</div>
-      </div>
-
-      <div class="logo-card">
-        <div class="logo-container">
-          <img src="cascade-06-spiral-cascade.svg" alt="Spiral">
-        </div>
-        <div class="logo-name">Spiral Cascade</div>
-        <div class="logo-desc">Outward spiral from center</div>
-        <div class="pattern-badge">Radial</div>
-      </div>
-
-      <div class="logo-card">
-        <div class="logo-container">
-          <img src="cascade-07-split.svg" alt="Split">
-        </div>
-        <div class="logo-name">Split</div>
-        <div class="logo-desc">Single stream splitting into two paths</div>
-        <div class="pattern-badge">Divergence</div>
-      </div>
-
-      <div class="logo-card">
-        <div class="logo-container">
-          <img src="cascade-08-stepped.svg" alt="Stepped">
-        </div>
-        <div class="logo-name">Stepped</div>
-        <div class="logo-desc">Discrete stepped levels</div>
-        <div class="pattern-badge">Layered</div>
-      </div>
-
-      <div class="logo-card">
-        <div class="logo-container">
-          <img src="cascade-09-lightning.svg" alt="Lightning">
-        </div>
-        <div class="logo-name">Lightning</div>
-        <div class="logo-desc">Electric zigzag bolt pattern</div>
-        <div class="pattern-badge">Sharp</div>
-      </div>
-
-      <div class="logo-card">
-        <div class="logo-container">
-          <img src="cascade-10-hourglass.svg" alt="Hourglass">
-        </div>
-        <div class="logo-name">Hourglass</div>
-        <div class="logo-desc">Wide-narrow-wide time metaphor</div>
-        <div class="pattern-badge">Temporal</div>
       </div>
     </div>
-
-    <h2 class="section-title">⭐ Top 3 Cascade Picks</h2>
-    <div class="grid">
-      <div class="logo-card">
-        <div class="logo-container" style="width: 280px; height: 280px;">
-          <img src="cascade-10-hourglass.svg" style="width: 160px; height: 160px;">
-        </div>
-        <div class="logo-name">✨ Hourglass</div>
-        <div class="logo-desc">Perfect time metaphor with symmetric beauty</div>
-      </div>
-
-      <div class="logo-card">
-        <div class="logo-container" style="width: 280px; height: 280px;">
-          <img src="cascade-07-split.svg" style="width: 160px; height: 160px;">
-        </div>
-        <div class="logo-name">✨ Split</div>
-        <div class="logo-desc">Diverging paths — multiple timelines concept</div>
-      </div>
-
-      <div class="logo-card">
-        <div class="logo-container" style="width: 280px; height: 280px;">
-          <img src="cascade-01-symmetric.svg" style="width: 160px; height: 160px;">
-        </div>
-        <div class="logo-name">✨ Symmetric</div>
-        <div class="logo-desc">Clean, balanced, instantly recognizable</div>
-      </div>
-    </div>
-  </div>
-</body>
+  </body>
 </html>

@@ -1,621 +1,624 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TimeTiles Logo V3 - Double Diamond Variations</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TimeTiles Logo V3 - Double Diamond Variations</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      color: #f8f5f0;
-      padding: 3rem;
-      line-height: 1.6;
-    }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: #f8f5f0;
+        padding: 3rem;
+        line-height: 1.6;
+      }
 
-    .header {
-      text-align: center;
-      margin-bottom: 3rem;
-      padding-bottom: 2rem;
-      border-bottom: 1px solid rgba(248, 245, 240, 0.2);
-    }
+      .header {
+        text-align: center;
+        margin-bottom: 3rem;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid rgba(248, 245, 240, 0.2);
+      }
 
-    h1 {
-      font-size: 2.5rem;
-      font-weight: 300;
-      margin-bottom: 0.5rem;
-      letter-spacing: -0.02em;
-    }
+      h1 {
+        font-size: 2.5rem;
+        font-weight: 300;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.02em;
+      }
 
-    .subtitle {
-      font-size: 1.1rem;
-      color: #a0a0a0;
-      font-weight: 400;
-    }
+      .subtitle {
+        font-size: 1.1rem;
+        color: #a0a0a0;
+        font-weight: 400;
+      }
 
-    .description {
-      max-width: 800px;
-      margin: 2rem auto;
-      padding: 1.5rem;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 8px;
-      border-left: 3px solid #6495ed;
-    }
+      .description {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        border-left: 3px solid #6495ed;
+      }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-      gap: 2rem;
-      margin-bottom: 3rem;
-    }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+      }
 
-    .card {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 12px;
-      padding: 2rem;
-      border: 1px solid rgba(248, 245, 240, 0.1);
-      transition: all 0.3s ease;
-    }
+      .card {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 2rem;
+        border: 1px solid rgba(248, 245, 240, 0.1);
+        transition: all 0.3s ease;
+      }
 
-    .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
-      border-color: rgba(100, 149, 237, 0.3);
-    }
+      .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+        border-color: rgba(100, 149, 237, 0.3);
+      }
 
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.5rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid rgba(248, 245, 240, 0.1);
-    }
+      .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(248, 245, 240, 0.1);
+      }
 
-    .card-title {
-      font-size: 1.1rem;
-      font-weight: 500;
-      color: #6495ed;
-    }
+      .card-title {
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: #6495ed;
+      }
 
-    .card-number {
-      font-size: 0.875rem;
-      color: #a0a0a0;
-      font-family: 'SF Mono', Monaco, monospace;
-    }
+      .card-number {
+        font-size: 0.875rem;
+        color: #a0a0a0;
+        font-family: "SF Mono", Monaco, monospace;
+      }
 
-    .logo-display {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 2rem;
-      margin-bottom: 1.5rem;
-      padding: 2rem;
-      background: rgba(0, 0, 0, 0.2);
-      border-radius: 8px;
-    }
+      .logo-display {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2rem;
+        margin-bottom: 1.5rem;
+        padding: 2rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+      }
 
-    .size-tests {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 1rem;
-      padding: 1rem;
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 6px;
-      margin-bottom: 1rem;
-    }
+      .size-tests {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 6px;
+        margin-bottom: 1rem;
+      }
 
-    .size-test {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-    }
+      .size-test {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+      }
 
-    .size-test-label {
-      font-size: 0.7rem;
-      color: #808080;
-    }
+      .size-test-label {
+        font-size: 0.7rem;
+        color: #808080;
+      }
 
-    .features {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
+      .features {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
 
-    .feature-tag {
-      font-size: 0.75rem;
-      padding: 0.25rem 0.75rem;
-      background: rgba(100, 149, 237, 0.15);
-      border: 1px solid rgba(100, 149, 237, 0.3);
-      border-radius: 12px;
-      color: #6495ed;
-    }
+      .feature-tag {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        background: rgba(100, 149, 237, 0.15);
+        border: 1px solid rgba(100, 149, 237, 0.3);
+        border-radius: 12px;
+        color: #6495ed;
+      }
 
-    .comparison-section {
-      margin-top: 3rem;
-      padding-top: 3rem;
-      border-top: 1px solid rgba(248, 245, 240, 0.2);
-    }
+      .comparison-section {
+        margin-top: 3rem;
+        padding-top: 3rem;
+        border-top: 1px solid rgba(248, 245, 240, 0.2);
+      }
 
-    .comparison-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 1.5rem;
-      margin-top: 2rem;
-    }
+      .comparison-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+      }
 
-    .comparison-item {
-      text-align: center;
-      padding: 1.5rem;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 8px;
-      transition: all 0.2s ease;
-    }
+      .comparison-item {
+        text-align: center;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        transition: all 0.2s ease;
+      }
 
-    .comparison-item:hover {
-      background: rgba(255, 255, 255, 0.08);
-      transform: scale(1.05);
-    }
+      .comparison-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+        transform: scale(1.05);
+      }
 
-    .comparison-label {
-      font-size: 0.75rem;
-      color: #a0a0a0;
-      margin-top: 0.5rem;
-    }
+      .comparison-label {
+        font-size: 0.75rem;
+        color: #a0a0a0;
+        margin-top: 0.5rem;
+      }
 
-    .section-title {
-      font-size: 1.5rem;
-      font-weight: 400;
-      margin-bottom: 1rem;
-      text-align: center;
-    }
+      .section-title {
+        font-size: 1.5rem;
+        font-weight: 400;
+        margin-bottom: 1rem;
+        text-align: center;
+      }
 
-    .favorite {
-      border-color: rgba(100, 149, 237, 0.5);
-      background: rgba(100, 149, 237, 0.05);
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>TimeTiles Logo V3</h1>
-    <p class="subtitle">Double Diamond Variations – Refined Elegance</p>
+      .favorite {
+        border-color: rgba(100, 149, 237, 0.5);
+        background: rgba(100, 149, 237, 0.05);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>TimeTiles Logo V3</h1>
+      <p class="subtitle">Double Diamond Variations – Refined Elegance</p>
 
-    <div class="description">
-      <strong>Refined double diamond concept:</strong> All variations stay true to the original double diamond design — two vertically stacked diamonds meeting at a center point. Each variation refines proportions, spacing, and blue accent placement while maintaining the core symmetry and outline style. The double diamond represents duality (past/future, input/output, time/space) unified at the center.
-    </div>
-  </div>
-
-  <div class="grid">
-    <!-- 01: Elegant -->
-    <div class="card favorite">
-      <div class="card-header">
-        <div class="card-title">Elegant ⭐</div>
-        <div class="card-number">diamond-01</div>
-      </div>
-
-      <div class="logo-display">
-        <img src="diamond-01-elegant.svg" width="120" height="120" alt="Elegant">
-      </div>
-
-      <div class="size-tests">
-        <div class="size-test">
-          <img src="diamond-01-elegant.svg" width="32" height="32" alt="32px">
-          <span class="size-test-label">32px</span>
-        </div>
-        <div class="size-test">
-          <img src="diamond-01-elegant.svg" width="48" height="48" alt="48px">
-          <span class="size-test-label">48px</span>
-        </div>
-        <div class="size-test">
-          <img src="diamond-01-elegant.svg" width="64" height="64" alt="64px">
-          <span class="size-test-label">64px</span>
-        </div>
-      </div>
-
-      <div class="features">
-        <span class="feature-tag">Refined Fill</span>
-        <span class="feature-tag">Large Scale</span>
-        <span class="feature-tag">Graceful</span>
+      <div class="description">
+        <strong>Refined double diamond concept:</strong> All variations stay true to the original double diamond design
+        — two vertically stacked diamonds meeting at a center point. Each variation refines proportions, spacing, and
+        blue accent placement while maintaining the core symmetry and outline style. The double diamond represents
+        duality (past/future, input/output, time/space) unified at the center.
       </div>
     </div>
 
-    <!-- 02: Refined -->
-    <div class="card favorite">
-      <div class="card-header">
-        <div class="card-title">Refined ⭐</div>
-        <div class="card-number">diamond-02</div>
+    <div class="grid">
+      <!-- 01: Elegant -->
+      <div class="card favorite">
+        <div class="card-header">
+          <div class="card-title">Elegant ⭐</div>
+          <div class="card-number">diamond-01</div>
+        </div>
+
+        <div class="logo-display">
+          <img src="diamond-01-elegant.svg" width="120" height="120" alt="Elegant" />
+        </div>
+
+        <div class="size-tests">
+          <div class="size-test">
+            <img src="diamond-01-elegant.svg" width="32" height="32" alt="32px" />
+            <span class="size-test-label">32px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-01-elegant.svg" width="48" height="48" alt="48px" />
+            <span class="size-test-label">48px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-01-elegant.svg" width="64" height="64" alt="64px" />
+            <span class="size-test-label">64px</span>
+          </div>
+        </div>
+
+        <div class="features">
+          <span class="feature-tag">Refined Fill</span>
+          <span class="feature-tag">Large Scale</span>
+          <span class="feature-tag">Graceful</span>
+        </div>
       </div>
 
-      <div class="logo-display">
-        <img src="diamond-02-refined.svg" width="120" height="120" alt="Refined">
+      <!-- 02: Refined -->
+      <div class="card favorite">
+        <div class="card-header">
+          <div class="card-title">Refined ⭐</div>
+          <div class="card-number">diamond-02</div>
+        </div>
+
+        <div class="logo-display">
+          <img src="diamond-02-refined.svg" width="120" height="120" alt="Refined" />
+        </div>
+
+        <div class="size-tests">
+          <div class="size-test">
+            <img src="diamond-02-refined.svg" width="32" height="32" alt="32px" />
+            <span class="size-test-label">32px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-02-refined.svg" width="48" height="48" alt="48px" />
+            <span class="size-test-label">48px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-02-refined.svg" width="64" height="64" alt="64px" />
+            <span class="size-test-label">64px</span>
+          </div>
+        </div>
+
+        <div class="features">
+          <span class="feature-tag">Balanced</span>
+          <span class="feature-tag">Clean Outline</span>
+          <span class="feature-tag">Scalable</span>
+        </div>
       </div>
 
-      <div class="size-tests">
-        <div class="size-test">
-          <img src="diamond-02-refined.svg" width="32" height="32" alt="32px">
-          <span class="size-test-label">32px</span>
+      <!-- 03: Clean -->
+      <div class="card favorite">
+        <div class="card-header">
+          <div class="card-title">Clean ⭐</div>
+          <div class="card-number">diamond-03</div>
         </div>
-        <div class="size-test">
-          <img src="diamond-02-refined.svg" width="48" height="48" alt="48px">
-          <span class="size-test-label">48px</span>
+
+        <div class="logo-display">
+          <img src="diamond-03-clean.svg" width="120" height="120" alt="Clean" />
         </div>
-        <div class="size-test">
-          <img src="diamond-02-refined.svg" width="64" height="64" alt="64px">
-          <span class="size-test-label">64px</span>
+
+        <div class="size-tests">
+          <div class="size-test">
+            <img src="diamond-03-clean.svg" width="32" height="32" alt="32px" />
+            <span class="size-test-label">32px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-03-clean.svg" width="48" height="48" alt="48px" />
+            <span class="size-test-label">48px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-03-clean.svg" width="64" height="64" alt="64px" />
+            <span class="size-test-label">64px</span>
+          </div>
+        </div>
+
+        <div class="features">
+          <span class="feature-tag">Outline Only</span>
+          <span class="feature-tag">Large</span>
+          <span class="feature-tag">Minimal</span>
         </div>
       </div>
 
-      <div class="features">
-        <span class="feature-tag">Balanced</span>
-        <span class="feature-tag">Clean Outline</span>
-        <span class="feature-tag">Scalable</span>
+      <!-- 04: Compact -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Compact</div>
+          <div class="card-number">diamond-04</div>
+        </div>
+
+        <div class="logo-display">
+          <img src="diamond-04-compact.svg" width="120" height="120" alt="Compact" />
+        </div>
+
+        <div class="size-tests">
+          <div class="size-test">
+            <img src="diamond-04-compact.svg" width="32" height="32" alt="32px" />
+            <span class="size-test-label">32px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-04-compact.svg" width="48" height="48" alt="48px" />
+            <span class="size-test-label">48px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-04-compact.svg" width="64" height="64" alt="64px" />
+            <span class="size-test-label">64px</span>
+          </div>
+        </div>
+
+        <div class="features">
+          <span class="feature-tag">Tight</span>
+          <span class="feature-tag">Space Efficient</span>
+          <span class="feature-tag">Dense</span>
+        </div>
+      </div>
+
+      <!-- 05: Balanced -->
+      <div class="card favorite">
+        <div class="card-header">
+          <div class="card-title">Balanced ⭐</div>
+          <div class="card-number">diamond-05</div>
+        </div>
+
+        <div class="logo-display">
+          <img src="diamond-05-balanced.svg" width="120" height="120" alt="Balanced" />
+        </div>
+
+        <div class="size-tests">
+          <div class="size-test">
+            <img src="diamond-05-balanced.svg" width="32" height="32" alt="32px" />
+            <span class="size-test-label">32px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-05-balanced.svg" width="48" height="48" alt="48px" />
+            <span class="size-test-label">48px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-05-balanced.svg" width="64" height="64" alt="64px" />
+            <span class="size-test-label">64px</span>
+          </div>
+        </div>
+
+        <div class="features">
+          <span class="feature-tag">Perfect Proportions</span>
+          <span class="feature-tag">Tall</span>
+          <span class="feature-tag">Elegant</span>
+        </div>
+      </div>
+
+      <!-- 06: Simple -->
+      <div class="card favorite">
+        <div class="card-header">
+          <div class="card-title">Simple ⭐</div>
+          <div class="card-number">diamond-06</div>
+        </div>
+
+        <div class="logo-display">
+          <img src="diamond-06-simple.svg" width="120" height="120" alt="Simple" />
+        </div>
+
+        <div class="size-tests">
+          <div class="size-test">
+            <img src="diamond-06-simple.svg" width="32" height="32" alt="32px" />
+            <span class="size-test-label">32px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-06-simple.svg" width="48" height="48" alt="48px" />
+            <span class="size-test-label">48px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-06-simple.svg" width="64" height="64" alt="64px" />
+            <span class="size-test-label">64px</span>
+          </div>
+        </div>
+
+        <div class="features">
+          <span class="feature-tag">Ultra Minimal</span>
+          <span class="feature-tag">Outline</span>
+          <span class="feature-tag">Scalable</span>
+        </div>
+      </div>
+
+      <!-- 07: Extended -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Extended</div>
+          <div class="card-number">diamond-07</div>
+        </div>
+
+        <div class="logo-display">
+          <img src="diamond-07-extended.svg" width="120" height="120" alt="Extended" />
+        </div>
+
+        <div class="size-tests">
+          <div class="size-test">
+            <img src="diamond-07-extended.svg" width="32" height="32" alt="32px" />
+            <span class="size-test-label">32px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-07-extended.svg" width="48" height="48" alt="48px" />
+            <span class="size-test-label">48px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-07-extended.svg" width="64" height="64" alt="64px" />
+            <span class="size-test-label">64px</span>
+          </div>
+        </div>
+
+        <div class="features">
+          <span class="feature-tag">Tallest</span>
+          <span class="feature-tag">Vertical</span>
+          <span class="feature-tag">Detailed</span>
+        </div>
+      </div>
+
+      <!-- 08: Precise -->
+      <div class="card favorite">
+        <div class="card-header">
+          <div class="card-title">Precise ⭐</div>
+          <div class="card-number">diamond-08</div>
+        </div>
+
+        <div class="logo-display">
+          <img src="diamond-08-precise.svg" width="120" height="120" alt="Precise" />
+        </div>
+
+        <div class="size-tests">
+          <div class="size-test">
+            <img src="diamond-08-precise.svg" width="32" height="32" alt="32px" />
+            <span class="size-test-label">32px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-08-precise.svg" width="48" height="48" alt="48px" />
+            <span class="size-test-label">48px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-08-precise.svg" width="64" height="64" alt="64px" />
+            <span class="size-test-label">64px</span>
+          </div>
+        </div>
+
+        <div class="features">
+          <span class="feature-tag">Blue Highlights</span>
+          <span class="feature-tag">Symmetrical</span>
+          <span class="feature-tag">Sharp</span>
+        </div>
+      </div>
+
+      <!-- 09: Slim -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Slim</div>
+          <div class="card-number">diamond-09</div>
+        </div>
+
+        <div class="logo-display">
+          <img src="diamond-09-slim.svg" width="120" height="120" alt="Slim" />
+        </div>
+
+        <div class="size-tests">
+          <div class="size-test">
+            <img src="diamond-09-slim.svg" width="32" height="32" alt="32px" />
+            <span class="size-test-label">32px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-09-slim.svg" width="48" height="48" alt="48px" />
+            <span class="size-test-label">48px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-09-slim.svg" width="64" height="64" alt="64px" />
+            <span class="size-test-label">64px</span>
+          </div>
+        </div>
+
+        <div class="features">
+          <span class="feature-tag">Filled Centers</span>
+          <span class="feature-tag">Narrow</span>
+          <span class="feature-tag">Solid</span>
+        </div>
+      </div>
+
+      <!-- 10: Classic -->
+      <div class="card favorite">
+        <div class="card-header">
+          <div class="card-title">Classic ⭐</div>
+          <div class="card-number">diamond-10</div>
+        </div>
+
+        <div class="logo-display">
+          <img src="diamond-10-classic.svg" width="120" height="120" alt="Classic" />
+        </div>
+
+        <div class="size-tests">
+          <div class="size-test">
+            <img src="diamond-10-classic.svg" width="32" height="32" alt="32px" />
+            <span class="size-test-label">32px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-10-classic.svg" width="48" height="48" alt="48px" />
+            <span class="size-test-label">48px</span>
+          </div>
+          <div class="size-test">
+            <img src="diamond-10-classic.svg" width="64" height="64" alt="64px" />
+            <span class="size-test-label">64px</span>
+          </div>
+        </div>
+
+        <div class="features">
+          <span class="feature-tag">Improved Original</span>
+          <span class="feature-tag">Timeless</span>
+          <span class="feature-tag">Refined</span>
+        </div>
       </div>
     </div>
 
-    <!-- 03: Clean -->
-    <div class="card favorite">
-      <div class="card-header">
-        <div class="card-title">Clean ⭐</div>
-        <div class="card-number">diamond-03</div>
-      </div>
-
-      <div class="logo-display">
-        <img src="diamond-03-clean.svg" width="120" height="120" alt="Clean">
-      </div>
-
-      <div class="size-tests">
-        <div class="size-test">
-          <img src="diamond-03-clean.svg" width="32" height="32" alt="32px">
-          <span class="size-test-label">32px</span>
+    <div class="comparison-section">
+      <h2 class="section-title">All 10 Variations at 64px</h2>
+      <div class="comparison-grid">
+        <div class="comparison-item">
+          <img src="diamond-01-elegant.svg" width="64" height="64" alt="Elegant" />
+          <div class="comparison-label">01: Elegant ⭐</div>
         </div>
-        <div class="size-test">
-          <img src="diamond-03-clean.svg" width="48" height="48" alt="48px">
-          <span class="size-test-label">48px</span>
+        <div class="comparison-item">
+          <img src="diamond-02-refined.svg" width="64" height="64" alt="Refined" />
+          <div class="comparison-label">02: Refined ⭐</div>
         </div>
-        <div class="size-test">
-          <img src="diamond-03-clean.svg" width="64" height="64" alt="64px">
-          <span class="size-test-label">64px</span>
+        <div class="comparison-item">
+          <img src="diamond-03-clean.svg" width="64" height="64" alt="Clean" />
+          <div class="comparison-label">03: Clean ⭐</div>
         </div>
-      </div>
-
-      <div class="features">
-        <span class="feature-tag">Outline Only</span>
-        <span class="feature-tag">Large</span>
-        <span class="feature-tag">Minimal</span>
+        <div class="comparison-item">
+          <img src="diamond-04-compact.svg" width="64" height="64" alt="Compact" />
+          <div class="comparison-label">04: Compact</div>
+        </div>
+        <div class="comparison-item">
+          <img src="diamond-05-balanced.svg" width="64" height="64" alt="Balanced" />
+          <div class="comparison-label">05: Balanced ⭐</div>
+        </div>
+        <div class="comparison-item">
+          <img src="diamond-06-simple.svg" width="64" height="64" alt="Simple" />
+          <div class="comparison-label">06: Simple ⭐</div>
+        </div>
+        <div class="comparison-item">
+          <img src="diamond-07-extended.svg" width="64" height="64" alt="Extended" />
+          <div class="comparison-label">07: Extended</div>
+        </div>
+        <div class="comparison-item">
+          <img src="diamond-08-precise.svg" width="64" height="64" alt="Precise" />
+          <div class="comparison-label">08: Precise ⭐</div>
+        </div>
+        <div class="comparison-item">
+          <img src="diamond-09-slim.svg" width="64" height="64" alt="Slim" />
+          <div class="comparison-label">09: Slim</div>
+        </div>
+        <div class="comparison-item">
+          <img src="diamond-10-classic.svg" width="64" height="64" alt="Classic" />
+          <div class="comparison-label">10: Classic ⭐</div>
+        </div>
       </div>
     </div>
 
-    <!-- 04: Compact -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Compact</div>
-        <div class="card-number">diamond-04</div>
-      </div>
-
-      <div class="logo-display">
-        <img src="diamond-04-compact.svg" width="120" height="120" alt="Compact">
-      </div>
-
-      <div class="size-tests">
-        <div class="size-test">
-          <img src="diamond-04-compact.svg" width="32" height="32" alt="32px">
-          <span class="size-test-label">32px</span>
+    <div class="comparison-section">
+      <h2 class="section-title">Favicon Test (32px)</h2>
+      <div class="comparison-grid">
+        <div class="comparison-item">
+          <img src="diamond-01-elegant.svg" width="32" height="32" alt="Elegant" />
+          <div class="comparison-label">01</div>
         </div>
-        <div class="size-test">
-          <img src="diamond-04-compact.svg" width="48" height="48" alt="48px">
-          <span class="size-test-label">48px</span>
+        <div class="comparison-item">
+          <img src="diamond-02-refined.svg" width="32" height="32" alt="Refined" />
+          <div class="comparison-label">02</div>
         </div>
-        <div class="size-test">
-          <img src="diamond-04-compact.svg" width="64" height="64" alt="64px">
-          <span class="size-test-label">64px</span>
+        <div class="comparison-item">
+          <img src="diamond-03-clean.svg" width="32" height="32" alt="Clean" />
+          <div class="comparison-label">03</div>
         </div>
-      </div>
-
-      <div class="features">
-        <span class="feature-tag">Tight</span>
-        <span class="feature-tag">Space Efficient</span>
-        <span class="feature-tag">Dense</span>
+        <div class="comparison-item">
+          <img src="diamond-04-compact.svg" width="32" height="32" alt="Compact" />
+          <div class="comparison-label">04</div>
+        </div>
+        <div class="comparison-item">
+          <img src="diamond-05-balanced.svg" width="32" height="32" alt="Balanced" />
+          <div class="comparison-label">05</div>
+        </div>
+        <div class="comparison-item">
+          <img src="diamond-06-simple.svg" width="32" height="32" alt="Simple" />
+          <div class="comparison-label">06</div>
+        </div>
+        <div class="comparison-item">
+          <img src="diamond-07-extended.svg" width="32" height="32" alt="Extended" />
+          <div class="comparison-label">07</div>
+        </div>
+        <div class="comparison-item">
+          <img src="diamond-08-precise.svg" width="32" height="32" alt="Precise" />
+          <div class="comparison-label">08</div>
+        </div>
+        <div class="comparison-item">
+          <img src="diamond-09-slim.svg" width="32" height="32" alt="Slim" />
+          <div class="comparison-label">09</div>
+        </div>
+        <div class="comparison-item">
+          <img src="diamond-10-classic.svg" width="32" height="32" alt="Classic" />
+          <div class="comparison-label">10</div>
+        </div>
       </div>
     </div>
-
-    <!-- 05: Balanced -->
-    <div class="card favorite">
-      <div class="card-header">
-        <div class="card-title">Balanced ⭐</div>
-        <div class="card-number">diamond-05</div>
-      </div>
-
-      <div class="logo-display">
-        <img src="diamond-05-balanced.svg" width="120" height="120" alt="Balanced">
-      </div>
-
-      <div class="size-tests">
-        <div class="size-test">
-          <img src="diamond-05-balanced.svg" width="32" height="32" alt="32px">
-          <span class="size-test-label">32px</span>
-        </div>
-        <div class="size-test">
-          <img src="diamond-05-balanced.svg" width="48" height="48" alt="48px">
-          <span class="size-test-label">48px</span>
-        </div>
-        <div class="size-test">
-          <img src="diamond-05-balanced.svg" width="64" height="64" alt="64px">
-          <span class="size-test-label">64px</span>
-        </div>
-      </div>
-
-      <div class="features">
-        <span class="feature-tag">Perfect Proportions</span>
-        <span class="feature-tag">Tall</span>
-        <span class="feature-tag">Elegant</span>
-      </div>
-    </div>
-
-    <!-- 06: Simple -->
-    <div class="card favorite">
-      <div class="card-header">
-        <div class="card-title">Simple ⭐</div>
-        <div class="card-number">diamond-06</div>
-      </div>
-
-      <div class="logo-display">
-        <img src="diamond-06-simple.svg" width="120" height="120" alt="Simple">
-      </div>
-
-      <div class="size-tests">
-        <div class="size-test">
-          <img src="diamond-06-simple.svg" width="32" height="32" alt="32px">
-          <span class="size-test-label">32px</span>
-        </div>
-        <div class="size-test">
-          <img src="diamond-06-simple.svg" width="48" height="48" alt="48px">
-          <span class="size-test-label">48px</span>
-        </div>
-        <div class="size-test">
-          <img src="diamond-06-simple.svg" width="64" height="64" alt="64px">
-          <span class="size-test-label">64px</span>
-        </div>
-      </div>
-
-      <div class="features">
-        <span class="feature-tag">Ultra Minimal</span>
-        <span class="feature-tag">Outline</span>
-        <span class="feature-tag">Scalable</span>
-      </div>
-    </div>
-
-    <!-- 07: Extended -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Extended</div>
-        <div class="card-number">diamond-07</div>
-      </div>
-
-      <div class="logo-display">
-        <img src="diamond-07-extended.svg" width="120" height="120" alt="Extended">
-      </div>
-
-      <div class="size-tests">
-        <div class="size-test">
-          <img src="diamond-07-extended.svg" width="32" height="32" alt="32px">
-          <span class="size-test-label">32px</span>
-        </div>
-        <div class="size-test">
-          <img src="diamond-07-extended.svg" width="48" height="48" alt="48px">
-          <span class="size-test-label">48px</span>
-        </div>
-        <div class="size-test">
-          <img src="diamond-07-extended.svg" width="64" height="64" alt="64px">
-          <span class="size-test-label">64px</span>
-        </div>
-      </div>
-
-      <div class="features">
-        <span class="feature-tag">Tallest</span>
-        <span class="feature-tag">Vertical</span>
-        <span class="feature-tag">Detailed</span>
-      </div>
-    </div>
-
-    <!-- 08: Precise -->
-    <div class="card favorite">
-      <div class="card-header">
-        <div class="card-title">Precise ⭐</div>
-        <div class="card-number">diamond-08</div>
-      </div>
-
-      <div class="logo-display">
-        <img src="diamond-08-precise.svg" width="120" height="120" alt="Precise">
-      </div>
-
-      <div class="size-tests">
-        <div class="size-test">
-          <img src="diamond-08-precise.svg" width="32" height="32" alt="32px">
-          <span class="size-test-label">32px</span>
-        </div>
-        <div class="size-test">
-          <img src="diamond-08-precise.svg" width="48" height="48" alt="48px">
-          <span class="size-test-label">48px</span>
-        </div>
-        <div class="size-test">
-          <img src="diamond-08-precise.svg" width="64" height="64" alt="64px">
-          <span class="size-test-label">64px</span>
-        </div>
-      </div>
-
-      <div class="features">
-        <span class="feature-tag">Blue Highlights</span>
-        <span class="feature-tag">Symmetrical</span>
-        <span class="feature-tag">Sharp</span>
-      </div>
-    </div>
-
-    <!-- 09: Slim -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Slim</div>
-        <div class="card-number">diamond-09</div>
-      </div>
-
-      <div class="logo-display">
-        <img src="diamond-09-slim.svg" width="120" height="120" alt="Slim">
-      </div>
-
-      <div class="size-tests">
-        <div class="size-test">
-          <img src="diamond-09-slim.svg" width="32" height="32" alt="32px">
-          <span class="size-test-label">32px</span>
-        </div>
-        <div class="size-test">
-          <img src="diamond-09-slim.svg" width="48" height="48" alt="48px">
-          <span class="size-test-label">48px</span>
-        </div>
-        <div class="size-test">
-          <img src="diamond-09-slim.svg" width="64" height="64" alt="64px">
-          <span class="size-test-label">64px</span>
-        </div>
-      </div>
-
-      <div class="features">
-        <span class="feature-tag">Filled Centers</span>
-        <span class="feature-tag">Narrow</span>
-        <span class="feature-tag">Solid</span>
-      </div>
-    </div>
-
-    <!-- 10: Classic -->
-    <div class="card favorite">
-      <div class="card-header">
-        <div class="card-title">Classic ⭐</div>
-        <div class="card-number">diamond-10</div>
-      </div>
-
-      <div class="logo-display">
-        <img src="diamond-10-classic.svg" width="120" height="120" alt="Classic">
-      </div>
-
-      <div class="size-tests">
-        <div class="size-test">
-          <img src="diamond-10-classic.svg" width="32" height="32" alt="32px">
-          <span class="size-test-label">32px</span>
-        </div>
-        <div class="size-test">
-          <img src="diamond-10-classic.svg" width="48" height="48" alt="48px">
-          <span class="size-test-label">48px</span>
-        </div>
-        <div class="size-test">
-          <img src="diamond-10-classic.svg" width="64" height="64" alt="64px">
-          <span class="size-test-label">64px</span>
-        </div>
-      </div>
-
-      <div class="features">
-        <span class="feature-tag">Improved Original</span>
-        <span class="feature-tag">Timeless</span>
-        <span class="feature-tag">Refined</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="comparison-section">
-    <h2 class="section-title">All 10 Variations at 64px</h2>
-    <div class="comparison-grid">
-      <div class="comparison-item">
-        <img src="diamond-01-elegant.svg" width="64" height="64" alt="Elegant">
-        <div class="comparison-label">01: Elegant ⭐</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-02-refined.svg" width="64" height="64" alt="Refined">
-        <div class="comparison-label">02: Refined ⭐</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-03-clean.svg" width="64" height="64" alt="Clean">
-        <div class="comparison-label">03: Clean ⭐</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-04-compact.svg" width="64" height="64" alt="Compact">
-        <div class="comparison-label">04: Compact</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-05-balanced.svg" width="64" height="64" alt="Balanced">
-        <div class="comparison-label">05: Balanced ⭐</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-06-simple.svg" width="64" height="64" alt="Simple">
-        <div class="comparison-label">06: Simple ⭐</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-07-extended.svg" width="64" height="64" alt="Extended">
-        <div class="comparison-label">07: Extended</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-08-precise.svg" width="64" height="64" alt="Precise">
-        <div class="comparison-label">08: Precise ⭐</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-09-slim.svg" width="64" height="64" alt="Slim">
-        <div class="comparison-label">09: Slim</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-10-classic.svg" width="64" height="64" alt="Classic">
-        <div class="comparison-label">10: Classic ⭐</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="comparison-section">
-    <h2 class="section-title">Favicon Test (32px)</h2>
-    <div class="comparison-grid">
-      <div class="comparison-item">
-        <img src="diamond-01-elegant.svg" width="32" height="32" alt="Elegant">
-        <div class="comparison-label">01</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-02-refined.svg" width="32" height="32" alt="Refined">
-        <div class="comparison-label">02</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-03-clean.svg" width="32" height="32" alt="Clean">
-        <div class="comparison-label">03</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-04-compact.svg" width="32" height="32" alt="Compact">
-        <div class="comparison-label">04</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-05-balanced.svg" width="32" height="32" alt="Balanced">
-        <div class="comparison-label">05</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-06-simple.svg" width="32" height="32" alt="Simple">
-        <div class="comparison-label">06</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-07-extended.svg" width="32" height="32" alt="Extended">
-        <div class="comparison-label">07</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-08-precise.svg" width="32" height="32" alt="Precise">
-        <div class="comparison-label">08</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-09-slim.svg" width="32" height="32" alt="Slim">
-        <div class="comparison-label">09</div>
-      </div>
-      <div class="comparison-item">
-        <img src="diamond-10-classic.svg" width="32" height="32" alt="Classic">
-        <div class="comparison-label">10</div>
-      </div>
-    </div>
-  </div>
-</body>
+  </body>
 </html>

@@ -11,6 +11,7 @@ This collection contains **89 logo variants** organized by design approach:
 Optimized for **16px favicons to large format** based on 2026 logo design research.
 
 **Design Principles:**
+
 - 2-3 elements maximum for instant recognition
 - Bold, simple shapes with clear silhouettes
 - No gradients or complex opacity (stays crisp at 16px)
@@ -18,6 +19,7 @@ Optimized for **16px favicons to large format** based on 2026 logo design resear
 - Passes 3-second memorability test
 
 **Files:**
+
 - `ultra-01-two-tiles.svg` - Past → Present progression
 - `ultra-02-three-bars.svg` - Temporal rhythm
 - `ultra-03-single-tile-shadow.svg` - Depth suggestion
@@ -39,6 +41,7 @@ Optimized for **16px favicons to large format** based on 2026 logo design resear
 Aligned with the TimeTiles Cartographic Design System using earth-tone palette and editorial aesthetic.
 
 **Color Palette:**
+
 - Parchment: `#f8f5f0` - Primary background
 - Charcoal: `#404040` - Primary text
 - Navy: `#4a5568` - Secondary elements
@@ -48,6 +51,7 @@ Aligned with the TimeTiles Cartographic Design System using earth-tone palette a
 - Cream: `#e8e4dd` - Secondary background
 
 **Files:**
+
 - `carto-01-editorial-timeline.svg` - Minimal timeline with elegant tiles
 - `carto-02-map-tiles.svg` - Quadrant tiles with earth tones
 - `carto-03-precision-grid.svg` - Technical grid with cartographic colors
@@ -62,6 +66,7 @@ Aligned with the TimeTiles Cartographic Design System using earth-tone palette a
 Emphasizing temporal elements: timelines, chronological flow, progress.
 
 **Files:**
+
 - `time-01-progress-bar.svg` - Progress bar with milestones
 - `time-02-gantt-bars.svg` - Project timeline style
 - `time-03-arrow-flow.svg` - Directional time progression
@@ -75,6 +80,7 @@ Emphasizing temporal elements: timelines, chronological flow, progress.
 Emphasizing geographic and spatial elements: coordinates, locations, quadrants.
 
 **Files:**
+
 - `space-01-map-pin-grid.svg` - Location markers on grid
 - `space-02-coordinates.svg` - Cartesian coordinate system
 - `space-03-quadrants.svg` - Geographic tile divisions
@@ -85,6 +91,7 @@ Emphasizing geographic and spatial elements: coordinates, locations, quadrants.
 Emphasizing modular tiling: clean grids, data blocks, tessellation.
 
 **Files:**
+
 - `grid-01-pure-grid.svg` - 4×4 clean grid structure
 - `grid-02-modular-blocks.svg` - Varying block sizes
 - `grid-03-tessellation.svg` - Repeating tile pattern
@@ -96,6 +103,7 @@ Emphasizing modular tiling: clean grids, data blocks, tessellation.
 Combining time, space, and tiles into integrated designs.
 
 **Files:**
+
 - `hybrid-01-time-map.svg` - Timeline over coordinate grid
 - `hybrid-02-grid-timeline.svg` - Diagonal time through grid
 - `clean-01-timeline-grid.svg` - Vertical tiles on timeline
@@ -110,6 +118,7 @@ Combining time, space, and tiles into integrated designs.
 4 tiles + grid concepts following the cartographic design system.
 
 **Files:**
+
 - `quad-01-simple-four.svg` - Four tiles in perfect grid
 - `quad-02-grid-emphasis.svg` - Grid lines with tiles
 - `quad-03-corner-accent.svg` - Accent on one corner
@@ -126,6 +135,7 @@ Combining time, space, and tiles into integrated designs.
 Max 2 colors with creative structural variations. More experimental patterns while maintaining design system colors.
 
 **Files:**
+
 - `bold-01-cascade-steps.svg` - Cascading stepped pattern
 - `bold-02-diagonal-slash.svg` - Bold diagonal cut
 - `bold-03-l-bracket.svg` - L-shaped bracket form
@@ -144,6 +154,7 @@ Max 2 colors with creative structural variations. More experimental patterns whi
 Exploring waterfall/cascade patterns with pixel-like tiles flowing diagonally or vertically.
 
 **Files:**
+
 - `cascade-01-diagonal-flow.svg` - Classic diagonal cascade
 - `cascade-02-stepped-waterfall.svg` - Stepped waterfall descent
 - `cascade-03-corner-origin.svg` - Cascade from corner
@@ -160,6 +171,7 @@ Exploring waterfall/cascade patterns with pixel-like tiles flowing diagonally or
 Exploring balanced, mirrored, and radial patterns conveying stability and harmony.
 
 **Files:**
+
 - `symmetric-01-double-diamond.svg` - Two stacked diamond shapes
 - `symmetric-02-cross-bloom.svg` - Cross pattern blooming from center
 - `symmetric-03-mirror-steps.svg` - Mirrored staircase expanding outward
@@ -205,17 +217,20 @@ All variants follow these principles:
 Based on 2026 logo design research (simplicity, scalability, recognition):
 
 ### Top Tier (Best for All Sizes)
+
 1. **ultra-04-t-shape** ⭐ - Literal "T", works at 16px, instantly memorable
 2. **ultra-10-plus-grid** ⭐ - Universal cross shape, perfect scalability
 3. **ultra-14-monogram-tt** ⭐ - Direct brand initials, editorial feel
 
 ### Strong Contenders
+
 4. **ultra-02-three-bars** - Clean rhythm, good at small sizes
 5. **ultra-06-stair-step** - Clear progression metaphor
 6. **carto-06-minimal-flow** - Cartographic colors, very clean
 7. **ultra-01-two-tiles** - Simplest possible concept
 
 ### Cartographic Favorites
+
 8. **carto-01-editorial-timeline** - Perfect blend with design system
 9. **carto-03-precision-grid** - Technical precision
 
@@ -230,6 +245,7 @@ Based on 2026 logo design research (simplicity, scalability, recognition):
 ## Research-Backed Design
 
 These logos follow 2026 best practices:
+
 - **Simplicity**: Fewer elements = easier recognition
 - **Scalability**: Works from 16px favicon to billboard
 - **3-Second Test**: Instantly memorable shape
