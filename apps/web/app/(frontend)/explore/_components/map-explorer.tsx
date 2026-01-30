@@ -28,8 +28,6 @@ import {
 } from "@/lib/hooks/use-events-queries";
 import { useUIStore } from "@/lib/store";
 
-// TODO: ActiveFilters removed for now - may add back later for filter chip UI
-// import { ActiveFilters } from "./active-filters";
 import { ChartSection } from "./chart-section";
 import { EventDetailModal } from "./event-detail-modal";
 import { EventsList } from "./events-list";
@@ -267,8 +265,6 @@ export const MapExplorer = () => {
         {/* Content Panel - takes half of available space */}
         <div className="min-w-0 flex-1 overflow-y-auto border-l transition-all duration-500 ease-in-out [scrollbar-gutter:stable]">
           <div className="p-6">
-            {/* TODO: ActiveFilters component removed for now - may add back later for filter chip UI */}
-
             {/* Chart Section - height matches list explorer (50vh - p-6 padding) */}
             <div className="mb-6 h-[calc(50vh-3rem)] min-h-[252px]">
               <ChartSection bounds={debouncedSimpleBounds} fillHeight />
@@ -321,8 +317,6 @@ export const MapExplorer = () => {
         {/* Content takes bottom half */}
         <div className="h-1/2 min-h-0 overflow-y-auto border-t">
           <div className="p-4">
-            {/* TODO: ActiveFilters component removed for now - may add back later for filter chip UI */}
-
             <div className="mb-4">
               <ChartSection bounds={debouncedSimpleBounds} />
             </div>

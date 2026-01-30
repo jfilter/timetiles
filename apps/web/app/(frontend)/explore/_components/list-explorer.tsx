@@ -23,8 +23,6 @@ import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useBoundsQuery, useClusterStatsQuery, useMapClustersQuery } from "@/lib/hooks/use-events-queries";
 import { useUIStore } from "@/lib/store";
 
-// TODO: ActiveFilters removed for now - may add back later for filter chip UI
-// import { ActiveFilters } from "./active-filters";
 import { ChartSection } from "./chart-section";
 import { EventDetailModal } from "./event-detail-modal";
 import { EventsListPaginated } from "./events-list-paginated";
@@ -228,7 +226,6 @@ export const ListExplorer = () => {
 
             {/* Main Content - Centered List */}
             <div className="mx-auto max-w-2xl px-4 py-6">
-              {/* TODO: ActiveFilters component removed for now - may add back later for filter chip UI */}
               <EventsListPaginated
                 filters={filters}
                 bounds={debouncedSimpleBounds}
