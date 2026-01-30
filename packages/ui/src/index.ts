@@ -22,6 +22,8 @@ export {
   CardVersion,
 } from "./components/card";
 export { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./components/collapsible";
+export type { ContentStateProps } from "./components/content-state";
+export { ContentState } from "./components/content-state";
 export {
   Dialog,
   DialogClose,
