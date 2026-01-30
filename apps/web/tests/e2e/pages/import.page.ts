@@ -4,7 +4,7 @@
  * @module
  * @category E2E Page Objects
  */
-import type { Locator, Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 export class ImportPage {
   readonly page: Page;
@@ -259,12 +259,24 @@ export class ImportPage {
   }
 
   /**
-   * Create a new catalog.
+   * Create a new catalog with the given name.
+   * Handles both cases: when no catalogs exist (input shown directly)
+   * and when catalogs exist (must select "+ Create new catalog" first).
    */
   async createNewCatalog(catalogName: string): Promise<void> {
-    await this.catalogSelect.click();
-    await this.page.getByRole("option", { name: /New Catalog/i }).click();
-    await this.newCatalogInput.fill(catalogName);
+    const catalogDropdown = this.page.locator("#catalog-select");
+    const catalogNameInput = this.page.locator("#new-catalog-name");
+
+    // Check if the catalog dropdown is visible (existing catalogs exist)
+    if (await catalogDropdown.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await catalogDropdown.selectOption("new");
+      await expect(catalogNameInput).toBeVisible({ timeout: 5000 });
+    }
+
+    // The catalog name input should now be visible (either shown directly or after selecting "new")
+    await expect(catalogNameInput).toBeVisible({ timeout: 5000 });
+    await catalogNameInput.clear();
+    await catalogNameInput.fill(catalogName);
   }
 
   /**
@@ -300,6 +312,21 @@ export class ImportPage {
       await this.locationFieldSelect.click();
       await this.page.getByRole("option", { name: options.location }).click();
     }
+  }
+
+  /**
+   * Select a value in a Radix UI Select component by its trigger locator.
+   */
+  async selectFieldValue(triggerLocator: Locator, value: string): Promise<void> {
+    await triggerLocator.click();
+    await this.page.getByRole("option", { name: value, exact: true }).click();
+  }
+
+  /**
+   * Get the currently displayed text of a Radix UI Select trigger.
+   */
+  async getFieldValue(triggerLocator: Locator): Promise<string> {
+    return (await triggerLocator.textContent())?.trim() ?? "";
   }
 
   /**

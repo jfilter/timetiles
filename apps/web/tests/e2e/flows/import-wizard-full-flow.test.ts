@@ -62,13 +62,8 @@ test.describe("Import Wizard - Full Flow", () => {
       const destinationHeading = page.getByRole("heading", { name: /select destination/i });
       await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-      // New UI: Catalog name input is shown directly
-      const catalogNameInput = page.getByLabel(/catalog name/i);
-      await expect(catalogNameInput).toBeVisible({ timeout: 10000 });
-
-      // Clear and fill with our catalog name
-      await catalogNameInput.clear();
-      await catalogNameInput.fill(catalogName);
+      // Create a new catalog (handles both fresh DB and existing catalogs)
+      await importPage.createNewCatalog(catalogName);
 
       // Click Next to go to Field Mapping (Step 4)
       await importPage.clickNext();
@@ -89,7 +84,7 @@ test.describe("Import Wizard - Full Flow", () => {
       // Verify title field was auto-detected (should have value "title")
       const titleSelect = page.locator("#title-field");
       await expect(titleSelect).toBeVisible();
-      await expect(titleSelect).toHaveValue("title");
+      await expect(titleSelect).toContainText("title");
 
       // Verify confidence badges are shown for auto-detected fields
       const confidenceBadges = page.locator('[data-testid^="confidence-badge-"]');
@@ -98,17 +93,17 @@ test.describe("Import Wizard - Full Flow", () => {
       // Verify date field was auto-detected
       const dateSelect = page.locator("#date-field");
       await expect(dateSelect).toBeVisible();
-      await expect(dateSelect).toHaveValue("date");
+      await expect(dateSelect).toContainText("date");
 
       // Verify location field was auto-detected
       const locationSelect = page.locator("#location-field");
       await expect(locationSelect).toBeVisible();
-      await expect(locationSelect).toHaveValue("location");
+      await expect(locationSelect).toContainText("location");
 
       // Verify description field was auto-detected
       const descriptionSelect = page.locator("#description-field");
       if (await descriptionSelect.isVisible()) {
-        await expect(descriptionSelect).toHaveValue("description");
+        await expect(descriptionSelect).toContainText("description");
       }
 
       // No manual field mapping needed - auto-detection handled it!
@@ -202,13 +197,8 @@ test.describe("Import Wizard - Full Flow", () => {
       const destinationHeading = page.getByRole("heading", { name: /select destination/i });
       await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-      // New UI: Catalog name input is shown directly
-      const catalogNameInput = page.getByLabel(/catalog name/i);
-      await expect(catalogNameInput).toBeVisible({ timeout: 10000 });
-
-      // Clear and fill with our catalog name
-      await catalogNameInput.clear();
-      await catalogNameInput.fill(catalogName);
+      // Create a new catalog (handles both fresh DB and existing catalogs)
+      await importPage.createNewCatalog(catalogName);
 
       // Click Next to go to Field Mapping (Step 4)
       await importPage.clickNext();
@@ -228,7 +218,7 @@ test.describe("Import Wizard - Full Flow", () => {
       // Verify title field was auto-detected (should have value "titel")
       const titleSelect = page.locator("#title-field");
       await expect(titleSelect).toBeVisible();
-      await expect(titleSelect).toHaveValue("titel");
+      await expect(titleSelect).toContainText("titel");
 
       // Verify confidence badges are shown
       const confidenceBadges = page.locator('[data-testid^="confidence-badge-"]');
@@ -237,17 +227,17 @@ test.describe("Import Wizard - Full Flow", () => {
       // Verify date field was auto-detected (should have value "datum")
       const dateSelect = page.locator("#date-field");
       await expect(dateSelect).toBeVisible();
-      await expect(dateSelect).toHaveValue("datum");
+      await expect(dateSelect).toContainText("datum");
 
       // Verify location field was auto-detected (should have value "ort")
       const locationSelect = page.locator("#location-field");
       await expect(locationSelect).toBeVisible();
-      await expect(locationSelect).toHaveValue("ort");
+      await expect(locationSelect).toContainText("ort");
 
       // Verify description field was auto-detected (should have value "beschreibung")
       const descriptionSelect = page.locator("#description-field");
       if (await descriptionSelect.isVisible()) {
-        await expect(descriptionSelect).toHaveValue("beschreibung");
+        await expect(descriptionSelect).toContainText("beschreibung");
       }
 
       // No manual field mapping needed - German auto-detection handled it!
@@ -322,13 +312,8 @@ test.describe("Import Wizard - Full Flow", () => {
       await importPage.clickNext();
       await page.waitForTimeout(1000);
 
-      // New UI: Catalog name input is shown directly
-      const catalogNameInput = page.getByLabel(/catalog name/i);
-      await expect(catalogNameInput).toBeVisible({ timeout: 10000 });
-
-      // Clear and fill with our catalog name
-      await catalogNameInput.clear();
-      await catalogNameInput.fill("Persistence Test Catalog");
+      // Create a new catalog (handles both fresh DB and existing catalogs)
+      await importPage.createNewCatalog("Persistence Test Catalog");
 
       // Refresh the page
       await page.reload();

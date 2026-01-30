@@ -355,16 +355,8 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-    // New UI: Catalog name input is shown directly
-    const catalogNameInput = page.getByLabel(/catalog name/i);
-    await expect(catalogNameInput).toBeVisible({ timeout: 5000 });
-    // Wait for auto-fill to complete
-    await page.waitForTimeout(500);
-    // Clear and fill with our custom catalog name
-    await catalogNameInput.clear();
-    await catalogNameInput.fill(catalogName);
-    // Verify the value was set correctly
-    await expect(catalogNameInput).toHaveValue(catalogName);
+    // Create a new catalog (handles both fresh DB and existing catalogs)
+    await importPage.createNewCatalog(catalogName);
 
     // Wait for multi-sheet dataset mapping section to appear
     await page.waitForTimeout(500);
@@ -413,25 +405,25 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
       // Set title field if not auto-detected
       const titleSelect = page.locator("#title-field");
       await expect(titleSelect).toBeVisible();
-      const titleValue = await titleSelect.inputValue();
-      if (!titleValue || titleValue === "") {
-        await titleSelect.selectOption(config.title);
+      const titleText = await importPage.getFieldValue(titleSelect);
+      if (!titleText || titleText === "Select column...") {
+        await importPage.selectFieldValue(titleSelect, config.title);
       }
 
       // Set date field if not auto-detected
       const dateSelect = page.locator("#date-field");
       await expect(dateSelect).toBeVisible();
-      const dateValue = await dateSelect.inputValue();
-      if (!dateValue || dateValue === "") {
-        await dateSelect.selectOption(config.date);
+      const dateText = await importPage.getFieldValue(dateSelect);
+      if (!dateText || dateText === "Select column...") {
+        await importPage.selectFieldValue(dateSelect, config.date);
       }
 
       // Set location field if not auto-detected
       const locationSelect = page.locator("#location-field");
       await expect(locationSelect).toBeVisible();
-      const locationValue = await locationSelect.inputValue();
-      if (!locationValue || locationValue === "") {
-        await locationSelect.selectOption(config.location);
+      const locationText = await importPage.getFieldValue(locationSelect);
+      if (!locationText || locationText === "Select column...") {
+        await importPage.selectFieldValue(locationSelect, config.location);
       }
     }
 
@@ -565,16 +557,8 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-    // New UI: Catalog name input is shown directly
-    const catalogNameInput = page.getByLabel(/catalog name/i);
-    await expect(catalogNameInput).toBeVisible({ timeout: 5000 });
-    // Wait for auto-fill to complete
-    await page.waitForTimeout(500);
-    // Clear and fill with our custom catalog name
-    await catalogNameInput.clear();
-    await catalogNameInput.fill(catalogName);
-    // Verify the value was set correctly
-    await expect(catalogNameInput).toHaveValue(catalogName);
+    // Create a new catalog (handles both fresh DB and existing catalogs)
+    await importPage.createNewCatalog(catalogName);
 
     // Wait for multi-sheet dataset mapping section to appear
     await page.waitForTimeout(500);
@@ -623,25 +607,25 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
       // Set title field if not auto-detected
       const titleSelect = page.locator("#title-field");
       await expect(titleSelect).toBeVisible();
-      const titleValue = await titleSelect.inputValue();
-      if (!titleValue || titleValue === "") {
-        await titleSelect.selectOption(config.title);
+      const titleText = await importPage.getFieldValue(titleSelect);
+      if (!titleText || titleText === "Select column...") {
+        await importPage.selectFieldValue(titleSelect, config.title);
       }
 
       // Set date field if not auto-detected
       const dateSelect = page.locator("#date-field");
       await expect(dateSelect).toBeVisible();
-      const dateValue = await dateSelect.inputValue();
-      if (!dateValue || dateValue === "") {
-        await dateSelect.selectOption(config.date);
+      const dateText = await importPage.getFieldValue(dateSelect);
+      if (!dateText || dateText === "Select column...") {
+        await importPage.selectFieldValue(dateSelect, config.date);
       }
 
       // Set location field if not auto-detected
       const locationSelect = page.locator("#location-field");
       await expect(locationSelect).toBeVisible();
-      const locationValue = await locationSelect.inputValue();
-      if (!locationValue || locationValue === "") {
-        await locationSelect.selectOption(config.location);
+      const locationText = await importPage.getFieldValue(locationSelect);
+      if (!locationText || locationText === "Select column...") {
+        await importPage.selectFieldValue(locationSelect, config.location);
       }
     }
 
@@ -932,11 +916,8 @@ test.describe("Import Wizard - Full Flow", () => {
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-    // New UI: Catalog name input is shown directly
-    const catalogNameInput = page.getByLabel(/catalog name/i);
-    await expect(catalogNameInput).toBeVisible({ timeout: 10000 });
-    await catalogNameInput.clear();
-    await catalogNameInput.fill(catalogName);
+    // Create a new catalog (handles both fresh DB and existing catalogs)
+    await importPage.createNewCatalog(catalogName);
 
     // Click Next to go to Field Mapping (Step 4)
     await importPage.clickNext();
@@ -952,22 +933,22 @@ test.describe("Import Wizard - Full Flow", () => {
     // Map Title field
     const titleSelect = page.locator("#title-field");
     await expect(titleSelect).toBeVisible();
-    await titleSelect.selectOption("title");
+    await importPage.selectFieldValue(titleSelect, "title");
 
     // Map Date field
     const dateSelect = page.locator("#date-field");
     await expect(dateSelect).toBeVisible();
-    await dateSelect.selectOption("date");
+    await importPage.selectFieldValue(dateSelect, "date");
 
     // Map Location field
     const locationSelect = page.locator("#location-field");
     await expect(locationSelect).toBeVisible();
-    await locationSelect.selectOption("location");
+    await importPage.selectFieldValue(locationSelect, "location");
 
     // Optionally map Description field
     const descriptionSelect = page.locator("#description-field");
     if (await descriptionSelect.isVisible()) {
-      await descriptionSelect.selectOption("description");
+      await importPage.selectFieldValue(descriptionSelect, "description");
     }
 
     // Click Next to go to Review (Step 5)
@@ -1045,11 +1026,8 @@ test.describe("Import Wizard - Full Flow", () => {
     await importPage.clickNext();
     await page.waitForTimeout(1000);
 
-    // New UI: Catalog name input is shown directly
-    const catalogNameInput = page.getByLabel(/catalog name/i);
-    await expect(catalogNameInput).toBeVisible({ timeout: 10000 });
-    await catalogNameInput.clear();
-    await catalogNameInput.fill("Persistence Test Catalog");
+    // Create a new catalog (handles both fresh DB and existing catalogs)
+    await importPage.createNewCatalog("Persistence Test Catalog");
 
     // Refresh the page
     await page.reload();
