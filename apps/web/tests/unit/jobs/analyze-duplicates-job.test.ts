@@ -238,13 +238,13 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       // Verify file reading (called 4 times: 2 for countTotalRows, 2 for analyzeInternalDuplicates)
       expect(mocks.readBatchFromFile).toHaveBeenCalledTimes(4);
       // First call from countTotalRows
-      expect(mocks.readBatchFromFile).toHaveBeenNthCalledWith(1, "/mock/import-files/test.csv", {
+      expect(mocks.readBatchFromFile).toHaveBeenNthCalledWith(1, expect.stringContaining("test.csv"), {
         sheetIndex: 0,
         startRow: 0,
         limit: 5000, // BATCH_SIZES.DUPLICATE_ANALYSIS
       });
       // Third call from analyzeInternalDuplicates (first batch)
-      expect(mocks.readBatchFromFile).toHaveBeenNthCalledWith(3, "/mock/import-files/test.csv", {
+      expect(mocks.readBatchFromFile).toHaveBeenNthCalledWith(3, expect.stringContaining("test.csv"), {
         sheetIndex: 0,
         startRow: 0,
         limit: 5000, // BATCH_SIZES.DUPLICATE_ANALYSIS

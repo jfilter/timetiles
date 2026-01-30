@@ -35,17 +35,21 @@ interface UrlFetchFailureOutput {
 type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
 
 // Mock dependencies
-vi.mock("fs/promises", () => ({
-  mkdir: vi.fn().mockResolvedValue(undefined),
-  writeFile: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock("fs", () => ({
-  promises: {
+vi.mock("fs/promises", () => {
+  const mock = {
     mkdir: vi.fn().mockResolvedValue(undefined),
     writeFile: vi.fn().mockResolvedValue(undefined),
-  },
-}));
+  };
+  return { ...mock, default: mock };
+});
+
+vi.mock("fs", () => {
+  const promises = {
+    mkdir: vi.fn().mockResolvedValue(undefined),
+    writeFile: vi.fn().mockResolvedValue(undefined),
+  };
+  return { promises, default: { promises } };
+});
 
 vi.mock("uuid", () => ({
   v4: () => "test-uuid-1234",
