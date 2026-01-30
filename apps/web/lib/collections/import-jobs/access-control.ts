@@ -17,7 +17,7 @@ export const importJobsAccess = {
     const userImportFiles = await payload.find({
       collection: "import-files",
       where: { user: { equals: user.id } },
-      limit: 100,
+      limit: 0,
       pagination: false,
       overrideAccess: true,
     });
