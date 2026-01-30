@@ -81,6 +81,12 @@ send_alert() {
 
 # Restic configuration
 load_restic_config() {
+    # Source env file so RESTIC_PASSWORD and other vars are available in shell
+    # (--env-file only passes them to docker compose, not the shell)
+    set -a
+    source "$ENV_FILE"
+    set +a
+
     RESTIC_PASSWORD="${RESTIC_PASSWORD:-}"
     RESTIC_REPOSITORY="${RESTIC_REPOSITORY:-$SCRIPT_DIR/backups/restic-repo}"
     RESTIC_OFFSITE_REPOSITORY="${RESTIC_OFFSITE_REPOSITORY:-}"
@@ -95,6 +101,12 @@ load_restic_config() {
         echo -e "${RED}Error: RESTIC_PASSWORD not set in .env.production${NC}"
         echo "Run bootstrap or manually set RESTIC_PASSWORD"
         exit 1
+    fi
+
+    # Resolve relative UPLOAD_HOST_DIR against deployment dir (not cwd,
+    # which is $SCRIPT_DIR/.. due to line 62 cd for build context)
+    if [[ -n "${UPLOAD_HOST_DIR:-}" && "${UPLOAD_HOST_DIR:0:1}" != "/" ]]; then
+        UPLOAD_HOST_DIR="$SCRIPT_DIR/$UPLOAD_HOST_DIR"
     fi
 
     export RESTIC_PASSWORD
@@ -251,6 +263,19 @@ case "$1" in
 
     up)
         check_env
+        source "$ENV_FILE"
+        # Resolve relative path against deployment dir (cwd is $SCRIPT_DIR/..)
+        if [[ -n "${UPLOAD_HOST_DIR:-}" && "${UPLOAD_HOST_DIR:0:1}" != "/" ]]; then
+            UPLOAD_HOST_DIR="$SCRIPT_DIR/$UPLOAD_HOST_DIR"
+        fi
+        # Ensure uploads directory exists with correct ownership for the
+        # container's nextjs user (uid 1001). Without this, Docker creates
+        # the bind mount as root and the app can't write uploads.
+        UPLOAD_HOST_DIR="${UPLOAD_HOST_DIR:-$SCRIPT_DIR/uploads}"
+        mkdir -p "$UPLOAD_HOST_DIR"
+        if [[ "$(stat -c %u "$UPLOAD_HOST_DIR" 2>/dev/null || stat -f %u "$UPLOAD_HOST_DIR")" != "1001" ]]; then
+            sudo chown 1001:1001 "$UPLOAD_HOST_DIR" 2>/dev/null || chmod 777 "$UPLOAD_HOST_DIR"
+        fi
         echo -e "${YELLOW}Starting services...${NC}"
         $DC_CMD up -d
         echo -e "${GREEN}Services started!${NC}"
@@ -346,18 +371,13 @@ case "$1" in
 
                 echo -e "${YELLOW}Backing up uploads...${NC}"
 
-                UPLOAD_VOL=$(docker volume ls -q | grep -E 'timetiles.*uploads' | head -1)
-                if [[ -z "$UPLOAD_VOL" ]]; then
-                    echo -e "${RED}Upload volume not found${NC}"
+                UPLOAD_HOST_DIR="${UPLOAD_HOST_DIR:-$SCRIPT_DIR/uploads}"
+                if [[ ! -d "$UPLOAD_HOST_DIR" ]]; then
+                    echo -e "${RED}Upload directory not found: $UPLOAD_HOST_DIR${NC}"
                     exit 1
                 fi
 
-                # Backup uploads via docker
-                if ! docker run --rm \
-                    -v "$UPLOAD_VOL:/data:ro" \
-                    -e RESTIC_PASSWORD="$RESTIC_PASSWORD" \
-                    -v "$RESTIC_REPOSITORY:/repo" \
-                    restic/restic -r /repo backup --tag uploads /data; then
+                if ! run_restic "$RESTIC_REPOSITORY" backup --tag uploads "$UPLOAD_HOST_DIR"; then
                     echo -e "${RED}Uploads backup failed${NC}"
                     send_alert "Backup Failed" "Uploads backup failed at $(date)"
                     exit 1
@@ -368,14 +388,7 @@ case "$1" in
                 # Offsite sync for uploads
                 if $OFFSITE && [[ -n "$RESTIC_OFFSITE_REPOSITORY" ]]; then
                     echo -e "${YELLOW}Syncing uploads to offsite...${NC}"
-                    # For S3 offsite, run restic directly with volume mount
-                    if docker run --rm \
-                        -v "$UPLOAD_VOL:/data:ro" \
-                        -e RESTIC_PASSWORD="$RESTIC_PASSWORD" \
-                        -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
-                        -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
-                        ${AWS_ENDPOINT_URL:+-e AWS_ENDPOINT_URL="$AWS_ENDPOINT_URL"} \
-                        restic/restic -r "$RESTIC_OFFSITE_REPOSITORY" backup --tag uploads /data 2>/dev/null; then
+                    if run_restic "$RESTIC_OFFSITE_REPOSITORY" backup --tag uploads "$UPLOAD_HOST_DIR" 2>/dev/null; then
                         echo -e "${GREEN}Offsite uploads sync complete${NC}"
                     else
                         echo -e "${YELLOW}Offsite uploads sync failed (continuing)${NC}"
@@ -575,7 +588,7 @@ EOF
 
         # Handle 'latest' keyword
         if [[ "$SNAPSHOT" == "latest" ]]; then
-            SNAPSHOT=$(run_restic "$REPO" snapshots --json --latest 1 2>/dev/null | jq -r '.[0].short_id // empty')
+            SNAPSHOT=$(run_restic "$REPO" snapshots --json 2>/dev/null | jq -r 'sort_by(.time) | last | .short_id // empty')
             if [[ -z "$SNAPSHOT" ]]; then
                 echo -e "${RED}No snapshots found${NC}"
                 exit 1
@@ -623,20 +636,20 @@ EOF
             echo -e "${GREEN}Database restored${NC}"
         fi
 
-        if [[ -d "$RESTORE_DIR/data" ]]; then
+        # Check for uploads in the restored snapshot
+        # With bind mounts, the snapshot preserves the original host path
+        UPLOAD_HOST_DIR="$(realpath "${UPLOAD_HOST_DIR:-$SCRIPT_DIR/uploads}")"
+        RESTORED_UPLOADS="$RESTORE_DIR$UPLOAD_HOST_DIR"
+
+        if [[ -d "$RESTORED_UPLOADS" ]]; then
             echo -e "${YELLOW}Restoring uploads...${NC}"
 
-            UPLOAD_VOL=$(docker volume ls -q | grep -E 'timetiles.*uploads' | head -1)
-            if [[ -z "$UPLOAD_VOL" ]]; then
-                echo -e "${RED}Upload volume not found${NC}"
-                exit 1
+            if [[ ! -d "$UPLOAD_HOST_DIR" ]]; then
+                mkdir -p "$UPLOAD_HOST_DIR"
             fi
 
-            # Restore uploads via docker
-            if ! docker run --rm \
-                -v "$UPLOAD_VOL:/data" \
-                -v "$RESTORE_DIR/data:/restore:ro" \
-                alpine sh -c "rm -rf /data/* && cp -a /restore/. /data/"; then
+            rm -rf "${UPLOAD_HOST_DIR:?}"/*
+            if ! cp -a "$RESTORED_UPLOADS"/. "$UPLOAD_HOST_DIR/"; then
                 echo -e "${RED}Uploads restore failed${NC}"
                 send_alert "Restore Failed" "Uploads restore failed at $(date)"
                 exit 1

@@ -11,16 +11,38 @@ Vagrant.configure("2") do |config|
     vb.name = "timetiles-test"
   end
 
-  # Sync the project directory
-  config.vm.synced_folder "../..", "/home/vagrant/timetiles", type: "rsync",
-    rsync__exclude: [".git/", "node_modules/", ".next/", "dist/", ".turbo/", "coverage/", ".worktrees/"]
+  # Sync the deployment directory to /opt/timetiles (the real install path)
+  config.vm.synced_folder "..", "/opt/timetiles", type: "rsync",
+    rsync__exclude: [".git/", "node_modules/", ".next/", "dist/", ".turbo/", "coverage/", ".worktrees/",
+                     ".env.production", ".env.local", "docker-compose.test.yml", "credentials.txt", "ssl/", "nginx-test/"]
 
-  # Provision: install Docker and BATS
-  config.vm.provision "shell", inline: <<-SHELL
-    apt-get update -qq
-    apt-get install -y -qq docker.io docker-compose-v2 bats
-    usermod -aG docker vagrant
-    systemctl enable docker
-    systemctl start docker
+  # Provision: run bootstrap.sh to set up the real deployment environment
+  config.vm.provision "bootstrap", type: "shell", inline: <<-SHELL
+    cd /opt/timetiles/bootstrap
+    ./bootstrap.sh --non-interactive --config /opt/timetiles/tests/bootstrap.test.conf || true
+    # Bootstrap step 07 (deploy) fails because TIMETILES_VERSION=latest doesn't exist
+    # in the registry. That's expected — setup-test-env.sh sets edge and starts services.
+  SHELL
+
+  # Post-bootstrap: fix permissions, set edge version, tear down partial deploy, install bats
+  config.vm.provision "test-setup", type: "shell", inline: <<-SHELL
+    # Rsync creates files as vagrant:vagrant. Give timetiles user ownership
+    # so tests (running as timetiles) can write nginx-test/, ssl/, etc.
+    chown -R timetiles:timetiles /opt/timetiles
+
+    # Use edge image (built daily by release-images.yml)
+    ENV_FILE="/opt/timetiles/.env.production"
+    if [[ -f "$ENV_FILE" ]]; then
+      sed -i 's/^TIMETILES_VERSION=.*/TIMETILES_VERSION=edge/' "$ENV_FILE"
+    fi
+
+    # Tear down containers left by bootstrap step 07 (which may have partially
+    # started services before postgres was healthy). setup-test-env.sh will
+    # start fresh with the correct test overrides.
+    cd /opt/timetiles
+    docker compose -f docker-compose.prod.yml --env-file .env.production down -v 2>/dev/null || true
+
+    # Install bats for test execution
+    apt-get install -y -qq bats
   SHELL
 end

@@ -44,6 +44,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 120s  # kartoza/postgis first-run init (extensions, users, restart) can take >90s
     networks:
       - timetiles-network
 
@@ -81,8 +82,8 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      # Persist uploaded files if not using S3
-      - uploads_data:/app/apps/web/uploads
+      # Persist uploaded files on host for easy backup/restore
+      - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
     networks:
       - timetiles-network
     healthcheck:
@@ -129,8 +130,6 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
-  uploads_data:
     driver: local
   letsencrypt:
     driver: local

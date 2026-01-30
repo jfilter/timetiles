@@ -16,6 +16,12 @@ if ! docker info &>/dev/null; then
     exit 1
 fi
 
+# Ensure restic is installed (bootstrap installs it on VMs; GHA runners need it added)
+if ! command -v restic &>/dev/null; then
+    echo "Installing restic..."
+    sudo apt-get update -qq && sudo apt-get install -y -qq restic
+fi
+
 # Create .env.production if not exists
 ENV_FILE="$DEPLOY_DIR/.env.production"
 if [[ ! -f "$ENV_FILE" ]]; then
@@ -26,13 +32,24 @@ if [[ ! -f "$ENV_FILE" ]]; then
     sed -i.bak 's/CHANGE_ME_STRONG_PASSWORD/test_password_123/g' "$ENV_FILE"
     sed -i.bak 's/your-domain.com/localhost/g' "$ENV_FILE"
     sed -i.bak 's/admin@${DOMAIN_NAME}/test@localhost/g' "$ENV_FILE"
+    sed -i.bak 's/^TIMETILES_VERSION=.*/TIMETILES_VERSION=edge/' "$ENV_FILE"
 
     # Generate payload secret
     PAYLOAD_SECRET=$(openssl rand -base64 32 | tr -d '/')
     sed -i.bak "s|PAYLOAD_SECRET=.*|PAYLOAD_SECRET=$PAYLOAD_SECRET|" "$ENV_FILE"
 
+    # Generate restic backup password
+    RESTIC_PASSWORD=$(openssl rand -base64 32 | tr -d '/')
+    sed -i.bak "s|RESTIC_PASSWORD=.*|RESTIC_PASSWORD=$RESTIC_PASSWORD|" "$ENV_FILE"
+
+    # Set paths relative to deployment dir (may differ from /opt/timetiles on GHA)
+    sed -i.bak "s|RESTIC_REPOSITORY=.*|RESTIC_REPOSITORY=$DEPLOY_DIR/backups/restic-repo|" "$ENV_FILE"
+    sed -i.bak "s|UPLOAD_HOST_DIR=.*|UPLOAD_HOST_DIR=$DEPLOY_DIR/uploads|" "$ENV_FILE"
+
     rm -f "$ENV_FILE.bak"
     echo "Created $ENV_FILE with test values"
+else
+    echo "Using existing $ENV_FILE"
 fi
 
 # Prepare nginx config
@@ -71,6 +88,16 @@ if [[ ! -f "$SSL_DIR/fullchain.pem" ]]; then
         -subj "/C=US/ST=Test/L=Test/O=Test/CN=localhost" 2>/dev/null
     echo "SSL certificate generated"
 fi
+
+# Ensure uploads directory exists (bind mount needs host dir)
+source "$ENV_FILE"
+UPLOAD_HOST_DIR="${UPLOAD_HOST_DIR:-$DEPLOY_DIR/uploads}"
+mkdir -p "$UPLOAD_HOST_DIR"
+
+# Tear down any existing services and volumes for a clean start
+echo "Cleaning up previous services..."
+cd "$DEPLOY_DIR"
+docker compose -f docker-compose.prod.yml -f docker-compose.test.yml --env-file .env.production down -v 2>/dev/null || true
 
 # Build and start services
 echo "Building and starting services..."

@@ -127,13 +127,15 @@ else
     echo -e "${GREEN}✓ Reusing existing VM${NC}"
     print_step "Syncing codebase..."
     vagrant rsync
+    # Rsync creates files as vagrant:vagrant — fix ownership for timetiles user
+    vagrant ssh -c "sudo chown -R timetiles:timetiles /opt/timetiles" 2>/dev/null
 fi
 
 # Run tests
 print_header "Running Tests"
 
 TEST_EXIT=0
-if ! vagrant ssh -c "cd /home/vagrant/timetiles/deployment/tests && sg docker -c './run-all.sh'"; then
+if ! vagrant ssh -c "sudo -u timetiles sg docker -c 'cd /opt/timetiles/tests && ./run-all.sh'"; then
     TEST_EXIT=1
 fi
 

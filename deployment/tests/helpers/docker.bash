@@ -88,11 +88,6 @@ container_healthy() {
     [[ "$status" == *"healthy"* ]]
 }
 
-# Get upload volume name
-get_upload_volume() {
-    docker volume ls -q | grep -E 'timetiles.*uploads' | head -1
-}
-
 # Skip test if Docker is not running
 skip_if_no_docker() {
     if ! docker info &>/dev/null; then
