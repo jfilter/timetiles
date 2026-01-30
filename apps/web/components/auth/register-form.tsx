@@ -20,6 +20,8 @@ import { useCallback, useState } from "react";
 
 import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
 
+import type { FormStatus } from "./types";
+
 export interface RegisterFormProps {
   /** Callback fired on successful registration */
   onSuccess?: () => void;
@@ -28,8 +30,6 @@ export interface RegisterFormProps {
   /** Additional CSS classes */
   className?: string;
 }
-
-type FormStatus = "idle" | "loading" | "success" | "error";
 
 export const RegisterForm = ({ onSuccess, onError, className }: Readonly<RegisterFormProps>) => {
   const { isEnabled: registrationEnabled, isLoading: flagsLoading } = useFeatureEnabled("enableRegistration");

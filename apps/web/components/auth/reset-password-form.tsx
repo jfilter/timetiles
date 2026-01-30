@@ -13,6 +13,8 @@ import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { useCallback, useState } from "react";
 
+import type { FormStatus } from "./types";
+
 export interface ResetPasswordFormProps {
   /** Reset token from the email link */
   token: string;
@@ -21,8 +23,6 @@ export interface ResetPasswordFormProps {
   /** Additional CSS classes */
   className?: string;
 }
-
-type FormStatus = "idle" | "loading" | "success" | "error";
 
 export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<ResetPasswordFormProps>) => {
   const [password, setPassword] = useState("");

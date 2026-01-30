@@ -13,14 +13,14 @@ import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { useCallback, useState } from "react";
 
+import type { FormStatus } from "./types";
+
 export interface ForgotPasswordFormProps {
   /** Callback fired on successful submission */
   onSuccess?: () => void;
   /** Additional CSS classes */
   className?: string;
 }
-
-type FormStatus = "idle" | "loading" | "success" | "error";
 
 export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPasswordFormProps>) => {
   const [email, setEmail] = useState("");

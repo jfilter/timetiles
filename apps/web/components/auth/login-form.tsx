@@ -14,6 +14,8 @@ import { cn } from "@timetiles/ui/lib/utils";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 
+import type { LoginFormStatus } from "./types";
+
 export interface LoginFormProps {
   /** Callback fired on successful login */
   onSuccess?: () => void;
@@ -23,12 +25,10 @@ export interface LoginFormProps {
   className?: string;
 }
 
-type FormStatus = "idle" | "loading" | "error";
-
 export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormProps>) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [status, setStatus] = useState<FormStatus>("idle");
+  const [status, setStatus] = useState<LoginFormStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
