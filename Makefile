@@ -193,11 +193,22 @@ test-ai:
 
 # Run combined code quality checks with AI-friendly output (lint + typecheck)
 # Usage:
-#   make check-ai              # Check all packages with consistent summary
-#   make check-ai PACKAGE=web  # Check only apps/web with detailed output
-#   make check-ai PACKAGE=docs # Check only apps/docs
+#   make check-ai                                       # Check all packages
+#   make check-ai PACKAGE=web                           # Check only apps/web
+#   make check-ai PACKAGE=docs                          # Check only apps/docs
+#   make check-ai FILES="lib/foo.ts components/bar.tsx" # Check specific files (defaults to web)
+#   make check-ai PACKAGE=ui FILES="src/index.ts"       # Check files in specific package
 check-ai:
-	@if [ -z "$(PACKAGE)" ]; then \
+	@if [ -n "$(FILES)" ]; then \
+		PKG=$${PACKAGE:-web}; \
+		case "$$PKG" in \
+			web) PKG_DIR="apps/web" ;; \
+			docs) PKG_DIR="apps/docs" ;; \
+			ui) PKG_DIR="packages/ui" ;; \
+			*) echo "❌ Unknown package: $$PKG"; exit 1 ;; \
+		esac; \
+		pnpm exec tsx scripts/check-ai-files.ts "$$PKG_DIR" $(FILES); \
+	elif [ -z "$(PACKAGE)" ]; then \
 		pnpm exec tsx scripts/check-ai.ts; \
 	elif [ "$(PACKAGE)" = "web" ]; then \
 		cd apps/web && pnpm check:ai; \
@@ -367,7 +378,7 @@ help:
 		'  check       - Run lint + typecheck (fast, for dev)' \
 		'  check-full  - Run lint-full + typecheck-full (for CI)' \
 		'  check-ai    - Run code quality checks with AI-friendly output' \
-		'                Usage: make check-ai [PACKAGE=web|docs|ui]' \
+		'                Usage: make check-ai [PACKAGE=web|docs|ui] [FILES="..."]' \
 		'  format      - Format code with Prettier' '' \
 		'🧪 Testing:' \
 		'  test        - Run tests (standard output)' \
@@ -413,6 +424,9 @@ help:
 		'                     Examples: FILTER=date.test, FILTER=tests/unit' \
 		'  PACKAGE=name     - Target specific package (use with check-ai)' \
 		'                     Options: web, docs, ui' \
+		'  FILES="..."      - Check specific files only (use with check-ai)' \
+		'                     Paths relative to package dir, defaults to PACKAGE=web' \
+		'                     Example: FILES="lib/foo.ts components/bar.tsx"' \
 		'  SQL=query        - SQL query to execute (use with db-query)' \
 		'                     Example: SQL='"'"'SELECT COUNT(*) FROM events'"'"'' \
 		'  DB_NAME=name     - Database name (use with db-query)' \
