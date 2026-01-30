@@ -178,7 +178,10 @@ const FieldSelect = ({
   confidenceLevel,
   isAutoDetected = false,
 }: Readonly<FieldSelectProps>) => {
-  const handleValueChange = useCallback((val: string) => onFieldChange(field, val), [field, onFieldChange]);
+  const handleValueChange = useCallback(
+    (val: string) => onFieldChange(field, val === "__none__" ? null : val),
+    [field, onFieldChange]
+  );
 
   return (
     <div className="space-y-2" data-testid={`field-mapping-row-${field}`}>
@@ -188,7 +191,7 @@ const FieldSelect = ({
         {required && <span className="text-cartographic-terracotta">*</span>}
         {isAutoDetected && confidenceLevel && confidenceLevel !== "none" && <ConfidenceBadge level={confidenceLevel} />}
       </Label>
-      <Select value={value ?? undefined} onValueChange={handleValueChange} disabled={disabled}>
+      <Select value={value ?? "__none__"} onValueChange={handleValueChange} disabled={disabled}>
         <SelectTrigger
           id={id}
           className={cn(
@@ -201,6 +204,7 @@ const FieldSelect = ({
           <SelectValue placeholder="Select column..." />
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value="__none__">Select column...</SelectItem>
           {headers.map((header) => (
             <SelectItem key={header} value={header}>
               {header}
@@ -270,7 +274,10 @@ const IdStrategyCard = ({
 
   const handleStrategyChange = useCallback((val: string) => onFieldChange("idStrategy", val), [onFieldChange]);
 
-  const handleIdFieldChange = useCallback((val: string) => onFieldChange("idField", val), [onFieldChange]);
+  const handleIdFieldChange = useCallback(
+    (val: string) => onFieldChange("idField", val === "__none__" ? null : val),
+    [onFieldChange]
+  );
 
   return (
     <Card className="overflow-hidden">
@@ -329,11 +336,12 @@ const IdStrategyCard = ({
             <Label htmlFor="id-field" className="text-cartographic-charcoal">
               ID Field
             </Label>
-            <Select value={idField ?? undefined} onValueChange={handleIdFieldChange}>
+            <Select value={idField ?? "__none__"} onValueChange={handleIdFieldChange}>
               <SelectTrigger id="id-field" className="h-11">
                 <SelectValue placeholder="Select column..." />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="__none__">Select column...</SelectItem>
                 {headers.map((header) => (
                   <SelectItem key={header} value={header}>
                     {header}
