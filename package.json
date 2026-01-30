@@ -54,6 +54,10 @@
       "dompurify": "^3.2.3",
       "esbuild": "^0.25.0"
     },
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ],
     "peerDependencyRules": {
       "ignoreMissing": [
         "monaco-editor",

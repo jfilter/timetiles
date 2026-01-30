@@ -47,7 +47,7 @@ ENV NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
 WORKDIR /app/apps/web
 # Use experimental build mode to avoid DB connection during build
 # This compiles the code without static generation
-RUN pnpm exec next build --experimental-build-mode compile
+RUN pnpm exec next build --experimental-build-mode compile --webpack
 
 # Stage 5: Production runner
 FROM node:24-alpine AS runner

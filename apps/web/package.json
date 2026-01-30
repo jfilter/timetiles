@@ -8,7 +8,7 @@
     "dev": "./scripts/job-runner.sh & next dev --turbopack",
     "dev:debug": "LOG_LEVEL=debug next dev --turbopack",
     "build": "payload generate:types --silent && next build",
-    "build:compile": "payload generate:types --silent && next build --experimental-build-mode compile",
+    "build:compile": "payload generate:types --silent && next build --experimental-build-mode compile --webpack",
     "start": "next start",
     "lint": "eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache --format json --output-file .lint-results.json; eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache",
     "format": "eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache --fix --quiet && prettier --write . --log-level error",

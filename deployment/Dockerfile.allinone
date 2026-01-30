@@ -62,7 +62,7 @@ FROM base AS builder
 WORKDIR /build
 
 # Copy package files first for better caching
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/assets/package.json ./packages/assets/
@@ -91,7 +91,7 @@ ENV NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL}
 
 # Build the application with experimental compile mode (no DB connection needed)
 WORKDIR /build/apps/web
-RUN pnpm exec next build --experimental-build-mode compile
+RUN pnpm exec next build --experimental-build-mode compile --webpack
 
 # Production stage: final image
 FROM base AS production
