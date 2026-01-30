@@ -121,7 +121,7 @@ export const EnumFieldDropdown = ({
 
   return (
     <div className="space-y-1">
-      <div className="text-cartographic-navy/60 dark:text-cartographic-charcoal/60 font-mono text-xs uppercase tracking-wider">
+      <div className="text-cartographic-navy/60 dark:text-cartographic-charcoal/60 font-mono text-xs tracking-wider uppercase">
         {label}
       </div>
       <DropdownMenu>

@@ -142,7 +142,7 @@ const TransformNodeComponent = ({ data, selected }: Readonly<TransformNodeProps>
         )}
       >
         <Icon className={cn("h-3.5 w-3.5", colors.text)} />
-        <span className="text-muted-foreground font-mono text-[10px] uppercase tracking-wide">Transform</span>
+        <span className="text-muted-foreground font-mono text-[10px] tracking-wide uppercase">Transform</span>
         {!transform.active && <span className="text-muted-foreground ml-auto text-[9px] uppercase">disabled</span>}
       </div>
 

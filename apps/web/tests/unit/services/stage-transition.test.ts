@@ -332,6 +332,7 @@ describe.sequential("StageTransitionService", () => {
       const newJob = { ...mockImportJob, stage: PROCESSING_STAGE.DETECT_SCHEMA } as ImportJob;
 
       // Make the first transition take some time
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises -- intentional: mock returns promise to simulate async queue delay
       mockQueue.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 100)));
 
       // Start two transitions simultaneously
@@ -463,6 +464,7 @@ describe.sequential("StageTransitionService", () => {
       expect(StageTransitionService.isTransitioning("123")).toBe(false);
 
       // Make transition take some time
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises -- intentional: mock returns promise to simulate async queue delay
       mockQueue.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 50)));
 
       // Start transition
@@ -497,6 +499,7 @@ describe.sequential("StageTransitionService", () => {
       const newJob2 = { ...mockImportJob, id: 2, stage: PROCESSING_STAGE.DETECT_SCHEMA } as ImportJob;
 
       // Start transitions but don't await (they'll be blocked by queue mock)
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises -- intentional: mock returns never-resolving promise to hold transition lock
       mockQueue.mockImplementation(() => new Promise(() => {})); // Never resolves
 
       void StageTransitionService.processStageTransition(mockPayload, newJob1, previousJob);
@@ -521,6 +524,7 @@ describe.sequential("StageTransitionService", () => {
       const previousJob = { ...mockImportJob, stage: PROCESSING_STAGE.ANALYZE_DUPLICATES } as ImportJob;
       const newJob = { ...mockImportJob, stage: PROCESSING_STAGE.DETECT_SCHEMA } as ImportJob;
 
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises -- intentional: mock returns never-resolving promise to hold transition lock
       mockQueue.mockImplementation(() => new Promise(() => {})); // Never resolves
 
       void StageTransitionService.processStageTransition(mockPayload, newJob, previousJob);
@@ -543,6 +547,7 @@ describe.sequential("StageTransitionService", () => {
       const previousJob = { ...mockImportJob, stage: PROCESSING_STAGE.ANALYZE_DUPLICATES } as ImportJob;
       const newJob = { ...mockImportJob, stage: PROCESSING_STAGE.DETECT_SCHEMA } as ImportJob;
 
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises -- intentional: mock returns never-resolving promise to hold transition lock
       mockQueue.mockImplementation(() => new Promise(() => {})); // Never resolves
 
       void StageTransitionService.processStageTransition(mockPayload, newJob, previousJob);

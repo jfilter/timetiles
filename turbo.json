@@ -45,13 +45,16 @@
     "DATA_EXPORT_DIR"
   ],
   "tasks": {
+    "transit": {
+      "dependsOn": ["^transit"]
+    },
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**"]
     },
     "lint": {
-      "dependsOn": ["^lint"],
+      "dependsOn": ["transit"],
       "inputs": [
         "**/*.{ts,tsx,js,jsx}",
         "content/**/*.{md,mdx}",
@@ -66,7 +69,7 @@
       "inputs": ["**/*.{ts,tsx,js,jsx,md,json,yml,yaml}"]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"],
+      "dependsOn": ["transit"],
       "inputs": [
         "**/*.{ts,tsx}",
         "tsconfig.json",
@@ -75,15 +78,16 @@
       "outputs": [".typecheck-results.json"]
     },
     "typecheck:fast": {
-      "dependsOn": ["^typecheck:fast"],
+      "dependsOn": ["transit"],
       "inputs": [
         "**/*.{ts,tsx}",
         "tsconfig.json",
         "tsconfig.*.json"
       ],
-      "outputs": []
+      "outputs": [".typecheck-results.json"]
     },
     "lint:fast": {
+      "dependsOn": ["transit"],
       "inputs": [
         "**/*.{ts,tsx,js,jsx}",
         "../../.oxlintrc.json"

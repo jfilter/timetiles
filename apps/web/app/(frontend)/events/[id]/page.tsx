@@ -65,9 +65,9 @@ const DraftModeBanner = () => (
 const ValidationErrorsSection = ({ errors }: { errors: unknown[] }) => (
   <Card variant="ghost" padding="sm">
     <CardContent className="p-4">
-      <h4 className="text-destructive mb-3 text-xs font-bold uppercase tracking-wider">Validation Errors</h4>
+      <h4 className="text-destructive mb-3 text-xs font-bold tracking-wider uppercase">Validation Errors</h4>
       <div className="bg-destructive/10 rounded-sm p-3">
-        <pre className="text-destructive whitespace-pre-wrap text-sm">{JSON.stringify(errors, null, 2)}</pre>
+        <pre className="text-destructive text-sm whitespace-pre-wrap">{JSON.stringify(errors, null, 2)}</pre>
       </div>
     </CardContent>
   </Card>

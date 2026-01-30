@@ -154,7 +154,7 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
       className={cn(
         "border-border bg-background border-2 p-5",
         onEventClick && "hover:border-cartographic-blue cursor-pointer transition-colors duration-200",
-        "focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
       )}
       onClick={onEventClick ? handleClick : undefined}
       onKeyDown={onEventClick ? handleKeyDown : undefined}
@@ -221,7 +221,7 @@ export const EventsList = ({
   return (
     <div className="relative">
       {isUpdating && (
-        <div className="absolute right-0 top-0 z-10">
+        <div className="absolute top-0 right-0 z-10">
           <div className="bg-background/80 flex items-center gap-2 rounded-md border px-3 py-1 text-xs backdrop-blur-sm">
             <div className="border-primary h-3 w-3 animate-spin rounded-full border-b-2" />
             <span className="text-muted-foreground">Updating...</span>

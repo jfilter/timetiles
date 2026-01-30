@@ -36,11 +36,10 @@ export type EventFilters = z.infer<typeof EventFiltersSchema>;
 /**
  * Query parameters for GET /api/events/list
  */
-export const EventListQuerySchema = EventFiltersSchema.merge(PaginationSchema)
-  .extend({
-    sort: z.string().default("-eventTimestamp"),
-  })
-  .openapi("EventListQuery");
+export const EventListQuerySchema = EventFiltersSchema.extend({
+  ...PaginationSchema.shape,
+  sort: z.string().default("-eventTimestamp"),
+}).openapi("EventListQuery");
 
 export type EventListQuery = z.infer<typeof EventListQuerySchema>;
 

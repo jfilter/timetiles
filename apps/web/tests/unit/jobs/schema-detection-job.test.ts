@@ -85,9 +85,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
     // Setup ProgressiveSchemaBuilder mock
     // Use regular function (not arrow) so it can be called with `new` (vitest 4 requirement)
-    mocks.ProgressiveSchemaBuilder.mockImplementation(function () {
-      return mockSchemaBuilderInstance;
-    });
+    mocks.ProgressiveSchemaBuilder.mockImplementation(() => mockSchemaBuilderInstance);
   });
 
   describe("Success Cases", () => {

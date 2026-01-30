@@ -281,7 +281,7 @@ const FieldBox = ({ label, value, mono, capitalize, status }: FieldBoxProps) => 
 const EventMetadataCard = ({ event }: { event: Event }) => (
   <Card variant="ghost" padding="sm">
     <CardContent className="p-4">
-      <h4 className="text-muted-foreground mb-3 text-xs font-bold uppercase tracking-wider">Metadata</h4>
+      <h4 className="text-muted-foreground mb-3 text-xs font-bold tracking-wider uppercase">Metadata</h4>
       <div className="grid grid-cols-2 gap-4 text-sm">
         <div>
           <p className="text-muted-foreground">Created</p>
@@ -359,7 +359,7 @@ export const EventDetailContent = ({
             </span>
           )}
           {/* Title */}
-          <h2 className={cn("font-serif text-2xl font-bold leading-tight", datasetInfo && "mt-3")}>{title}</h2>
+          <h2 className={cn("font-serif text-2xl leading-tight font-bold", datasetInfo && "mt-3")}>{title}</h2>
         </div>
 
         {/* Action icons */}

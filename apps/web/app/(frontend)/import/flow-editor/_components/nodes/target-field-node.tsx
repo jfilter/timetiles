@@ -68,7 +68,7 @@ const TargetFieldNodeComponent = ({ data, selected }: Readonly<TargetFieldNodePr
         <Icon
           className={cn("h-3.5 w-3.5", data.required ? "text-cartographic-terracotta" : "text-cartographic-forest")}
         />
-        <span className="text-muted-foreground font-mono text-[10px] uppercase tracking-wide">
+        <span className="text-muted-foreground font-mono text-[10px] tracking-wide uppercase">
           Target Field
           {data.required && <span className="text-cartographic-terracotta ml-1">*</span>}
         </span>

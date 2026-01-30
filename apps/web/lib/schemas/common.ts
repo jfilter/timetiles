@@ -74,7 +74,7 @@ export const CatalogParamSchema = z.coerce.number().int().optional();
 /**
  * Date string parameter (ISO 8601 date format).
  */
-export const DateParamSchema = z.string().date().optional();
+export const DateParamSchema = z.iso.date().optional();
 
 /**
  * Bounds as JSON string parameter (parsed separately for validation).

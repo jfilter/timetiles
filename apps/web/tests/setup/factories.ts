@@ -10,7 +10,6 @@
  * @module
  * @category Test Setup
  */
-import type { MockInstance } from "vitest";
 import { vi } from "vitest";
 
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";

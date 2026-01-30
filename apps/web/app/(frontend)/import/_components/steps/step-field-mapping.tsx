@@ -187,7 +187,7 @@ const FieldSelect = ({
         onChange={handleChange}
         disabled={disabled}
         className={cn(
-          "text-cartographic-charcoal flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:outline-none focus:ring-2",
+          "text-cartographic-charcoal flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:ring-2 focus:outline-none",
           "border-cartographic-navy/30 focus:border-cartographic-blue focus:ring-cartographic-blue/20",
           required && !value && "border-cartographic-terracotta/50",
           isAutoDetected && confidenceLevel === "high" && "border-cartographic-forest/40 border-dashed",
@@ -305,7 +305,7 @@ const IdStrategyCard = ({
               id="id-strategy"
               value={idStrategy}
               onChange={handleStrategyChange}
-              className="border-cartographic-navy/20 text-cartographic-charcoal focus:border-cartographic-blue focus:ring-cartographic-blue/20 flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:outline-none focus:ring-2"
+              className="border-cartographic-navy/20 text-cartographic-charcoal focus:border-cartographic-blue focus:ring-cartographic-blue/20 flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:ring-2 focus:outline-none"
             >
               {ID_STRATEGIES.map((strategy) => (
                 <option key={strategy.value} value={strategy.value}>
@@ -323,7 +323,7 @@ const IdStrategyCard = ({
               id="dedup-strategy"
               value={deduplicationStrategy}
               onChange={handleDeduplicationChange}
-              className="border-cartographic-navy/20 text-cartographic-charcoal focus:border-cartographic-blue focus:ring-cartographic-blue/20 flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:outline-none focus:ring-2"
+              className="border-cartographic-navy/20 text-cartographic-charcoal focus:border-cartographic-blue focus:ring-cartographic-blue/20 flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:ring-2 focus:outline-none"
             >
               {DEDUP_STRATEGIES.map((strategy) => (
                 <option key={strategy.value} value={strategy.value}>
@@ -343,7 +343,7 @@ const IdStrategyCard = ({
               id="id-field"
               value={idField ?? ""}
               onChange={handleIdFieldChange}
-              className="border-cartographic-navy/20 text-cartographic-charcoal focus:border-cartographic-blue focus:ring-cartographic-blue/20 flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:outline-none focus:ring-2"
+              className="border-cartographic-navy/20 text-cartographic-charcoal focus:border-cartographic-blue focus:ring-cartographic-blue/20 flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:ring-2 focus:outline-none"
             >
               <option value="">Select column...</option>
               {headers.map((header) => (

@@ -71,7 +71,7 @@ PaletteItem.displayName = "PaletteItem";
 export const NodePalette = ({ className }: Readonly<NodePaletteProps>) => {
   return (
     <div className={cn("bg-background border-border flex flex-col gap-2 border-l p-3", className)}>
-      <h3 className="text-muted-foreground mb-2 font-mono text-[10px] uppercase tracking-wide">Transforms</h3>
+      <h3 className="text-muted-foreground mb-2 font-mono text-[10px] tracking-wide uppercase">Transforms</h3>
       <p className="text-muted-foreground mb-3 text-xs">Drag a transform onto the canvas to add data processing</p>
 
       {PALETTE_ITEMS.map((item) => (

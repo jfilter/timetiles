@@ -56,7 +56,7 @@ const SourceColumnNodeComponent = ({ data, selected }: Readonly<SourceColumnNode
     >
       {/* Header */}
       <div className="border-cartographic-navy/20 bg-cartographic-navy/5 flex items-center justify-between border-b px-3 py-1.5">
-        <span className="text-cartographic-navy/60 font-mono text-[10px] uppercase tracking-wide">Source Column</span>
+        <span className="text-cartographic-navy/60 font-mono text-[10px] tracking-wide uppercase">Source Column</span>
         <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium", typeBadge.className)}>
           {typeBadge.label}
         </span>

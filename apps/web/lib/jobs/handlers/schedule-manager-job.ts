@@ -178,7 +178,7 @@ const shouldRunNow = (scheduledImport: ScheduledImport, currentTime: Date): bool
   const hasValidSchedule = Boolean(
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (scheduledImport.scheduleType === "frequency" && scheduledImport.frequency) ||
-      (scheduledImport.scheduleType === "cron" && scheduledImport.cronExpression)
+    (scheduledImport.scheduleType === "cron" && scheduledImport.cronExpression)
   );
 
   if (!hasValidSchedule) {

@@ -196,7 +196,7 @@ export const ListExplorer = () => {
   return (
     <div className="flex h-[calc(100dvh-3rem)] flex-col overflow-x-hidden">
       {/* Desktop Layout - everything scrolls together */}
-      <div className="hidden flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] md:block">
+      <div className="hidden flex-1 overflow-x-hidden overflow-y-auto [scrollbar-gutter:stable] md:block">
         <div className="flex min-h-full">
           {/* Main content */}
           <div className="min-w-0 flex-1">

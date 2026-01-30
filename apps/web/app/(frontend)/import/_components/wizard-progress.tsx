@@ -104,10 +104,10 @@ export const WizardProgress = ({ className }: Readonly<WizardProgressProps>) => 
       {/* Container with the line behind steps */}
       <div className="relative">
         {/* Background line (full width, inactive color) */}
-        <div className="bg-border absolute left-0 right-0 top-4 mx-[16px] h-0.5" aria-hidden="true" />
+        <div className="bg-border absolute top-4 right-0 left-0 mx-[16px] h-0.5" aria-hidden="true" />
         {/* Progress line (active color, width based on progress) */}
         <div
-          className="bg-primary absolute left-0 top-4 mx-[16px] h-0.5 transition-all duration-300"
+          className="bg-primary absolute top-4 left-0 mx-[16px] h-0.5 transition-all duration-300"
           style={progressLineStyle}
           aria-hidden="true"
         />

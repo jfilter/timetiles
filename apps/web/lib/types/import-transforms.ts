@@ -288,10 +288,10 @@ export const isTransformValid = (transform: ImportTransform): boolean => {
     case "type-cast":
       return Boolean(
         transform.from &&
-          transform.fromType &&
-          transform.toType &&
-          transform.strategy &&
-          (transform.strategy !== "custom" || transform.customFunction)
+        transform.fromType &&
+        transform.toType &&
+        transform.strategy &&
+        (transform.strategy !== "custom" || transform.customFunction)
       );
     default:
       return false;

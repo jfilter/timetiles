@@ -291,7 +291,7 @@ export const TimeRangeSlider = ({
   }
 
   return (
-    <div className="select-none space-y-3 px-2">
+    <div className="space-y-3 px-2 select-none">
       {/* Date range labels */}
       <div className="-mx-2 flex items-center justify-between">
         <span className="text-cartographic-navy/60 dark:text-cartographic-charcoal/60 font-mono text-xs">
@@ -322,7 +322,7 @@ export const TimeRangeSlider = ({
         {/* Start handle */}
         <button
           type="button"
-          className="bg-cartographic-parchment dark:bg-cartographic-charcoal border-cartographic-terracotta focus-visible:ring-cartographic-blue absolute top-1/2 z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 shadow-sm transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 active:scale-110 active:cursor-grabbing"
+          className="bg-cartographic-parchment dark:bg-cartographic-charcoal border-cartographic-terracotta focus-visible:ring-cartographic-blue absolute top-1/2 z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 shadow-sm transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:outline-none active:scale-110 active:cursor-grabbing"
           style={startHandleStyle}
           onPointerDown={handlePointerDown("start")}
           aria-label={`Start date: ${startDate ?? formatISODate(minTimestamp)}`}
@@ -334,7 +334,7 @@ export const TimeRangeSlider = ({
         {/* End handle */}
         <button
           type="button"
-          className="bg-cartographic-parchment dark:bg-cartographic-charcoal border-cartographic-terracotta focus-visible:ring-cartographic-blue absolute top-1/2 z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 shadow-sm transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 active:scale-110 active:cursor-grabbing"
+          className="bg-cartographic-parchment dark:bg-cartographic-charcoal border-cartographic-terracotta focus-visible:ring-cartographic-blue absolute top-1/2 z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 shadow-sm transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:outline-none active:scale-110 active:cursor-grabbing"
           style={endHandleStyle}
           onPointerDown={handlePointerDown("end")}
           aria-label={`End date: ${endDate ?? formatISODate(maxTimestamp)}`}
@@ -391,7 +391,7 @@ export const TimeRangeSlider = ({
                 min={formatISODate(minTimestamp)}
                 max={endDate ?? formatISODate(maxTimestamp)}
                 aria-label="Start date"
-                className="border-cartographic-navy/20 focus:border-cartographic-terracotta focus:ring-cartographic-terracotta/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:outline-none focus:ring-1"
+                className="border-cartographic-navy/20 focus:border-cartographic-terracotta focus:ring-cartographic-terracotta/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none"
               />
               <span className="text-cartographic-navy/40 dark:text-cartographic-charcoal/40 text-xs" aria-hidden="true">
                 →
@@ -403,7 +403,7 @@ export const TimeRangeSlider = ({
                 min={startDate ?? formatISODate(minTimestamp)}
                 max={formatISODate(maxTimestamp)}
                 aria-label="End date"
-                className="border-cartographic-navy/20 focus:border-cartographic-terracotta focus:ring-cartographic-terracotta/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:outline-none focus:ring-1"
+                className="border-cartographic-navy/20 focus:border-cartographic-terracotta focus:ring-cartographic-terracotta/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none"
               />
             </div>
             <button

@@ -102,7 +102,7 @@ const CatalogCard = ({ catalog, isSelected, datasetCount, eventCount, onSelect }
     >
       {/* Checkmark for selected state */}
       {isSelected && (
-        <div className="bg-cartographic-terracotta absolute right-1 top-1 rounded-full p-0.5">
+        <div className="bg-cartographic-terracotta absolute top-1 right-1 rounded-full p-0.5">
           <Check className="h-2.5 w-2.5 text-white" />
         </div>
       )}
@@ -110,7 +110,7 @@ const CatalogCard = ({ catalog, isSelected, datasetCount, eventCount, onSelect }
       {/* Catalog name - allow 2 lines with truncation */}
       <div
         className={cn(
-          "line-clamp-2 pr-5 font-serif text-xs font-medium leading-tight",
+          "line-clamp-2 pr-5 font-serif text-xs leading-tight font-medium",
           isSelected ? "text-cartographic-charcoal dark:text-white" : "text-cartographic-navy/70 dark:text-white/80"
         )}
       >
@@ -270,7 +270,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
     <div className="space-y-4">
       {/* Catalog Selection */}
       <div>
-        <div className="text-cartographic-navy/60 mb-2 font-mono text-xs uppercase tracking-wider">Catalogs</div>
+        <div className="text-cartographic-navy/60 mb-2 font-mono text-xs tracking-wider uppercase">Catalogs</div>
 
         {/* Grid layout for catalogs - flows left-to-right so top items stay visible when collapsed */}
         <div
@@ -316,7 +316,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
       {/* Dataset Selection - only show when a catalog is selected */}
       {filters.catalog != null && (
         <div className="border-cartographic-navy/10 border-t pt-4">
-          <div className="text-cartographic-navy/60 mb-2 flex items-center justify-between font-mono text-xs uppercase tracking-wider">
+          <div className="text-cartographic-navy/60 mb-2 flex items-center justify-between font-mono text-xs tracking-wider uppercase">
             <span>
               Datasets
               {activeDatasetCount < filteredDatasets.length && (

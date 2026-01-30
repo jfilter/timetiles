@@ -104,7 +104,11 @@ const AttributesVariant1 = ({ event }: { event: MockEvent }) => {
   const additionalFieldEntries = Object.entries(event.additionalFields);
 
   const allFields = [
-    { label: "Coordinates", value: `${event.coordinates.lat.toFixed(4)}, ${event.coordinates.lng.toFixed(4)}`, mono: true },
+    {
+      label: "Coordinates",
+      value: `${event.coordinates.lat.toFixed(4)}, ${event.coordinates.lng.toFixed(4)}`,
+      mono: true,
+    },
     { label: "Geocoding", value: event.geocoding.provider, capitalize: true },
     { label: "Confidence", value: `${(event.geocoding.confidence * 100).toFixed(0)}%` },
     ...additionalFieldEntries.map(([key, value]) => ({
@@ -117,15 +121,9 @@ const AttributesVariant1 = ({ event }: { event: MockEvent }) => {
     <div className="mt-5 border-t pt-5">
       <div className="flex flex-wrap gap-2">
         {allFields.map((field) => (
-          <div key={field.label} className="bg-muted/40 rounded-sm px-3 py-2 min-w-[140px] flex-1">
-            <p className="text-muted-foreground text-xs mb-0.5">{field.label}</p>
-            <p className={cn(
-              "text-sm",
-              field.mono && "font-mono",
-              field.capitalize && "capitalize"
-            )}>
-              {field.value}
-            </p>
+          <div key={field.label} className="bg-muted/40 min-w-[140px] flex-1 rounded-sm px-3 py-2">
+            <p className="text-muted-foreground mb-0.5 text-xs">{field.label}</p>
+            <p className={cn("text-sm", field.mono && "font-mono", field.capitalize && "capitalize")}>{field.value}</p>
           </div>
         ))}
       </div>
@@ -141,7 +139,11 @@ const AttributesVariant2 = ({ event }: { event: MockEvent }) => {
   const additionalFieldEntries = Object.entries(event.additionalFields);
 
   const allFields = [
-    { label: "Coordinates", value: `${event.coordinates.lat.toFixed(4)}, ${event.coordinates.lng.toFixed(4)}`, mono: true },
+    {
+      label: "Coordinates",
+      value: `${event.coordinates.lat.toFixed(4)}, ${event.coordinates.lng.toFixed(4)}`,
+      mono: true,
+    },
     { label: "Geocoding", value: event.geocoding.provider },
     { label: "Confidence", value: `${(event.geocoding.confidence * 100).toFixed(0)}%` },
     ...additionalFieldEntries.map(([key, value]) => ({
@@ -156,7 +158,7 @@ const AttributesVariant2 = ({ event }: { event: MockEvent }) => {
         {allFields.map((field) => (
           <div key={field.label} className="flex items-baseline justify-between gap-4">
             <span className="text-muted-foreground text-sm">{field.label}</span>
-            <span className={cn("text-sm text-right", field.mono && "font-mono")}>{field.value}</span>
+            <span className={cn("text-right text-sm", field.mono && "font-mono")}>{field.value}</span>
           </div>
         ))}
       </div>
@@ -177,17 +179,17 @@ const AttributesVariant3 = ({ event }: { event: MockEvent }) => {
       <div className="bg-muted/40 rounded-sm p-4">
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <p className="text-muted-foreground text-xs mb-1">Coordinates</p>
+            <p className="text-muted-foreground mb-1 text-xs">Coordinates</p>
             <p className="font-mono text-sm">
               {event.coordinates.lat.toFixed(4)}, {event.coordinates.lng.toFixed(4)}
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground text-xs mb-1">Provider</p>
+            <p className="text-muted-foreground mb-1 text-xs">Provider</p>
             <p className="text-sm capitalize">{event.geocoding.provider}</p>
           </div>
           <div>
-            <p className="text-muted-foreground text-xs mb-1">Confidence</p>
+            <p className="text-muted-foreground mb-1 text-xs">Confidence</p>
             <p className="text-sm">{(event.geocoding.confidence * 100).toFixed(0)}%</p>
           </div>
         </div>
@@ -199,9 +201,7 @@ const AttributesVariant3 = ({ event }: { event: MockEvent }) => {
           <div className="grid grid-cols-3 gap-4">
             {additionalFieldEntries.map(([key, value]) => (
               <div key={key}>
-                <p className="text-muted-foreground text-xs mb-1">
-                  {key.replace(/([A-Z])/g, " $1").trim()}
-                </p>
+                <p className="text-muted-foreground mb-1 text-xs">{key.replace(/([A-Z])/g, " $1").trim()}</p>
                 <p className="text-sm">{String(value)}</p>
               </div>
             ))}
@@ -236,9 +236,7 @@ const AttributesVariant4 = ({ event }: { event: MockEvent }) => {
           <span key={item.label} className="inline-flex items-center gap-1.5">
             <span className="text-muted-foreground">{item.label}:</span>
             <span className={item.mono ? "font-mono" : ""}>{item.value}</span>
-            {i < allItems.length - 1 && (
-              <span className="text-muted-foreground/30 ml-2">•</span>
-            )}
+            {i < allItems.length - 1 && <span className="text-muted-foreground/30 ml-2">•</span>}
           </span>
         ))}
       </div>
@@ -257,22 +255,22 @@ const AttributesVariant5 = ({ event }: { event: MockEvent }) => {
     <div className="mt-5 border-t pt-5">
       <dl className="space-y-3">
         <div className="flex gap-4">
-          <dt className="text-muted-foreground text-sm w-24 shrink-0">Coordinates</dt>
-          <dd className="font-mono text-sm">{event.coordinates.lat.toFixed(4)}, {event.coordinates.lng.toFixed(4)}</dd>
+          <dt className="text-muted-foreground w-24 shrink-0 text-sm">Coordinates</dt>
+          <dd className="font-mono text-sm">
+            {event.coordinates.lat.toFixed(4)}, {event.coordinates.lng.toFixed(4)}
+          </dd>
         </div>
         <div className="flex gap-4">
-          <dt className="text-muted-foreground text-sm w-24 shrink-0">Geocoding</dt>
+          <dt className="text-muted-foreground w-24 shrink-0 text-sm">Geocoding</dt>
           <dd className="text-sm capitalize">{event.geocoding.provider}</dd>
         </div>
         <div className="flex gap-4">
-          <dt className="text-muted-foreground text-sm w-24 shrink-0">Confidence</dt>
+          <dt className="text-muted-foreground w-24 shrink-0 text-sm">Confidence</dt>
           <dd className="text-sm">{(event.geocoding.confidence * 100).toFixed(0)}%</dd>
         </div>
         {additionalFieldEntries.map(([key, value]) => (
           <div key={key} className="flex gap-4">
-            <dt className="text-muted-foreground text-sm w-24 shrink-0">
-              {key.replace(/([A-Z])/g, " $1").trim()}
-            </dt>
+            <dt className="text-muted-foreground w-24 shrink-0 text-sm">{key.replace(/([A-Z])/g, " $1").trim()}</dt>
             <dd className="text-sm">{String(value)}</dd>
           </div>
         ))}
@@ -314,7 +312,7 @@ const EventDetailModal = ({
             <span className={cn("inline-block rounded-sm px-2 py-0.5 text-xs font-medium", colors.badge)}>
               {event.dataset}
             </span>
-            <h2 className="mt-3 font-serif text-2xl font-bold leading-tight">{event.title}</h2>
+            <h2 className="mt-3 font-serif text-2xl leading-tight font-bold">{event.title}</h2>
           </div>
 
           {/* Action icons - kept from current modal */}
@@ -367,7 +365,7 @@ const EventCard = ({ event, onClick }: { event: MockEvent; onClick: () => void }
       className={cn(
         "border-border bg-background cursor-pointer border-2 p-5",
         "hover:border-cartographic-blue transition-colors duration-200",
-        "focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
       )}
       tabIndex={0}
       role="button"
@@ -433,7 +431,7 @@ export default function CardVariantsPage() {
         {/* Attribute Variant Selector */}
         <div className="border-cartographic-navy/20 bg-background mb-6 rounded-sm border-2 p-4">
           <p className="text-cartographic-charcoal mb-3 text-sm font-semibold">Choose a style:</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {([1, 2, 3, 4, 5] as const).map((v) => (
               <button
                 key={v}
@@ -445,7 +443,7 @@ export default function CardVariantsPage() {
                     : "border-border hover:border-cartographic-navy/40"
                 )}
               >
-                <span className="text-sm font-medium block">
+                <span className="block text-sm font-medium">
                   {v}. {variantDescriptions[v].name}
                 </span>
                 <span className="text-muted-foreground mt-0.5 block text-xs">{variantDescriptions[v].desc}</span>

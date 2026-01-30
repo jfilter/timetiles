@@ -22,9 +22,8 @@ describe("/api/v1/events - field filter logic", () => {
   let testEnv: TestEnvironment;
 
   beforeAll(async () => {
-    const { createIntegrationTestEnvironment, withCatalog, withDataset } = await import(
-      "../../setup/integration/environment"
-    );
+    const { createIntegrationTestEnvironment, withCatalog, withDataset } =
+      await import("../../setup/integration/environment");
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
 

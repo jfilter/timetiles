@@ -29,6 +29,12 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reportOnFailure: true, // Generate coverage even when tests fail
+      thresholds: {
+        lines: 48,
+        functions: 46,
+        branches: 42,
+        statements: 47,
+      },
       include: [
         "lib/**/*.ts",
         "lib/**/*.tsx",

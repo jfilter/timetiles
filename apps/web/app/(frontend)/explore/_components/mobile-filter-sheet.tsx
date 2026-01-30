@@ -111,7 +111,7 @@ export const MobileFilterSheet = ({
         type="button"
         onClick={onOpen}
         className={cn(
-          "fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-300 md:hidden",
+          "fixed right-4 bottom-20 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-300 md:hidden",
           "bg-cartographic-navy hover:bg-cartographic-navy/90 text-white",
           "dark:bg-cartographic-cream dark:text-cartographic-charcoal dark:hover:bg-cartographic-cream/90",
           isOpen && "pointer-events-none scale-0 opacity-0"
@@ -120,7 +120,7 @@ export const MobileFilterSheet = ({
       >
         <Filter className="h-6 w-6" />
         {activeFilterCount > 0 && (
-          <span className="bg-cartographic-terracotta absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white">
+          <span className="bg-cartographic-terracotta absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white">
             {activeFilterCount}
           </span>
         )}
@@ -157,7 +157,7 @@ export const MobileFilterSheet = ({
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b px-4 pb-3 pt-2">
+        <div className="flex items-center justify-between border-b px-4 pt-2 pb-3">
           <h2 className="text-cartographic-charcoal dark:text-cartographic-cream font-serif text-lg font-semibold">
             Filters
           </h2>

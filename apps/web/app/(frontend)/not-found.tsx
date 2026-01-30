@@ -24,10 +24,10 @@ export default function NotFound() {
       <div className="pointer-events-none absolute inset-0 opacity-[0.03]" style={gridBackgroundStyle} />
 
       {/* Decorative Corner Ornaments */}
-      <div className="border-cartographic-navy/20 pointer-events-none absolute left-8 top-8 h-16 w-16 border-l-2 border-t-2" />
-      <div className="border-cartographic-navy/20 pointer-events-none absolute right-8 top-8 h-16 w-16 border-r-2 border-t-2" />
+      <div className="border-cartographic-navy/20 pointer-events-none absolute top-8 left-8 h-16 w-16 border-t-2 border-l-2" />
+      <div className="border-cartographic-navy/20 pointer-events-none absolute top-8 right-8 h-16 w-16 border-t-2 border-r-2" />
       <div className="border-cartographic-navy/20 pointer-events-none absolute bottom-8 left-8 h-16 w-16 border-b-2 border-l-2" />
-      <div className="border-cartographic-navy/20 pointer-events-none absolute bottom-8 right-8 h-16 w-16 border-b-2 border-r-2" />
+      <div className="border-cartographic-navy/20 pointer-events-none absolute right-8 bottom-8 h-16 w-16 border-r-2 border-b-2" />
 
       {/* Main Content */}
       <div className="relative flex min-h-screen flex-col items-center justify-center px-6 py-24">
@@ -66,7 +66,7 @@ export default function NotFound() {
 
         {/* 404 Display - Large Serif Number */}
         <div className="mb-4 animate-[fade-in-up_0.6s_ease-out_forwards]">
-          <h1 className="text-cartographic-charcoal dark:text-cartographic-parchment font-serif text-9xl font-bold leading-none md:text-[12rem]">
+          <h1 className="text-cartographic-charcoal dark:text-cartographic-parchment font-serif text-9xl leading-none font-bold md:text-[12rem]">
             404
           </h1>
         </div>
@@ -77,7 +77,7 @@ export default function NotFound() {
         </div>
 
         {/* Headline */}
-        <h2 className="text-cartographic-charcoal dark:text-cartographic-parchment mb-4 max-w-2xl animate-[fade-in-up_0.6s_ease-out_0.2s_forwards] text-center font-serif text-3xl font-bold leading-tight opacity-0 md:text-4xl">
+        <h2 className="text-cartographic-charcoal dark:text-cartographic-parchment mb-4 max-w-2xl animate-[fade-in-up_0.6s_ease-out_0.2s_forwards] text-center font-serif text-3xl leading-tight font-bold opacity-0 md:text-4xl">
           Off the Map
         </h2>
 
@@ -91,7 +91,7 @@ export default function NotFound() {
         <div className="flex animate-[fade-in-up_0.6s_ease-out_0.4s_forwards] flex-col gap-4 opacity-0 sm:flex-row">
           <Link
             href="/"
-            className="bg-cartographic-blue hover:bg-cartographic-blue/90 focus:ring-cartographic-blue group inline-flex items-center justify-center gap-2 rounded-sm px-8 py-4 font-sans text-sm font-medium tracking-wide text-white shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2"
+            className="bg-cartographic-blue hover:bg-cartographic-blue/90 focus:ring-cartographic-blue group inline-flex items-center justify-center gap-2 rounded-sm px-8 py-4 font-sans text-sm font-medium tracking-wide text-white shadow-sm transition-all duration-200 hover:shadow-md focus:ring-2 focus:ring-offset-2 focus:outline-none"
           >
             Return Home
             <svg
@@ -114,7 +114,7 @@ export default function NotFound() {
 
           <Link
             href="/explore"
-            className="border-cartographic-navy/20 text-cartographic-charcoal hover:border-cartographic-blue hover:bg-cartographic-blue/5 hover:text-cartographic-blue focus:ring-cartographic-blue dark:text-cartographic-parchment dark:hover:bg-cartographic-blue/10 group inline-flex items-center justify-center gap-2 rounded-sm border-2 bg-transparent px-8 py-4 font-sans text-sm font-medium tracking-wide transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2"
+            className="border-cartographic-navy/20 text-cartographic-charcoal hover:border-cartographic-blue hover:bg-cartographic-blue/5 hover:text-cartographic-blue focus:ring-cartographic-blue dark:text-cartographic-parchment dark:hover:bg-cartographic-blue/10 group inline-flex items-center justify-center gap-2 rounded-sm border-2 bg-transparent px-8 py-4 font-sans text-sm font-medium tracking-wide transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:outline-none"
           >
             Explore Events
           </Link>

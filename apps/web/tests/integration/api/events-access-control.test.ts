@@ -29,9 +29,8 @@ describe("Event API Access Control Consistency", () => {
   let publicDatasetId: number;
 
   beforeAll(async () => {
-    const { createIntegrationTestEnvironment, withCatalog, withDataset } = await import(
-      "../../setup/integration/environment"
-    );
+    const { createIntegrationTestEnvironment, withCatalog, withDataset } =
+      await import("../../setup/integration/environment");
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
 

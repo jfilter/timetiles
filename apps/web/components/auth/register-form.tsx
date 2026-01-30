@@ -52,7 +52,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
   }, []);
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    (e: React.SyntheticEvent<HTMLFormElement>) => {
       e.preventDefault();
 
       if (!email || !password || !confirmPassword) return;

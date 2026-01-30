@@ -18,8 +18,10 @@ import type NodeGeocoder from "node-geocoder";
 
 import type { LocationCache } from "@/payload-types";
 
-export interface GeocodingResult
-  extends Pick<LocationCache, "latitude" | "longitude" | "confidence" | "provider" | "normalizedAddress"> {
+export interface GeocodingResult extends Pick<
+  LocationCache,
+  "latitude" | "longitude" | "confidence" | "provider" | "normalizedAddress"
+> {
   components: LocationCache["components"];
   metadata: LocationCache["metadata"];
   fromCache?: boolean;

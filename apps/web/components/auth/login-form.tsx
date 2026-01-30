@@ -40,7 +40,7 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
   }, []);
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    (e: React.SyntheticEvent<HTMLFormElement>) => {
       e.preventDefault();
 
       if (!email || !password) return;

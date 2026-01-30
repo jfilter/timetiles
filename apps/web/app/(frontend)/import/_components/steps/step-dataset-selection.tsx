@@ -238,7 +238,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                 id="catalog-select"
                 value={selectedCatalogId === "new" ? "new" : (selectedCatalogId ?? "")}
                 onChange={handleCatalogChange}
-                className="border-cartographic-navy/20 text-cartographic-charcoal focus:border-cartographic-blue focus:ring-cartographic-blue/20 flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:outline-none focus:ring-2"
+                className="border-cartographic-navy/20 text-cartographic-charcoal focus:border-cartographic-blue focus:ring-cartographic-blue/20 flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:ring-2 focus:outline-none"
               >
                 <option value="">Choose a catalog...</option>
                 {catalogs.map((catalog) => (

@@ -87,9 +87,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     };
 
     // Setup ProgressiveSchemaBuilder mock
-    mocks.ProgressiveSchemaBuilder.mockImplementation(function () {
-      return mockSchemaBuilderInstance;
-    });
+    mocks.ProgressiveSchemaBuilder.mockImplementation(() => mockSchemaBuilderInstance);
   });
 
   describe("Success Cases", () => {

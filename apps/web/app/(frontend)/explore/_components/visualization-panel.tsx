@@ -78,7 +78,7 @@ export const VisualizationPanel = ({
       <CardHeader className="flex flex-row items-start justify-between gap-4 border-b px-4 py-3 md:px-6 md:py-4">
         <div className="min-w-0 flex-1">
           {/* Section Label - cartographic monospace style */}
-          <div className="text-cartographic-navy/60 mb-1 font-mono text-xs uppercase tracking-wider">
+          <div className="text-cartographic-navy/60 mb-1 font-mono text-xs tracking-wider uppercase">
             {chartMeta.label}
           </div>
           {/* Heading - serif per design system */}
@@ -104,7 +104,7 @@ export const VisualizationPanel = ({
         )}
       </CardHeader>
 
-      <CardContent className={`px-4 pb-4 pt-4 md:px-6 md:pb-6 ${fillHeight ? "flex flex-1 flex-col" : ""}`}>
+      <CardContent className={`px-4 pt-4 pb-4 md:px-6 md:pb-6 ${fillHeight ? "flex flex-1 flex-col" : ""}`}>
         {children}
       </CardContent>
     </Card>
