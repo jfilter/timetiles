@@ -13,6 +13,7 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
+import { ContentState } from "@timetiles/ui";
 import { Loader2 } from "lucide-react";
 import type { LngLatBounds } from "maplibre-gl";
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
@@ -69,12 +70,20 @@ interface ClusteredMapProps {
   initialBounds?: SimpleBounds | null;
   initialViewState?: MapViewState | null;
   isLoadingBounds?: boolean;
+  isError?: boolean;
 }
 
 export interface ClusteredMapHandle {
   resize: () => void;
   fitBounds: (bounds: SimpleBounds, options?: { padding?: number; animate?: boolean }) => void;
 }
+
+/** Error overlay shown when map data fails to load */
+const MapErrorOverlay = () => (
+  <div className="bg-background/60 pointer-events-auto absolute inset-0 z-20 flex items-center justify-center backdrop-blur-sm">
+    <ContentState variant="error" title="Unable to load map data" subtitle="There was a problem loading the map" />
+  </div>
+);
 
 /** Loading overlay shown while computing initial bounds */
 const MapLoadingOverlay = () => (
@@ -88,7 +97,15 @@ const MapLoadingOverlay = () => (
 
 export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
   (
-    { onBoundsChange, clusters = DEFAULT_CLUSTERS, clusterStats, initialBounds, initialViewState, isLoadingBounds },
+    {
+      onBoundsChange,
+      clusters = DEFAULT_CLUSTERS,
+      clusterStats,
+      initialBounds,
+      initialViewState,
+      isLoadingBounds,
+      isError,
+    },
     ref
   ) => {
     const { resolvedTheme } = useTheme();
@@ -186,6 +203,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
     return (
       <div className="relative h-full w-full">
         {isLoadingBounds && <MapLoadingOverlay />}
+        {isError && !isLoadingBounds && <MapErrorOverlay />}
         <Map
           ref={mapRef}
           initialViewState={INITIAL_VIEW_STATE}

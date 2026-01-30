@@ -16,6 +16,7 @@
 
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
+import { Lock, Mail } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
@@ -122,19 +123,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
     return (
       <div className={cn("space-y-4 text-center", className)}>
         <div className="bg-muted/50 border-border rounded-sm border p-6">
-          <svg
-            className="text-muted-foreground mx-auto mb-4 h-12 w-12"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-            />
-          </svg>
+          <Lock className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
           <h3 className="text-lg font-semibold">Registration Unavailable</h3>
           <p className="text-muted-foreground mt-2 text-sm">
             New account registration is currently disabled. Please contact an administrator if you need access.
@@ -149,14 +138,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
     return (
       <div className={cn("space-y-4 text-center", className)}>
         <div className="bg-primary/10 border-primary/20 rounded-sm border p-6">
-          <svg className="text-primary mx-auto mb-4 h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-            />
-          </svg>
+          <Mail className="text-primary mx-auto mb-4 h-12 w-12" />
           <h3 className="text-lg font-semibold">Check your email</h3>
           <p className="text-muted-foreground mt-2 text-sm">
             We&apos;ve sent a verification link to <strong>{email}</strong>. Please click the link to verify your

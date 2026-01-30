@@ -9,10 +9,7 @@
  */
 "use client";
 
-import { AlertTriangle, Filter } from "lucide-react";
-import { useMemo } from "react";
-
-import { cn } from "../../lib/utils";
+import { ContentState, type ContentStateProps } from "../content-state";
 
 export interface ChartEmptyStateProps {
   /** Type of empty state to display */
@@ -29,7 +26,7 @@ export interface ChartEmptyStateProps {
   onRetry?: () => void;
 }
 
-const defaultMessages: Record<ChartEmptyStateProps["variant"], { title: string; subtitle: string }> = {
+const chartMessages: Record<ChartEmptyStateProps["variant"], { title: string; subtitle: string }> = {
   "no-data": {
     title: "No data yet",
     subtitle: "Import events to see visualizations",
@@ -66,6 +63,12 @@ const EmptyChartIcon = () => (
   </svg>
 );
 
+const variantMap: Record<ChartEmptyStateProps["variant"], ContentStateProps["variant"]> = {
+  "no-data": "empty",
+  "no-match": "no-match",
+  error: "error",
+};
+
 /**
  * Empty state component for charts.
  *
@@ -87,39 +90,15 @@ export const ChartEmptyState = ({
   suggestion,
   onRetry,
 }: ChartEmptyStateProps) => {
-  const containerStyle = useMemo(() => {
-    const containerHeight = typeof height === "number" ? `${height}px` : height;
-    return { height: containerHeight };
-  }, [height]);
-  const defaults = defaultMessages[variant];
-
-  const renderIcon = () => {
-    switch (variant) {
-      case "no-data":
-        return <EmptyChartIcon />;
-      case "no-match":
-        return <Filter className="h-12 w-12" />;
-      case "error":
-        return <AlertTriangle className="h-12 w-12" />;
-    }
-  };
-
   return (
-    <div className={cn("flex flex-col items-center justify-center gap-3", className)} style={containerStyle}>
-      <div className={cn("text-muted-foreground/50", variant === "error" && "text-destructive/50")}>{renderIcon()}</div>
-      <div className="text-center">
-        <p className="text-foreground text-sm font-medium">{message ?? defaults.title}</p>
-        <p className="text-muted-foreground mt-1 text-xs">{suggestion ?? defaults.subtitle}</p>
-      </div>
-      {variant === "error" && onRetry != null && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 mt-2 rounded-sm px-4 py-1.5 text-xs font-medium transition-colors"
-        >
-          Try again
-        </button>
-      )}
-    </div>
+    <ContentState
+      variant={variantMap[variant]}
+      height={height}
+      className={className}
+      icon={variant === "no-data" ? <EmptyChartIcon /> : undefined}
+      title={message ?? chartMessages[variant].title}
+      subtitle={suggestion ?? chartMessages[variant].subtitle}
+      onRetry={onRetry}
+    />
   );
 };

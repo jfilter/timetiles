@@ -10,6 +10,8 @@
  */
 "use client";
 
+import { Button } from "@timetiles/ui";
+import { Loader2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 import {
@@ -18,16 +20,16 @@ import {
   useImportUploadMutation,
 } from "@/lib/hooks/use-events-queries";
 
-const getStatusIcon = (status: string): string => {
+const getStatusIcon = (status: string) => {
   switch (status) {
     case "completed":
-      return "✅";
+      return <span>✅</span>;
     case "failed":
-      return "❌";
+      return <span>❌</span>;
     case "processing":
-      return "⏳";
+      return <Loader2 className="h-5 w-5 animate-spin" />;
     default:
-      return "📄";
+      return <span>📄</span>;
   }
 };
 
@@ -38,10 +40,10 @@ const ErrorAlert = ({ error }: { error: string | null }) => {
   if (error == null || (typeof error === "string" && error.trim() === "")) return null;
 
   return (
-    <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-4">
+    <div className="border-destructive/20 bg-destructive/10 mb-4 rounded-md border p-4">
       <div className="flex items-center">
-        <span className="mr-2 text-red-600">⚠️</span>
-        <span className="text-red-800">{error}</span>
+        <span className="text-destructive mr-2">⚠️</span>
+        <span className="text-destructive">{error}</span>
       </div>
     </div>
   );
@@ -51,10 +53,10 @@ const SuccessAlert = ({ success }: { success: string | null }) => {
   if (success == null || (typeof success === "string" && success.trim() === "")) return null;
 
   return (
-    <div className="mb-4 rounded-md border border-green-200 bg-green-50 p-4">
+    <div className="border-primary/20 bg-primary/10 mb-4 rounded-md border p-4">
       <div className="flex items-center">
-        <span className="mr-2 text-green-600">✅</span>
-        <span className="text-green-800">{success}</span>
+        <span className="text-primary mr-2">✅</span>
+        <span className="text-primary">{success}</span>
       </div>
     </div>
   );
@@ -83,10 +85,10 @@ const FileInput = ({
       accept=".csv,.xlsx,.xls"
       onChange={onFileSelect}
       disabled={disabled}
-      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"
+      className="border-input focus:ring-ring disabled:bg-muted w-full rounded-md border px-3 py-2 focus:ring-2 focus:outline-none"
     />
     {file && (
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="text-muted-foreground mt-1 text-sm">
         Selected: {file.name} ({Math.round(file.size / 1024)} KB)
       </p>
     )}
@@ -121,7 +123,7 @@ const CatalogInput = ({
         onChange={handleChange}
         disabled={disabled}
         autoComplete="off"
-        className="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"
+        className="border-input focus:ring-ring disabled:bg-muted w-full rounded-md border px-3 py-2 focus:ring-2 focus:outline-none"
       />
     </div>
   );
@@ -151,30 +153,21 @@ const UploadButtons = ({
 
   return (
     <div className="flex gap-2">
-      <button
-        type="button"
-        onClick={onUpload}
-        disabled={isDisabled}
-        className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-      >
+      <Button type="button" onClick={onUpload} disabled={isDisabled}>
         {uploading ? (
           <>
-            <span className="animate-spin">⏳</span>
+            <Loader2 className="h-4 w-4 animate-spin" />
             <span>Uploading...</span>
           </>
         ) : (
           <>📤 Upload & Process</>
         )}
-      </button>
+      </Button>
 
       {importId != null && typeof importId === "string" && importId.trim() !== "" && (
-        <button
-          type="button"
-          onClick={onReset}
-          className="rounded-md bg-gray-600 px-4 py-2 text-white hover:bg-gray-700"
-        >
+        <Button type="button" variant="secondary" onClick={onReset}>
           Start New Import
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -202,7 +195,7 @@ const ProgressStats = ({ progress }: { progress: ImportProgressResponse }) => {
       </div>
       {totalErrors > 0 && (
         <div className="col-span-2">
-          <span className="font-medium text-red-600">Errors:</span> {totalErrors}
+          <span className="text-destructive font-medium">Errors:</span> {totalErrors}
         </div>
       )}
     </div>
@@ -227,13 +220,13 @@ const JobsProgress = ({ jobs }: { jobs: ImportProgressResponse["jobs"] }) => {
               {job.rowsProcessed} / {job.rowsTotal} rows
             </span>
           </div>
-          <div className="h-1 w-full rounded-full bg-gray-200">
+          <div className="bg-muted h-1 w-full rounded-full">
             <div
-              className="h-1 rounded-full bg-green-600 transition-all duration-300"
+              className="bg-primary h-1 rounded-full transition-all duration-300"
               style={getProgressBarStyle(job.progress)}
             />
           </div>
-          {job.errors > 0 && <div className="mt-1 text-xs text-red-600">Errors: {job.errors}</div>}
+          {job.errors > 0 && <div className="text-destructive mt-1 text-xs">Errors: {job.errors}</div>}
         </div>
       ))}
     </div>
@@ -249,7 +242,7 @@ const ProgressSection = ({ progress }: { progress: ImportProgressResponse | null
         {getStatusIcon(progress.status)}
         Import Progress
       </h3>
-      <p className="mb-4 text-gray-600">File: {progress.originalName}</p>
+      <p className="text-muted-foreground mb-4">File: {progress.originalName}</p>
 
       <div className="space-y-4">
         <div>
@@ -257,9 +250,9 @@ const ProgressSection = ({ progress }: { progress: ImportProgressResponse | null
             <span>Overall Progress</span>
             <span>{progress.overallProgress}%</span>
           </div>
-          <div className="h-2 w-full rounded-full bg-gray-200">
+          <div className="bg-muted h-2 w-full rounded-full">
             <div
-              className="h-2 rounded-full bg-blue-600 transition-all duration-300"
+              className="bg-primary h-2 rounded-full transition-all duration-300"
               style={getProgressBarStyle(progress.overallProgress)}
             />
           </div>
@@ -268,9 +261,9 @@ const ProgressSection = ({ progress }: { progress: ImportProgressResponse | null
         <ProgressStats progress={progress} />
         <JobsProgress jobs={progress.jobs} />
         {progress.errorLog && (
-          <div className="rounded border border-red-200 bg-red-50 p-3">
-            <h4 className="mb-1 text-sm font-medium text-red-800">Error Details</h4>
-            <p className="text-xs text-red-700">{progress.errorLog}</p>
+          <div className="border-destructive/20 bg-destructive/10 rounded border p-3">
+            <h4 className="text-destructive mb-1 text-sm font-medium">Error Details</h4>
+            <p className="text-destructive text-xs">{progress.errorLog}</p>
           </div>
         )}
       </div>
@@ -359,7 +352,7 @@ export const ImportUpload = () => {
     <div className="mx-auto max-w-2xl space-y-6 p-6">
       <div className="rounded-lg bg-white p-6 shadow-md">
         <h2 className="mb-2 flex items-center gap-2 text-2xl font-bold">📤 Event Data Import</h2>
-        <p className="mb-6 text-gray-600">
+        <p className="text-muted-foreground mb-6">
           Upload CSV or Excel files to import event data. Files will be processed and geocoded automatically.
         </p>
 

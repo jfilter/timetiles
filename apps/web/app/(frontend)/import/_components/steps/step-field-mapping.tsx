@@ -10,7 +10,19 @@
  */
 "use client";
 
-import { Card, CardContent, Label } from "@timetiles/ui";
+import {
+  Card,
+  CardContent,
+  Checkbox,
+  Label,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@timetiles/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { cn } from "@timetiles/ui/lib/utils";
 import {
   CalendarIcon,
@@ -166,10 +178,8 @@ const FieldSelect = ({
   confidenceLevel,
   isAutoDetected = false,
 }: Readonly<FieldSelectProps>) => {
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      onFieldChange(field, e.target.value === "" ? null : e.target.value);
-    },
+  const handleValueChange = useCallback(
+    (val: string) => onFieldChange(field, val === "__none__" ? null : val),
     [field, onFieldChange]
   );
 
@@ -181,26 +191,27 @@ const FieldSelect = ({
         {required && <span className="text-cartographic-terracotta">*</span>}
         {isAutoDetected && confidenceLevel && confidenceLevel !== "none" && <ConfidenceBadge level={confidenceLevel} />}
       </Label>
-      <select
-        id={id}
-        value={value ?? ""}
-        onChange={handleChange}
-        disabled={disabled}
-        className={cn(
-          "text-cartographic-charcoal flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:ring-2 focus:outline-none",
-          "border-cartographic-navy/30 focus:border-cartographic-blue focus:ring-cartographic-blue/20",
-          required && !value && "border-cartographic-terracotta/50",
-          isAutoDetected && confidenceLevel === "high" && "border-cartographic-forest/40 border-dashed",
-          disabled && "bg-cartographic-cream/50 cursor-not-allowed opacity-60"
-        )}
-      >
-        <option value="">Select column...</option>
-        {headers.map((header) => (
-          <option key={header} value={header}>
-            {header}
-          </option>
-        ))}
-      </select>
+      <Select value={value ?? "__none__"} onValueChange={handleValueChange} disabled={disabled}>
+        <SelectTrigger
+          id={id}
+          className={cn(
+            "h-11",
+            required && !value && "border-cartographic-terracotta/50",
+            isAutoDetected && confidenceLevel === "high" && "border-cartographic-forest/40 border-dashed",
+            disabled && "cursor-not-allowed opacity-60"
+          )}
+        >
+          <SelectValue placeholder="Select column..." />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__none__">Select column...</SelectItem>
+          {headers.map((header) => (
+            <SelectItem key={header} value={header}>
+              {header}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 };
@@ -259,28 +270,14 @@ const IdStrategyCard = ({
   onFieldChange,
   onDeduplicationChange,
 }: Readonly<IdStrategyCardProps>) => {
-  const handleStrategyChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      onFieldChange("idStrategy", e.target.value);
-    },
-    [onFieldChange]
-  );
+  const showIdField = idStrategy === "external" || idStrategy === "hybrid";
+
+  const handleStrategyChange = useCallback((val: string) => onFieldChange("idStrategy", val), [onFieldChange]);
 
   const handleIdFieldChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      onFieldChange("idField", e.target.value === "" ? null : e.target.value);
-    },
+    (val: string) => onFieldChange("idField", val === "__none__" ? null : val),
     [onFieldChange]
   );
-
-  const handleDeduplicationChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      onDeduplicationChange(e.target.value);
-    },
-    [onDeduplicationChange]
-  );
-
-  const showIdField = idStrategy === "external" || idStrategy === "hybrid";
 
   return (
     <Card className="overflow-hidden">
@@ -301,36 +298,36 @@ const IdStrategyCard = ({
             <Label htmlFor="id-strategy" className="text-cartographic-charcoal">
               ID generation
             </Label>
-            <select
-              id="id-strategy"
-              value={idStrategy}
-              onChange={handleStrategyChange}
-              className="border-cartographic-navy/20 text-cartographic-charcoal focus:border-cartographic-blue focus:ring-cartographic-blue/20 flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:ring-2 focus:outline-none"
-            >
-              {ID_STRATEGIES.map((strategy) => (
-                <option key={strategy.value} value={strategy.value}>
-                  {strategy.label}
-                </option>
-              ))}
-            </select>
+            <Select value={idStrategy} onValueChange={handleStrategyChange}>
+              <SelectTrigger id="id-strategy" className="h-11">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ID_STRATEGIES.map((strategy) => (
+                  <SelectItem key={strategy.value} value={strategy.value}>
+                    {strategy.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="dedup-strategy" className="text-cartographic-charcoal">
               Duplicate handling
             </Label>
-            <select
-              id="dedup-strategy"
-              value={deduplicationStrategy}
-              onChange={handleDeduplicationChange}
-              className="border-cartographic-navy/20 text-cartographic-charcoal focus:border-cartographic-blue focus:ring-cartographic-blue/20 flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:ring-2 focus:outline-none"
-            >
-              {DEDUP_STRATEGIES.map((strategy) => (
-                <option key={strategy.value} value={strategy.value}>
-                  {strategy.label}
-                </option>
-              ))}
-            </select>
+            <Select value={deduplicationStrategy} onValueChange={onDeduplicationChange}>
+              <SelectTrigger id="dedup-strategy" className="h-11">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DEDUP_STRATEGIES.map((strategy) => (
+                  <SelectItem key={strategy.value} value={strategy.value}>
+                    {strategy.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -339,19 +336,19 @@ const IdStrategyCard = ({
             <Label htmlFor="id-field" className="text-cartographic-charcoal">
               ID Field
             </Label>
-            <select
-              id="id-field"
-              value={idField ?? ""}
-              onChange={handleIdFieldChange}
-              className="border-cartographic-navy/20 text-cartographic-charcoal focus:border-cartographic-blue focus:ring-cartographic-blue/20 flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:ring-2 focus:outline-none"
-            >
-              <option value="">Select column...</option>
-              {headers.map((header) => (
-                <option key={header} value={header}>
-                  {header}
-                </option>
-              ))}
-            </select>
+            <Select value={idField ?? "__none__"} onValueChange={handleIdFieldChange}>
+              <SelectTrigger id="id-field" className="h-11">
+                <SelectValue placeholder="Select column..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Select column...</SelectItem>
+                {headers.map((header) => (
+                  <SelectItem key={header} value={header}>
+                    {header}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
       </CardContent>
@@ -421,10 +418,9 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
     [setImportOptions]
   );
 
-  // Wrapper callback for checkbox to avoid inline function in JSX
-  const handleGeocodingCheckboxChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      handleGeocodingChange(e.target.checked);
+  const handleGeocodingCheckedChange = useCallback(
+    (checked: boolean | "indeterminate") => {
+      handleGeocodingChange(checked === true);
     },
     [handleGeocodingChange]
   );
@@ -594,12 +590,11 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
           {/* Geocoding option - only show when using address field */}
           {activeMapping.locationField && (
             <div className="border-cartographic-blue/20 bg-cartographic-blue/5 flex items-start gap-3 rounded-sm border p-4">
-              <input
+              <Checkbox
                 id="geocoding-enabled"
-                type="checkbox"
                 checked={geocodingEnabled}
-                onChange={handleGeocodingCheckboxChange}
-                className="border-cartographic-navy/30 text-cartographic-blue focus:ring-cartographic-blue/20 mt-0.5 h-4 w-4 rounded"
+                onCheckedChange={handleGeocodingCheckedChange}
+                className="mt-0.5"
               />
               <div>
                 <Label htmlFor="geocoding-enabled" className="text-cartographic-charcoal">
@@ -679,42 +674,42 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
           </div>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-cartographic-navy/10 bg-cartographic-cream/20 border-b">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-cartographic-navy/10 bg-cartographic-cream/20">
                     {activeMapping.titleField && (
-                      <th className="text-cartographic-charcoal px-4 py-3 text-left font-medium">Title</th>
+                      <TableHead className="text-cartographic-charcoal font-medium">Title</TableHead>
                     )}
                     {activeMapping.dateField && (
-                      <th className="text-cartographic-charcoal px-4 py-3 text-left font-medium">Date</th>
+                      <TableHead className="text-cartographic-charcoal font-medium">Date</TableHead>
                     )}
                     {activeMapping.locationField && (
-                      <th className="text-cartographic-charcoal px-4 py-3 text-left font-medium">Location</th>
+                      <TableHead className="text-cartographic-charcoal font-medium">Location</TableHead>
                     )}
-                  </tr>
-                </thead>
-                <tbody>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {activeSheet.sampleData.slice(0, 3).map((row, i) => (
-                    <tr key={i} className="border-cartographic-navy/5 border-b last:border-0">
+                    <TableRow key={i} className="border-cartographic-navy/5 last:border-0">
                       {activeMapping.titleField && (
-                        <td className="text-cartographic-charcoal px-4 py-3">
+                        <TableCell className="text-cartographic-charcoal">
                           {formatCellValue(row[activeMapping.titleField])}
-                        </td>
+                        </TableCell>
                       )}
                       {activeMapping.dateField && (
-                        <td className="text-cartographic-navy/70 px-4 py-3 font-mono">
+                        <TableCell className="text-cartographic-navy/70 font-mono">
                           {formatCellValue(row[activeMapping.dateField])}
-                        </td>
+                        </TableCell>
                       )}
                       {activeMapping.locationField && (
-                        <td className="text-cartographic-navy/70 px-4 py-3">
+                        <TableCell className="text-cartographic-navy/70">
                           {formatCellValue(row[activeMapping.locationField])}
-                        </td>
+                        </TableCell>
                       )}
-                    </tr>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
