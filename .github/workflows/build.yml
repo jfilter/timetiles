@@ -33,7 +33,7 @@ jobs:
 
       - name: Type check (tsc full)
         timeout-minutes: 5
-        run: pnpm typecheck:full
+        run: pnpm typecheck:full || (cat apps/web/.typecheck-results.json 2>/dev/null; exit 1)
 
       - name: Lint infrastructure
         timeout-minutes: 2
