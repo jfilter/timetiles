@@ -84,8 +84,10 @@ describe.sequential("SchemaDetectionJob Handler", () => {
     };
 
     // Setup ProgressiveSchemaBuilder mock
-    // Use regular function (not arrow) so it can be called with `new` (vitest 4 requirement)
-    mocks.ProgressiveSchemaBuilder.mockImplementation(() => mockSchemaBuilderInstance);
+    // eslint-disable-next-line prefer-arrow-functions/prefer-arrow-functions -- regular function required: arrow functions cannot be constructors (vitest 4)
+    mocks.ProgressiveSchemaBuilder.mockImplementation(function () {
+      return mockSchemaBuilderInstance;
+    });
   });
 
   describe("Success Cases", () => {

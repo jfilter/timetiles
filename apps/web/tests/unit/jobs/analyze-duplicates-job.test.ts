@@ -46,11 +46,11 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
   let mockContext: JobHandlerContext;
 
   beforeEach(() => {
-    // Reset all mocks and restore mock implementations
+    // Reset all mocks (clearAllMocks resets call history/return values;
+    // do NOT use restoreAllMocks as it undoes vi.mock module-level mocks)
     vi.clearAllMocks();
-    vi.restoreAllMocks();
 
-    // Reset path mock implementations to ensure consistent behavior
+    // Re-apply path mock implementations after clearAllMocks
     mockPath.resolve.mockReturnValue("/mock/import-files");
     mockPath.join.mockImplementation((dir: string, filename: string) => `${dir}/${filename}`);
 

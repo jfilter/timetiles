@@ -87,7 +87,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     };
 
     // Setup ProgressiveSchemaBuilder mock
-    mocks.ProgressiveSchemaBuilder.mockImplementation(() => mockSchemaBuilderInstance);
+    // eslint-disable-next-line prefer-arrow-functions/prefer-arrow-functions -- regular function required: arrow functions cannot be constructors (vitest 4)
+    mocks.ProgressiveSchemaBuilder.mockImplementation(function () {
+      return mockSchemaBuilderInstance;
+    });
   });
 
   describe("Success Cases", () => {
