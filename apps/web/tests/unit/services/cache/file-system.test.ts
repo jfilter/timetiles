@@ -90,9 +90,13 @@ describe.sequential("FileSystemCacheStorage", () => {
       const key = "persist-key";
       const value = { data: "persistent-value" };
 
-      // Store data with first instance
+      // Store data with first instance — set() awaits saveIndex(),
+      // so the index file is on disk when this returns.
       await storage.set(key, value);
-      storage.destroy();
+
+      // Don't call destroy() here — it fires a floating saveIndex() that
+      // races with the new instance's loadIndex(). The afterEach hook
+      // handles cleanup. The index is already persisted by set().
 
       // Create new instance with same cache directory
       const newStorage = new FileSystemCacheStorage({

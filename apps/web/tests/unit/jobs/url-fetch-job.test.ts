@@ -747,21 +747,17 @@ describe.sequential("urlFetchJob", () => {
         },
       });
 
-      // File size limit is enforced at 100MB
-      const largeSize = 101 * 1024 * 1024; // 101MB - exceeds 100MB limit
+      // File size limit is enforced at 100MB — the handler checks Content-Length
+      // headers and rejects immediately without reading the body.
+      // No need for a real 101MB buffer; a small one with a large content-length header suffices.
+      const mockResponse = createMockResponse("small body", {
+        contentType: "text/csv",
+        headers: { "content-length": String(101 * 1024 * 1024) },
+      });
 
-      // Use fake timers from the start to control all async operations
-      vi.useFakeTimers();
-
-      // Create a large buffer that exceeds the limit
-      const largeData = Buffer.alloc(largeSize);
-      const mockResponse = createMockResponse(largeData, { contentType: "text/csv" });
-
-      // All retry attempts will fail with the same error
       (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
-      // Create the promise and handle it properly
-      const handlerPromise = urlFetchJob.handler({
+      const result = await urlFetchJob.handler({
         input: {
           scheduledImportId: "scheduled-123",
           sourceUrl: "https://example.com/large.csv",
@@ -772,19 +768,10 @@ describe.sequential("urlFetchJob", () => {
         req: mockReq,
       });
 
-      // Fast-forward through all retry delays
-      await vi.runAllTimersAsync();
-
-      // Wait for the result
-      const result = await handlerPromise;
-
       // Should return failure output instead of throwing
       expect(result.output.success).toBe(false);
       const failureOutput = result.output as UrlFetchFailureOutput;
       expect(failureOutput.error).toBeDefined();
-
-      // Clean up timers
-      vi.useRealTimers();
     });
 
     it("should handle retry logic", async () => {
