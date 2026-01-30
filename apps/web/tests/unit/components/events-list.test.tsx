@@ -30,9 +30,10 @@ const createMockEvent = (overrides: Partial<Event> = {}): Event => ({
 
 describe("EventsList", () => {
   test("displays loading state correctly", () => {
-    renderWithProviders(<EventsList events={[]} isInitialLoad />);
+    const { container } = renderWithProviders(<EventsList events={[]} isInitialLoad />);
 
-    expect(screen.getByText("Loading events...")).toBeInTheDocument();
+    // EventsListSkeleton renders pulse-animated placeholder divs
+    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
   });
 
   test("shows empty state when no events provided", () => {
