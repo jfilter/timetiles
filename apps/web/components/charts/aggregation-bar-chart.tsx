@@ -44,7 +44,7 @@ const AggregationBarChartComponent = ({
 
   // Fetch aggregation data using unified endpoint (viewport-filtered)
   const aggregationQuery = useEventsAggregationQuery(filters, bounds ?? null, type);
-  const { data, isInitialLoad, isUpdating } = useChartQuery(aggregationQuery);
+  const { data, isInitialLoad, isUpdating, isError } = useChartQuery(aggregationQuery);
 
   // Store latest data in ref for stable click handler
   const dataRef = useRef(data);
@@ -97,6 +97,7 @@ const AggregationBarChartComponent = ({
       className={className}
       isInitialLoad={isInitialLoad}
       isUpdating={isUpdating}
+      isError={isError}
       theme={chartTheme}
       onBarClick={handleBarClick}
     />

@@ -73,6 +73,8 @@ export interface BarChartProps {
   theme?: ChartTheme;
   isInitialLoad?: boolean;
   isUpdating?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
   onBarClick?: (item: BarChartDataItem, index: number) => void;
 }
 
@@ -89,6 +91,8 @@ export interface TimeHistogramProps {
   className?: string;
   isInitialLoad?: boolean;
   isUpdating?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
   loadingMessage?: string;
   emptyMessage?: string;
 }

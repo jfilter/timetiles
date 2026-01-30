@@ -34,6 +34,10 @@ export interface BarChartProps {
   isInitialLoad?: boolean;
   /** Show updating indicator */
   isUpdating?: boolean;
+  /** Whether the data fetch encountered an error */
+  isError?: boolean;
+  /** Callback to retry the failed fetch */
+  onRetry?: () => void;
   /** Click handler for bar clicks */
   onBarClick?: (item: BarChartDataItem, index: number) => void;
 }
@@ -54,6 +58,8 @@ export const BarChart = ({
   theme,
   isInitialLoad,
   isUpdating,
+  isError = false,
+  onRetry,
   onBarClick,
 }: BarChartProps) => {
   const chartOption: EChartsOption = useMemo(() => {
@@ -143,6 +149,11 @@ export const BarChart = ({
       },
     };
   }, [onBarClick, data]);
+
+  // Handle error state
+  if (isError && !isInitialLoad) {
+    return <ChartEmptyState variant="error" height={height} className={className} onRetry={onRetry} />;
+  }
 
   // Handle empty state
   if (data.length === 0 && !isInitialLoad && !isUpdating) {

@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { Button } from "@timetiles/ui";
+import { Button, ContentState } from "@timetiles/ui";
 import { useCallback, useMemo } from "react";
 
 import type { FilterState } from "@/lib/filters";
@@ -73,9 +73,12 @@ export const EventsListPaginated = ({
   // Error state
   if (isError) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-destructive">Error loading events: {error?.message ?? "Unknown error"}</div>
-      </div>
+      <ContentState
+        variant="error"
+        title="Failed to load events"
+        subtitle={error?.message ?? "Something went wrong"}
+        height={256}
+      />
     );
   }
 

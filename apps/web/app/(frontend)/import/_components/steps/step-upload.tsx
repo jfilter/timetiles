@@ -377,14 +377,16 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       </div>
 
       {/* Auth Configuration Toggle */}
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={toggleAuthConfig}
-        className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
+        className="text-muted-foreground hover:text-foreground gap-1"
       >
         {showAuthConfig ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
         Authentication settings
-      </button>
+      </Button>
 
       {/* Auth Configuration Form */}
       {showAuthConfig && (

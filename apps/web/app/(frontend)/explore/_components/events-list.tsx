@@ -7,7 +7,7 @@
  * @module
  * @category Components
  */
-import { Card, CardDescription, CardTitle } from "@timetiles/ui";
+import { Card, CardDescription, CardTitle, ContentState } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Calendar, MapPin } from "lucide-react";
 import { useCallback } from "react";
@@ -18,6 +18,10 @@ interface EventsListProps {
   events: Event[];
   isInitialLoad?: boolean;
   isUpdating?: boolean;
+  /** Error from data fetch */
+  error?: Error | null;
+  /** Callback to retry the failed fetch */
+  onRetry?: () => void;
   /** Callback when an event card is clicked */
   onEventClick?: (eventId: number) => void;
 }
@@ -200,6 +204,8 @@ export const EventsList = ({
   events,
   isInitialLoad = false,
   isUpdating = false,
+  error,
+  onRetry,
   onEventClick,
 }: Readonly<EventsListProps>) => {
   if (isInitialLoad) {
@@ -207,6 +213,18 @@ export const EventsList = ({
       <div className="flex h-64 items-center justify-center">
         <div className="text-muted-foreground">Loading events...</div>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <ContentState
+        variant="error"
+        title="Failed to load events"
+        subtitle={error.message ?? "Something went wrong"}
+        onRetry={onRetry}
+        height={256}
+      />
     );
   }
 

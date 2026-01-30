@@ -46,6 +46,10 @@ export interface TimeHistogramProps {
   emptyMessage?: string;
   /** Bucket size in seconds (for adaptive tooltip formatting) */
   bucketSizeSeconds?: number | null;
+  /** Whether the data fetch encountered an error */
+  isError?: boolean;
+  /** Callback to retry the failed fetch */
+  onRetry?: () => void;
 }
 
 /**
@@ -195,6 +199,8 @@ export const TimeHistogram = ({
   isUpdating = false,
   emptyMessage = "No data available",
   bucketSizeSeconds,
+  isError = false,
+  onRetry,
 }: TimeHistogramProps) => {
   // Determine if dark theme based on theme prop
   const isDark = useMemo(() => {
@@ -347,6 +353,11 @@ export const TimeHistogram = ({
   );
 
   const chartEvents = useMemo(() => ({ click: handleChartClick }), [handleChartClick]);
+
+  // Handle error state
+  if (isError && !isInitialLoad) {
+    return <ChartEmptyState variant="error" height={height} className={className} onRetry={onRetry} />;
+  }
 
   // Handle empty state
   if (data.length === 0 && !isInitialLoad && !isUpdating) {

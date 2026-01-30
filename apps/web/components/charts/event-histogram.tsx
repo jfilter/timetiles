@@ -34,7 +34,7 @@ export const EventHistogram = ({ height = 200, className, bounds }: Readonly<Bas
   const { handleDateClick } = useChartFilters();
 
   const histogramQuery = useHistogramQuery(filters, bounds ?? null);
-  const { data: histogramData, isInitialLoad, isUpdating } = useChartQuery(histogramQuery);
+  const { data: histogramData, isInitialLoad, isUpdating, isError } = useChartQuery(histogramQuery);
 
   const histogram = histogramData?.histogram ?? [];
   const bucketSizeSeconds = histogramData?.metadata?.bucketSizeSeconds ?? null;
@@ -48,6 +48,7 @@ export const EventHistogram = ({ height = 200, className, bounds }: Readonly<Bas
       className={className}
       isInitialLoad={isInitialLoad}
       isUpdating={isUpdating}
+      isError={isError}
       bucketSizeSeconds={bucketSizeSeconds}
     />
   );
