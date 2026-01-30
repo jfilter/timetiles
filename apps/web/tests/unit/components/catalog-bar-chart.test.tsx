@@ -111,8 +111,10 @@ describe("AggregationBarChart - Catalog", () => {
     const chart = screen.getByTestId("bar-chart-mock");
     expect(chart).toBeInTheDocument();
 
-    // Should have bars for catalogs with events
+    // Mock provides 1 catalog ("Catalog 1" with count 3)
     const bars = chart.querySelectorAll("[data-value]");
-    expect(bars.length).toBeGreaterThan(0);
+    expect(bars).toHaveLength(1);
+    expect(bars[0]).toHaveAttribute("data-value", "3");
+    expect(bars[0]?.textContent).toContain("Catalog 1");
   });
 });

@@ -161,19 +161,6 @@ describe("/api/v1/events/temporal", () => {
     expect(data.metadata.topDatasets).toEqual([]);
   });
 
-  // TODO: Implement topDatasets metadata and enable this test
-  it.skip("should include top datasets in metadata when implemented", async () => {
-    const request = new NextRequest(`http://localhost:3000/api/events/histogram`);
-    const response = await GET(request, { params: Promise.resolve({}) });
-
-    expect(response.status).toBe(200);
-    const data = await response.json();
-
-    // When topDatasets is implemented, it should return dataset statistics
-    expect(Array.isArray(data.metadata.topDatasets)).toBe(true);
-    expect(data.metadata.topDatasets.length).toBeGreaterThan(0);
-  });
-
   it("should filter by date range", async () => {
     const startDate = new Date(2024, 1, 1).toISOString().split("T")[0]; // Feb 1
     const endDate = new Date(2024, 2, 31).toISOString().split("T")[0]; // Mar 31

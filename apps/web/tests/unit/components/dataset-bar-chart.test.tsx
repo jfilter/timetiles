@@ -121,8 +121,12 @@ describe("AggregationBarChart - Dataset", () => {
     const chart = screen.getByTestId("bar-chart-mock");
     expect(chart).toBeInTheDocument();
 
-    // Should have bars for datasets with events
+    // Mock provides 2 datasets: "Dataset A" (count 2) and "Dataset B" (count 1)
     const bars = chart.querySelectorAll("[data-value]");
-    expect(bars.length).toBeGreaterThan(0);
+    expect(bars).toHaveLength(2);
+    expect(bars[0]).toHaveAttribute("data-value", "2");
+    expect(bars[0]?.textContent).toContain("Dataset A");
+    expect(bars[1]).toHaveAttribute("data-value", "1");
+    expect(bars[1]?.textContent).toContain("Dataset B");
   });
 });

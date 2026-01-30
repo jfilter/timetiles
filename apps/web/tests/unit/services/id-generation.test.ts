@@ -61,12 +61,11 @@ describe("IdGenerationService", () => {
         expect(result.error).toBe("Missing external ID at path: id");
       });
 
-      it("sanitizes external IDs", () => {
+      it("sanitizes external IDs by trimming whitespace", () => {
         const testCases = [
-          { input: "valid-id_123", expected: "valid-id_123" },
-          { input: "id.with.dots", expected: "id.with.dots" },
-          { input: "id:with:colons", expected: "id:with:colons" },
           { input: " trimmed ", expected: "trimmed" },
+          { input: "\ttabbed\t", expected: "tabbed" },
+          { input: "\n newline \n", expected: "newline" },
         ];
 
         for (const testCase of testCases) {
@@ -77,12 +76,30 @@ describe("IdGenerationService", () => {
         }
       });
 
+      it("accepts valid ID formats", () => {
+        const validCases = ["valid-id_123", "id.with.dots", "id:with:colons", "ABC123", "a", "a".repeat(255)];
+
+        for (const id of validCases) {
+          const data = { id };
+          const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
+
+          expect(result.error).toBeUndefined();
+          expect(result.sourceId).toBe(id);
+        }
+      });
+
       it("rejects invalid ID formats", () => {
         const invalidCases = [
-          { id: "", error: "Missing external ID at path: id" }, // Empty string is treated as missing
+          { id: "", error: "Missing external ID at path: id" },
+          { id: "   ", error: "Invalid ID length: 0" },
           { id: "a".repeat(256), error: "Invalid ID length: 256" },
+          { id: "a".repeat(1000), error: "Invalid ID length: 1000" },
           { id: "id with spaces", error: "Invalid ID format" },
           { id: "id@with#special$chars", error: "Invalid ID format" },
+          { id: "id\twith\ttabs", error: "Invalid ID format" },
+          { id: "café-über", error: "Invalid ID format" },
+          { id: "id<script>alert(1)</script>", error: "Invalid ID format" },
+          { id: "'; DROP TABLE events;--", error: "Invalid ID format" },
         ];
 
         for (const testCase of invalidCases) {

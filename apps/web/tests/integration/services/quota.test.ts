@@ -136,9 +136,6 @@ describe.sequential("Quota System", () => {
         id: adminUser.id,
       });
 
-      console.log("Admin user quotas:", admin.quotas);
-      console.log("Admin user trust level:", admin.trustLevel);
-
       // Admin user created with trust level 5 should have unlimited quotas
       const result = await quotaService.checkQuota(admin, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1000000);
 
