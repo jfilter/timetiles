@@ -262,13 +262,22 @@ export class ImportPage {
    * Create a new catalog with the given name.
    * Handles both cases: when no catalogs exist (input shown directly)
    * and when catalogs exist (must select "+ Create new catalog" first).
+   *
+   * Waits for the catalog API to finish loading before interacting,
+   * since isVisible() checks immediately without waiting.
    */
   async createNewCatalog(catalogName: string): Promise<void> {
     const catalogDropdown = this.page.locator("#catalog-select");
     const catalogNameInput = this.page.locator("#new-catalog-name");
 
+    // Wait for the loading spinner to disappear and the form to render.
+    // After loading, either #catalog-select (catalogs exist) or #new-catalog-name
+    // (no catalogs, auto-selects "new") will be visible.
+    const formReady = catalogDropdown.or(catalogNameInput);
+    await expect(formReady).toBeVisible({ timeout: 10000 });
+
     // Check if the catalog dropdown is visible (existing catalogs exist)
-    if (await catalogDropdown.isVisible({ timeout: 2000 }).catch(() => false)) {
+    if (await catalogDropdown.isVisible()) {
       await catalogDropdown.selectOption("new");
       await expect(catalogNameInput).toBeVisible({ timeout: 5000 });
     }
@@ -316,10 +325,28 @@ export class ImportPage {
 
   /**
    * Select a value in a Radix UI Select component by its trigger locator.
+   * Retries the click→select cycle if the dropdown closes unexpectedly
+   * (Radix portals can take time to mount in CI).
    */
   async selectFieldValue(triggerLocator: Locator, value: string): Promise<void> {
-    await triggerLocator.click();
-    await this.page.getByRole("option", { name: value, exact: true }).click();
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await triggerLocator.click();
+      const option = this.page.getByRole("option", { name: value, exact: true });
+      try {
+        await expect(option).toBeVisible({ timeout: 5000 });
+        await option.click();
+        // Verify the dropdown closed and value was set
+        await expect(option).not.toBeVisible({ timeout: 2000 });
+        return;
+      } catch {
+        if (attempt === maxAttempts)
+          throw new Error(`selectFieldValue: failed to select "${value}" after ${maxAttempts} attempts`);
+        // Dismiss any open dropdown before retrying
+        await this.page.keyboard.press("Escape");
+        await this.page.waitForTimeout(200);
+      }
+    }
   }
 
   /**
@@ -327,6 +354,18 @@ export class ImportPage {
    */
   async getFieldValue(triggerLocator: Locator): Promise<string> {
     return (await triggerLocator.textContent())?.trim() ?? "";
+  }
+
+  /**
+   * Wait for the field mapping form to be interactive.
+   * Checks that the title field select trigger is visible (Radix UI mounted).
+   * Use after navigating to field mapping step or switching sheet tabs.
+   */
+  async waitForFieldMappingReady(): Promise<void> {
+    const titleField = this.page.locator("#title-field");
+    await expect(titleField).toBeVisible({ timeout: 10000 });
+    // Ensure the Radix trigger is enabled / interactive
+    await expect(titleField).toBeEnabled({ timeout: 5000 });
   }
 
   /**

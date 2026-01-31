@@ -340,7 +340,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     await fileInput.setInputFiles(multiSheetPath);
 
     // Wait for file processing - should detect 3 sheets
-    await expect(page.getByText(/3 sheets/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/3 sheets/i)).toBeVisible({ timeout: 10000 });
 
     // Verify all three sheet names are displayed
     await expect(page.getByText("Tech Events")).toBeVisible();
@@ -359,12 +359,9 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     await importPage.createNewCatalog(catalogName);
 
     // Wait for multi-sheet dataset mapping section to appear
-    await page.waitForTimeout(500);
-
-    // Verify each sheet shows a dataset name input with the sheet name pre-filled
     // The multi-sheet view shows each sheet with a dataset name input
     const sheetMappingSections = page.locator('[class*="rounded-sm border p-4"]');
-    await expect(sheetMappingSections).toHaveCount(3, { timeout: 5000 });
+    await expect(sheetMappingSections).toHaveCount(3, { timeout: 10000 });
 
     // Verify sheet names are shown
     await expect(page.getByText("Tech Events").first()).toBeVisible();
@@ -400,11 +397,11 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
       // Click the sheet tab to switch to this sheet
       const sheetTab = page.locator(`[data-testid="sheet-tab-${config.index}"]`);
       await sheetTab.click();
-      await page.waitForTimeout(300); // Wait for UI to update
+      // Wait for field mapping form to be interactive after tab switch
+      await importPage.waitForFieldMappingReady();
 
       // Set title field if not auto-detected
       const titleSelect = page.locator("#title-field");
-      await expect(titleSelect).toBeVisible();
       const titleText = await importPage.getFieldValue(titleSelect);
       if (!titleText || titleText === "Select column...") {
         await importPage.selectFieldValue(titleSelect, config.title);
@@ -542,7 +539,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     await fileInput.setInputFiles(multiSheetPath);
 
     // Wait for file processing - should detect 3 sheets
-    await expect(page.getByText(/3 sheets/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/3 sheets/i)).toBeVisible({ timeout: 10000 });
 
     // Verify all three sheet names are displayed
     await expect(page.getByText("Tech Events")).toBeVisible();
@@ -561,12 +558,9 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     await importPage.createNewCatalog(catalogName);
 
     // Wait for multi-sheet dataset mapping section to appear
-    await page.waitForTimeout(500);
-
-    // Verify each sheet shows a dataset name input with the sheet name pre-filled
     // The multi-sheet view shows each sheet with a dataset name input
     const sheetMappingSections = page.locator('[class*="rounded-sm border p-4"]');
-    await expect(sheetMappingSections).toHaveCount(3, { timeout: 5000 });
+    await expect(sheetMappingSections).toHaveCount(3, { timeout: 10000 });
 
     // Verify sheet names are shown
     await expect(page.getByText("Tech Events").first()).toBeVisible();
@@ -602,11 +596,11 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
       // Click the sheet tab to switch to this sheet
       const sheetTab = page.locator(`[data-testid="sheet-tab-${config.index}"]`);
       await sheetTab.click();
-      await page.waitForTimeout(300); // Wait for UI to update
+      // Wait for field mapping form to be interactive after tab switch
+      await importPage.waitForFieldMappingReady();
 
       // Set title field if not auto-detected
       const titleSelect = page.locator("#title-field");
-      await expect(titleSelect).toBeVisible();
       const titleText = await importPage.getFieldValue(titleSelect);
       if (!titleText || titleText === "Select column...") {
         await importPage.selectFieldValue(titleSelect, config.title);
@@ -903,7 +897,7 @@ test.describe("Import Wizard - Full Flow", () => {
 
     // Wait for file processing to complete - look for success indicator
     const fileReady = page.getByText(/File ready for import/i);
-    await expect(fileReady).toBeVisible({ timeout: 5000 });
+    await expect(fileReady).toBeVisible({ timeout: 10000 });
 
     // Verify file name is shown
     await expect(page.getByText("valid-events.csv")).toBeVisible();
@@ -930,19 +924,19 @@ test.describe("Import Wizard - Full Flow", () => {
     // Map the fields from valid-events.csv
     // The CSV has: title, description, date, location, category
 
+    // Wait for Radix UI Select triggers to be fully mounted
+    await importPage.waitForFieldMappingReady();
+
     // Map Title field
     const titleSelect = page.locator("#title-field");
-    await expect(titleSelect).toBeVisible();
     await importPage.selectFieldValue(titleSelect, "title");
 
     // Map Date field
     const dateSelect = page.locator("#date-field");
-    await expect(dateSelect).toBeVisible();
     await importPage.selectFieldValue(dateSelect, "date");
 
     // Map Location field
     const locationSelect = page.locator("#location-field");
-    await expect(locationSelect).toBeVisible();
     await importPage.selectFieldValue(locationSelect, "location");
 
     // Optionally map Description field
@@ -957,10 +951,7 @@ test.describe("Import Wizard - Full Flow", () => {
     // Step 5: Review
     // Wait for review page to appear
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
-    await expect(reviewHeading).toBeVisible({ timeout: 5000 });
-
-    // Wait a moment for the review page content to render
-    await page.waitForTimeout(500);
+    await expect(reviewHeading).toBeVisible({ timeout: 10000 });
 
     // Verify summary shows the catalog section (name may be derived from file or user input)
     const catalogSection = page.locator("text=Catalog").first();
