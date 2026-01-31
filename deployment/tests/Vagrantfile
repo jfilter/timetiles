@@ -14,7 +14,8 @@ Vagrant.configure("2") do |config|
   # Sync the deployment directory to /opt/timetiles (the real install path)
   config.vm.synced_folder "..", "/opt/timetiles", type: "rsync",
     rsync__exclude: [".git/", "node_modules/", ".next/", "dist/", ".turbo/", "coverage/", ".worktrees/",
-                     ".env.production", ".env.local", "docker-compose.test.yml", "credentials.txt", "ssl/", "nginx-test/"]
+                     ".env.production", ".env.local", "docker-compose.test.yml", "credentials.txt", "ssl/", "nginx-test/",
+                     "uploads/", "backups/"]
 
   # Provision: run bootstrap.sh to set up the real deployment environment
   config.vm.provision "bootstrap", type: "shell", inline: <<-SHELL

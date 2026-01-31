@@ -46,6 +46,14 @@ if [[ ! -f "$ENV_FILE" ]]; then
     sed -i.bak "s|RESTIC_REPOSITORY=.*|RESTIC_REPOSITORY=$DEPLOY_DIR/backups/restic-repo|" "$ENV_FILE"
     sed -i.bak "s|UPLOAD_HOST_DIR=.*|UPLOAD_HOST_DIR=$DEPLOY_DIR/uploads|" "$ENV_FILE"
 
+    # Override with CI env vars if set
+    if [[ -n "${TIMETILES_IMAGE:-}" ]]; then
+        sed -i.bak "s|^TIMETILES_IMAGE=.*|TIMETILES_IMAGE=$TIMETILES_IMAGE|" "$ENV_FILE"
+    fi
+    if [[ -n "${TIMETILES_VERSION:-}" ]]; then
+        sed -i.bak "s|^TIMETILES_VERSION=.*|TIMETILES_VERSION=$TIMETILES_VERSION|" "$ENV_FILE"
+    fi
+
     rm -f "$ENV_FILE.bak"
     echo "Created $ENV_FILE with test values"
 else
@@ -89,30 +97,28 @@ if [[ ! -f "$SSL_DIR/fullchain.pem" ]]; then
     echo "SSL certificate generated"
 fi
 
-# Ensure uploads directory exists (bind mount needs host dir)
+# Ensure uploads directory exists with correct ownership for bind mount
+# Container's nextjs user is uid 1001; on GHA runner is also uid 1001
 source "$ENV_FILE"
 UPLOAD_HOST_DIR="${UPLOAD_HOST_DIR:-$DEPLOY_DIR/uploads}"
 mkdir -p "$UPLOAD_HOST_DIR"
+if [[ "$(stat -c %u "$UPLOAD_HOST_DIR" 2>/dev/null || stat -f %u "$UPLOAD_HOST_DIR")" != "1001" ]]; then
+    sudo chown 1001:1001 "$UPLOAD_HOST_DIR" 2>/dev/null || chmod 777 "$UPLOAD_HOST_DIR"
+fi
 
 # Tear down any existing services and volumes for a clean start
 echo "Cleaning up previous services..."
 cd "$DEPLOY_DIR"
 docker compose -f docker-compose.prod.yml -f docker-compose.test.yml --env-file .env.production down -v 2>/dev/null || true
 
-# Build and start services
+# Build/pull and start services via CLI
 echo "Building and starting services..."
-cd "$PROJECT_ROOT"
-
-# Use timetiles CLI if available, otherwise docker compose directly
-if [[ -x "$DEPLOY_DIR/timetiles" ]]; then
-    "$DEPLOY_DIR/timetiles" build || "$DEPLOY_DIR/timetiles" pull
-    "$DEPLOY_DIR/timetiles" up
+if [[ "${SKIP_IMAGE_BUILD:-}" == "true" ]]; then
+    echo "Skipping image build/pull (using pre-loaded image)"
 else
-    cd "$DEPLOY_DIR"
-    docker compose -f docker-compose.prod.yml -f docker-compose.test.yml --env-file .env.production build || \
-    docker compose -f docker-compose.prod.yml -f docker-compose.test.yml --env-file .env.production pull
-    docker compose -f docker-compose.prod.yml -f docker-compose.test.yml --env-file .env.production up -d
+    "$DEPLOY_DIR/timetiles" build || "$DEPLOY_DIR/timetiles" pull
 fi
+"$DEPLOY_DIR/timetiles" up
 
 # Wait for health
 echo "Waiting for services to be healthy..."

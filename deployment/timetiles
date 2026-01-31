@@ -277,11 +277,35 @@ case "$1" in
             sudo chown 1001:1001 "$UPLOAD_HOST_DIR" 2>/dev/null || chmod 777 "$UPLOAD_HOST_DIR"
         fi
         echo -e "${YELLOW}Starting services...${NC}"
+
+        # Start postgres first and wait for it to be ready before other services.
+        # kartoza/postgis restarts during first-run init (extensions, users, etc.)
+        # which causes Docker Compose depends_on health gates to fail immediately.
+        $DC_CMD up -d --no-deps postgres
+        echo "Waiting for PostgreSQL to be ready..."
+        pg_attempts=0
+        pg_max=60
+        while [[ $pg_attempts -lt $pg_max ]]; do
+            if $DC_CMD exec -T postgres pg_isready -h localhost -U "${DB_USER:-timetiles_user}" &>/dev/null; then
+                echo -e "${GREEN}PostgreSQL is ready${NC}"
+                break
+            fi
+            echo -n "."
+            sleep 2
+            ((pg_attempts++))
+        done
+        if [[ $pg_attempts -ge $pg_max ]]; then
+            echo ""
+            echo -e "${RED}PostgreSQL failed to become ready${NC}"
+            exit 1
+        fi
+
+        # Now start remaining services (postgres is already healthy)
         $DC_CMD up -d
         echo -e "${GREEN}Services started!${NC}"
-        echo "Waiting for services to be ready..."
-        sleep 10
-        $0 status
+        echo "Waiting for application to be ready..."
+        sleep 5
+        "$SCRIPT_DIR/timetiles" status
         ;;
         
     down)
@@ -403,8 +427,8 @@ case "$1" in
                 BACKUP_ARGS=""
                 $OFFSITE && BACKUP_ARGS="--offsite"
 
-                "$0" backup db $BACKUP_ARGS || exit 1
-                "$0" backup uploads $BACKUP_ARGS || exit 1
+                "$SCRIPT_DIR/timetiles" backup db $BACKUP_ARGS || exit 1
+                "$SCRIPT_DIR/timetiles" backup uploads $BACKUP_ARGS || exit 1
 
                 echo -e "${GREEN}Full backup complete${NC}"
                 ;;

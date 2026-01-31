@@ -129,10 +129,75 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  test-deployment:
+    name: Test Production Deployment
+    runs-on: ubuntu-24.04
+    needs: [build-main]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Download amd64 digest
+        uses: actions/download-artifact@v4
+        with:
+          name: digests-main-ubuntu-24.04
+          path: /tmp/digests
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull image by digest and tag locally
+        run: |
+          DIGEST=$(ls /tmp/digests | head -1)
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:${DIGEST}
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:${DIGEST} timetiles-test:ci
+
+      - name: Install bats
+        run: sudo apt-get update && sudo apt-get install -y bats
+
+      - name: Make scripts executable
+        run: |
+          chmod +x timetiles deployment/timetiles
+          chmod +x deployment/tests/*.sh
+          chmod +x deployment/tests/helpers/*.sh
+
+      - name: Run deployment tests
+        env:
+          TIMETILES_IMAGE: timetiles-test
+          TIMETILES_VERSION: ci
+          SKIP_IMAGE_BUILD: 'true'
+        run: |
+          cd deployment/tests
+          ./run-all.sh
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          cd deployment
+          if [[ -f docker-compose.test.yml ]]; then
+            docker compose -f docker-compose.prod.yml -f docker-compose.test.yml --env-file .env.production logs --tail=200 || true
+          else
+            docker compose -f docker-compose.prod.yml --env-file .env.production logs --tail=200 || true
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          ./timetiles down || true
+          docker system prune -f || true
+
   merge-main:
     name: Create Main Multi-Arch Manifest
     runs-on: ubuntu-latest
-    needs: [build-main]
+    needs: [build-main, test-deployment]
 
     steps:
       - name: Download digests
@@ -190,7 +255,7 @@ jobs:
   merge-allinone:
     name: Create All-in-One Multi-Arch Manifest
     runs-on: ubuntu-latest
-    needs: [build-allinone]
+    needs: [build-allinone, test-deployment]
 
     steps:
       - name: Download digests

@@ -30,9 +30,3 @@ jobs:
     name: E2E Tests
     needs: [build, check-payload-types]
     uses: ./.github/workflows/test-e2e.yml
-
-  # Test production deployment setup
-  test-deployment:
-    name: Test Production Deployment
-    needs: [build, check-payload-types]
-    uses: ./.github/workflows/test-deployment.yml
