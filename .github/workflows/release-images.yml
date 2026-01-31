@@ -51,30 +51,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            # For tagged releases: v1.0.0, 1.0, latest
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
-            # For scheduled/manual builds: edge
-            type=raw,value=edge,enable=${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag == '') }}
-
-      - name: Build and push main image
+      - name: Build and push by digest
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           file: deployment/Dockerfile.prod
           platforms: ${{ matrix.platform }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=main-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=main-${{ matrix.platform }}
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-main-${{ matrix.runner }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
 
   build-allinone:
     name: Build All-in-One Image (${{ matrix.platform }})
@@ -104,6 +104,112 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployment/Dockerfile.allinone
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=allinone-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=allinone-${{ matrix.platform }}
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-allinone-${{ matrix.runner }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge-main:
+    name: Create Main Multi-Arch Manifest
+    runs-on: ubuntu-latest
+    needs: [build-main]
+
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-main-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # For tagged releases: v1.0.0, 1.0, latest
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+            # For scheduled/manual builds: edge
+            type=raw,value=edge,enable=${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag == '') }}
+
+      - name: Create multi-arch manifest
+        working-directory: /tmp/digests
+        run: |
+          COUNT=$(ls | wc -l)
+          if [ "$COUNT" -ne 2 ]; then
+            echo "ERROR: Expected 2 platform digests, got $COUNT"
+            ls -la
+            exit 1
+          fi
+
+          DIGESTS=$(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+          # Build tag arguments from metadata
+          TAG_ARGS=$(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+
+          docker buildx imagetools create $TAG_ARGS $DIGESTS
+
+      - name: Inspect manifest
+        run: |
+          TAG=$(jq -cr '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          docker buildx imagetools inspect "$TAG"
+
+  merge-allinone:
+    name: Create All-in-One Multi-Arch Manifest
+    runs-on: ubuntu-latest
+    needs: [build-allinone]
+
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-allinone-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -119,22 +225,32 @@ jobs:
             # For scheduled/manual builds: edge-allinone
             type=raw,value=edge,enable=${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag == '') }}
 
-      - name: Build and push all-in-one image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: deployment/Dockerfile.allinone
-          platforms: ${{ matrix.platform }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Create multi-arch manifest
+        working-directory: /tmp/digests
+        run: |
+          COUNT=$(ls | wc -l)
+          if [ "$COUNT" -ne 2 ]; then
+            echo "ERROR: Expected 2 platform digests, got $COUNT"
+            ls -la
+            exit 1
+          fi
+
+          DIGESTS=$(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+          # Build tag arguments from metadata
+          TAG_ARGS=$(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+
+          docker buildx imagetools create $TAG_ARGS $DIGESTS
+
+      - name: Inspect manifest
+        run: |
+          TAG=$(jq -cr '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          docker buildx imagetools inspect "$TAG"
 
   smoke-test:
     name: Smoke Test
     runs-on: ubuntu-latest
-    needs: [build-main, build-allinone]
+    needs: [merge-main, merge-allinone]
     timeout-minutes: 15
 
     steps:
