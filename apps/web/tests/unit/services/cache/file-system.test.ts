@@ -25,15 +25,19 @@ describe.sequential("FileSystemCacheStorage", () => {
       cacheDir: tempDir,
       maxSize: 1024 * 1024, // 1MB
       defaultTTL: 60, // 1 minute
-      cleanupIntervalMs: 60000, // 1 minute
+      // No cleanupIntervalMs — timers leak across tests with isolate:false
     });
   });
 
   afterEach(async () => {
-    // Clean up
+    // Clear the interval first (destroy fires a floating saveIndex we don't need)
     if (storage) {
       storage.destroy();
     }
+
+    // Small delay to let any floating destroy() promises settle before
+    // we remove the directory, avoiding ENOENT races in CI.
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     // Remove temp directory
     try {
