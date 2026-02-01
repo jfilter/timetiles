@@ -40,12 +40,12 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           lfs: true
 
       - name: Run Trivy vulnerability scanner (dependencies)
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -58,14 +58,14 @@ jobs:
           timeout: '10m'
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: 'trivy-deps-results.sarif'
           category: 'dependency-scan'
 
       - name: Generate dependency report
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@0.33.1
         if: always()
         with:
           scan-type: 'fs'
@@ -121,7 +121,7 @@ jobs:
           fi
 
       - name: Upload scan reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: dependency-scan-reports
@@ -137,7 +137,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           lfs: true
 
@@ -153,7 +153,7 @@ jobs:
           docker images ${{ env.DOCKER_IMAGE }}
 
       - name: Run Trivy vulnerability scanner (Docker)
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: ${{ env.DOCKER_IMAGE }}
           format: 'sarif'
@@ -163,14 +163,14 @@ jobs:
           scanners: 'vuln,secret,misconfig'
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: 'trivy-docker-results.sarif'
           category: 'docker-scan'
 
       - name: Generate detailed Docker report
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@0.33.1
         if: always()
         with:
           image-ref: ${{ env.DOCKER_IMAGE }}
@@ -242,7 +242,7 @@ jobs:
           fi
 
       - name: Upload Docker scan reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: docker-scan-reports
@@ -258,12 +258,12 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           lfs: true
 
       - name: Run Trivy config scanner
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           scan-type: 'config'
           scan-ref: '.'
@@ -273,14 +273,14 @@ jobs:
           timeout: '10m'
 
       - name: Upload config scan results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: 'trivy-config-results.sarif'
           category: 'config-scan'
 
       - name: Generate config report
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@0.33.1
         if: always()
         with:
           scan-type: 'config'
@@ -329,7 +329,7 @@ jobs:
           fi
 
       - name: Upload config scan reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: config-scan-reports
@@ -345,12 +345,12 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           lfs: true
 
       - name: Run Trivy secret scanner
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -362,14 +362,14 @@ jobs:
           skip-dirs: 'node_modules,dist,build,.next,.turbo,.git'
 
       - name: Upload secret scan results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: 'trivy-secrets-results.sarif'
           category: 'secret-scan'
 
       - name: Generate secret scan report
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@0.33.1
         if: always()
         with:
           scan-type: 'fs'
@@ -418,7 +418,7 @@ jobs:
           fi
 
       - name: Upload secret scan reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: secret-scan-reports
@@ -435,12 +435,12 @@ jobs:
     
     steps:
       - name: Download all scan reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: scan-reports
 
       - name: Create PR comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
