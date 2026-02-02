@@ -322,5 +322,180 @@ describe("Schema Similarity Service", () => {
 
       expect(result.language).toBe("eng");
     });
+
+    it("handles fieldMetadata entries without type property", () => {
+      const dataset: Partial<Dataset> = {
+        id: 5,
+        name: "No Types",
+        language: "eng",
+        fieldMetadata: {
+          title: { occurrences: 100 } as any,
+          count: { occurrences: 50 } as any,
+        },
+      };
+
+      const result = datasetToSchema(dataset as Dataset);
+
+      expect(result.fields).toContain("title");
+      expect(result.fields).toContain("count");
+      // fieldTypes should not have entries for fields without type
+      expect(result.fieldTypes?.title).toBeUndefined();
+      expect(result.fieldTypes?.count).toBeUndefined();
+    });
+  });
+
+  describe("type compatibility", () => {
+    it("calculates type compatibility when dataset has fieldTypes", () => {
+      const uploadedSchema: UploadedSchema = {
+        headers: ["count", "name", "active"],
+        sampleData: [
+          { count: 42, name: "Test", active: true },
+          { count: 99, name: "Test2", active: false },
+        ],
+        rowCount: 2,
+      };
+
+      const datasetSchema: DatasetSchema = {
+        datasetId: 1,
+        datasetName: "Typed Dataset",
+        language: "eng",
+        fields: ["count", "name", "active"],
+        fieldTypes: { count: "integer", name: "string", active: "boolean" },
+        hasGeoFields: false,
+        hasDateFields: false,
+      };
+
+      const result = calculateSchemaSimilarity(uploadedSchema, datasetSchema);
+      expect(result.breakdown.typeCompatibility).toBeGreaterThan(50);
+    });
+
+    it("handles compatible type groups (numeric_string and number)", () => {
+      const uploadedSchema: UploadedSchema = {
+        headers: ["amount"],
+        sampleData: [{ amount: "123" }, { amount: "456" }],
+        rowCount: 2,
+      };
+
+      const datasetSchema: DatasetSchema = {
+        datasetId: 1,
+        datasetName: "Numeric Dataset",
+        language: "eng",
+        fields: ["amount"],
+        fieldTypes: { amount: "number" },
+        hasGeoFields: false,
+        hasDateFields: false,
+      };
+
+      const result = calculateSchemaSimilarity(uploadedSchema, datasetSchema);
+      // numeric_string should be compatible with number
+      expect(result.breakdown.typeCompatibility).toBe(100);
+    });
+
+    it("handles various value types in type inference", () => {
+      const uploadedSchema: UploadedSchema = {
+        headers: ["arr", "obj", "num", "bool", "date"],
+        sampleData: [{ arr: [1, 2], obj: { a: 1 }, num: 3.14, bool: true, date: "2024-01-15" }],
+        rowCount: 1,
+      };
+
+      const datasetSchema: DatasetSchema = {
+        datasetId: 1,
+        datasetName: "Types",
+        language: "eng",
+        fields: ["arr", "obj", "num", "bool", "date"],
+        fieldTypes: { arr: "array", obj: "object", num: "number", bool: "boolean", date: "date" },
+        hasGeoFields: false,
+        hasDateFields: false,
+      };
+
+      const result = calculateSchemaSimilarity(uploadedSchema, datasetSchema);
+      expect(result.breakdown.typeCompatibility).toBeGreaterThan(0);
+    });
+
+    it("infers string as default when all values are null", () => {
+      const uploadedSchema: UploadedSchema = {
+        headers: ["empty_field"],
+        sampleData: [{ empty_field: null }, { empty_field: undefined }],
+        rowCount: 2,
+      };
+
+      const datasetSchema: DatasetSchema = {
+        datasetId: 1,
+        datasetName: "String Dataset",
+        language: "eng",
+        fields: ["empty_field"],
+        fieldTypes: { empty_field: "string" },
+        hasGeoFields: false,
+        hasDateFields: false,
+      };
+
+      const result = calculateSchemaSimilarity(uploadedSchema, datasetSchema);
+      // null values infer as "string" (default), which matches "string"
+      expect(result.breakdown.typeCompatibility).toBe(100);
+    });
+  });
+
+  describe("edge cases", () => {
+    it("returns 0 structure similarity when uploaded headers are empty", () => {
+      const uploadedSchema: UploadedSchema = {
+        headers: [],
+        sampleData: [],
+        rowCount: 0,
+      };
+
+      const datasetSchema: DatasetSchema = {
+        datasetId: 1,
+        datasetName: "Dataset",
+        language: "eng",
+        fields: ["title"],
+        hasGeoFields: false,
+        hasDateFields: false,
+      };
+
+      const result = calculateSchemaSimilarity(uploadedSchema, datasetSchema);
+      expect(result.breakdown.structureSimilarity).toBe(0);
+    });
+
+    it("returns neutral language match when no language is detected", () => {
+      const uploadedSchema: UploadedSchema = {
+        headers: ["title"],
+        sampleData: [],
+        rowCount: 1,
+      };
+
+      const datasetSchema: DatasetSchema = {
+        datasetId: 1,
+        datasetName: "Dataset",
+        language: "eng",
+        fields: ["title"],
+        hasGeoFields: false,
+        hasDateFields: false,
+      };
+
+      // No detectedLanguage parameter
+      const result = calculateSchemaSimilarity(uploadedSchema, datasetSchema);
+      expect(result.breakdown.languageMatch).toBe(50);
+    });
+
+    it("lowers semantic hints when only uploaded has geo fields", () => {
+      const uploadedSchema: UploadedSchema = {
+        headers: ["latitude", "longitude", "name"],
+        sampleData: [{ latitude: 52.5, longitude: 13.4, name: "Berlin" }],
+        rowCount: 1,
+      };
+
+      const datasetSchema: DatasetSchema = {
+        datasetId: 1,
+        datasetName: "No Geo",
+        language: "eng",
+        fields: ["name", "description"],
+        hasGeoFields: false,
+        hasDateFields: false,
+      };
+
+      const result = calculateSchemaSimilarity(uploadedSchema, datasetSchema);
+      // Geo mismatch should lower semantic hints score
+      expect(result.breakdown.semanticHints).toBeLessThan(100);
+    });
   });
 });

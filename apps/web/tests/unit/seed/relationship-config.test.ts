@@ -32,6 +32,25 @@ describe("relationship-config", () => {
     it("should not throw for valid config", () => {
       expect(() => validateRelationshipConfig()).not.toThrow();
     });
+
+    it("should throw for config missing required fields", () => {
+      // Temporarily add an invalid config entry
+      const original = RELATIONSHIP_CONFIG["_test_invalid"];
+      RELATIONSHIP_CONFIG["_test_invalid"] = [
+        { field: "", targetCollection: "catalogs", searchField: "name" },
+        { field: "catalog", targetCollection: "", searchField: "name" },
+        { field: "catalog", targetCollection: "catalogs", searchField: "" },
+      ];
+      try {
+        expect(() => validateRelationshipConfig()).toThrow("Invalid relationship configuration");
+      } finally {
+        delete RELATIONSHIP_CONFIG["_test_invalid"];
+        // Restore if it existed before
+        if (original !== undefined) {
+          RELATIONSHIP_CONFIG["_test_invalid"] = original;
+        }
+      }
+    });
   });
 
   describe("transform functions", () => {
@@ -49,6 +68,28 @@ describe("relationship-config", () => {
     it("should map known dataset slugs to names", () => {
       const config = RELATIONSHIP_CONFIG.events![0]!;
       expect(config.transform!("air-quality")).toBe("Air Quality Measurements");
+    });
+
+    it("should map known event dataset slugs to names", () => {
+      const config = RELATIONSHIP_CONFIG.events![0]!;
+      expect(config.transform!("water-quality")).toBe("Water Quality Data");
+      expect(config.transform!("gdp-growth")).toBe("GDP Growth Rates");
+      expect(config.transform!("employment-stats")).toBe("Employment Statistics");
+      expect(config.transform!("cultural-participation")).toBe("Cultural Participation Rates");
+      expect(config.transform!("research-publications")).toBe("Research Publications Database");
+    });
+
+    it("should pass through unknown event dataset values", () => {
+      const config = RELATIONSHIP_CONFIG.events![0]!;
+      expect(config.transform!("My Custom Dataset")).toBe("My Custom Dataset");
+    });
+
+    it("should map additional catalog slugs to names", () => {
+      const config = RELATIONSHIP_CONFIG.datasets![0]!;
+      expect(config.transform!("economic-indicators")).toBe("Economic Indicators");
+      expect(config.transform!("cultural-events")).toBe("Cultural Events");
+      expect(config.transform!("academic-research")).toBe("Academic Research");
+      expect(config.transform!("government-data")).toBe("Government Data");
     });
   });
 });

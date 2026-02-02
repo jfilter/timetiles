@@ -552,6 +552,14 @@ describe("ProgressiveSchemaBuilder", () => {
       expect(state.fieldStats["id"]?.occurrences).toBe(1);
     });
 
+    it("handles boolean-string type values", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      // "true" and "false" strings should be detected as boolean-string type
+      builder.processBatch([{ flag: "true" }, { flag: "false" }, { flag: "true" }]);
+      const state = builder.getState();
+      expect(state.fieldStats["flag"]?.typeDistribution["boolean-string"]).toBe(3);
+    });
+
     it("handles very long field paths", () => {
       const builder = new ProgressiveSchemaBuilder();
       const deepObject = {
@@ -574,6 +582,176 @@ describe("ProgressiveSchemaBuilder", () => {
       // Should handle within max depth
       const deepFields = Object.keys(state.fieldStats).filter((k) => k.includes("."));
       expect(deepFields.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("getSummary", () => {
+    it("should return correct summary with enum fields", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      const records = Array(100)
+        .fill(null)
+        .map((_, i) => ({
+          id: i,
+          status: i % 2 === 0 ? "active" : "inactive",
+        }));
+      builder.processBatch(records);
+      builder.detectEnumFields();
+
+      const summary = builder.getSummary();
+      expect(summary.recordCount).toBe(100);
+      expect(summary.fieldCount).toBe(2);
+      expect(summary.version).toBeGreaterThan(0);
+      expect(summary.enumFields).toContain("status");
+    });
+
+    it("should return empty enumFields when no enums detected", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      builder.processBatch([{ id: 1, name: "Test" }]);
+
+      const summary = builder.getSummary();
+      expect(summary.recordCount).toBe(1);
+      expect(summary.fieldCount).toBe(2);
+      expect(summary.enumFields).toEqual([]);
+    });
+  });
+
+  describe("getSchemaSync", () => {
+    it("should return manually built schema synchronously", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      builder.processBatch([{ id: 1, name: "Test" }]);
+
+      const schema = builder.getSchemaSync();
+      expect(schema.type).toBe("object");
+      expect(schema.properties).toBeDefined();
+      const props = schema.properties as Record<string, unknown>;
+      expect(props.id).toBeDefined();
+      expect(props.name).toBeDefined();
+    });
+
+    it("should return empty schema when no data processed", () => {
+      const builder = new ProgressiveSchemaBuilder();
+
+      const schema = builder.getSchemaSync();
+      expect(schema.type).toBe("object");
+      expect(schema.properties).toEqual({});
+      expect(schema.required).toEqual([]);
+    });
+  });
+
+  describe("buildManualSchema via getSchemaSync", () => {
+    it("should build schema for flat fields correctly", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      builder.processBatch([
+        { name: "Alice", age: 30 },
+        { name: "Bob", age: 25 },
+      ]);
+
+      const schema = builder.getSchemaSync();
+      const props = schema.properties as Record<string, any>;
+      expect(props.name).toBeDefined();
+      expect(props.name.type).toBe("string");
+      expect(props.age).toBeDefined();
+      expect(props.age.type).toBe("integer");
+    });
+
+    it("should include enum values in manual schema", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      const records = Array(100)
+        .fill(null)
+        .map((_, i) => ({
+          status:
+            // eslint-disable-next-line sonarjs/no-nested-conditional
+            i % 3 === 0 ? "active" : i % 3 === 1 ? "pending" : "done",
+        }));
+      builder.processBatch(records);
+      builder.detectEnumFields();
+
+      const schema = builder.getSchemaSync();
+      const props = schema.properties as Record<string, any>;
+      expect(props.status.enum).toBeDefined();
+      expect(props.status.enum).toContain("active");
+      expect(props.status.enum).toContain("pending");
+      expect(props.status.enum).toContain("done");
+    });
+
+    it("should set required fields that appear in 90%+ of records", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      const records = Array(20)
+        .fill(null)
+        .map((_, i) => ({
+          id: String(i),
+          ...(i < 19 ? { name: `Name ${i}` } : {}), // name appears in 19/20 = 95%
+          ...(i < 10 ? { optional: "yes" } : {}), // optional appears in 10/20 = 50%
+        }));
+      builder.processBatch(records);
+
+      const schema = builder.getSchemaSync();
+      expect(schema.required).toContain("id");
+      expect(schema.required).toContain("name");
+      expect(schema.required).not.toContain("optional");
+    });
+
+    it("should include numeric constraints from stats", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      builder.processBatch([{ score: 10 }, { score: 50 }, { score: 100 }]);
+
+      const schema = builder.getSchemaSync();
+      const props = schema.properties as Record<string, any>;
+      expect(props.score.minimum).toBe(10);
+      expect(props.score.maximum).toBe(100);
+    });
+  });
+
+  describe("buildPropertySchema edge cases", () => {
+    it("should handle nullable types with multiple type entries", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      // Mix of numbers and nulls to trigger nullable + multiple types path
+      builder.processBatch([{ value: 1 }, { value: null }, { value: "text" }]);
+
+      const schema = builder.getSchemaSync();
+      const props = schema.properties as Record<string, any>;
+      expect(props.value).toBeDefined();
+      // Should have nullable set since there are nulls and multiple non-null types
+      expect(props.value.nullable).toBe(true);
+    });
+
+    it("should handle multiple non-null types without nullable", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      builder.processBatch([{ value: 1 }, { value: "text" }]);
+
+      const schema = builder.getSchemaSync();
+      const props = schema.properties as Record<string, any>;
+      expect(props.value).toBeDefined();
+      // Multiple types but no nulls - should be an array type without nullable
+      expect(Array.isArray(props.value.type)).toBe(true);
+      expect(props.value.nullable).toBeUndefined();
+    });
+  });
+
+  describe("mapToJsonSchemaType", () => {
+    it("should map date type to string in schema", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      // Date strings are detected as "date" type internally
+      builder.processBatch([{ created: "2024-01-15" }, { created: "2024-02-20" }]);
+
+      const schema = builder.getSchemaSync();
+      const props = schema.properties as Record<string, any>;
+      // Date type maps to "string" in JSON Schema
+      expect(props.created).toBeDefined();
+      // The type should be "string" since date maps to string
+      if (typeof props.created.type === "string") {
+        expect(props.created.type).toBe("string");
+      }
+    });
+
+    it("should map boolean-string type to string in schema", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      builder.processBatch([{ flag: "true" }, { flag: "false" }]);
+
+      const schema = builder.getSchemaSync();
+      const props = schema.properties as Record<string, any>;
+      expect(props.flag).toBeDefined();
+      expect(props.flag.type).toBe("string");
     });
   });
 });

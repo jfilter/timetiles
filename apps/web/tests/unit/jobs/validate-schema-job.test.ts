@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => {
     getSchemaBuilderState: vi.fn(),
     startStage: vi.fn(),
     completeStage: vi.fn(),
+    checkQuota: vi.fn(),
   };
 });
 
@@ -64,6 +65,19 @@ vi.mock("@/lib/types/schema-detection", () => ({
   getSchemaBuilderState: mocks.getSchemaBuilderState,
 }));
 
+vi.mock("@/lib/services/quota-service", () => ({
+  getQuotaService: () => ({
+    checkQuota: mocks.checkQuota,
+  }),
+}));
+
+vi.mock("@/lib/constants/quota-constants", () => ({
+  QUOTA_TYPES: {
+    EVENTS_PER_IMPORT: "maxEventsPerImport",
+    TOTAL_EVENTS: "maxTotalEvents",
+  },
+}));
+
 describe.sequential("ValidateSchemaJob Handler", () => {
   let mockPayload: any;
   let mockContext: JobHandlerContext;
@@ -91,6 +105,9 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     mocks.ProgressiveSchemaBuilder.mockImplementation(function () {
       return mockSchemaBuilderInstance;
     });
+
+    // Default quota check: allowed
+    mocks.checkQuota.mockResolvedValue({ allowed: true, current: 0, limit: 100, remaining: 100 });
   });
 
   describe("Success Cases", () => {
@@ -725,6 +742,390 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       // Verify schema builder was created with cached state (no batch processing)
       // The duplicate filtering happened during schema detection stage, not here
       expect(mockSchemaBuilderInstance.processBatch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Schema Mode Validation", () => {
+    /**
+     * Helper to set up a standard test scenario with a given schema mode and schema pair.
+     * Returns the mock objects for further assertion.
+     */
+    const setupSchemaModeTest = (options: {
+      schemaMode: string;
+      detectedSchema: Record<string, unknown>;
+      currentSchema: Record<string, unknown>;
+      userId?: number;
+    }) => {
+      const mockSchemaBuilderState = {
+        fieldStats: {},
+        recordCount: 100,
+      };
+
+      const mockImportJob = createMockImportJob({
+        id: 123,
+      });
+      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+        mockSchemaBuilderState;
+
+      const mockDataset = createMockDataset();
+      const mockImportFile = createMockImportFile();
+
+      // Add processingOptions with schemaMode and optionally a user
+      (mockImportFile as any).processingOptions = {
+        schemaMode: options.schemaMode,
+      };
+      if (options.userId) {
+        (mockImportFile as any).user = {
+          id: options.userId,
+          email: "test@example.com",
+          role: "user",
+        };
+      }
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockImportFile);
+
+      mockPayload.find.mockResolvedValueOnce({
+        docs: [{ schema: options.currentSchema }],
+      });
+
+      mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
+      mockSchemaBuilderInstance.getSchema.mockResolvedValueOnce(options.detectedSchema);
+      mockSchemaBuilderInstance.getState.mockReturnValueOnce(mockSchemaBuilderState);
+      mockPayload.update.mockResolvedValue({});
+
+      return { mockImportJob, mockDataset, mockImportFile };
+    };
+
+    it("should fail import in strict mode when schema has changes", async () => {
+      const currentSchema = {
+        type: "object",
+        properties: { id: { type: "string" } },
+        required: ["id"],
+      };
+      const detectedSchema = {
+        type: "object",
+        properties: { id: { type: "string" }, newField: { type: "string" } },
+        required: ["id"],
+      };
+
+      setupSchemaModeTest({
+        schemaMode: "strict",
+        detectedSchema,
+        currentSchema,
+      });
+
+      const result = await validateSchemaJob.handler(mockContext);
+
+      expect(result).toEqual({
+        output: {
+          requiresApproval: false,
+          hasBreakingChanges: false,
+          newFields: 1,
+          failed: true,
+          failureReason: "Schema mismatch in strict mode: 1 change(s) detected",
+        },
+      });
+
+      // Verify job was updated to FAILED stage
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: "import-jobs",
+          id: 123,
+          data: expect.objectContaining({
+            stage: "failed",
+          }),
+        })
+      );
+    });
+
+    it("should fail import in additive mode when schema has breaking changes", async () => {
+      const currentSchema = {
+        type: "object",
+        properties: { id: { type: "string" } },
+        required: ["id"],
+      };
+      const detectedSchema = {
+        type: "object",
+        properties: { id: { type: "number" } },
+        required: ["id"],
+      };
+
+      setupSchemaModeTest({
+        schemaMode: "additive",
+        detectedSchema,
+        currentSchema,
+      });
+
+      const result = await validateSchemaJob.handler(mockContext);
+
+      expect(result).toEqual({
+        output: {
+          requiresApproval: false,
+          hasBreakingChanges: true,
+          newFields: 0,
+          failed: true,
+          failureReason: "Breaking schema changes not allowed in additive mode",
+        },
+      });
+
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            stage: "failed",
+            errors: [{ row: 0, error: "Breaking schema changes not allowed in additive mode" }],
+          }),
+        })
+      );
+    });
+
+    it("should auto-approve non-breaking changes in additive mode without transforms", async () => {
+      const currentSchema = {
+        type: "object",
+        properties: { id: { type: "string" } },
+        required: ["id"],
+      };
+      const detectedSchema = {
+        type: "object",
+        properties: { id: { type: "string" }, newField: { type: "string" } },
+        required: ["id"],
+      };
+
+      setupSchemaModeTest({
+        schemaMode: "additive",
+        detectedSchema,
+        currentSchema,
+      });
+
+      const result = await validateSchemaJob.handler(mockContext);
+
+      // additive mode with non-breaking changes and no high-confidence transforms: auto-approve
+      // schemaMode is set so determineRequiresApproval returns false (bypasses dataset config)
+      expect(result).toEqual({
+        output: {
+          requiresApproval: false,
+          hasBreakingChanges: false,
+          newFields: 1,
+        },
+      });
+
+      // Should proceed to create-schema-version since there are changes but no approval needed
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            stage: "create-schema-version",
+          }),
+        })
+      );
+    });
+
+    it("should fail import in flexible mode when schema has breaking changes", async () => {
+      const currentSchema = {
+        type: "object",
+        properties: { id: { type: "string" } },
+        required: ["id"],
+      };
+      const detectedSchema = {
+        type: "object",
+        properties: { id: { type: "number" } },
+        required: ["id"],
+      };
+
+      setupSchemaModeTest({
+        schemaMode: "flexible",
+        detectedSchema,
+        currentSchema,
+      });
+
+      const result = await validateSchemaJob.handler(mockContext);
+
+      expect(result).toEqual({
+        output: {
+          requiresApproval: false,
+          hasBreakingChanges: true,
+          newFields: 0,
+          failed: true,
+          failureReason: "Breaking schema changes detected",
+        },
+      });
+    });
+
+    it("should auto-approve non-breaking changes in flexible mode", async () => {
+      const currentSchema = {
+        type: "object",
+        properties: { id: { type: "string" } },
+        required: ["id"],
+      };
+      const detectedSchema = {
+        type: "object",
+        properties: { id: { type: "string" }, extra: { type: "number" } },
+        required: ["id"],
+      };
+
+      setupSchemaModeTest({
+        schemaMode: "flexible",
+        detectedSchema,
+        currentSchema,
+      });
+
+      const result = await validateSchemaJob.handler(mockContext);
+
+      // flexible mode: non-breaking changes auto-approve, schemaMode bypasses dataset config
+      expect(result).toEqual({
+        output: {
+          requiresApproval: false,
+          hasBreakingChanges: false,
+          newFields: 1,
+        },
+      });
+
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            stage: "create-schema-version",
+          }),
+        })
+      );
+    });
+
+    it("should pass through with no failure for strict mode when no changes exist", async () => {
+      const schema = {
+        type: "object",
+        properties: { id: { type: "string" } },
+        required: ["id"],
+      };
+
+      setupSchemaModeTest({
+        schemaMode: "strict",
+        detectedSchema: schema,
+        currentSchema: schema,
+      });
+
+      const result = await validateSchemaJob.handler(mockContext);
+
+      // No changes in strict mode: no failure, no approval, goes to geocode-batch
+      expect(result).toEqual({
+        output: {
+          requiresApproval: false,
+          hasBreakingChanges: false,
+          newFields: 0,
+        },
+      });
+
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            stage: "geocode-batch",
+          }),
+        })
+      );
+    });
+  });
+
+  describe("Import Quota Validation", () => {
+    it("should fail when events per import quota is exceeded", async () => {
+      const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
+
+      const mockImportJob = createMockImportJob({ id: 123 });
+      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+        mockSchemaBuilderState;
+
+      const mockDataset = createMockDataset();
+      const mockImportFile = createMockImportFile();
+      // Attach a user object to the import file to trigger quota checking
+      (mockImportFile as any).user = {
+        id: 1,
+        email: "test@example.com",
+        role: "user",
+      };
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockImportFile);
+
+      // First checkQuota call (EVENTS_PER_IMPORT) returns not allowed
+      mocks.checkQuota.mockResolvedValueOnce({
+        allowed: false,
+        current: 0,
+        limit: 50,
+        remaining: 0,
+      });
+
+      mockPayload.update.mockResolvedValue({});
+
+      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow(
+        "exceeding your limit of 50 events per import"
+      );
+
+      // Verify job was updated to FAILED stage
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: "import-jobs",
+          id: 123,
+          data: expect.objectContaining({
+            stage: "failed",
+          }),
+        })
+      );
+    });
+
+    it("should fail when total events quota is exceeded", async () => {
+      const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
+
+      const mockImportJob = createMockImportJob({ id: 123 });
+      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+        mockSchemaBuilderState;
+
+      const mockDataset = createMockDataset();
+      const mockImportFile = createMockImportFile();
+      (mockImportFile as any).user = {
+        id: 1,
+        email: "test@example.com",
+        role: "user",
+      };
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockImportFile);
+
+      // First checkQuota call (EVENTS_PER_IMPORT) returns allowed
+      mocks.checkQuota.mockResolvedValueOnce({
+        allowed: true,
+        current: 0,
+        limit: 1000,
+        remaining: 1000,
+      });
+      // Second checkQuota call (TOTAL_EVENTS) returns not allowed
+      mocks.checkQuota.mockResolvedValueOnce({
+        allowed: false,
+        current: 9500,
+        limit: 10000,
+        remaining: 500,
+      });
+
+      mockPayload.update.mockResolvedValue({});
+
+      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("would exceed your total events limit");
+
+      // Verify the job was updated to FAILED with the quota error
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: "import-jobs",
+          id: 123,
+          data: expect.objectContaining({
+            stage: "failed",
+            errors: expect.arrayContaining([
+              expect.objectContaining({
+                error: expect.stringContaining("would exceed your total events limit"),
+              }),
+            ]),
+          }),
+        })
+      );
     });
   });
 });
