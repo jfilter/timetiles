@@ -1,0 +1,284 @@
+/**
+ * Unit tests for miscellaneous API routes: health, wizard/catalogs, quotas.
+ *
+ * Tests route handler logic with mocked dependencies.
+ *
+ * @module
+ * @category Tests
+ */
+
+// 1. Centralized mocks FIRST
+import "@/tests/mocks/services/logger";
+
+// 2. vi.hoisted for values needed in vi.mock factories
+const mocks = vi.hoisted(() => ({
+  mockGetPayload: vi.fn(),
+  mockRunHealthChecks: vi.fn(),
+  mockCheckQuota: vi.fn(),
+  mockGetEffectiveQuotas: vi.fn(),
+  mockGetQuotaHeaders: vi.fn(),
+  mockCheckRateLimit: vi.fn().mockReturnValue({ allowed: true }),
+}));
+
+// 3. vi.mock calls
+vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
+vi.mock("@payload-config", () => ({ default: {} }));
+vi.mock("@/payload.config", () => ({ default: {} }));
+
+vi.mock("@/lib/health", () => ({
+  runHealthChecks: mocks.mockRunHealthChecks,
+}));
+
+vi.mock("@/lib/services/quota-service", () => ({
+  getQuotaService: vi.fn().mockReturnValue({
+    checkQuota: mocks.mockCheckQuota,
+    getEffectiveQuotas: mocks.mockGetEffectiveQuotas,
+    getQuotaHeaders: mocks.mockGetQuotaHeaders,
+  }),
+}));
+
+vi.mock("@/lib/constants/quota-constants", () => ({
+  QUOTA_TYPES: {
+    FILE_UPLOADS_PER_DAY: "file_uploads_per_day",
+    URL_FETCHES_PER_DAY: "url_fetches_per_day",
+    IMPORT_JOBS_PER_DAY: "import_jobs_per_day",
+    ACTIVE_SCHEDULES: "active_schedules",
+    TOTAL_EVENTS: "total_events",
+    EVENTS_PER_IMPORT: "events_per_import",
+  },
+}));
+
+vi.mock("@/lib/middleware/rate-limit", () => ({
+  withRateLimit: (handler: any) => handler,
+}));
+
+vi.mock("@/lib/services/rate-limit-service", () => ({
+  getClientIdentifier: vi.fn().mockReturnValue("test-client"),
+  getRateLimitService: vi.fn().mockReturnValue({
+    checkConfiguredRateLimit: mocks.mockCheckRateLimit,
+  }),
+  RATE_LIMITS: {},
+}));
+
+// 4. Vitest imports and source code AFTER mocks
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { GET as healthGET } from "@/app/api/health/route";
+import { GET as quotasGET } from "@/app/api/quotas/route";
+import { GET as catalogsGET } from "@/app/api/wizard/catalogs/route";
+import { getQuotaService } from "@/lib/services/quota-service";
+
+const mockUser = { id: 1, email: "test@test.com", role: "user" };
+
+const createRequest = (url: string, method = "GET") =>
+  new Request(url, {
+    method,
+    headers: new Headers({ Authorization: "Bearer test" }),
+  });
+
+let mockPayload: any;
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockPayload = {
+    auth: vi.fn().mockResolvedValue({ user: mockUser }),
+    find: vi.fn().mockResolvedValue({ docs: [] }),
+  };
+  mocks.mockGetPayload.mockResolvedValue(mockPayload);
+
+  // Re-apply mocks that clearAllMocks wiped
+  vi.mocked(getQuotaService).mockReturnValue({
+    checkQuota: mocks.mockCheckQuota,
+    getEffectiveQuotas: mocks.mockGetEffectiveQuotas,
+    getQuotaHeaders: mocks.mockGetQuotaHeaders,
+  } as any);
+});
+
+describe("Health Route", () => {
+  it("returns 200 with healthy results", async () => {
+    const healthyResults = {
+      env: { status: "healthy", message: "All good" },
+      cms: { status: "healthy", message: "CMS running" },
+      postgis: { status: "healthy", message: "PostGIS available" },
+    };
+    mocks.mockRunHealthChecks.mockResolvedValue(healthyResults);
+
+    const response = await healthGET();
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.env.status).toBe("healthy");
+    expect(body.cms.status).toBe("healthy");
+  });
+
+  it("returns 503 when any check has error status", async () => {
+    const errorResults = {
+      env: { status: "healthy", message: "OK" },
+      cms: { status: "error", message: "DB unavailable" },
+      postgis: { status: "healthy", message: "PostGIS available" },
+    };
+    mocks.mockRunHealthChecks.mockResolvedValue(errorResults);
+
+    const response = await healthGET();
+
+    expect(response.status).toBe(503);
+  });
+
+  it("returns 200 with warnings (degraded/pending)", async () => {
+    const degradedResults = {
+      env: { status: "healthy", message: "OK" },
+      cms: { status: "warning", message: "Slow" },
+      migrations: { status: "pending", message: "Pending migrations" },
+      postgis: { status: "healthy", message: "PostGIS available" },
+    };
+    mocks.mockRunHealthChecks.mockResolvedValue(degradedResults);
+
+    const response = await healthGET();
+
+    expect(response.status).toBe(200);
+  });
+
+  it("returns 500 when health checks throw", async () => {
+    mocks.mockRunHealthChecks.mockRejectedValue(new Error("Unexpected failure"));
+
+    const response = await healthGET();
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body.error).toBe("Health check failed");
+  });
+});
+
+describe.sequential("Wizard Catalogs Route", () => {
+  it("returns 401 when not authenticated", async () => {
+    mockPayload.auth.mockResolvedValue({ user: null });
+
+    const request = createRequest("http://localhost/api/wizard/catalogs");
+    const response = await (catalogsGET as any)(request, {});
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.error).toBe("Authentication required");
+  });
+
+  it("returns catalogs with grouped datasets", async () => {
+    mockPayload.find
+      .mockResolvedValueOnce({
+        docs: [
+          { id: 1, name: "Catalog A" },
+          { id: 2, name: "Catalog B" },
+        ],
+      })
+      .mockResolvedValueOnce({
+        docs: [
+          { id: 10, name: "Dataset 1", catalog: { id: 1 } },
+          { id: 11, name: "Dataset 2", catalog: { id: 1 } },
+          { id: 12, name: "Dataset 3", catalog: { id: 2 } },
+        ],
+      });
+
+    const request = createRequest("http://localhost/api/wizard/catalogs");
+    const response = await (catalogsGET as any)(request, {});
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.catalogs).toHaveLength(2);
+    expect(body.catalogs[0]).toEqual({
+      id: 1,
+      name: "Catalog A",
+      datasets: [
+        { id: 10, name: "Dataset 1" },
+        { id: 11, name: "Dataset 2" },
+      ],
+    });
+    expect(body.catalogs[1]).toEqual({
+      id: 2,
+      name: "Catalog B",
+      datasets: [{ id: 12, name: "Dataset 3" }],
+    });
+  });
+
+  it("returns empty catalogs array when user has none", async () => {
+    mockPayload.find.mockResolvedValueOnce({ docs: [] }).mockResolvedValueOnce({ docs: [] });
+
+    const request = createRequest("http://localhost/api/wizard/catalogs");
+    const response = await (catalogsGET as any)(request, {});
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.catalogs).toEqual([]);
+  });
+
+  it("handles dataset without catalog ID", async () => {
+    mockPayload.find
+      .mockResolvedValueOnce({
+        docs: [{ id: 1, name: "Catalog A" }],
+      })
+      .mockResolvedValueOnce({
+        docs: [
+          { id: 10, name: "Dataset 1", catalog: { id: 1 } },
+          { id: 11, name: "Orphan Dataset", catalog: null },
+          { id: 12, name: "String Catalog", catalog: "some-string" },
+        ],
+      });
+
+    const request = createRequest("http://localhost/api/wizard/catalogs");
+    const response = await (catalogsGET as any)(request, {});
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.catalogs).toHaveLength(1);
+    expect(body.catalogs[0].datasets).toEqual([{ id: 10, name: "Dataset 1" }]);
+  });
+});
+
+describe.sequential("Quotas Route", () => {
+  it("returns 401 when not authenticated", async () => {
+    mockPayload.auth.mockResolvedValue({ user: null });
+
+    const request = createRequest("http://localhost/api/quotas");
+    const response = await (quotasGET as any)(request, {});
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.error).toBe("Authentication required");
+  });
+
+  it("returns quota status for all quota types", async () => {
+    const quotaResult = { current: 2, limit: 10, remaining: 8, allowed: true };
+    mocks.mockCheckQuota.mockResolvedValue(quotaResult);
+    mocks.mockGetEffectiveQuotas.mockReturnValue({ maxFileSizeMB: 50 });
+    mocks.mockGetQuotaHeaders.mockResolvedValue(new Headers());
+
+    const request = createRequest("http://localhost/api/quotas");
+    const response = await (quotasGET as any)(request, {});
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.quotas).toBeDefined();
+    expect(body.quotas.fileUploadsPerDay).toEqual({ used: 2, limit: 10, remaining: 8 });
+    expect(body.quotas.urlFetchesPerDay).toEqual({ used: 2, limit: 10, remaining: 8 });
+    expect(body.quotas.importJobsPerDay).toEqual({ used: 2, limit: 10, remaining: 8 });
+    expect(body.quotas.activeSchedules).toEqual({ used: 2, limit: 10, remaining: 8 });
+    expect(body.quotas.totalEvents).toEqual({ used: 2, limit: 10, remaining: 8 });
+    expect(body.quotas.eventsPerImport).toEqual({ used: 2, limit: 10, remaining: 8 });
+    expect(body.quotas.maxFileSizeMB).toEqual({ limit: 50 });
+    expect(mocks.mockCheckQuota).toHaveBeenCalledTimes(6);
+  });
+
+  it("caps high limits to MAX_DISPLAYED_LIMIT (10000)", async () => {
+    const highLimitQuota = { current: 5, limit: 999999, remaining: 999994, allowed: true };
+    mocks.mockCheckQuota.mockResolvedValue(highLimitQuota);
+    mocks.mockGetEffectiveQuotas.mockReturnValue({ maxFileSizeMB: 500 });
+    mocks.mockGetQuotaHeaders.mockResolvedValue(new Headers());
+
+    const request = createRequest("http://localhost/api/quotas");
+    const response = await (quotasGET as any)(request, {});
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.quotas.fileUploadsPerDay.limit).toBe(10000);
+    expect(body.quotas.totalEvents.limit).toBe(10000);
+    expect(body.quotas.maxFileSizeMB.limit).toBe(100);
+  });
+});
