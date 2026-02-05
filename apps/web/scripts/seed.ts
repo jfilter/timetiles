@@ -27,7 +27,7 @@ interface ParsedArgs {
 }
 
 const parseArguments = (args: string[]): ParsedArgs => {
-  const validPresets = ["minimal", "testing", "e2e", "development", "demo", "benchmark"];
+  const validPresets = ["testing", "e2e", "development"];
   let preset = "development";
   const collections: string[] = [];
   let truncate = false;
@@ -87,17 +87,14 @@ const main = async () => {
 Usage: pnpm seed [preset] [collections...] [options]
 
 Presets:
-  minimal        Bare minimum data for production
   testing        Fast, deterministic data for tests
   e2e            Moderate data for E2E testing
   development    Rich, realistic data for local dev (default)
-  demo           Polished data for demos
-  benchmark      Large volumes for performance testing
 
 Options:
   --truncate               Truncate collections before seeding
-  --volume <level>         Override volume: minimal|small|medium|large|xlarge
-  --realism <level>        Override realism: simple|realistic|production-like
+  --volume <level>         Override volume: small|medium|large
+  --realism <level>        Override realism: simple|realistic
   --performance <level>    Override performance: fast|balanced|rich
   --debugging <level>      Override debugging: quiet|normal|verbose
   --random                 Use random seed (different data each run)
@@ -108,7 +105,7 @@ Examples:
   pnpm seed testing                   # Seed testing preset
   pnpm seed development users events  # Seed only users and events
   pnpm seed --volume large --random   # Development with large volume, random data
-  pnpm seed benchmark --seed 12345    # Benchmark preset with specific seed
+  pnpm seed e2e --seed 12345          # E2E preset with specific seed
   pnpm seed --truncate                # Truncate and seed
   pnpm seed truncate                  # Truncate all collections
 `);
@@ -158,8 +155,8 @@ Examples:
           preset,
           collections: collections.length > 0 ? collections : undefined,
           truncate,
-          volume: volume as "minimal" | "small" | "medium" | "large" | "xlarge" | undefined,
-          realism: realism as "simple" | "realistic" | "production-like" | undefined,
+          volume: volume as "small" | "medium" | "large" | undefined,
+          realism: realism as "simple" | "realistic" | undefined,
           performance: performance as "fast" | "balanced" | "rich" | undefined,
           debugging: debugging as "quiet" | "normal" | "verbose" | undefined,
           randomSeed,

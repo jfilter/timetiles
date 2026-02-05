@@ -36,17 +36,12 @@ describe.sequential("Configuration-Driven Seeding", () => {
       // Test testing preset
       const testCatalogsConfig = getCollectionConfig("catalogs", "testing");
       expect(testCatalogsConfig).toBeDefined();
-      expect((testCatalogsConfig?.count as (...args: any[]) => any)("testing")).toBe(2);
+      expect((testCatalogsConfig?.count as (...args: any[]) => any)("testing")).toBe(3);
 
-      // Test minimal preset (catalogs not enabled in minimal)
-      const minimalCatalogsConfig = getCollectionConfig("catalogs", "minimal");
-      expect(minimalCatalogsConfig).toBeNull(); // Catalogs not enabled in minimal
-
-      // Test minimal preset with enabled collection
-      const minimalUsersConfig = getCollectionConfig("users", "minimal");
-      expect(minimalUsersConfig).toBeDefined();
-      // Minimal users config has a static count override, not a function
-      expect(minimalUsersConfig?.count).toBe(1); // Overridden to 1 in minimal
+      // Test e2e preset
+      const e2eCatalogsConfig = getCollectionConfig("catalogs", "e2e");
+      expect(e2eCatalogsConfig).toBeDefined();
+      expect((e2eCatalogsConfig?.count as (...args: any[]) => any)("e2e")).toBe(8);
     });
 
     it("should return null for disabled collections", () => {
@@ -55,9 +50,8 @@ describe.sequential("Configuration-Driven Seeding", () => {
       expect(mediaConfig?.disabled).toBe(true);
     });
 
-    it("should return null for collections not enabled in environment", () => {
-      const eventsConfig = getCollectionConfig("events", "minimal");
-      expect(eventsConfig).toBeNull(); // Events not enabled in minimal
+    it("should throw for unknown presets", () => {
+      expect(() => getCollectionConfig("events", "unknown-preset")).toThrow("Unknown preset: unknown-preset");
     });
 
     it("should provide enabled collections in dependency order", () => {
@@ -82,7 +76,7 @@ describe.sequential("Configuration-Driven Seeding", () => {
       // This should not throw for our current configuration
       expect(() => getEnabledCollections("development")).not.toThrow();
       expect(() => getEnabledCollections("testing")).not.toThrow();
-      expect(() => getEnabledCollections("minimal")).not.toThrow();
+      expect(() => getEnabledCollections("e2e")).not.toThrow();
     });
 
     it("should provide preset-specific settings", () => {
@@ -96,9 +90,9 @@ describe.sequential("Configuration-Driven Seeding", () => {
       expect(testPreset.realism).toBe("simple");
       expect(testPreset.performance).toBe("fast");
 
-      const minimalPreset = SEED_CONFIG.presets.minimal!;
-      expect(minimalPreset.volume).toBe("minimal");
-      expect(minimalPreset.performance).toBe("fast");
+      const e2ePreset = SEED_CONFIG.presets.e2e!;
+      expect(e2ePreset.volume).toBe("medium");
+      expect(e2ePreset.realism).toBe("realistic");
     });
   });
 
@@ -213,15 +207,13 @@ describe.sequential("Configuration-Driven Seeding", () => {
       expect(mediaCount).toBe(0); // Should be 0 because it's disabled
     });
 
-    it("should handle collections not enabled for preset", async () => {
-      // Try to seed events in minimal (where they're not enabled)
-      await testEnv.seedManager.seedWithConfig({
-        preset: "minimal",
-        collections: ["events"],
-      });
-
-      const eventsCount = await testEnv.seedManager.getCollectionCount("events");
-      expect(eventsCount).toBe(0); // Should be 0 because events aren't enabled in minimal
+    it("should throw error for unknown preset", async () => {
+      await expect(
+        testEnv.seedManager.seedWithConfig({
+          preset: "unknown-preset",
+          collections: ["events"],
+        })
+      ).rejects.toThrow("Unknown preset: unknown-preset");
     });
 
     it("should seed main-menu global successfully", async () => {
@@ -279,7 +271,7 @@ describe.sequential("Configuration-Driven Seeding", () => {
     });
 
     it("should have all required presets with valid configurations", () => {
-      const requiredPresets = ["minimal", "testing", "e2e", "development", "demo", "benchmark"];
+      const requiredPresets = ["testing", "e2e", "development"];
 
       requiredPresets.forEach((preset) => {
         expect(SEED_CONFIG.presets[preset]).toBeDefined();
@@ -303,6 +295,9 @@ describe.sequential("Configuration-Driven Seeding", () => {
         expect(presetConfig).toHaveProperty("performance");
         expect(presetConfig).toHaveProperty("debugging");
       });
+
+      // Verify exactly 3 presets exist (no more, no less)
+      expect(Object.keys(SEED_CONFIG.presets)).toHaveLength(3);
 
       // Verify development has comprehensive settings
       const devPreset = SEED_CONFIG.presets.development;
@@ -373,10 +368,10 @@ describe.sequential("Configuration-Driven Seeding", () => {
       });
     });
 
-    it("should include main-menu in most presets", () => {
-      const presetsWithMainMenu = ["minimal", "testing", "e2e", "development", "demo"];
+    it("should include main-menu in all presets", () => {
+      const allPresets = ["testing", "e2e", "development"];
 
-      presetsWithMainMenu.forEach((preset) => {
+      allPresets.forEach((preset) => {
         const enabledCollections = getEnabledCollections(preset);
         expect(enabledCollections).toContain("main-menu");
       });

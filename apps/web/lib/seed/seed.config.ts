@@ -32,10 +32,17 @@ import { RELATIONSHIP_CONFIG } from "./relationship-config";
 // Keep local constant for backward compatibility
 const GEOCODING_PROVIDERS_COLLECTION = COLLECTION_GEOCODING_PROVIDERS;
 
-const getLocationCacheCount = (env: string): number => {
-  if (env === "development") return 50;
-  if (env === "test") return 10;
-  return 0;
+const getLocationCacheCount = (preset: string): number => {
+  switch (preset) {
+    case "development":
+      return 50;
+    case "e2e":
+      return 20;
+    case "testing":
+      return 10;
+    default:
+      throw new Error(`Unknown preset: ${preset}. Valid presets: testing, e2e, development`);
+  }
 };
 
 export interface CollectionConfig {
@@ -58,6 +65,9 @@ export interface GeneratorConfig {
   options: Record<string, unknown>;
 }
 
+/** Valid preset names - only these 3 presets are supported */
+export type PresetName = "testing" | "e2e" | "development";
+
 /**
  * Preset configuration - bundles together related settings for a specific use case.
  */
@@ -67,9 +77,9 @@ export interface PresetConfig {
   /** Collections enabled for this preset */
   enabled: string[];
   /** How much data to generate */
-  volume: "minimal" | "small" | "medium" | "large" | "xlarge";
+  volume: "small" | "medium" | "large";
   /** How realistic/complex the data should be */
-  realism: "simple" | "realistic" | "production-like";
+  realism: "simple" | "realistic";
   /** Performance vs richness trade-off */
   performance: "fast" | "balanced" | "rich";
   /** Logging verbosity */
@@ -95,16 +105,16 @@ export const SEED_CONFIG: SeedConfiguration = {
   collections: {
     // Users - foundational data
     users: {
-      count: (env) => {
-        switch (env) {
+      count: (preset) => {
+        switch (preset) {
           case "development":
             return 15;
-          case "test":
+          case "e2e":
             return 5;
-          case "production":
+          case "testing":
             return 3;
           default:
-            return 1;
+            throw new Error(`Unknown preset: ${preset}. Valid presets: testing, e2e, development`);
         }
       },
       dependencies: [],
@@ -116,18 +126,16 @@ export const SEED_CONFIG: SeedConfiguration = {
 
     // Catalogs - organizational structure
     catalogs: {
-      count: (env) => {
-        switch (env) {
+      count: (preset) => {
+        switch (preset) {
           case "development":
             return 12; // Expanded for local development
           case "e2e":
             return 8; // All catalog types for E2E tests
-          case "test":
+          case "testing":
             return 3; // Base catalogs only
-          case "production":
-            return 2; // Minimal set
           default:
-            return 2;
+            throw new Error(`Unknown preset: ${preset}. Valid presets: testing, e2e, development`);
         }
       },
       dependencies: [],
@@ -138,18 +146,16 @@ export const SEED_CONFIG: SeedConfiguration = {
 
     // Datasets - depend on catalogs
     datasets: {
-      count: (env) => {
-        switch (env) {
+      count: (preset) => {
+        switch (preset) {
           case "development":
             return 30; // Expanded for local development (2-3 per catalog)
           case "e2e":
             return 18; // 2-3 per catalog for E2E tests
-          case "test":
+          case "testing":
             return 9; // 3 per base catalog
-          case "production":
-            return 4; // 2 per catalog
           default:
-            return 2;
+            throw new Error(`Unknown preset: ${preset}. Valid presets: testing, e2e, development`);
         }
       },
       dependencies: ["catalogs"],
@@ -161,18 +167,16 @@ export const SEED_CONFIG: SeedConfiguration = {
 
     // Events - depend on datasets, high volume
     events: {
-      count: (env) => {
-        switch (env) {
+      count: (preset) => {
+        switch (preset) {
           case "development":
             return 1000; // Rich dataset for development
           case "e2e":
             return 500; // Moderate dataset for E2E tests
-          case "test":
+          case "testing":
             return 50; // Sufficient for testing
-          case "production":
-            return 0; // No seed events in production
           default:
-            return 10;
+            throw new Error(`Unknown preset: ${preset}. Valid presets: testing, e2e, development`);
         }
       },
       dependencies: ["catalogs", "datasets"],
@@ -195,14 +199,14 @@ export const SEED_CONFIG: SeedConfiguration = {
 
     // Media - support files
     media: {
-      count: (env) => (env === "development" ? 10 : 0),
+      count: (preset) => (preset === "development" ? 10 : 0),
       dependencies: [],
       disabled: true, // Disable for now, complex file handling
     },
 
     // Location cache - geocoding support
     "location-cache": {
-      count: (env) => getLocationCacheCount(env),
+      count: (preset) => getLocationCacheCount(preset),
       dependencies: [],
       options: {
         includeCommonLocations: true,
@@ -211,7 +215,17 @@ export const SEED_CONFIG: SeedConfiguration = {
 
     // Geocoding providers - service configuration
     [GEOCODING_PROVIDERS_COLLECTION]: {
-      count: (env) => (env === "development" ? 3 : 1),
+      count: (preset) => {
+        switch (preset) {
+          case "development":
+            return 3;
+          case "e2e":
+          case "testing":
+            return 1;
+          default:
+            throw new Error(`Unknown preset: ${preset}. Valid presets: testing, e2e, development`);
+        }
+      },
       dependencies: [],
       options: {
         includeTestProviders: true,
@@ -292,23 +306,8 @@ export const SEED_CONFIG: SeedConfiguration = {
     },
   },
 
-  // Seeding presets
+  // Seeding presets - only 3 supported: testing, e2e, development
   presets: {
-    minimal: {
-      description: "Bare minimum data for production deployments",
-      enabled: ["users", "pages", MAIN_MENU_SLUG, FOOTER_SLUG, GEOCODING_PROVIDERS_COLLECTION],
-      volume: "minimal",
-      realism: "simple",
-      performance: "fast",
-      debugging: "quiet",
-      overrides: {
-        users: {
-          count: 1, // Single admin
-          options: { includeTestUsers: false, createAdminUser: true },
-        },
-      },
-    },
-
     testing: {
       description: "Fast, deterministic data for unit/integration tests",
       enabled: ["users", "catalogs", "datasets", "events", "pages", MAIN_MENU_SLUG, FOOTER_SLUG],
@@ -378,40 +377,6 @@ export const SEED_CONFIG: SeedConfiguration = {
             generateExtendedSchemas: true,
           },
         },
-      },
-    },
-
-    demo: {
-      description: "Polished, realistic data for demos and staging",
-      enabled: [
-        "users",
-        "catalogs",
-        "datasets",
-        "events",
-        "pages",
-        MAIN_MENU_SLUG,
-        FOOTER_SLUG,
-        GEOCODING_PROVIDERS_COLLECTION,
-      ],
-      volume: "medium",
-      realism: "production-like",
-      performance: "balanced",
-      debugging: "quiet",
-      overrides: {
-        events: { count: 100 },
-      },
-    },
-
-    benchmark: {
-      description: "Large volumes for performance testing",
-      enabled: ["users", "catalogs", "datasets", "events"],
-      volume: "xlarge",
-      realism: "simple", // Fast generation
-      performance: "fast",
-      debugging: "quiet",
-      overrides: {
-        events: { count: 10000 },
-        datasets: { count: 50 },
       },
     },
   },

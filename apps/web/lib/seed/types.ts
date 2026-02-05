@@ -30,12 +30,12 @@ export type SeedData =
 export interface SeedOptions {
   collections?: string[];
   truncate?: boolean;
-  /** Seeding preset name */
+  /** Seeding preset name (testing, e2e, development) */
   preset?: string;
   /** How much data to generate */
-  volume?: "minimal" | "small" | "medium" | "large" | "xlarge";
+  volume?: "small" | "medium" | "large";
   /** How realistic/complex the data should be */
-  realism?: "simple" | "realistic" | "production-like";
+  realism?: "simple" | "realistic";
   /** Performance vs richness trade-off */
   performance?: "fast" | "balanced" | "rich";
   /** Logging verbosity */
