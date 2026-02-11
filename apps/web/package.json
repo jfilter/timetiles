@@ -111,7 +111,7 @@
     "echarts-for-react": "catalog:",
     "eslint": "catalog:",
     "happy-dom": "^20.4.0",
-    "jsdom": "^27.4.0",
+    "jsdom": "^28.0.0",
     "msw": "^2.12.7",
     "playwright": "^1.58.0",
     "typescript": "catalog:",
