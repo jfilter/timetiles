@@ -34,7 +34,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "eslint": "catalog:",
-    "glob": "^13.0.0",
+    "glob": "^13.0.1",
     "nodemon": "^3.1.11",
     "tsx": "catalog:",
     "typedoc": "^0.28.16",
