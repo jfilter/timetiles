@@ -10,7 +10,7 @@ catalog:
   next-themes: ^0.4.6
   zod: ^4.3.6
   # Type definitions
-  "@types/react": ^19.2.10
+  "@types/react": ^19.2.14
   "@types/react-dom": ^19.2.3
   "@types/node": ^25.1.0
   # Build tooling
@@ -26,5 +26,5 @@ catalog:
   echarts: ^6.0.0
   echarts-for-react: ^3.0.6
   # Shared libraries
-  lucide-react: ^0.563.0
+  lucide-react: ^0.574.0
   franc: ^6.2.0
