@@ -86,7 +86,8 @@
     {
       "files": ["**/migrations/**/*.ts"],
       "rules": {
-        "unicorn/filename-case": "off"
+        "unicorn/filename-case": "off",
+        "typescript/no-unused-vars": "off"
       }
     },
     {
