@@ -385,6 +385,7 @@ jobs:
             -e DATABASE_URL=postgresql://timetiles_user:test_password@postgres:5432/timetiles \
             -e PAYLOAD_SECRET=test_secret_for_smoke_test_only \
             -e NEXT_PUBLIC_PAYLOAD_URL=http://localhost:3000 \
+            -e EMAIL_SMTP_HOST=smtp.test.invalid \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.version }}
 
           # Wait for application to start
