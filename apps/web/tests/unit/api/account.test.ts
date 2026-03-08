@@ -56,6 +56,19 @@ vi.mock("@/lib/services/rate-limit-service", () => ({
   },
 }));
 
+vi.mock("@/lib/middleware/auth", () => ({
+  withAuth: (handler: any) => async (req: any, ctx: any) => {
+    const payload = await mocks.mockGetPayload();
+    const { user } = await payload.auth({ headers: req.headers });
+    if (!user) {
+      const { NextResponse } = await import("next/server");
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    req.user = user;
+    return handler(req, ctx);
+  },
+}));
+
 vi.mock("@/lib/services/account-deletion-service", () => ({
   getAccountDeletionService: vi.fn().mockReturnValue({
     canDeleteUser: mocks.mockCanDeleteUser,
