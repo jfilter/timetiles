@@ -64,7 +64,7 @@ vi.mock("@/lib/middleware/auth", () => ({
       const { NextResponse } = await import("next/server");
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
-    req.user = user;
+    Object.assign(req, { user });
     return handler(req, ctx);
   },
 }));
