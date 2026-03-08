@@ -292,7 +292,7 @@ case "$1" in
             fi
             echo -n "."
             sleep 2
-            ((pg_attempts++))
+            ((++pg_attempts))
         done
         if [[ $pg_attempts -ge $pg_max ]]; then
             echo ""

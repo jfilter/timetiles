@@ -23,7 +23,7 @@ setup() {
             return 0
         fi
         sleep 2
-        ((attempts++))
+        ((++attempts))
     done
     skip "Postgres not ready after 60 seconds"
 }

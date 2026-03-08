@@ -42,7 +42,7 @@ wait_for_health() {
             return 0
         fi
         sleep "$interval"
-        ((attempt++))
+        ((++attempt))
     done
 
     echo "Health check timed out after $max_attempts attempts"

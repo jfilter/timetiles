@@ -132,7 +132,7 @@ while [[ $attempt -lt $max_attempts ]]; do
     fi
     echo -n "."
     sleep 2
-    ((attempt++))
+    ((++attempt))
 done
 
 echo ""
