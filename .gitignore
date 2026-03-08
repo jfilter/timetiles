@@ -82,6 +82,7 @@ CLAUDE.md
 .eslintcache
 uploads/
 scripts/gce/
+AGENTS.md
 
 # Generated API Documentation
 # These files are auto-generated from JSDoc comments via TypeDoc
