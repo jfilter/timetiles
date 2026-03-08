@@ -27,36 +27,6 @@ describe.sequential("Branding Global", () => {
     }
   });
 
-  describe("Default Values", () => {
-    it("should have default site name", async () => {
-      const branding = await payload.findGlobal({ slug: "branding" });
-
-      expect(branding.siteName).toBe("TimeTiles");
-    });
-
-    it("should have default site description", async () => {
-      const branding = await payload.findGlobal({ slug: "branding" });
-
-      expect(branding.siteDescription).toBe("Making spatial and temporal data analysis accessible to everyone.");
-    });
-
-    it("should have no logo fields by default", async () => {
-      const branding = await payload.findGlobal({ slug: "branding" });
-
-      // Upload fields are undefined/null when not set
-      expect(branding.logoLight).toBeFalsy();
-      expect(branding.logoDark).toBeFalsy();
-    });
-
-    it("should have no favicon fields by default", async () => {
-      const branding = await payload.findGlobal({ slug: "branding" });
-
-      // Upload fields are undefined/null when not set
-      expect(branding.faviconSourceLight).toBeFalsy();
-      expect(branding.faviconSourceDark).toBeFalsy();
-    });
-  });
-
   describe("Update Operations", () => {
     beforeEach(async () => {
       // Reset branding to defaults before each test

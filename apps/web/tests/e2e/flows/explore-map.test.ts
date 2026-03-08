@@ -20,19 +20,7 @@ test.describe("Explore Page - Map Interactions", () => {
   });
 
   test("should filter events by map bounds when panning", async ({ page }) => {
-    // Set up request tracking BEFORE any API calls
-    const eventsListRequests: string[] = [];
-    const mapClustersRequests: string[] = [];
-
-    page.on("request", (request) => {
-      const url = request.url();
-      if (url.includes("/api/v1/events") && !url.includes("/api/v1/events/")) {
-        eventsListRequests.push(url);
-      }
-      if (url.includes("/api/v1/events/geo")) {
-        mapClustersRequests.push(url);
-      }
-    });
+    const apiRequestsAfterPan: string[] = [];
 
     // Load some events first
     await explorePage.selectCatalog("Environmental Data");
@@ -40,55 +28,24 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    // Clear previous requests and set up new tracking for pan
-    eventsListRequests.length = 0;
-    mapClustersRequests.length = 0;
+    // Start tracking requests after initial load
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.includes("/api/v1/events")) {
+        apiRequestsAfterPan.push(url);
+      }
+    });
 
-    // Pan the map significantly to ensure bounds change
+    // Pan the map significantly to trigger bounds change
     await explorePage.panMap(400, 400);
 
-    // Wait for the 300ms debounce delay plus React update cycle
-    // Use waitForResponse to wait for actual API calls instead of networkidle
-    // (networkidle is unreliable with SPAs that have polling/websockets)
-    try {
-      await Promise.race([
-        page.waitForResponse((response) => response.url().includes("/api/v1/events"), { timeout: 3000 }),
-        page.waitForTimeout(1500), // Fallback if no request is made (cached data)
-      ]);
-    } catch {
-      // If no response within timeout, continue - data might be cached
-    }
+    // Wait for debounce (300ms) + API response
+    await page.waitForResponse((response) => response.url().includes("/api/v1/events"), { timeout: 5000 });
 
-    // Also wait for geo endpoint if it fires
-    try {
-      await page.waitForResponse((response) => response.url().includes("/api/v1/events/geo"), { timeout: 1000 });
-    } catch {
-      // Continue if geo endpoint doesn't fire
-    }
-
-    // Check that API calls were made with bounds after panning
-    // Note: Bounds are included in all API calls when available, but after panning
-    // React Query may use cached data if the bounds are similar enough.
-    // The test verifies that the map pan triggers some API activity.
-    const eventsListWithBounds = eventsListRequests.filter((url) => url.includes("bounds="));
-    const mapClustersWithBounds = mapClustersRequests.filter((url) => url.includes("bounds="));
-
-    // At least one of these should have bounds-filtered requests after a pan
-    // OR the arrays should be empty (data was cached) - either is acceptable
-    const hasEventsRequests = eventsListWithBounds.length > 0;
-    const hasClustersRequests = mapClustersWithBounds.length > 0;
-
-    // If ANY requests were made after panning, they should include bounds
-    if (eventsListRequests.length > 0) {
-      expect(eventsListWithBounds.length).toBeGreaterThan(0);
-    }
-    if (mapClustersRequests.length > 0) {
-      expect(mapClustersWithBounds.length).toBeGreaterThan(0);
-    }
-
-    // At least verify that the initial load had bounds (requests were captured before clear)
-    // This confirms the feature works even if panning doesn't trigger new requests
-    expect(hasEventsRequests || hasClustersRequests || eventsListRequests.length === 0).toBe(true);
+    // Panning should trigger API requests that include bounds
+    expect(apiRequestsAfterPan.length).toBeGreaterThan(0);
+    const requestsWithBounds = apiRequestsAfterPan.filter((url) => url.includes("bounds="));
+    expect(requestsWithBounds.length).toBeGreaterThan(0);
   });
 
   test("should update markers when events change", async () => {
@@ -98,14 +55,22 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
+    const firstCount = await explorePage.getEventCount();
+
     // Switch to different dataset
     await explorePage.selectCatalog("Economic Indicators");
     await explorePage.selectDatasets(["GDP Growth Rates"]);
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    // Verify markers were rendered (test verifies map updates, not specific counts)
-    // Both datasets should render markers if data exists
+    const secondCount = await explorePage.getEventCount();
+
+    // Both datasets should have loaded events
+    expect(firstCount).toBeGreaterThan(0);
+    expect(secondCount).toBeGreaterThan(0);
+
+    // The events list should reflect the currently selected dataset
+    await expect(explorePage.eventsCount).toBeVisible();
   });
 
   test("should handle zoom interactions", async ({ page }) => {

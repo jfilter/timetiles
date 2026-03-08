@@ -5,6 +5,7 @@ import type { Payload } from "payload";
 
 import type { Config } from "@/payload-types";
 
+import { getCollectionConfig, getEnabledCollections, SEED_CONFIG } from "../../../lib/seed/seed.config";
 import { catalogSeeds } from "../../../lib/seed/seeds/catalogs";
 import { datasetSeeds } from "../../../lib/seed/seeds/datasets";
 import { eventSeeds } from "../../../lib/seed/seeds/events";
@@ -212,6 +213,324 @@ describe.sequential("Seed System", () => {
       // Verify no events were actually created due to missing datasets
       const eventCount = await testEnv.seedManager.getCollectionCount("events");
       expect(eventCount).toBe(0);
+    });
+  });
+
+  describe.sequential("Configuration System", () => {
+    it("should provide correct collection configurations for different environments", () => {
+      const devCatalogsConfig = getCollectionConfig("catalogs", "development");
+      expect(devCatalogsConfig).toBeDefined();
+      expect(typeof devCatalogsConfig?.count).toBe("function");
+      if (devCatalogsConfig) {
+        expect((devCatalogsConfig.count as (...args: any[]) => any)("development")).toBe(12);
+      }
+
+      const testCatalogsConfig = getCollectionConfig("catalogs", "testing");
+      expect(testCatalogsConfig).toBeDefined();
+      if (testCatalogsConfig) {
+        expect((testCatalogsConfig.count as (...args: any[]) => any)("testing")).toBe(3);
+      }
+
+      const e2eCatalogsConfig = getCollectionConfig("catalogs", "e2e");
+      expect(e2eCatalogsConfig).toBeDefined();
+      if (e2eCatalogsConfig) {
+        expect((e2eCatalogsConfig.count as (...args: any[]) => any)("e2e")).toBe(8);
+      }
+    });
+
+    it("should return null for disabled collections", () => {
+      const mediaConfig = getCollectionConfig("media", "testing");
+      expect(mediaConfig).toBeDefined();
+      expect(mediaConfig?.disabled).toBe(true);
+    });
+
+    it("should throw for unknown presets", () => {
+      expect(() => getCollectionConfig("events", "unknown-preset")).toThrow("Unknown preset: unknown-preset");
+    });
+
+    it("should provide enabled collections in dependency order", () => {
+      const devCollections = getEnabledCollections("development");
+      expect(devCollections).toContain("users");
+      expect(devCollections).toContain("catalogs");
+      expect(devCollections).toContain("datasets");
+      expect(devCollections).toContain("events");
+
+      const catalogsIndex = devCollections.indexOf("catalogs");
+      const datasetsIndex = devCollections.indexOf("datasets");
+      const eventsIndex = devCollections.indexOf("events");
+
+      expect(catalogsIndex).toBeLessThan(datasetsIndex);
+      expect(datasetsIndex).toBeLessThan(eventsIndex);
+    });
+
+    it("should handle circular dependency detection", () => {
+      expect(() => getEnabledCollections("development")).not.toThrow();
+      expect(() => getEnabledCollections("testing")).not.toThrow();
+      expect(() => getEnabledCollections("e2e")).not.toThrow();
+    });
+
+    it("should provide preset-specific settings", () => {
+      const devPreset = SEED_CONFIG.presets.development!;
+      expect(devPreset.volume).toBe("large");
+      expect(devPreset.realism).toBe("realistic");
+      expect(devPreset.debugging).toBe("verbose");
+
+      const testPreset = SEED_CONFIG.presets.testing!;
+      expect(testPreset.volume).toBe("small");
+      expect(testPreset.realism).toBe("simple");
+      expect(testPreset.performance).toBe("fast");
+
+      const e2ePreset = SEED_CONFIG.presets.e2e!;
+      expect(e2ePreset.volume).toBe("medium");
+      expect(e2ePreset.realism).toBe("realistic");
+    });
+  });
+
+  describe.sequential("Configuration-Driven Seeding", () => {
+    it("should seed using configuration for development preset", async () => {
+      await testEnv.seedManager.seedWithConfig({
+        preset: "development",
+        collections: ["users", "catalogs", "datasets"],
+      });
+
+      const usersCount = await testEnv.seedManager.getCollectionCount("users");
+      const catalogsCount = await testEnv.seedManager.getCollectionCount("catalogs");
+      const datasetsCount = await testEnv.seedManager.getCollectionCount("datasets");
+
+      expect(usersCount).toBeGreaterThan(0);
+      expect(catalogsCount).toBeGreaterThan(0);
+      expect(datasetsCount).toBeGreaterThan(0);
+
+      const devUsersConfig = getCollectionConfig("users", "development");
+      const expectedUsersCount =
+        typeof devUsersConfig?.count === "function"
+          ? devUsersConfig.count("development")
+          : (devUsersConfig?.count ?? 0);
+
+      expect(usersCount).toBeLessThanOrEqual(expectedUsersCount);
+    });
+
+    it("should seed using configuration for test preset", async () => {
+      await testEnv.seedManager.seedWithConfig({
+        preset: "testing",
+        collections: ["users", "catalogs"],
+      });
+
+      const usersCount = await testEnv.seedManager.getCollectionCount("users");
+      const catalogsCount = await testEnv.seedManager.getCollectionCount("catalogs");
+
+      expect(usersCount).toBeGreaterThan(0);
+      expect(catalogsCount).toBeGreaterThan(0);
+
+      const testUsersConfig = getCollectionConfig("users", "testing");
+      const expectedUsersCount =
+        typeof testUsersConfig?.count === "function" ? testUsersConfig.count("testing") : (testUsersConfig?.count ?? 0);
+
+      expect(usersCount).toBeGreaterThanOrEqual(expectedUsersCount);
+      expect(usersCount).toBeLessThanOrEqual(expectedUsersCount + 5);
+    });
+
+    it("should respect collection dependencies", async () => {
+      await testEnv.seedManager.seedWithConfig({
+        preset: "development",
+        collections: ["catalogs", "datasets"],
+      });
+
+      const catalogsCount = await testEnv.seedManager.getCollectionCount("catalogs");
+      const datasetsCount = await testEnv.seedManager.getCollectionCount("datasets");
+
+      expect(catalogsCount).toBeGreaterThan(0);
+      expect(datasetsCount).toBeGreaterThan(0);
+
+      const datasets = await testEnv.payload.find({
+        collection: "datasets",
+        limit: 5,
+        depth: 1,
+      });
+
+      expect(datasets.docs.length).toBeGreaterThan(0);
+
+      datasets.docs.forEach((dataset: any) => {
+        expect(dataset.catalog).toBeDefined();
+        expect(typeof dataset.catalog).toBe("object");
+      });
+    });
+
+    it("should apply configuration overrides", async () => {
+      await testEnv.seedManager.seedWithConfig({
+        preset: "testing",
+        collections: ["users"],
+        configOverrides: {
+          users: {
+            count: 10,
+            options: {
+              includeTestUsers: true,
+            },
+          },
+        },
+      });
+
+      const usersCount = await testEnv.seedManager.getCollectionCount("users");
+      expect(usersCount).toBeGreaterThan(0);
+      expect(usersCount).toBeGreaterThanOrEqual(10);
+      expect(usersCount).toBeLessThanOrEqual(15);
+    });
+
+    it("should skip disabled collections", async () => {
+      await testEnv.seedManager.seedWithConfig({
+        preset: "development",
+        collections: ["media"],
+      });
+
+      const mediaCount = await testEnv.seedManager.getCollectionCount("media");
+      expect(mediaCount).toBe(0);
+    });
+
+    it("should throw error for unknown preset", async () => {
+      await expect(
+        testEnv.seedManager.seedWithConfig({
+          preset: "unknown-preset",
+          collections: ["events"],
+        })
+      ).rejects.toThrow("Unknown preset: unknown-preset");
+    });
+
+    it("should seed main-menu global successfully", async () => {
+      await testEnv.seedManager.seedWithConfig({
+        preset: "development",
+        collections: ["main-menu"],
+      });
+
+      const mainMenu = await testEnv.payload.findGlobal({
+        slug: "main-menu",
+      });
+
+      expect(mainMenu).toBeDefined();
+      expect(mainMenu.navItems).toBeDefined();
+      expect(Array.isArray(mainMenu.navItems)).toBe(true);
+      expect(mainMenu.navItems.length).toBeGreaterThan(0);
+
+      mainMenu.navItems.forEach((item: any) => {
+        expect(item).toHaveProperty("label");
+        expect(item).toHaveProperty("url");
+        expect(typeof item.label).toBe("string");
+        expect(typeof item.url).toBe("string");
+      });
+
+      const labels = mainMenu.navItems.map((item: any) => item.label);
+      expect(labels).toContain("Home");
+      expect(labels).toContain("Explore");
+    });
+  });
+
+  describe.sequential("Configuration Validation", () => {
+    it("should have all required presets with valid configurations", () => {
+      const requiredPresets = ["testing", "e2e", "development"];
+
+      requiredPresets.forEach((preset) => {
+        expect(SEED_CONFIG.presets[preset]).toBeDefined();
+        const presetConfig = SEED_CONFIG.presets[preset];
+
+        if (!presetConfig) {
+          throw new Error(`Preset config for ${preset} is undefined`);
+        }
+
+        expect(typeof presetConfig).toBe("object");
+        expect(presetConfig).toHaveProperty("enabled");
+        expect(Array.isArray(presetConfig.enabled)).toBe(true);
+        expect(presetConfig.enabled.length).toBeGreaterThan(0);
+        expect(presetConfig).toHaveProperty("volume");
+        expect(presetConfig).toHaveProperty("realism");
+        expect(presetConfig).toHaveProperty("performance");
+        expect(presetConfig).toHaveProperty("debugging");
+      });
+
+      expect(Object.keys(SEED_CONFIG.presets)).toHaveLength(3);
+
+      const devPreset = SEED_CONFIG.presets.development;
+      if (!devPreset) {
+        throw new Error("Development preset is undefined");
+      }
+
+      expect(devPreset.enabled).toContain("users");
+      expect(devPreset.enabled).toContain("catalogs");
+      expect(devPreset.enabled).toContain("events");
+      expect(devPreset.volume).toBe("large");
+      expect(devPreset.realism).toBe("realistic");
+    });
+
+    it("should have valid collection configurations with proper counts", () => {
+      Object.entries(SEED_CONFIG.collections).forEach(([, config]) => {
+        expect(config).toBeDefined();
+        expect(typeof config).toBe("object");
+
+        if (!config.disabled) {
+          expect(config.count).toBeDefined();
+          const countType = typeof config.count;
+          expect(["number", "function"]).toContain(countType);
+
+          if (countType === "function") {
+            const devCount = (config.count as (env: string) => number)("development");
+            expect(typeof devCount).toBe("number");
+            expect(devCount).toBeGreaterThanOrEqual(0);
+          } else {
+            expect(config.count as number).toBeGreaterThan(0);
+          }
+        }
+
+        if (config.dependencies) {
+          expect(Array.isArray(config.dependencies)).toBe(true);
+
+          config.dependencies.forEach((dep) => {
+            expect(typeof dep).toBe("string");
+            expect(dep.length).toBeGreaterThan(0);
+            expect(SEED_CONFIG.collections).toHaveProperty(dep);
+          });
+        }
+      });
+    });
+
+    it("should have valid collection names that match Payload collections", () => {
+      const validCollections = [
+        "users",
+        "catalogs",
+        "datasets",
+        "events",
+        "pages",
+        "media",
+        "location-cache",
+        "geocoding-providers",
+      ];
+
+      Object.keys(SEED_CONFIG.collections).forEach((collectionName) => {
+        expect(validCollections).toContain(collectionName);
+      });
+    });
+
+    it("should include main-menu in all presets", () => {
+      const allPresets = ["testing", "e2e", "development"];
+
+      allPresets.forEach((preset) => {
+        const enabledCollections = getEnabledCollections(preset);
+        expect(enabledCollections).toContain("main-menu");
+      });
+    });
+
+    it("should configure main-menu as a static global with count of 1", () => {
+      const mainMenuConfig = getCollectionConfig("main-menu", "development");
+
+      expect(mainMenuConfig).toBeDefined();
+      expect(mainMenuConfig?.count).toBe(1);
+      expect(mainMenuConfig?.dependencies).toEqual([]);
+      expect(mainMenuConfig?.options?.staticContent).toBe(true);
+    });
+
+    it("should have valid dependency graph without circular dependencies", () => {
+      Object.entries(SEED_CONFIG.collections).forEach(([collectionName, config]) => {
+        if (config.dependencies) {
+          expect(config.dependencies).not.toContain(collectionName);
+        }
+      });
     });
   });
 });
