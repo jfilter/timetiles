@@ -66,6 +66,36 @@ describe("event-params", () => {
       const result = extractListParameters(params);
       expect(result.limit).toBe(1000);
     });
+
+    it("should fall back to 1 when page is NaN", () => {
+      const params = new URLSearchParams("page=abc");
+      const result = extractListParameters(params);
+      expect(result.page).toBe(1);
+    });
+
+    it("should clamp page to 1 when page is negative", () => {
+      const params = new URLSearchParams("page=-5");
+      const result = extractListParameters(params);
+      expect(result.page).toBe(1);
+    });
+
+    it("should clamp page to 1 when page is 0", () => {
+      const params = new URLSearchParams("page=0");
+      const result = extractListParameters(params);
+      expect(result.page).toBe(1);
+    });
+
+    it("should fall back to 100 when limit is NaN", () => {
+      const params = new URLSearchParams("limit=abc");
+      const result = extractListParameters(params);
+      expect(result.limit).toBe(100);
+    });
+
+    it("should clamp limit to 1 when limit is negative", () => {
+      const params = new URLSearchParams("limit=-1");
+      const result = extractListParameters(params);
+      expect(result.limit).toBe(1);
+    });
   });
 
   describe("extractHistogramParameters", () => {
@@ -76,6 +106,24 @@ describe("event-params", () => {
       expect(result.minBuckets).toBe(20);
       expect(result.maxBuckets).toBe(50);
     });
+
+    it("should fall back to 30 when targetBuckets is NaN", () => {
+      const params = new URLSearchParams("targetBuckets=abc");
+      const result = extractHistogramParameters(params);
+      expect(result.targetBuckets).toBe(30);
+    });
+
+    it("should clamp targetBuckets to 500 when value exceeds max", () => {
+      const params = new URLSearchParams("targetBuckets=999999");
+      const result = extractHistogramParameters(params);
+      expect(result.targetBuckets).toBe(500);
+    });
+
+    it("should clamp targetBuckets to 1 when value is negative", () => {
+      const params = new URLSearchParams("targetBuckets=-1");
+      const result = extractHistogramParameters(params);
+      expect(result.targetBuckets).toBe(1);
+    });
   });
 
   describe("extractMapClusterParameters", () => {
@@ -83,6 +131,24 @@ describe("event-params", () => {
       const params = new URLSearchParams("zoom=5");
       const result = extractMapClusterParameters(params);
       expect(result.zoom).toBe(5);
+    });
+
+    it("should fall back to 10 when zoom is NaN", () => {
+      const params = new URLSearchParams("zoom=abc");
+      const result = extractMapClusterParameters(params);
+      expect(result.zoom).toBe(10);
+    });
+
+    it("should clamp zoom to 28 when value exceeds max", () => {
+      const params = new URLSearchParams("zoom=99");
+      const result = extractMapClusterParameters(params);
+      expect(result.zoom).toBe(28);
+    });
+
+    it("should clamp zoom to 0 when value is negative", () => {
+      const params = new URLSearchParams("zoom=-5");
+      const result = extractMapClusterParameters(params);
+      expect(result.zoom).toBe(0);
     });
   });
 
