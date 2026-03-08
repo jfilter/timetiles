@@ -28,6 +28,8 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: Commit updated lockfile
+        env:
+          HUSKY: "0"
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

@@ -37,12 +37,13 @@ jobs:
     name: Scan Dependencies
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'dependencies' || github.event.inputs.scan_type == '' }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           lfs: true
+          fetch-depth: 0
 
       - name: Run Trivy vulnerability scanner (dependencies)
         uses: aquasecurity/trivy-action@0.29.0
@@ -60,6 +61,7 @@ jobs:
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
         with:
           sarif_file: 'trivy-deps-results.sarif'
           category: 'dependency-scan'
@@ -134,12 +136,13 @@ jobs:
     name: Scan Docker Image
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'docker' || github.event.inputs.scan_type == '' }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           lfs: true
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -165,6 +168,7 @@ jobs:
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
         with:
           sarif_file: 'trivy-docker-results.sarif'
           category: 'docker-scan'
@@ -255,12 +259,13 @@ jobs:
     name: Scan Configuration Files
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'config' || github.event.inputs.scan_type == '' }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           lfs: true
+          fetch-depth: 0
 
       - name: Run Trivy config scanner
         uses: aquasecurity/trivy-action@0.29.0
@@ -275,6 +280,7 @@ jobs:
       - name: Upload config scan results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
         with:
           sarif_file: 'trivy-config-results.sarif'
           category: 'config-scan'
@@ -342,12 +348,13 @@ jobs:
     name: Scan Filesystem for Secrets
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'filesystem' || github.event.inputs.scan_type == '' }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           lfs: true
+          fetch-depth: 0
 
       - name: Run Trivy secret scanner
         uses: aquasecurity/trivy-action@0.29.0
@@ -364,6 +371,7 @@ jobs:
       - name: Upload secret scan results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
         with:
           sarif_file: 'trivy-secrets-results.sarif'
           category: 'secret-scan'
@@ -432,7 +440,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && always()
     needs: [dependency-scan, docker-scan, config-scan, filesystem-scan]
-    
+    continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
+
     steps:
       - name: Download all scan reports
         uses: actions/download-artifact@v4
