@@ -40,8 +40,7 @@ export default [
 
       // React Hooks rules
       "react-hooks/rules-of-hooks": "error",
-      // Set to warn as React Compiler may optimize dependencies differently
-      "react-hooks/exhaustive-deps": "warn",
+      "react-hooks/exhaustive-deps": "error",
 
       // Core React rules (minimal set, most handled by @eslint-react)
       "react/jsx-uses-react": "off", // Not needed with React 17+ JSX transform

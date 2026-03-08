@@ -124,7 +124,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
 
@@ -132,14 +132,14 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     if (droppedFile) {
       void processFile(droppedFile);
     }
-  }, []);
+  };
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       void processFile(selectedFile);
     }
-  }, []);
+  };
 
   const processFile = async (selectedFile: File) => {
     setIsUploading(true);
@@ -278,9 +278,9 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   );
 
   // Handler for fetch button
-  const handleFetchClick = useCallback(() => {
+  const handleFetchClick = () => {
     void processUrl();
-  }, []);
+  };
 
   // Render auth fields based on type
   const renderAuthFields = () => {

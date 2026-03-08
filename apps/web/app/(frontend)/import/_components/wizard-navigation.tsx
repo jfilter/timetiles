@@ -44,12 +44,13 @@ export const WizardNavigation = ({ className }: Readonly<WizardNavigationProps>)
 
   const handleNext = useCallback(() => {
     if (configOnNext) {
-      const result = configOnNext();
-      if (result instanceof Promise) {
-        result.catch(() => {
+      void (async () => {
+        try {
+          await configOnNext();
+        } catch {
           // Error handled by the step component
-        });
-      }
+        }
+      })();
     } else {
       nextStep();
     }
