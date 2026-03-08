@@ -77,6 +77,7 @@
  * @module
  * @category Services
  */
+import { eq, sql } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import {
@@ -92,6 +93,7 @@ import {
   type UserUsage,
 } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
+import { user_usage } from "@/payload-generated-schema";
 import type { User, UserUsage as UserUsageRecord } from "@/payload-types";
 
 const logger = createLogger("quota-service");
@@ -350,64 +352,45 @@ export class QuotaService {
 
   /**
    * Increment usage counter for a user in the user-usage collection.
+   *
+   * Uses atomic SQL UPDATE to prevent race conditions from concurrent requests.
+   * The column is incremented directly in the database rather than using a
+   * read-modify-write pattern that could lose updates.
    */
   async incrementUsage(userId: number, usageType: UsageType, amount: number = 1): Promise<void> {
     try {
       logger.debug("incrementUsage: Entry", { userId, usageType, amount });
 
-      // Get or create usage record
-      const usageRecord = await this.getOrCreateUsageRecord(userId);
-      logger.debug("incrementUsage: Got usage record", { usageRecordId: usageRecord.id });
+      // Ensure usage record exists before atomic update
+      await this.getOrCreateUsageRecord(userId);
 
-      // Convert to UserUsage type for manipulation
-      const currentUsage: UserUsage = {
-        currentActiveSchedules: usageRecord.currentActiveSchedules ?? 0,
-        urlFetchesToday: usageRecord.urlFetchesToday ?? 0,
-        fileUploadsToday: usageRecord.fileUploadsToday ?? 0,
-        importJobsToday: usageRecord.importJobsToday ?? 0,
-        totalEventsCreated: usageRecord.totalEventsCreated ?? 0,
-        currentCatalogs: usageRecord.currentCatalogs ?? 0,
-        lastResetDate: usageRecord.lastResetDate ?? new Date().toISOString(),
-      };
+      if (this.isDailyUsageType(usageType)) {
+        // For daily types, atomically reset stale counters and increment the target
+        const needsReset = sql`${user_usage.lastResetDate} IS NULL OR ${user_usage.lastResetDate}::date < CURRENT_DATE`;
 
-      // Check if daily reset is needed
-      if (this.isDailyUsageType(usageType) && this.shouldResetDailyUsage(currentUsage.lastResetDate)) {
-        logger.debug("incrementUsage: Daily reset needed");
-        // Reset daily counters
-        currentUsage.urlFetchesToday = 0;
-        currentUsage.fileUploadsToday = 0;
-        currentUsage.importJobsToday = 0;
-        currentUsage.lastResetDate = new Date().toISOString();
+        await this.payload.db.drizzle
+          .update(user_usage)
+          .set({
+            urlFetchesToday: sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${user_usage.urlFetchesToday}, 0) END + ${usageType === "urlFetchesToday" ? amount : 0}`,
+            fileUploadsToday: sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${user_usage.fileUploadsToday}, 0) END + ${usageType === "fileUploadsToday" ? amount : 0}`,
+            importJobsToday: sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${user_usage.importJobsToday}, 0) END + ${usageType === "importJobsToday" ? amount : 0}`,
+            lastResetDate: sql`CASE WHEN ${needsReset} THEN NOW() ELSE ${user_usage.lastResetDate} END`,
+            updatedAt: sql`NOW()`,
+          })
+          .where(eq(user_usage.user, userId));
+      } else {
+        // For non-daily types, simple atomic increment
+        const col = user_usage[usageType];
+        await this.payload.db.drizzle
+          .update(user_usage)
+          .set({
+            [usageType]: sql`COALESCE(${col}, 0) + ${amount}`,
+            updatedAt: sql`NOW()`,
+          })
+          .where(eq(user_usage.user, userId));
       }
 
-      // Increment the counter
-      const newValue = (currentUsage[usageType] || 0) + amount;
-
-      logger.debug("incrementUsage: Updating user-usage collection");
-      await this.payload.update({
-        collection: USER_USAGE_COLLECTION,
-        id: usageRecord.id,
-        data: {
-          [usageType]: newValue,
-          // Also update lastResetDate if we reset
-          ...(this.isDailyUsageType(usageType) && this.shouldResetDailyUsage(usageRecord.lastResetDate ?? "")
-            ? {
-                urlFetchesToday: usageType === "urlFetchesToday" ? newValue : 0,
-                fileUploadsToday: usageType === "fileUploadsToday" ? newValue : 0,
-                importJobsToday: usageType === "importJobsToday" ? newValue : 0,
-                lastResetDate: new Date().toISOString(),
-              }
-            : {}),
-        },
-        overrideAccess: true,
-      });
-
-      logger.debug("Usage incremented", {
-        userId,
-        usageType,
-        amount,
-        newValue,
-      });
+      logger.debug("Usage incremented", { userId, usageType, amount });
     } catch (error) {
       logger.error("Failed to increment usage", {
         error,
@@ -415,37 +398,31 @@ export class QuotaService {
         usageType,
         amount,
       });
+      throw error;
     }
   }
 
   /**
    * Decrement usage counter for a user (e.g., when a schedule is disabled).
+   *
+   * Uses atomic SQL UPDATE with GREATEST to prevent going below zero and
+   * avoid race conditions from concurrent requests.
    */
   async decrementUsage(userId: number, usageType: UsageType, amount: number = 1): Promise<void> {
     try {
-      // Get or create usage record
-      const usageRecord = await this.getOrCreateUsageRecord(userId);
+      // Ensure usage record exists before atomic update
+      await this.getOrCreateUsageRecord(userId);
 
-      const currentValue = (usageRecord[usageType as keyof UserUsageRecord] as number) || 0;
+      const col = user_usage[usageType];
+      await this.payload.db.drizzle
+        .update(user_usage)
+        .set({
+          [usageType]: sql`GREATEST(0, COALESCE(${col}, 0) - ${amount})`,
+          updatedAt: sql`NOW()`,
+        })
+        .where(eq(user_usage.user, userId));
 
-      // Don't go below 0
-      const newValue = Math.max(0, currentValue - amount);
-
-      await this.payload.update({
-        collection: USER_USAGE_COLLECTION,
-        id: usageRecord.id,
-        data: {
-          [usageType]: newValue,
-        },
-        overrideAccess: true,
-      });
-
-      logger.debug("Usage decremented", {
-        userId,
-        usageType,
-        amount,
-        newValue,
-      });
+      logger.debug("Usage decremented", { userId, usageType, amount });
     } catch (error) {
       logger.error("Failed to decrement usage", {
         error,
@@ -453,6 +430,7 @@ export class QuotaService {
         usageType,
         amount,
       });
+      throw error;
     }
   }
 

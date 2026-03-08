@@ -428,6 +428,45 @@ describe.sequential("Quota System", () => {
     });
   });
 
+  describe("Concurrent Usage", () => {
+    it("should handle concurrent increments without losing updates", async () => {
+      const { payload } = testEnv;
+      const quotaService = getQuotaService(payload);
+
+      // Ensure clean state
+      await resetUserUsage(payload, testUser.id);
+
+      // Fire 10 concurrent increments
+      const promises = Array.from({ length: 10 }, () =>
+        quotaService.incrementUsage(testUser.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1)
+      );
+      await Promise.all(promises);
+
+      // All 10 increments should be reflected — no lost updates
+      const usage = await getUserUsage(payload, testUser.id);
+      expect(usage?.fileUploadsToday).toBe(10);
+    });
+
+    it("should handle concurrent decrements without going below zero", async () => {
+      const { payload } = testEnv;
+      const quotaService = getQuotaService(payload);
+
+      // Set initial value to 3
+      await resetUserUsage(payload, testUser.id);
+      await quotaService.incrementUsage(testUser.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 3);
+
+      // Fire 5 concurrent decrements (more than current value)
+      const promises = Array.from({ length: 5 }, () =>
+        quotaService.decrementUsage(testUser.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1)
+      );
+      await Promise.all(promises);
+
+      // Should be 0 (not negative)
+      const usage = await getUserUsage(payload, testUser.id);
+      expect(usage?.currentActiveSchedules).toBe(0);
+    });
+  });
+
   describe("Event Creation Quotas", () => {
     it("should enforce total event limits", async () => {
       const { payload } = testEnv;
