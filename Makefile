@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint lint-full typecheck typecheck-full format test test-ai test-e2e test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai images help
+.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint lint-full typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai images help
 
 all: help
 
@@ -262,6 +262,36 @@ else
 	pnpm --filter web test:e2e
 endif
 
+# Download and view E2E test artifacts (traces, screenshots) from latest failed CI run
+# Usage: make test-e2e-debug [RUN_ID=<github-actions-run-id>]
+test-e2e-debug:
+	@mkdir -p /tmp/playwright-ci-results
+	@echo "📥 Downloading E2E artifacts from CI..."
+ifdef RUN_ID
+	@gh run download $(RUN_ID) --name playwright-results --dir /tmp/playwright-ci-results 2>/dev/null || \
+		(echo "❌ No playwright-results artifact found for run $(RUN_ID)" && exit 1)
+else
+	@RUN=$$(gh run list --workflow ci.yml --limit 10 --json databaseId,conclusion --jq '[.[] | select(.conclusion=="failure")][0].databaseId') && \
+		if [ -z "$$RUN" ] || [ "$$RUN" = "null" ]; then echo "❌ No recent failed CI runs found"; exit 1; fi && \
+		echo "  Using latest failed run: $$RUN" && \
+		gh run download "$$RUN" --name playwright-results --dir /tmp/playwright-ci-results 2>/dev/null || \
+		(echo "❌ No playwright-results artifact found (E2E may have passed)" && exit 1)
+endif
+	@echo ""
+	@echo "📋 Failed test screenshots:"
+	@find /tmp/playwright-ci-results -name "*.png" | while read f; do echo "  $$f"; done
+	@echo ""
+	@echo "📋 Available traces:"
+	@find /tmp/playwright-ci-results -name "trace.zip" | while read f; do echo "  $$f"; done
+	@echo ""
+	@TRACE=$$(find /tmp/playwright-ci-results -name "trace.zip" | head -1) && \
+		if [ -n "$$TRACE" ]; then \
+			echo "🔍 Opening first trace in browser..." && \
+			pnpm --filter web exec playwright show-trace "$$TRACE"; \
+		else \
+			echo "No traces found."; \
+		fi
+
 # =============================================================================
 # Deployment Tests
 # =============================================================================
@@ -389,7 +419,9 @@ help:
 		'                  make test-ai                    # All tests (Turbo cached)' \
 		'                  make test-ai FILTER=date.test   # Pattern match (fastest)' \
 		'                  make test-ai FILTER=tests/unit  # Directory' \
-		'  test-e2e      - Run E2E tests with automatic database setup' \
+		'  test-e2e       - Run E2E tests with automatic database setup' \
+		'  test-e2e-debug - Download and view CI E2E failure traces/screenshots' \
+		'                   Usage: make test-e2e-debug [RUN_ID=<run-id>]' \
 		'  test-coverage - Run tests and generate coverage report' \
 		'  coverage      - Show last coverage summary (quick)' \
 		'  coverage-check - Show files below 80% coverage threshold' '' \

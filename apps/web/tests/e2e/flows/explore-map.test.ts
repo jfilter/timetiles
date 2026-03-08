@@ -36,11 +36,11 @@ test.describe("Explore Page - Map Interactions", () => {
       }
     });
 
-    // Pan the map significantly to trigger bounds change
-    await explorePage.panMap(400, 400);
+    // Pan the map — use moderate distance to stay within viewport on CI (1280x720)
+    await explorePage.panMap(200, 0);
 
-    // Wait for debounce (300ms) + API response
-    await page.waitForResponse((response) => response.url().includes("/api/v1/events"), { timeout: 5000 });
+    // Wait for debounce (300ms) + API response (may not trigger if bounds unchanged)
+    await explorePage.waitForApiResponse();
 
     // Panning should trigger API requests that include bounds
     expect(apiRequestsAfterPan.length).toBeGreaterThan(0);
