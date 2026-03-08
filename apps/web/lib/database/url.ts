@@ -142,6 +142,7 @@ export const isTestDatabase = (url: string): boolean => {
  */
 export const getDatabaseInfo = (url: string): Omit<DatabaseUrlComponents, "password" | "fullUrl"> => {
   const components = parseDatabaseUrl(url);
-  const { password: _password, fullUrl: _fullUrl, ...safeInfo } = components;
+  // eslint-disable-next-line sonarjs/no-unused-vars -- intentional destructuring to omit sensitive fields
+  const { password, fullUrl, ...safeInfo } = components;
   return safeInfo;
 };

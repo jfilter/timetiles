@@ -8,4 +8,3 @@
  * @category Tests
  */
 export * from "./logger";
-export * from "./path";

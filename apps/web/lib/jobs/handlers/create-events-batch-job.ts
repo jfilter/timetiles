@@ -14,8 +14,6 @@
  * @module
  * @category Jobs
  */
-import path from "node:path";
-
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
@@ -33,6 +31,7 @@ import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import { createEventData } from "../utils/event-creation-helpers";
 import type { JobHandlerContext } from "../utils/job-context";
 import { extractDuplicateRows } from "../utils/resource-loading";
+import { getImportFilePath } from "../utils/upload-path";
 
 /**
  * Build ImportTransform array from dataset configuration.
@@ -344,8 +343,7 @@ const processBatchData = async (
   batchNumber: number,
   logger: ReturnType<typeof createJobLogger>
 ) => {
-  const uploadDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR ?? "uploads"}/import-files`);
-  const filePath = path.join(uploadDir, importFile.filename ?? "");
+  const filePath = getImportFilePath(importFile.filename ?? "");
   const BATCH_SIZE = BATCH_SIZES.EVENT_CREATION;
 
   const rows = readBatchFromFile(filePath, {

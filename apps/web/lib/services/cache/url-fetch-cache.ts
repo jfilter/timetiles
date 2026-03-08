@@ -218,7 +218,8 @@ export class UrlFetchCache {
     }
 
     try {
-      const { bypassCache: _bypassCache, forceRevalidate: _forceRevalidate, ...fetchOptions } = options ?? {};
+      // eslint-disable-next-line sonarjs/no-unused-vars -- strip custom options before passing to fetch
+      const { bypassCache, forceRevalidate, ...fetchOptions } = options ?? {};
       const response = await fetch(url, { ...fetchOptions, headers });
 
       // Handle 304 Not Modified
@@ -266,7 +267,8 @@ export class UrlFetchCache {
     cacheKey: string,
     options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean }
   ): Promise<CachedResponse> {
-    const { bypassCache: _bypassCache, forceRevalidate: _forceRevalidate, ...fetchOptions } = options ?? {};
+    // eslint-disable-next-line sonarjs/no-unused-vars -- strip custom options before passing to fetch
+    const { bypassCache, forceRevalidate, ...fetchOptions } = options ?? {};
     const response = await fetch(url, fetchOptions);
 
     const data = Buffer.from(await response.arrayBuffer());
@@ -301,7 +303,8 @@ export class UrlFetchCache {
     // Only cache GET requests
     if (method !== "GET") {
       logger.debug("Bypassing cache for non-GET request", { url, method });
-      const { bypassCache: _bypassCache, forceRevalidate: _forceRevalidate, ...fetchOptions } = options ?? {};
+      // eslint-disable-next-line sonarjs/no-unused-vars -- strip custom options before passing to fetch
+      const { bypassCache, forceRevalidate, ...fetchOptions } = options ?? {};
       return this.fetchWithoutCache(url, fetchOptions);
     }
 

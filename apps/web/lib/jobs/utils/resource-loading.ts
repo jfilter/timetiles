@@ -9,12 +9,12 @@
  * @module
  * @category Jobs/Utils
  */
-import path from "node:path";
-
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
+
+import { getImportFilePath } from "./upload-path";
 
 /**
  * Load import job by ID
@@ -91,8 +91,7 @@ export const loadJobAndFilePath = async (
   const job = await loadImportJob(payload, importJobId);
   const importFile = await loadImportFile(payload, job.importFile);
 
-  const uploadDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR ?? "uploads"}/import-files`);
-  const filePath = path.join(uploadDir, importFile.filename ?? "");
+  const filePath = getImportFilePath(importFile.filename ?? "");
 
   return { job, importFile, filePath };
 };

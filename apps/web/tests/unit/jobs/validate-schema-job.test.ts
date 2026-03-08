@@ -9,7 +9,6 @@
  */
 // Import centralized mocks FIRST (before anything that uses them)
 import "@/tests/mocks/services/logger";
-import "@/tests/mocks/services/path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

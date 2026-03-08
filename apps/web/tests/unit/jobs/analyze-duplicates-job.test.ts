@@ -3,13 +3,11 @@
  */
 // Import centralized mocks FIRST (before anything that uses them)
 import "@/tests/mocks/services/logger";
-import "@/tests/mocks/services/path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { analyzeDuplicatesJob } from "@/lib/jobs/handlers/analyze-duplicates-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
-import { mockPath } from "@/tests/mocks/services/path";
 import { createMockImportFile } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
@@ -41,6 +39,10 @@ vi.mock("@/lib/services/id-generation", () => ({
   generateUniqueId: mocks.generateUniqueId,
 }));
 
+vi.mock("@/lib/jobs/utils/upload-path", () => ({
+  getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),
+}));
+
 describe.sequential("AnalyzeDuplicatesJob Handler", () => {
   let mockPayload: any;
   let mockContext: JobHandlerContext;
@@ -49,10 +51,6 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
     // Reset all mocks (clearAllMocks resets call history/return values;
     // do NOT use restoreAllMocks as it undoes vi.mock module-level mocks)
     vi.clearAllMocks();
-
-    // Re-apply path mock implementations after clearAllMocks
-    mockPath.resolve.mockReturnValue("/mock/import-files");
-    mockPath.join.mockImplementation((dir: string, filename: string) => `${dir}/${filename}`);
 
     // Mock payload
     mockPayload = {

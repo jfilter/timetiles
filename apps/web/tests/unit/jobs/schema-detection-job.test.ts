@@ -9,7 +9,6 @@
  */
 // Import centralized mocks FIRST (before anything that uses them)
 import "@/tests/mocks/services/logger";
-import "@/tests/mocks/services/path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -57,6 +56,10 @@ vi.mock("@/lib/services/progress-tracking", () => ({
 
 vi.mock("@/lib/types/schema-detection", () => ({
   getSchemaBuilderState: mocks.getSchemaBuilderState,
+}));
+
+vi.mock("@/lib/jobs/utils/upload-path", () => ({
+  getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),
 }));
 
 describe.sequential("SchemaDetectionJob Handler", () => {

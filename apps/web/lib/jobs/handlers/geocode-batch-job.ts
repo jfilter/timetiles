@@ -12,8 +12,6 @@
  * @category Jobs
  */
 /* eslint-disable sonarjs/max-lines-per-function -- Batch geocoding requires sequential processing steps */
-import path from "node:path";
-
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
@@ -27,6 +25,7 @@ import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
+import { getImportFilePath } from "../utils/upload-path";
 
 /**
  * Extract unique location values from rows.
@@ -203,8 +202,7 @@ export const geocodeBatchJob = {
         return { output: { skipped: true } };
       }
 
-      const uploadDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR ?? "uploads"}/import-files`);
-      const filePath = path.join(uploadDir, importFile.filename ?? "");
+      const filePath = getImportFilePath(importFile.filename ?? "");
 
       // Read ALL rows from file (not batched)
       const rows = readAllRowsFromFile(filePath, {
