@@ -3,8 +3,9 @@
 
 # Stage 1: Base image with pnpm
 FROM node:24-alpine AS base
-# Combine RUN commands to reduce layers
-RUN apk add --no-cache libc6-compat \
+# Upgrade base packages for security patches, install deps
+RUN apk upgrade --no-cache \
+    && apk add --no-cache libc6-compat \
     && corepack enable \
     && corepack prepare pnpm@10.12.4 --activate
 WORKDIR /app
@@ -53,8 +54,9 @@ RUN pnpm exec next build --experimental-build-mode compile --webpack
 FROM node:24-alpine AS runner
 WORKDIR /app
 
-# Install runtime dependencies and create user in one layer
-RUN apk add --no-cache libc6-compat \
+# Upgrade base packages to pick up security patches, install runtime deps, create user
+RUN apk upgrade --no-cache \
+    && apk add --no-cache libc6-compat \
     && addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
