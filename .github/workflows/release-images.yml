@@ -362,6 +362,7 @@ jobs:
             -e POSTGRES_USER=timetiles_user \
             -e POSTGRES_PASSWORD=test_password \
             -e POSTGRES_DB=timetiles \
+            -v ${{ github.workspace }}/deployment/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro \
             postgis/postgis:17-3.5-alpine
 
           # Wait for PostgreSQL to be ready
