@@ -258,6 +258,7 @@ export const FIELD_PATTERNS = {
 export const LATITUDE_PATTERNS = [
   /^lat(itude)?$/i,
   /^lat[_\s.-]?deg(rees)?$/i,
+  /^lat[_\s.-]?coord(inate)?$/i,
   /^y[_\s.-]?coord(inate)?$/i,
   /^location[_\s.-]?lat(itude)?$/i,
   /^geo[_\s.-]?lat(itude)?$/i,
@@ -276,14 +277,14 @@ export const LATITUDE_PATTERNS = [
 export const LONGITUDE_PATTERNS = [
   /^lon(g|gitude)?$/i,
   /^lng$/i,
-  /^lon[_\s.-]?deg(rees)?$/i,
-  /^long[_\s.-]?deg(rees)?$/i,
+  /^(lon(g)?|lng)[_\s.-]?deg(rees)?$/i,
+  /^(lon(g)?|lng)[_\s.-]?coord(inate)?$/i,
   /^x[_\s.-]?coord(inate)?$/i,
-  /^location[_\s.-]?lon(g|gitude)?$/i,
-  /^geo[_\s.-]?lon(g|gitude)?$/i,
-  /^decimal[_\s.-]?lon(g|gitude)?$/i,
-  /^longitude[_\s.-]?decimal$/i,
-  /^wgs84[_\s.-]?lon(g|gitude)?$/i,
+  /^location[_\s.-]?(lon(g|gitude)?|lng)$/i,
+  /^geo[_\s.-]?(lon(g|gitude)?|lng)$/i,
+  /^decimal[_\s.-]?(lon(g|gitude)?|lng)$/i,
+  /^(longitude|lng)[_\s.-]?decimal$/i,
+  /^wgs84[_\s.-]?(lon(g|gitude)?|lng)$/i,
   /^länge$/i, // German
   /^laenge$/i, // German (ASCII)
   /^längengrad$/i, // German

@@ -254,7 +254,7 @@ describe("FIELD_PATTERNS", () => {
 
 describe("LATITUDE_PATTERNS", () => {
   it("matches common latitude field names", () => {
-    const names = ["lat", "latitude", "lat_coord", "geo_lat"];
+    const names = ["lat", "latitude", "lat_coord", "geo_lat", "lat_coordinate"];
     for (const name of names) {
       expect(LATITUDE_PATTERNS.some((p) => p.test(name))).toBe(true);
     }
@@ -270,7 +270,7 @@ describe("LATITUDE_PATTERNS", () => {
 
 describe("LONGITUDE_PATTERNS", () => {
   it("matches common longitude field names", () => {
-    const names = ["lng", "lon", "longitude", "geo_lng"];
+    const names = ["lng", "lon", "longitude", "geo_lng", "lon_coord", "lng_coord", "location_lng"];
     for (const name of names) {
       expect(LONGITUDE_PATTERNS.some((p) => p.test(name))).toBe(true);
     }
