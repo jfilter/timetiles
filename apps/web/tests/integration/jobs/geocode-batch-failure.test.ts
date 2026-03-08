@@ -132,9 +132,5 @@ Event 3,2024-01-03,Hamburg Germany
     expect(events.docs.length).toBe(0);
   });
 
-  it("should continue if some geocoding succeeds", () => {
-    // This test would require a more complex mock setup to partially succeed
-    // For now, we just verify the failure case above works
-    expect(true).toBe(true);
-  });
+  it.todo("should continue if some geocoding succeeds");
 });
