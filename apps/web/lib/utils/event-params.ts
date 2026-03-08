@@ -115,8 +115,8 @@ export const extractBaseEventParameters = (searchParams: URLSearchParams): BaseE
 export const extractListParameters = (searchParams: URLSearchParams): ListParameters => ({
   ...extractBaseEventParameters(searchParams),
   boundsParam: searchParams.get("bounds"),
-  page: parseInt(searchParams.get("page") ?? "1", 10),
-  limit: Math.min(parseInt(searchParams.get("limit") ?? "100", 10), 1000),
+  page: Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1),
+  limit: Math.min(Math.max(1, parseInt(searchParams.get("limit") ?? "100", 10) || 100), 1000),
   sort: searchParams.get("sort") ?? "-eventTimestamp",
 });
 
@@ -126,13 +126,18 @@ export const extractListParameters = (searchParams: URLSearchParams): ListParame
  * @param searchParams - URL search parameters
  * @returns Histogram parameters including bucket configuration
  */
-export const extractHistogramParameters = (searchParams: URLSearchParams): HistogramParameters => ({
-  ...extractBaseEventParameters(searchParams),
-  boundsParam: searchParams.get("bounds"),
-  targetBuckets: parseInt(searchParams.get("targetBuckets") ?? "30", 10),
-  minBuckets: parseInt(searchParams.get("minBuckets") ?? "20", 10),
-  maxBuckets: parseInt(searchParams.get("maxBuckets") ?? "50", 10),
-});
+export const extractHistogramParameters = (searchParams: URLSearchParams): HistogramParameters => {
+  const clampBuckets = (value: string | null, fallback: number) =>
+    Math.min(Math.max(1, parseInt(value ?? String(fallback), 10) || fallback), 500);
+
+  return {
+    ...extractBaseEventParameters(searchParams),
+    boundsParam: searchParams.get("bounds"),
+    targetBuckets: clampBuckets(searchParams.get("targetBuckets"), 30),
+    minBuckets: clampBuckets(searchParams.get("minBuckets"), 20),
+    maxBuckets: clampBuckets(searchParams.get("maxBuckets"), 50),
+  };
+};
 
 /**
  * Extract parameters for the map clusters endpoint.
@@ -143,7 +148,7 @@ export const extractHistogramParameters = (searchParams: URLSearchParams): Histo
 export const extractMapClusterParameters = (searchParams: URLSearchParams): MapClusterParameters => ({
   ...extractBaseEventParameters(searchParams),
   boundsParam: searchParams.get("bounds"),
-  zoom: parseInt(searchParams.get("zoom") ?? "10", 10),
+  zoom: Math.min(Math.max(0, parseInt(searchParams.get("zoom") ?? "10", 10) || 10), 28),
 });
 
 /**

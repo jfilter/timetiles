@@ -133,28 +133,28 @@ const executeClusteringQuery = async (
 };
 
 const transformResultToClusters = (rows: Array<Record<string, unknown>>) =>
-  rows.map((row: Record<string, unknown>) => {
-    const isCluster = Number(row.event_count) > 1;
-    const featureId = row.cluster_id ?? row.event_id;
+  rows
+    .filter((row) => {
+      // Skip rows with missing or non-numeric coordinates instead of defaulting to (0, 0)
+      const hasLon = typeof row.longitude === "string" || typeof row.longitude === "number";
+      const hasLat = typeof row.latitude === "string" || typeof row.latitude === "number";
+      return hasLon && hasLat;
+    })
+    .map((row: Record<string, unknown>) => {
+      const isCluster = Number(row.event_count) > 1;
+      const featureId = row.cluster_id ?? row.event_id;
 
-    return {
-      type: "Feature",
-      id: featureId, // Root-level ID for MapLibre feature tracking
-      geometry: {
-        type: "Point",
-        coordinates: [
-          Number.parseFloat(
-            typeof row.longitude === "string" || typeof row.longitude === "number" ? String(row.longitude) : "0"
-          ),
-          Number.parseFloat(
-            typeof row.latitude === "string" || typeof row.latitude === "number" ? String(row.latitude) : "0"
-          ),
-        ],
-      },
-      properties: {
-        type: isCluster ? "event-cluster" : "event-point",
-        ...(isCluster ? { count: Number(row.event_count) } : {}),
-        ...(row.event_title != null && typeof row.event_title === "string" ? { title: row.event_title } : {}),
-      },
-    };
-  });
+      return {
+        type: "Feature",
+        id: featureId, // Root-level ID for MapLibre feature tracking
+        geometry: {
+          type: "Point",
+          coordinates: [Number.parseFloat(String(row.longitude)), Number.parseFloat(String(row.latitude))],
+        },
+        properties: {
+          type: isCluster ? "event-cluster" : "event-point",
+          ...(isCluster ? { count: Number(row.event_count) } : {}),
+          ...(row.event_title != null && typeof row.event_title === "string" ? { title: row.event_title } : {}),
+        },
+      };
+    });

@@ -54,6 +54,19 @@ export const POST = withRateLimit(
           return badRequest(`Import job is not in failed state. Current stage: ${importJob.stage}`);
         }
 
+        // Atomically claim the retry by transitioning stage away from FAILED.
+        // If another concurrent request already claimed it, this update will match 0 docs.
+        const claimResult = await payload.update({
+          collection: "import-jobs",
+          where: { id: { equals: importJob.id }, stage: { equals: PROCESSING_STAGE.FAILED } },
+          data: { stage: PROCESSING_STAGE.FAILED }, // no-op data, just to test atomicity
+          overrideAccess: true,
+        });
+
+        if (claimResult.docs.length === 0) {
+          return badRequest("Retry already in progress for this import job");
+        }
+
         // Get import file for quota check
         const importFileId = typeof importJob.importFile === "object" ? importJob.importFile.id : importJob.importFile;
         const importFile = await payload.findByID({

@@ -7,10 +7,13 @@
  * @module
  * @category Jobs
  */
+import { createLogger } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import type { getGeocodingResults } from "@/lib/types/geocoding";
 import { isValidDate } from "@/lib/utils/date";
 import type { Dataset } from "@/payload-types";
+
+const logger = createLogger("event-creation-helpers");
 
 /**
  * Extract coordinates from a row based on field mappings and geocoding results.
@@ -75,7 +78,7 @@ export const extractCoordinates = (
 /**
  * Extract timestamp from row data using field mapping.
  */
-export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: string | null): Date => {
+export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: string | null): Date | null => {
   // Try mapped field first
   if (timestampPath && row[timestampPath]) {
     const date = new Date(row[timestampPath] as string | number);
@@ -96,8 +99,9 @@ export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: s
     }
   }
 
-  // Default to current time
-  return new Date();
+  // No valid timestamp found — return null so the caller can decide how to handle it
+  logger.warn("No valid timestamp found in row, returning null");
+  return null;
 };
 
 /**
@@ -155,7 +159,7 @@ export const createEventData = (
     importJob: importJobNum,
     data: row,
     uniqueId,
-    eventTimestamp: extractTimestamp(row, fieldMappings.timestampPath).toISOString(),
+    eventTimestamp: (extractTimestamp(row, fieldMappings.timestampPath) ?? new Date()).toISOString(),
     location,
     locationName,
     coordinateSource,

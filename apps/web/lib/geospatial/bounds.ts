@@ -29,13 +29,28 @@ import type { Coordinates, MapBounds } from "./types";
  * }
  * ```
  */
-export const isValidBounds = (value: unknown): value is MapBounds =>
-  typeof value === "object" &&
-  value != null &&
-  typeof (value as Record<string, unknown>).north === "number" &&
-  typeof (value as Record<string, unknown>).south === "number" &&
-  typeof (value as Record<string, unknown>).east === "number" &&
-  typeof (value as Record<string, unknown>).west === "number";
+export const isValidBounds = (value: unknown): value is MapBounds => {
+  if (typeof value !== "object" || value == null) return false;
+
+  const { north, south, east, west } = value as Record<string, unknown>;
+
+  // All fields must be finite numbers (rejects NaN, Infinity, -Infinity)
+  if (
+    typeof north !== "number" ||
+    typeof south !== "number" ||
+    typeof east !== "number" ||
+    typeof west !== "number" ||
+    !Number.isFinite(north) ||
+    !Number.isFinite(south) ||
+    !Number.isFinite(east) ||
+    !Number.isFinite(west)
+  ) {
+    return false;
+  }
+
+  // Validate coordinate ranges and north > south
+  return north > south && north <= 90 && south >= -90 && east <= 180 && west >= -180;
+};
 
 /**
  * Parses a JSON string into a MapBounds object with validation.

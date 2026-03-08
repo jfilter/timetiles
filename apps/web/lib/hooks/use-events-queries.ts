@@ -30,11 +30,23 @@ import { buildBaseEventParams, buildEventParams } from "../utils/event-params";
 // Helper function to determine polling interval
 // Returns false to stop polling or number for interval - React Query expects this pattern
 // eslint-disable-next-line sonarjs/function-return-type
-const getPollingInterval = (query: { state: { data?: { status?: string } } }): number | false => {
+const getPollingInterval = (query: { state: { data?: { status?: string }; status: string } }): number | false => {
+  // Stop polling if the query itself is in error state (network failures, server errors)
+  if (query.state.status === "error") {
+    return false;
+  }
+
   const data = query.state.data;
   if (data?.status === "completed" || data?.status === "failed") {
     return false;
   }
+
+  // Stop polling for stages that require manual user action —
+  // the UI updates via mutation invalidation when the user approves
+  if (data?.status === "awaiting_approval") {
+    return false;
+  }
+
   return 2000;
 };
 

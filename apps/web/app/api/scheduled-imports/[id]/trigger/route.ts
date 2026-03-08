@@ -48,6 +48,11 @@ export const POST = withAuth(async (_request: AuthenticatedRequest, context: Rou
       return forbidden();
     }
 
+    // Prevent duplicate triggers if already running
+    if (existingSchedule.lastStatus === "running") {
+      return badRequest("Import is already running");
+    }
+
     // Queue the URL fetch job for manual trigger
     await payload.jobs.queue({
       task: "url-fetch",
