@@ -53,6 +53,7 @@
     "./postcss.config": "./postcss.config.mjs",
     "./design-system": "./DESIGN_SYSTEM.md",
     "./charts": "./src/components/charts/index.ts",
-    "./icons": "./src/components/icons/index.ts"
+    "./icons": "./src/components/icons/index.ts",
+    "./lib/utils": "./src/lib/utils.ts"
   }
 }

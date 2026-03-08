@@ -14,7 +14,7 @@ describe("defaultLightTheme", () => {
     expect(defaultLightTheme.textColor).toBe("#404040");
     expect(defaultLightTheme.axisLineColor).toBe("#4a55684D");
     expect(defaultLightTheme.splitLineColor).toBe("#4a55681A");
-    expect(defaultLightTheme.itemColor).toBe("#6495ed");
+    expect(defaultLightTheme.itemColor).toBe("#0089a7");
   });
 });
 
@@ -24,7 +24,7 @@ describe("defaultDarkTheme", () => {
     expect(defaultDarkTheme.textColor).toBe("#404040");
     expect(defaultDarkTheme.axisLineColor).toBe("#40404066");
     expect(defaultDarkTheme.splitLineColor).toBe("#40404033");
-    expect(defaultDarkTheme.itemColor).toBe("#6495ed");
+    expect(defaultDarkTheme.itemColor).toBe("#0089a7");
   });
 });
 
