@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   parseCoordinate,
+  parseDegreesMinutesFormat,
   parseDirectionalFormat,
   parseDMSFormat,
   tryParseDecimal,
@@ -89,9 +90,8 @@ describe("Coordinate Parser Utilities", () => {
     });
 
     it("should handle negative degrees", () => {
-      // Negative degrees: -40 + 26/60 + 46/3600 = -40 + 0.433333 + 0.012778 = -39.553889
       const result = parseDMSFormat("-40°26'46\"");
-      expect(result).toBeCloseTo(-39.553889, 5);
+      expect(result).toBeCloseTo(-40.446111, 5);
     });
 
     it("should return null for invalid format", () => {
@@ -134,6 +134,11 @@ describe("Coordinate Parser Utilities", () => {
       expect(parseDirectionalFormat("74.0060W")).toBe(-74.006);
     });
 
+    it("should keep west and south values negative when a sign is also provided", () => {
+      expect(parseDirectionalFormat("-40.7128 S")).toBe(-40.7128);
+      expect(parseDirectionalFormat("-74.0060W")).toBe(-74.006);
+    });
+
     it("should handle integer values", () => {
       expect(parseDirectionalFormat("40 N")).toBe(40);
       expect(parseDirectionalFormat("180 W")).toBe(-180);
@@ -154,6 +159,18 @@ describe("Coordinate Parser Utilities", () => {
     it("should return null for missing parts", () => {
       expect(parseDirectionalFormat("N")).toBeNull();
       expect(parseDirectionalFormat(" S")).toBeNull();
+    });
+  });
+
+  describe("parseDegreesMinutesFormat", () => {
+    it("should parse degrees and decimal minutes with negative degrees", () => {
+      const result = parseDegreesMinutesFormat("-74°0.36'");
+      expect(result).toBeCloseTo(-74.006, 5);
+    });
+
+    it("should parse degrees and decimal minutes with west direction", () => {
+      const result = parseDegreesMinutesFormat("74°0.36'W");
+      expect(result).toBeCloseTo(-74.006, 5);
     });
   });
 
@@ -184,6 +201,11 @@ describe("Coordinate Parser Utilities", () => {
 
       it("should parse DMS with spaces", () => {
         const result = parseCoordinate("40 26 46 S");
+        expect(result).toBeCloseTo(-40.446111, 5);
+      });
+
+      it("should preserve negative sign in DMS coordinates without direction", () => {
+        const result = parseCoordinate("-40°26'46\"");
         expect(result).toBeCloseTo(-40.446111, 5);
       });
     });

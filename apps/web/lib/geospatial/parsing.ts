@@ -16,6 +16,11 @@
 
 import { valueToString } from "./validation";
 
+const applyDirectionToValue = (value: number, direction: string): number => {
+  const normalizedDirection = direction.toUpperCase();
+  return normalizedDirection === "S" || normalizedDirection === "W" ? -Math.abs(value) : Math.abs(value);
+};
+
 /**
  * Try to parse as decimal degrees.
  *
@@ -85,18 +90,14 @@ export const parseDMSFormat = (str: string): number | null => {
   const seconds = Number.parseFloat(dmsMatch[3]);
   const direction = dmsMatch[4];
 
-  // Calculate fractional part
   const fractional = minutes / 60 + seconds / 3600;
+  const absoluteValue = Math.abs(degrees) + fractional;
 
-  // Add fractional part to degrees (works for both positive and negative)
-  let result = degrees + fractional;
-
-  // Apply direction if specified
-  if (direction != null && direction !== "" && (direction.toUpperCase() === "S" || direction.toUpperCase() === "W")) {
-    result = -Math.abs(result);
+  if (direction != null && direction !== "") {
+    return applyDirectionToValue(absoluteValue, direction);
   }
 
-  return result;
+  return degrees < 0 ? -absoluteValue : absoluteValue;
 };
 
 /**
@@ -124,17 +125,13 @@ export const parseDegreesMinutesFormat = (str: string): number | null => {
   const degrees = Number.parseFloat(dmMatch[1]);
   const minutes = Number.parseFloat(dmMatch[2]);
   const direction = dmMatch[3];
+  const absoluteValue = Math.abs(degrees) + minutes / 60;
 
-  // For negative degrees, add the minutes (making it less negative)
-  // For positive degrees, add the minutes (making it more positive)
-  const result = degrees + minutes / 60;
-
-  // Apply direction if specified
-  if (direction != null && direction !== "" && (direction.toUpperCase() === "S" || direction.toUpperCase() === "W")) {
-    return -Math.abs(result);
+  if (direction != null && direction !== "") {
+    return applyDirectionToValue(absoluteValue, direction);
   }
 
-  return result;
+  return degrees < 0 ? -absoluteValue : absoluteValue;
 };
 
 /**
@@ -170,10 +167,7 @@ export const parseDirectionalFormat = (str: string): number | null => {
   const value = Number.parseFloat(directionMatch[1]);
   const direction = directionMatch[2];
 
-  if (direction.toUpperCase() === "S" || direction.toUpperCase() === "W") {
-    return -value;
-  }
-  return value;
+  return applyDirectionToValue(value, direction);
 };
 
 /**
