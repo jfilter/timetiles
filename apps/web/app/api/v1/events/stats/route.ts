@@ -59,7 +59,7 @@ type GroupByField = "catalog" | "dataset";
  * - endDate (optional): Filter events <= this date (inclusive)
  * - bounds (optional): Geographic bounding box (JSON string)
  */
-export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown): Promise<NextResponse> => {
+export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
   try {
     const payload = await getPayload({ config });
     const { searchParams } = request.nextUrl;

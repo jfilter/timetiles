@@ -54,7 +54,7 @@ export class ConfigDrivenSeeding {
       throw new Error(`Unknown preset: ${preset}`);
     }
 
-    const startTime = this.logSeedStart(preset, presetConfig);
+    const startTime = this.logSeedStart(preset);
 
     const collectionsToSeed = this.determineCollectionsToSeed(preset, requestedCollections);
 
@@ -93,7 +93,7 @@ export class ConfigDrivenSeeding {
     }
   }
 
-  private logSeedStart(preset: string, _presetConfig: PresetConfig): number {
+  private logSeedStart(preset: string): number {
     logger.info({ preset }, `Starting seed process for ${preset} preset`);
     return Date.now();
   }

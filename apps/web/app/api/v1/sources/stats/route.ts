@@ -34,7 +34,7 @@ interface DataSourceStatsResponse {
  * This data is used to display total event counts in the filter UI,
  * helping users understand the size of each data source before selecting it.
  */
-export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown): Promise<NextResponse> => {
+export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
   try {
     const payload = await getPayload({ config });
 

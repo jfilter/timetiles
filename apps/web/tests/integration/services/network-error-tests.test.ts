@@ -264,7 +264,7 @@ describe.sequential("Network Error Handling Tests", () => {
 
     it("should handle connection timeout", async () => {
       // Create a server that accepts connections but never responds
-      await createTestServer((_req, _res) => {
+      await createTestServer(() => {
         // Don't respond, causing a timeout
         // The connection is established but no data is sent
       });

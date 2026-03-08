@@ -11,8 +11,6 @@
  *
  * @module
  */
-import path from "node:path";
-
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
@@ -25,6 +23,7 @@ import type { Dataset, ImportJob } from "@/payload-types";
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
 import { loadJobResources } from "../utils/resource-loading";
+import { getImportFilePath } from "../utils/upload-path";
 
 interface DuplicateAnalysisResult {
   internalDuplicates: Array<{
@@ -271,8 +270,7 @@ export const analyzeDuplicatesJob = {
 
     try {
       const { job, dataset, importFile } = await loadJobResources(payload, importJobId);
-      const uploadDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR ?? "uploads"}/import-files`);
-      const filePath = path.join(uploadDir, importFile.filename ?? "");
+      const filePath = getImportFilePath(importFile.filename ?? "");
 
       // Count total rows
       const fileTotalRows = countTotalRows(filePath, job.sheetIndex);

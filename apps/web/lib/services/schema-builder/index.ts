@@ -525,7 +525,7 @@ export class ProgressiveSchemaBuilder {
     enumFields: string[];
   } {
     const enumFields = Object.entries(this.state.fieldStats)
-      .filter(([_, stats]) => stats.isEnumCandidate)
+      .filter(([, stats]) => stats.isEnumCandidate)
       .map(([field]) => field);
 
     return {

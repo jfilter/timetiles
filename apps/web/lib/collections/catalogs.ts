@@ -40,7 +40,7 @@ const checkAndIncrementQuota = async (req: PayloadRequest): Promise<void> => {
     throw new Error(errorMessage);
   }
 
-  await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_CATALOGS, 1, req);
+  await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_CATALOGS, 1);
 };
 
 /** Detect what changed between previous and new catalog doc */

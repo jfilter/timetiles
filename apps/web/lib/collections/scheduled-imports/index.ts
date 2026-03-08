@@ -49,8 +49,7 @@ const shouldSkipQuotaChecks = (
 // Helper to check active schedules quota
 const checkActiveSchedulesQuota = async (
   user: User,
-  quotaService: ReturnType<typeof getQuotaService>,
-  _req: PayloadRequest
+  quotaService: ReturnType<typeof getQuotaService>
 ): Promise<void> => {
   const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
   if (!quotaCheck.allowed) {
@@ -94,14 +93,14 @@ const handleScheduleQuotaTracking = async ({
 
   // Handle update operations (enabling a disabled schedule)
   if (isUpdate && isEnablingSchedule(originalDoc, data)) {
-    await checkActiveSchedulesQuota(req.user!, quotaService, req as PayloadRequest);
+    await checkActiveSchedulesQuota(req.user!, quotaService);
     // Note: Actual increment happens in afterChange hook to avoid nested Payload operations
     return data;
   }
 
   // Handle new schedule creation (enabled by default)
   if (isCreate && data?.enabled !== false) {
-    await checkActiveSchedulesQuota(req.user!, quotaService, req as PayloadRequest);
+    await checkActiveSchedulesQuota(req.user!, quotaService);
   }
 
   return data;
@@ -297,7 +296,7 @@ const ScheduledImports: CollectionConfig = {
 
         // Track usage after successful creation of enabled schedule
         if (operation === "create" && doc.enabled !== false) {
-          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
+          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
         }
 
         // Handle update operations (enabling/disabling)
@@ -307,10 +306,10 @@ const ScheduledImports: CollectionConfig = {
 
           if (!wasEnabled && isEnabled) {
             // Schedule was enabled - increment usage
-            await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
+            await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
           } else if (wasEnabled && !isEnabled) {
             // Schedule was disabled - decrement usage
-            await quotaService.decrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
+            await quotaService.decrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
           }
         }
 
@@ -323,7 +322,7 @@ const ScheduledImports: CollectionConfig = {
         if (req.user && doc.enabled) {
           const quotaService = getQuotaService(req.payload);
 
-          await quotaService.decrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
+          await quotaService.decrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
         }
 
         return doc;

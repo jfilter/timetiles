@@ -79,13 +79,7 @@ EnumCheckboxItem.displayName = "EnumCheckboxItem";
  * Uses Radix DropdownMenu with checkbox items for multi-select.
  * Shows value counts and allows clearing all selections.
  */
-export const EnumFieldDropdown = ({
-  fieldPath: _fieldPath,
-  label,
-  values,
-  selectedValues,
-  onSelectionChange,
-}: EnumFieldDropdownProps) => {
+export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionChange }: EnumFieldDropdownProps) => {
   const hasSelection = selectedValues.length > 0;
 
   const handleToggle = useCallback(

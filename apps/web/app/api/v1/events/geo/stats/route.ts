@@ -56,7 +56,7 @@ const buildFieldFiltersSql = (fieldFilters: unknown) => {
   return sql``;
 };
 
-export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown) => {
+export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
 

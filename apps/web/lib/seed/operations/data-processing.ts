@@ -49,7 +49,7 @@ export class DataProcessing {
     return true;
   }
 
-  isValidSeedData(baseSeedData: SeedData | null, _collectionName: string): boolean {
+  isValidSeedData(baseSeedData: SeedData | null): boolean {
     return baseSeedData != null && baseSeedData.length > 0;
   }
 

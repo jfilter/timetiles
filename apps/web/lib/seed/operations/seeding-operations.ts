@@ -69,7 +69,7 @@ export class SeedingOperations {
 
     // Get base seed data
     const baseSeedData = this.getSeedData(collectionName, environment);
-    if (!this.dataProcessing.isValidSeedData(baseSeedData, collectionName)) {
+    if (!this.dataProcessing.isValidSeedData(baseSeedData)) {
       logger.warn(`No seed data available for ${collectionName}`);
       return null;
     }

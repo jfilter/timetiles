@@ -179,7 +179,7 @@ const transformEvent = (event: Event) => {
   };
 };
 
-export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown): Promise<NextResponse> => {
+export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
   try {
     const payload = await getPayload({ config });
 

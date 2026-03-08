@@ -99,7 +99,7 @@ const createJsonRequest = (url: string, body: unknown, method = "POST") => {
       "Content-Type": "application/json",
       Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}`,
     }),
-    body: JSON.stringify(body),
+    ...(method !== "GET" && { body: JSON.stringify(body) }),
   }) as unknown as NextRequest;
 };
 

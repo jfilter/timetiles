@@ -29,7 +29,7 @@ import config from "@/payload.config";
 
 const handleError = createErrorHandler("fetching map clusters", logger);
 
-export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown) => {
+export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
 

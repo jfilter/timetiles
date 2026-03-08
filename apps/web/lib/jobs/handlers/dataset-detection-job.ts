@@ -24,6 +24,7 @@ import type { Dataset } from "@/payload-types";
 
 import type { DatasetDetectionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
+import { getImportFilePath } from "../utils/upload-path";
 
 interface SheetInfo {
   name: string;
@@ -244,8 +245,7 @@ export const datasetDetectionJob = {
         throw new Error("Import file not found");
       }
 
-      const uploadDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR ?? "uploads"}/import-files`);
-      const filePath = path.join(uploadDir, importFile.filename ?? "");
+      const filePath = getImportFilePath(importFile.filename ?? "");
 
       if (!fs.existsSync(filePath)) {
         throw new Error(`Cannot access file ${filePath}`);

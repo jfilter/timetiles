@@ -24,7 +24,7 @@ const logger = createRequestLogger("schedule-service-api");
  * Returns the current status of the schedule service.
  */
 export const GET = withRateLimit(
-  withAdminAuth(async (_request: AuthenticatedRequest, _context: unknown): Promise<NextResponse> => {
+  withAdminAuth(async (): Promise<NextResponse> => {
     try {
       const payload = await getPayload({ config });
       const service = getScheduleService(payload);
@@ -47,7 +47,7 @@ export const GET = withRateLimit(
  * Starts the schedule service.
  */
 export const POST = withRateLimit(
-  withAdminAuth(async (request: AuthenticatedRequest, _context: unknown): Promise<NextResponse> => {
+  withAdminAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
     try {
       const payload = await getPayload({ config });
 
@@ -80,7 +80,7 @@ export const POST = withRateLimit(
  * Stops the schedule service.
  */
 export const DELETE = withRateLimit(
-  withAdminAuth((_request: AuthenticatedRequest, _context: unknown): NextResponse => {
+  withAdminAuth((): NextResponse => {
     try {
       stopScheduleService();
 

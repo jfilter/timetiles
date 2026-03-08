@@ -309,7 +309,7 @@ const ImportFiles: CollectionConfig = {
       },
       hooks: {
         afterRead: [
-          async ({ req, data: _data }) => {
+          async ({ req }) => {
             // Only add quota info for authenticated users
             if (!req.user) return null;
 
@@ -507,7 +507,7 @@ const ImportFiles: CollectionConfig = {
           metadata: {
             uploadSource: "api",
             userAgent,
-            ...(data.metadata ?? {}),
+            ...data.metadata,
           },
           importedAt: new Date().toISOString(),
         };
@@ -521,7 +521,7 @@ const ImportFiles: CollectionConfig = {
 
         // Track file upload usage (authentication is required)
         const quotaService = getQuotaService(req.payload);
-        await quotaService.incrementUsage(req.user!.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1, req);
+        await quotaService.incrementUsage(req.user!.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
 
         // Skip processing for duplicate imports (they're already marked as completed)
         if (doc.metadata?.urlFetch?.isDuplicate === true) {
@@ -542,7 +542,7 @@ const ImportFiles: CollectionConfig = {
                 metadata: { error: "JSON not yet implemented" },
               },
               context: {
-                ...(req.context || {}),
+                ...req.context,
                 skipImportFileHooks: true, // Prevent infinite loops
               },
             });
@@ -583,7 +583,7 @@ const ImportFiles: CollectionConfig = {
                 importedAt: new Date().toISOString(),
               },
               context: {
-                ...(req.context || {}),
+                ...req.context,
                 skipImportFileHooks: true, // Prevent infinite loops
               },
             });

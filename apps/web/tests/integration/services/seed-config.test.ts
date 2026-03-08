@@ -31,17 +31,23 @@ describe.sequential("Configuration-Driven Seeding", () => {
       const devCatalogsConfig = getCollectionConfig("catalogs", "development");
       expect(devCatalogsConfig).toBeDefined();
       expect(typeof devCatalogsConfig?.count).toBe("function");
-      expect((devCatalogsConfig?.count as (...args: any[]) => any)("development")).toBe(12);
+      if (devCatalogsConfig) {
+        expect((devCatalogsConfig.count as (...args: any[]) => any)("development")).toBe(12);
+      }
 
       // Test testing preset
       const testCatalogsConfig = getCollectionConfig("catalogs", "testing");
       expect(testCatalogsConfig).toBeDefined();
-      expect((testCatalogsConfig?.count as (...args: any[]) => any)("testing")).toBe(3);
+      if (testCatalogsConfig) {
+        expect((testCatalogsConfig.count as (...args: any[]) => any)("testing")).toBe(3);
+      }
 
       // Test e2e preset
       const e2eCatalogsConfig = getCollectionConfig("catalogs", "e2e");
       expect(e2eCatalogsConfig).toBeDefined();
-      expect((e2eCatalogsConfig?.count as (...args: any[]) => any)("e2e")).toBe(8);
+      if (e2eCatalogsConfig) {
+        expect((e2eCatalogsConfig.count as (...args: any[]) => any)("e2e")).toBe(8);
+      }
     });
 
     it("should return null for disabled collections", () => {
@@ -315,7 +321,7 @@ describe.sequential("Configuration-Driven Seeding", () => {
     });
 
     it("should have valid collection configurations with proper counts", () => {
-      Object.entries(SEED_CONFIG.collections).forEach(([_collectionName, config]) => {
+      Object.entries(SEED_CONFIG.collections).forEach(([, config]) => {
         expect(config).toBeDefined();
         expect(typeof config).toBe("object");
 

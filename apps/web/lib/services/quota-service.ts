@@ -77,7 +77,7 @@
  * @module
  * @category Services
  */
-import type { Payload, PayloadRequest } from "payload";
+import type { Payload } from "payload";
 
 import {
   DEFAULT_QUOTAS,
@@ -351,7 +351,7 @@ export class QuotaService {
   /**
    * Increment usage counter for a user in the user-usage collection.
    */
-  async incrementUsage(userId: number, usageType: UsageType, amount: number = 1, _req?: PayloadRequest): Promise<void> {
+  async incrementUsage(userId: number, usageType: UsageType, amount: number = 1): Promise<void> {
     try {
       logger.debug("incrementUsage: Entry", { userId, usageType, amount });
 
@@ -421,7 +421,7 @@ export class QuotaService {
   /**
    * Decrement usage counter for a user (e.g., when a schedule is disabled).
    */
-  async decrementUsage(userId: number, usageType: UsageType, amount: number = 1, _req?: PayloadRequest): Promise<void> {
+  async decrementUsage(userId: number, usageType: UsageType, amount: number = 1): Promise<void> {
     try {
       // Get or create usage record
       const usageRecord = await this.getOrCreateUsageRecord(userId);
@@ -459,7 +459,7 @@ export class QuotaService {
   /**
    * Reset daily counters for a user.
    */
-  async resetDailyCounters(userId: number, _req?: PayloadRequest): Promise<void> {
+  async resetDailyCounters(userId: number): Promise<void> {
     try {
       // Find the usage record
       const usageRecords = await this.payload.find({

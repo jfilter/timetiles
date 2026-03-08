@@ -237,7 +237,7 @@ export const TimeRangeSlider = ({
   const histogramRef = useRef<HTMLDivElement>(null);
 
   // Keyboard handler for histogram (no-op, users should use the handles)
-  const handleHistogramKeyDown = useCallback((_e: React.KeyboardEvent) => {
+  const handleHistogramKeyDown = useCallback(() => {
     // Keyboard navigation is handled by the individual slider handles
     // This handler exists to satisfy accessibility requirements
   }, []);

@@ -136,9 +136,9 @@ export default defineConfig({
     ],
   },
   resolve: {
-    ...(baseConfig.resolve ?? {}),
+    ...baseConfig.resolve,
     alias: {
-      ...(baseConfig.resolve?.alias ?? {}),
+      ...baseConfig.resolve?.alias,
       "@payload-config": path.resolve(__dirname, "payload.config.ts"),
     },
   },

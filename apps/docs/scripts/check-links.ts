@@ -64,7 +64,7 @@ const findAllMdxFiles = async (): Promise<string[]> => {
   });
 };
 
-const extractLinks = (content: string, _filePath: string): string[] => {
+const extractLinks = (content: string): string[] => {
   const links = new Set<string>();
 
   // Remove code blocks (both fenced and inline) to avoid checking example code
@@ -176,7 +176,7 @@ const main = async (): Promise<void> => {
   // Extract all links from files
   for (const file of files) {
     const content = fs.readFileSync(file, "utf-8");
-    const links = extractLinks(content, file);
+    const links = extractLinks(content);
     const lines = content.split("\n");
 
     for (const link of links) {

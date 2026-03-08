@@ -30,7 +30,7 @@ import { buildEventFilters } from "@/lib/utils/event-filters";
 import { extractHistogramParameters, type HistogramParameters } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 
-export const GET = withOptionalAuth(async (request: AuthenticatedRequest, _context: unknown): Promise<NextResponse> => {
+export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
   try {
     const payload = await getPayload({ config });
 

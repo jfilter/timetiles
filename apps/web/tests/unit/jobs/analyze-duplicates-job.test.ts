@@ -110,7 +110,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockImportJob); // Fourth call refetches import job after progress init
 
       // Mock file reading for countTotalRows - simulate 100 rows in file
-      const mockRows = new Array(100).fill({ id: "1", title: "Event 1" });
+      const mockRows = Array.from({ length: 100 }, () => ({ id: "1", title: "Event 1" }));
       mocks.readBatchFromFile
         .mockReturnValueOnce(mockRows) // First batch returns 100 rows
         .mockReturnValueOnce([]); // Second batch returns empty to signal end

@@ -123,7 +123,7 @@ export const applyThemeToOption = (option: EChartsOption, theme: ChartTheme): EC
       return {
         ...s,
         itemStyle: {
-          ...(s.itemStyle ?? {}),
+          ...s.itemStyle,
           color: Array.isArray(theme.itemColor) ? theme.itemColor[0] : theme.itemColor,
         },
       } satisfies SeriesOption;

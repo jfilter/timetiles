@@ -354,7 +354,7 @@ export class ErrorRecoveryService {
           lastRetryAt: new Date().toISOString(),
           nextRetryAt: nextRetryAt.toISOString(),
           errorLog: {
-            ...(getErrorLogState(job) ?? {}),
+            ...getErrorLogState(job),
             recoveryAttempt: {
               attempt: retryCount + 1,
               previousError: getErrorLogState(job)?.lastError,
@@ -707,7 +707,7 @@ export class ErrorRecoveryService {
         stage: targetStage,
         lastRetryAt: new Date().toISOString(),
         errorLog: {
-          ...(getErrorLogState(job) ?? {}),
+          ...getErrorLogState(job),
           manualReset: {
             resetAt: new Date().toISOString(),
             previousStage: job.stage,
