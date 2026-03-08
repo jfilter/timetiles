@@ -49,6 +49,8 @@ export const defaultIgnores = {
     "**/.eslintcache",
     "**/*.d.ts", // TypeScript declaration files (auto-generated, should not be linted)
     "**/*.d.ts.map", // Source maps for declaration files
+    "**/.worktrees/**", // Git worktrees
+    "**/.claude/**", // Claude Code agent data
   ],
 };
 
