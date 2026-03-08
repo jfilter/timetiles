@@ -17,6 +17,8 @@ interface CronParts {
   dayOfWeek: string;
 }
 
+const numericCronFieldRegex = /^\d+$/;
+
 /**
  * Parse a cron expression into its component parts.
  */
@@ -42,7 +44,11 @@ export const parseCronExpression = (cronExpression: string): CronParts => {
 const validateNumericField = (value: string, fieldName: string, min: number, max: number): void => {
   if (value === "*") return;
 
-  const num = parseInt(value);
+  if (!numericCronFieldRegex.test(value)) {
+    throw new Error(`Invalid ${fieldName} in cron expression: ${value}`);
+  }
+
+  const num = Number.parseInt(value, 10);
   if (Number.isNaN(num) || num < min || num > max) {
     throw new Error(`Invalid ${fieldName} in cron expression: ${value}`);
   }
@@ -99,6 +105,7 @@ export const detectCronPattern = (parts: CronParts): CronPattern => {
 export const describeCronExpression = (cronExpression: string): string => {
   try {
     const parts = parseCronExpression(cronExpression);
+    validateCronParts(parts);
     const pattern = detectCronPattern(parts);
 
     switch (pattern) {
@@ -109,25 +116,25 @@ export const describeCronExpression = (cronExpression: string): string => {
         return `Every hour at :${parts.minute.padStart(2, "0")}`;
 
       case "daily": {
-        const hour = parseInt(parts.hour);
-        const minute = parseInt(parts.minute);
+        const hour = Number.parseInt(parts.hour, 10);
+        const minute = Number.parseInt(parts.minute, 10);
         const timeStr = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
         return `Daily at ${timeStr}`;
       }
 
       case "weekly": {
-        const hour = parseInt(parts.hour);
-        const minute = parseInt(parts.minute);
-        const dow = parseInt(parts.dayOfWeek);
+        const hour = Number.parseInt(parts.hour, 10);
+        const minute = Number.parseInt(parts.minute, 10);
+        const dow = Number.parseInt(parts.dayOfWeek, 10);
         const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
         const timeStr = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
         return `Every ${days[dow % 7]} at ${timeStr}`;
       }
 
       case "monthly": {
-        const hour = parseInt(parts.hour);
-        const minute = parseInt(parts.minute);
-        const day = parseInt(parts.dayOfMonth);
+        const hour = Number.parseInt(parts.hour, 10);
+        const minute = Number.parseInt(parts.minute, 10);
+        const day = Number.parseInt(parts.dayOfMonth, 10);
         const timeStr = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
         return `Monthly on the ${day}${getOrdinalSuffix(day)} at ${timeStr}`;
       }

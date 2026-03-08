@@ -109,6 +109,11 @@ describe("Cron Parser Utilities", () => {
       expect(() => validateCronParts(parts)).toThrow("Invalid minute in cron expression: 60");
     });
 
+    it("should throw error for malformed numeric minute", () => {
+      const parts = { minute: "5abc", hour: "*", dayOfMonth: "*", month: "*", dayOfWeek: "*" };
+      expect(() => validateCronParts(parts)).toThrow("Invalid minute in cron expression: 5abc");
+    });
+
     it("should validate hour range (0-23)", () => {
       const parts = { minute: "*", hour: "0", dayOfMonth: "*", month: "*", dayOfWeek: "*" };
       expect(() => validateCronParts(parts)).not.toThrow();
@@ -179,6 +184,11 @@ describe("Cron Parser Utilities", () => {
     it("should throw error for day of week > 7", () => {
       const parts = { minute: "*", hour: "*", dayOfMonth: "*", month: "*", dayOfWeek: "8" };
       expect(() => validateCronParts(parts)).toThrow("Invalid day of week in cron expression: 8");
+    });
+
+    it("should throw error for malformed numeric day of week", () => {
+      const parts = { minute: "*", hour: "*", dayOfMonth: "*", month: "*", dayOfWeek: "1mon" };
+      expect(() => validateCronParts(parts)).toThrow("Invalid day of week in cron expression: 1mon");
     });
   });
 
@@ -267,6 +277,14 @@ describe("Cron Parser Utilities", () => {
     it("should return original expression for invalid expressions", () => {
       const invalid = "invalid cron";
       expect(describeCronExpression(invalid)).toBe(invalid);
+    });
+
+    it("should return original expression for malformed numeric values", () => {
+      expect(describeCronExpression("5abc * * * *")).toBe("5abc * * * *");
+    });
+
+    it("should return original expression for out-of-range numeric values", () => {
+      expect(describeCronExpression("60 24 * * *")).toBe("60 24 * * *");
     });
 
     it("should handle errors gracefully", () => {
