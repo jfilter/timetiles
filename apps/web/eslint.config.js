@@ -37,8 +37,7 @@ export default [
       },
     },
     rules: {
-      "sonarjs/no-unused-vars": "error",
-      // Allow unused variables with _ prefix (in some cases not found by SonarJS)
+      "sonarjs/no-unused-vars": "off", // Covered by @typescript-eslint/no-unused-vars with ignoreRestSiblings
       "@typescript-eslint/no-unused-vars": [
         "error",
         {

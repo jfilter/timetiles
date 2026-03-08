@@ -142,6 +142,6 @@ export const isTestDatabase = (url: string): boolean => {
  */
 export const getDatabaseInfo = (url: string): Omit<DatabaseUrlComponents, "password" | "fullUrl"> => {
   const components = parseDatabaseUrl(url);
-  const { password: _, fullUrl: __, ...safeInfo } = components;
+  const { password, fullUrl, ...safeInfo } = components;
   return safeInfo;
 };
