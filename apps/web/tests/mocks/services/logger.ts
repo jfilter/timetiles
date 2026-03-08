@@ -15,7 +15,6 @@ import { vi } from "vitest";
  * Creates a mock logger instance with common logging methods.
  * Used for child loggers (createJobLogger, createRequestLogger, etc.)
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const createMockLogger = (): any => ({
   info: vi.fn(),
   warn: vi.fn(),
@@ -41,7 +40,6 @@ const sharedLogger = createMockLogger();
  * expect(mockLogger.logger.info).toHaveBeenCalledWith(...);
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const mockLogger: any = {
   createJobLogger: vi.fn(() => createMockLogger()),
   createRequestLogger: vi.fn(() => createMockLogger()),

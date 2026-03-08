@@ -17,7 +17,8 @@ export const EventsListSkeleton = ({ count = 6 }: EventsListSkeletonProps) => {
   return (
     <div className="space-y-4">
       {Array.from({ length: count }).map((_, index) => (
-        <Card key={index} className="border-border bg-background border-2 p-5">
+        // eslint-disable-next-line @eslint-react/no-array-index-key -- static skeleton placeholders have no unique ID
+        <Card key={`skeleton-${index}`} className="border-border bg-background border-2 p-5">
           {/* Dataset badge skeleton */}
           <div className="bg-muted h-5 w-20 animate-pulse rounded-sm" />
 

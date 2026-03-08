@@ -59,6 +59,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
       if (!email || !password || !confirmPassword) return;
 
       // Validate password match
+      // eslint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
       if (password !== confirmPassword) {
         setStatus("error");
         setErrorMessage("Passwords do not match");

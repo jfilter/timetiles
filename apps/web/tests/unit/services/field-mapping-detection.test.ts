@@ -53,7 +53,6 @@ const createFieldStats = (
       defaultTypeDistribution = { string: 100 };
     }
 
-    // eslint-disable-next-line sonarjs/no-unused-vars
     const { fieldType: _, ...partialWithoutFieldType } = partial;
     stats[name] = {
       path: name,

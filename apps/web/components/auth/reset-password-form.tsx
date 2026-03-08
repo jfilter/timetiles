@@ -44,6 +44,7 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
 
       if (!password || !confirmPassword) return;
 
+      // eslint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
       if (password !== confirmPassword) {
         setStatus("error");
         setErrorMessage("Passwords do not match");

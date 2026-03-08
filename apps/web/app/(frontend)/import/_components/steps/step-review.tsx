@@ -299,8 +299,8 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                   </p>
                   {isMultiDataset ? (
                     <div className="space-y-1">
-                      {datasetNames.map((name, idx) => (
-                        <p key={idx} className="text-cartographic-charcoal truncate font-serif text-sm font-medium">
+                      {datasetNames.map((name) => (
+                        <p key={name} className="text-cartographic-charcoal truncate font-serif text-sm font-medium">
                           {name}
                         </p>
                       ))}

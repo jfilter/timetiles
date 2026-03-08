@@ -271,7 +271,6 @@ export const TEST_FILENAMES = {
  * mockPayload.findByID.mockResolvedValueOnce({ id: "123", name: "Test" });
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const createMockPayload = (overrides: Partial<any> = {}): any => {
   return {
     findByID: vi.fn(),

@@ -169,14 +169,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
   const forceReset = args.includes("--force-reset") || args.includes("--force");
 
-  setupTestDatabase({ forceReset })
-    .then(() => {
+  void (async () => {
+    try {
+      await setupTestDatabase({ forceReset });
       process.exit(0);
-    })
-    .catch((error) => {
+    } catch (error) {
       logger.error("Failed to setup test database", error);
       process.exit(1);
-    });
+    }
+  })();
 }
 
 export { setupTestDatabase, TEST_DATABASE_URL };
