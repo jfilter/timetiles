@@ -28,7 +28,8 @@ run_step() {
     print_info "Target: $install_dir"
 
     # Use temp directory for sparse checkout, then move contents
-    local temp_dir=$(mktemp -d)
+    local temp_dir
+    temp_dir=$(mktemp -d)
 
     # Sparse checkout - only deployment folder
     print_step "Cloning deployment files only (sparse checkout)..."

@@ -130,7 +130,7 @@ parse_args() {
                 shift
                 ;;
             --non-interactive)
-                NON_INTERACTIVE="true"
+                export NON_INTERACTIVE="true"
                 shift
                 ;;
             --help|-h)
@@ -175,7 +175,6 @@ run_single_step() {
 
 run_all_steps() {
     local skip_until=""
-    local started=false
 
     # If starting from a specific step, skip until we reach it
     if [[ -n "$START_FROM" ]]; then

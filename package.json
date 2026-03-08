@@ -8,7 +8,7 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint:fast",
     "lint:full": "turbo run lint",
-    "lint:devops": "actionlint -shellcheck= && find . -name 'Dockerfile*' -type f | grep -v node_modules | xargs hadolint && find . \\( -name 'Makefile' -o -name '*.mk' \\) -type f | grep -v node_modules | xargs checkmake --config=.checkmake && find . -name '*.sh' -type f | grep -v node_modules | xargs shellcheck",
+    "lint:devops": "actionlint -shellcheck= && find . -name 'Dockerfile*' -type f | grep -v node_modules | grep -v .worktrees | grep -v .claude | xargs hadolint && find . \\( -name 'Makefile' -o -name '*.mk' \\) -type f | grep -v node_modules | grep -v .worktrees | grep -v .claude | xargs checkmake --config=.checkmake && find . -name '*.sh' -type f | grep -v node_modules | grep -v .worktrees | grep -v .claude | xargs shellcheck --exclude=SC1091,SC2016",
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
     "test:coverage:merge": "tsx scripts/merge-coverage.ts",

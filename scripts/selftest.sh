@@ -10,6 +10,7 @@ set -u  # Exit on undefined variable
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+# shellcheck disable=SC2034 # Available for future use
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
@@ -17,6 +18,7 @@ NC='\033[0m' # No Color
 SUCCESS="✅"
 MISSING="❌"
 WARNING="⚠️"
+# shellcheck disable=SC2034 # Available for future use
 INFO="ℹ️"
 
 # Track failures

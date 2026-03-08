@@ -22,6 +22,7 @@ TEMP_DIR="/tmp/timetiles-bootstrap-$$"
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+# shellcheck disable=SC2034 # Available for sourced scripts and future use
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'

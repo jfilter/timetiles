@@ -10,7 +10,8 @@ run_step() {
     fi
 
     local sshd_config="/etc/ssh/sshd_config"
-    local sshd_backup="/etc/ssh/sshd_config.bak.$(date +%Y%m%d%H%M%S)"
+    local sshd_backup
+    sshd_backup="/etc/ssh/sshd_config.bak.$(date +%Y%m%d%H%M%S)"
     local ssh_port="${SSH_PORT:-22}"
 
     print_step "Hardening SSH configuration..."
@@ -27,7 +28,8 @@ run_step() {
     for home_dir in /home/* /root; do
         if [[ -f "$home_dir/.ssh/authorized_keys" ]] && [[ -s "$home_dir/.ssh/authorized_keys" ]]; then
             has_ssh_keys=true
-            local user=$(basename "$home_dir")
+            local user
+            user=$(basename "$home_dir")
             [[ "$home_dir" == "/root" ]] && user="root"
             print_info "Found SSH keys for user: $user"
         fi

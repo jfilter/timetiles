@@ -316,7 +316,7 @@ generate_self_signed_ssl() {
 # These functions verify that bootstrap steps are properly configured.
 # Used by both bootstrap validation and timetiles check command.
 # Return: 0 = OK, 1 = warning, 2 = error
-# Output: Sets CHECK_MSG with details
+# Output: Sets CHECK_MSG with details (read by callers)
 
 # Check Ubuntu version
 verify_ubuntu() {
@@ -475,6 +475,7 @@ verify_log_rotation() {
 }
 
 # Check alerting
+# shellcheck disable=SC2034 # CHECK_MSG is read by callers
 verify_alerting() {
     local alert_script="${1:-/opt/timetiles/scripts/alert.sh}"
     if [[ -x "$alert_script" ]]; then

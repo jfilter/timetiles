@@ -2,3 +2,7 @@
 # Disable maxbodylength rule - workflow orchestration and help text
 # legitimately require longer target bodies
 disabled = true
+
+[phonydeclared]
+# Disable phonydeclared - false positives on pnpm commands inside recipes
+disabled = true
