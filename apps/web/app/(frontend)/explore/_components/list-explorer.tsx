@@ -12,148 +12,51 @@
 "use client";
 
 import { cn } from "@timetiles/ui/lib/utils";
-import type { LngLatBounds } from "maplibre-gl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 
-import { ClusteredMap, type ClusteredMapHandle } from "@/components/maps/clustered-map";
+import { ClusteredMap } from "@/components/maps/clustered-map";
 import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
-import { useFilters, useSelectedEvent } from "@/lib/filters";
-import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
-import { useDebounce } from "@/lib/hooks/use-debounce";
-import { useBoundsQuery, useClusterStatsQuery, useMapClustersQuery } from "@/lib/hooks/use-events-queries";
-import { useUIStore } from "@/lib/store";
 
 import { ChartSection } from "./chart-section";
 import { EventDetailModal } from "./event-detail-modal";
 import { EventsListPaginated } from "./events-list-paginated";
 import { FilterDrawer } from "./filter-drawer";
+import { formatDateRange, getDatasetName } from "./map-explorer-helpers";
 import { MobileTabs } from "./mobile-tabs";
+import { useExplorerState } from "./use-explorer-state";
 
 type MobileTab = "map" | "chart" | "list";
 
 export const ListExplorer = () => {
-  const [mapZoom, setMapZoom] = useState(9);
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileTab>("list");
-  const [hasUserPanned, setHasUserPanned] = useState(false);
-  const [isInitialBoundsApplied, setIsInitialBoundsApplied] = useState(false);
 
-  // Ref for map component
-  const mapRef = useRef<ClusteredMapHandle>(null);
-
-  // Get filter state from URL (nuqs)
-  const { filters } = useFilters();
-
-  // Fetch lightweight catalog/dataset data for filter labels
-  const { data: dataSources } = useDataSourcesQuery();
-  const datasets = dataSources?.datasets ?? [];
-
-  // Ref to track previous filters for detecting filter changes
-  const prevFiltersRef = useRef(filters);
-
-  // Get selected event state from URL (nuqs)
-  const { selectedEventId, openEvent, closeEvent } = useSelectedEvent();
-
-  // Get UI state from Zustand store
-  const mapBounds = useUIStore((state) => state.ui.mapBounds);
-  const setMapBounds = useUIStore((state) => state.setMapBounds);
-  const isFilterDrawerOpen = useUIStore((state) => state.ui.isFilterDrawerOpen);
-  const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
-
-  // Convert mapBounds to simple object format for React Query compatibility
-  const simpleBounds = useMemo(() => {
-    if (!mapBounds) return null;
-    return {
-      north: mapBounds.north,
-      south: mapBounds.south,
-      east: mapBounds.east,
-      west: mapBounds.west,
-    };
-  }, [mapBounds]);
-
-  // Debounce bounds changes to avoid excessive API calls during map panning
-  const debouncedSimpleBounds = useDebounce(simpleBounds, 300);
-
-  // React Query hooks for map data
-  const { data: clustersData } = useMapClustersQuery(filters, debouncedSimpleBounds, mapZoom);
-  const { data: clusterStats } = useClusterStatsQuery(filters);
-
-  // Fetch bounds for initial map positioning and "zoom to data" functionality
-  const { data: boundsData, isLoading: boundsLoading } = useBoundsQuery(filters);
-
-  const clusters = clustersData?.features ?? [];
-
-  // Reset user panning state when filters change
-  useEffect(() => {
-    const filtersChanged = JSON.stringify(prevFiltersRef.current) !== JSON.stringify(filters);
-    if (filtersChanged) {
-      prevFiltersRef.current = filters;
-      setHasUserPanned(false);
-    }
-  }, [filters]);
-
-  // Determine if we should show loading overlay (initial load only, not filter changes)
-  const isLoadingInitialBounds = boundsLoading && !isInitialBoundsApplied;
+  // Shared explorer state
+  const {
+    hasUserPanned,
+    mapRef,
+    filters,
+    selectedEventId,
+    openEvent,
+    closeEvent,
+    datasets,
+    isFilterDrawerOpen,
+    toggleFilterDrawer,
+    debouncedSimpleBounds,
+    clusters,
+    clusterStats,
+    boundsData,
+    boundsLoading,
+    isLoadingInitialBounds,
+    handleZoomToData,
+    handleBoundsChange,
+  } = useExplorerState();
 
   // Show "zoom to data" button when user has panned and we have bounds data
   const showZoomToData = hasUserPanned && boundsData?.bounds != null && !boundsLoading;
 
-  // Handler to zoom to data bounds
-  const handleZoomToData = useCallback(() => {
-    if (boundsData?.bounds && mapRef.current) {
-      mapRef.current.fitBounds(boundsData.bounds, { padding: 50, animate: true });
-      setHasUserPanned(false);
-    }
-  }, [boundsData]);
-
-  // Helper functions for filter labels
-  const getDatasetName = (datasetId: string): string => {
-    const dataset = datasets.find((d) => String(d.id) === datasetId);
-    return dataset?.name ?? "Unknown Dataset";
-  };
-
-  const formatDateRange = () => {
-    const hasStartDate = filters.startDate != null && filters.startDate !== "";
-    const hasEndDate = filters.endDate != null && filters.endDate !== "";
-
-    if (!hasStartDate && !hasEndDate) return undefined;
-
-    const start = hasStartDate ? new Date(filters.startDate!).toLocaleDateString("en-US") : "Start";
-    const end = hasEndDate ? new Date(filters.endDate!).toLocaleDateString("en-US") : "End";
-
-    if (hasStartDate && hasEndDate) return `${start} - ${end}`;
-    if (hasStartDate) return `From ${start}`;
-    if (hasEndDate) return `Until ${end}`;
-    return undefined;
-  };
-
-  const getDatasetNames = (): string[] => filters.datasets.map((id) => getDatasetName(id));
-
-  const handleBoundsChange = useCallback(
-    (newBounds: LngLatBounds | null, zoom?: number) => {
-      if (newBounds) {
-        setMapBounds({
-          north: newBounds.getNorth(),
-          south: newBounds.getSouth(),
-          east: newBounds.getEast(),
-          west: newBounds.getWest(),
-        });
-        if (zoom != undefined) {
-          setMapZoom(Math.round(zoom));
-        }
-
-        // Mark that initial bounds have been applied (first bounds change)
-        if (!isInitialBoundsApplied) {
-          setIsInitialBoundsApplied(true);
-        } else {
-          // After initial load, any bounds change means user has panned
-          setHasUserPanned(true);
-        }
-      } else {
-        setMapBounds(null);
-      }
-    },
-    [setMapBounds, isInitialBoundsApplied]
-  );
+  // Helper functions for filter labels using shared helpers
+  const getDatasetNames = (): string[] => filters.datasets.map((id) => getDatasetName(datasets, id));
+  const dateRangeLabel = formatDateRange(filters.startDate, filters.endDate);
 
   // Content for mobile tabs
   const mobileMapContent = (
@@ -185,7 +88,7 @@ export const ListExplorer = () => {
         filters={filters}
         bounds={debouncedSimpleBounds}
         datasetNames={getDatasetNames()}
-        dateRangeLabel={formatDateRange()}
+        dateRangeLabel={dateRangeLabel}
         onEventClick={openEvent}
       />
     </div>
@@ -230,7 +133,7 @@ export const ListExplorer = () => {
                 filters={filters}
                 bounds={debouncedSimpleBounds}
                 datasetNames={getDatasetNames()}
-                dateRangeLabel={formatDateRange()}
+                dateRangeLabel={dateRangeLabel}
                 onEventClick={openEvent}
               />
             </div>

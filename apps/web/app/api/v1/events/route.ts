@@ -272,7 +272,7 @@ const executeEventsQuery = async (
     page: parameters.page,
     limit: parameters.limit,
     sort: parameters.sort,
-    depth: 2,
+    depth: 1,
     user,
     overrideAccess: false,
   });

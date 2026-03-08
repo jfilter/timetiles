@@ -11,21 +11,12 @@
 "use client";
 
 import { cn } from "@timetiles/ui/lib/utils";
-import type { LngLatBounds } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ClusteredMap, type ClusteredMapHandle } from "@/components/maps/clustered-map";
+import { ClusteredMap } from "@/components/maps/clustered-map";
 import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
-import { useFilters, useMapPosition, useSelectedEvent } from "@/lib/filters";
-import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
-import { useDebounce } from "@/lib/hooks/use-debounce";
-import {
-  useBoundsQuery,
-  useClusterStatsQuery,
-  useEventsListQuery,
-  useEventsTotalQuery,
-  useMapClustersQuery,
-} from "@/lib/hooks/use-events-queries";
+import { useMapPosition } from "@/lib/filters";
+import { useEventsListQuery, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import { useUIStore } from "@/lib/store";
 
 import { ChartSection } from "./chart-section";
@@ -39,50 +30,52 @@ import {
   getLoadingStates,
   isDataBoundsOutsideViewport,
   shouldShowZoomToData,
-  simplifyBounds,
 } from "./map-explorer-helpers";
 import { MobileFilterSheet } from "./mobile-filter-sheet";
+import { useExplorerState } from "./use-explorer-state";
 
 export const MapExplorer = () => {
-  const [mapZoom, setMapZoom] = useState(9);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const [hasUserPanned, setHasUserPanned] = useState(false);
-  const [isInitialBoundsApplied, setIsInitialBoundsApplied] = useState(false);
 
-  // Refs for map resize handling
-  const mapRef = useRef<ClusteredMapHandle>(null);
+  // Ref for resize handling
   const gridRef = useRef<HTMLDivElement>(null);
-
-  // Get filter state from URL (nuqs)
-  const { filters, activeFilterCount } = useFilters();
-
-  // Fetch lightweight catalog/dataset data for filter labels
-  const { data: dataSources } = useDataSourcesQuery();
-  const catalogs = dataSources?.catalogs ?? [];
-  const datasets = dataSources?.datasets ?? [];
-
-  // Ref to track previous filters for detecting filter changes
-  const prevFiltersRef = useRef(filters);
-
-  // Get selected event state from URL (nuqs)
-  const { selectedEventId, openEvent, closeEvent } = useSelectedEvent();
 
   // Get map position from URL (nuqs)
   const { mapPosition, hasMapPosition, setMapPosition } = useMapPosition();
 
-  // Convert URL map position to initial view state for ClusteredMap
-  const initialViewState = useMemo(
-    () => getInitialViewState(hasMapPosition, mapPosition),
-    [hasMapPosition, mapPosition]
+  const handleMapPositionChange = useCallback(
+    (center: { lng: number; lat: number }, zoom: number) => {
+      setMapPosition({ latitude: center.lat, longitude: center.lng, zoom });
+    },
+    [setMapPosition]
   );
 
-  // Get UI state from Zustand store
-  const isFilterDrawerOpen = useUIStore((state) => state.ui.isFilterDrawerOpen);
-  const mapBounds = useUIStore((state) => state.ui.mapBounds);
-  const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
-  const setFilterDrawerOpen = useUIStore((state) => state.setFilterDrawerOpen);
-  const setMapBounds = useUIStore((state) => state.setMapBounds);
-  const setMapStats = useUIStore((state) => state.setMapStats);
+  // Shared explorer state
+  const {
+    hasUserPanned,
+    mapRef,
+    filters,
+    activeFilterCount,
+    selectedEventId,
+    openEvent,
+    closeEvent,
+    catalogs,
+    datasets,
+    mapBounds,
+    isFilterDrawerOpen,
+    toggleFilterDrawer,
+    setFilterDrawerOpen,
+    simpleBounds,
+    debouncedSimpleBounds,
+    clusters,
+    clustersLoading,
+    clusterStats,
+    boundsData,
+    boundsLoading,
+    isLoadingInitialBounds,
+    handleZoomToData,
+    handleBoundsChange,
+  } = useExplorerState({ onMapPositionChange: handleMapPositionChange });
 
   // Close filter drawer on mobile on first mount for better UX
   useEffect(() => {
@@ -94,33 +87,20 @@ export const MapExplorer = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Convert mapBounds to simple object format for React Query compatibility
-  const simpleBounds = useMemo(() => simplifyBounds(mapBounds), [mapBounds]);
-
-  // Debounce bounds changes to avoid excessive API calls during map panning
-  const debouncedSimpleBounds = useDebounce(simpleBounds, 300);
+  // Convert URL map position to initial view state for ClusteredMap
+  const initialViewState = useMemo(
+    () => getInitialViewState(hasMapPosition, mapPosition),
+    [hasMapPosition, mapPosition]
+  );
 
   // React Query hooks for data fetching - use simple bounds directly for better cache key comparison
   const { data: eventsData, isLoading: eventsLoading } = useEventsListQuery(filters, debouncedSimpleBounds, 1000);
 
-  const { data: clustersData, isLoading: clustersLoading } = useMapClustersQuery(
-    filters,
-    debouncedSimpleBounds,
-    mapZoom
-  );
-
   // Fetch total count without bounds filter for global statistics
   const { data: totalEventsData } = useEventsTotalQuery(filters);
 
-  // Fetch global cluster statistics (independent of viewport)
-  const { data: clusterStats } = useClusterStatsQuery(filters);
-
-  // Fetch bounds for initial map positioning and "zoom to data" functionality
-  const { data: boundsData, isLoading: boundsLoading } = useBoundsQuery(filters);
-
   // Extract data from queries
   const events = eventsData?.events ?? [];
-  const clusters = clustersData?.features ?? [];
   const isLoading = eventsLoading || clustersLoading;
 
   // Track loading states
@@ -138,6 +118,7 @@ export const MapExplorer = () => {
 
   // Update map stats in Zustand store when data changes
   // Use totalEventsData.total for absolute count (not viewport-bounded)
+  const setMapStats = useUIStore((state) => state.setMapStats);
   useEffect(() => {
     if (eventsData != null && totalEventsData != null) {
       setMapStats({
@@ -165,19 +146,7 @@ export const MapExplorer = () => {
       observer.disconnect();
       cancelAnimationFrame(rafId);
     };
-  }, []);
-
-  // Reset user panning state when filters change
-  useEffect(() => {
-    const filtersChanged = JSON.stringify(prevFiltersRef.current) !== JSON.stringify(filters);
-    if (filtersChanged) {
-      prevFiltersRef.current = filters;
-      setHasUserPanned(false);
-    }
-  }, [filters]);
-
-  // Determine if we should show loading overlay (initial load only, not filter changes)
-  const isLoadingInitialBounds = boundsLoading && !isInitialBoundsApplied;
+  }, [mapRef]);
 
   // Show "zoom to data" button when:
   // 1. User has panned away from data, OR
@@ -194,52 +163,8 @@ export const MapExplorer = () => {
     boundsLoading
   );
 
-  // Handler to zoom to data bounds
-  const handleZoomToData = useCallback(() => {
-    if (boundsData?.bounds && mapRef.current) {
-      mapRef.current.fitBounds(boundsData.bounds, { padding: 50, animate: true });
-      setHasUserPanned(false);
-    }
-  }, [boundsData]);
-
   // Get human-readable filter labels (uses helper function)
   const filterLabels = useMemo(() => getFilterLabels(filters, catalogs, datasets), [filters, catalogs, datasets]);
-
-  const handleBoundsChange = useCallback(
-    (newBounds: LngLatBounds | null, zoom?: number, center?: { lng: number; lat: number }) => {
-      if (newBounds) {
-        setMapBounds({
-          north: newBounds.getNorth(),
-          south: newBounds.getSouth(),
-          east: newBounds.getEast(),
-          west: newBounds.getWest(),
-        });
-        if (zoom != undefined) {
-          setMapZoom(Math.round(zoom));
-        }
-
-        // Update URL with map position (center + zoom)
-        if (center && zoom != undefined) {
-          setMapPosition({
-            latitude: center.lat,
-            longitude: center.lng,
-            zoom: zoom,
-          });
-        }
-
-        // Mark that initial bounds have been applied (first bounds change)
-        if (!isInitialBoundsApplied) {
-          setIsInitialBoundsApplied(true);
-        } else {
-          // After initial load, any bounds change means user has panned
-          setHasUserPanned(true);
-        }
-      } else {
-        setMapBounds(null);
-      }
-    },
-    [setMapBounds, setMapPosition, isInitialBoundsApplied]
-  );
 
   return (
     <div className="flex h-[calc(100dvh-3rem)] flex-col">
