@@ -49,8 +49,10 @@ run_step() {
     # Ensure install dir exists and is empty (except for scripts dir which may exist)
     mkdir -p "$install_dir"
 
-    # Copy deployment contents directly to install dir
+    # Copy deployment contents directly to install dir (including dotfiles)
+    shopt -s dotglob
     cp -r "$temp_dir/deployment/"* "$install_dir/"
+    shopt -u dotglob
 
     # Clean up temp dir
     rm -rf "$temp_dir"
