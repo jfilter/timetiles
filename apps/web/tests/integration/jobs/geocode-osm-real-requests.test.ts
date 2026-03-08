@@ -17,8 +17,15 @@ import {
 } from "../../setup/integration/environment";
 
 // NOTE: No vi.mock() calls - we want REAL requests to OSM
+// Skip in environments where Nominatim geocoding is unavailable or rate-limited
+const canGeocodeViaNominatim = await fetch(
+  "https://nominatim.openstreetmap.org/search?q=Berlin+Germany&format=json&limit=1",
+  { signal: AbortSignal.timeout(5000), headers: { "User-Agent": "TimeTiles-Test/1.0" } }
+)
+  .then((r) => r.ok && r.headers.get("content-type")?.includes("json"))
+  .catch(() => false);
 
-describe.sequential("Geocode Batch Job - Real OSM Requests", () => {
+describe.runIf(canGeocodeViaNominatim).sequential("Geocode Batch Job - Real OSM Requests", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;

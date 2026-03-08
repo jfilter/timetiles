@@ -15,9 +15,23 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
+
+// Mock geocoding so tests don't depend on external Nominatim service
+vi.mock("@/lib/services/geocoding", () => ({
+  geocodeAddress: vi.fn().mockResolvedValue({
+    latitude: 40.7128,
+    longitude: -74.006,
+    confidence: 0.9,
+    normalizedAddress: "New York, NY, USA",
+    provider: "mock",
+    components: {},
+    metadata: {},
+  }),
+  initializeGeocoding: vi.fn(),
+}));
 import { logger } from "@/lib/logger";
 
 import { createIntegrationTestEnvironment, withCatalog, withUsers } from "../../setup/integration/environment";
