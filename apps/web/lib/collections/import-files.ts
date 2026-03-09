@@ -548,7 +548,7 @@ const ImportFiles: CollectionConfig = {
 
         // Track file upload usage (authentication is required)
         const quotaService = getQuotaService(req.payload);
-        await quotaService.incrementUsage(req.user!.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
+        await quotaService.incrementUsage(req.user!.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1, req);
 
         // Skip processing for duplicate imports (they're already marked as completed)
         if (doc.metadata?.urlFetch?.isDuplicate === true) {

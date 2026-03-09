@@ -161,9 +161,29 @@ describe.sequential("StageTransitionService", () => {
         StageTransitionService.validateStageTransition(PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.GEOCODE_BATCH)
       ).toBe(false);
 
+      // FAILED -> CREATE_EVENTS is not a valid recovery stage
+      expect(
+        StageTransitionService.validateStageTransition(PROCESSING_STAGE.FAILED, PROCESSING_STAGE.CREATE_EVENTS)
+      ).toBe(false);
+    });
+
+    it("should allow recovery transitions from FAILED state", () => {
+      // FAILED can transition to valid recovery stages
+      expect(
+        StageTransitionService.validateStageTransition(PROCESSING_STAGE.FAILED, PROCESSING_STAGE.ANALYZE_DUPLICATES)
+      ).toBe(true);
+
       expect(
         StageTransitionService.validateStageTransition(PROCESSING_STAGE.FAILED, PROCESSING_STAGE.DETECT_SCHEMA)
-      ).toBe(false);
+      ).toBe(true);
+
+      expect(
+        StageTransitionService.validateStageTransition(PROCESSING_STAGE.FAILED, PROCESSING_STAGE.VALIDATE_SCHEMA)
+      ).toBe(true);
+
+      expect(
+        StageTransitionService.validateStageTransition(PROCESSING_STAGE.FAILED, PROCESSING_STAGE.GEOCODE_BATCH)
+      ).toBe(true);
     });
 
     it("should handle unknown stages gracefully", () => {

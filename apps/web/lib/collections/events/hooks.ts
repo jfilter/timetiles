@@ -101,7 +101,7 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
 export const eventsAfterChangeHook: CollectionAfterChangeHook<Event> = async ({ doc, operation, req }) => {
   if (operation === "create" && req.user && req.user.role !== "admin") {
     const quotaService = getQuotaService(req.payload);
-    await quotaService.incrementUsage(req.user.id, USAGE_TYPES.TOTAL_EVENTS_CREATED, 1);
+    await quotaService.incrementUsage(req.user.id, USAGE_TYPES.TOTAL_EVENTS_CREATED, 1, req);
   }
 
   return doc;

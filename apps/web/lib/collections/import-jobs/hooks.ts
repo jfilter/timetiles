@@ -146,7 +146,7 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
         const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
 
         const quotaService = getQuotaService(req.payload);
-        await quotaService.incrementUsage(userId, USAGE_TYPES.IMPORT_JOBS_TODAY, 1);
+        await quotaService.incrementUsage(userId, USAGE_TYPES.IMPORT_JOBS_TODAY, 1, req);
 
         logger.info("Import job creation tracked for quota", {
           userId,

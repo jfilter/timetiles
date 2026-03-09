@@ -7,6 +7,7 @@
 import type { Payload } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { createDatabaseClient } from "@/lib/database/client";
 import { cleanupStuckScheduledImportsJob } from "@/lib/jobs/handlers/cleanup-stuck-scheduled-imports-job";
 import type { Catalog, ScheduledImport, User } from "@/payload-types";
 
@@ -18,8 +19,6 @@ import {
 } from "../../setup/integration/environment";
 
 describe.sequential("Cleanup Stuck Imports Job Integration", () => {
-  const collectionsToReset = ["scheduled-imports"];
-
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
   let cleanup: () => Promise<void>;
@@ -47,7 +46,16 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate(collectionsToReset);
+    // Use direct SQL DELETE to avoid triggering afterDelete hooks which call
+    // quotaService.decrementUsage() for each record — this exhausts the pool
+    // (max 5 connections) and deadlocks when deleting many records (e.g., 105).
+    const client = createDatabaseClient({ connectionString: process.env.DATABASE_URL! });
+    try {
+      await client.connect();
+      await client.query('DELETE FROM payload."scheduled_imports"');
+    } finally {
+      await client.end();
+    }
   });
 
   describe.sequential("Finding Stuck Imports", () => {
@@ -485,65 +493,57 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       const tenHoursAgo = new Date(Date.now() - 10 * 60 * 60 * 1000);
       const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000);
 
-      // Create mix of stuck and non-stuck imports
-      await Promise.all([
-        // Stuck imports
-        ...Array(3)
-          .fill(null)
-          .map((_, i) =>
-            payload.create({
-              collection: "scheduled-imports",
-              data: {
-                sourceUrl: "https://example.com/test-data.csv",
-                enabled: true,
-                scheduleType: "frequency",
-                frequency: "daily",
-                name: `Old Stuck ${i}`,
-                catalog: testCatalog.id,
-                createdBy: testUser.id,
-                lastStatus: "running",
-                lastRun: tenHoursAgo.toISOString(),
-              },
-            })
-          ),
-        // Recent running imports (should not be touched)
-        ...Array(3)
-          .fill(null)
-          .map((_, i) =>
-            payload.create({
-              collection: "scheduled-imports",
-              data: {
-                sourceUrl: "https://example.com/test-data.csv",
-                enabled: true,
-                scheduleType: "frequency",
-                frequency: "daily",
-                name: `Recent Running ${i}`,
-                catalog: testCatalog.id,
-                createdBy: testUser.id,
-                lastStatus: "running",
-                lastRun: oneHourAgo.toISOString(),
-              },
-            })
-          ),
-        // Non-running imports (should not be touched)
-        ...Array(3)
-          .fill(null)
-          .map((_, i) =>
-            payload.create({
-              collection: "scheduled-imports",
-              data: {
-                sourceUrl: "https://example.com/test-data.csv",
-                enabled: true,
-                scheduleType: "frequency",
-                frequency: "daily",
-                name: `Idle Import ${i}`,
-                catalog: testCatalog.id,
-                createdBy: testUser.id,
-                lastStatus: "success",
-              },
-            })
-          ),
-      ]);
+      // Create mix of stuck and non-stuck imports sequentially to avoid
+      // pool exhaustion — each payload.create() needs a transaction + the
+      // afterChange hook calls quotaService which needs another connection.
+      // With pool max=5, concurrent creates deadlock.
+      for (let i = 0; i < 3; i++) {
+        await payload.create({
+          collection: "scheduled-imports",
+          data: {
+            sourceUrl: "https://example.com/test-data.csv",
+            enabled: true,
+            scheduleType: "frequency",
+            frequency: "daily",
+            name: `Old Stuck ${i}`,
+            catalog: testCatalog.id,
+            createdBy: testUser.id,
+            lastStatus: "running",
+            lastRun: tenHoursAgo.toISOString(),
+          },
+        });
+      }
+      for (let i = 0; i < 3; i++) {
+        await payload.create({
+          collection: "scheduled-imports",
+          data: {
+            sourceUrl: "https://example.com/test-data.csv",
+            enabled: true,
+            scheduleType: "frequency",
+            frequency: "daily",
+            name: `Recent Running ${i}`,
+            catalog: testCatalog.id,
+            createdBy: testUser.id,
+            lastStatus: "running",
+            lastRun: oneHourAgo.toISOString(),
+          },
+        });
+      }
+      for (let i = 0; i < 3; i++) {
+        await payload.create({
+          collection: "scheduled-imports",
+          data: {
+            sourceUrl: "https://example.com/test-data.csv",
+            enabled: true,
+            scheduleType: "frequency",
+            frequency: "daily",
+            name: `Idle Import ${i}`,
+            catalog: testCatalog.id,
+            createdBy: testUser.id,
+            lastStatus: "success",
+          },
+        });
+      }
 
       // Run cleanup job
       const result = await cleanupStuckScheduledImportsJob.handler({
@@ -576,6 +576,42 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       });
 
       expect(successCount.totalDocs).toBe(3); // Unchanged
+    });
+
+    it("should handle concurrent creates without pool exhaustion", async () => {
+      // Regression test: concurrent payload.create() calls on collections with
+      // afterChange hooks that call quotaService used to exhaust the connection pool
+      // (max 5) because the quota service grabbed separate pool connections outside
+      // the hook's transaction. With the fix, quota operations reuse the hook's
+      // transaction via `req`, so concurrent creates work.
+      const tenHoursAgo = new Date(Date.now() - 10 * 60 * 60 * 1000);
+
+      await Promise.all(
+        Array(9)
+          .fill(null)
+          .map((_, i) =>
+            payload.create({
+              collection: "scheduled-imports",
+              data: {
+                sourceUrl: "https://example.com/test-data.csv",
+                enabled: true,
+                scheduleType: "frequency",
+                frequency: "daily",
+                name: `Concurrent Import ${i}`,
+                catalog: testCatalog.id,
+                createdBy: testUser.id,
+                lastStatus: "running",
+                lastRun: tenHoursAgo.toISOString(),
+              },
+            })
+          )
+      );
+
+      const count = await payload.count({
+        collection: "scheduled-imports",
+        where: { name: { contains: "Concurrent Import" } },
+      });
+      expect(count.totalDocs).toBe(9);
     });
   });
 });

@@ -166,26 +166,13 @@ beforeAll(async () => {
     throw error;
   }
 
-  // Configure idle_in_transaction_session_timeout to auto-kill connections
-  // that Payload's Drizzle adapter leaves idle in a transaction. These hold
-  // locks that block TRUNCATE and other DDL operations.
-  const configureIdleTransactionTimeout = async () => {
-    const client = createDatabaseClient({ connectionString: dbUrl });
-    try {
-      await client.connect();
-      await client.query(`ALTER DATABASE "${testDbName}" SET idle_in_transaction_session_timeout = '3s'`);
-    } finally {
-      await client.end();
-    }
-  };
-
   // With isolate: false, multiple test files share a fork process.
   // Reuse the DB if it already exists and has valid schema (avoids redundant clones).
   const dbExists = await databaseExists(testDbName);
   if (dbExists) {
     try {
       await verifyDatabaseSchema(dbUrl);
-      await configureIdleTransactionTimeout();
+
       if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
         logger.info(`Reusing existing database ${testDbName} for worker ${workerId}`);
       }
@@ -211,7 +198,6 @@ beforeAll(async () => {
 
       // Verify the cloned database has valid schema
       await verifyDatabaseSchema(dbUrl);
-      await configureIdleTransactionTimeout();
 
       if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
         logger.info(`Database setup completed for worker ${workerId}`, {
@@ -224,7 +210,6 @@ beforeAll(async () => {
       // Clone failed - fall back to original behavior
       logger.warn(`Clone failed for worker ${workerId}, falling back to migrations:`, cloneError);
       await setupDatabaseWithMigrations(testDbName, dbUrl, workerId);
-      await configureIdleTransactionTimeout();
     }
   } else {
     // No template exists - use original behavior
@@ -233,7 +218,6 @@ beforeAll(async () => {
       logger.info(`No template found, using migrations for worker ${workerId}`);
     }
     await setupDatabaseWithMigrations(testDbName, dbUrl, workerId);
-    await configureIdleTransactionTimeout();
   }
 });
 

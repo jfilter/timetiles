@@ -40,7 +40,7 @@ const checkAndIncrementQuota = async (req: PayloadRequest): Promise<void> => {
     throw new Error(errorMessage);
   }
 
-  await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_CATALOGS, 1);
+  await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_CATALOGS, 1, req);
 };
 
 /** Detect what changed between previous and new catalog doc */
@@ -308,7 +308,7 @@ const Catalogs: CollectionConfig = {
         // Decrement catalog count when catalog is deleted
         if (doc.createdBy && req.payload) {
           const quotaService = getQuotaService(req.payload);
-          await quotaService.decrementUsage(doc.createdBy, USAGE_TYPES.CURRENT_CATALOGS, 1);
+          await quotaService.decrementUsage(doc.createdBy, USAGE_TYPES.CURRENT_CATALOGS, 1, req);
         }
       },
     ],

@@ -298,7 +298,7 @@ const ScheduledImports: CollectionConfig = {
 
         // Track usage after successful creation of enabled schedule
         if (operation === "create" && doc.enabled !== false) {
-          await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
+          await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
         }
 
         // Handle update operations (enabling/disabling)
@@ -308,10 +308,10 @@ const ScheduledImports: CollectionConfig = {
 
           if (!wasEnabled && isEnabled) {
             // Schedule was enabled - increment usage
-            await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
+            await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
           } else if (wasEnabled && !isEnabled) {
             // Schedule was disabled - decrement usage
-            await quotaService.decrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
+            await quotaService.decrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
           }
         }
 
@@ -324,7 +324,7 @@ const ScheduledImports: CollectionConfig = {
         const ownerId = typeof doc.createdBy === "object" ? doc.createdBy?.id : doc.createdBy;
         if (ownerId && doc.enabled) {
           const quotaService = getQuotaService(req.payload);
-          await quotaService.decrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
+          await quotaService.decrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
         }
 
         return doc;

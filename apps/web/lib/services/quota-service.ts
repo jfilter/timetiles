@@ -78,7 +78,7 @@
  * @category Services
  */
 import { eq, sql } from "@payloadcms/db-postgres/drizzle";
-import type { Payload } from "payload";
+import type { Payload, PayloadRequest } from "payload";
 
 import {
   DEFAULT_QUOTAS,
@@ -174,10 +174,32 @@ export class QuotaService {
   }
 
   /**
+   * Get the transaction-aware drizzle instance.
+   * When called from a hook with `req`, reuses the hook's transaction connection
+   * instead of grabbing a new pool connection (which can cause pool exhaustion).
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Payload's internal session/drizzle types aren't publicly exported
+  private async getDrizzle(req?: Partial<PayloadRequest>): Promise<any> {
+    const db = this.payload.db;
+    if (req?.transactionID && "sessions" in db) {
+      const sessions = (db as unknown as Record<string, unknown>).sessions as
+        | Record<string, { db: unknown } | undefined>
+        | undefined;
+      if (sessions) {
+        const transactionID = req.transactionID instanceof Promise ? await req.transactionID : req.transactionID;
+        return sessions[transactionID]?.db ?? db.drizzle;
+      }
+    }
+    return db.drizzle;
+  }
+
+  /**
    * Get or create usage record for a user from the user-usage collection.
    * Uses upsert pattern to ensure usage record exists.
+   *
+   * @param req - Optional PayloadRequest to reuse the caller's transaction
    */
-  async getOrCreateUsageRecord(userId: UserIdentifier): Promise<UserUsageRecord> {
+  async getOrCreateUsageRecord(userId: UserIdentifier, req?: Partial<PayloadRequest>): Promise<UserUsageRecord> {
     const normalizedUserId = normalizeUserId(userId);
 
     try {
@@ -187,6 +209,7 @@ export class QuotaService {
         where: { user: { equals: normalizedUserId } },
         limit: 1,
         overrideAccess: true,
+        ...(req && { req }),
       });
 
       if (existing.docs.length > 0 && existing.docs[0]) {
@@ -207,6 +230,7 @@ export class QuotaService {
           lastResetDate: new Date().toISOString(),
         },
         overrideAccess: true,
+        ...(req && { req }),
       });
     } catch (error) {
       logger.error("Failed to get or create usage record", { error, userId: normalizedUserId });
@@ -389,20 +413,27 @@ export class QuotaService {
    * The column is incremented directly in the database rather than using a
    * read-modify-write pattern that could lose updates.
    */
-  async incrementUsage(userId: UserIdentifier, usageType: UsageType, amount: number = 1): Promise<void> {
+  async incrementUsage(
+    userId: UserIdentifier,
+    usageType: UsageType,
+    amount: number = 1,
+    req?: Partial<PayloadRequest>
+  ): Promise<void> {
     const normalizedUserId = normalizeUserId(userId);
 
     try {
       logger.debug("incrementUsage: Entry", { userId: normalizedUserId, usageType, amount });
 
       // Ensure usage record exists before atomic update
-      await this.getOrCreateUsageRecord(normalizedUserId);
+      await this.getOrCreateUsageRecord(normalizedUserId, req);
+
+      const drizzle = await this.getDrizzle(req);
 
       if (this.isDailyUsageType(usageType)) {
         // For daily types, atomically reset stale counters and increment the target
         const needsReset = sql`${user_usage.lastResetDate} IS NULL OR ${user_usage.lastResetDate}::date < CURRENT_DATE`;
 
-        await this.payload.db.drizzle
+        await drizzle
           .update(user_usage)
           .set({
             urlFetchesToday: sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${user_usage.urlFetchesToday}, 0) END + ${usageType === "urlFetchesToday" ? amount : 0}`,
@@ -415,7 +446,7 @@ export class QuotaService {
       } else {
         // For non-daily types, simple atomic increment
         const col = user_usage[usageType];
-        await this.payload.db.drizzle
+        await drizzle
           .update(user_usage)
           .set({
             [usageType]: sql`COALESCE(${col}, 0) + ${amount}`,
@@ -442,15 +473,21 @@ export class QuotaService {
    * Uses atomic SQL UPDATE with GREATEST to prevent going below zero and
    * avoid race conditions from concurrent requests.
    */
-  async decrementUsage(userId: UserIdentifier, usageType: UsageType, amount: number = 1): Promise<void> {
+  async decrementUsage(
+    userId: UserIdentifier,
+    usageType: UsageType,
+    amount: number = 1,
+    req?: Partial<PayloadRequest>
+  ): Promise<void> {
     const normalizedUserId = normalizeUserId(userId);
 
     try {
       // Ensure usage record exists before atomic update
-      await this.getOrCreateUsageRecord(normalizedUserId);
+      await this.getOrCreateUsageRecord(normalizedUserId, req);
 
+      const drizzle = await this.getDrizzle(req);
       const col = user_usage[usageType];
-      await this.payload.db.drizzle
+      await drizzle
         .update(user_usage)
         .set({
           [usageType]: sql`GREATEST(0, COALESCE(${col}, 0) - ${amount})`,
