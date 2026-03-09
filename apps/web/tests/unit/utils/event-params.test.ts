@@ -14,9 +14,29 @@ import {
   extractHistogramParameters,
   extractListParameters,
   extractMapClusterParameters,
+  normalizeStrictIntegerList,
+  parseStrictInteger,
 } from "@/lib/utils/event-params";
 
 describe("event-params", () => {
+  describe("parseStrictInteger", () => {
+    it("parses fully numeric strings", () => {
+      expect(parseStrictInteger("42")).toBe(42);
+      expect(parseStrictInteger("  -7 ")).toBe(-7);
+    });
+
+    it("rejects partially numeric strings", () => {
+      expect(parseStrictInteger("42abc")).toBeNull();
+      expect(parseStrictInteger("abc42")).toBeNull();
+    });
+  });
+
+  describe("normalizeStrictIntegerList", () => {
+    it("keeps only fully numeric values", () => {
+      expect(normalizeStrictIntegerList(["10", "20oops", 30])).toEqual([10, 30]);
+    });
+  });
+
   describe("extractBaseEventParameters", () => {
     it("should extract catalog and dates", () => {
       const params = new URLSearchParams("catalog=test&startDate=2024-01-01&endDate=2024-12-31");

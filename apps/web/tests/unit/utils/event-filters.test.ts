@@ -41,6 +41,23 @@ describe("event-filters", () => {
     expect(filters.datasets).toEqual([10, 20]);
   });
 
+  it("rejects partially numeric dataset ids in buildEventFilters", () => {
+    const filters = buildEventFilters({
+      parameters: {
+        catalog: null,
+        datasets: ["10oops"],
+        startDate: null,
+        endDate: null,
+        fieldFilters: {},
+      },
+      accessibleCatalogIds: [1, 2],
+      bounds: null,
+    });
+
+    expect(filters.denyResults).toBe(true);
+    expect(filters.datasets).toBeUndefined();
+  });
+
   it("returns no results when all dataset ids are invalid in buildEventFilters", () => {
     const filters = buildEventFilters({
       parameters: {
@@ -105,6 +122,22 @@ describe("event-filters", () => {
     );
 
     expect(filters.datasets).toEqual([10, 20]);
+  });
+
+  it("rejects partially numeric catalog ids in buildMapClusterFilters", () => {
+    const filters = buildMapClusterFilters(
+      {
+        catalog: "1abc",
+        datasets: [],
+        startDate: null,
+        endDate: null,
+        fieldFilters: {},
+      },
+      [1, 2]
+    );
+
+    expect(filters.denyResults).toBe(true);
+    expect(filters).not.toHaveProperty("catalog");
   });
 
   it("returns no results when all dataset ids are invalid in buildMapClusterFilters", () => {

@@ -27,6 +27,19 @@ vi.mock("@/lib/services/access-control", () => ({
 
 vi.mock("@/lib/utils/event-params", () => ({
   extractBaseEventParameters: mocks.mockExtractBaseEventParameters,
+  parseStrictInteger: (value: string | number | null | undefined) => {
+    if (typeof value === "number") return Number.isInteger(value) ? value : null;
+    if (typeof value !== "string" || !/^-?\d+$/.test(value.trim())) return null;
+    return parseInt(value.trim(), 10);
+  },
+  normalizeStrictIntegerList: (values: Array<string | number>) =>
+    values
+      .map((value) => {
+        if (typeof value === "number") return Number.isInteger(value) ? value : null;
+        if (typeof value !== "string" || !/^-?\d+$/.test(value.trim())) return null;
+        return parseInt(value.trim(), 10);
+      })
+      .filter((value): value is number => value != null),
 }));
 
 vi.mock("@payloadcms/db-postgres", () => ({
@@ -91,6 +104,26 @@ describe.sequential("GET /api/v1/events/bounds", () => {
 
   it("returns an empty result when catalog is blank and no catalogs are accessible", async () => {
     const response = await GET(createRequest("?catalog="), undefined);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      bounds: null,
+      count: 0,
+    });
+    expect(mocks.mockDrizzleExecute).not.toHaveBeenCalled();
+  });
+
+  it("returns an empty result when the catalog id is only partially numeric", async () => {
+    mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([1]);
+    mocks.mockExtractBaseEventParameters.mockReturnValue({
+      catalog: "1abc",
+      datasets: [],
+      startDate: null,
+      endDate: null,
+      fieldFilters: {},
+    });
+
+    const response = await GET(createRequest("?catalog=1abc"), undefined);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({

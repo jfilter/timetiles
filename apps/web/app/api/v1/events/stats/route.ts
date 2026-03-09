@@ -22,7 +22,7 @@ import {
   normalizeEndDate,
 } from "@/lib/services/aggregation-filters";
 import { internalError } from "@/lib/utils/api-response";
-import { extractBaseEventParameters } from "@/lib/utils/event-params";
+import { extractBaseEventParameters, normalizeStrictIntegerList } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 
 /**
@@ -204,7 +204,7 @@ const executeAggregationQuery = async (
   // If datasets are explicitly filtered, ensure all selected datasets appear in results
   // (even with 0 count if they have no events in viewport)
   if (groupBy === "dataset" && filters.datasets && filters.datasets.length > 0) {
-    const selectedDatasetIds = filters.datasets.map((d) => parseInt(d)).filter((id) => !isNaN(id));
+    const selectedDatasetIds = normalizeStrictIntegerList(filters.datasets);
 
     // Fetch dataset names for any missing datasets
     const missingDatasetIds = selectedDatasetIds.filter((id) => !resultMap.has(id));

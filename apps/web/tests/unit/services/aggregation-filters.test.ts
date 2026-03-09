@@ -103,5 +103,33 @@ describe("aggregation-filters", () => {
       expect(queryText).toContain("FALSE");
       expect(queryText).not.toContain("d.catalog_id IN (");
     });
+
+    it("returns no results instead of broadening when all dataset filters are invalid", () => {
+      const clause = buildAggregationWhereClause(
+        {
+          datasets: ["abc", "def"],
+        },
+        [1]
+      );
+
+      const queryText = collectQueryStrings(clause).join(" ");
+
+      expect(queryText).toContain("FALSE");
+      expect(queryText).not.toContain("e.dataset_id IN (");
+    });
+
+    it("returns no results when the catalog filter is only partially numeric", () => {
+      const clause = buildAggregationWhereClause(
+        {
+          catalog: "1abc",
+        },
+        [1, 2]
+      );
+
+      const queryText = collectQueryStrings(clause).join(" ");
+
+      expect(queryText).toContain("FALSE");
+      expect(queryText).not.toContain("d.catalog_id = ");
+    });
   });
 });

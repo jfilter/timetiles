@@ -37,6 +37,14 @@ vi.mock("@/lib/geospatial", () => ({
 
 vi.mock("@/lib/utils/event-params", () => ({
   extractBaseEventParameters: mocks.mockExtractBaseEventParameters,
+  normalizeStrictIntegerList: (values: Array<string | number>) =>
+    values
+      .map((value) => {
+        if (typeof value === "number") return Number.isInteger(value) ? value : null;
+        if (typeof value !== "string" || !/^-?\d+$/.test(value.trim())) return null;
+        return parseInt(value.trim(), 10);
+      })
+      .filter((value): value is number => value != null),
 }));
 
 vi.mock("@/lib/services/aggregation-filters", () => ({

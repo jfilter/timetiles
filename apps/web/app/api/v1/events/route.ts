@@ -17,13 +17,13 @@ import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { normalizeEndDate } from "@/lib/services/aggregation-filters";
 import { internalError } from "@/lib/utils/api-response";
-import { extractListParameters } from "@/lib/utils/event-params";
+import { extractListParameters, normalizeStrictIntegerList, parseStrictInteger } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 import type { Event, User } from "@/payload-types";
 
 const addCatalogFilter = (where: Where, catalog: string) => {
-  const catalogId = parseInt(catalog, 10);
-  if (isNaN(catalogId)) {
+  const catalogId = parseStrictInteger(catalog);
+  if (catalogId == null) {
     where.and = [...(Array.isArray(where.and) ? where.and : []), { id: { equals: -1 } }];
     return;
   }
@@ -39,7 +39,7 @@ const addCatalogFilter = (where: Where, catalog: string) => {
 };
 
 const addDatasetFilter = (where: Where, datasets: string[]) => {
-  const datasetIds = datasets.map((d) => parseInt(d, 10)).filter((id) => !isNaN(id));
+  const datasetIds = normalizeStrictIntegerList(datasets);
 
   if (datasetIds.length === 0) {
     // All provided IDs were invalid — return no results instead of all events

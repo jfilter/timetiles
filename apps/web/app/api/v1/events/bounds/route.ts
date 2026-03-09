@@ -22,7 +22,7 @@ import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/au
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { normalizeEndDate } from "@/lib/services/aggregation-filters";
 import { createErrorHandler } from "@/lib/utils/api-response";
-import { extractBaseEventParameters } from "@/lib/utils/event-params";
+import { extractBaseEventParameters, normalizeStrictIntegerList, parseStrictInteger } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 
 /**
@@ -102,9 +102,9 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
 
     // Apply catalog access control
     if (hasCatalogFilter) {
-      const catalogId = parseInt(parameters.catalog!, 10);
+      const catalogId = parseStrictInteger(parameters.catalog!);
       // Only include if user has access to this catalog
-      if (accessibleCatalogIds.includes(catalogId)) {
+      if (catalogId != null && accessibleCatalogIds.includes(catalogId)) {
         conditions.push(sql`d.catalog_id = ${catalogId}`);
       } else {
         // User trying to access catalog they don't have permission for - deny access
@@ -128,7 +128,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
 
     // Apply dataset filter
     if (parameters.datasets.length > 0 && parameters.datasets[0] !== "") {
-      const datasetIds = parameters.datasets.map((d) => parseInt(d, 10)).filter((id) => !isNaN(id));
+      const datasetIds = normalizeStrictIntegerList(parameters.datasets);
       if (datasetIds.length > 0) {
         const datasetIdList = sql.join(
           datasetIds.map((id) => sql`${id}`),

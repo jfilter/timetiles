@@ -23,14 +23,15 @@ import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/au
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { createErrorHandler } from "@/lib/utils/api-response";
 import { buildMapClusterFilters } from "@/lib/utils/event-filters";
-import { extractClusterStatsParameters } from "@/lib/utils/event-params";
+import { extractClusterStatsParameters, normalizeStrictIntegerList, parseStrictInteger } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 
 const handleError = createErrorHandler("calculating cluster stats", logger);
 
 const buildCatalogFilterSql = (catalog: unknown, accessibleCatalogIds: unknown) => {
-  if (catalog != null) {
-    return sql`AND d.catalog_id = ${parseInt(catalog as string)}`;
+  const catalogId = parseStrictInteger(catalog as string | null | undefined);
+  if (catalogId != null) {
+    return sql`AND d.catalog_id = ${catalogId}`;
   }
   if (accessibleCatalogIds != null && Array.isArray(accessibleCatalogIds) && accessibleCatalogIds.length > 0) {
     return sql`AND d.catalog_id IN (${sql.join(
@@ -110,7 +111,7 @@ const calculateGlobalStats = async (
         ${
           Array.isArray(datasets) && datasets.length > 0
             ? sql`AND e.dataset_id IN (${sql.join(
-                datasets.map((d) => sql`${parseInt(d as string)}`),
+                normalizeStrictIntegerList(datasets).map((d) => sql`${d}`),
                 sql`, `
               )})`
             : sql``

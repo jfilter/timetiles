@@ -27,6 +27,19 @@ vi.mock("@/lib/geospatial", () => ({
 
 vi.mock("@/lib/utils/event-params", () => ({
   extractListParameters: mocks.mockExtractListParameters,
+  parseStrictInteger: (value: string | number | null | undefined) => {
+    if (typeof value === "number") return Number.isInteger(value) ? value : null;
+    if (typeof value !== "string" || !/^-?\d+$/.test(value.trim())) return null;
+    return parseInt(value.trim(), 10);
+  },
+  normalizeStrictIntegerList: (values: Array<string | number>) =>
+    values
+      .map((value) => {
+        if (typeof value === "number") return Number.isInteger(value) ? value : null;
+        if (typeof value !== "string" || !/^-?\d+$/.test(value.trim())) return null;
+        return parseInt(value.trim(), 10);
+      })
+      .filter((value): value is number => value != null),
 }));
 
 vi.mock("@/payload.config", () => ({ default: {} }));
@@ -169,6 +182,38 @@ describe.sequential("GET /api/v1/events", () => {
     });
 
     const response = await GET(createRequest("?catalog=abc"), undefined);
+
+    expect(response.status).toBe(200);
+    expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
+    expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          and: expect.arrayContaining([
+            {
+              id: {
+                equals: -1,
+              },
+            },
+          ]),
+        }),
+      })
+    );
+  });
+
+  it("returns no results when dataset ids are only partially numeric", async () => {
+    mocks.mockExtractListParameters.mockReturnValue({
+      catalog: null,
+      datasets: ["10oops"],
+      startDate: null,
+      endDate: null,
+      fieldFilters: {},
+      boundsParam: null,
+      page: 1,
+      limit: 100,
+      sort: "-eventTimestamp",
+    });
+
+    const response = await GET(createRequest("?datasets=10oops"), undefined);
 
     expect(response.status).toBe(200);
     expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();

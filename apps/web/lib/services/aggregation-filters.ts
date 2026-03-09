@@ -11,6 +11,7 @@
 import { sql } from "@payloadcms/db-postgres";
 
 import type { SimpleBounds } from "@/lib/hooks/use-events-queries";
+import { normalizeStrictIntegerList, parseStrictInteger } from "@/lib/utils/event-params";
 
 /**
  * Filter parameters for event aggregation.
@@ -71,9 +72,9 @@ export const buildAggregationWhereClause = (
   // 1. Access Control (ALWAYS REQUIRED)
   // Never allow queries without access control filtering
   if (filters.catalog != null && filters.catalog !== "") {
-    const catalogId = parseInt(filters.catalog);
+    const catalogId = parseStrictInteger(filters.catalog);
     // Only apply catalog filter if user has access to it
-    if (accessibleCatalogIds.includes(catalogId)) {
+    if (catalogId != null && accessibleCatalogIds.includes(catalogId)) {
       clauses.push(sql`d.catalog_id = ${catalogId}`);
     } else {
       // A requested but inaccessible/invalid catalog should not broaden results.
@@ -96,7 +97,7 @@ export const buildAggregationWhereClause = (
 
   // 2. Dataset Filter (OPTIONAL)
   if (filters.datasets && filters.datasets.length > 0) {
-    const datasetIds = filters.datasets.map((d) => parseInt(d)).filter((id) => !isNaN(id));
+    const datasetIds = normalizeStrictIntegerList(filters.datasets);
     if (datasetIds.length > 0) {
       clauses.push(
         sql`e.dataset_id IN (${sql.join(
@@ -104,6 +105,8 @@ export const buildAggregationWhereClause = (
           sql`, `
         )})`
       );
+    } else {
+      clauses.push(sql`FALSE`);
     }
   }
 

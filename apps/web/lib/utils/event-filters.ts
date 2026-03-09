@@ -11,7 +11,7 @@
 import type { MapBounds } from "@/lib/geospatial";
 import { normalizeEndDate } from "@/lib/services/aggregation-filters";
 
-import type { BaseEventParameters } from "./event-params";
+import { normalizeStrictIntegerList, parseStrictInteger, type BaseEventParameters } from "./event-params";
 
 /**
  * Event filters for SQL/Drizzle queries.
@@ -44,8 +44,7 @@ export interface EventFilters {
   fieldFilters?: Record<string, string[]>;
 }
 
-const normalizeDatasetIds = (datasets: string[]): number[] =>
-  datasets.map((dataset) => parseInt(dataset, 10)).filter((datasetId) => !isNaN(datasetId));
+const normalizeDatasetIds = (datasets: string[]): number[] => normalizeStrictIntegerList(datasets);
 
 /**
  * Options for building event filters.
@@ -90,13 +89,13 @@ export const buildEventFilters = ({
 
   // Apply catalog access control
   if (parameters.catalog != null && parameters.catalog !== "") {
-    const catalogId = parseInt(parameters.catalog);
+    const catalogId = parseStrictInteger(parameters.catalog);
     // Only include if user has access to this catalog
-    if (accessibleCatalogIds.includes(catalogId)) {
+    if (catalogId != null && accessibleCatalogIds.includes(catalogId)) {
       filters.catalogId = catalogId;
     } else {
-      // User trying to access catalog they don't have permission for - deny access
-      filters.denyAccess = true;
+      // Invalid or inaccessible catalog filters should not broaden results.
+      filters.denyResults = true;
     }
   } else {
     // No specific catalog requested, filter by all accessible catalogs
@@ -158,13 +157,13 @@ export const buildMapClusterFilters = (
 
   // Apply catalog access control
   if (parameters.catalog != null && parameters.catalog !== "") {
-    const catalogId = parseInt(parameters.catalog);
+    const catalogId = parseStrictInteger(parameters.catalog);
     // Only include if user has access to this catalog
-    if (accessibleCatalogIds.includes(catalogId)) {
-      filters.catalog = parameters.catalog;
+    if (catalogId != null && accessibleCatalogIds.includes(catalogId)) {
+      filters.catalog = String(catalogId);
     } else {
-      // User trying to access catalog they don't have permission for - deny access
-      filters.denyAccess = true;
+      // Invalid or inaccessible catalog filters should not broaden results.
+      filters.denyResults = true;
     }
   } else {
     // No specific catalog requested, filter by all accessible catalogs

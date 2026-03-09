@@ -77,18 +77,29 @@ const isValidFieldPath = (fieldPath: string): boolean =>
   fieldPath.length <= MAX_FIELD_KEY_LENGTH &&
   fieldPath.split(".").every((segment) => segment.length > 0 && FIELD_SEGMENT_PATTERN.test(segment));
 
-const parseIntegerParam = (value: string | null, fallback: number): number => {
-  if (value == null) {
-    return fallback;
+export const parseStrictInteger = (value: string | number | null | undefined): number | null => {
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? value : null;
+  }
+
+  if (typeof value !== "string") {
+    return null;
   }
 
   const trimmedValue = value.trim();
   if (!INTEGER_PATTERN.test(trimmedValue)) {
-    return fallback;
+    return null;
   }
 
   return parseInt(trimmedValue, 10);
 };
+
+export const normalizeStrictIntegerList = (values: Array<string | number>): number[] =>
+  values
+    .map((value) => parseStrictInteger(value))
+    .filter((value): value is number => value != null);
+
+const parseIntegerParam = (value: string | null, fallback: number): number => parseStrictInteger(value) ?? fallback;
 
 const readOptionalParam = (searchParams: URLSearchParams, key: string): string | null => {
   const value = searchParams.get(key);

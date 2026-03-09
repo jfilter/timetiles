@@ -24,7 +24,7 @@ import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/au
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { badRequest, createErrorHandler } from "@/lib/utils/api-response";
 import { buildMapClusterFilters } from "@/lib/utils/event-filters";
-import { extractMapClusterParameters } from "@/lib/utils/event-params";
+import { extractMapClusterParameters, normalizeStrictIntegerList, parseStrictInteger } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 
 const handleError = createErrorHandler("fetching map clusters", logger);
@@ -109,10 +109,8 @@ const executeClusteringQuery = async (
   filters: Record<string, unknown>
 ) => {
   const { catalog, datasets, startDate, endDate, accessibleCatalogIds, fieldFilters } = filters;
-  const datasetIds =
-    Array.isArray(datasets) && datasets.length > 0
-      ? datasets.map((dataset) => parseInt(dataset as string, 10)).filter((datasetId) => !isNaN(datasetId))
-      : [];
+  const datasetIds = Array.isArray(datasets) && datasets.length > 0 ? normalizeStrictIntegerList(datasets) : [];
+  const catalogId = parseStrictInteger(catalog as string | null | undefined);
 
   return (await payload.db.drizzle.execute(sql`
     SELECT * FROM cluster_events(
@@ -122,7 +120,7 @@ const executeClusteringQuery = async (
       ${bounds.north}::double precision,
       ${zoom}::integer,
       ${JSON.stringify({
-        catalogId: catalog != null ? parseInt(catalog as string) : undefined,
+        catalogId: catalogId ?? undefined,
         catalogIds: Array.isArray(accessibleCatalogIds) ? accessibleCatalogIds : undefined,
         datasetId: datasetIds.length === 1 ? datasetIds[0] : undefined,
         datasets: datasetIds.length > 1 ? datasetIds : undefined,
