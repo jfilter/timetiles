@@ -16,6 +16,9 @@ const mocks = vi.hoisted(() => {
     findByID: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+    jobs: {
+      queue: vi.fn(),
+    },
   };
   const mockGetPayload = vi.fn().mockResolvedValue(mockPayload);
   return { mockPayload, mockGetPayload };
@@ -50,6 +53,7 @@ import type { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { DELETE, GET, PATCH } from "@/app/api/scheduled-imports/[id]/route";
+import { POST } from "@/app/api/scheduled-imports/[id]/trigger/route";
 
 const mockUser = { id: 1, email: TEST_EMAILS.user, role: "user" };
 const mockAdminUser = { id: 2, email: TEST_EMAILS.admin, role: "admin" };
@@ -88,6 +92,7 @@ const setupAuthenticatedUser = () => {
   mockPayload.findByID.mockResolvedValue(mockSchedule);
   mockPayload.update.mockResolvedValue({ ...mockSchedule, enabled: false });
   mockPayload.delete.mockResolvedValue(mockSchedule);
+  mockPayload.jobs.queue.mockResolvedValue(undefined);
 };
 
 describe.sequential("GET /api/scheduled-imports/[id]", () => {
@@ -109,6 +114,17 @@ describe.sequential("GET /api/scheduled-imports/[id]", () => {
     expect(response.status).toBe(400);
     const data = await response.json();
     expect(data.error).toBe("Invalid ID");
+  });
+
+  it("should return 400 for partially numeric ID", async () => {
+    setupAuthenticatedUser();
+
+    const response = await GET(createRequest(), createContext("1abc"));
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toBe("Invalid ID");
+    expect(mockPayload.findByID).not.toHaveBeenCalled();
   });
 
   it("should return 404 when schedule not found", async () => {
@@ -165,6 +181,21 @@ describe.sequential("GET /api/scheduled-imports/[id]", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.id).toBe(1);
+  });
+});
+
+describe.sequential("POST /api/scheduled-imports/[id]/trigger", () => {
+  it("should return 400 for partially numeric ID", async () => {
+    vi.clearAllMocks();
+    setupAuthenticatedUser();
+
+    const response = await POST(createRequest("POST"), createContext("1abc"));
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toBe("Invalid ID");
+    expect(mockPayload.findByID).not.toHaveBeenCalled();
+    expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
   });
 });
 

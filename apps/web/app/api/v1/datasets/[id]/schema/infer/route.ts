@@ -19,6 +19,7 @@ import { logError, logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { SchemaInferenceService } from "@/lib/services/schema-inference-service";
 import { badRequest, forbidden, internalError, notFound } from "@/lib/utils/api-response";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 
 export const POST = withAuth(
@@ -26,9 +27,9 @@ export const POST = withAuth(
     try {
       const payload = await getPayload({ config });
       const { id } = await context.params;
-      const datasetId = parseInt(id, 10);
+      const datasetId = parseStrictInteger(id);
 
-      if (isNaN(datasetId)) {
+      if (datasetId == null) {
         return badRequest("Invalid dataset ID");
       }
 

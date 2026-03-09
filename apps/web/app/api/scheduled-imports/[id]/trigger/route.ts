@@ -10,6 +10,7 @@ import { getPayload } from "payload";
 import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { badRequest, forbidden, internalError, notFound } from "@/lib/utils/api-response";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 
 interface RouteContext {
@@ -26,8 +27,8 @@ export const POST = withAuth(async (_request: AuthenticatedRequest, context: Rou
     const user = _request.user!;
     const { id } = await context.params;
 
-    const scheduleId = parseInt(id, 10);
-    if (isNaN(scheduleId)) {
+    const scheduleId = parseStrictInteger(id);
+    if (scheduleId == null) {
       return badRequest("Invalid ID");
     }
 
