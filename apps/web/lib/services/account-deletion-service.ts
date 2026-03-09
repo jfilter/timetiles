@@ -84,7 +84,7 @@ export class AccountDeletionService {
         where: {
           and: [
             { role: { equals: "admin" } },
-            { deletionStatus: { not_equals: "deleted" } },
+            { deletionStatus: { not_in: ["deleted", "pending_deletion"] } },
             { id: { not_equals: userId } },
           ],
         },
@@ -197,7 +197,7 @@ export class AccountDeletionService {
     }
 
     // Count other entities
-    const [scheduledImports, importFiles, media] = await Promise.all([
+    const [scheduledImports, importFiles, media, views, dataExports] = await Promise.all([
       this.payload.count({
         collection: "scheduled-imports",
         where: { createdBy: { equals: userId } },
@@ -211,6 +211,16 @@ export class AccountDeletionService {
       this.payload.count({
         collection: "media",
         where: { createdBy: { equals: userId } },
+        overrideAccess: true,
+      }),
+      this.payload.count({
+        collection: "views",
+        where: { createdBy: { equals: userId } },
+        overrideAccess: true,
+      }),
+      this.payload.count({
+        collection: "data-exports",
+        where: { user: { equals: userId } },
         overrideAccess: true,
       }),
     ]);
@@ -231,6 +241,8 @@ export class AccountDeletionService {
       scheduledImports: scheduledImports.totalDocs,
       importFiles: importFiles.totalDocs,
       media: media.totalDocs,
+      views: views.totalDocs,
+      dataExports: dataExports.totalDocs,
     };
   }
 
@@ -271,7 +283,8 @@ export class AccountDeletionService {
     logger.info({ userId, deletionScheduledAt: deletionDate.toISOString() }, "Account deletion scheduled");
 
     // Send confirmation email
-    const cancelUrl = `${process.env.NEXT_PUBLIC_PAYLOAD_URL}/account/settings`;
+    const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
+    const cancelUrl = `${baseUrl}/account/settings`;
     await sendDeletionScheduledEmail(this.payload, user.email, user.firstName, deletionDate.toISOString(), cancelUrl);
 
     return {
@@ -528,6 +541,46 @@ export class AccountDeletionService {
       });
       result.dataDeleted.importFiles++;
     }
+
+    // Delete views created by this user
+    const views = await this.payload.find({
+      collection: "views",
+      where: { createdBy: { equals: userId } },
+      pagination: false,
+      overrideAccess: true,
+    });
+
+    for (const view of views.docs) {
+      await this.payload.delete({
+        collection: "views",
+        id: view.id,
+        overrideAccess: true,
+      });
+    }
+
+    if (views.docs.length > 0) {
+      logger.info({ userId, viewsDeleted: views.docs.length }, "Deleted user views");
+    }
+
+    // Delete data exports for this user
+    const dataExports = await this.payload.find({
+      collection: "data-exports",
+      where: { user: { equals: userId } },
+      pagination: false,
+      overrideAccess: true,
+    });
+
+    for (const exportRecord of dataExports.docs) {
+      await this.payload.delete({
+        collection: "data-exports",
+        id: exportRecord.id,
+        overrideAccess: true,
+      });
+    }
+
+    if (dataExports.docs.length > 0) {
+      logger.info({ userId, exportsDeleted: dataExports.docs.length }, "Deleted user data exports");
+    }
   }
 
   /**
@@ -611,20 +664,11 @@ export class AccountDeletionService {
   }
 }
 
-// Singleton instance
-let accountDeletionService: AccountDeletionService | null = null;
-
 /**
- * Get the account deletion service singleton.
+ * Create an account deletion service instance.
+ *
+ * Returns a fresh instance each call. The service is stateless (all data
+ * lives in the database), so there is no benefit to caching the instance.
  */
-export const getAccountDeletionService = (payload: Payload): AccountDeletionService => {
-  accountDeletionService ??= new AccountDeletionService(payload);
-  return accountDeletionService;
-};
-
-/**
- * Reset the account deletion service singleton (for testing).
- */
-export const resetAccountDeletionService = (): void => {
-  accountDeletionService = null;
-};
+export const getAccountDeletionService = (payload: Payload): AccountDeletionService =>
+  new AccountDeletionService(payload);

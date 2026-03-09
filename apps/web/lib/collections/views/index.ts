@@ -14,7 +14,7 @@ import type { CollectionConfig } from "payload";
 
 import { createCommonConfig, createSlugField } from "../shared-fields";
 import * as access from "./access";
-import { enforceSingleDefault, setCreatedBy } from "./hooks";
+import { enforceSingleDefault, invalidateViewCache, setCreatedBy } from "./hooks";
 
 const Views: CollectionConfig = {
   slug: "views",
@@ -34,6 +34,7 @@ const Views: CollectionConfig = {
   },
   hooks: {
     beforeChange: [setCreatedBy, enforceSingleDefault],
+    afterChange: [invalidateViewCache],
   },
   fields: [
     // ============ IDENTITY ============
@@ -51,9 +52,13 @@ const Views: CollectionConfig = {
       name: "isDefault",
       type: "checkbox",
       defaultValue: false,
+      access: {
+        create: ({ req: { user } }) => user?.role === "admin",
+        update: ({ req: { user } }) => user?.role === "admin",
+      },
       admin: {
         position: "sidebar",
-        description: "Use as default view when no view specified",
+        description: "Use as default view when no view specified (admin only)",
       },
     },
 
@@ -203,6 +208,7 @@ const Views: CollectionConfig = {
         {
           name: "domain",
           type: "text",
+          unique: true,
           admin: {
             description: "Custom domain (e.g., events.city.gov)",
           },

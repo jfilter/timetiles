@@ -23,6 +23,7 @@ export const handleJobCompletion = async (payload: Payload, doc: ImportJob, req?
     where: {
       importFile: { equals: importFileId },
     },
+    pagination: false,
   });
 
   const allCompleted = allJobs.docs.every(

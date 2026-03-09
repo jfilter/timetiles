@@ -16,12 +16,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { AccountDeletionService } from "@/lib/services/account-deletion-service";
-import {
-  DELETION_GRACE_PERIOD_DAYS,
-  getAccountDeletionService,
-  resetAccountDeletionService,
-} from "@/lib/services/account-deletion-service";
-import { getSystemUserService, resetSystemUserService, SYSTEM_USER_EMAIL } from "@/lib/services/system-user-service";
+import { DELETION_GRACE_PERIOD_DAYS, getAccountDeletionService } from "@/lib/services/account-deletion-service";
+import { getSystemUserService, SYSTEM_USER_EMAIL } from "@/lib/services/system-user-service";
 import type { User } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
@@ -44,8 +40,6 @@ describe.sequential("Account Deletion Service", () => {
 
   beforeEach(async () => {
     await truncate();
-    resetAccountDeletionService();
-    resetSystemUserService();
     deletionService = getAccountDeletionService(payload);
   });
 

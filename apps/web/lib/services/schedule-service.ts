@@ -149,7 +149,11 @@ export class ScheduleService {
   }
 }
 
-// Singleton instance
+// Singleton: must be shared because the interval timer, isRunning flag, and
+// process signal handlers are process-level state. Multiple instances would
+// queue duplicate jobs and stack signal handlers.
+// NOTE: This assumes a single-process deployment. Multi-process scaling would
+// require a distributed lock (e.g., pg advisory lock) to prevent duplicate runs.
 let scheduleServiceInstance: ScheduleService | null = null;
 
 /**

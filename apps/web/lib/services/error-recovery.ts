@@ -611,7 +611,8 @@ export class ErrorRecoveryService {
 
         const recoveryStage = this.determineRecoveryStage(job, classification);
 
-        // Update job to recovery stage
+        // Update job to recovery stage — the afterChange hook will
+        // automatically queue the appropriate job via StageTransitionService
         await payload.update({
           collection: IMPORT_JOBS_COLLECTION,
           id: job.id,
@@ -622,20 +623,10 @@ export class ErrorRecoveryService {
           context: { skipStageTransition: true },
         });
 
-        // Queue the appropriate recovery job
-        const jobType = this.getJobTypeForStage(recoveryStage);
-        if (jobType) {
-          await payload.jobs.queue({
-            task: jobType,
-            input: { importJobId: job.id, batchNumber: 0 },
-          });
-
-          logger.info("Queued recovery job", {
-            importJobId: job.id,
-            stage: recoveryStage,
-            jobType,
-          });
-        }
+        logger.info("Set recovery stage (job queued via hook)", {
+          importJobId: job.id,
+          stage: recoveryStage,
+        });
       }
     } catch (error) {
       logError(error, "Failed to process pending retries");
@@ -698,7 +689,7 @@ export class ErrorRecoveryService {
    * Important notes:
    * - Records manual reset in error log with timestamp and stage information
    * - Bypasses all validation checks (use with caution)
-   * - Does not queue jobs automatically - job will be picked up by normal processing
+   * - Queues the appropriate recovery job via the afterChange stage transition hook
    * - Should only be used by administrators via the reset API endpoint
    * - If clearRetries is false, retry count is preserved (useful for debugging retry logic)
    */

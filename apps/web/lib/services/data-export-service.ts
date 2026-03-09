@@ -530,20 +530,10 @@ export class DataExportService {
   }
 }
 
-// Singleton instance
-let dataExportService: DataExportService | null = null;
-
 /**
- * Get the data export service singleton.
+ * Create a data export service instance.
+ *
+ * Returns a fresh instance each call. The service is stateless (all data
+ * lives in the database), so there is no benefit to caching the instance.
  */
-export const getDataExportService = (payload: Payload): DataExportService => {
-  dataExportService ??= new DataExportService(payload);
-  return dataExportService;
-};
-
-/**
- * Reset the data export service singleton (for testing).
- */
-export const resetDataExportService = (): void => {
-  dataExportService = null;
-};
+export const getDataExportService = (payload: Payload): DataExportService => new DataExportService(payload);

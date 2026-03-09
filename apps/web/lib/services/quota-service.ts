@@ -712,18 +712,10 @@ export class QuotaService {
   }
 }
 
-// Singleton instance management
-let quotaService: QuotaService | null = null;
-
 /**
- * Get or create the quota service instance.
+ * Create a quota service instance.
+ *
+ * Returns a fresh instance each call. The service is stateless (all data
+ * lives in the database), so there is no benefit to caching the instance.
  */
-export const getQuotaService = (payload: Payload): QuotaService => {
-  // In test environment, always create a new instance for isolation
-  if (process.env.NODE_ENV === "test") {
-    return new QuotaService(payload);
-  }
-
-  quotaService ??= new QuotaService(payload);
-  return quotaService;
-};
+export const getQuotaService = (payload: Payload): QuotaService => new QuotaService(payload);

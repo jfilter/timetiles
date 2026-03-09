@@ -173,26 +173,10 @@ export class SystemUserService {
   }
 }
 
-// Singleton instance
-let systemUserService: SystemUserService | null = null;
-
 /**
- * Get the system user service singleton.
+ * Create a system user service instance.
  *
- * @param payload - The Payload instance
- * @returns The system user service
+ * Returns a fresh instance each call. The service is stateless apart from
+ * a trivial in-class cache that works within a single usage flow.
  */
-export const getSystemUserService = (payload: Payload): SystemUserService => {
-  systemUserService ??= new SystemUserService(payload);
-  return systemUserService;
-};
-
-/**
- * Reset the system user service singleton (for testing).
- */
-export const resetSystemUserService = (): void => {
-  if (systemUserService) {
-    systemUserService.clearCache();
-    systemUserService = null;
-  }
-};
+export const getSystemUserService = (payload: Payload): SystemUserService => new SystemUserService(payload);

@@ -26,23 +26,28 @@ const DatasetSchemas: CollectionConfig = {
     // Schema access inherits from dataset access
     read: async ({ req, data }) => {
       const { user } = req;
-      if (user?.role === "admin") return true;
+      if (user?.role === "admin" || user?.role === "editor") return true;
 
+      // On list operations, data may be undefined — schemas are accessed via dataset endpoints
       if (!data?.dataset) return false;
 
-      // Get dataset and check if public
+      // Get dataset to check access
       const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
       const dataset = await req.payload.findByID({ collection: "datasets", id: datasetId });
-      if (dataset?.isPublic) return true;
+      if (!dataset) return false;
 
-      // Check catalog access
-      if (!dataset?.catalog) return false;
+      // Get catalog for combined access check
+      const catalogId = dataset.catalog
+        ? typeof dataset.catalog === "object"
+          ? dataset.catalog.id
+          : dataset.catalog
+        : null;
+      const catalog = catalogId ? await req.payload.findByID({ collection: "catalogs", id: catalogId }) : null;
 
-      const catalogId = typeof dataset.catalog === "object" ? dataset.catalog.id : dataset.catalog;
-      const catalog = await req.payload.findByID({ collection: "catalogs", id: catalogId });
-      if (catalog?.isPublic) return true;
+      // Both dataset AND catalog must be public (matching dataset access rules)
+      if (dataset.isPublic && catalog?.isPublic) return true;
 
-      // Check catalog ownership
+      // Catalog owner can access their own schemas
       if (!user || !catalog?.createdBy) return false;
       const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
       return user.id === createdById;

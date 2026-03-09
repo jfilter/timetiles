@@ -67,6 +67,7 @@ export const findViewByDomain = async (payload: Payload, domain: string): Promis
         _status: { equals: "published" },
       },
       limit: 1,
+      sort: "createdAt",
       depth: 1, // Include logo/favicon media
     });
 

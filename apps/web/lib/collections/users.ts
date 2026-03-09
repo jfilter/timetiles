@@ -46,7 +46,8 @@ const Users: CollectionConfig = {
         const token = args?.token ?? "";
         const user = args?.user;
         const firstName = user?.firstName ?? "";
-        const verifyUrl = `${process.env.NEXT_PUBLIC_PAYLOAD_URL}/verify-email?token=${token}`;
+        const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
+        const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
         return `
           <!DOCTYPE html>
           <html>
@@ -77,7 +78,8 @@ const Users: CollectionConfig = {
         const token = args?.token ?? "";
         const user = args?.user;
         const firstName = user?.firstName ?? "";
-        const resetUrl = `${process.env.NEXT_PUBLIC_PAYLOAD_URL}/reset-password?token=${token}`;
+        const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
+        const resetUrl = `${baseUrl}/reset-password?token=${token}`;
         return `
           <!DOCTYPE html>
           <html>

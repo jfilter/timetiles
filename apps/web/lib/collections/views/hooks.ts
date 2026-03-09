@@ -8,9 +8,10 @@
  * @module
  * @category Collections
  */
-import type { CollectionBeforeChangeHook } from "payload";
+import type { CollectionAfterChangeHook, CollectionBeforeChangeHook } from "payload";
 
 import type { View } from "@/payload-types";
+import { clearViewCache } from "@/lib/services/view-resolver";
 
 /**
  * Sets the createdBy field to the current user on creation.
@@ -46,7 +47,7 @@ export const enforceSingleDefault: CollectionBeforeChangeHook<View> = async ({
     // On update, exclude the current document; on create, update all defaults
     const idFilter = operation === "update" && originalDoc?.id ? { not_equals: originalDoc.id } : undefined;
 
-    // Unset isDefault on all other views
+    // Unset isDefault on all other views (overrideAccess to clear across all users)
     await req.payload.update({
       collection: "views",
       where: {
@@ -57,6 +58,7 @@ export const enforceSingleDefault: CollectionBeforeChangeHook<View> = async ({
         isDefault: false,
       },
       depth: 0,
+      overrideAccess: true,
       context: {
         skipEnforceSingleDefault: true, // Prevent recursion
       },
@@ -64,4 +66,11 @@ export const enforceSingleDefault: CollectionBeforeChangeHook<View> = async ({
   }
 
   return data;
+};
+
+/**
+ * Invalidates the view resolver cache after any view change.
+ */
+export const invalidateViewCache: CollectionAfterChangeHook<View> = () => {
+  clearViewCache();
 };

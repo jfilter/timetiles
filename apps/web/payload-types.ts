@@ -2389,7 +2389,7 @@ export interface View {
    */
   slug?: string | null;
   /**
-   * Use as default view when no view specified
+   * Use as default view when no view specified (admin only)
    */
   isDefault?: boolean | null;
   /**

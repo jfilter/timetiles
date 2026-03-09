@@ -514,7 +514,11 @@ export class RateLimitService {
   }
 }
 
-// Singleton instance
+// Singleton: must be shared across requests because the in-memory rate limit
+// cache and cleanup interval are process-level state. Creating a fresh instance
+// per request would reset all counters and break rate limiting.
+// NOTE: This assumes a single-process deployment. Multi-process scaling would
+// require a Redis-backed rate limiter instead of the in-memory Map.
 let rateLimitService: RateLimitService | null = null;
 
 export const getRateLimitService = (payload: Payload): RateLimitService => {

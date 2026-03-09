@@ -74,12 +74,18 @@ export const POST = withRateLimit(
         body: JSON.stringify(body),
       });
 
-      const responseData = (await serviceResponse.json()) as { message?: string; error?: string };
+      // Parse response body safely — some services return non-JSON (204, HTML errors)
+      let responseData: { message?: string; error?: string } = {};
+      try {
+        responseData = (await serviceResponse.json()) as { message?: string; error?: string };
+      } catch {
+        // Non-JSON response — continue with empty responseData
+      }
 
       if (!serviceResponse.ok) {
-        // Handle duplicate email (already subscribed) - common case
-        if (serviceResponse.status === 409 || serviceResponse.status === 400) {
-          logger.info(`Email subscription issue: ${email}`);
+        // Handle duplicate email (already subscribed) — only 409 Conflict is unambiguous
+        if (serviceResponse.status === 409) {
+          logger.info(`Email already subscribed: ${email}`);
           return NextResponse.json(
             {
               success: true,

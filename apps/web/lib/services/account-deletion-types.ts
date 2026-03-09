@@ -13,6 +13,8 @@ export interface DeletionSummary {
   scheduledImports: number;
   importFiles: number;
   media: number;
+  views: number;
+  dataExports: number;
 }
 
 /** Result of scheduling a deletion. */
