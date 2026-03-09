@@ -36,8 +36,8 @@ if ! docker info &>/dev/null 2>&1; then
     echo "  3. Re-login or run: sg docker -c './timetiles $*'"
 fi
 
-# Configuration
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Configuration (resolve symlinks so /usr/local/bin/timetiles → /opt/timetiles works)
+SCRIPT_DIR="$( cd "$( dirname "$(readlink -f "${BASH_SOURCE[0]}")" )" && pwd )"
 ENV_FILE="$SCRIPT_DIR/.env.production"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.prod.yml"
 TEST_OVERRIDE="$SCRIPT_DIR/docker-compose.test.yml"
