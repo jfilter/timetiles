@@ -25,6 +25,7 @@ import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { compareSchemas, detectTransforms } from "@/lib/services/schema-builder/schema-comparison";
 import type { SchemaComparison } from "@/lib/types/schema-detection";
 import { getSchemaBuilderState } from "@/lib/types/schema-detection";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { ImportJob, User } from "@/payload-types";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
@@ -310,7 +311,10 @@ export const validateSchemaJob = {
     const input = (context.input ?? context.job?.input) as ValidateSchemaJobInput["input"];
     const { importJobId } = input;
 
-    const jobIdTyped = typeof importJobId === "string" ? parseInt(importJobId, 10) : importJobId;
+    const jobIdTyped = typeof importJobId === "number" ? importJobId : parseStrictInteger(importJobId);
+    if (jobIdTyped == null) {
+      throw new Error("Invalid import job ID");
+    }
     const jobId = context.job?.id ?? "unknown";
     const logger = createJobLogger(jobId, "validate-schema");
     logger.info("Starting schema validation", { importJobId });

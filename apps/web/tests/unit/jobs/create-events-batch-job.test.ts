@@ -191,6 +191,63 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       expect(mockPayload.update).toHaveBeenCalled();
     });
 
+    it("preserves string import file IDs when marking the file complete", async () => {
+      const mockImportJob: any = {
+        id: "import-123",
+        dataset: "dataset-456",
+        importFile: "file-789",
+        sheetIndex: 0,
+        duplicates: {
+          internal: [],
+          external: [],
+          summary: { uniqueRows: 1 },
+        },
+        progress: {
+          stages: {},
+          overallPercentage: 0,
+          estimatedCompletionTime: null,
+        },
+      };
+
+      const mockDataset = {
+        id: "dataset-456",
+        idStrategy: {
+          type: "external",
+          externalIdPath: "id",
+        },
+      };
+
+      const mockImportFile = createMockImportFile("file-789");
+
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
+
+      mocks.readBatchFromFile.mockReturnValueOnce([{ id: "1", title: "Event 1" }]);
+      mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
+      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getGeocodingResultForRow.mockReturnValue(null);
+
+      mockPayload.create.mockResolvedValue({ id: "event-1" });
+      mockPayload.update.mockResolvedValue({});
+      mockPayload.find.mockResolvedValue({ docs: [] });
+
+      await createEventsBatchJob.handler(mockContext);
+
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: "import-files",
+          id: "file-789",
+          data: {
+            status: "completed",
+          },
+        })
+      );
+    });
+
     it("should skip duplicate rows identified in previous stage", async () => {
       // Mock import job with duplicates
       const mockImportJob = {

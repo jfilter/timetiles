@@ -136,13 +136,11 @@ const updateImportFileStatusIfAllJobsComplete = async (
   payload: Payload,
   importFileId: string | number
 ): Promise<void> => {
-  const importFileIdNum = typeof importFileId === "number" ? importFileId : parseInt(importFileId, 10);
-
   // Check if all import jobs for this file are completed or failed
   const pendingJobs = await payload.find({
     collection: COLLECTION_NAMES.IMPORT_JOBS,
     where: {
-      importFile: { equals: importFileIdNum },
+      importFile: { equals: importFileId },
       stage: {
         not_in: [PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.FAILED],
       },
@@ -155,7 +153,7 @@ const updateImportFileStatusIfAllJobsComplete = async (
     const failedJobs = await payload.find({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
       where: {
-        importFile: { equals: importFileIdNum },
+        importFile: { equals: importFileId },
         stage: { equals: PROCESSING_STAGE.FAILED },
       },
       limit: 1,
@@ -165,7 +163,7 @@ const updateImportFileStatusIfAllJobsComplete = async (
     const newStatus = failedJobs.docs.length > 0 ? "failed" : "completed";
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_FILES,
-      id: importFileIdNum,
+      id: importFileId,
       data: {
         status: newStatus,
       },
