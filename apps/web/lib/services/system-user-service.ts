@@ -11,6 +11,7 @@
  */
 import type { Payload } from "payload";
 
+import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { User } from "@/payload-types";
 
 import { createLogger } from "../logger";
@@ -119,7 +120,10 @@ export class SystemUserService {
    * @returns True if the ID belongs to the system user
    */
   async isSystemUser(userId: number | string): Promise<boolean> {
-    const numericId = typeof userId === "string" ? parseInt(userId, 10) : userId;
+    const numericId = typeof userId === "string" ? parseStrictInteger(userId) : userId;
+    if (numericId == null) {
+      return false;
+    }
 
     // Fast path: check cache
     if (this.cachedSystemUserId !== null) {

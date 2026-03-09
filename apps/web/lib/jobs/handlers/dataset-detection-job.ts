@@ -20,6 +20,7 @@ import { read, utils } from "xlsx";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { Dataset } from "@/payload-types";
 
 import type { DatasetDetectionJobInput } from "../types/job-inputs";
@@ -100,7 +101,7 @@ const handleSingleSheet = async (
   payload: Payload,
   importFile: { id: string | number; originalName?: string | null; metadata?: unknown },
   _sheet: SheetInfo,
-  catalogId?: string,
+  catalogId?: string | number,
   datasetMapping?: { mappingType: string; singleDataset?: unknown }
 ) => {
   let dataset;
@@ -144,7 +145,7 @@ const handleMultipleSheets = async (
   payload: Payload,
   importFile: { id: string | number },
   sheets: SheetInfo[],
-  catalogId?: string,
+  catalogId?: string | number,
   datasetMapping?: { mappingType: string; sheetMappings?: unknown[] }
 ) => {
   const createdJobs = [];
@@ -166,7 +167,7 @@ const processSheetWithMapping = async (
   importFile: { id: string | number },
   sheet: SheetInfo,
   sheetName: string,
-  catalogId?: string,
+  catalogId?: string | number,
   datasetMapping?: { mappingType: string; sheetMappings?: unknown[] }
 ) => {
   let dataset;
@@ -313,9 +314,18 @@ export const datasetDetectionJob = {
 };
 
 // Helper function to get or create catalog
-const getOrCreateCatalog = async (payload: Payload, catalogId?: string): Promise<string> => {
-  if (catalogId) {
+const getOrCreateCatalog = async (payload: Payload, catalogId?: string | number): Promise<number> => {
+  if (typeof catalogId === "number") {
     return catalogId;
+  }
+
+  if (catalogId) {
+    const parsedCatalogId = parseStrictInteger(catalogId);
+    if (parsedCatalogId == null) {
+      throw new Error("Invalid catalog ID");
+    }
+
+    return parsedCatalogId;
   }
 
   // Create new catalog for this import
@@ -343,16 +353,25 @@ const getOrCreateCatalog = async (payload: Payload, catalogId?: string): Promise
     },
   });
 
-  return String(newCatalog.id);
+  if (typeof newCatalog.id === "number") {
+    return newCatalog.id;
+  }
+
+  const parsedCatalogId = parseStrictInteger(String(newCatalog.id));
+  if (parsedCatalogId == null) {
+    throw new Error("Invalid catalog ID");
+  }
+
+  return parsedCatalogId;
 };
 
 // Helper function to find or create dataset
-const findOrCreateDataset = async (payload: Payload, catalogId: string, datasetName: string): Promise<Dataset> => {
+const findOrCreateDataset = async (payload: Payload, catalogId: number, datasetName: string): Promise<Dataset> => {
   // Try to find existing dataset in catalog
   const existingDatasets = await payload.find({
     collection: COLLECTION_NAMES.DATASETS,
     where: {
-      catalog: { equals: parseInt(catalogId, 10) },
+      catalog: { equals: catalogId },
       name: { equals: datasetName },
     },
     limit: 1,
@@ -371,7 +390,7 @@ const findOrCreateDataset = async (payload: Payload, catalogId: string, datasetN
     collection: COLLECTION_NAMES.DATASETS,
     data: {
       name: datasetName,
-      catalog: parseInt(catalogId, 10),
+      catalog: catalogId,
       description: {
         root: {
           type: "root",
