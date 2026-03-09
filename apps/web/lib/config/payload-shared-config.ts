@@ -43,6 +43,7 @@ import {
   dataExportCleanupJob,
   dataExportJob,
   datasetDetectionJob,
+  executeAccountDeletionJob,
   geocodeBatchJob,
   processPendingRetriesJob,
   quotaResetJobConfig,
@@ -126,6 +127,7 @@ export const ALL_JOBS = [
   dataExportJob,
   dataExportCleanupJob,
   auditLogIpCleanupJob,
+  executeAccountDeletionJob,
 ];
 
 // Common upload configuration
