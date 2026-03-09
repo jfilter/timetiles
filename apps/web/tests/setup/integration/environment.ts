@@ -521,6 +521,13 @@ export const runJobsUntilImportJobStage = async (
   };
 };
 
+export const runJobsUntilImportJobExists = async (
+  payload: any,
+  importFileId: string | number,
+  options: RunImportJobStageOptions = {}
+): Promise<RunImportJobStageResult> =>
+  runJobsUntilImportJobStage(payload, importFileId, () => true, options);
+
 /**
  * Create a test catalog with smart defaults.
  *

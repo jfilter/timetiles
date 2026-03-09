@@ -1048,63 +1048,74 @@ describe.sequential("Scheduled Imports Integration", () => {
       });
     });
 
-    it("should handle timeout properly", { timeout: 20000 }, async () => {
-      const scheduledImport = await payload.create({
-        collection: "scheduled-imports",
-        data: {
-          name: "Timeout Test Import",
-          enabled: true,
-          sourceUrl: `${testServerUrl}/timeout-test`,
-          authConfig: { type: "none" },
-          catalog: testCatalog.id,
-          scheduleType: "frequency",
-          frequency: "daily",
-          advancedOptions: {
-            timeoutMinutes: 1, // Minimum allowed value
+    it("should handle timeout properly", { timeout: 5000 }, async () => {
+      const previousTestTimeout = process.env.URL_FETCH_TEST_TIMEOUT_MS;
+      process.env.URL_FETCH_TEST_TIMEOUT_MS = "300";
+
+      try {
+        const scheduledImport = await payload.create({
+          collection: "scheduled-imports",
+          data: {
+            name: "Timeout Test Import",
+            enabled: true,
+            sourceUrl: `${testServerUrl}/timeout-test`,
+            authConfig: { type: "none" },
+            catalog: testCatalog.id,
+            scheduleType: "frequency",
+            frequency: "daily",
+            advancedOptions: {
+              timeoutMinutes: 1, // Minimum allowed value
+            },
           },
-        },
-        user: testUser,
-      });
+          user: testUser,
+        });
 
-      // Set up a slow endpoint that will timeout
-      testServer.respond("/timeout-test", {
-        delay: 60000, // 60 second delay will cause timeout
-        status: 200,
-        body: "Should timeout",
-      });
+        // Set up a slow endpoint that will timeout
+        testServer.respond("/timeout-test", {
+          delay: 1000,
+          status: 200,
+          body: "Should timeout",
+        });
 
-      const result = await urlFetchJob.handler({
-        input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
-          catalogId: testCatalog.id,
-          originalName: "Timeout Test",
-        },
-        job: { id: "job-timeout" },
-        req: { payload },
-      });
+        const result = await urlFetchJob.handler({
+          input: {
+            scheduledImportId: scheduledImport.id,
+            sourceUrl: scheduledImport.sourceUrl,
+            authConfig: scheduledImport.authConfig,
+            catalogId: testCatalog.id,
+            originalName: "Timeout Test",
+          },
+          job: { id: "job-timeout" },
+          req: { payload },
+        });
 
-      expect(result.output.success).toBe(false);
-      const failureOutput = result.output as UrlFetchFailureOutput;
-      expect(failureOutput.error).toMatch(/timeout/i);
+        expect(result.output.success).toBe(false);
+        const failureOutput = result.output as UrlFetchFailureOutput;
+        expect(failureOutput.error).toMatch(/timeout/i);
 
-      // Verify scheduled import was updated with failure
-      const updated = await payload.findByID({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
-      });
+        // Verify scheduled import was updated with failure
+        const updated = await payload.findByID({
+          collection: "scheduled-imports",
+          id: scheduledImport.id,
+        });
 
-      expect(updated).toMatchObject({
-        lastStatus: "failed",
-        lastError: expect.stringContaining("timeout"),
-        currentRetries: 1,
-        statistics: expect.objectContaining({
-          totalRuns: 1,
-          failedRuns: 1,
-          successfulRuns: 0,
-        }),
-      });
+        expect(updated).toMatchObject({
+          lastStatus: "failed",
+          lastError: expect.stringContaining("timeout"),
+          currentRetries: 1,
+          statistics: expect.objectContaining({
+            totalRuns: 1,
+            failedRuns: 1,
+            successfulRuns: 0,
+          }),
+        });
+      } finally {
+        if (previousTestTimeout === undefined) {
+          delete process.env.URL_FETCH_TEST_TIMEOUT_MS;
+        } else {
+          process.env.URL_FETCH_TEST_TIMEOUT_MS = previousTestTimeout;
+        }
+      }
     });
   });
 

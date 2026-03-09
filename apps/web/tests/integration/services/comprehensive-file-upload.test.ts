@@ -36,6 +36,8 @@ import { logger } from "@/lib/logger";
 
 import {
   createIntegrationTestEnvironment,
+  runJobsUntilImportJobExists,
+  runJobsUntilImportJobStage,
   runJobsUntilImportSettled,
   withCatalog,
   withDataset,
@@ -90,6 +92,12 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     return dataset;
   };
 
+  const getImportJobs = async (importFileId: string | number) =>
+    payload.find({
+      collection: "import-jobs",
+      where: { importFile: { equals: importFileId } },
+    });
+
   const runJobsUntilComplete = async (importFileId: string, maxIterations = 50) => {
     const result = await runJobsUntilImportSettled(payload, importFileId, {
       maxIterations,
@@ -111,6 +119,44 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     });
 
     return result.settled;
+  };
+
+  const waitForImportJob = async (importFileId: string | number, maxIterations = 50) => {
+    const result = await runJobsUntilImportJobExists(payload, importFileId, { maxIterations });
+
+    if (!result.matched || !result.importJob) {
+      throw new Error(`Import job was not created for import file ${String(importFileId)}`);
+    }
+
+    return result.importJob;
+  };
+
+  const waitForImportJobStage = async (importFileId: string | number, stage: string, maxIterations = 50) => {
+    const result = await runJobsUntilImportJobStage(
+      payload,
+      importFileId,
+      (importJob) => importJob.stage === stage,
+      { maxIterations }
+    );
+
+    if (!result.matched || !result.importJob) {
+      throw new Error(`Import job did not reach ${stage} for import file ${String(importFileId)}`);
+    }
+
+    return result.importJob;
+  };
+
+  const linkImportJobToDataset = async (importFileId: string | number, datasetId: string | number) => {
+    const importJob = await waitForImportJob(importFileId);
+
+    await payload.update({
+      collection: "import-jobs",
+      id: importJob.id,
+      data: { dataset: datasetId },
+    });
+
+    logger.debug(`✓ Linked import job to dataset: ${datasetId}`);
+    return importJob;
   };
 
   const simulateSchemaApproval = async (importJobId: string, approved: boolean) => {
@@ -173,9 +219,6 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       });
 
       logger.debug(`✓ Created Excel import file: ${importFile.id}`);
-
-      // Wait for file to be written and hook to trigger
-      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Run jobs until completion
       const completed = await runJobsUntilComplete(importFile.id);
@@ -254,9 +297,6 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       });
 
       logger.debug(`✓ Created ODS import file: ${importFile.id}`);
-
-      // Wait for file to be written and hook to trigger
-      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Run jobs until completion
       const completed = await runJobsUntilComplete(importFile.id);
@@ -371,15 +411,11 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         });
 
-        // Wait for processing
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await payload.jobs.run({ allQueues: true });
+        const result = await runJobsUntilImportSettled(payload, importFile.id);
 
         // Check that processing failed gracefully
-        const failedFile = await payload.findByID({
-          collection: "import-files",
-          id: importFile.id,
-        });
+        expect(result.settled).toBe(true);
+        const failedFile = result.importFile;
 
         expect(failedFile.status).toBe("failed");
         logger.debug("✓ Corrupted Excel file handled gracefully");
@@ -411,53 +447,13 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           filename: "approval-test.csv",
         });
 
-        // Wait for dataset-detection job to create import-job, then link it to our specific dataset
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await payload.jobs.run({ allQueues: true });
-
-        // Update the import job to use our specific dataset instead of auto-created one
-        const initialJobs = await payload.find({
-          collection: "import-jobs",
-          where: { importFile: { equals: importFile.id } },
-        });
-
-        if (initialJobs.docs.length > 0) {
-          await payload.update({
-            collection: "import-jobs",
-            id: initialJobs.docs[0].id,
-            data: { dataset: dataset.id },
-          });
-          logger.debug(`✓ Linked import job to locked dataset: ${dataset.id}`);
-        }
-
-        // Run jobs until they stop (should stop at approval)
-        let stopped = false;
-        let iterations = 0;
-        while (!stopped && iterations < 30) {
-          await payload.jobs.run({ allQueues: true });
-
-          const currentJobs = await payload.find({
-            collection: "import-jobs",
-            where: { importFile: { equals: importFile.id } },
-          });
-
-          if (currentJobs.docs.length > 0) {
-            const job = currentJobs.docs[0];
-            stopped = job.stage === PROCESSING_STAGE.AWAIT_APPROVAL;
-          }
-
-          iterations++;
-          if (!stopped) await new Promise((resolve) => setTimeout(resolve, 100));
-        }
+        await linkImportJobToDataset(importFile.id, dataset.id);
 
         // Verify job is waiting for approval
-        const finalJobs = await payload.find({
-          collection: "import-jobs",
-          where: { importFile: { equals: importFile.id } },
-        });
+        const job = await waitForImportJobStage(importFile.id, PROCESSING_STAGE.AWAIT_APPROVAL, 30);
 
+        const finalJobs = await getImportJobs(importFile.id);
         expect(finalJobs.docs.length).toBe(1);
-        const job = finalJobs.docs[0];
         expect(job.stage).toBe(PROCESSING_STAGE.AWAIT_APPROVAL);
         expect(job.schemaValidation?.requiresApproval).toBe(true);
 
@@ -486,117 +482,27 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           filename: "approval-continue.csv",
         });
 
-        // Wait for dataset-detection job to create import-job, then link it to our specific dataset
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await payload.jobs.run({ allQueues: true });
-
-        // Update the import job to use our specific dataset instead of auto-created one
-        const continueInitialJobs = await payload.find({
-          collection: "import-jobs",
-          where: { importFile: { equals: importFile.id } },
-        });
-
-        if (continueInitialJobs.docs.length > 0) {
-          await payload.update({
-            collection: "import-jobs",
-            id: continueInitialJobs.docs[0].id,
-            data: { dataset: dataset.id },
-          });
-          logger.debug(`✓ Linked import job to approval-required dataset: ${dataset.id}`);
-        }
-
-        // Run until approval required
-        let awaitingApproval = false;
-        let attempts = 0;
-        while (!awaitingApproval && attempts < 20) {
-          await payload.jobs.run({ allQueues: true });
-
-          const continueCurrentJobs = await payload.find({
-            collection: "import-jobs",
-            where: { importFile: { equals: importFile.id } },
-          });
-
-          if (continueCurrentJobs.docs.length > 0) {
-            awaitingApproval = continueCurrentJobs.docs[0].stage === PROCESSING_STAGE.AWAIT_APPROVAL;
-          }
-
-          attempts++;
-          if (!awaitingApproval) await new Promise((resolve) => setTimeout(resolve, 100));
-        }
+        await linkImportJobToDataset(importFile.id, dataset.id);
 
         // Get the job requiring approval
-        const continueApprovalJobs = await payload.find({
-          collection: "import-jobs",
-          where: { importFile: { equals: importFile.id } },
-        });
-
-        const job = continueApprovalJobs.docs[0];
+        const job = await waitForImportJobStage(importFile.id, PROCESSING_STAGE.AWAIT_APPROVAL, 30);
         expect(job.stage).toBe(PROCESSING_STAGE.AWAIT_APPROVAL);
 
         // Approve the schema (this now properly triggers the approval workflow)
         await simulateSchemaApproval(job.id, true);
         logger.debug("✓ Schema approval update sent");
 
-        // Wait for hooks to process the approval update
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // Check job status before running jobs
-        const jobBeforeRun = await payload.findByID({
-          collection: "import-jobs",
-          id: job.id,
-        });
-        logger.debug("Job before running jobs:", {
-          stage: jobBeforeRun.stage,
-          approved: jobBeforeRun.schemaValidation?.approved,
-        });
-
-        // Run jobs to process the schema version creation
-        await payload.jobs.run({ allQueues: true, limit: 10 });
-
-        // Check job status after first run
-        const jobAfterRun = await payload.findByID({
-          collection: "import-jobs",
-          id: job.id,
-        });
-        logger.debug("Job after running jobs:", {
-          stage: jobAfterRun.stage,
-          schemaVersionId: jobAfterRun.datasetSchemaVersion,
-        });
-
-        // Check if there are any queued jobs
-        const queuedJobs = await payload.find({
-          collection: "payload-jobs",
-          limit: 10,
-        });
-        logger.debug(
-          "Queued jobs:",
-          queuedJobs.docs.map((j: any) => ({
-            id: j.id,
-            taskSlug: j.taskSlug,
-            processing: j.processing,
-            completed: j.completedAt,
-            error: j.error,
-            input: j.input,
-          }))
+        const resumedJob = await runJobsUntilImportJobStage(
+          payload,
+          importFile.id,
+          (importJob) => importJob.stage !== PROCESSING_STAGE.AWAIT_APPROVAL,
+          { maxIterations: 30 }
         );
-
-        // Check specifically for CREATE_SCHEMA_VERSION job
-        const schemaVersionJobs = queuedJobs.docs.filter((j: any) => j.taskSlug === "create-schema-version");
-        logger.debug(`Found ${schemaVersionJobs.length} CREATE_SCHEMA_VERSION jobs`);
-
-        if (schemaVersionJobs.length === 0) {
-          logger.error("❌ No CREATE_SCHEMA_VERSION job was queued - this is the problem!");
-          logger.error("Job approval details:", jobBeforeRun.schemaValidation);
-        }
-
-        // Check the job status after approval processing
-        const postApprovalJob = await payload.findByID({
-          collection: "import-jobs",
-          id: job.id,
+        expect(resumedJob.matched).toBe(true);
+        logger.debug("Job resumed after approval", {
+          stage: resumedJob.importJob?.stage,
+          schemaVersionId: resumedJob.importJob?.datasetSchemaVersion,
         });
-
-        logger.debug(`Job stage after approval processing: ${postApprovalJob.stage}`);
-        logger.debug(`Job approval status: ${postApprovalJob.schemaValidation?.approved}`);
 
         // Continue processing until completion
         const finalCompleted = await runJobsUntilComplete(importFile.id, 100);
@@ -635,65 +541,34 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       const csvContent = `title,date,location,optional_field
 "Auto Event","2024-01-01","Auto Location","Optional Data"`;
 
-      const csvFileName = `auto-approve-${Date.now()}.csv`;
-      const importDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR}/import-files`);
-      if (!fs.existsSync(importDir)) {
-        fs.mkdirSync(importDir, { recursive: true });
-      }
-      const importPath = path.join(importDir, csvFileName);
-      fs.writeFileSync(importPath, csvContent, "utf8");
+      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+        filename: "auto-approve.csv",
+      });
 
-      try {
-        const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
-          filename: "auto-approve.csv",
-        });
+      await linkImportJobToDataset(importFile.id, dataset.id);
 
-        // Wait for dataset-detection job to create import-job, then link it to our specific dataset
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await payload.jobs.run({ allQueues: true });
+      // Process completely without manual intervention
+      const completed = await runJobsUntilComplete(importFile.id);
+      expect(completed).toBe(true);
 
-        // Update the import job to use our specific dataset instead of auto-created one
-        const autoInitialJobs = await payload.find({
-          collection: "import-jobs",
-          where: { importFile: { equals: importFile.id } },
-        });
+      // Verify it never stopped for approval
+      const autoCompletedJobs = await payload.find({
+        collection: "import-jobs",
+        where: { importFile: { equals: importFile.id } },
+      });
 
-        if (autoInitialJobs.docs.length > 0) {
-          await payload.update({
-            collection: "import-jobs",
-            id: autoInitialJobs.docs[0].id,
-            data: { dataset: dataset.id },
-          });
-          logger.debug(`✓ Linked import job to auto-approval dataset: ${dataset.id}`);
-        }
+      const job = autoCompletedJobs.docs[0];
+      expect(job.stage).toBe(PROCESSING_STAGE.COMPLETED);
+      expect(job.schemaValidation?.requiresApproval).toBe(false);
 
-        // Process completely without manual intervention
-        const completed = await runJobsUntilComplete(importFile.id);
-        expect(completed).toBe(true);
+      // Verify final status
+      const finalImportFile = await payload.findByID({
+        collection: "import-files",
+        id: importFile.id,
+      });
+      expect(finalImportFile.status).toBe("completed");
 
-        // Verify it never stopped for approval
-        const autoCompletedJobs = await payload.find({
-          collection: "import-jobs",
-          where: { importFile: { equals: importFile.id } },
-        });
-
-        const job = autoCompletedJobs.docs[0];
-        expect(job.stage).toBe(PROCESSING_STAGE.COMPLETED);
-        expect(job.schemaValidation?.requiresApproval).toBe(false);
-
-        // Verify final status
-        const finalImportFile = await payload.findByID({
-          collection: "import-files",
-          id: importFile.id,
-        });
-        expect(finalImportFile.status).toBe("completed");
-
-        logger.debug("✓ Schema auto-approved and pipeline completed");
-      } finally {
-        if (fs.existsSync(importPath)) {
-          fs.unlinkSync(importPath);
-        }
-      }
+      logger.debug("✓ Schema auto-approved and pipeline completed");
     });
 
     it("should handle schema rejection properly", async () => {
@@ -713,51 +588,10 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           filename: "rejection-test.csv",
         });
 
-        // Wait for dataset-detection job to create import-job, then link it to our specific dataset
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await payload.jobs.run({ allQueues: true });
-
-        // Update the import job to use our specific dataset instead of auto-created one
-        const rejectInitialJobs = await payload.find({
-          collection: "import-jobs",
-          where: { importFile: { equals: importFile.id } },
-        });
-
-        if (rejectInitialJobs.docs.length > 0) {
-          await payload.update({
-            collection: "import-jobs",
-            id: rejectInitialJobs.docs[0].id,
-            data: { dataset: dataset.id },
-          });
-          logger.debug(`✓ Linked import job to rejection test dataset: ${dataset.id}`);
-        }
-
-        // Run until approval required
-        let awaitingApproval = false;
-        let attempts = 0;
-        while (!awaitingApproval && attempts < 20) {
-          await payload.jobs.run({ allQueues: true });
-
-          const rejectCurrentJobs = await payload.find({
-            collection: "import-jobs",
-            where: { importFile: { equals: importFile.id } },
-          });
-
-          if (rejectCurrentJobs.docs.length > 0) {
-            awaitingApproval = rejectCurrentJobs.docs[0].stage === PROCESSING_STAGE.AWAIT_APPROVAL;
-          }
-
-          attempts++;
-          if (!awaitingApproval) await new Promise((resolve) => setTimeout(resolve, 100));
-        }
+        await linkImportJobToDataset(importFile.id, dataset.id);
 
         // Get job and reject the schema
-        const rejectJobQuery = await payload.find({
-          collection: "import-jobs",
-          where: { importFile: { equals: importFile.id } },
-        });
-
-        const job = rejectJobQuery.docs[0];
+        const job = await waitForImportJobStage(importFile.id, PROCESSING_STAGE.AWAIT_APPROVAL, 30);
         await simulateSchemaApproval(job.id, false); // Reject
         logger.debug("✓ Schema rejected manually");
 

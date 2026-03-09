@@ -194,7 +194,10 @@ const prepareFetchOptions = (scheduledImport: ScheduledImport | null) => {
   const timeoutMinutes = scheduledImport?.advancedOptions?.timeoutMinutes ?? 30;
   // Use much shorter timeout in test environment (3 seconds instead of minutes)
   const isTestEnv = process.env.NODE_ENV === "test";
-  const timeout = isTestEnv ? 3000 : timeoutMinutes * 60 * 1000;
+  const configuredTestTimeout = Number(process.env.URL_FETCH_TEST_TIMEOUT_MS ?? "3000");
+  const testTimeout =
+    Number.isFinite(configuredTestTimeout) && configuredTestTimeout > 0 ? configuredTestTimeout : 3000;
+  const timeout = isTestEnv ? testTimeout : timeoutMinutes * 60 * 1000;
 
   // Determine max file size from config
   const maxFileSizeMB = scheduledImport?.advancedOptions?.maxFileSizeMB;

@@ -86,7 +86,7 @@ const startTestServer = async (): Promise<void> => {
           file: "multi-sheet.xlsx",
           contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         },
-        "/timeout.csv": { file: "valid-events.csv", contentType: "text/csv", delay: 5000 }, // For timeout test
+        "/timeout.csv": { file: "valid-events.csv", contentType: "text/csv", delay: 1000 }, // For timeout test
         "/500-error.csv": { status: 500, message: "Internal Server Error" }, // For error test
         "/wrong-type.html": { file: "valid-events.csv", contentType: "text/html" }, // Wrong content type
       };
@@ -977,27 +977,37 @@ describe.sequential("Webhook Import Service Integration", () => {
 
   describe("Error Handling", () => {
     it("should handle fetch timeouts", async () => {
-      const result = await urlFetchJob.handler({
-        req: { payload },
-        job: {
-          id: `job-timeout-${Date.now()}`,
-          task: JOB_TYPES.URL_FETCH,
-          input: {
-            scheduledImportId: testScheduledImport.id,
-            sourceUrl: `http://localhost:${testServerPort}/timeout.csv`,
-            catalogId: testCatalog.id,
-            originalName: "Timeout Test",
-            userId: testUser.id,
-            triggeredBy: "webhook",
-          },
-        },
-      });
+      const previousTestTimeout = process.env.URL_FETCH_TEST_TIMEOUT_MS;
+      process.env.URL_FETCH_TEST_TIMEOUT_MS = "300";
 
-      // Timeout test may succeed if server responds before timeout
-      // Just check that the result has the expected structure
-      expect(result.output).toHaveProperty("success");
-      if (!result.output.success) {
-        expect("error" in result.output && result.output.error).toContain("timeout");
+      try {
+        const result = await urlFetchJob.handler({
+          req: { payload },
+          job: {
+            id: `job-timeout-${Date.now()}`,
+            task: JOB_TYPES.URL_FETCH,
+            input: {
+              scheduledImportId: testScheduledImport.id,
+              sourceUrl: `http://localhost:${testServerPort}/timeout.csv`,
+              catalogId: testCatalog.id,
+              originalName: "Timeout Test",
+              userId: testUser.id,
+              triggeredBy: "webhook",
+            },
+          },
+        });
+
+        expect(result.output.success).toBe(false);
+        if (!result.output.success) {
+          const failureOutput = result.output as { error: string };
+          expect(failureOutput.error).toContain("timeout");
+        }
+      } finally {
+        if (previousTestTimeout === undefined) {
+          delete process.env.URL_FETCH_TEST_TIMEOUT_MS;
+        } else {
+          process.env.URL_FETCH_TEST_TIMEOUT_MS = previousTestTimeout;
+        }
       }
     });
 

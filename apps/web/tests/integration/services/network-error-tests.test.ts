@@ -263,51 +263,62 @@ describe.sequential("Network Error Handling Tests", () => {
     });
 
     it("should handle connection timeout", async () => {
-      // Create a server that accepts connections but never responds
-      await createTestServer(() => {
-        // Don't respond, causing a timeout
-        // The connection is established but no data is sent
-      });
+      const previousTestTimeout = process.env.URL_FETCH_TEST_TIMEOUT_MS;
+      process.env.URL_FETCH_TEST_TIMEOUT_MS = "300";
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/slow-file.csv`, {
-        user: testUser,
-        name: "Timeout Import",
-        frequency: "daily",
-        maxRetries: 0, // No retries for timeout test to avoid exceeding test timeout
-        retryDelayMinutes: 1, // Minimum allowed
-        additionalData: {
-          advancedOptions: {
-            timeoutMinutes: 1, // Minimum allowed (in test env this becomes 3 seconds)
+      try {
+        // Create a server that accepts connections but never responds
+        await createTestServer(() => {
+          // Don't respond, causing a timeout
+          // The connection is established but no data is sent
+        });
+
+        const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/slow-file.csv`, {
+          user: testUser,
+          name: "Timeout Import",
+          frequency: "daily",
+          maxRetries: 0, // No retries for timeout test to avoid exceeding test timeout
+          retryDelayMinutes: 1, // Minimum allowed
+          additionalData: {
+            advancedOptions: {
+              timeoutMinutes: 1, // Minimum allowed (overridden to 300ms for this test)
+            },
+            retryConfig: {
+              maxRetries: 0, // No retries for timeout test to avoid exceeding test timeout
+              retryDelayMinutes: 1, // Minimum allowed
+              exponentialBackoff: false,
+            },
           },
-          retryConfig: {
-            maxRetries: 0, // No retries for timeout test to avoid exceeding test timeout
-            retryDelayMinutes: 1, // Minimum allowed
-            exponentialBackoff: false,
+        });
+
+        // Execute the job - should timeout quickly via the test override
+        const result = await urlFetchJob.handler({
+          job: { id: "test-job-4" },
+          req: { payload },
+          input: {
+            scheduledImportId: scheduledImport.id,
+            sourceUrl: scheduledImport.sourceUrl,
+            authConfig: scheduledImport.authConfig,
+            catalogId: testCatalogId as any,
+            originalName: "Test Import",
+            userId: testUser.id,
           },
-        },
-      });
+        });
 
-      // Execute the job - should timeout in 3 seconds (test environment timeout)
-      const result = await urlFetchJob.handler({
-        job: { id: "test-job-4" },
-        req: { payload },
-        input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
-          catalogId: testCatalogId as any,
-          originalName: "Test Import",
-          userId: testUser.id,
-        },
-      });
-
-      // Should fail due to timeout
-      expect(result.output.success).toBe(false);
-      if (!result.output.success) {
-        const failureOutput = result.output as UrlFetchFailureOutput;
-        expect(failureOutput.error).toMatch(/abort|timeout|fetch failed/i);
+        // Should fail due to timeout
+        expect(result.output.success).toBe(false);
+        if (!result.output.success) {
+          const failureOutput = result.output as UrlFetchFailureOutput;
+          expect(failureOutput.error).toMatch(/abort|timeout|fetch failed/i);
+        }
+      } finally {
+        if (previousTestTimeout === undefined) {
+          delete process.env.URL_FETCH_TEST_TIMEOUT_MS;
+        } else {
+          process.env.URL_FETCH_TEST_TIMEOUT_MS = previousTestTimeout;
+        }
       }
-    }, 8000); // Allow 8 seconds for the test (3s timeout + buffer)
+    }, 4000);
   });
 
   describe("HTTP Error Responses", () => {
