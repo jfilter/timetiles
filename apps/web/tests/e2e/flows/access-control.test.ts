@@ -318,6 +318,8 @@ test.describe("Access Control - User Perspective", () => {
 });
 
 test.describe("Access Control - Error Handling", () => {
+  // These tests need unauthenticated state to verify error handling
+  test.use({ storageState: { cookies: [], origins: [] } });
   test("should show user-friendly error for unauthorized access", async ({ page }) => {
     // Try to navigate to dashboard with increased timeout for JS bundle loading
     await page.goto("/dashboard", { timeout: 10000 });
