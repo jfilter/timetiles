@@ -9,6 +9,7 @@
  * @category Utils
  */
 import type { MapBounds } from "@/lib/geospatial";
+import { normalizeEndDate } from "@/lib/services/aggregation-filters";
 
 import type { BaseEventParameters } from "./event-params";
 
@@ -106,8 +107,9 @@ export const buildEventFilters = ({
   if (parameters.startDate != null) {
     filters.startDate = parameters.startDate;
   }
-  if (parameters.endDate != null) {
-    filters.endDate = parameters.endDate;
+  const normalizedEndDate = normalizeEndDate(parameters.endDate);
+  if (normalizedEndDate != null) {
+    filters.endDate = normalizedEndDate;
   }
 
   // Apply bounds filter
@@ -166,8 +168,9 @@ export const buildMapClusterFilters = (
   if (parameters.startDate != null) {
     filters.startDate = parameters.startDate;
   }
-  if (parameters.endDate != null) {
-    filters.endDate = parameters.endDate;
+  const normalizedEndDate = normalizeEndDate(parameters.endDate);
+  if (normalizedEndDate != null) {
+    filters.endDate = normalizedEndDate;
   }
 
   // Apply field filters for categorical filtering
