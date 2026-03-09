@@ -13,6 +13,11 @@
 import { expect, test } from "../fixtures";
 
 test.describe("Navbar Authentication", () => {
+  // Auth tests need unauthenticated state to test login/logout flows
+  test.use({ storageState: { cookies: [], origins: [] } });
+  // Login/logout tests depend on each other's state
+  test.describe.configure({ mode: "serial" });
+
   test.describe("Sign In Flow", () => {
     test("should show Sign In button for unauthenticated users", async ({ page }) => {
       // Go to home page
@@ -158,7 +163,7 @@ test.describe("Navbar Authentication", () => {
       await signOutItem.click();
 
       // Wait for logout to process and reload page to update server components
-      await page.waitForTimeout(1000);
+      await page.waitForResponse((resp) => resp.url().includes("/api/users/logout"), { timeout: 5000 }).catch(() => {});
       await page.reload();
       await page.waitForLoadState("domcontentloaded");
 

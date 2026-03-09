@@ -219,8 +219,28 @@ export default async function globalSetup(): Promise<void> {
     });
   }
 
-  // Wait for worker to fully initialize (Payload connection takes time)
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  // Wait for worker to signal readiness (falls back to 15s timeout)
+  await new Promise<void>((resolve) => {
+    const timeout = setTimeout(() => {
+      console.log(`   ⚠️ Job worker readiness timeout, continuing anyway...`);
+      resolve();
+    }, 15000);
+
+    workerProcess?.stdout?.on("data", (data: Buffer) => {
+      if (data.toString().includes("starting job loop")) {
+        clearTimeout(timeout);
+        resolve();
+      }
+    });
+
+    workerProcess?.on("exit", (code) => {
+      clearTimeout(timeout);
+      if (code !== 0) {
+        console.error(`   ⚠️ Job worker exited with code ${code}`);
+      }
+      resolve();
+    });
+  });
   console.log(`✅ Job worker started`);
 
   // Store server info for teardown and workers

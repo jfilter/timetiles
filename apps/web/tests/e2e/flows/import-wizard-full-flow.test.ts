@@ -20,6 +20,9 @@ const __dirname = path.dirname(__filename);
 const FIXTURES_PATH = path.join(__dirname, "../../fixtures");
 
 test.describe("Import Wizard - Full Flow", () => {
+  // Full flow tests create data — run sequentially
+  test.describe.configure({ mode: "serial" });
+
   let importPage: ImportPage;
 
   test.beforeEach(({ page }) => {
@@ -35,10 +38,9 @@ test.describe("Import Wizard - Full Flow", () => {
       const uniqueId = Date.now();
       const catalogName = `E2E English Catalog ${uniqueId}`;
 
-      // Step 1: Navigate and login
+      // Step 1: Navigate (auth provided by storageState)
       await importPage.goto();
       await importPage.waitForWizardLoad();
-      await importPage.login("admin@example.com", "admin123");
 
       // Step 2: Upload file
       const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
@@ -172,10 +174,9 @@ test.describe("Import Wizard - Full Flow", () => {
       const uniqueId = Date.now();
       const catalogName = `E2E German Catalog ${uniqueId}`;
 
-      // Step 1: Navigate and login
+      // Step 1: Navigate (auth provided by storageState)
       await importPage.goto();
       await importPage.waitForWizardLoad();
-      await importPage.login("admin@example.com", "admin123");
 
       // Step 2: Upload German CSV file
       const csvPath = path.join(FIXTURES_PATH, "events-german-locations.csv");
@@ -295,22 +296,18 @@ test.describe("Import Wizard - Full Flow", () => {
 
   test.describe("State Persistence", () => {
     test("should persist state across page refresh", async ({ page }) => {
-      // Step 1: Login and upload
+      // Step 1: Upload (auth provided by storageState)
       await importPage.goto();
       await importPage.waitForWizardLoad();
-      await importPage.login("admin@example.com", "admin123");
 
       const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
       await importPage.uploadFile(csvPath);
-      await page.waitForTimeout(2000);
 
       // Verify file is shown
-      const uploadedContent = await page.content();
-      expect(uploadedContent.toLowerCase()).toContain("valid-events.csv");
+      await expect(page.getByText("valid-events.csv")).toBeVisible({ timeout: 5000 });
 
       // Navigate to dataset selection
       await importPage.clickNext();
-      await page.waitForTimeout(1000);
 
       // Create a new catalog (handles both fresh DB and existing catalogs)
       await importPage.createNewCatalog("Persistence Test Catalog");
@@ -318,9 +315,6 @@ test.describe("Import Wizard - Full Flow", () => {
       // Refresh the page
       await page.reload();
       await importPage.waitForWizardLoad();
-
-      // Wait for page to restore state
-      await page.waitForTimeout(2000);
 
       // Verify state was restored - should still be on step 3 or have file info
       const restoredContent = await page.content();

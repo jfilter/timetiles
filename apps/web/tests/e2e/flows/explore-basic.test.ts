@@ -47,12 +47,9 @@ test.describe("Explore Page - Basic Functionality", () => {
     await expect(explorePage.map).toHaveAttribute("aria-label", "Map");
   });
 
-  test("should display empty states correctly", async ({ page }) => {
+  test("should display empty states correctly", async () => {
     // Wait for the page to fully load and events to be fetched
     await explorePage.waitForEventsToLoad();
-
-    // Wait a bit for React to settle after loading
-    await page.waitForTimeout(1000);
 
     // New UI format: "Showing X of Y events" or "Showing all X events"
     // The events count paragraph is always visible, showing the current state
@@ -91,7 +88,7 @@ test.describe("Explore Page - Basic Functionality", () => {
 
     // Mobile view - stacked (if implemented)
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.waitForTimeout(500); // Wait for responsive changes
+    await explorePage.map.waitFor({ state: "visible", timeout: 5000 });
 
     // Both sections should still be visible
     await expect(explorePage.map).toBeVisible();
@@ -117,10 +114,6 @@ test.describe("Explore Page - Basic Functionality", () => {
 
     // Tab to navigate through interactive elements
     await page.keyboard.press("Tab");
-
-    // The first tabbable element should be the catalog select
-    // Wait a bit for focus to settle
-    await page.waitForTimeout(100);
 
     // Check if we can interact with form elements via keyboard
     const focusedElement = await page.evaluate(() => {
@@ -149,7 +142,7 @@ test.describe("Explore Page - Basic Functionality", () => {
   test("should show loading state while fetching events", async ({ page }) => {
     // Set up slow API response BEFORE navigation to capture loading state
     await page.route("**/api/events/**", async (route) => {
-      await page.waitForTimeout(2000); // Delay response to see loading state
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // Delay response to see loading state
       await route.fulfill({
         status: 200,
         contentType: "application/json",

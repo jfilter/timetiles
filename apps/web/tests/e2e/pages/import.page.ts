@@ -139,8 +139,11 @@ export class ImportPage {
       localStorage.removeItem("timetiles_import_wizard_draft");
     });
 
-    // Wait for page to settle (don't reload - it breaks login flow)
-    await this.page.waitForLoadState("networkidle");
+    // Wait for wizard UI to render (auth form or upload form)
+    await this.page
+      .locator('[data-testid="step-auth"], [data-testid="step-upload"]')
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
   }
 
   /**
@@ -149,8 +152,11 @@ export class ImportPage {
   async waitForWizardLoad(): Promise<void> {
     // Wait for the page to be fully interactive
     await this.page.waitForLoadState("domcontentloaded");
-    // Wait a bit for React to hydrate
-    await this.page.waitForTimeout(500);
+    // Wait for wizard UI to be interactive (either auth form or upload form)
+    await this.page
+      .locator('[data-testid="step-auth"], [data-testid="step-upload"]')
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
   }
 
   /**
@@ -162,34 +168,21 @@ export class ImportPage {
     const signInHeading = this.page.getByRole("heading", { name: /sign in to continue/i });
     const uploadHeading = this.page.getByRole("heading", { name: /upload your data/i });
 
-    // Wait for either sign-in or upload heading to be visible (with timeout)
-    const maxInitialWait = 10000;
-    const startInitialWait = Date.now();
-    let onAuthStep = false;
-    let onUploadStep = false;
-
-    while (Date.now() - startInitialWait < maxInitialWait) {
-      onAuthStep = await signInHeading.isVisible().catch(() => false);
-      onUploadStep = await uploadHeading.isVisible().catch(() => false);
-
-      if (onAuthStep || onUploadStep) {
-        break;
-      }
-      await this.page.waitForTimeout(200);
-    }
+    // Wait for either sign-in or upload heading to be visible
+    await signInHeading
+      .or(uploadHeading)
+      .waitFor({ state: "visible", timeout: 10000 })
+      .catch(async () => {
+        const pageContent = await this.page.content();
+        throw new Error(
+          `Login failed: Page is not showing auth step or upload step. ` +
+            `Page content includes: ${pageContent.substring(0, 500)}`
+        );
+      });
 
     // If already on upload step, we're done
-    if (onUploadStep) {
+    if (await uploadHeading.isVisible().catch(() => false)) {
       return;
-    }
-
-    // If not on auth step and not on upload step, something is wrong
-    if (!onAuthStep) {
-      const pageContent = await this.page.content();
-      throw new Error(
-        `Login failed: Page is not showing auth step or upload step. ` +
-          `Page content includes: ${pageContent.substring(0, 500)}`
-      );
     }
 
     // Click on sign in tab if visible
@@ -219,26 +212,14 @@ export class ImportPage {
     }
 
     // Wait for the upload heading to appear (wizard advances after client-side auth check)
-    const maxWaitTime = 15000;
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < maxWaitTime) {
-      const uploadVisible = await uploadHeading.isVisible().catch(() => false);
-      if (uploadVisible) {
-        return; // Success!
-      }
-      await this.page.waitForTimeout(500);
-    }
-
-    // Get current page state for better error message
-    const currentUrl = this.page.url();
-    const stillOnAuth = await this.page
-      .getByRole("heading", { name: /sign in to continue/i })
-      .isVisible()
-      .catch(() => false);
-    throw new Error(
-      `Login timed out after ${maxWaitTime}ms. ` + `URL: ${currentUrl}, Still on auth step: ${stillOnAuth}`
-    );
+    await uploadHeading.waitFor({ state: "visible", timeout: 15000 }).catch(async () => {
+      const currentUrl = this.page.url();
+      const stillOnAuth = await this.page
+        .getByRole("heading", { name: /sign in to continue/i })
+        .isVisible()
+        .catch(() => false);
+      throw new Error(`Login timed out after 15000ms. URL: ${currentUrl}, Still on auth step: ${stillOnAuth}`);
+    });
   }
 
   /**
@@ -246,8 +227,11 @@ export class ImportPage {
    */
   async uploadFile(filePath: string): Promise<void> {
     await this.fileInput.setInputFiles(filePath);
-    // Wait for file to be processed
-    await this.page.waitForTimeout(1000);
+    // Wait for file processing indicator (file name displayed or next button enabled)
+    await this.page
+      .locator('[data-testid="uploaded-file-name"], [data-testid="file-info"], button:has-text("Continue")')
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
   }
 
   /**
@@ -344,7 +328,9 @@ export class ImportPage {
           throw new Error(`selectFieldValue: failed to select "${value}" after ${maxAttempts} attempts`);
         // Dismiss any open dropdown before retrying
         await this.page.keyboard.press("Escape");
-        await this.page.waitForTimeout(200);
+        await expect(option)
+          .not.toBeVisible({ timeout: 1000 })
+          .catch(() => {});
       }
     }
   }
@@ -385,7 +371,7 @@ export class ImportPage {
    */
   async clickNext(): Promise<void> {
     await this.nextButton.click();
-    await this.page.waitForTimeout(500);
+    await this.page.waitForLoadState("domcontentloaded");
   }
 
   /**
@@ -393,7 +379,7 @@ export class ImportPage {
    */
   async clickBack(): Promise<void> {
     await this.backButton.click();
-    await this.page.waitForTimeout(500);
+    await this.page.waitForLoadState("domcontentloaded");
   }
 
   /**

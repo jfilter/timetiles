@@ -22,6 +22,9 @@ const __dirname = path.dirname(__filename);
 const FIXTURES_PATH = path.join(__dirname, "../../fixtures");
 
 test.describe("Import Wizard - Authentication", () => {
+  // These tests need unauthenticated state to test login flows
+  test.use({ storageState: { cookies: [], origins: [] } });
+
   let importPage: ImportPage;
 
   test.beforeEach(({ page }) => {
@@ -91,8 +94,8 @@ test.describe("Import Wizard - Authentication", () => {
     await importPage.passwordInput.fill("wrongpassword");
     await importPage.loginButton.click();
 
-    // Wait for error response
-    await page.waitForTimeout(1000);
+    // Wait for login API response
+    await page.waitForResponse((resp) => resp.url().includes("/api/users/login"), { timeout: 5000 });
 
     // Should show error message or still be on auth step
     const pageContent = await page.content();
@@ -117,10 +120,7 @@ test.describe("Import Wizard - File Upload Flow", () => {
     importPage = new ImportPage(page);
     await importPage.goto();
     await importPage.waitForWizardLoad();
-
-    // Login first
-    await importPage.login("admin@example.com", "admin123");
-    await page.waitForTimeout(1000);
+    // Auth provided by storageState — should already be on upload step
   });
 
   test("should display file upload interface after login", async ({ page }) => {
@@ -148,9 +148,6 @@ test.describe("Import Wizard - File Upload Flow", () => {
     // Upload file
     await importPage.uploadFile(csvPath);
 
-    // Wait for file processing
-    await page.waitForTimeout(2000);
-
     // After upload, page should show file details or preview
     const pageContent = await page.content();
     const hasFileInfo =
@@ -168,9 +165,6 @@ test.describe("Import Wizard - File Upload Flow", () => {
     // Upload file
     await importPage.uploadFile(excelPath);
 
-    // Wait for file processing
-    await page.waitForTimeout(2000);
-
     // After upload, page should show file details or preview
     const pageContent = await page.content();
     const hasFileInfo =
@@ -187,7 +181,6 @@ test.describe("Import Wizard - File Upload Flow", () => {
 
     // Upload file
     await importPage.uploadFile(csvPath);
-    await page.waitForTimeout(2000);
 
     // Next button should now be enabled - use the Continue button specifically
     // (exclude Next.js dev tools button by using exact match or data-testid)
@@ -209,18 +202,13 @@ test.describe("Import Wizard - Dataset Selection", () => {
     importPage = new ImportPage(page);
     await importPage.goto();
     await importPage.waitForWizardLoad();
-
-    // Login and upload file
-    await importPage.login("admin@example.com", "admin123");
-    await page.waitForTimeout(1000);
+    // Auth provided by storageState
 
     const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
     await importPage.uploadFile(csvPath);
-    await page.waitForTimeout(2000);
 
     // Click Next to go to dataset selection
     await importPage.clickNext();
-    await page.waitForTimeout(1000);
   });
 
   test("should show catalog selection interface", async ({ page }) => {
@@ -253,18 +241,13 @@ test.describe("Import Wizard - Field Mapping", () => {
     importPage = new ImportPage(page);
     await importPage.goto();
     await importPage.waitForWizardLoad();
-
-    // Login and upload file
-    await importPage.login("admin@example.com", "admin123");
-    await page.waitForTimeout(1000);
+    // Auth provided by storageState
 
     const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
     await importPage.uploadFile(csvPath);
-    await page.waitForTimeout(2000);
 
     // Navigate through to dataset selection step
     await importPage.clickNext();
-    await page.waitForTimeout(1000);
   });
 
   test("should show field mapping interface with detected fields", async ({ page }) => {
@@ -300,23 +283,22 @@ test.describe("Import Wizard - Field Mapping", () => {
 });
 
 test.describe("Import Wizard - Multi-Sheet Excel", () => {
+  // Multi-sheet imports mutate database state — run sequentially
+  test.describe.configure({ mode: "serial" });
+
   let importPage: ImportPage;
 
   test.beforeEach(async ({ page }) => {
     importPage = new ImportPage(page);
     await importPage.goto();
     await importPage.waitForWizardLoad();
-
-    // Login first
-    await importPage.login("admin@example.com", "admin123");
-    await page.waitForTimeout(1000);
+    // Auth provided by storageState
   });
 
   test("should detect multiple sheets in Excel file", async ({ page }) => {
     const multiSheetPath = path.join(FIXTURES_PATH, "multi-sheet.xlsx");
 
     await importPage.uploadFile(multiSheetPath);
-    await page.waitForTimeout(2000);
 
     // Should detect multiple sheets
     const pageContent = await page.content();
@@ -732,17 +714,13 @@ test.describe("Import Wizard - Error Handling", () => {
     importPage = new ImportPage(page);
     await importPage.goto();
     await importPage.waitForWizardLoad();
-
-    // Login first
-    await importPage.login("admin@example.com", "admin123");
-    await page.waitForTimeout(1000);
+    // Auth provided by storageState
   });
 
   test("should handle empty file gracefully", async ({ page }) => {
     const emptyPath = path.join(FIXTURES_PATH, "empty.csv");
 
     await importPage.uploadFile(emptyPath);
-    await page.waitForTimeout(2000);
 
     // Page should still be functional and possibly show an error
     const pageContent = await page.content();
@@ -754,7 +732,6 @@ test.describe("Import Wizard - Error Handling", () => {
     const malformedPath = path.join(FIXTURES_PATH, "malformed-data.csv");
 
     await importPage.uploadFile(malformedPath);
-    await page.waitForTimeout(2000);
 
     // Page should still be functional
     const pageContent = await page.content();
@@ -793,11 +770,7 @@ test.describe("Import Wizard - Browser Navigation", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    // Login
-    await importPage.login("admin@example.com", "admin123");
-    await page.waitForTimeout(1000);
-
-    // Refresh the page
+    // Refresh the page (auth provided by storageState)
     await page.reload();
     await importPage.waitForWizardLoad();
 
@@ -869,6 +842,9 @@ test.describe("Import Wizard - Accessibility", () => {
 });
 
 test.describe("Import Wizard - Full Flow", () => {
+  // Full flow tests mutate database — run sequentially
+  test.describe.configure({ mode: "serial" });
+
   let importPage: ImportPage;
 
   test.beforeEach(({ page }) => {
@@ -883,10 +859,9 @@ test.describe("Import Wizard - Full Flow", () => {
     const uniqueId = Date.now();
     const catalogName = `E2E Test Catalog ${uniqueId}`;
 
-    // Step 1: Navigate and login
+    // Step 1: Navigate (auth provided by storageState)
     await importPage.goto();
     await importPage.waitForWizardLoad();
-    await importPage.login("admin@example.com", "admin123");
 
     // Step 2: Upload file
     const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
@@ -1000,22 +975,18 @@ test.describe("Import Wizard - Full Flow", () => {
   });
 
   test("should persist state across page refresh", async ({ page }) => {
-    // Step 1: Login and upload
+    // Step 1: Upload (auth provided by storageState)
     await importPage.goto();
     await importPage.waitForWizardLoad();
-    await importPage.login("admin@example.com", "admin123");
 
     const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
     await importPage.uploadFile(csvPath);
-    await page.waitForTimeout(2000);
 
     // Verify file is shown
-    const uploadedContent = await page.content();
-    expect(uploadedContent.toLowerCase()).toContain("valid-events.csv");
+    await expect(page.getByText("valid-events.csv")).toBeVisible({ timeout: 5000 });
 
     // Navigate to dataset selection
     await importPage.clickNext();
-    await page.waitForTimeout(1000);
 
     // Create a new catalog (handles both fresh DB and existing catalogs)
     await importPage.createNewCatalog("Persistence Test Catalog");
@@ -1023,9 +994,6 @@ test.describe("Import Wizard - Full Flow", () => {
     // Refresh the page
     await page.reload();
     await importPage.waitForWizardLoad();
-
-    // Wait for page to restore state
-    await page.waitForTimeout(2000);
 
     // Verify state was restored - should still be on step 3 or have file info
     const restoredContent = await page.content();

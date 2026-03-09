@@ -238,8 +238,8 @@ export class ExplorePage {
       await datasetButton.waitFor({ state: "visible", timeout: 10000 });
       // Use force: true to handle any overlay/animation issues
       await datasetButton.click({ force: true, timeout: 10000 });
-      // Wait for UI to update after selection
-      await this.page.waitForTimeout(500);
+      // Wait for API response after selection
+      await this.waitForApiResponse();
     }
   }
 
@@ -248,7 +248,7 @@ export class ExplorePage {
       // New UI: click the dataset button again to deselect
       const datasetButton = this.page.getByRole("button", { name: new RegExp(name, "i") }).first();
       await datasetButton.click();
-      await this.page.waitForTimeout(300);
+      await this.waitForApiResponse();
     }
   }
 
@@ -421,10 +421,7 @@ export class ExplorePage {
     try {
       await this.page.waitForResponse((response) => response.url().includes("/api/events"), { timeout: 2000 });
     } catch {
-      // If no API call within 2s, just wait a brief moment
-      // This handles cases where data is cached or no request is triggered
-      // Note: Don't use networkidle as it's unreliable with SPAs that have polling
-      await this.page.waitForTimeout(500);
+      // If no API call within 2s, data is likely cached — continue immediately
     }
   }
 

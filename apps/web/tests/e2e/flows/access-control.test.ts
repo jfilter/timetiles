@@ -11,6 +11,9 @@ import { expect, test } from "../fixtures";
 import { ExplorePage } from "../pages/explore.page";
 
 test.describe("Access Control - User Perspective", () => {
+  // Access control tests need unauthenticated state to verify public vs private
+  test.use({ storageState: { cookies: [], origins: [] } });
+
   let explorePage: ExplorePage;
 
   test.beforeEach(({ page }) => {

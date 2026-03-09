@@ -2,8 +2,8 @@
  * Playwright E2E test configuration for parallel test execution.
  *
  * Configures Playwright for end-to-end testing with:
- * - Per-worker isolated databases (via fixtures)
- * - Per-worker Next.js servers (via fixtures)
+ * - Auth setup project to save login state for reuse
+ * - Fully parallel test execution (serial where needed via test config)
  * - Global setup for template database creation
  * - Worktree isolation for simultaneous test runs
  *
@@ -23,8 +23,9 @@ const isCI = process.env.CI != null && process.env.CI !== "";
 export default defineConfig({
   testDir: "./tests/e2e",
 
-  /* Run test files in parallel, but tests within a file run sequentially on same worker */
-  fullyParallel: false,
+  /* Run tests in parallel both across and within files.
+   * Files that need sequential execution use test.describe.configure({ mode: 'serial' }). */
+  fullyParallel: true,
 
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: isCI,
@@ -32,8 +33,8 @@ export default defineConfig({
   /* Retry on CI only */
   retries: isCI ? 2 : 0,
 
-  /* Enable parallel workers: 4 in CI, 2 locally */
-  workers: isCI ? 4 : 2,
+  /* Enable parallel workers: 4 in CI, 4 locally */
+  workers: 4,
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [["list"], ["json", { outputFile: "test-results/results.json" }]],
@@ -82,34 +83,60 @@ export default defineConfig({
   projects:
     process.env.TEST_ALL_BROWSERS != null && process.env.TEST_ALL_BROWSERS !== ""
       ? [
-          // Test all browsers when TEST_ALL_BROWSERS is set
+          /* Auth setup - runs once to save login state */
+          { name: "setup", testMatch: /auth\.setup\.ts/ },
           {
             name: "chromium",
-            use: { ...devices["Desktop Chrome"] },
+            use: {
+              ...devices["Desktop Chrome"],
+              storageState: "test-results/.auth/admin.json",
+            },
+            dependencies: ["setup"],
           },
           {
             name: "firefox",
-            use: { ...devices["Desktop Firefox"] },
+            use: {
+              ...devices["Desktop Firefox"],
+              storageState: "test-results/.auth/admin.json",
+            },
+            dependencies: ["setup"],
           },
           {
             name: "webkit",
-            use: { ...devices["Desktop Safari"] },
+            use: {
+              ...devices["Desktop Safari"],
+              storageState: "test-results/.auth/admin.json",
+            },
+            dependencies: ["setup"],
           },
           /* Test against mobile viewports. */
           {
             name: "Mobile Chrome",
-            use: { ...devices["Pixel 5"] },
+            use: {
+              ...devices["Pixel 5"],
+              storageState: "test-results/.auth/admin.json",
+            },
+            dependencies: ["setup"],
           },
           {
             name: "Mobile Safari",
-            use: { ...devices["iPhone 12"] },
+            use: {
+              ...devices["iPhone 12"],
+              storageState: "test-results/.auth/admin.json",
+            },
+            dependencies: ["setup"],
           },
         ]
       : [
-          // Default: only Chromium for speed and efficiency
+          /* Auth setup - runs once to save login state */
+          { name: "setup", testMatch: /auth\.setup\.ts/ },
           {
             name: "chromium",
-            use: { ...devices["Desktop Chrome"] },
+            use: {
+              ...devices["Desktop Chrome"],
+              storageState: "test-results/.auth/admin.json",
+            },
+            dependencies: ["setup"],
           },
         ],
 
