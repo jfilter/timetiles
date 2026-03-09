@@ -64,6 +64,26 @@ const createMockPayload = (overrides?: {
 };
 
 describe("QuotaService", () => {
+  describe("getOrCreateUsageRecord", () => {
+    it("should normalize relation-style user ids before querying usage", async () => {
+      const { payload, findMock } = createMockPayload({ findResult: { docs: [] } });
+      const service = new QuotaService(payload);
+
+      await service.getOrCreateUsageRecord({ id: 42 });
+
+      expect(findMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { user: { equals: 42 } },
+        })
+      );
+      expect(payload.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ user: 42 }),
+        })
+      );
+    });
+  });
+
   describe("incrementUsage", () => {
     it("should succeed and call drizzle update chain", async () => {
       const { payload, updateMock, setMock, whereMock } = createMockPayload();

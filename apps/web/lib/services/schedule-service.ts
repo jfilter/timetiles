@@ -24,6 +24,8 @@ export class ScheduleService {
   private intervalId: NodeJS.Timeout | null = null;
   private isRunning = false;
   private isShuttingDown = false;
+  private readonly handleSigInt = (): void => this.stop();
+  private readonly handleSigTerm = (): void => this.stop();
 
   constructor(payload: Payload, config: ScheduleServiceConfig = {}) {
     this.payload = payload;
@@ -49,6 +51,8 @@ export class ScheduleService {
       intervalMs: this.config.intervalMs,
     });
 
+    this.isShuttingDown = false;
+
     // Run immediately, then at intervals
     void this.runScheduleManager();
 
@@ -59,8 +63,8 @@ export class ScheduleService {
     }, this.config.intervalMs);
 
     // Handle process signals for graceful shutdown
-    process.on("SIGINT", () => this.stop());
-    process.on("SIGTERM", () => this.stop());
+    process.on("SIGINT", this.handleSigInt);
+    process.on("SIGTERM", this.handleSigTerm);
   }
 
   /**
@@ -76,6 +80,8 @@ export class ScheduleService {
 
     clearInterval(this.intervalId);
     this.intervalId = null;
+    process.removeListener("SIGINT", this.handleSigInt);
+    process.removeListener("SIGTERM", this.handleSigTerm);
 
     // Wait for current execution to finish
     const waitForStop = () => {

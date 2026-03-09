@@ -12,6 +12,8 @@ import { ScheduleService } from "@/lib/services/schedule-service";
 
 describe("ScheduleService", () => {
   let mockPayload: any;
+  let sigintListenersBefore: ReturnType<typeof process.listeners>;
+  let sigtermListenersBefore: ReturnType<typeof process.listeners>;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -20,9 +22,23 @@ describe("ScheduleService", () => {
         queue: vi.fn().mockResolvedValue({ id: "job-1" }),
       },
     };
+    sigintListenersBefore = process.listeners("SIGINT");
+    sigtermListenersBefore = process.listeners("SIGTERM");
   });
 
   afterEach(() => {
+    for (const listener of process.listeners("SIGINT")) {
+      if (!sigintListenersBefore.includes(listener)) {
+        process.removeListener("SIGINT", listener);
+      }
+    }
+
+    for (const listener of process.listeners("SIGTERM")) {
+      if (!sigtermListenersBefore.includes(listener)) {
+        process.removeListener("SIGTERM", listener);
+      }
+    }
+
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
@@ -51,12 +67,41 @@ describe("ScheduleService", () => {
       expect(status.isActive).toBe(false);
       expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
     });
+
+    it("should resume queueing jobs after being stopped and restarted", async () => {
+      const service = new ScheduleService(mockPayload, { intervalMs: 1000 });
+
+      service.start();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(mockPayload.jobs.queue).toHaveBeenCalledTimes(1);
+
+      service.stop();
+      service.start();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mockPayload.jobs.queue).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("stop", () => {
     it("should be safe to call stop when not running", () => {
       const service = new ScheduleService(mockPayload);
       expect(() => service.stop()).not.toThrow();
+    });
+
+    it("should remove process signal listeners when stopped", () => {
+      const service = new ScheduleService(mockPayload);
+
+      service.start();
+      expect(process.listeners("SIGINT")).toHaveLength(sigintListenersBefore.length + 1);
+      expect(process.listeners("SIGTERM")).toHaveLength(sigtermListenersBefore.length + 1);
+
+      service.stop();
+
+      expect(process.listeners("SIGINT")).toHaveLength(sigintListenersBefore.length);
+      expect(process.listeners("SIGTERM")).toHaveLength(sigtermListenersBefore.length);
     });
   });
 

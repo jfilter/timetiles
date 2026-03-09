@@ -19,6 +19,11 @@ describe("coordinates", () => {
       const center = getCenterFromBounds({ north: 41, south: 40, east: -73, west: -74 });
       expect(center).toEqual({ lat: 40.5, lon: -73.5 });
     });
+
+    it("should calculate the correct center when bounds cross the antimeridian", () => {
+      const center = getCenterFromBounds({ north: 10, south: -10, east: -170, west: 170 });
+      expect(center).toEqual({ lat: 0, lon: 180 });
+    });
   });
 
   describe("formatCoordinate", () => {
@@ -47,6 +52,11 @@ describe("coordinates", () => {
     it("should format center coordinates from bounds", () => {
       const result = formatCenterCoordinates({ north: 41, south: 40, east: -73, west: -74 });
       expect(result).toBe("40.50°N 73.50°W");
+    });
+
+    it("should format center coordinates correctly when bounds cross the antimeridian", () => {
+      const result = formatCenterCoordinates({ north: 10, south: -10, east: -170, west: 170 });
+      expect(result).toBe("0.00°N 180.00°E");
     });
   });
 

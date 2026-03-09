@@ -226,7 +226,14 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
   };
 
   // Configure email adapter
-  if (process.env.EMAIL_SMTP_HOST) {
+  if (environment === "test") {
+    config.email = nodemailerAdapter({
+      defaultFromAddress: process.env.EMAIL_FROM_ADDRESS ?? "noreply@timetiles.app",
+      defaultFromName: process.env.EMAIL_FROM_NAME ?? "TimeTiles",
+      transport: nodemailer.createTransport({ jsonTransport: true }),
+      skipVerify: true,
+    });
+  } else if (process.env.EMAIL_SMTP_HOST) {
     // Production: Use SMTP transport
     config.email = nodemailerAdapter({
       defaultFromAddress: process.env.EMAIL_FROM_ADDRESS ?? "noreply@timetiles.app",

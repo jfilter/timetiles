@@ -100,6 +100,23 @@ const logger = createLogger("quota-service");
 
 /** Collection slug for user usage tracking */
 const USER_USAGE_COLLECTION = "user-usage";
+type UserIdentifier = number | string | Pick<User, "id"> | null | undefined;
+
+const normalizeUserId = (userId: UserIdentifier): number => {
+  const rawUserId = typeof userId === "object" && userId !== null ? userId.id : userId;
+
+  if (rawUserId == null || rawUserId === "") {
+    throw new Error("Invalid user ID for quota tracking: missing user ID");
+  }
+
+  const normalizedUserId = Number(rawUserId);
+
+  if (!Number.isInteger(normalizedUserId)) {
+    throw new Error(`Invalid user ID for quota tracking: ${String(rawUserId)}`);
+  }
+
+  return normalizedUserId;
+};
 
 /**
  * Custom error class for quota exceeded scenarios.
@@ -148,12 +165,14 @@ export class QuotaService {
    * Get or create usage record for a user from the user-usage collection.
    * Uses upsert pattern to ensure usage record exists.
    */
-  async getOrCreateUsageRecord(userId: number): Promise<UserUsageRecord> {
+  async getOrCreateUsageRecord(userId: UserIdentifier): Promise<UserUsageRecord> {
+    const normalizedUserId = normalizeUserId(userId);
+
     try {
       // Try to find existing usage record
       const existing = await this.payload.find({
         collection: USER_USAGE_COLLECTION,
-        where: { user: { equals: userId } },
+        where: { user: { equals: normalizedUserId } },
         limit: 1,
         overrideAccess: true,
       });
@@ -166,7 +185,7 @@ export class QuotaService {
       return await this.payload.create({
         collection: USER_USAGE_COLLECTION,
         data: {
-          user: userId,
+          user: normalizedUserId,
           urlFetchesToday: 0,
           fileUploadsToday: 0,
           importJobsToday: 0,
@@ -178,7 +197,7 @@ export class QuotaService {
         overrideAccess: true,
       });
     } catch (error) {
-      logger.error("Failed to get or create usage record", { error, userId });
+      logger.error("Failed to get or create usage record", { error, userId: normalizedUserId });
       throw error;
     }
   }
@@ -225,11 +244,13 @@ export class QuotaService {
   /**
    * Get current usage for a user from the user-usage collection.
    */
-  async getCurrentUsage(userId: number): Promise<UserUsage | null> {
+  async getCurrentUsage(userId: UserIdentifier): Promise<UserUsage | null> {
+    const normalizedUserId = normalizeUserId(userId);
+
     try {
       const usageRecord = await this.payload.find({
         collection: USER_USAGE_COLLECTION,
-        where: { user: { equals: userId } },
+        where: { user: { equals: normalizedUserId } },
         limit: 1,
         overrideAccess: true,
       });
@@ -249,7 +270,7 @@ export class QuotaService {
         lastResetDate: doc.lastResetDate ?? new Date().toISOString(),
       };
     } catch (error) {
-      logger.error("Failed to get current usage", { error, userId });
+      logger.error("Failed to get current usage", { error, userId: normalizedUserId });
       return null;
     }
   }
@@ -357,12 +378,14 @@ export class QuotaService {
    * The column is incremented directly in the database rather than using a
    * read-modify-write pattern that could lose updates.
    */
-  async incrementUsage(userId: number, usageType: UsageType, amount: number = 1): Promise<void> {
+  async incrementUsage(userId: UserIdentifier, usageType: UsageType, amount: number = 1): Promise<void> {
+    const normalizedUserId = normalizeUserId(userId);
+
     try {
-      logger.debug("incrementUsage: Entry", { userId, usageType, amount });
+      logger.debug("incrementUsage: Entry", { userId: normalizedUserId, usageType, amount });
 
       // Ensure usage record exists before atomic update
-      await this.getOrCreateUsageRecord(userId);
+      await this.getOrCreateUsageRecord(normalizedUserId);
 
       if (this.isDailyUsageType(usageType)) {
         // For daily types, atomically reset stale counters and increment the target
@@ -377,7 +400,7 @@ export class QuotaService {
             lastResetDate: sql`CASE WHEN ${needsReset} THEN NOW() ELSE ${user_usage.lastResetDate} END`,
             updatedAt: sql`NOW()`,
           })
-          .where(eq(user_usage.user, userId));
+          .where(eq(user_usage.user, normalizedUserId));
       } else {
         // For non-daily types, simple atomic increment
         const col = user_usage[usageType];
@@ -387,14 +410,14 @@ export class QuotaService {
             [usageType]: sql`COALESCE(${col}, 0) + ${amount}`,
             updatedAt: sql`NOW()`,
           })
-          .where(eq(user_usage.user, userId));
+          .where(eq(user_usage.user, normalizedUserId));
       }
 
-      logger.debug("Usage incremented", { userId, usageType, amount });
+      logger.debug("Usage incremented", { userId: normalizedUserId, usageType, amount });
     } catch (error) {
       logger.error("Failed to increment usage", {
         error,
-        userId,
+        userId: normalizedUserId,
         usageType,
         amount,
       });
@@ -408,10 +431,12 @@ export class QuotaService {
    * Uses atomic SQL UPDATE with GREATEST to prevent going below zero and
    * avoid race conditions from concurrent requests.
    */
-  async decrementUsage(userId: number, usageType: UsageType, amount: number = 1): Promise<void> {
+  async decrementUsage(userId: UserIdentifier, usageType: UsageType, amount: number = 1): Promise<void> {
+    const normalizedUserId = normalizeUserId(userId);
+
     try {
       // Ensure usage record exists before atomic update
-      await this.getOrCreateUsageRecord(userId);
+      await this.getOrCreateUsageRecord(normalizedUserId);
 
       const col = user_usage[usageType];
       await this.payload.db.drizzle
@@ -420,13 +445,13 @@ export class QuotaService {
           [usageType]: sql`GREATEST(0, COALESCE(${col}, 0) - ${amount})`,
           updatedAt: sql`NOW()`,
         })
-        .where(eq(user_usage.user, userId));
+        .where(eq(user_usage.user, normalizedUserId));
 
-      logger.debug("Usage decremented", { userId, usageType, amount });
+      logger.debug("Usage decremented", { userId: normalizedUserId, usageType, amount });
     } catch (error) {
       logger.error("Failed to decrement usage", {
         error,
-        userId,
+        userId: normalizedUserId,
         usageType,
         amount,
       });
@@ -437,12 +462,14 @@ export class QuotaService {
   /**
    * Reset daily counters for a user.
    */
-  async resetDailyCounters(userId: number): Promise<void> {
+  async resetDailyCounters(userId: UserIdentifier): Promise<void> {
+    const normalizedUserId = normalizeUserId(userId);
+
     try {
       // Find the usage record
       const usageRecords = await this.payload.find({
         collection: USER_USAGE_COLLECTION,
-        where: { user: { equals: userId } },
+        where: { user: { equals: normalizedUserId } },
         limit: 1,
         overrideAccess: true,
       });
@@ -465,9 +492,9 @@ export class QuotaService {
         overrideAccess: true,
       });
 
-      logger.info("Daily counters reset", { userId });
+      logger.info("Daily counters reset", { userId: normalizedUserId });
     } catch (error) {
-      logger.error("Failed to reset daily counters", { error, userId });
+      logger.error("Failed to reset daily counters", { error, userId: normalizedUserId });
     }
   }
 

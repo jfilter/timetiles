@@ -18,6 +18,16 @@ export interface MapBounds {
   west: number;
 }
 
+const getCenterLongitude = (east: number, west: number): number => {
+  if (east >= west) {
+    return (east + west) / 2;
+  }
+
+  const wrappedEast = east + 360;
+  const center = (west + wrappedEast) / 2;
+  return center > 180 ? center - 360 : center;
+};
+
 /**
  * Calculate the center point of a bounding box.
  *
@@ -38,7 +48,7 @@ export interface MapBounds {
 export const getCenterFromBounds = (bounds: MapBounds): { lat: number; lon: number } => {
   return {
     lat: (bounds.north + bounds.south) / 2,
-    lon: (bounds.east + bounds.west) / 2,
+    lon: getCenterLongitude(bounds.east, bounds.west),
   };
 };
 
