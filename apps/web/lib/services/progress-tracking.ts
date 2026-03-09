@@ -26,11 +26,22 @@ import {
 } from "@/lib/constants/import-constants";
 import { STAGE_TIME_WEIGHTS } from "@/lib/constants/stage-time-weights";
 import type { StageProgress } from "@/lib/types/progress-tracking";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 
 /**
  * Centralized progress tracking service for detailed per-stage tracking.
  */
 export class ProgressTrackingService {
+  private static normalizeJobId(jobId: string | number): number {
+    const normalizedJobId = typeof jobId === "number" ? jobId : parseStrictInteger(jobId);
+
+    if (normalizedJobId == null || !Number.isInteger(normalizedJobId)) {
+      throw new Error("Invalid import job ID");
+    }
+
+    return normalizedJobId;
+  }
+
   /**
    * Serialize stages for database storage, converting Date objects to ISO strings.
    */
@@ -100,6 +111,7 @@ export class ProgressTrackingService {
    * @param totalRows - Total number of rows in the import file
    */
   static async initializeStageProgress(payload: Payload, jobId: string | number, totalRows: number): Promise<void> {
+    const normalizedJobId = this.normalizeJobId(jobId);
     const stages: Record<string, StageProgress> = {};
 
     // Initialize all stages as pending
@@ -134,7 +146,7 @@ export class ProgressTrackingService {
 
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
+      id: normalizedJobId,
       data: {
         progress: {
           stages: this.serializeStages(stages),
@@ -162,9 +174,10 @@ export class ProgressTrackingService {
     stage: ProcessingStage,
     rowsTotal: number
   ): Promise<void> {
+    const normalizedJobId = this.normalizeJobId(jobId);
     const job = await payload.findByID({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
+      id: normalizedJobId,
     });
 
     const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
@@ -184,7 +197,7 @@ export class ProgressTrackingService {
 
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
+      id: normalizedJobId,
       data: {
         stage,
         progress: {
@@ -218,9 +231,10 @@ export class ProgressTrackingService {
     rowsProcessed: number,
     currentBatchRows: number
   ): Promise<void> {
+    const normalizedJobId = this.normalizeJobId(jobId);
     const job = await payload.findByID({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
+      id: normalizedJobId,
     });
 
     const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
@@ -248,7 +262,7 @@ export class ProgressTrackingService {
 
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
+      id: normalizedJobId,
       data: {
         progress: {
           stages: this.serializeStages(stages),
@@ -277,9 +291,10 @@ export class ProgressTrackingService {
     stage: ProcessingStage,
     batchNumber: number
   ): Promise<void> {
+    const normalizedJobId = this.normalizeJobId(jobId);
     const job = await payload.findByID({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
+      id: normalizedJobId,
     });
 
     const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
@@ -297,7 +312,7 @@ export class ProgressTrackingService {
 
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
+      id: normalizedJobId,
       data: {
         progress: {
           stages: this.serializeStages(stages),
@@ -319,9 +334,10 @@ export class ProgressTrackingService {
    * @param stage - Processing stage name
    */
   static async completeStage(payload: Payload, jobId: string | number, stage: ProcessingStage): Promise<void> {
+    const normalizedJobId = this.normalizeJobId(jobId);
     const job = await payload.findByID({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
+      id: normalizedJobId,
     });
 
     const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
@@ -341,7 +357,7 @@ export class ProgressTrackingService {
 
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
+      id: normalizedJobId,
       data: {
         progress: {
           stages: this.serializeStages(stages),
@@ -363,9 +379,10 @@ export class ProgressTrackingService {
    * @param stage - Processing stage name
    */
   static async skipStage(payload: Payload, jobId: string | number, stage: ProcessingStage): Promise<void> {
+    const normalizedJobId = this.normalizeJobId(jobId);
     const job = await payload.findByID({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
+      id: normalizedJobId,
     });
 
     const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
@@ -384,7 +401,7 @@ export class ProgressTrackingService {
 
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
+      id: normalizedJobId,
       data: {
         progress: {
           stages: this.serializeStages(stages),
@@ -529,9 +546,10 @@ export class ProgressTrackingService {
     jobId: string | number,
     uniqueRows: number
   ): Promise<void> {
+    const normalizedJobId = this.normalizeJobId(jobId);
     const job = await payload.findByID({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
+      id: normalizedJobId,
     });
 
     const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
@@ -560,7 +578,7 @@ export class ProgressTrackingService {
 
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
+      id: normalizedJobId,
       data: {
         progress: {
           stages: this.serializeStages(stages),

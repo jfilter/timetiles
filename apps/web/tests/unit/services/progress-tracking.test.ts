@@ -57,6 +57,14 @@ describe.sequential("ProgressTrackingService", () => {
         completedAt: null,
       });
     });
+
+    it("rejects partially numeric job ids", async () => {
+      await expect(ProgressTrackingService.initializeStageProgress(mockPayload, "123abc", 1000)).rejects.toThrow(
+        "Invalid import job ID"
+      );
+
+      expect(mockPayload.update).not.toHaveBeenCalled();
+    });
   });
 
   describe("startStage", () => {
@@ -100,6 +108,15 @@ describe.sequential("ProgressTrackingService", () => {
       expect(stage.status).toBe("in_progress");
       expect(stage.rowsTotal).toBe(800);
       expect(stage.startedAt).toBeTruthy();
+    });
+
+    it("rejects partially numeric job ids before loading the job", async () => {
+      await expect(
+        ProgressTrackingService.startStage(mockPayload, "123abc", PROCESSING_STAGE.DETECT_SCHEMA, 800)
+      ).rejects.toThrow("Invalid import job ID");
+
+      expect(mockPayload.findByID).not.toHaveBeenCalled();
+      expect(mockPayload.update).not.toHaveBeenCalled();
     });
   });
 
