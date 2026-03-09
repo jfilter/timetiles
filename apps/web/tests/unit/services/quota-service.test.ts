@@ -10,6 +10,7 @@
 import type { Payload } from "payload";
 import { describe, expect, it, vi } from "vitest";
 
+import { DEFAULT_QUOTAS, TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { QuotaService } from "@/lib/services/quota-service";
 
 vi.mock("@/lib/logger", () => ({
@@ -64,6 +65,21 @@ const createMockPayload = (overrides?: {
 };
 
 describe("QuotaService", () => {
+  describe("getEffectiveQuotas", () => {
+    it("falls back to regular quotas for malformed trust-level strings", () => {
+      const { payload } = createMockPayload();
+      const service = new QuotaService(payload);
+
+      const quotas = service.getEffectiveQuotas({
+        id: 42,
+        trustLevel: "0x1",
+        quotas: null,
+      } as never);
+
+      expect(quotas).toEqual(DEFAULT_QUOTAS[TRUST_LEVELS.REGULAR]);
+    });
+  });
+
   describe("getOrCreateUsageRecord", () => {
     it("should normalize relation-style user ids before querying usage", async () => {
       const { payload, findMock } = createMockPayload({ findResult: { docs: [] } });
@@ -81,6 +97,14 @@ describe("QuotaService", () => {
           data: expect.objectContaining({ user: 42 }),
         })
       );
+    });
+
+    it("should reject non-decimal numeric user ids", async () => {
+      const { payload, findMock } = createMockPayload();
+      const service = new QuotaService(payload);
+
+      await expect(service.getOrCreateUsageRecord("42e1")).rejects.toThrow("Invalid user ID for quota tracking: 42e1");
+      expect(findMock).not.toHaveBeenCalled();
     });
   });
 

@@ -62,8 +62,6 @@ Event 2,2024-01-02,Location 2`;
         filename: csvFileName1,
       });
 
-      let datasetId: string;
-
       // Process first import completely to establish schema
       const detectionContext1 = {
         payload,
@@ -76,7 +74,7 @@ Event 2,2024-01-02,Location 2`;
         where: { importFile: { equals: importFile1.id } },
       });
       const importJob1 = importJobs1.docs[0];
-      datasetId = typeof importJob1.dataset === "object" ? importJob1.dataset.id : importJob1.dataset;
+      const datasetId = typeof importJob1.dataset === "object" ? importJob1.dataset.id : importJob1.dataset;
 
       await analyzeDuplicatesJob.handler({
         payload,

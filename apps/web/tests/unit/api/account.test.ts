@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => {
     auth: vi.fn(),
     login: vi.fn(),
     find: vi.fn(),
+    findByID: vi.fn(),
     update: vi.fn(),
     create: vi.fn(),
   };
@@ -87,6 +88,7 @@ import { POST as changePassword } from "@/app/api/account/change-password/route"
 import { POST as cancelDeletion } from "@/app/api/account/delete/cancel/route";
 import { POST as deleteAccount } from "@/app/api/account/delete/route";
 import { GET as getDeletionSummary } from "@/app/api/account/deletion-summary/route";
+import { GET as downloadExport } from "@/app/api/account/download-data/[exportId]/route";
 
 const {
   mockPayload,
@@ -125,10 +127,15 @@ const createGetRequest = (url: string) => {
   }) as unknown as NextRequest;
 };
 
+const createExportContext = (exportId: string) => ({
+  params: Promise.resolve({ exportId }),
+});
+
 beforeEach(() => {
   mockPayload.auth.mockReset().mockResolvedValue({ user: mockUser });
   mockPayload.login.mockReset().mockResolvedValue({ user: mockUser });
   mockPayload.find.mockReset().mockResolvedValue({ docs: [] });
+  mockPayload.findByID.mockReset().mockResolvedValue(null);
   mockPayload.update.mockReset().mockResolvedValue({});
   mockPayload.create.mockReset().mockResolvedValue({});
 
@@ -461,5 +468,18 @@ describe.sequential("GET /api/account/deletion-summary", () => {
     expect(data.deletionScheduledAt).toBeNull();
     expect(mockGetDeletionSummary).toHaveBeenCalledWith(mockUser.id);
     expect(mockCanDeleteUser).toHaveBeenCalledWith(mockUser.id);
+  });
+});
+
+describe.sequential("GET /api/account/download-data/[exportId]", () => {
+  it("should return 400 for non-decimal export ids", async () => {
+    const request = createGetRequest("http://localhost/api/account/download-data/1e2");
+
+    const response = await downloadExport(request, createExportContext("1e2"));
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toBe("Invalid export ID");
+    expect(mockPayload.findByID).not.toHaveBeenCalled();
   });
 });

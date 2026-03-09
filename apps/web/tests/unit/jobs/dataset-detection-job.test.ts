@@ -314,7 +314,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
     it("should update import file status to processing", async () => {
       const mockImportFile = {
-        id: "import-file-123",
+        id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
         catalog: 456,
@@ -338,7 +338,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
     it("should clean up file after processing", async () => {
       const mockImportFile = {
-        id: "import-file-123",
+        id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
         catalog: 456,
@@ -357,6 +357,43 @@ describe.sequential("DatasetDetectionJob Handler", () => {
   });
 
   describe("Error Handling", () => {
+    it("should reject partially numeric import file relation ids before creating jobs", async () => {
+      const mockImportFile = {
+        id: "123abc",
+        filename: "test.csv",
+        filePath: "/tmp/test.csv",
+        catalog: 456,
+        originalName: "test.csv",
+      };
+
+      mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce({ id: 456, name: "Catalog" });
+      mockPayload.find.mockResolvedValue({ docs: [] });
+      mockPayload.create.mockImplementation(({ collection }: { collection: string }) =>
+        Promise.resolve({
+          id: collection === "datasets" ? "dataset-1" : "import-job-1",
+        })
+      );
+
+      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Invalid import file ID");
+
+      expect(mockPayload.create).toHaveBeenCalledTimes(1);
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "datasets",
+        data: expect.objectContaining({
+          name: "test.csv",
+          catalog: 456,
+        }),
+      });
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "import-files",
+        id: "import-file-123",
+        data: expect.objectContaining({
+          status: "failed",
+          errorLog: "Invalid import file ID",
+        }),
+      });
+    });
+
     it("should reject partially numeric catalog ids before loading datasets", async () => {
       const mockImportFile = {
         id: 123,
@@ -401,7 +438,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
     it("should handle missing catalog gracefully", async () => {
       const mockImportFile = {
-        id: "import-file-123",
+        id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
         catalog: 456,
@@ -418,7 +455,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
     it("should handle file parsing errors", async () => {
       const mockImportFile = {
-        id: "import-file-123",
+        id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
         catalog: 456,
@@ -443,7 +480,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
     it("should handle CSV parsing errors", async () => {
       const mockImportFile = {
-        id: "import-file-123",
+        id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
         catalog: 456,
@@ -460,7 +497,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
     it("should handle Excel parsing errors", async () => {
       const mockImportFile = {
-        id: "import-file-123",
+        id: 123,
         filename: "test.xlsx",
         filePath: "/tmp/test.xlsx",
         catalog: 456,
@@ -479,7 +516,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
   describe("Edge Cases", () => {
     it("should handle empty CSV file", async () => {
       const mockImportFile = {
-        id: "import-file-123",
+        id: 123,
         filename: "empty.csv",
         filePath: "/tmp/empty.csv",
         catalog: 456,
@@ -509,7 +546,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       mocks.fs.readFileSync.mockReturnValue(emptyBuffer);
 
       const mockImportFile = {
-        id: "import-file-123",
+        id: 123,
         filename: "empty.xlsx",
         filePath: "/tmp/empty.xlsx",
         catalog: 456,
@@ -528,7 +565,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
     it("should handle unsupported file formats", async () => {
       const mockImportFile = {
-        id: "import-file-123",
+        id: 123,
         filename: "test.txt",
         filePath: "/tmp/test.txt",
         catalog: 456,
@@ -545,7 +582,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
     it("should handle very large files gracefully", async () => {
       const mockImportFile = {
-        id: "import-file-123",
+        id: 123,
         filename: "large.csv",
         filePath: "/tmp/large.csv",
         catalog: 456,
