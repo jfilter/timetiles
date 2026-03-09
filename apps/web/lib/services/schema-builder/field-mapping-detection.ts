@@ -12,7 +12,7 @@
 import { detectGeoFields as detectGeoFieldsFromPlugin, FIELD_PATTERNS } from "@timetiles/payload-schema-detection";
 
 import type { FieldStatistics } from "@/lib/types/schema-detection";
-import { isValidDate } from "@/lib/utils/date";
+import { hasInvalidIsoDatePart, isValidDate } from "@/lib/utils/date";
 
 /**
  * Field mappings detected or configured for a schema
@@ -293,6 +293,7 @@ const checkParseableStrings = (stats: FieldStatistics, stringPct: number): numbe
   let validDateCount = 0;
 
   for (const value of stringValues.slice(0, 10)) {
+    if (hasInvalidIsoDatePart(value)) continue;
     const date = new Date(value);
     if (isValidDate(date)) {
       validDateCount++;

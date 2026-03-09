@@ -9,7 +9,7 @@
  */
 
 import type { FieldStatistics } from "@/lib/types/schema-detection";
-import { isValidDate } from "@/lib/utils/date";
+import { hasInvalidIsoDatePart, isValidDate } from "@/lib/utils/date";
 
 const updateTypeDistribution = (stats: FieldStatistics, valueType: string): void => {
   if (!stats.typeDistribution) {
@@ -171,6 +171,7 @@ const isDateString = (value: string): boolean => {
   // ISO date pattern
   // eslint-disable-next-line security/detect-unsafe-regex -- Simple date pattern, false positive
   if (/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?$/.test(value)) {
+    if (hasInvalidIsoDatePart(value)) return false;
     const date = new Date(value);
     return isValidDate(date);
   }

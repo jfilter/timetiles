@@ -21,6 +21,7 @@ import { buildConfig } from "payload";
 import sharp from "sharp";
 
 import Users from "@/lib/collections/users";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 
 import type { CollectionName } from "./payload-shared-config";
 import {
@@ -235,13 +236,15 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
       skipVerify: true,
     });
   } else if (process.env.EMAIL_SMTP_HOST) {
+    const smtpPort = parseStrictInteger(process.env.EMAIL_SMTP_PORT) ?? 587;
+
     // Production: Use SMTP transport
     config.email = nodemailerAdapter({
       defaultFromAddress: process.env.EMAIL_FROM_ADDRESS ?? "noreply@timetiles.app",
       defaultFromName: process.env.EMAIL_FROM_NAME ?? "TimeTiles",
       transportOptions: {
         host: process.env.EMAIL_SMTP_HOST,
-        port: Number(process.env.EMAIL_SMTP_PORT) || 587,
+        port: smtpPort,
         auth: process.env.EMAIL_SMTP_USER
           ? {
               user: process.env.EMAIL_SMTP_USER,

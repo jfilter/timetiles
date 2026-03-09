@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
+import { clearFeatureFlagCache } from "@/lib/services/feature-flag-service";
 
 // Mock dependencies
 vi.mock("@/lib/logger", () => ({
@@ -21,6 +22,7 @@ vi.mock("@/lib/logger", () => ({
 describe.sequential("scheduleManagerJob", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearFeatureFlagCache();
     vi.useFakeTimers();
   });
 
@@ -34,6 +36,12 @@ describe.sequential("scheduleManagerJob", () => {
       const mockPayload = {
         find: vi.fn(),
         findByID: vi.fn(),
+        findGlobal: vi.fn().mockResolvedValue({
+          featureFlags: {
+            enableScheduledJobExecution: true,
+            enableScheduledImports: true,
+          },
+        }),
         update: vi.fn(),
         jobs: {
           queue: vi.fn().mockResolvedValue({ id: "url-fetch-job-123" }),

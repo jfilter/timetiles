@@ -13,6 +13,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
+import { parseDateInput } from "@/lib/utils/date";
 import type { ScheduledImport } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
@@ -37,7 +38,11 @@ const isImportStuck = (scheduledImport: ScheduledImport, currentTime: Date, thre
     return true;
   }
 
-  const lastRunTime = new Date(scheduledImport.lastRun);
+  const lastRunTime = parseDateInput(scheduledImport.lastRun);
+  if (!lastRunTime) {
+    return true;
+  }
+
   const timeDiffMs = currentTime.getTime() - lastRunTime.getTime();
   const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
 
@@ -54,9 +59,8 @@ const resetStuckImport = async (
 ): Promise<void> => {
   try {
     // Calculate how long it was stuck
-    const stuckDuration = scheduledImport.lastRun
-      ? currentTime.getTime() - new Date(scheduledImport.lastRun).getTime()
-      : 0;
+    const lastRunTime = scheduledImport.lastRun ? parseDateInput(scheduledImport.lastRun) : null;
+    const stuckDuration = lastRunTime ? currentTime.getTime() - lastRunTime.getTime() : 0;
 
     // Update execution history with failure
     const executionHistory = scheduledImport.executionHistory ?? [];
@@ -194,7 +198,7 @@ const processStuckImports = async (
       if (isImportStuck(scheduledImport, currentTime, thresholdHours)) {
         stuckCount++;
 
-        const lastRunTime = scheduledImport.lastRun ? new Date(scheduledImport.lastRun) : null;
+        const lastRunTime = scheduledImport.lastRun ? parseDateInput(scheduledImport.lastRun) : null;
         const stuckMinutes = lastRunTime
           ? Math.round((currentTime.getTime() - lastRunTime.getTime()) / (1000 * 60))
           : -1;

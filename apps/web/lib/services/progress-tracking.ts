@@ -26,6 +26,7 @@ import {
 } from "@/lib/constants/import-constants";
 import { STAGE_TIME_WEIGHTS } from "@/lib/constants/stage-time-weights";
 import type { StageProgress } from "@/lib/types/progress-tracking";
+import { hasInvalidIsoDatePart, isValidDate } from "@/lib/utils/date";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
 /**
@@ -68,10 +69,25 @@ export class ProgressTrackingService {
       return null;
     }
     if (dateValue instanceof Date) {
-      return dateValue;
+      return isValidDate(dateValue) ? dateValue : null;
     }
-    const parsed = new Date(dateValue as string);
-    return !isNaN(parsed.getTime()) ? parsed : null;
+
+    if (typeof dateValue === "string") {
+      const trimmedDateValue = dateValue.trim();
+      if (trimmedDateValue === "" || hasInvalidIsoDatePart(trimmedDateValue)) {
+        return null;
+      }
+
+      const parsed = new Date(trimmedDateValue);
+      return isValidDate(parsed) ? parsed : null;
+    }
+
+    if (typeof dateValue !== "number") {
+      return null;
+    }
+
+    const parsed = new Date(dateValue);
+    return isValidDate(parsed) ? parsed : null;
   }
 
   /**

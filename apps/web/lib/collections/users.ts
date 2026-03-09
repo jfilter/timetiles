@@ -20,8 +20,19 @@ import {
   TRUST_LEVEL_LABELS,
   TRUST_LEVELS,
 } from "@/lib/constants/quota-constants";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 
 import { createCommonConfig } from "./shared-fields";
+
+const normalizeTrustLevel = (trustLevel: string | number | null | undefined) => {
+  const parsedTrustLevel = parseStrictInteger(trustLevel ?? TRUST_LEVELS.REGULAR);
+
+  if (parsedTrustLevel != null && parsedTrustLevel in DEFAULT_QUOTAS) {
+    return parsedTrustLevel as keyof typeof DEFAULT_QUOTAS;
+  }
+
+  return TRUST_LEVELS.REGULAR;
+};
 
 const Users: CollectionConfig = {
   slug: "users",
@@ -375,8 +386,8 @@ const Users: CollectionConfig = {
 
         // Auto-set quotas based on trust level ONLY when trust level actually changes
         if (operation === "update" && data?.trustLevel !== undefined && originalDoc?.trustLevel !== data.trustLevel) {
-          const trustLevel = Number(data.trustLevel);
-          const defaultQuotas = DEFAULT_QUOTAS[trustLevel as keyof typeof DEFAULT_QUOTAS];
+          const trustLevel = normalizeTrustLevel(data.trustLevel);
+          const defaultQuotas = DEFAULT_QUOTAS[trustLevel];
 
           if (defaultQuotas && !data.customQuotas) {
             // Merge with defaults, filtering out undefined values from Payload's group initialization
@@ -399,8 +410,8 @@ const Users: CollectionConfig = {
         // Initialize quotas on user creation
         // Note: usage tracking is handled via user-usage collection (created in afterChange hook)
         if (operation === "create") {
-          const trustLevel = Number(data?.trustLevel ?? TRUST_LEVELS.REGULAR);
-          const defaultQuotas = DEFAULT_QUOTAS[trustLevel as keyof typeof DEFAULT_QUOTAS];
+          const trustLevel = normalizeTrustLevel(data?.trustLevel);
+          const defaultQuotas = DEFAULT_QUOTAS[trustLevel];
 
           // Merge with defaults, filtering out undefined values from Payload's group initialization
           // Payload initializes group fields with all fields set to undefined

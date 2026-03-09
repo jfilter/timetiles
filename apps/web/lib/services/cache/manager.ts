@@ -10,6 +10,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 
 import { Cache } from "./cache";
 import { FileSystemCacheStorage } from "./storage/file-system";
@@ -100,15 +101,15 @@ export class CacheManager {
    * Get configuration from environment
    */
   private static getDefaultTTL(): number {
-    return parseInt(process.env.CACHE_DEFAULT_TTL ?? "3600", 10);
+    return parseStrictInteger(process.env.CACHE_DEFAULT_TTL) ?? 3600;
   }
 
   private static getMaxEntries(): number {
-    return parseInt(process.env.CACHE_MAX_ENTRIES ?? "1000", 10);
+    return parseStrictInteger(process.env.CACHE_MAX_ENTRIES) ?? 1000;
   }
 
   private static getMaxSize(): number {
-    const sizeMB = parseInt(process.env.CACHE_MAX_SIZE_MB ?? "500", 10);
+    const sizeMB = parseStrictInteger(process.env.CACHE_MAX_SIZE_MB) ?? 500;
     return sizeMB * 1024 * 1024;
   }
 
@@ -118,7 +119,7 @@ export class CacheManager {
   }
 
   private static getCleanupInterval(): number {
-    return parseInt(process.env.CACHE_CLEANUP_INTERVAL_MS ?? "3600000", 10); // 1 hour default
+    return parseStrictInteger(process.env.CACHE_CLEANUP_INTERVAL_MS) ?? 3600000; // 1 hour default
   }
 
   /**

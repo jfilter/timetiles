@@ -7,6 +7,8 @@
  * @module
  */
 
+import { parseDateInput } from "@/lib/utils/date";
+
 import { SeededRandom } from "./seeded-random";
 
 export interface SimplePatternOptions {
@@ -32,10 +34,12 @@ export const applySimplePatterns = (events: unknown[], options: SimplePatternOpt
 
     // Simple temporal variation - spread events across a year
     if (varied.eventTimestamp instanceof Date || typeof varied.eventTimestamp === "string") {
-      const baseDate = new Date(varied.eventTimestamp);
-      const dayOffset = rng.nextInt(0, 365); // Random day within a year
-      const timeOffset = rng.nextInt(0, 24 * 60 * 60 * 1000); // Random time of day
-      varied.eventTimestamp = new Date(baseDate.getTime() + dayOffset * 24 * 60 * 60 * 1000 + timeOffset);
+      const baseDate = parseDateInput(varied.eventTimestamp);
+      if (baseDate) {
+        const dayOffset = rng.nextInt(0, 365); // Random day within a year
+        const timeOffset = rng.nextInt(0, 24 * 60 * 60 * 1000); // Random time of day
+        varied.eventTimestamp = new Date(baseDate.getTime() + dayOffset * 24 * 60 * 60 * 1000 + timeOffset);
+      }
     }
 
     // Simple geographic variation - small random offsets

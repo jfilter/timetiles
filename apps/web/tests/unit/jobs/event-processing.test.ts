@@ -14,8 +14,8 @@ vi.mock("@/lib/geospatial", () => ({
   parseCoordinate: mockParseCoordinate,
 }));
 
-vi.mock("@/lib/utils/date", () => ({
-  isValidDate: (d: Date) => !isNaN(d.getTime()),
+vi.mock("@/lib/utils/date", async (importOriginal) => ({
+  ...(await importOriginal()),
 }));
 
 import { extractCoordinatesFromRow, processRowData } from "@/lib/jobs/utils/event-processing";

@@ -10,7 +10,7 @@
 import { createLogger } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import type { getGeocodingResults } from "@/lib/types/geocoding";
-import { isValidDate } from "@/lib/utils/date";
+import { parseDateInput } from "@/lib/utils/date";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { Dataset } from "@/payload-types";
 
@@ -82,8 +82,8 @@ export const extractCoordinates = (
 export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: string | null): Date | null => {
   // Try mapped field first
   if (timestampPath && row[timestampPath]) {
-    const date = new Date(row[timestampPath] as string | number);
-    if (isValidDate(date)) {
+    const date = parseDateInput(row[timestampPath] as string | number);
+    if (date) {
       return date;
     }
   }
@@ -93,8 +93,8 @@ export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: s
 
   for (const field of timestampFields) {
     if (row[field]) {
-      const date = new Date(row[field] as string | number);
-      if (isValidDate(date)) {
+      const date = parseDateInput(row[field] as string | number);
+      if (date) {
         return date;
       }
     }

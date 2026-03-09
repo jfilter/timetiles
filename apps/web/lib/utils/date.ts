@@ -9,6 +9,8 @@
  * @module
  */
 
+const ISO_DATE_PREFIX_REGEX = /^(\d{4})-(\d{2})-(\d{2})(?:$|[T\s])/;
+
 /**
  * Check if a Date object is valid.
  *
@@ -28,6 +30,59 @@ export const isValidDate = (date: Date): boolean => {
   return !Number.isNaN(date.getTime());
 };
 
+const isValidCalendarDate = (year: number, month: number, day: number): boolean => {
+  if (month < 1 || month > 12) {
+    return false;
+  }
+
+  const maxDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return day >= 1 && day <= maxDay;
+};
+
+export const hasInvalidIsoDatePart = (date: string): boolean => {
+  const match = ISO_DATE_PREFIX_REGEX.exec(date);
+  if (!match?.[1] || !match[2] || !match[3]) {
+    return false;
+  }
+
+  const year = Number.parseInt(match[1], 10);
+  const month = Number.parseInt(match[2], 10);
+  const day = Number.parseInt(match[3], 10);
+
+  return !isValidCalendarDate(year, month, day);
+};
+
+export const parseDateInput = (date: string | number | Date | null | undefined): Date | null => {
+  if (date == null) {
+    return null;
+  }
+
+  if (typeof date === "number") {
+    const dateObj = new Date(date);
+    return isValidDate(dateObj) ? dateObj : null;
+  }
+
+  if (typeof date !== "string") {
+    return isValidDate(date) ? date : null;
+  }
+
+  const trimmedDate = date.trim();
+  if (trimmedDate === "") {
+    return null;
+  }
+
+  if (hasInvalidIsoDatePart(trimmedDate)) {
+    return null;
+  }
+
+  const dateObj = new Date(trimmedDate);
+  if (!isValidDate(dateObj)) {
+    return null;
+  }
+
+  return dateObj;
+};
+
 /**
  * Format a date string or Date object for display.
  */
@@ -35,10 +90,10 @@ export const formatDate = (date: string | Date | null | undefined): string => {
   if (!date) return "N/A";
 
   try {
-    const dateObj = typeof date === "string" ? new Date(date) : date;
+    const dateObj = parseDateInput(date);
 
     // Check if date is valid
-    if (!isValidDate(dateObj)) {
+    if (!dateObj) {
       return "Invalid date";
     }
 
@@ -63,10 +118,10 @@ export const formatDateShort = (date: string | Date | null | undefined): string 
   if (!date) return "N/A";
 
   try {
-    const dateObj = typeof date === "string" ? new Date(date) : date;
+    const dateObj = parseDateInput(date);
 
     // Check if date is valid
-    if (!isValidDate(dateObj)) {
+    if (!dateObj) {
       return "Invalid date";
     }
 

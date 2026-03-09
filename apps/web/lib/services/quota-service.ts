@@ -93,6 +93,7 @@ import {
   type UserUsage,
 } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
+import { parseDateInput } from "@/lib/utils/date";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import { user_usage } from "@/payload-generated-schema";
 import type { User, UserUsage as UserUsageRecord } from "@/payload-types";
@@ -598,7 +599,11 @@ export class QuotaService {
   private shouldResetDailyUsage(lastResetDate: string): boolean {
     if (!lastResetDate) return true;
 
-    const lastReset = new Date(lastResetDate);
+    const lastReset = parseDateInput(lastResetDate);
+    if (!lastReset) {
+      return true;
+    }
+
     const now = new Date();
 
     // Reset if it's a new UTC day

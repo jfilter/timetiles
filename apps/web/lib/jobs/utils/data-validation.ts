@@ -10,7 +10,7 @@
  * @module
  */
 import type { createJobLogger } from "@/lib/logger";
-import { isValidDate } from "@/lib/utils/date";
+import { hasInvalidIsoDatePart, isValidDate } from "@/lib/utils/date";
 
 import { getObjectProperty } from "./data-parsing";
 
@@ -60,18 +60,24 @@ export const validateRequiredFields = (
 
 export const parseDate = (dateString: string | number | Date): string => {
   if (dateString instanceof Date) {
-    return dateString.toISOString();
+    return isValidDate(dateString) ? dateString.toISOString() : new Date().toISOString();
   }
 
   if (typeof dateString === "number") {
-    return new Date(dateString).toISOString();
+    const dateObj = new Date(dateString);
+    return isValidDate(dateObj) ? dateObj.toISOString() : new Date().toISOString();
   }
 
   if (typeof dateString !== "string" || dateString.trim() === "") {
     return new Date().toISOString();
   }
 
-  const parsed = new Date(dateString.trim());
+  const trimmed = dateString.trim();
+  if (hasInvalidIsoDatePart(trimmed)) {
+    return new Date().toISOString();
+  }
+
+  const parsed = new Date(trimmed);
   if (!isValidDate(parsed)) {
     return new Date().toISOString();
   }

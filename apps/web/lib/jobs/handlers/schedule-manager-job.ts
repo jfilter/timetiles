@@ -14,6 +14,7 @@ import type { Payload } from "payload";
 import { validateCronExpression } from "@/lib/collections/scheduled-imports/validation";
 import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
+import { parseDateInput } from "@/lib/utils/date";
 import type { ScheduledImport } from "@/payload-types";
 
 // Unused but kept for future expansion
@@ -238,14 +239,17 @@ const shouldRunNow = (scheduledImport: ScheduledImport, currentTime: Date): bool
 
   // Check if there's a nextRun time set and if it's time to run
   if (scheduledImport.nextRun) {
-    const nextRun = new Date(scheduledImport.nextRun);
-    return currentTime >= nextRun;
+    const nextRun = parseDateInput(scheduledImport.nextRun);
+    if (nextRun) {
+      return currentTime >= nextRun;
+    }
   }
 
   // If no nextRun is set, calculate if it should run based on lastRun
   if (scheduledImport.lastRun) {
     try {
-      const nextRun = getNextExecutionTime(scheduledImport, new Date(scheduledImport.lastRun));
+      const lastRun = parseDateInput(scheduledImport.lastRun);
+      const nextRun = getNextExecutionTime(scheduledImport, lastRun ?? undefined);
       return currentTime >= nextRun;
     } catch (error) {
       logger.warn("Invalid schedule configuration", {

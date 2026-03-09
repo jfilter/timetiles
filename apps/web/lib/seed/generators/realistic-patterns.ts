@@ -9,6 +9,8 @@
  * @module
  */
 
+import { parseDateInput } from "@/lib/utils/date";
+
 import { SeededRandom } from "./seeded-random";
 
 export interface RealisticPatternOptions {
@@ -43,7 +45,10 @@ const applyRealisticTemporal = (
     return;
   }
 
-  const baseDate = new Date(originalEvent.eventTimestamp);
+  const baseDate = parseDateInput(originalEvent.eventTimestamp);
+  if (!baseDate) {
+    return;
+  }
 
   if (temporalDistribution === "realistic") {
     // Spread across a year with seasonal bias

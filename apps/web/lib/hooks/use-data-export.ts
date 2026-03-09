@@ -9,6 +9,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { ExportSummary } from "../services/data-export-types";
+import { formatDate, parseDateInput } from "../utils/date";
 
 interface DataExport {
   id: number;
@@ -167,14 +168,8 @@ export const formatFileSize = (bytes: number | null | undefined): string => {
 export const formatExportDate = (dateString: string | null | undefined): string => {
   if (!dateString) return "Unknown";
 
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedDate = formatDate(dateString);
+  return formattedDate === "N/A" ? "Unknown" : formattedDate;
 };
 
 /**
@@ -184,7 +179,10 @@ export const getTimeUntilExpiry = (expiresAt: string | null | undefined): string
   if (!expiresAt) return null;
 
   const now = new Date();
-  const expiry = new Date(expiresAt);
+  const expiry = parseDateInput(expiresAt);
+  if (!expiry) {
+    return null;
+  }
   const diffMs = expiry.getTime() - now.getTime();
 
   if (diffMs <= 0) return "Expired";

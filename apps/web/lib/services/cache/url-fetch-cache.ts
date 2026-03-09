@@ -12,6 +12,7 @@
 import crypto from "node:crypto";
 
 import { logger } from "@/lib/logger";
+import { parseDateInput } from "@/lib/utils/date";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
 import { Cache } from "./cache";
@@ -111,9 +112,11 @@ export class UrlFetchCache {
 
     // Check Expires header
     if (headers["expires"]) {
-      const expires = new Date(headers["expires"]);
-      const ttl = Math.floor((expires.getTime() - Date.now()) / 1000);
-      if (ttl > 0) return Math.min(ttl, this.maxTTL);
+      const expires = parseDateInput(headers["expires"]);
+      if (expires) {
+        const ttl = Math.floor((expires.getTime() - Date.now()) / 1000);
+        if (ttl > 0) return Math.min(ttl, this.maxTTL);
+      }
     }
 
     return Math.min(this.defaultTTL, this.maxTTL);
@@ -162,10 +165,10 @@ export class UrlFetchCache {
   private normalizeCachedEntry(cached: CachedEntry): CachedEntry {
     // Ensure dates are Date objects (deserialization might return strings)
     if (cached.metadata.fetchedAt && typeof cached.metadata.fetchedAt === "string") {
-      cached.metadata.fetchedAt = new Date(cached.metadata.fetchedAt);
+      cached.metadata.fetchedAt = parseDateInput(cached.metadata.fetchedAt) ?? new Date();
     }
     if (cached.metadata.expires && typeof cached.metadata.expires === "string") {
-      cached.metadata.expires = new Date(cached.metadata.expires);
+      cached.metadata.expires = parseDateInput(cached.metadata.expires) ?? undefined;
     }
     return cached;
   }
@@ -357,7 +360,7 @@ export class UrlFetchCache {
       metadata: {
         etag: headers["etag"],
         lastModified: headers["last-modified"],
-        expires: headers["expires"] ? new Date(headers["expires"]) : undefined,
+        expires: headers["expires"] ? (parseDateInput(headers["expires"]) ?? undefined) : undefined,
         maxAge: this.parseMaxAge(headers["cache-control"]),
         fetchedAt: now,
         contentHash: crypto.createHash("sha256").update(data).digest("hex"),
