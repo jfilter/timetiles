@@ -263,6 +263,49 @@ describe.sequential("POST /api/wizard/preview-schema", () => {
     });
   });
 
+  describe("Excel blank-column header mapping", () => {
+    it("should map data to correct columns when blank headers exist", async () => {
+      mocks.mockXlsxRead.mockReturnValue({ SheetNames: ["Sheet1"], Sheets: { Sheet1: {} } });
+      mocks.mockSheetToJson.mockReturnValue([
+        ["Name", "", "Age"],
+        ["Alice", "BLANK_DATA", 30],
+      ]);
+      const formData = createFileFormData(
+        "test.xlsx",
+        "excel-content",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      const request = createMockRequest(formData);
+      const response = await POST(request, {} as never);
+      const body = await response.json();
+      expect(response.status).toBe(200);
+      expect(body.sheets).toHaveLength(1);
+      const sheet = body.sheets[0];
+      expect(sheet.headers).toEqual(["Name", "Age"]);
+      expect(sheet.sampleData).toHaveLength(1);
+      expect(sheet.sampleData[0]).toEqual({ Name: "Alice", Age: 30 });
+    });
+    it("should handle multiple blank columns in Excel headers", async () => {
+      mocks.mockXlsxRead.mockReturnValue({ SheetNames: ["Sheet1"], Sheets: { Sheet1: {} } });
+      mocks.mockSheetToJson.mockReturnValue([
+        ["ID", "", "Name", null, "Value"],
+        [1, "skip1", "Alice", "skip2", 100],
+      ]);
+      const formData = createFileFormData(
+        "test.xlsx",
+        "excel-content",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      const request = createMockRequest(formData);
+      const response = await POST(request, {} as never);
+      const body = await response.json();
+      expect(response.status).toBe(200);
+      const sheet = body.sheets[0];
+      expect(sheet.headers).toEqual(["ID", "Name", "Value"]);
+      expect(sheet.sampleData[0]).toEqual({ ID: 1, Name: "Alice", Value: 100 });
+    });
+  });
+
   describe("URL Source", () => {
     it("should return 400 for invalid URL", async () => {
       const formData = new FormData();

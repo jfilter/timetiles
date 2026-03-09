@@ -267,9 +267,14 @@ const parseExcelPreview = (filePath: string): SheetInfo[] => {
       return;
     }
 
-    const headers = (jsonData[0] as (string | null)[])
-      .filter((h): h is string => h !== null && h !== "")
-      .map((h) => String(h).trim());
+    const rawHeaders = jsonData[0] as (string | null)[];
+    const headerEntries: Array<{ header: string; originalIndex: number }> = [];
+    rawHeaders.forEach((h, i) => {
+      if (h !== null && h !== "") {
+        headerEntries.push({ header: String(h).trim(), originalIndex: i });
+      }
+    });
+    const headers = headerEntries.map((e) => e.header);
 
     const rowCount = Math.max(0, jsonData.length - 1);
     const sampleData: Record<string, unknown>[] = [];
@@ -279,8 +284,8 @@ const parseExcelPreview = (filePath: string): SheetInfo[] => {
       if (!row || !Array.isArray(row)) continue;
 
       const obj: Record<string, unknown> = {};
-      headers.forEach((header, colIndex) => {
-        obj[header] = row[colIndex] ?? null;
+      headerEntries.forEach(({ header, originalIndex }) => {
+        obj[header] = row[originalIndex] ?? null;
       });
       sampleData.push(obj);
     }

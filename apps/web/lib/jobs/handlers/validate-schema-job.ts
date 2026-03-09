@@ -93,7 +93,7 @@ const getCurrentSchema = async (payload: Payload, datasetId: number | string): P
     where: {
       dataset: { equals: datasetId },
     },
-    sort: "-version",
+    sort: "-versionNumber",
     limit: 1,
   });
 

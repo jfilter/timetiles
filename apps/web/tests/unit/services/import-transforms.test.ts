@@ -417,3 +417,50 @@ describe("applyTransformsBatch", () => {
     expect(data).toEqual(original);
   });
 });
+
+describe("date-parse inputFormat handling", () => {
+  const makeDateTransform = (inputFormat: string): ImportTransform[] => [
+    {
+      id: "1",
+      type: "date-parse",
+      from: "date",
+      inputFormat,
+      outputFormat: "YYYY-MM-DD",
+      active: true,
+      autoDetected: false,
+    },
+  ];
+
+  it("should parse DD/MM/YYYY format correctly", () => {
+    expect(applyTransforms({ date: "15/03/2024" }, makeDateTransform("DD/MM/YYYY")).date).toBe("2024-03-15");
+  });
+  it("should parse MM/DD/YYYY format correctly", () => {
+    expect(applyTransforms({ date: "03/15/2024" }, makeDateTransform("MM/DD/YYYY")).date).toBe("2024-03-15");
+  });
+  it("should disambiguate 01/02/2024 as MM/DD/YYYY", () => {
+    expect(applyTransforms({ date: "01/02/2024" }, makeDateTransform("MM/DD/YYYY")).date).toBe("2024-01-02");
+  });
+  it("should disambiguate 01/02/2024 as DD/MM/YYYY", () => {
+    expect(applyTransforms({ date: "01/02/2024" }, makeDateTransform("DD/MM/YYYY")).date).toBe("2024-02-01");
+  });
+  it("should still parse ISO format YYYY-MM-DD (backward compatibility)", () => {
+    expect(applyTransforms({ date: "2024-03-15" }, makeDateTransform("YYYY-MM-DD")).date).toBe("2024-03-15");
+  });
+  it("should parse DD.MM.YYYY (European dot separator)", () => {
+    expect(applyTransforms({ date: "15.03.2024" }, makeDateTransform("DD.MM.YYYY")).date).toBe("2024-03-15");
+  });
+  it("should parse DD-MM-YYYY format", () => {
+    expect(applyTransforms({ date: "15-03-2024" }, makeDateTransform("DD-MM-YYYY")).date).toBe("2024-03-15");
+  });
+  it("should parse MM-DD-YYYY format", () => {
+    expect(applyTransforms({ date: "03-15-2024" }, makeDateTransform("MM-DD-YYYY")).date).toBe("2024-03-15");
+  });
+  it("should parse YYYY/MM/DD format", () => {
+    expect(applyTransforms({ date: "2024/03/15" }, makeDateTransform("YYYY/MM/DD")).date).toBe("2024-03-15");
+  });
+  it("should fall back to new Date() for unrecognized formats", () => {
+    expect(applyTransforms({ date: "2024-03-15T00:00:00Z" }, makeDateTransform("UNKNOWN-FORMAT")).date).toBe(
+      "2024-03-15"
+    );
+  });
+});

@@ -1034,6 +1034,31 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     });
   });
 
+  describe("Schema lookup sort field", () => {
+    it("should sort current schema query by -versionNumber not -version", async () => {
+      const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
+      const mockSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
+      const mockImportJob = createMockImportJob({ id: 123 });
+      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+        mockSchemaBuilderState;
+      const mockDataset = createMockDataset();
+      const mockImportFile = createMockImportFile();
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockImportFile);
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockSchema }] });
+      mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
+      mockSchemaBuilderInstance.getSchema.mockResolvedValueOnce(mockSchema);
+      mockSchemaBuilderInstance.getState.mockReturnValueOnce(mockSchemaBuilderState);
+      mockPayload.update.mockResolvedValueOnce({});
+      await validateSchemaJob.handler(mockContext);
+      expect(mockPayload.find).toHaveBeenCalledWith(
+        expect.objectContaining({ collection: "dataset-schemas", sort: "-versionNumber", limit: 1 })
+      );
+    });
+  });
+
   describe("Import Quota Validation", () => {
     it("should fail when events per import quota is exceeded", async () => {
       const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };

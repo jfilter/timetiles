@@ -11,7 +11,7 @@ import "@/tests/mocks/services/logger";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { clearFeatureFlagCache, getFeatureFlags, type FeatureFlags } from "@/lib/services/feature-flag-service";
+import { clearFeatureFlagCache, type FeatureFlags, getFeatureFlags } from "@/lib/services/feature-flag-service";
 
 describe("getFeatureFlags", () => {
   beforeEach(() => {
