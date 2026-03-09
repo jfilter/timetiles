@@ -61,8 +61,8 @@ const extractSeparateCoordinates = (
   }
 
   // Convert to string safely - check for primitives first
-  const latStr = typeof latValue === "string" || typeof latValue === "number" ? String(latValue) : "";
-  const lngStr = typeof lngValue === "string" || typeof lngValue === "number" ? String(lngValue) : "";
+  const latStr = typeof latValue === "string" || typeof latValue === "number" ? String(latValue).trim() : "";
+  const lngStr = typeof lngValue === "string" || typeof lngValue === "number" ? String(lngValue).trim() : "";
 
   if (!latStr || !lngStr) {
     return {};
@@ -105,7 +105,7 @@ const extractCombinedCoordinates = (
 const parseCombinedCoordinates = (
   coordString: string,
   coordinateFormat?: string
-): { lat: number; lng: number } | null => {
+): { lat: string; lng: string } | null => {
   let parts: string[] = [];
 
   if (coordinateFormat === "combined_comma") {
@@ -118,31 +118,32 @@ const parseCombinedCoordinates = (
     return null;
   }
 
-  const lat = Number(parts[0]);
-  const lng = Number(parts[1]);
-
-  if (Number.isNaN(lat) || Number.isNaN(lng)) {
+  if (parts[0] == null || parts[1] == null || parts[0] === "" || parts[1] === "") {
     return null;
   }
 
-  return { lat, lng };
+  return { lat: parts[0], lng: parts[1] };
 };
 
 const parseAndValidateCoordinates = (
   latStr: string,
   lngStr: string
 ): { coordinates: { lat: number; lng: number }; validation: Record<string, unknown> } | null => {
-  const lat = Number(latStr);
-  const lng = Number(lngStr);
+  const normalizedLat = latStr.trim();
+  const normalizedLng = lngStr.trim();
 
-  if (Number.isNaN(lat) || Number.isNaN(lng)) {
+  if (normalizedLat === "" || normalizedLng === "") {
     return null;
   }
 
-  const lat_parsed = parseCoordinate(String(lat));
-  const lng_parsed = parseCoordinate(String(lng));
+  const lat_parsed = parseCoordinate(normalizedLat);
+  const lng_parsed = parseCoordinate(normalizedLng);
 
   if (lat_parsed === null || lng_parsed === null) {
+    return null;
+  }
+
+  if (lat_parsed < -90 || lat_parsed > 90 || lng_parsed < -180 || lng_parsed > 180) {
     return null;
   }
 

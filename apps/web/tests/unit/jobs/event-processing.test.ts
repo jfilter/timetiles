@@ -72,6 +72,22 @@ describe("event-processing", () => {
       expect(result.coordinates).toEqual({ lat: 52.5, lng: 13.4 });
     });
 
+    it("should extract DMS coordinates from combined comma format", () => {
+      mockParseCoordinate.mockImplementation((v: string) => {
+        if (v === `40°26'46"N`) return 40.446111;
+        if (v === `74°0'21"W`) return -74.005833;
+        return null;
+      });
+
+      const row = { coords: `40°26'46"N, 74°0'21"W` };
+      const result = extractCoordinatesFromRow(row, {
+        combinedColumn: "coords",
+        coordinateFormat: "combined_comma",
+      });
+
+      expect(result.coordinates).toEqual({ lat: 40.446111, lng: -74.005833 });
+    });
+
     it("should extract from combined space format", () => {
       mockParseCoordinate.mockImplementation((v: string) => parseFloat(v));
 
@@ -104,6 +120,22 @@ describe("event-processing", () => {
       expect(result).toEqual({});
     });
 
+    it("should extract from DMS separate coordinate columns", () => {
+      mockParseCoordinate.mockImplementation((v: string) => {
+        if (v === `40°26'46"N`) return 40.446111;
+        if (v === `74°0'21"W`) return -74.005833;
+        return null;
+      });
+
+      const row = { latitude: `40°26'46"N`, longitude: `74°0'21"W` };
+      const result = extractCoordinatesFromRow(row, {
+        latitudeColumn: "latitude",
+        longitudeColumn: "longitude",
+      });
+
+      expect(result.coordinates).toEqual({ lat: 40.446111, lng: -74.005833 });
+    });
+
     it("should handle numeric coordinate values", () => {
       mockParseCoordinate.mockImplementation((v: string) => parseFloat(v));
 
@@ -114,6 +146,22 @@ describe("event-processing", () => {
       });
 
       expect(result.coordinates).toEqual({ lat: 52.5, lng: 13.4 });
+    });
+
+    it("should reject out-of-range parsed coordinates", () => {
+      mockParseCoordinate.mockImplementation((v: string) => {
+        if (v === "999") return 999;
+        if (v === "13.4") return 13.4;
+        return null;
+      });
+
+      const row = { latitude: "999", longitude: "13.4" };
+      const result = extractCoordinatesFromRow(row, {
+        latitudeColumn: "latitude",
+        longitudeColumn: "longitude",
+      });
+
+      expect(result).toEqual({});
     });
 
     it("should return empty for non-string/number lat value", () => {
