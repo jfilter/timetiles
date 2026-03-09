@@ -207,6 +207,17 @@ describe.sequential("ErrorRecoveryService", () => {
   });
 
   describe("Retry Scheduling", () => {
+    it("rejects partially numeric job ids before loading the job", async () => {
+      const result = await ErrorRecoveryService.recoverFailedJob(mockPayload, "123abc");
+
+      expect(result).toMatchObject({
+        success: false,
+        action: "recovery_failed",
+        error: "Invalid import job ID",
+      });
+      expect(mockPayload.findByID).not.toHaveBeenCalled();
+    });
+
     it("should reject retry if job not found", async () => {
       mockPayload.findByID.mockResolvedValue(null);
 
@@ -381,6 +392,22 @@ describe.sequential("ErrorRecoveryService", () => {
   });
 
   describe("Manual Reset", () => {
+    it("rejects partially numeric job ids before loading the job", async () => {
+      const result = await ErrorRecoveryService.resetJobToStage(
+        mockPayload,
+        "123abc",
+        PROCESSING_STAGE.GEOCODE_BATCH,
+        true
+      );
+
+      expect(result).toMatchObject({
+        success: false,
+        action: "reset_failed",
+        error: "Invalid import job ID",
+      });
+      expect(mockPayload.findByID).not.toHaveBeenCalled();
+    });
+
     it("should allow resetting to any valid stage", async () => {
       mockPayload.findByID.mockResolvedValue({
         id: 1,

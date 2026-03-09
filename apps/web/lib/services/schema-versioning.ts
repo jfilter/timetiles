@@ -21,6 +21,7 @@ import type { Payload, PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { Dataset, DatasetSchema } from "@/payload-types";
 
 /**
@@ -28,6 +29,25 @@ import type { Dataset, DatasetSchema } from "@/payload-types";
  * and ensure consistent version numbering across auto and manual approval flows.
  */
 export class SchemaVersioningService {
+  private static normalizeRequiredId(value: string | number, label: string): number {
+    const normalizedValue = typeof value === "number" ? value : parseStrictInteger(value);
+
+    if (normalizedValue == null || !Number.isInteger(normalizedValue)) {
+      throw new Error(`Invalid ${label} ID`);
+    }
+
+    return normalizedValue;
+  }
+
+  private static normalizeOptionalId(value: string | number | null | undefined, label: string): number | null | undefined {
+    if (value == null) {
+      return value;
+    }
+
+    const normalizedValue = this.normalizeRequiredId(value, label);
+    return normalizedValue;
+  }
+
   /**
    * Get the next schema version number for a dataset.
    */
@@ -36,10 +56,12 @@ export class SchemaVersioningService {
     datasetId: string | number,
     req?: PayloadRequest
   ): Promise<number> {
+    const normalizedDatasetId = this.normalizeRequiredId(datasetId, "dataset");
+
     const existingSchemas = await payload.find({
       collection: COLLECTION_NAMES.DATASET_SCHEMAS,
       where: {
-        dataset: { equals: typeof datasetId === "string" ? parseInt(datasetId, 10) : datasetId },
+        dataset: { equals: normalizedDatasetId },
       },
       sort: "-versionNumber",
       limit: 1,
@@ -88,9 +110,10 @@ export class SchemaVersioningService {
     }
   ): Promise<DatasetSchema> {
     const datasetId = typeof dataset === "object" ? dataset.id : dataset;
+    const normalizedDatasetId = this.normalizeRequiredId(datasetId, "dataset");
 
     logger.info("Getting next schema version", { datasetId });
-    const nextVersion = await this.getNextSchemaVersion(payload, datasetId, req);
+    const nextVersion = await this.getNextSchemaVersion(payload, normalizedDatasetId, req);
 
     try {
       logger.info("Preparing to create dataset-schema record", {
@@ -103,16 +126,16 @@ export class SchemaVersioningService {
       });
 
       const createData = {
-        dataset: typeof datasetId === "string" ? parseInt(datasetId, 10) : datasetId,
+        dataset: normalizedDatasetId,
         versionNumber: nextVersion,
         schema: schema as string | number | boolean | unknown[] | { [k: string]: unknown } | null,
         fieldMetadata,
         fieldMappings,
         autoApproved,
-        approvedBy: typeof approvedBy === "string" ? parseInt(approvedBy, 10) : approvedBy,
+        approvedBy: this.normalizeOptionalId(approvedBy, "approvedBy"),
         importSources: importSources.map((source) => ({
           ...source,
-          import: typeof source.import === "string" ? parseInt(source.import, 10) : source.import,
+          import: this.normalizeRequiredId(source.import, "import source"),
         })),
         eventCountAtCreation,
         _status: "published" as const,
@@ -158,11 +181,14 @@ export class SchemaVersioningService {
     schemaVersionId: string | number,
     req?: PayloadRequest
   ): Promise<void> {
+    const normalizedImportJobId = this.normalizeRequiredId(importJobId, "import job");
+    const normalizedSchemaVersionId = this.normalizeRequiredId(schemaVersionId, "schema version");
+
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: typeof importJobId === "string" ? parseInt(importJobId, 10) : importJobId,
+      id: normalizedImportJobId,
       data: {
-        datasetSchemaVersion: typeof schemaVersionId === "string" ? parseInt(schemaVersionId, 10) : schemaVersionId,
+        datasetSchemaVersion: normalizedSchemaVersionId,
       },
       req,
       overrideAccess: true,

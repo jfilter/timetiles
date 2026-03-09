@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SchemaVersioningService } from "@/lib/services/schema-versioning";
 import type { Dataset, DatasetSchema } from "@/payload-types";
 
-describe("SchemaVersioningService", () => {
+describe.sequential("SchemaVersioningService", () => {
   let mockPayload: {
     find: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
@@ -15,6 +15,7 @@ describe("SchemaVersioningService", () => {
   };
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
 
     mockPayload = {
@@ -91,6 +92,14 @@ describe("SchemaVersioningService", () => {
       const result = await SchemaVersioningService.getNextSchemaVersion(mockPayload as unknown as BasePayload, 123);
 
       expect(result).toBe(1);
+    });
+
+    it("rejects partially numeric dataset IDs", async () => {
+      await expect(
+        SchemaVersioningService.getNextSchemaVersion(mockPayload as unknown as BasePayload, "789abc")
+      ).rejects.toThrow("Invalid dataset ID");
+
+      expect(mockPayload.find).not.toHaveBeenCalled();
     });
   });
 
@@ -355,6 +364,20 @@ describe("SchemaVersioningService", () => {
         overrideAccess: true,
       });
     });
+
+    it("rejects partially numeric import source IDs", async () => {
+      vi.spyOn(SchemaVersioningService, "getNextSchemaVersion").mockResolvedValue(2);
+
+      await expect(
+        SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
+          dataset: 999,
+          schema: { type: "object" },
+          importSources: [{ import: "123abc" }],
+        })
+      ).rejects.toThrow("Invalid import source ID");
+
+      expect(mockPayload.create).not.toHaveBeenCalled();
+    });
   });
 
   describe("linkImportToSchemaVersion", () => {
@@ -423,6 +446,14 @@ describe("SchemaVersioningService", () => {
         req: undefined,
         overrideAccess: true,
       });
+    });
+
+    it("rejects partially numeric IDs", async () => {
+      await expect(
+        SchemaVersioningService.linkImportToSchemaVersion(mockPayload as unknown as BasePayload, "123abc", "456")
+      ).rejects.toThrow("Invalid import job ID");
+
+      expect(mockPayload.update).not.toHaveBeenCalled();
     });
   });
 
