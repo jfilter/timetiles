@@ -104,10 +104,14 @@ export class IdGenerationService {
     uniqueId: string;
     strategy: string;
   } {
+    if (!strategy.computedIdFields || strategy.computedIdFields.length === 0) {
+      throw new Error("computedIdFields must not be empty - at least one field is required for computed IDs");
+    }
+
     const values: Array<{ field: string; value: unknown }> = [];
     const missingFields: string[] = [];
 
-    for (const fieldConfig of strategy.computedIdFields ?? []) {
+    for (const fieldConfig of strategy.computedIdFields) {
       const value = this.extractFieldValue(data, fieldConfig.fieldPath);
 
       if (value === null || value === undefined) {
@@ -184,10 +188,18 @@ export class IdGenerationService {
   }
 
   private static generateContentHash(data: unknown): string {
-    // Sort keys for consistent hashing
-    const obj = data as Record<string, unknown>;
-    const sortedKeys = Object.keys(obj).sort((a, b) => a.localeCompare(b));
-    const normalized = JSON.stringify(obj, sortedKeys);
+    // Use a recursive replacer to sort keys at every nesting level
+    const sortReplacer = (_key: string, value: unknown): unknown => {
+      if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+        const sorted: Record<string, unknown> = {};
+        for (const k of Object.keys(value as Record<string, unknown>).sort((a, b) => a.localeCompare(b))) {
+          sorted[k] = (value as Record<string, unknown>)[k];
+        }
+        return sorted;
+      }
+      return value;
+    };
+    const normalized = JSON.stringify(data, sortReplacer);
 
     return createHash("sha256").update(normalized).digest("hex");
   }

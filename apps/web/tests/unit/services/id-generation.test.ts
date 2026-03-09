@@ -192,6 +192,23 @@ describe("IdGenerationService", () => {
 
         expect(result.error).toContain("Missing required fields");
       });
+
+      it("returns error when computedIdFields is empty array", () => {
+        const emptyFieldsDataset: Partial<Dataset> = {
+          id: mockDatasetId,
+          idStrategy: {
+            type: "computed",
+            computedIdFields: [],
+            duplicateStrategy: "skip",
+          },
+        };
+
+        const data = { title: "Event A", date: "2024-01-01" };
+        const result = IdGenerationService.generateEventId(data, emptyFieldsDataset as Dataset);
+
+        expect(result.uniqueId).toMatch(/^123:error:\d+$/);
+        expect(result.error).toContain("computedIdFields must not be empty");
+      });
     });
 
     describe("auto ID strategy", () => {
@@ -236,6 +253,36 @@ describe("IdGenerationService", () => {
       it("normalizes object key order for consistent hashing", () => {
         const data1 = { b: 2, a: 1, c: 3 };
         const data2 = { a: 1, c: 3, b: 2 };
+
+        const result1 = IdGenerationService.generateEventId(data1, mockDataset as Dataset);
+        const result2 = IdGenerationService.generateEventId(data2, mockDataset as Dataset);
+
+        expect(result1.contentHash).toBe(result2.contentHash);
+      });
+
+      it("produces different content hashes for different nested object values", () => {
+        const data1 = { name: "X", meta: { priority: "high" } };
+        const data2 = { name: "X", meta: { priority: "low" } };
+
+        const result1 = IdGenerationService.generateEventId(data1, mockDataset as Dataset);
+        const result2 = IdGenerationService.generateEventId(data2, mockDataset as Dataset);
+
+        expect(result1.contentHash).not.toBe(result2.contentHash);
+      });
+
+      it("produces different content hashes for deeply nested differences", () => {
+        const data1 = { a: { b: { c: { d: 1 } } } };
+        const data2 = { a: { b: { c: { d: 2 } } } };
+
+        const result1 = IdGenerationService.generateEventId(data1, mockDataset as Dataset);
+        const result2 = IdGenerationService.generateEventId(data2, mockDataset as Dataset);
+
+        expect(result1.contentHash).not.toBe(result2.contentHash);
+      });
+
+      it("normalizes nested object key order for consistent hashing", () => {
+        const data1 = { z: { b: 2, a: 1 }, m: "val" };
+        const data2 = { m: "val", z: { a: 1, b: 2 } };
 
         const result1 = IdGenerationService.generateEventId(data1, mockDataset as Dataset);
         const result2 = IdGenerationService.generateEventId(data2, mockDataset as Dataset);
