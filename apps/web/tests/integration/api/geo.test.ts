@@ -113,6 +113,9 @@ describe("/api/v1/events/geo", () => {
             description: `Test event for clustering at ${testLocations[i]?.lat}, ${testLocations[i]?.lng}`,
             venue: {
               city: i < 4 ? "Berlin" : "Paris",
+              address: {
+                city: i < 4 ? "Berlin" : "Paris",
+              },
             },
           },
           location: {
@@ -344,14 +347,14 @@ describe("/api/v1/events/geo", () => {
     expect(totalEvents).toBeLessThan(50); // Reasonable upper bound
   });
 
-  it("should filter clusters by nested field path", async () => {
+  it("should filter clusters by deeply nested field path", async () => {
     const bounds = {
       north: 90,
       south: -90,
       east: 180,
       west: -180,
     };
-    const fieldFilters = JSON.stringify({ "venue.city": ["Berlin"] });
+    const fieldFilters = JSON.stringify({ "venue.address.city": ["Berlin"] });
 
     const request = new NextRequest(
       `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(

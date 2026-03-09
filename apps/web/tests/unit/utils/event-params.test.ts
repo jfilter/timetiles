@@ -73,6 +73,13 @@ describe("event-params", () => {
         expect(result.fieldFilters).toEqual({ "nested.path": ["A"], valid: ["B"] });
       });
 
+      it("should allow deeply nested field paths", () => {
+        const ff = JSON.stringify({ "nested.path.value": ["A"], valid: ["B"] });
+        const params = new URLSearchParams(`ff=${ff}`);
+        const result = extractBaseEventParameters(params);
+        expect(result.fieldFilters).toEqual({ "nested.path.value": ["A"], valid: ["B"] });
+      });
+
       it("should strip malformed dotted field paths", () => {
         const ff = JSON.stringify({
           ".leading": ["A"],

@@ -75,6 +75,9 @@ describe("/api/v1/events/temporal", () => {
             description: `Test event for histogram on ${testDates[i]?.toISOString()}`,
             venue: {
               city: i < 3 ? "Berlin" : "Paris",
+              address: {
+                city: i < 3 ? "Berlin" : "Paris",
+              },
             },
           },
           location: {
@@ -164,8 +167,8 @@ describe("/api/v1/events/temporal", () => {
     expect(data.metadata.topDatasets).toEqual([]);
   });
 
-  it("should filter histogram data by nested field path", async () => {
-    const fieldFilters = JSON.stringify({ "venue.city": ["Berlin"] });
+  it("should filter histogram data by deeply nested field path", async () => {
+    const fieldFilters = JSON.stringify({ "venue.address.city": ["Berlin"] });
     const request = new NextRequest(
       `http://localhost:3000/api/events/histogram?datasets=${testDatasetId}&ff=${encodeURIComponent(fieldFilters)}`
     );

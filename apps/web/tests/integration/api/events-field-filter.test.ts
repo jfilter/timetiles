@@ -81,6 +81,9 @@ describe("/api/v1/events - field filtering", () => {
             title: `Nested Event ${i + 1}`,
             venue: {
               city,
+              address: {
+                city,
+              },
             },
           },
           location: {
@@ -146,6 +149,22 @@ describe("/api/v1/events - field filtering", () => {
     expect(data.events.length).toBe(2);
     for (const event of data.events) {
       expect(event.data.venue.city).toBe("Berlin");
+    }
+  });
+
+  it("should filter events by deeply nested field path", async () => {
+    const fieldFilters = JSON.stringify({ "venue.address.city": ["Berlin"] });
+    const request = new NextRequest(
+      `http://localhost:3000/api/v1/events?datasets=${nestedDatasetId}&ff=${encodeURIComponent(fieldFilters)}`
+    );
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+
+    expect(data.events.length).toBe(2);
+    for (const event of data.events) {
+      expect(event.data.venue.address.city).toBe("Berlin");
     }
   });
 });
