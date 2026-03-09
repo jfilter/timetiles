@@ -70,8 +70,15 @@ const buildClusterEventsFunction = (fieldExpression: string) => `
         AND e.location_latitude BETWEEN p_min_lat AND p_max_lat
         AND e.location_longitude IS NOT NULL
         AND e.location_latitude IS NOT NULL
-        AND (p_filters->>'datasetId' IS NULL OR
-             e.dataset_id = (p_filters->>'datasetId')::int)
+        AND (
+             (p_filters->>'datasetId' IS NULL AND p_filters->'datasets' IS NULL)
+             OR (p_filters->>'datasetId' IS NOT NULL AND
+                 e.dataset_id = (p_filters->>'datasetId')::int)
+             OR (p_filters->'datasets' IS NOT NULL AND
+                 e.dataset_id = ANY(
+                   ARRAY(SELECT jsonb_array_elements_text(p_filters->'datasets'))::int[]
+                 ))
+        )
         AND (p_filters->>'catalogId' IS NULL OR
              d.catalog_id = (p_filters->>'catalogId')::int)
         AND (p_filters->'catalogIds' IS NULL OR
