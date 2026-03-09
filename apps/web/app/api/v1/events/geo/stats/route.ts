@@ -73,7 +73,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
     const filters = buildMapClusterFilters(parameters, accessibleCatalogIds);
 
     // If user doesn't have access to the requested catalog, return default stats
-    if (filters.denyAccess) {
+    if (filters.denyAccess || filters.denyResults) {
       return NextResponse.json(DEFAULT_CLUSTER_STATS);
     }
 

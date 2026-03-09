@@ -38,9 +38,14 @@ export interface EventFilters {
   requireLocation?: boolean;
   /** When true, no results should be returned (user lacks access) */
   denyAccess?: boolean;
+  /** When true, the supplied filters are valid syntax but match no rows */
+  denyResults?: boolean;
   /** Field filters for categorical filtering by enum values */
   fieldFilters?: Record<string, string[]>;
 }
+
+const normalizeDatasetIds = (datasets: string[]): number[] =>
+  datasets.map((dataset) => parseInt(dataset, 10)).filter((datasetId) => !isNaN(datasetId));
 
 /**
  * Options for building event filters.
@@ -100,7 +105,12 @@ export const buildEventFilters = ({
 
   // Apply dataset filter
   if (parameters.datasets.length > 0 && parameters.datasets[0] !== "") {
-    filters.datasets = parseDatasetIds ? parameters.datasets.map((d) => parseInt(d)) : undefined;
+    const datasetIds = parseDatasetIds ? normalizeDatasetIds(parameters.datasets) : [];
+    if (datasetIds.length > 0) {
+      filters.datasets = datasetIds;
+    } else if (parseDatasetIds) {
+      filters.denyResults = true;
+    }
   }
 
   // Apply date filters
@@ -147,7 +157,7 @@ export const buildMapClusterFilters = (
   const filters: Record<string, unknown> = {};
 
   // Apply catalog access control
-  if (parameters.catalog != null) {
+  if (parameters.catalog != null && parameters.catalog !== "") {
     const catalogId = parseInt(parameters.catalog);
     // Only include if user has access to this catalog
     if (accessibleCatalogIds.includes(catalogId)) {
@@ -163,7 +173,12 @@ export const buildMapClusterFilters = (
 
   // Apply other filters
   if (parameters.datasets.length > 0 && parameters.datasets[0] !== "") {
-    filters.datasets = parameters.datasets;
+    const datasetIds = normalizeDatasetIds(parameters.datasets);
+    if (datasetIds.length > 0) {
+      filters.datasets = datasetIds;
+    } else {
+      filters.denyResults = true;
+    }
   }
   if (parameters.startDate != null) {
     filters.startDate = parameters.startDate;
