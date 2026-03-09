@@ -6,23 +6,18 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  buildConfigMock,
-  createTestAccountMock,
-  createTransportMock,
-  nodemailerAdapterMock,
-  postgresAdapterMock,
-} = vi.hoisted(() => ({
-  buildConfigMock: vi.fn((config) => config),
-  createTestAccountMock: vi.fn().mockResolvedValue({
-    user: "ethereal-user",
-    pass: "ethereal-pass",
-    web: "https://ethereal.example",
-  }),
-  createTransportMock: vi.fn((options) => ({ transportOptions: options })),
-  nodemailerAdapterMock: vi.fn(async (options) => options),
-  postgresAdapterMock: vi.fn(() => ({ name: "mock-db-adapter" })),
-}));
+const { buildConfigMock, createTestAccountMock, createTransportMock, nodemailerAdapterMock, postgresAdapterMock } =
+  vi.hoisted(() => ({
+    buildConfigMock: vi.fn((config) => config),
+    createTestAccountMock: vi.fn().mockResolvedValue({
+      user: "ethereal-user",
+      pass: "ethereal-pass",
+      web: "https://ethereal.example",
+    }),
+    createTransportMock: vi.fn((options) => ({ transportOptions: options })),
+    nodemailerAdapterMock: vi.fn((options) => options),
+    postgresAdapterMock: vi.fn(() => ({ name: "mock-db-adapter" })),
+  }));
 
 vi.mock("payload", () => ({
   buildConfig: buildConfigMock,
@@ -74,7 +69,7 @@ describe("createTestConfig", () => {
     await createTestConfig({
       databaseUrl: "postgres://user:pass@localhost:5432/timetiles_test",
       secret: "test-secret",
-      serverURL: "http://localhost:3000",
+      serverURL: "https://localhost:3000",
     });
 
     expect(createTestAccountMock).not.toHaveBeenCalled();

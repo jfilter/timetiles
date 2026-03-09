@@ -230,6 +230,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     config.email = nodemailerAdapter({
       defaultFromAddress: process.env.EMAIL_FROM_ADDRESS ?? "noreply@timetiles.app",
       defaultFromName: process.env.EMAIL_FROM_NAME ?? "TimeTiles",
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory and test-only
       transport: nodemailer.createTransport({ jsonTransport: true }),
       skipVerify: true,
     });
