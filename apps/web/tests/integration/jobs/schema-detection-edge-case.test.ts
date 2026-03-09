@@ -8,22 +8,7 @@
  * @module
  * @category Tests
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-
-import type * as ImportConstants from "@/lib/constants/import-constants";
-
-// Mock BATCH_SIZES to use small values for testing
-vi.mock("@/lib/constants/import-constants", async (importOriginal) => {
-  const original = await importOriginal<typeof ImportConstants>();
-  return {
-    ...original,
-    BATCH_SIZES: {
-      ...original.BATCH_SIZES,
-      SCHEMA_DETECTION: 3, // Small batch size for edge case testing
-      DUPLICATE_ANALYSIS: 3,
-    },
-  };
-});
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { BATCH_SIZES } from "@/lib/constants/import-constants";
 
@@ -67,7 +52,15 @@ describe.sequential("Schema Detection - Edge Cases", () => {
   let _testDatasetId: number;
   let uploadUserId: string | number;
 
+  let originalSchemaDetectionBatchSize: number;
+  let originalDuplicateAnalysisBatchSize: number;
+
   beforeAll(async () => {
+    originalSchemaDetectionBatchSize = BATCH_SIZES.SCHEMA_DETECTION;
+    originalDuplicateAnalysisBatchSize = BATCH_SIZES.DUPLICATE_ANALYSIS;
+    (BATCH_SIZES as any).SCHEMA_DETECTION = 3;
+    (BATCH_SIZES as any).DUPLICATE_ANALYSIS = 3;
+
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
 
@@ -84,6 +77,9 @@ describe.sequential("Schema Detection - Edge Cases", () => {
   });
 
   afterAll(async () => {
+    (BATCH_SIZES as any).SCHEMA_DETECTION = originalSchemaDetectionBatchSize;
+    (BATCH_SIZES as any).DUPLICATE_ANALYSIS = originalDuplicateAnalysisBatchSize;
+
     if (testEnv?.cleanup) {
       await testEnv.cleanup();
     }

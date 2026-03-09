@@ -9,6 +9,8 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import * as geocodingModule from "@/lib/services/geocoding";
+
 import {
   createIntegrationTestEnvironment,
   runJobsUntilImportJobStage,
@@ -16,12 +18,6 @@ import {
   withDataset,
   withImportFile,
 } from "../../setup/integration/environment";
-
-// Mock geocoding to always fail
-vi.mock("@/lib/services/geocoding", () => ({
-  geocodeAddress: vi.fn().mockRejectedValue(new Error("Geocoding API unavailable")),
-  initializeGeocoding: vi.fn(), // No-op initialization
-}));
 
 describe.sequential("Geocode Batch Job - Failure Handling", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -40,6 +36,10 @@ describe.sequential("Geocode Batch Job - Failure Handling", () => {
   });
 
   beforeEach(async () => {
+    // Re-apply spies each test (global afterEach restores all mocks)
+    vi.spyOn(geocodingModule, "geocodeAddress").mockRejectedValue(new Error("Geocoding API unavailable"));
+    vi.spyOn(geocodingModule, "initializeGeocoding").mockImplementation(() => {});
+
     await testEnv.seedManager.truncate([
       "catalogs",
       "datasets",

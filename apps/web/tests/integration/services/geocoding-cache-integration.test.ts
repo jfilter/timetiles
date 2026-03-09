@@ -14,26 +14,10 @@ import path from "node:path";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Use vi.hoisted to ensure mocks are set up before imports
-const { mockGoogleGeocode, mockNominatimGeocode, mockNodeGeocoder } = vi.hoisted(() => {
-  const mockGoogleGeocode = vi.fn();
-  const mockNominatimGeocode = vi.fn();
+import { ProviderManager } from "../../../lib/services/geocoding/provider-manager";
 
-  const mockNodeGeocoder = vi.fn().mockImplementation((config: any) => {
-    if (config?.provider === "google") {
-      return { geocode: mockGoogleGeocode };
-    } else {
-      return { geocode: mockNominatimGeocode };
-    }
-  });
-
-  return { mockGoogleGeocode, mockNominatimGeocode, mockNodeGeocoder };
-});
-
-// Mock node-geocoder module (the underlying library used by geocoding providers)
-vi.mock("node-geocoder", () => ({
-  default: mockNodeGeocoder,
-}));
+const mockGoogleGeocode = vi.fn();
+const mockNominatimGeocode = vi.fn();
 
 import {
   createIntegrationTestEnvironment,
@@ -95,6 +79,29 @@ describe.sequential("Geocoding Cache Integration", () => {
     });
 
   beforeAll(async () => {
+    // Spy on loadProviders to return mock providers instead of calling real NodeGeocoder
+    const mockProviders = [
+      {
+        name: "Google Maps Test Provider",
+        geocoder: { geocode: mockGoogleGeocode } as any,
+        priority: 1,
+        enabled: true,
+        rateLimit: 50,
+      },
+      {
+        name: "Nominatim",
+        geocoder: { geocode: mockNominatimGeocode } as any,
+        priority: 10,
+        enabled: true,
+        rateLimit: 1,
+      },
+    ];
+    vi.spyOn(ProviderManager.prototype, "loadProviders").mockImplementation(function (this: any) {
+      this.providers = mockProviders;
+      this.configureRateLimiter();
+      return Promise.resolve(mockProviders);
+    });
+
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
     fixtureCsvContent = fs.readFileSync(path.join(process.cwd(), "tests/fixtures/geocoding-test.csv"), "utf8");
@@ -143,6 +150,29 @@ describe.sequential("Geocoding Cache Integration", () => {
 
     mockGoogleGeocode.mockReset();
     mockNominatimGeocode.mockReset();
+
+    // Re-apply the ProviderManager spy (restored by afterEach safety net)
+    const mockProviders = [
+      {
+        name: "Google Maps Test Provider",
+        geocoder: { geocode: mockGoogleGeocode } as any,
+        priority: 1,
+        enabled: true,
+        rateLimit: 50,
+      },
+      {
+        name: "Nominatim",
+        geocoder: { geocode: mockNominatimGeocode } as any,
+        priority: 10,
+        enabled: true,
+        rateLimit: 1,
+      },
+    ];
+    vi.spyOn(ProviderManager.prototype, "loadProviders").mockImplementation(function (this: any) {
+      this.providers = mockProviders;
+      this.configureRateLimiter();
+      return Promise.resolve(mockProviders);
+    });
 
     mockGoogleGeocode.mockImplementation((address: string) => {
       const result = generateMockGeocodingResult(address);

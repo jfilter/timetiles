@@ -356,6 +356,7 @@ export class TestEnvironmentBuilder {
     return this.createTestEnvironment({
       collections: Object.keys(COLLECTIONS) as CollectionName[],
       createTempDir: false,
+      resetDatabase: false,
       ...options,
     });
   }
@@ -742,7 +743,7 @@ export const withUsers = async (
       const user = await testEnv.payload.create({
         collection: "users",
         data: {
-          email: `${role}@test.com`,
+          email: `${role}-${timestamp}@test.com`,
           password: TEST_CREDENTIALS.basic.strongPassword,
           role: role,
         },

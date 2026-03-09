@@ -28,6 +28,9 @@ describe("/api/v1/events stats - deeply nested field filtering", () => {
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
 
+    // Truncate events to avoid data leakage from other test files (isolate: false)
+    await testEnv.seedManager.truncate(["events", "datasets", "catalogs"]);
+
     const { catalog } = await withCatalog(testEnv, {
       name: "Stats Field Filter Test Catalog",
       description: "Test catalog for stats field filtering",

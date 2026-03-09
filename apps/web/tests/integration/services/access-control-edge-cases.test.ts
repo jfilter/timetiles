@@ -47,7 +47,7 @@ describe.sequential("Access Control Edge Cases", () => {
     const { users } = await withUsers(testEnv, {
       admin: { role: "admin" },
       owner: { role: "user" },
-      other: { role: "user", email: "other@test.com" },
+      other: { role: "user" },
     });
     adminUser = users.admin;
     ownerUser = users.owner;

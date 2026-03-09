@@ -52,9 +52,6 @@ describe.sequential("Webhook Trigger API Integration", () => {
     // Create a single rate limit service instance for tests
     rateLimitService = new RateLimitService(payload);
 
-    // Mock getRateLimitService to return our controlled instance
-    vi.spyOn(RateLimitModule, "getRateLimitService").mockReturnValue(rateLimitService);
-
     // Create base test data
     const { users } = await withUsers(testEnv, {
       webhookTestUser: {
@@ -79,6 +76,9 @@ describe.sequential("Webhook Trigger API Integration", () => {
   });
 
   beforeEach(async () => {
+    // Re-apply spy each test (global afterEach restores all mocks)
+    vi.spyOn(RateLimitModule, "getRateLimitService").mockReturnValue(rateLimitService);
+
     // Create fresh scheduled import for each test
     const { scheduledImport } = await withScheduledImport(
       testEnv,

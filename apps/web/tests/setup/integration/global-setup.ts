@@ -15,6 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import dotenv from "dotenv";
+import { vi } from "vitest";
 
 // Load environment variables from .env.local
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
@@ -75,20 +76,23 @@ process.env.NEXT_PUBLIC_PAYLOAD_URL = "http://localhost:3000";
 
 // Payload logging is now properly controlled via logger and loggingLevels configuration
 
-import { getTestDatabaseUrl, parseDatabaseUrl } from "../../../lib/database/url";
+import { deriveDatabaseUrl, getDatabaseUrl, parseDatabaseUrl } from "../../../lib/database/url";
 
-// Use one test database per worker for efficiency
-// Workers will truncate tables between tests instead of creating new databases
+// Use one test database per fork process for efficiency.
+// With isolate: false, multiple test files share a fork process (same PID).
+// Use process.pid as the pool slot identifier so the DB is reused across files.
 const workerId = process.env.VITEST_WORKER_ID ?? "1";
+const poolSlotId = String(process.pid);
 
-// Get test database URL for this worker
-const dbUrl = getTestDatabaseUrl();
+// DB URL uses process.pid (stable within fork with isolate: false)
+const baseUrl = getDatabaseUrl(true)!;
+const dbUrl = deriveDatabaseUrl(baseUrl, { workerId: poolSlotId });
 const testDbName = parseDatabaseUrl(dbUrl).database;
 process.env.DATABASE_URL = dbUrl;
 
-// Use worker-specific upload directories for test isolation
-process.env.UPLOAD_DIR = `/tmp/uploads-${workerId}`;
-process.env.UPLOAD_TEMP_DIR = `/tmp/temp-${workerId}`;
+// Use fork-specific upload directories for test isolation
+process.env.UPLOAD_DIR = `/tmp/uploads-${poolSlotId}`;
+process.env.UPLOAD_TEMP_DIR = `/tmp/temp-${poolSlotId}`;
 
 // Check if we're running integration tests
 // In CI, always setup database for all tests (isolated per worker)
@@ -158,6 +162,22 @@ beforeAll(async () => {
     throw error;
   }
 
+  // With isolate: false, multiple test files share a fork process.
+  // Reuse the DB if it already exists and has valid schema (avoids redundant clones).
+  const dbExists = await databaseExists(testDbName);
+  if (dbExists) {
+    try {
+      await verifyDatabaseSchema(dbUrl);
+      if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
+        logger.info(`Reusing existing database ${testDbName} for worker ${workerId}`);
+      }
+      return;
+    } catch {
+      // Schema invalid — drop and re-clone below
+      await dropDatabase(testDbName, { ifExists: true });
+    }
+  }
+
   // Try to clone from template database (fast path - created by globalSetup)
   // This is ~2s vs ~30s for running migrations
   const templateExists = await databaseExists(TEMPLATE_DB_NAME);
@@ -165,11 +185,6 @@ beforeAll(async () => {
   if (templateExists) {
     // Fast path: Clone from template
     try {
-      // Drop existing worker database if it exists
-      if (await databaseExists(testDbName)) {
-        await dropDatabase(testDbName, { ifExists: true });
-      }
-
       await cloneDatabase(TEMPLATE_DB_NAME, testDbName);
 
       if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
@@ -199,6 +214,12 @@ beforeAll(async () => {
     }
     await setupDatabaseWithMigrations(testDbName, dbUrl, workerId);
   }
+});
+
+// Safety net: restore all spied mocks between tests to prevent leak across files
+// with isolate: false. Individual tests that need spies set them up in beforeAll/beforeEach.
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 // Global teardown to clean up

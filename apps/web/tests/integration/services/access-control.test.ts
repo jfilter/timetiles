@@ -40,7 +40,7 @@ describe.sequential("Hierarchical Access Control", () => {
     const { users } = await withUsers(env, {
       admin: { role: "admin" },
       owner: { role: "user" },
-      other: { role: "user", email: "other@test.com" },
+      other: { role: "user" },
     });
     adminUser = users.admin;
     ownerUser = users.owner;

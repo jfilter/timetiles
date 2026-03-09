@@ -31,6 +31,9 @@ describe("/api/v1/events/temporal", () => {
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
 
+    // Truncate to avoid data leakage from other test files (isolate: false)
+    await testEnv.seedManager.truncate(["events", "datasets", "catalogs"]);
+
     // Create test catalog (make it public so unauthenticated requests can access it)
     const { catalog } = await withCatalog(testEnv, {
       name: "Test Catalog for Histogram",

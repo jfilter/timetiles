@@ -12,20 +12,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
-
-// Mock geocoding so tests don't depend on external Nominatim service
-vi.mock("@/lib/services/geocoding", () => ({
-  geocodeAddress: vi.fn().mockResolvedValue({
-    latitude: 40.7128,
-    longitude: -74.006,
-    confidence: 0.9,
-    normalizedAddress: "New York, NY, USA",
-    provider: "mock",
-    components: {},
-    metadata: {},
-  }),
-  initializeGeocoding: vi.fn(),
-}));
 import { analyzeDuplicatesJob } from "@/lib/jobs/handlers/analyze-duplicates-job";
 import { createEventsBatchJob } from "@/lib/jobs/handlers/create-events-batch-job";
 import { createSchemaVersionJob } from "@/lib/jobs/handlers/create-schema-version-job";
@@ -33,6 +19,7 @@ import { datasetDetectionJob } from "@/lib/jobs/handlers/dataset-detection-job";
 import { geocodeBatchJob } from "@/lib/jobs/handlers/geocode-batch-job";
 import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
 import { validateSchemaJob } from "@/lib/jobs/handlers/validate-schema-job";
+import * as geocodingModule from "@/lib/services/geocoding";
 
 import {
   createIntegrationTestEnvironment,
@@ -66,6 +53,18 @@ describe.sequential("Pipeline Workflow Transitions", () => {
   });
 
   beforeEach(async () => {
+    // Re-apply spies each test (global afterEach restores all mocks)
+    vi.spyOn(geocodingModule, "geocodeAddress").mockResolvedValue({
+      latitude: 40.7128,
+      longitude: -74.006,
+      confidence: 0.9,
+      normalizedAddress: "New York, NY, USA",
+      provider: "mock",
+      components: {},
+      metadata: {},
+    });
+    vi.spyOn(geocodingModule, "initializeGeocoding").mockImplementation(() => {});
+
     await testEnv.seedManager.truncate(collectionsToReset);
   });
 

@@ -104,6 +104,7 @@ export default defineConfig({
           globals: true,
           environment: "node",
           include: ["tests/integration/**/*.test.ts"],
+          isolate: false,
           // Global setup runs ONCE before all workers (creates template database)
           globalSetup: ["tests/setup/integration/vitest-global-setup.ts"],
           // Setup files run per-worker (clones template to worker database)

@@ -425,7 +425,7 @@ describe.sequential("Security Validation Tests", () => {
 
       // Create another user (admin2) who owns the private catalog
       const { users: admin2Users } = await withUsers(testEnv, {
-        admin2: { role: "user", email: "admin2@test.com" },
+        admin2: { role: "user" },
       });
       const admin2 = admin2Users.admin2;
 
@@ -585,7 +585,7 @@ describe.sequential("Security Validation Tests", () => {
 
       // Create another regular user
       const { users: anotherUsers } = await withUsers(testEnv, {
-        anotherUser: { role: "user", email: "another@test.com" },
+        anotherUser: { role: "user" },
       });
       const anotherUser = anotherUsers.anotherUser;
 

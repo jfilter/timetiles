@@ -62,7 +62,6 @@ describe.sequential("Quota System", () => {
     const { users } = await withUsers(testEnv, {
       testUser: {
         role: "user",
-        email: "limited@test.com",
         trustLevel: String(TRUST_LEVELS.BASIC),
         quotas: {
           maxFileUploadsPerDay: 2,
@@ -76,7 +75,6 @@ describe.sequential("Quota System", () => {
       },
       adminUser: {
         role: "admin",
-        email: "admin@test.com",
         trustLevel: String(TRUST_LEVELS.UNLIMITED),
         // Don't provide quotas - let the hook set them based on trust level
       },

@@ -42,7 +42,7 @@ describe.sequential("Views Collection", () => {
     const { users } = await withUsers(testEnv, {
       admin: { role: "admin" },
       regular: { role: "user" },
-      other: { role: "user", email: "other@test.com" },
+      other: { role: "user" },
     });
     adminUser = users.admin;
     regularUser = users.regular;

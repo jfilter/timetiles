@@ -115,7 +115,7 @@ describe.sequential("Account Deletion Service", () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, {
         admin1: { role: "admin" },
-        admin2: { role: "admin", email: "admin2@test.com" },
+        admin2: { role: "admin" },
       });
 
       const result = await deletionService.canDeleteUser(users.admin1.id);

@@ -16,46 +16,16 @@
  * 3. We need deterministic responses to test specific scenarios (failures, empty results, invalid coords).
  */
 
-// Create mock geocoder instances with proper typing - must be defined before mocking
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TEST_CREDENTIALS } from "../../constants/test-credentials";
-
-// Use vi.hoisted to ensure mocks are set up before imports
-const { mockGoogleGeocode, mockNominatimGeocode, mockNodeGeocoder } = vi.hoisted(() => {
-  const mockGoogleGeocode = vi.fn();
-  const mockNominatimGeocode = vi.fn();
-
-  const mockNodeGeocoder = vi.fn().mockImplementation((config: any) => {
-    if (config?.provider === "google") {
-      return { geocode: mockGoogleGeocode };
-    } else {
-      return { geocode: mockNominatimGeocode };
-    }
-  });
-
-  return { mockGoogleGeocode, mockNominatimGeocode, mockNodeGeocoder };
-});
-
-// Mock node-geocoder module
-vi.mock("node-geocoder", () => ({
-  default: mockNodeGeocoder,
-}));
-
-// Create getter functions to access the current mocks
-const mockGoogleGeocoder = {
-  get geocode() {
-    return mockGoogleGeocode;
-  },
-};
-const mockNominatimGeocoder = {
-  get geocode() {
-    return mockNominatimGeocode;
-  },
-};
-
 import { GeocodingError, GeocodingService } from "../../../lib/services/geocoding/geocoding-service";
+import { ProviderManager } from "../../../lib/services/geocoding/provider-manager";
+import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
+
+// Mock geocode functions - configured per test, spied via ProviderManager.prototype.loadProviders
+const mockGoogleGeocode = vi.fn();
+const mockNominatimGeocode = vi.fn();
 
 describe("GeocodingService", () => {
   const collectionsToReset = ["location-cache", "geocoding-providers"];
@@ -229,9 +199,34 @@ describe("GeocodingService", () => {
     return providerNames;
   };
 
-  // Helper function to ensure service is created
+  // Helper function to ensure service is created with mocked providers
   const ensureServiceCreated = async (withGoogleApi = false) => {
     const providerNames = await createTestProviders(withGoogleApi);
+
+    // Spy on loadProviders to return mock providers instead of calling real NodeGeocoder
+    const providers: any[] = [];
+    if (withGoogleApi && providerNames.google) {
+      providers.push({
+        name: providerNames.google,
+        geocoder: { geocode: mockGoogleGeocode },
+        priority: 1,
+        enabled: true,
+        rateLimit: 50,
+      });
+    }
+    providers.push({
+      name: providerNames.nominatim!,
+      geocoder: { geocode: mockNominatimGeocode },
+      priority: withGoogleApi ? 2 : 1,
+      enabled: true,
+      rateLimit: 1,
+    });
+
+    vi.spyOn(ProviderManager.prototype, "loadProviders").mockImplementation(function (this: any) {
+      this.providers = providers;
+      this.configureRateLimiter();
+      return Promise.resolve(providers);
+    });
     geocodingService = new GeocodingService(payload);
     return providerNames;
   };
@@ -258,9 +253,9 @@ describe("GeocodingService", () => {
       };
 
       // Set up mocks BEFORE creating service
-      mockGoogleGeocoder.geocode.mockResolvedValue([mockGoogleResult]);
+      mockGoogleGeocode.mockResolvedValue([mockGoogleResult]);
       // Ensure Nominatim is not called by setting it to fail
-      mockNominatimGeocoder.geocode.mockRejectedValue(new Error("Should not reach Nominatim"));
+      mockNominatimGeocode.mockRejectedValue(new Error("Should not reach Nominatim"));
 
       // Set up environment and recreate service to include Google geocoder AFTER setting up mocks
       const providerNames = await ensureServiceCreated(true);
@@ -287,15 +282,15 @@ describe("GeocodingService", () => {
       expect(result.fromCache).toBeUndefined(); // fromCache is only set to true for cached results
 
       // Verify Google was called (may have been called by other tests too)
-      expect(mockGoogleGeocoder.geocode).toHaveBeenCalled();
+      expect(mockGoogleGeocode).toHaveBeenCalled();
     });
 
     it("should fallback to Nominatim when Google fails", async () => {
       const uniqueAddress = `5678 Fallback Ave, San Francisco, CA ${testCounter}-${Date.now()}`;
 
       // Set up mocks BEFORE creating service
-      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google API error"));
-      mockNominatimGeocoder.geocode.mockResolvedValue([
+      mockGoogleGeocode.mockRejectedValue(new Error("Google API error"));
+      mockNominatimGeocode.mockResolvedValue([
         {
           latitude: 37.7749,
           longitude: -122.4194,
@@ -320,14 +315,14 @@ describe("GeocodingService", () => {
       expect(result.provider).toMatch(/Nominatim.*Test/);
       expect(result.latitude).toBe(37.7749);
       expect(result.longitude).toBe(-122.4194);
-      expect(mockGoogleGeocoder.geocode).toHaveBeenCalled();
-      expect(mockNominatimGeocoder.geocode).toHaveBeenCalled();
+      expect(mockGoogleGeocode).toHaveBeenCalled();
+      expect(mockNominatimGeocode).toHaveBeenCalled();
     });
 
     it("should use Nominatim when Google API key is not available", async () => {
       // Set up mocks BEFORE creating service
-      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
-      mockNominatimGeocoder.geocode.mockResolvedValue([
+      mockGoogleGeocode.mockRejectedValue(new Error("Google not available"));
+      mockNominatimGeocode.mockResolvedValue([
         {
           latitude: 37.7749,
           longitude: -122.4194,
@@ -354,7 +349,7 @@ describe("GeocodingService", () => {
       expect(result.provider).toMatch(/Nominatim.*Test/);
       expect(result.latitude).toBe(37.7749);
       expect(result.longitude).toBe(-122.4194);
-      expect(mockNominatimGeocoder.geocode).toHaveBeenCalledWith(uniqueAddress);
+      expect(mockNominatimGeocode).toHaveBeenCalledWith(uniqueAddress);
     });
 
     it("should return cached result when available", async () => {
@@ -402,8 +397,8 @@ describe("GeocodingService", () => {
       expect(result.fromCache).toBe(true);
       expect(result.latitude).toBe(37.7749);
       expect(result.longitude).toBe(-122.4194);
-      expect(mockGoogleGeocoder.geocode).not.toHaveBeenCalled();
-      expect(mockNominatimGeocoder.geocode).not.toHaveBeenCalled();
+      expect(mockGoogleGeocode).not.toHaveBeenCalled();
+      expect(mockNominatimGeocode).not.toHaveBeenCalled();
 
       // Verify hit count was updated
       const updatedCache = await payload.findByID({
@@ -420,8 +415,8 @@ describe("GeocodingService", () => {
       const uniqueAddress = `${mockAddress} ${testCounter}`;
 
       // Set up mocks to fail for this test
-      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
-      mockNominatimGeocoder.geocode.mockRejectedValue(new Error("Nominatim error"));
+      mockGoogleGeocode.mockRejectedValue(new Error("Google not available"));
+      mockNominatimGeocode.mockRejectedValue(new Error("Nominatim error"));
 
       await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow(GeocodingError);
       await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow("All geocoding providers failed");
@@ -429,8 +424,8 @@ describe("GeocodingService", () => {
 
     it("should reject results with low confidence", async () => {
       // Reset mocks and set up failure scenario
-      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
-      mockNominatimGeocoder.geocode.mockResolvedValue([
+      mockGoogleGeocode.mockRejectedValue(new Error("Google not available"));
+      mockNominatimGeocode.mockResolvedValue([
         {
           latitude: 91, // Invalid latitude (> 90)
           longitude: -122.4194,
@@ -461,8 +456,8 @@ describe("GeocodingService", () => {
       };
 
       // Set up mocks BEFORE creating service: Google fails, Nominatim returns invalid coordinates
-      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
-      mockNominatimGeocoder.geocode.mockResolvedValue([invalidResult]);
+      mockGoogleGeocode.mockRejectedValue(new Error("Google not available"));
+      mockNominatimGeocode.mockResolvedValue([invalidResult]);
 
       // Create service instance for this test AFTER setting up mocks
       await ensureServiceCreated();
@@ -476,8 +471,8 @@ describe("GeocodingService", () => {
       const uniqueAddress = `${mockAddress} Empty Results ${testCounter} ${Date.now()}-${Math.random()}`;
 
       // Set up mocks BEFORE creating service: Google fails, Nominatim returns empty array
-      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
-      mockNominatimGeocoder.geocode.mockResolvedValue([]);
+      mockGoogleGeocode.mockRejectedValue(new Error("Google not available"));
+      mockNominatimGeocode.mockResolvedValue([]);
 
       // Create service instance for this test AFTER setting up mocks
       await ensureServiceCreated();
@@ -494,8 +489,8 @@ describe("GeocodingService", () => {
       await ensureServiceCreated();
 
       // Set up mocks: Google fails, Nominatim succeeds for all addresses
-      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
-      mockNominatimGeocoder.geocode.mockImplementation((address: string) => {
+      mockGoogleGeocode.mockRejectedValue(new Error("Google not available"));
+      mockNominatimGeocode.mockImplementation((address: string) => {
         // Ensure all addresses get valid coordinates and components
         return Promise.resolve([
           {
@@ -535,8 +530,8 @@ describe("GeocodingService", () => {
       ];
 
       // Set up mocks BEFORE creating service
-      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
-      mockNominatimGeocoder.geocode.mockImplementation((address: string) => {
+      mockGoogleGeocode.mockRejectedValue(new Error("Google not available"));
+      mockNominatimGeocode.mockImplementation((address: string) => {
         if (address.includes("Mixed Main St")) {
           return Promise.resolve([
             {
@@ -610,7 +605,7 @@ describe("GeocodingService", () => {
         },
       });
 
-      mockNominatimGeocoder.geocode.mockResolvedValue([
+      mockNominatimGeocode.mockResolvedValue([
         {
           latitude: 40.7128,
           longitude: -74.006,
@@ -648,8 +643,8 @@ describe("GeocodingService", () => {
       };
 
       // Set up mocks BEFORE creating service
-      mockGoogleGeocoder.geocode.mockResolvedValue([resultWithPlaceId]);
-      mockNominatimGeocoder.geocode.mockRejectedValue(new Error("Should not reach Nominatim"));
+      mockGoogleGeocode.mockResolvedValue([resultWithPlaceId]);
+      mockNominatimGeocode.mockRejectedValue(new Error("Should not reach Nominatim"));
 
       // Create service with Google API enabled AFTER setting up mocks
       await ensureServiceCreated(true);
@@ -674,8 +669,8 @@ describe("GeocodingService", () => {
       };
 
       // Set up mocks BEFORE creating service
-      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
-      mockNominatimGeocoder.geocode.mockResolvedValue([nominatimResult]);
+      mockGoogleGeocode.mockRejectedValue(new Error("Google not available"));
+      mockNominatimGeocode.mockResolvedValue([nominatimResult]);
 
       // Create service instance for this test AFTER setting up mocks
       await ensureServiceCreated();
@@ -694,8 +689,8 @@ describe("GeocodingService", () => {
       const address2 = baseAddress.toUpperCase().replaceAll(/,/g, ", ").replaceAll(/\s+/g, "  ") + "!!!";
 
       // Set up mocks BEFORE creating service
-      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
-      mockNominatimGeocoder.geocode.mockResolvedValue([
+      mockGoogleGeocode.mockRejectedValue(new Error("Google not available"));
+      mockNominatimGeocode.mockResolvedValue([
         {
           latitude: 37.7749,
           longitude: -122.4194,
@@ -721,8 +716,8 @@ describe("GeocodingService", () => {
 
       expect(result2.fromCache).toBe(true);
       // First call should have created cache, second call should use cache
-      expect(mockNominatimGeocoder.geocode).toHaveBeenCalledTimes(1);
-      expect(mockNominatimGeocoder.geocode).toHaveBeenCalledWith(address1);
+      expect(mockNominatimGeocode).toHaveBeenCalledTimes(1);
+      expect(mockNominatimGeocode).toHaveBeenCalledWith(address1);
     });
 
     it("should clean up old cache entries", async () => {
@@ -829,8 +824,8 @@ describe("GeocodingService", () => {
       const uniqueAddress = `Test Address ${testCounter}`;
 
       // Set up mocks: Both providers fail with network errors
-      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google network error"));
-      mockNominatimGeocoder.geocode.mockRejectedValue(new Error("Network error"));
+      mockGoogleGeocode.mockRejectedValue(new Error("Google network error"));
+      mockNominatimGeocode.mockRejectedValue(new Error("Network error"));
 
       await expect(geocodingService.geocode(uniqueAddress)).rejects.toThrow(GeocodingError);
     });
@@ -843,8 +838,8 @@ describe("GeocodingService", () => {
       ];
 
       // Set up mocks BEFORE creating service
-      mockGoogleGeocoder.geocode.mockRejectedValue(new Error("Google not available"));
-      mockNominatimGeocoder.geocode.mockImplementation((address: string) => {
+      mockGoogleGeocode.mockRejectedValue(new Error("Google not available"));
+      mockNominatimGeocode.mockImplementation((address: string) => {
         if (address.includes("Bad Continue Address")) {
           throw new Error("Geocoding failed");
         }
@@ -880,16 +875,12 @@ describe("GeocodingService", () => {
       // Create a unique address to avoid conflicts
       const uniqueAddress = `Test Address ${Date.now()}-${Math.random()}`;
 
-      // Mock payload to throw error on cache operations
-      const originalFind = payload.find;
-      const originalUpdate = payload.update;
-      const originalCreate = payload.create;
+      // Mock payload to throw error on cache operations using spyOn (auto-restored by vi.restoreAllMocks)
+      vi.spyOn(payload, "find").mockRejectedValue(new Error("Database error"));
+      vi.spyOn(payload, "update").mockRejectedValue(new Error("Database error"));
+      vi.spyOn(payload, "create").mockRejectedValue(new Error("Database error"));
 
-      payload.find = vi.fn().mockRejectedValue(new Error("Database error")) as any;
-      payload.update = vi.fn().mockRejectedValue(new Error("Database error")) as any;
-      payload.create = vi.fn().mockRejectedValue(new Error("Database error")) as any;
-
-      mockNominatimGeocoder.geocode.mockResolvedValue([
+      mockNominatimGeocode.mockResolvedValue([
         {
           latitude: 37.7749,
           longitude: -122.4194,
@@ -905,13 +896,6 @@ describe("GeocodingService", () => {
 
       expect(result).toHaveProperty("latitude");
       expect(result.fromCache).toBeFalsy();
-
-      // Restore original methods immediately
-      Object.assign(payload, {
-        find: originalFind,
-        update: originalUpdate,
-        create: originalCreate,
-      });
     });
   });
 });

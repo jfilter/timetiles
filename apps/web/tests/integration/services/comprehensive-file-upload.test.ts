@@ -18,21 +18,8 @@ import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
-
-// Mock geocoding so tests don't depend on external Nominatim service
-vi.mock("@/lib/services/geocoding", () => ({
-  geocodeAddress: vi.fn().mockResolvedValue({
-    latitude: 40.7128,
-    longitude: -74.006,
-    confidence: 0.9,
-    normalizedAddress: "New York, NY, USA",
-    provider: "mock",
-    components: {},
-    metadata: {},
-  }),
-  initializeGeocoding: vi.fn(),
-}));
 import { logger } from "@/lib/logger";
+import * as geocodingModule from "@/lib/services/geocoding";
 
 import {
   createIntegrationTestEnvironment,
@@ -88,6 +75,18 @@ describe.sequential("Comprehensive File Upload Tests", () => {
   });
 
   beforeEach(async () => {
+    // Re-apply spies each test (global afterEach restores all mocks)
+    vi.spyOn(geocodingModule, "geocodeAddress").mockResolvedValue({
+      latitude: 40.7128,
+      longitude: -74.006,
+      confidence: 0.9,
+      normalizedAddress: "New York, NY, USA",
+      provider: "mock",
+      components: {},
+      metadata: {},
+    });
+    vi.spyOn(geocodingModule, "initializeGeocoding").mockImplementation(() => {});
+
     await testEnv.seedManager.truncate(collectionsToReset);
   });
 
