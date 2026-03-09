@@ -15,6 +15,7 @@ import dotenv from "dotenv";
 // Load environment variables first
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
+import { createDatabaseClient } from "@/lib/database/client";
 import { databaseExists, dropDatabase } from "@/lib/database/operations";
 import { checkPostgreSQLConnection, setupDatabase } from "@/lib/database/setup";
 import { constructDatabaseUrl, parseDatabaseUrl } from "@/lib/database/url";
@@ -22,6 +23,69 @@ import { constructDatabaseUrl, parseDatabaseUrl } from "@/lib/database/url";
 import { verifyDatabaseSchema } from "./schema-verification";
 
 const TEMPLATE_DB_NAME = "timetiles_test_template";
+
+/**
+ * Convert all payload tables to UNLOGGED for faster writes in test databases.
+ *
+ * UNLOGGED tables skip the Write-Ahead Log (WAL), making INSERT, UPDATE,
+ * DELETE, and TRUNCATE significantly faster. Since test databases are
+ * disposable, crash recovery is irrelevant.
+ *
+ * This is idempotent — already-unlogged tables are skipped.
+ * Worker clones inherit UNLOGGED status from the template via CREATE DATABASE WITH TEMPLATE.
+ */
+const convertTablesToUnlogged = async (templateUrl: string): Promise<void> => {
+  const client = createDatabaseClient({ connectionString: templateUrl });
+  try {
+    await client.connect();
+
+    // Find all logged tables in the payload schema (excluding migrations)
+    const result = await client.query(
+      `SELECT c.relname as tablename
+       FROM pg_class c
+       JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = 'payload'
+         AND c.relkind = 'r'
+         AND c.relpersistence != 'u'
+         AND c.relname NOT LIKE 'payload_migrations%'
+       ORDER BY c.relname`
+    );
+
+    if (result.rows.length === 0) {
+      console.log("[Global Setup] All tables already UNLOGGED");
+      return;
+    }
+
+    // Multi-pass conversion: tables with FK dependencies must be converted
+    // after the tables they reference. Retry failed tables until all succeed.
+    let remaining = result.rows.map((r) => r.tablename as string);
+    let pass = 0;
+    const maxPasses = 5;
+
+    while (remaining.length > 0 && pass < maxPasses) {
+      pass++;
+      const failed: string[] = [];
+
+      for (const tableName of remaining) {
+        try {
+          await client.query(`ALTER TABLE payload."${tableName}" SET UNLOGGED`);
+        } catch {
+          failed.push(tableName);
+        }
+      }
+
+      remaining = failed;
+    }
+
+    const converted = result.rows.length - remaining.length;
+    if (remaining.length > 0) {
+      console.warn(`[Global Setup] Could not convert ${remaining.length} tables to UNLOGGED:`, remaining);
+    }
+    console.log(`[Global Setup] Converted ${converted} tables to UNLOGGED (${pass} passes)`);
+  } finally {
+    await client.end();
+  }
+};
 
 /**
  * Build connection URL for the template database.
@@ -60,6 +124,7 @@ export const setup = async (): Promise<void> => {
   if (await databaseExists(TEMPLATE_DB_NAME)) {
     try {
       await verifyDatabaseSchema(buildTemplateUrl());
+      await convertTablesToUnlogged(buildTemplateUrl());
       console.log("[Global Setup] Template database ready (existing, schema valid)");
       return;
     } catch (error) {
@@ -80,6 +145,9 @@ export const setup = async (): Promise<void> => {
 
   // Verify the template was created correctly
   await verifyDatabaseSchema(buildTemplateUrl());
+
+  // Convert tables to UNLOGGED for faster writes (no WAL overhead)
+  await convertTablesToUnlogged(buildTemplateUrl());
 
   console.log("[Global Setup] Template database created successfully");
 };
