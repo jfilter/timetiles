@@ -139,11 +139,10 @@ export class ImportPage {
       localStorage.removeItem("timetiles_import_wizard_draft");
     });
 
-    // Wait for wizard UI to render (auth form or upload form)
-    await this.page
-      .locator('[data-testid="step-auth"], [data-testid="step-upload"]')
-      .first()
-      .waitFor({ state: "visible", timeout: 10000 });
+    // Wait for wizard UI to render (auth heading or upload heading)
+    const signInHeading = this.page.getByRole("heading", { name: /sign in to continue/i });
+    const uploadHeading = this.page.getByRole("heading", { name: /upload your data/i });
+    await signInHeading.or(uploadHeading).waitFor({ state: "visible", timeout: 10000 });
   }
 
   /**
@@ -153,10 +152,9 @@ export class ImportPage {
     // Wait for the page to be fully interactive
     await this.page.waitForLoadState("domcontentloaded");
     // Wait for wizard UI to be interactive (either auth form or upload form)
-    await this.page
-      .locator('[data-testid="step-auth"], [data-testid="step-upload"]')
-      .first()
-      .waitFor({ state: "visible", timeout: 10000 });
+    const signInHeading = this.page.getByRole("heading", { name: /sign in to continue/i });
+    const uploadHeading = this.page.getByRole("heading", { name: /upload your data/i });
+    await signInHeading.or(uploadHeading).waitFor({ state: "visible", timeout: 10000 });
   }
 
   /**
@@ -227,9 +225,9 @@ export class ImportPage {
    */
   async uploadFile(filePath: string): Promise<void> {
     await this.fileInput.setInputFiles(filePath);
-    // Wait for file processing indicator (file name displayed or next button enabled)
+    // Wait for file processing to complete — "File ready for import" or sheet detection
     await this.page
-      .locator('[data-testid="uploaded-file-name"], [data-testid="file-info"], button:has-text("Continue")')
+      .getByText(/file ready for import|sheets? detected/i)
       .first()
       .waitFor({ state: "visible", timeout: 10000 });
   }
