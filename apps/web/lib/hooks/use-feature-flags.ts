@@ -54,7 +54,7 @@ export const useFeatureFlags = () =>
 export const useFeatureEnabled = (flag: keyof FeatureFlags) => {
   const { data, isLoading, error } = useFeatureFlags();
   return {
-    isEnabled: data?.[flag] ?? true, // Default to enabled while loading
+    isEnabled: data?.[flag] ?? false, // Fail closed: disabled while loading/error
     isLoading,
     error,
   };

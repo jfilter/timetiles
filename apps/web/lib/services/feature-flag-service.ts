@@ -33,6 +33,18 @@ const DEFAULT_FLAGS: FeatureFlags = {
   enableUrlFetchCaching: true,
 };
 
+/** Fail-closed defaults returned when the database is unavailable. */
+const DISABLED_FLAGS: FeatureFlags = {
+  allowPrivateImports: false,
+  enableScheduledImports: false,
+  enableRegistration: false,
+  enableEventCreation: false,
+  enableDatasetCreation: false,
+  enableImportCreation: false,
+  enableScheduledJobExecution: false,
+  enableUrlFetchCaching: false,
+};
+
 // In-memory cache with TTL
 let cachedFlags: FeatureFlags | null = null;
 let cacheTimestamp = 0;
@@ -42,7 +54,7 @@ const CACHE_TTL_MS = 60_000; // 1 minute
  * Retrieves all feature flags with caching.
  *
  * Caches the flags for 1 minute to reduce database queries.
- * Falls back to defaults if the Settings global cannot be read.
+ * Falls back to disabled flags if the Settings global cannot be read.
  */
 export const getFeatureFlags = async (payload: Payload): Promise<FeatureFlags> => {
   const now = Date.now();
@@ -76,8 +88,8 @@ export const getFeatureFlags = async (payload: Payload): Promise<FeatureFlags> =
 
     return newFlags;
   } catch (error) {
-    logger.warn({ error }, "Failed to load feature flags, using defaults");
-    return DEFAULT_FLAGS;
+    logger.warn({ error }, "Failed to load feature flags, disabling all flags");
+    return DISABLED_FLAGS;
   }
 };
 
