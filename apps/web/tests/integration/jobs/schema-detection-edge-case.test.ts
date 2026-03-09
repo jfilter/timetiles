@@ -29,6 +29,7 @@ import { BATCH_SIZES } from "@/lib/constants/import-constants";
 
 import {
   createIntegrationTestEnvironment,
+  runJobsUntilImportJobStage,
   withCatalog,
   withDataset,
   withImportFile,
@@ -43,24 +44,17 @@ const runJobsUntilSchemaComplete = async (
   importFileId: number,
   maxIterations: number
 ): Promise<void> => {
-  for (let i = 0; i < maxIterations; i++) {
-    await payload.jobs.run({ allQueues: true, limit: 100 });
-
-    const importJobs = await payload.find({
-      collection: "import-jobs",
-      where: { importFile: { equals: importFileId } },
-      overrideAccess: true,
-    });
-
-    if (importJobs.docs.length > 0) {
-      const stage = importJobs.docs[0].stage;
-      if (stage === "validate-schema" || stage === "await-approval" || stage === "geocode-batch") {
-        break;
-      }
+  await runJobsUntilImportJobStage(
+    payload,
+    importFileId,
+    (importJob) =>
+      importJob.stage === "validate-schema" ||
+      importJob.stage === "await-approval" ||
+      importJob.stage === "geocode-batch",
+    {
+      maxIterations,
     }
-
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
+  );
 };
 
 describe.sequential("Schema Detection - Edge Cases", () => {
@@ -70,7 +64,7 @@ describe.sequential("Schema Detection - Edge Cases", () => {
   let _testDatasetId: number;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
   });
 

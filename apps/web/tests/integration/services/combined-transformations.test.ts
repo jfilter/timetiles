@@ -21,6 +21,7 @@ import type { Event } from "@/payload-types";
 
 import {
   createIntegrationTestEnvironment,
+  runJobsUntilImportSettled,
   withCatalog,
   withDataset,
   withImportFile,
@@ -33,7 +34,7 @@ describe.sequential("Combined Transformations Integration", () => {
   let testCatalogId: string;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
   });
 
@@ -56,26 +57,8 @@ describe.sequential("Combined Transformations Integration", () => {
   // Helper functions
 
   const runJobsUntilComplete = async (importFileId: string, maxIterations = 50) => {
-    let pipelineComplete = false;
-    let iteration = 0;
-
-    while (!pipelineComplete && iteration < maxIterations) {
-      iteration++;
-      await payload.jobs.run({ allQueues: true, limit: 100 });
-
-      const importFile = await payload.findByID({
-        collection: "import-files",
-        id: importFileId,
-      });
-
-      pipelineComplete = importFile.status === "completed" || importFile.status === "failed";
-
-      if (!pipelineComplete) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-
-    return iteration < maxIterations;
+    const result = await runJobsUntilImportSettled(payload, importFileId, { maxIterations });
+    return result.settled;
   };
 
   const simulateSchemaApproval = async (importJobId: string) => {

@@ -28,21 +28,33 @@ import { createLogger } from "@/lib/logger";
 import { SeedManager } from "@/lib/seed/index";
 
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
-import { createTestDatabase, truncateAllTables } from "./database";
+import { createTestDatabase } from "./database";
 import { TestServer } from "./http-server";
 
 const logger = createLogger("test-env");
 
-// Cache Payload instance per worker to avoid repeated initialization overhead
-// This is critical for test performance - Payload initialization is expensive
-let cachedPayload: any = null;
-let cachedPayloadDbUrl: string | null = null;
+interface SharedWorkerEnvironment {
+  payload: any;
+  seedManager: SeedManager;
+  connection: any;
+  dbName: string;
+  dbUrl: string;
+  uploadDir: string;
+}
+
+let sharedWorkerEnvironmentPromise: Promise<SharedWorkerEnvironment> | null = null;
+let sharedWorkerEnvironmentDbUrl: string | null = null;
 
 export interface TestEnvironmentOptions {
   /** Collections to include in the test environment */
   collections?: CollectionName[];
   /** Whether to create a temporary directory */
   createTempDir?: boolean;
+  /**
+   * Whether to reset the worker database before creating the environment.
+   * Disable this for suites that already truncate in beforeEach.
+   */
+  resetDatabase?: boolean;
 }
 
 export interface TestEnvironment {
@@ -66,18 +78,160 @@ export interface TestEnvironment {
   truncateCollections: (collections: string[]) => Promise<void>;
 }
 
+export interface RunImportJobsOptions {
+  /** Maximum number of queue drain iterations */
+  maxIterations?: number;
+  /** Delay between iterations in milliseconds */
+  delayMs?: number;
+  /** Job queue batch limit */
+  queueLimit?: number;
+  /** Optional callback for incomplete iterations */
+  onPending?: (context: { iteration: number; importFile: any }) => Promise<void> | void;
+}
+
+export interface RunImportJobsResult {
+  settled: boolean;
+  iterations: number;
+  importFile: any;
+}
+
+export interface RunImportJobStageOptions {
+  /** Maximum number of queue drain iterations */
+  maxIterations?: number;
+  /** Delay between iterations in milliseconds */
+  delayMs?: number;
+  /** Job queue batch limit */
+  queueLimit?: number;
+  /** Optional callback for incomplete iterations */
+  onPending?: (context: { iteration: number; importJob: any | null }) => Promise<void> | void;
+}
+
+export interface RunImportJobStageResult {
+  matched: boolean;
+  iterations: number;
+  importJob: any | null;
+}
+
+const wait = async (delayMs: number): Promise<void> => {
+  if (delayMs <= 0) {
+    return;
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
+};
+
+const createSeedManager = async (payload: any): Promise<SeedManager> => {
+  const seedManager = new SeedManager();
+
+  seedManager.initialize = async () => {
+    (seedManager as any).payload = payload;
+
+    const { RelationshipResolver } = await import("../../../lib/seed/relationship-resolver");
+    (seedManager as any).relationshipResolver = new RelationshipResolver(payload);
+
+    const { DatabaseOperations } = await import("../../../lib/seed/database-operations");
+    (seedManager as any).databaseOperations = new DatabaseOperations(payload);
+
+    return payload;
+  };
+
+  await seedManager.initialize();
+  return seedManager;
+};
+
 export class TestEnvironmentBuilder {
   private static readonly activeEnvironments = new Set<TestEnvironment>();
+
+  private static async createSharedWorkerEnvironment(
+    dbUrl: string,
+    dbName: string,
+    collections: CollectionName[],
+    workerId: string
+  ): Promise<{ environment: SharedWorkerEnvironment; created: boolean }> {
+    if (sharedWorkerEnvironmentPromise && sharedWorkerEnvironmentDbUrl === dbUrl) {
+      return { environment: await sharedWorkerEnvironmentPromise, created: false };
+    }
+
+    logger.info("Creating shared worker test environment", {
+      dbName,
+      workerId,
+      collections: collections.length,
+    });
+
+    const loadEnvironment = async (): Promise<SharedWorkerEnvironment> => {
+      // The global setup already clones a worker database. This remains as a fallback
+      // for direct test execution paths that bypass the Vitest worker setup.
+      await createTestDatabase(dbName);
+
+      const uploadDir = `${process.env.UPLOAD_DIR!}/import-files`;
+
+      logger.info("Creating test config", { dbName });
+      const testConfig = await createTestConfig({
+        databaseUrl: dbUrl,
+        collections,
+        logLevel: (process.env.LOG_LEVEL as "silent" | "error" | "warn" | "info" | "debug") ?? "silent",
+      });
+      logger.info("Test config created", { dbName });
+
+      logger.info("Getting Payload instance", { dbName, workerId });
+      const payload = await getPayload({ config: testConfig });
+
+      const seedManager = await createSeedManager(payload);
+      const db = payload.db as { pool?: unknown; drizzle?: unknown; _id?: string };
+      const environment: SharedWorkerEnvironment = {
+        payload,
+        seedManager,
+        connection: payload.db,
+        dbName,
+        dbUrl,
+        uploadDir,
+      };
+
+      logger.info("Shared worker environment ready", {
+        dbName,
+        workerId,
+        poolState: db?.pool ? "active" : "no-pool",
+        drizzleState: db?.drizzle ? "active" : "no-drizzle",
+        payloadId: db?._id ?? "no-id",
+      });
+
+      return environment;
+    };
+
+    sharedWorkerEnvironmentDbUrl = dbUrl;
+    let environmentPromise: Promise<SharedWorkerEnvironment>;
+    environmentPromise = loadEnvironment().catch((error) => {
+      if (sharedWorkerEnvironmentPromise === environmentPromise) {
+        sharedWorkerEnvironmentPromise = null;
+        sharedWorkerEnvironmentDbUrl = null;
+      }
+      throw error;
+    });
+    sharedWorkerEnvironmentPromise = environmentPromise;
+
+    return { environment: await environmentPromise, created: true };
+  }
+
+  private static async resetSharedWorkerDatabase(environment: SharedWorkerEnvironment): Promise<void> {
+    logger.info("Resetting shared worker database", {
+      dbName: environment.dbName,
+    });
+    await environment.seedManager.truncate();
+  }
 
   /**
    * Create a new test environment with the specified options.
    */
   async createTestEnvironment(options: TestEnvironmentOptions = {}): Promise<TestEnvironment> {
-    const { collections = ["events", "catalogs", "datasets", "users"] as CollectionName[], createTempDir = true } =
-      options;
+    const {
+      collections = ["events", "catalogs", "datasets", "users"] as CollectionName[],
+      createTempDir = true,
+      resetDatabase = true,
+    } = options;
 
     logger.info("Creating test environment", {
       collections,
+      resetDatabase,
     });
 
     // Generate unique identifiers for temp directories only
@@ -105,16 +259,6 @@ export class TestEnvironmentBuilder {
       collections: collections.length,
     });
 
-    // Ensure database exists
-    logger.info("Creating test database", { dbName });
-    await createTestDatabase(dbName);
-    logger.info("Database created", { dbName });
-
-    // Clean database state with truncation
-    logger.info("Truncating tables", { dbName });
-    await truncateAllTables(dbUrl);
-    logger.info("Tables truncated", { dbName });
-
     // Upload directory is already configured in global-setup.ts
     // Just ensure it exists for this test run
     const uploadDir = `${process.env.UPLOAD_DIR!}/import-files`;
@@ -122,76 +266,33 @@ export class TestEnvironmentBuilder {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    // Use cached Payload instance if available for the same database URL
-    // This dramatically speeds up test initialization by avoiding repeated Payload setup
-    let payload: any;
-    if (cachedPayload && cachedPayloadDbUrl === dbUrl) {
-      logger.info("Using cached Payload instance", { dbName, workerId });
-      payload = cachedPayload;
-    } else {
-      // Create optimized Payload config for testing
-      logger.info("Creating test config", { dbName });
-      const testConfig = await createTestConfig({
-        databaseUrl: dbUrl,
-        collections,
-        logLevel: (process.env.LOG_LEVEL as "silent" | "error" | "warn" | "info" | "debug") ?? "silent",
-      });
-      logger.info("Test config created", { dbName });
+    const { environment, created } = await TestEnvironmentBuilder.createSharedWorkerEnvironment(
+      dbUrl,
+      dbName,
+      collections,
+      workerId
+    );
 
-      logger.info("Getting Payload instance", { dbName, workerId });
-      payload = await getPayload({ config: testConfig });
-
-      // Cache for subsequent test files in the same worker
-      // eslint-disable-next-line require-atomic-updates
-      cachedPayload = payload;
-      // eslint-disable-next-line require-atomic-updates
-      cachedPayloadDbUrl = dbUrl;
-
-      // Log Payload singleton state for debugging
-      const db = payload.db as { pool?: unknown; drizzle?: unknown; _id?: string };
-      const poolState = db?.pool ? "active" : "no-pool";
-      const drizzleState = db?.drizzle ? "active" : "no-drizzle";
-      logger.info("Payload instance acquired and cached", {
+    if (resetDatabase && !created && TestEnvironmentBuilder.activeEnvironments.size === 0) {
+      await TestEnvironmentBuilder.resetSharedWorkerDatabase(environment);
+    } else if (resetDatabase && !created && TestEnvironmentBuilder.activeEnvironments.size > 0) {
+      logger.warn("Skipping automatic database reset because another test environment is still active", {
         dbName,
-        workerId,
-        poolState,
-        drizzleState,
-        payloadId: db?._id ?? "no-id",
+        activeEnvironments: TestEnvironmentBuilder.activeEnvironments.size,
       });
     }
 
-    // prodMigrations automatically runs migrations on initialization
-    // No need to call payload.db.migrate() explicitly
-
-    // Create and configure SeedManager
-    const seedManager = new SeedManager();
-    // Override initialize to use our test payload
-    seedManager.initialize = async () => {
-      (seedManager as any).payload = payload;
-
-      // SeedManager.seed() requires RelationshipResolver for the seeding system
-      const { RelationshipResolver } = await import("../../../lib/seed/relationship-resolver");
-      (seedManager as any).relationshipResolver = new RelationshipResolver(payload);
-
-      // Initialize database operations
-      const { DatabaseOperations } = await import("../../../lib/seed/database-operations");
-      (seedManager as any).databaseOperations = new DatabaseOperations(payload);
-
-      return payload;
-    };
-    await seedManager.initialize();
-
     // Create test environment
     const testEnv: TestEnvironment = {
-      payload,
-      seedManager,
-      connection: payload.db,
-      dbName, // Use the dbName variable from above
+      payload: environment.payload,
+      seedManager: environment.seedManager,
+      connection: environment.connection,
+      dbName: environment.dbName,
       tempDir,
-      uploadDir, // Always available for file upload tests
+      uploadDir: environment.uploadDir,
       cleanup: () => this.cleanup(testEnv),
-      getCollectionCount: (collection: string) => seedManager.getCollectionCount(collection),
-      truncateCollections: (colls: string[]) => seedManager.truncate(colls),
+      getCollectionCount: (collection: string) => environment.seedManager.getCollectionCount(collection),
+      truncateCollections: (colls: string[]) => environment.seedManager.truncate(colls),
     };
 
     // Track active environment for cleanup
@@ -208,10 +309,11 @@ export class TestEnvironmentBuilder {
   /**
    * Create a full integration test environment.
    */
-  async createIntegrationTestEnvironment(): Promise<TestEnvironment> {
+  async createIntegrationTestEnvironment(options: TestEnvironmentOptions = {}): Promise<TestEnvironment> {
     return this.createTestEnvironment({
       collections: Object.keys(COLLECTIONS) as CollectionName[],
       createTempDir: true, // Enable temp directory for file operations
+      ...options,
     });
   }
 
@@ -270,10 +372,9 @@ export class TestEnvironmentBuilder {
       // no cross-worker contamination.
 
       // NOTE: We do NOT truncate tables here in final cleanup because:
-      // 1. Each test file has isolated database (timetiles_test_1, timetiles_test_2, etc.)
-      // 2. Truncation in beforeEach is sufficient for test isolation
-      // 3. Truncating here with active Payload connections causes deadlocks
-      // 4. Tables are truncated in beforeEach anyway for the next test
+      // 1. Worker environments reuse a shared database connection for speed
+      // 2. Truncating here with active Payload connections causes deadlocks
+      // 3. Suites that need a clean slate either reset on create or truncate in beforeEach
 
       logger.debug("Test environment cleanup completed", {
         dbName: testEnv.dbName,
@@ -329,11 +430,95 @@ export class TestEnvironmentBuilder {
  * @see tests/integration/services/comprehensive-file-upload.test.ts for complete example
  * @see tests/unit/jobs/schema-detection-job.test.ts for unit test patterns (no database)
  */
-export const createIntegrationTestEnvironment = async (): Promise<TestEnvironment> => {
+export const createIntegrationTestEnvironment = async (
+  options: TestEnvironmentOptions = {}
+): Promise<TestEnvironment> => {
   // Database setup is handled by the global setup in integration.ts
   // No need to check here as it causes a race condition
   const builder = new TestEnvironmentBuilder();
-  return builder.createIntegrationTestEnvironment();
+  return builder.createIntegrationTestEnvironment(options);
+};
+
+export const runJobsUntilImportSettled = async (
+  payload: any,
+  importFileId: string | number,
+  options: RunImportJobsOptions = {}
+): Promise<RunImportJobsResult> => {
+  const { maxIterations = 50, delayMs = 10, queueLimit = 100, onPending } = options;
+
+  let importFile: any = null;
+
+  for (let iteration = 1; iteration <= maxIterations; iteration++) {
+    await payload.jobs.run({ allQueues: true, limit: queueLimit });
+
+    importFile = await payload.findByID({
+      collection: "import-files",
+      id: importFileId,
+    });
+
+    const settled = importFile.status === "completed" || importFile.status === "failed";
+    if (settled) {
+      return {
+        settled: true,
+        iterations: iteration,
+        importFile,
+      };
+    }
+
+    if (onPending) {
+      await onPending({ iteration, importFile });
+    }
+
+    await wait(delayMs);
+  }
+
+  return {
+    settled: false,
+    iterations: maxIterations,
+    importFile,
+  };
+};
+
+export const runJobsUntilImportJobStage = async (
+  payload: any,
+  importFileId: string | number,
+  isDone: (importJob: any) => boolean,
+  options: RunImportJobStageOptions = {}
+): Promise<RunImportJobStageResult> => {
+  const { maxIterations = 50, delayMs = 10, queueLimit = 100, onPending } = options;
+
+  let importJob: any | null = null;
+
+  for (let iteration = 1; iteration <= maxIterations; iteration++) {
+    await payload.jobs.run({ allQueues: true, limit: queueLimit });
+
+    const importJobs = await payload.find({
+      collection: "import-jobs",
+      where: { importFile: { equals: importFileId } },
+      overrideAccess: true,
+    });
+
+    importJob = importJobs.docs[0] ?? null;
+    if (importJob && isDone(importJob)) {
+      return {
+        matched: true,
+        iterations: iteration,
+        importJob,
+      };
+    }
+
+    if (onPending) {
+      await onPending({ iteration, importJob });
+    }
+
+    await wait(delayMs);
+  }
+
+  return {
+    matched: false,
+    iterations: maxIterations,
+    importJob,
+  };
 };
 
 /**

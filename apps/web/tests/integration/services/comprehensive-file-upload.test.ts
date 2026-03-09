@@ -36,6 +36,7 @@ import { logger } from "@/lib/logger";
 
 import {
   createIntegrationTestEnvironment,
+  runJobsUntilImportSettled,
   withCatalog,
   withDataset,
   withImportFile,
@@ -48,7 +49,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
   let testCatalogId: string;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
 
     // Create temp directory for test files
@@ -90,21 +91,13 @@ describe.sequential("Comprehensive File Upload Tests", () => {
   };
 
   const runJobsUntilComplete = async (importFileId: string, maxIterations = 50) => {
-    let pipelineComplete = false;
-    let iteration = 0;
+    const result = await runJobsUntilImportSettled(payload, importFileId, {
+      maxIterations,
+      onPending: async ({ iteration, importFile }) => {
+        if (iteration % 10 !== 0) {
+          return;
+        }
 
-    while (!pipelineComplete && iteration < maxIterations) {
-      iteration++;
-      await payload.jobs.run({ allQueues: true, limit: 100 });
-
-      const importFile = await payload.findByID({
-        collection: "import-files",
-        id: importFileId,
-      });
-
-      pipelineComplete = importFile.status === "completed" || importFile.status === "failed";
-
-      if (!pipelineComplete && iteration % 10 === 0) {
         // Log progress every 10 iterations
         const jobs = await payload.find({
           collection: "import-jobs",
@@ -114,14 +107,10 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           `Iteration ${iteration}: File status=${importFile.status}, Jobs:`,
           jobs.docs.map((j: any) => ({ id: j.id, stage: j.stage }))
         );
-      }
+      },
+    });
 
-      if (!pipelineComplete) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-
-    return iteration < maxIterations;
+    return result.settled;
   };
 
   const simulateSchemaApproval = async (importJobId: string, approved: boolean) => {

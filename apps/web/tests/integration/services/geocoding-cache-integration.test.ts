@@ -35,7 +35,12 @@ vi.mock("node-geocoder", () => ({
   default: mockNodeGeocoder,
 }));
 
-import { createIntegrationTestEnvironment, withCatalog, withImportFile } from "../../setup/integration/environment";
+import {
+  createIntegrationTestEnvironment,
+  runJobsUntilImportSettled,
+  withCatalog,
+  withImportFile,
+} from "../../setup/integration/environment";
 
 /**
  * Generate deterministic mock coordinates based on address.
@@ -67,31 +72,12 @@ describe.sequential("Geocoding Cache Integration", () => {
    * Helper to run all jobs until import file reaches completed/failed status.
    */
   const runJobsUntilComplete = async (importFileId: string, maxIterations = 50): Promise<boolean> => {
-    let pipelineComplete = false;
-    let iteration = 0;
-
-    while (!pipelineComplete && iteration < maxIterations) {
-      iteration++;
-      await payload.jobs.run({ allQueues: true, limit: 100 });
-
-      const importFile = await payload.findByID({
-        collection: "import-files",
-        id: importFileId,
-      });
-
-      pipelineComplete = importFile.status === "completed" || importFile.status === "failed";
-
-      // Small delay to avoid tight loop
-      if (!pipelineComplete) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-
-    return pipelineComplete;
+    const result = await runJobsUntilImportSettled(payload, importFileId, { maxIterations });
+    return result.settled;
   };
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
     testDir = testEnv.tempDir ?? "/tmp";
 
