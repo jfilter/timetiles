@@ -193,6 +193,76 @@ describe.sequential("scheduleManagerJob", () => {
       expect(result.output.triggered).toBe(1);
     });
 
+    it("should skip scheduled imports with partially numeric cron fields", async () => {
+      const { mockPayload, mockJob, mockReq } = createMockContext();
+
+      const currentTime = new Date("2024-01-15 14:35:00");
+      vi.setSystemTime(currentTime);
+
+      const mockScheduledImports: any[] = [
+        {
+          id: "invalid-cron-import",
+          name: "Invalid Cron Import",
+          enabled: true,
+          sourceUrl: "https://api.example.com/data",
+          scheduleType: "cron",
+          cronExpression: "30abc 14 * * *",
+          lastRun: new Date("2024-01-14 14:30:00").toISOString(),
+          catalog: "catalog-123",
+          createdBy: "user-123",
+        },
+      ];
+
+      mockPayload.find.mockResolvedValue({
+        docs: mockScheduledImports,
+        totalDocs: 1,
+      });
+
+      const result = await scheduleManagerJob.handler({
+        job: mockJob,
+        req: mockReq,
+      });
+
+      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+      expect(result.output.triggered).toBe(0);
+      expect(result.output.errors).toBe(0);
+    });
+
+    it("should respect cron day-of-week restrictions", async () => {
+      const { mockPayload, mockJob, mockReq } = createMockContext();
+
+      const currentTime = new Date("2024-01-14T14:35:00Z");
+      vi.setSystemTime(currentTime);
+
+      const mockScheduledImports: any[] = [
+        {
+          id: "weekly-cron-import",
+          name: "Weekly Cron Import",
+          enabled: true,
+          sourceUrl: "https://api.example.com/data",
+          scheduleType: "cron",
+          cronExpression: "30 14 * * 1",
+          lastRun: new Date("2024-01-08T14:30:00Z").toISOString(),
+          catalog: "catalog-123",
+          createdBy: "user-123",
+        },
+      ];
+
+      mockPayload.find.mockResolvedValue({
+        docs: mockScheduledImports,
+        totalDocs: 1,
+      });
+
+      const result = await scheduleManagerJob.handler({
+        job: mockJob,
+        req: mockReq,
+      });
+
+      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+      expect(result.output.triggered).toBe(0);
+      expect(result.output.errors).toBe(0);
+    });
+
     it("should skip disabled schedules", async () => {
       const { mockPayload, mockJob, mockReq } = createMockContext();
 

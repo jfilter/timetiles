@@ -5,9 +5,13 @@
  */
 import "@/tests/mocks/services/logger";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { extractCoordinates, extractTimestamp } from "@/lib/jobs/utils/event-creation-helpers";
+vi.mock("@/lib/services/id-generation", () => ({
+  generateUniqueId: vi.fn(() => "generated-id"),
+}));
+
+import { createEventData, extractCoordinates, extractTimestamp } from "@/lib/jobs/utils/event-creation-helpers";
 
 describe("extractCoordinates", () => {
   describe("with import coordinates", () => {
@@ -194,5 +198,27 @@ describe("extractTimestamp", () => {
 
       expect(result).toBeNull();
     });
+  });
+});
+
+describe("createEventData", () => {
+  it("does not coerce partially numeric import job ids into event relations", () => {
+    const result = createEventData(
+      { title: "Test Event", date: "2024-06-15T10:30:00Z" },
+      {
+        id: 42,
+        idStrategy: {
+          type: "auto",
+          duplicateStrategy: "skip",
+        },
+      } as any,
+      "123abc",
+      {},
+      {},
+      null
+    );
+
+    expect(result.importJob).toBeUndefined();
+    expect(result.uniqueId).toBe("generated-id");
   });
 });

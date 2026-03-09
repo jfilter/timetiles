@@ -357,6 +357,42 @@ describe.sequential("DatasetDetectionJob Handler", () => {
   });
 
   describe("Error Handling", () => {
+    it("should reject partially numeric catalog ids before loading datasets", async () => {
+      const mockImportFile = {
+        id: 123,
+        filename: "test.csv",
+        filePath: "/tmp/test.csv",
+        catalog: 456,
+        originalName: "test.csv",
+      };
+
+      mockContext.input = {
+        importFileId: "import-file-123",
+        catalogId: "456abc",
+      };
+
+      mockPayload.findByID.mockResolvedValueOnce(mockImportFile);
+      mockPayload.find.mockResolvedValue({ docs: [] });
+      mockPayload.create.mockImplementation(({ collection }: { collection: string }) =>
+        Promise.resolve({
+          id: collection === "datasets" ? "dataset-1" : "import-job-1",
+        })
+      );
+
+      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Invalid catalog ID");
+
+      expect(mockPayload.find).not.toHaveBeenCalled();
+      expect(mockPayload.create).not.toHaveBeenCalled();
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "import-files",
+        id: "import-file-123",
+        data: expect.objectContaining({
+          status: "failed",
+          errorLog: "Invalid catalog ID",
+        }),
+      });
+    });
+
     it("should handle missing import file gracefully", async () => {
       mockPayload.findByID.mockResolvedValueOnce(null);
 
