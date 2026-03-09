@@ -12,6 +12,7 @@
 import crypto from "node:crypto";
 
 import { logger } from "@/lib/logger";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 
 import { Cache } from "./cache";
 import { FileSystemCacheStorage } from "./storage/file-system";
@@ -36,6 +37,11 @@ interface CachedEntry {
   };
 }
 
+const getEnvInteger = (value: string | undefined, fallback: number): number => {
+  const parsedValue = parseStrictInteger(value);
+  return parsedValue ?? fallback;
+};
+
 export class UrlFetchCache {
   private readonly cache: Cache;
   private readonly defaultTTL: number;
@@ -45,9 +51,9 @@ export class UrlFetchCache {
   constructor() {
     // eslint-disable-next-line sonarjs/publicly-writable-directories
     const cacheDir = process.env.URL_FETCH_CACHE_DIR ?? "/tmp/url-fetch-cache";
-    const maxSize = parseInt(process.env.URL_FETCH_CACHE_MAX_SIZE ?? "104857600", 10);
-    this.defaultTTL = parseInt(process.env.URL_FETCH_CACHE_TTL ?? "3600", 10);
-    this.maxTTL = parseInt(process.env.URL_FETCH_CACHE_MAX_TTL ?? "2592000", 10); // 30 days default
+    const maxSize = getEnvInteger(process.env.URL_FETCH_CACHE_MAX_SIZE, 104857600);
+    this.defaultTTL = getEnvInteger(process.env.URL_FETCH_CACHE_TTL, 3600);
+    this.maxTTL = getEnvInteger(process.env.URL_FETCH_CACHE_MAX_TTL, 2592000); // 30 days default
     this.respectCacheControl = process.env.URL_FETCH_CACHE_RESPECT_CACHE_CONTROL !== "false";
 
     const storage = new FileSystemCacheStorage({
@@ -67,8 +73,17 @@ export class UrlFetchCache {
    */
   private parseMaxAge(cacheControl?: string): number | undefined {
     if (!cacheControl) return undefined;
-    const match = /max-age=(\d+)/.exec(cacheControl);
-    return match?.[1] ? parseInt(match[1], 10) : undefined;
+    const maxAgeDirective = cacheControl
+      .split(",")
+      .map((directive) => directive.trim())
+      .find((directive) => directive.startsWith("max-age="));
+
+    if (!maxAgeDirective) {
+      return undefined;
+    }
+
+    const parsedMaxAge = parseStrictInteger(maxAgeDirective.slice("max-age=".length));
+    return parsedMaxAge ?? undefined;
   }
 
   /**

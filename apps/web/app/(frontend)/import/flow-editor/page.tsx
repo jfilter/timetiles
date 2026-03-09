@@ -9,6 +9,9 @@
  */
 
 import type { Metadata } from "next";
+import { createElement } from "react";
+
+import { parseStrictInteger } from "@/lib/utils/event-params";
 
 import { FlowEditorWrapper } from "./_components/flow-editor-wrapper";
 
@@ -29,11 +32,9 @@ interface FlowEditorPageProps {
 export default async function FlowEditorPage({ searchParams }: Readonly<FlowEditorPageProps>) {
   const params = await searchParams;
   const previewId = params.previewId ?? null;
-  const sheetIndex = params.sheetIndex ? parseInt(params.sheetIndex, 10) : 0;
-  const scheduleId = params.scheduleId ? parseInt(params.scheduleId, 10) : null;
-  const datasetId = params.datasetId ? parseInt(params.datasetId, 10) : null;
+  const sheetIndex = params.sheetIndex ? (parseStrictInteger(params.sheetIndex) ?? 0) : 0;
+  const scheduleId = params.scheduleId ? parseStrictInteger(params.scheduleId) : null;
+  const datasetId = params.datasetId ? parseStrictInteger(params.datasetId) : null;
 
-  return (
-    <FlowEditorWrapper previewId={previewId} sheetIndex={sheetIndex} scheduleId={scheduleId} datasetId={datasetId} />
-  );
+  return createElement(FlowEditorWrapper, { previewId, sheetIndex, scheduleId, datasetId });
 }

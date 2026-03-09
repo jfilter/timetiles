@@ -62,6 +62,39 @@ const WEIGHTS = {
   languageMatch: 0.05,
 } as const;
 
+const isDecimalNumericString = (value: string): boolean => {
+  if (value === "" || value === "-" || value === "." || value === "-.") {
+    return false;
+  }
+
+  const normalizedValue = value.startsWith("-") ? value.slice(1) : value;
+  if (normalizedValue === "") {
+    return false;
+  }
+
+  let digitCount = 0;
+  let dotCount = 0;
+
+  for (const char of normalizedValue) {
+    if (char >= "0" && char <= "9") {
+      digitCount++;
+      continue;
+    }
+
+    if (char === ".") {
+      dotCount++;
+      if (dotCount > 1) {
+        return false;
+      }
+      continue;
+    }
+
+    return false;
+  }
+
+  return digitCount > 0;
+};
+
 /**
  * Common field name variations for fuzzy matching
  */
@@ -238,9 +271,10 @@ const classifyValueType = (value: unknown): string => {
   if (typeof value !== "string") return "unknown";
 
   // String type - detect dates and numeric strings
+  const trimmedValue = value.trim();
   const dateRegex = /^\d{4}-\d{2}-\d{2}|^\d{2}[/.]\d{2}[/.]\d{4}/;
-  if (dateRegex.test(value)) return "date";
-  if (!isNaN(Number(value))) return "numeric_string";
+  if (dateRegex.test(trimmedValue)) return "date";
+  if (isDecimalNumericString(trimmedValue)) return "numeric_string";
   return "string";
 };
 

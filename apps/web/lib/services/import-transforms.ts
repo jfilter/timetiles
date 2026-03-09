@@ -27,6 +27,8 @@ import { isValidDate } from "@/lib/utils/date";
 
 import { logger } from "../logger";
 
+const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
 /**
  * Apply transform rules to a data object.
  *
@@ -116,10 +118,15 @@ const applyDateParseTransform = (data: Record<string, unknown>, transform: DateP
   // Basic date parsing - in production use dayjs/date-fns
   // For now, try to parse as ISO and standardize
   try {
-    const parsed = new Date(value);
+    const trimmedValue = value.trim();
+    const parsed = new Date(trimmedValue);
     if (!isNaN(parsed.getTime())) {
       // Output in ISO format (YYYY-MM-DD)
       const isoDate = parsed.toISOString().split("T")[0];
+      if (ISO_DATE_ONLY_REGEX.test(trimmedValue) && isoDate !== trimmedValue) {
+        return;
+      }
+
       setByPath(data, transform.from, isoDate);
     }
   } catch {
@@ -251,29 +258,46 @@ const getActualType = (value: unknown): CastableType => {
   return "string"; // Default fallback
 };
 
+const parseAsDate = (value: unknown): string => {
+  const stringValue = String(value).trim();
+  const date = new Date(stringValue);
+  if (!isValidDate(date)) throw new Error(`Cannot parse "${String(value)}" as date`);
+
+  const isoDate = date.toISOString().split("T")[0];
+  if (ISO_DATE_ONLY_REGEX.test(stringValue) && isoDate !== stringValue) {
+    throw new Error(`Cannot parse "${String(value)}" as date`);
+  }
+
+  return date.toISOString();
+};
+
+const parseAsBoolean = (value: unknown): boolean => {
+  if (typeof value === "string") {
+    const lower = value.trim().toLowerCase();
+    if (lower === "true" || lower === "1" || lower === "yes") return true;
+    if (lower === "false" || lower === "0" || lower === "no") return false;
+  }
+  throw new Error(`Cannot parse "${String(value)}" as boolean`);
+};
+
 /**
  * Parse a value intelligently to a target type.
  */
 const parseValue = (value: unknown, toType: CastableType): unknown => {
   switch (toType) {
     case "number": {
-      const num = Number(value);
+      if (typeof value === "string" && value.trim() === "") {
+        throw new Error(`Cannot parse "${value}" as number`);
+      }
+
+      const num = Number(typeof value === "string" ? value.trim() : value);
       if (Number.isNaN(num)) throw new Error(`Cannot parse "${String(value)}" as number`);
       return num;
     }
-    case "boolean": {
-      if (typeof value === "string") {
-        const lower = value.toLowerCase();
-        if (lower === "true" || lower === "1" || lower === "yes") return true;
-        if (lower === "false" || lower === "0" || lower === "no") return false;
-      }
-      throw new Error(`Cannot parse "${String(value)}" as boolean`);
-    }
-    case "date": {
-      const date = new Date(String(value));
-      if (!isValidDate(date)) throw new Error(`Cannot parse "${String(value)}" as date`);
-      return date.toISOString();
-    }
+    case "boolean":
+      return parseAsBoolean(value);
+    case "date":
+      return parseAsDate(value);
     case "string":
       return String(value);
     default:
@@ -311,9 +335,9 @@ const runCustomTransform = (value: unknown, customCode: string): unknown => {
 
     const context = {
       parse: {
-        date: (v: unknown) => new Date(v as string | number | Date),
-        number: (v: unknown) => Number(v),
-        boolean: (v: unknown) => Boolean(v),
+        date: (v: unknown) => parseValue(v, "date"),
+        number: (v: unknown) => parseValue(v, "number"),
+        boolean: (v: unknown) => parseValue(v, "boolean"),
       },
     };
 

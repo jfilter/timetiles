@@ -75,11 +75,22 @@
 import type { Payload } from "payload";
 
 import { RATE_LIMITS_BY_TRUST_LEVEL, TRUST_LEVELS, type TrustLevel } from "@/lib/constants/quota-constants";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { User } from "@/payload-types";
 
 import { createLogger } from "../logger";
 
 const logger = createLogger("rate-limit-service");
+
+const normalizeTrustLevel = (trustLevel: User["trustLevel"] | null | undefined): TrustLevel => {
+  const parsedTrustLevel = parseStrictInteger(trustLevel ?? TRUST_LEVELS.REGULAR);
+
+  if (parsedTrustLevel != null && parsedTrustLevel in RATE_LIMITS_BY_TRUST_LEVEL) {
+    return parsedTrustLevel as TrustLevel;
+  }
+
+  return TRUST_LEVELS.REGULAR;
+};
 
 interface RateLimitEntry {
   count: number;
@@ -467,8 +478,7 @@ export class RateLimitService {
     }
 
     // Get user's trust level or default to REGULAR
-    const trustLevelValue = Number(user.trustLevel ?? TRUST_LEVELS.REGULAR);
-    const trustLevel = trustLevelValue as TrustLevel;
+    const trustLevel = normalizeTrustLevel(user.trustLevel);
 
     // Get rate limits for this trust level
     const trustLevelLimits = RATE_LIMITS_BY_TRUST_LEVEL[trustLevel];
