@@ -17,6 +17,8 @@ import { getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-serv
 import { internalError } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
+const DATA_EXPORTS_COLLECTION = "data-exports" as const;
+
 /**
  * POST /api/account/download-data
  * Request a new data export.
@@ -46,7 +48,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
 
     // Check for existing pending/processing export
     const existingExports = await payload.find({
-      collection: "data-exports",
+      collection: DATA_EXPORTS_COLLECTION,
       where: {
         and: [{ user: { equals: user.id } }, { status: { in: ["pending", "processing"] } }],
       },
@@ -75,7 +77,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     let exportRecord;
     try {
       exportRecord = await payload.create({
-        collection: "data-exports",
+        collection: DATA_EXPORTS_COLLECTION,
         data: {
           user: user.id,
           status: "pending",
@@ -87,7 +89,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     } catch (createError) {
       // Re-check for existing exports in case of race condition
       const raceCheck = await payload.find({
-        collection: "data-exports",
+        collection: DATA_EXPORTS_COLLECTION,
         where: {
           and: [{ user: { equals: user.id } }, { status: { in: ["pending", "processing"] } }],
         },
@@ -111,7 +113,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
       });
     } catch (queueError) {
       await payload.update({
-        collection: "data-exports",
+        collection: DATA_EXPORTS_COLLECTION,
         id: exportRecord.id,
         data: { status: "failed", errorLog: "Failed to queue export job" },
         overrideAccess: true,
@@ -147,7 +149,7 @@ export const GET = withAuth(async (request: AuthenticatedRequest) => {
 
     // Get user's exports
     const exports = await payload.find({
-      collection: "data-exports",
+      collection: DATA_EXPORTS_COLLECTION,
       where: { user: { equals: user.id } },
       sort: "-requestedAt",
       limit: 10,

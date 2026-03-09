@@ -207,10 +207,15 @@ const processEventBatch = async (
       const transformedRow = transforms.length > 0 ? applyTransforms(row, transforms) : row;
 
       // Track if any transforms were applied
+      const getTransformPath = (t: ImportTransform): string => {
+        if ("from" in t) return t.from;
+        if ("fromFields" in t) return String(t.fromFields);
+        return "";
+      };
       const transformationChanges =
         transforms.length > 0
           ? transforms.map((t) => ({
-              path: "from" in t ? t.from : "fromFields" in t ? String(t.fromFields) : "",
+              path: getTransformPath(t),
               oldValue: "from" in t ? (row[t.from] ?? null) : (null as unknown),
               newValue: "from" in t ? (transformedRow[t.from] ?? null) : (null as unknown),
             }))

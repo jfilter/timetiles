@@ -88,6 +88,74 @@ const updateStatisticsOnTrigger = async (payload: Payload, scheduledImport: Sche
   });
 };
 
+/** Queue the import job and update statistics for a validated scheduled import. */
+const queueImportAndRespond = async (payload: Payload, scheduledImport: ScheduledImport): Promise<NextResponse> => {
+  const currentTime = new Date();
+  const importName = generateImportName(scheduledImport, currentTime);
+
+  // CRITICAL: Set status to "running" BEFORE queuing job
+  const previousStatus = scheduledImport.lastStatus ?? null;
+  await payload.update({
+    collection: "scheduled-imports",
+    id: scheduledImport.id,
+    data: {
+      lastStatus: "running",
+      lastRun: currentTime.toISOString(),
+    },
+  });
+
+  // Queue URL fetch job - wrapped in try/catch to revert status on failure
+  let urlFetchJob;
+  try {
+    urlFetchJob = await payload.jobs.queue({
+      task: JOB_TYPES.URL_FETCH,
+      input: {
+        scheduledImportId: scheduledImport.id,
+        sourceUrl: scheduledImport.sourceUrl,
+        authConfig: scheduledImport.authConfig,
+        catalogId: extractRelationId(scheduledImport.catalog),
+        originalName: importName,
+        userId: extractRelationId(scheduledImport.createdBy),
+        triggeredBy: "webhook",
+      },
+    });
+  } catch (queueError) {
+    // Revert lastStatus so the import doesn't get stuck as "running"
+    logError(queueError, "Failed to queue webhook job, reverting status", {
+      scheduledImportId: scheduledImport.id,
+      previousStatus,
+    });
+    await payload.update({
+      collection: "scheduled-imports",
+      id: scheduledImport.id,
+      data: {
+        lastStatus: previousStatus,
+      },
+    });
+    return internalError("Failed to queue import job") as NextResponse;
+  }
+
+  // Update statistics (execution history is recorded by the job handler on completion)
+  await updateStatisticsOnTrigger(payload, scheduledImport);
+
+  logger.info("Webhook triggered import successfully", {
+    scheduledImportId: scheduledImport.id,
+    name: scheduledImport.name,
+    jobId: urlFetchJob.id,
+    triggeredBy: "webhook",
+  });
+
+  return NextResponse.json(
+    {
+      success: true,
+      message: "Import triggered successfully",
+      status: "triggered",
+      jobId: urlFetchJob.id.toString(),
+    },
+    { status: 200 }
+  );
+};
+
 export const POST = async (_request: NextRequest, { params }: { params: Promise<{ token: string }> }) => {
   const { token } = await params;
 
@@ -146,72 +214,7 @@ export const POST = async (_request: NextRequest, { params }: { params: Promise<
       );
     }
 
-    const currentTime = new Date();
-
-    // Generate import name
-    const importName = generateImportName(scheduledImport, currentTime);
-
-    // CRITICAL: Set status to "running" BEFORE queuing job
-    const previousStatus = scheduledImport.lastStatus ?? null;
-    await payload.update({
-      collection: "scheduled-imports",
-      id: scheduledImport.id,
-      data: {
-        lastStatus: "running",
-        lastRun: currentTime.toISOString(),
-      },
-    });
-
-    // Queue URL fetch job - wrapped in try/catch to revert status on failure
-    let urlFetchJob;
-    try {
-      urlFetchJob = await payload.jobs.queue({
-        task: JOB_TYPES.URL_FETCH,
-        input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
-          catalogId: extractRelationId(scheduledImport.catalog),
-          originalName: importName,
-          userId: extractRelationId(scheduledImport.createdBy),
-          triggeredBy: "webhook",
-        },
-      });
-    } catch (queueError) {
-      // Revert lastStatus so the import doesn't get stuck as "running"
-      logError(queueError, "Failed to queue webhook job, reverting status", {
-        scheduledImportId: scheduledImport.id,
-        previousStatus,
-      });
-      await payload.update({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
-        data: {
-          lastStatus: previousStatus,
-        },
-      });
-      return internalError("Failed to queue import job");
-    }
-
-    // Update statistics (execution history is recorded by the job handler on completion)
-    await updateStatisticsOnTrigger(payload, scheduledImport);
-
-    logger.info("Webhook triggered import successfully", {
-      scheduledImportId: scheduledImport.id,
-      name: scheduledImport.name,
-      jobId: urlFetchJob.id,
-      triggeredBy: "webhook",
-    });
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Import triggered successfully",
-        status: "triggered",
-        jobId: urlFetchJob.id.toString(),
-      },
-      { status: 200 }
-    );
+    return await queueImportAndRespond(payload, scheduledImport);
   } catch (error) {
     logError(error, "Webhook trigger failed", {
       token: token.substring(0, 8) + "...",

@@ -292,26 +292,27 @@ const ScheduledImports: CollectionConfig = {
       async ({ doc, operation, req, previousDoc }) => {
         // Charge quota to the schedule owner, not the acting user (e.g., admin enabling another user's schedule)
         const ownerId = extractRelationId(doc.createdBy);
-        if (!ownerId) return doc;
 
-        const quotaService = getQuotaService(req.payload);
+        if (ownerId) {
+          const quotaService = getQuotaService(req.payload);
 
-        // Track usage after successful creation of enabled schedule
-        if (operation === "create" && doc.enabled !== false) {
-          await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
-        }
-
-        // Handle update operations (enabling/disabling)
-        if (operation === "update" && previousDoc) {
-          const wasEnabled = previousDoc.enabled;
-          const isEnabled = doc.enabled;
-
-          if (!wasEnabled && isEnabled) {
-            // Schedule was enabled - increment usage
+          // Track usage after successful creation of enabled schedule
+          if (operation === "create" && doc.enabled !== false) {
             await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
-          } else if (wasEnabled && !isEnabled) {
-            // Schedule was disabled - decrement usage
-            await quotaService.decrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
+          }
+
+          // Handle update operations (enabling/disabling)
+          if (operation === "update" && previousDoc) {
+            const wasEnabled = previousDoc.enabled;
+            const isEnabled = doc.enabled;
+
+            if (!wasEnabled && isEnabled) {
+              // Schedule was enabled - increment usage
+              await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
+            } else if (wasEnabled && !isEnabled) {
+              // Schedule was disabled - decrement usage
+              await quotaService.decrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
+            }
           }
         }
 

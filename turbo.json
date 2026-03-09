@@ -43,7 +43,8 @@
     "EMAIL_SMTP_PORT",
     "EMAIL_SMTP_USER",
     "EMAIL_SMTP_PASS",
-    "DATA_EXPORT_DIR"
+    "DATA_EXPORT_DIR",
+    "ALLOW_PRIVATE_URLS"
   ],
   "tasks": {
     "transit": {
