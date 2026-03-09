@@ -21,6 +21,7 @@ import type { Event } from "@/payload-types";
 
 import {
   createIntegrationTestEnvironment,
+  runJobsUntilImportJobStage,
   runJobsUntilImportSettled,
   withCatalog,
   withDataset,
@@ -35,8 +36,6 @@ describe.sequential("Combined Transformations Integration", () => {
     "import-jobs",
     "datasets",
     "dataset-schemas",
-    "catalogs",
-    "users",
     "user-usage",
     "payload-jobs",
   ];
@@ -49,16 +48,6 @@ describe.sequential("Combined Transformations Integration", () => {
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
-  });
-
-  afterAll(async () => {
-    if (testEnv?.cleanup) {
-      await testEnv.cleanup();
-    }
-  });
-
-  beforeEach(async () => {
-    await testEnv.seedManager.truncate(collectionsToReset);
 
     const { users } = await withUsers(testEnv, {
       approver: { role: "admin" },
@@ -72,11 +61,33 @@ describe.sequential("Combined Transformations Integration", () => {
     testCatalogId = catalog.id;
   });
 
+  afterAll(async () => {
+    if (testEnv?.cleanup) {
+      await testEnv.cleanup();
+    }
+  });
+
+  beforeEach(async () => {
+    await testEnv.seedManager.truncate(collectionsToReset);
+  });
+
   // Helper functions
 
   const runJobsUntilComplete = async (importFileId: string, maxIterations = 50) => {
     const result = await runJobsUntilImportSettled(payload, importFileId, { maxIterations });
     return result.settled;
+  };
+
+  const waitForSchemaDetection = async (importFileId: string | number) => {
+    const result = await runJobsUntilImportJobStage(
+      payload,
+      importFileId,
+      (importJob) =>
+        importJob.stage === "await-approval" || importJob.stage === "completed" || importJob.stage === "failed",
+      { maxIterations: 20 }
+    );
+    expect(result.matched).toBe(true);
+    return result.importJob;
   };
 
   const simulateSchemaApproval = async (importJobId: string) => {
@@ -173,31 +184,7 @@ describe.sequential("Combined Transformations Integration", () => {
     });
 
     // Wait for schema detection to complete
-    let schemaDetectionComplete = false;
-    let iteration = 0;
-    let importJob: any;
-
-    while (!schemaDetectionComplete && iteration < 20) {
-      iteration++;
-      await payload.jobs.run({ allQueues: true, limit: 100 });
-
-      const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
-      });
-
-      if (importJobs.docs.length > 0) {
-        importJob = importJobs.docs[0];
-        schemaDetectionComplete =
-          importJob.stage === "await-approval" || importJob.stage === "completed" || importJob.stage === "failed";
-      }
-
-      if (!schemaDetectionComplete) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-
-    expect(schemaDetectionComplete).toBe(true);
+    const importJob = await waitForSchemaDetection(importFile.id);
 
     // Approve schema
     await simulateSchemaApproval(importJob.id);
@@ -323,31 +310,7 @@ Festival,2500,Music festival`;
     });
 
     // Wait for schema detection to complete
-    let schemaDetectionComplete = false;
-    let iteration = 0;
-    let importJob: any;
-
-    while (!schemaDetectionComplete && iteration < 20) {
-      iteration++;
-      await payload.jobs.run({ allQueues: true, limit: 100 });
-
-      const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
-      });
-
-      if (importJobs.docs.length > 0) {
-        importJob = importJobs.docs[0];
-        schemaDetectionComplete =
-          importJob.stage === "await-approval" || importJob.stage === "completed" || importJob.stage === "failed";
-      }
-
-      if (!schemaDetectionComplete) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-
-    expect(schemaDetectionComplete).toBe(true);
+    const importJob = await waitForSchemaDetection(importFile.id);
 
     // Approve schema
     await simulateSchemaApproval(importJob.id);
@@ -418,31 +381,7 @@ Workshop,Learning session,2024-02-20`;
     });
 
     // Wait for schema detection to complete
-    let schemaDetectionComplete = false;
-    let iteration = 0;
-    let importJob: any;
-
-    while (!schemaDetectionComplete && iteration < 20) {
-      iteration++;
-      await payload.jobs.run({ allQueues: true, limit: 100 });
-
-      const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
-      });
-
-      if (importJobs.docs.length > 0) {
-        importJob = importJobs.docs[0];
-        schemaDetectionComplete =
-          importJob.stage === "await-approval" || importJob.stage === "completed" || importJob.stage === "failed";
-      }
-
-      if (!schemaDetectionComplete) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-
-    expect(schemaDetectionComplete).toBe(true);
+    const importJob = await waitForSchemaDetection(importFile.id);
 
     // Field mapping should detect the TRANSFORMED field name "titel"
     expect(importJob.detectedFieldMappings).toBeDefined();
@@ -508,31 +447,7 @@ Event B,200,Second event`;
     });
 
     // Wait for schema detection to complete
-    let schemaDetectionComplete = false;
-    let iteration = 0;
-    let importJob: any;
-
-    while (!schemaDetectionComplete && iteration < 20) {
-      iteration++;
-      await payload.jobs.run({ allQueues: true, limit: 100 });
-
-      const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
-      });
-
-      if (importJobs.docs.length > 0) {
-        importJob = importJobs.docs[0];
-        schemaDetectionComplete =
-          importJob.stage === "await-approval" || importJob.stage === "completed" || importJob.stage === "failed";
-      }
-
-      if (!schemaDetectionComplete) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-
-    expect(schemaDetectionComplete).toBe(true);
+    const importJob = await waitForSchemaDetection(importFile.id);
 
     // Approve schema
     await simulateSchemaApproval(importJob.id);

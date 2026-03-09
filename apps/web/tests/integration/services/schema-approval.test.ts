@@ -18,8 +18,6 @@ describe.sequential("Schema Approval Workflow", () => {
     "import-jobs",
     "datasets",
     "dataset-schemas",
-    "catalogs",
-    "users",
     "user-usage",
     "payload-jobs",
   ];
@@ -37,6 +35,20 @@ describe.sequential("Schema Approval Workflow", () => {
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
+
+    // Create test users (stable across tests)
+    const { users } = await withUsers(testEnv, ["admin", "editor", "user"]);
+    adminUser = users.admin;
+    editorUser = users.editor;
+    viewerUser = users.user;
+
+    // Create test catalog with editor (stable across tests)
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Schema Approval Test Catalog",
+      description: "Catalog for schema approval tests",
+      editors: [editorUser.id],
+    });
+    testCatalogId = catalog.id;
   });
 
   afterAll(async () => {
@@ -46,24 +58,10 @@ describe.sequential("Schema Approval Workflow", () => {
   });
 
   beforeEach(async () => {
-    // Clear collections
+    // Clear mutable collections only (users and catalog are stable in beforeAll)
     await testEnv.seedManager.truncate(collectionsToReset);
 
-    // Create test users
-    const { users } = await withUsers(testEnv, ["admin", "editor", "user"]);
-    adminUser = users.admin;
-    editorUser = users.editor;
-    viewerUser = users.user;
-
-    // Create test catalog with editor
-    const { catalog } = await withCatalog(testEnv, {
-      name: "Schema Approval Test Catalog",
-      description: "Catalog for schema approval tests",
-      editors: [editorUser.id],
-    });
-    testCatalogId = catalog.id;
-
-    // Create test dataset with schema locking enabled
+    // Create test dataset with schema locking enabled (recreated per test)
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: "Schema Approval Test Dataset",
       description: "Dataset for schema approval tests",

@@ -136,7 +136,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       const data = await response.json();
 
       // Wait a moment for the update to complete
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       const updatedImport = await payload.findByID({
         collection: "scheduled-imports",
@@ -170,7 +170,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       await callWebhook(testScheduledImport.webhookToken!);
 
       // Wait a moment for the update to complete
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       const updatedImport = await payload.findByID({
         collection: "scheduled-imports",
@@ -462,7 +462,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       const data = await response.json();
 
       // Wait a moment for the update to complete
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       const updatedImport = await payload.findByID({
         collection: "scheduled-imports",
@@ -503,7 +503,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       expect(data.jobId).toBeDefined();
 
       // The execution history should record this trigger
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 10));
       const updatedImport = await payload.findByID({
         collection: "scheduled-imports",
         id: invalidImport.id,
