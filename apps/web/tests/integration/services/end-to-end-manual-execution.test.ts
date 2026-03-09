@@ -68,7 +68,17 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
 
   beforeEach(async () => {
     // Clear collections before each test
-    await testEnv.seedManager.truncate();
+    await testEnv.seedManager.truncate([
+      "users",
+      "catalogs",
+      "datasets",
+      "dataset-schemas",
+      "events",
+      "import-files",
+      "import-jobs",
+      "payload-jobs",
+      "user-usage",
+    ]);
 
     // Create test user (needed for import files which require a user)
     const { users } = await withUsers(testEnv, ["user"]);

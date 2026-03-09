@@ -25,7 +25,7 @@ describe.sequential("Password Reset Flow", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate();
+    await testEnv.seedManager.truncate(["users"]);
   });
 
   it("forgot-password returns success for existing user", async () => {

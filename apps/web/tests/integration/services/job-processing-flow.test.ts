@@ -59,7 +59,15 @@ describe.sequential("Job Processing Flow Integration", () => {
 
   beforeEach(async () => {
     // Clear collections before each test
-    await testEnv.seedManager.truncate();
+    await testEnv.seedManager.truncate([
+      "catalogs",
+      "datasets",
+      "dataset-schemas",
+      "events",
+      "import-files",
+      "import-jobs",
+      "payload-jobs",
+    ]);
 
     // Create test catalog with auto-approval settings
     const { catalog } = await withCatalog(testEnv, {

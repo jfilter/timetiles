@@ -38,7 +38,7 @@ describe.sequential("Wizard API Endpoints", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate();
+    await testEnv.seedManager.truncate(["catalogs", "datasets"]);
   });
 
   describe("GET /api/wizard/catalogs", () => {

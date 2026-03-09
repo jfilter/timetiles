@@ -40,7 +40,15 @@ describe.sequential("Geocode Batch Job - Failure Handling", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate();
+    await testEnv.seedManager.truncate([
+      "catalogs",
+      "datasets",
+      "dataset-schemas",
+      "events",
+      "import-files",
+      "import-jobs",
+      "payload-jobs",
+    ]);
 
     const { catalog } = await withCatalog(testEnv, {
       name: "Test Catalog",
