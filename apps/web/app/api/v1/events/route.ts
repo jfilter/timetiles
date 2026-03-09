@@ -15,6 +15,7 @@ import { getPayload } from "payload";
 import { type MapBounds, parseBoundsParameter } from "@/lib/geospatial";
 import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
+import { normalizeEndDate } from "@/lib/services/aggregation-filters";
 import { internalError } from "@/lib/utils/api-response";
 import { extractListParameters } from "@/lib/utils/event-params";
 import config from "@/payload.config";
@@ -260,8 +261,10 @@ const addBoundsToWhere = (where: Where, bounds: MapBounds | null) => {
 };
 
 const addDateFiltersToWhere = (where: Where, startDate: string | null, endDate: string | null) => {
-  if (startDate != null || endDate != null) {
-    addDateFilter(where, startDate, endDate);
+  const normalizedEndDate = normalizeEndDate(endDate);
+
+  if (startDate != null || normalizedEndDate != null) {
+    addDateFilter(where, startDate, normalizedEndDate);
   }
 };
 

@@ -20,6 +20,7 @@ import { getPayload } from "payload";
 import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
+import { normalizeEndDate } from "@/lib/services/aggregation-filters";
 import { createErrorHandler } from "@/lib/utils/api-response";
 import { extractBaseEventParameters } from "@/lib/utils/event-params";
 import config from "@/payload.config";
@@ -41,6 +42,25 @@ export interface BoundsResponse {
 
 const handleError = createErrorHandler("fetching event bounds", logger);
 
+const buildFieldFilterConditions = (fieldFilters: Record<string, string[]>): Array<ReturnType<typeof sql>> => {
+  const conditions: Array<ReturnType<typeof sql>> = [];
+
+  for (const [fieldKey, values] of Object.entries(fieldFilters)) {
+    if (!Array.isArray(values) || values.length === 0) {
+      continue;
+    }
+
+    conditions.push(
+      sql`(e.data #>> string_to_array(${fieldKey}, '.')) IN (${sql.join(
+        values.map((value) => sql`${value}`),
+        sql`, `
+      )})`
+    );
+  }
+
+  return conditions;
+};
+
 /**
  * GET /api/v1/events/bounds
  *
@@ -60,6 +80,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
     const parameters = extractBaseEventParameters(request.nextUrl.searchParams);
+    const endDate = normalizeEndDate(parameters.endDate);
     const hasCatalogFilter = parameters.catalog != null && parameters.catalog !== "";
 
     // Get accessible catalog IDs for this user
@@ -124,9 +145,12 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
     if (parameters.startDate != null) {
       conditions.push(sql`e.event_timestamp >= ${parameters.startDate}::timestamptz`);
     }
-    if (parameters.endDate != null) {
-      conditions.push(sql`e.event_timestamp <= ${parameters.endDate}::timestamptz`);
+    if (endDate != null) {
+      conditions.push(sql`e.event_timestamp <= ${endDate}::timestamptz`);
     }
+
+    // Apply field filters
+    conditions.push(...buildFieldFilterConditions(parameters.fieldFilters));
 
     // Combine conditions using reduce with initial value
     const whereClause = conditions.reduce((acc, cond) => sql`${acc} AND ${cond}`, sql`TRUE`);
