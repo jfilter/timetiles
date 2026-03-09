@@ -13,6 +13,7 @@ import path from "node:path";
 
 import { logger } from "@/lib/logger";
 import { getUrlFetchCache, type UrlFetchCache, type UrlFetchCacheOptions } from "@/lib/services/cache";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { ScheduledImport } from "@/payload-types";
 
 export interface FetchResult {
@@ -227,9 +228,10 @@ export const fetchUrlData = async (
 
     const contentLength = response.headers.get("content-length");
     const contentType = response.headers.get("content-type") ?? undefined;
+    const parsedContentLength = parseStrictInteger(contentLength);
 
-    if (contentLength && parseInt(contentLength) > maxSize) {
-      throw new Error(`File too large: ${contentLength} bytes (max: ${maxSize})`);
+    if (parsedContentLength != null && parsedContentLength > maxSize) {
+      throw new Error(`File too large: ${parsedContentLength} bytes (max: ${maxSize})`);
     }
 
     const { data, contentLength: totalSize } = await readResponseBody(response, maxSize);

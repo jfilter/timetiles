@@ -35,6 +35,14 @@ interface SheetInfo {
   headers?: string[];
 }
 
+const normalizeImportFileRelationId = (importFileId: string | number): number => {
+  const normalizedImportFileId = typeof importFileId === "number" ? importFileId : parseStrictInteger(importFileId);
+  if (normalizedImportFileId == null) {
+    throw new Error("Invalid import file ID");
+  }
+  return normalizedImportFileId;
+};
+
 // Extract file processing functions
 const processCSVFile = (filePath: string): { sheets: SheetInfo[]; workbook: unknown } => {
   logger.info("Processing CSV file", { filePath });
@@ -128,7 +136,7 @@ const handleSingleSheet = async (
   return payload.create({
     collection: COLLECTION_NAMES.IMPORT_JOBS,
     data: {
-      importFile: typeof importFile.id === "string" ? parseInt(importFile.id, 10) : importFile.id,
+      importFile: normalizeImportFileRelationId(importFile.id),
       dataset: dataset.id,
       sheetIndex: 0,
       stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
@@ -213,7 +221,7 @@ const processSheetWithMapping = async (
   return payload.create({
     collection: COLLECTION_NAMES.IMPORT_JOBS,
     data: {
-      importFile: typeof importFile.id === "string" ? parseInt(importFile.id, 10) : importFile.id,
+      importFile: normalizeImportFileRelationId(importFile.id),
       dataset: dataset.id,
       sheetIndex: sheet.index,
       stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,

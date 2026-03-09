@@ -93,6 +93,7 @@ import {
   type UserUsage,
 } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 import { user_usage } from "@/payload-generated-schema";
 import type { User, UserUsage as UserUsageRecord } from "@/payload-types";
 
@@ -102,6 +103,16 @@ const logger = createLogger("quota-service");
 const USER_USAGE_COLLECTION = "user-usage";
 type UserIdentifier = number | string | Pick<User, "id"> | null | undefined;
 
+const normalizeTrustLevel = (trustLevel: User["trustLevel"] | null | undefined): TrustLevel => {
+  const parsedTrustLevel = parseStrictInteger(trustLevel ?? TRUST_LEVELS.REGULAR);
+
+  if (parsedTrustLevel != null && parsedTrustLevel in DEFAULT_QUOTAS) {
+    return parsedTrustLevel as TrustLevel;
+  }
+
+  return TRUST_LEVELS.REGULAR;
+};
+
 const normalizeUserId = (userId: UserIdentifier): number => {
   const rawUserId = typeof userId === "object" && userId !== null ? userId.id : userId;
 
@@ -109,9 +120,9 @@ const normalizeUserId = (userId: UserIdentifier): number => {
     throw new Error("Invalid user ID for quota tracking: missing user ID");
   }
 
-  const normalizedUserId = Number(rawUserId);
+  const normalizedUserId = parseStrictInteger(rawUserId);
 
-  if (!Number.isInteger(normalizedUserId)) {
+  if (normalizedUserId == null) {
     throw new Error(`Invalid user ID for quota tracking: ${String(rawUserId)}`);
   }
 
@@ -211,8 +222,7 @@ export class QuotaService {
       return DEFAULT_QUOTAS[TRUST_LEVELS.UNTRUSTED];
     }
 
-    const trustLevelValue = Number(user.trustLevel ?? TRUST_LEVELS.REGULAR);
-    const trustLevel = trustLevelValue as TrustLevel;
+    const trustLevel = normalizeTrustLevel(user.trustLevel);
     const defaultQuotas = DEFAULT_QUOTAS[trustLevel];
 
     // Check if user has quota fields directly on the user object (from database)

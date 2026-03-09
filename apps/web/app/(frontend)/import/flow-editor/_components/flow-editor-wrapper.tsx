@@ -23,7 +23,7 @@ const FlowEditorClient = dynamic(() => import("./flow-editor-client").then((mod)
   ),
 });
 
-interface FlowEditorWrapperProps {
+export interface FlowEditorWrapperProps {
   previewId: string | null;
   sheetIndex: number;
   scheduleId: number | null;

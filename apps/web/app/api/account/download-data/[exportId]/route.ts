@@ -13,6 +13,7 @@ import { getPayload } from "payload";
 import { Readable } from "stream";
 
 import { logError, logger } from "@/lib/logger";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 
 /**
@@ -25,6 +26,12 @@ export const GET = async (
 ): Promise<Response> => {
   try {
     const { exportId } = await params;
+    const normalizedExportId = parseStrictInteger(exportId);
+
+    if (normalizedExportId == null) {
+      return NextResponse.json({ error: "Invalid export ID" }, { status: 400 });
+    }
+
     const payload = await getPayload({ config });
 
     // Authenticate user
@@ -37,7 +44,7 @@ export const GET = async (
     // Fetch export record
     const exportRecord = await payload.findByID({
       collection: "data-exports",
-      id: exportId,
+      id: normalizedExportId,
       overrideAccess: true,
     });
 
@@ -82,7 +89,7 @@ export const GET = async (
       // Mark as expired
       await payload.update({
         collection: "data-exports",
-        id: Number(exportId),
+        id: normalizedExportId,
         data: { status: "expired" },
         overrideAccess: true,
       });
@@ -106,7 +113,7 @@ export const GET = async (
     // Increment download count
     await payload.update({
       collection: "data-exports",
-      id: Number(exportId),
+      id: normalizedExportId,
       data: { downloadCount: (exportRecord.downloadCount ?? 0) + 1 },
       overrideAccess: true,
     });
