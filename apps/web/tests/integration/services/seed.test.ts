@@ -209,9 +209,7 @@ describe.sequential("Database-backed Seed Operations", () => {
 
       const testUsersConfig = getCollectionConfig("users", "testing");
       const expectedUsersCount =
-        typeof testUsersConfig?.count === "function"
-          ? testUsersConfig.count("testing")
-          : (testUsersConfig?.count ?? 0);
+        typeof testUsersConfig?.count === "function" ? testUsersConfig.count("testing") : (testUsersConfig?.count ?? 0);
 
       expect(usersCount).toBeGreaterThanOrEqual(expectedUsersCount);
       expect(usersCount).toBeLessThanOrEqual(expectedUsersCount + 5);

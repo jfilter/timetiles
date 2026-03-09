@@ -53,7 +53,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     mockPayload = createMockPayload();
     mockContext = {
       payload: mockPayload,
-      input: { importJobId: "import-123" },
+      input: { importJobId: 123 },
     } as unknown as JobHandlerContext;
   });
 
@@ -65,9 +65,9 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     it("should geocode unique locations successfully", async () => {
       const mockImportJob = {
         ...createMockImportJob(),
-        id: "import-123",
-        dataset: "dataset-123",
-        importFile: "file-123",
+        id: 123,
+        dataset: 456,
+        importFile: 789,
         sheetIndex: 0,
         detectedFieldMappings: {
           locationPath: "address",
@@ -108,7 +108,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Should store results as location → coordinates map
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
-        id: "import-123",
+        id: 123,
         data: {
           geocodingResults: {
             "123 Main St": {
@@ -138,7 +138,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     it("should skip rows without location values", async () => {
       const mockImportJob = {
         ...createMockImportJob(),
-        id: "import-123",
+        id: 123,
         detectedFieldMappings: {
           locationPath: "address",
         },
@@ -179,7 +179,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     it("should handle geocoding failures gracefully", async () => {
       const mockImportJob = {
         ...createMockImportJob(),
-        id: "import-123",
+        id: 123,
         detectedFieldMappings: {
           locationPath: "address",
         },
@@ -231,7 +231,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     it("should skip geocoding when no location field detected", async () => {
       const mockImportJob = {
         ...createMockImportJob(),
-        id: "import-123",
+        id: 123,
         detectedFieldMappings: {
           // No locationPath
         },
@@ -249,7 +249,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Should transition directly to CREATE_EVENTS
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
-        id: "import-123",
+        id: 123,
         data: { stage: "create-events" },
       });
 
@@ -259,7 +259,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     it("should handle empty file gracefully", async () => {
       const mockImportJob = {
         ...createMockImportJob(),
-        id: "import-123",
+        id: 123,
         detectedFieldMappings: {
           locationPath: "address",
         },
@@ -278,7 +278,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Should store empty results
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
-        id: "import-123",
+        id: 123,
         data: {
           geocodingResults: {},
           stage: "create-events",
@@ -296,7 +296,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     it("should trim whitespace from locations", async () => {
       const mockImportJob = {
         ...createMockImportJob(),
-        id: "import-123",
+        id: 123,
         detectedFieldMappings: {
           locationPath: "address",
         },
@@ -343,9 +343,9 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       const mockDataset = createMockDataset();
       const mockImportJob = {
         ...createMockImportJob(),
-        id: "import-123",
+        id: 123,
         dataset: mockDataset, // Use object to avoid lookup
-        importFile: "file-123", // Use string so it needs to be looked up
+        importFile: 789, // Use string so it needs to be looked up
       };
 
       // First call returns the job, second call for import file lookup returns null
@@ -357,7 +357,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     it("should set job to FAILED stage on error", async () => {
       const mockImportJob = {
         ...createMockImportJob(),
-        id: "import-123",
+        id: 123,
         detectedFieldMappings: {
           locationPath: "address",
         },
@@ -376,7 +376,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Should update job to FAILED stage with error details
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
-        id: "import-123",
+        id: 123,
         data: {
           stage: "failed",
           errorLog: {
@@ -392,7 +392,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     it("should handle non-string location values", async () => {
       const mockImportJob = {
         ...createMockImportJob(),
-        id: "import-123",
+        id: 123,
         detectedFieldMappings: {
           locationPath: "address",
         },
@@ -432,8 +432,8 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     it("should fail the job when all geocoding fails", async () => {
       const mockImportJob = {
         ...createMockImportJob(),
-        id: "import-123",
-        importFile: { id: "file-123", filename: "test.csv" },
+        id: 123,
+        importFile: { id: 789, filename: "test.csv" },
         detectedFieldMappings: {
           locationPath: "address",
         },
@@ -462,7 +462,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Should update import job to FAILED stage with error message and failure details
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
-        id: "import-123",
+        id: 123,
         data: {
           stage: "failed",
           errorLog: {
@@ -480,7 +480,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Should also update import file status to failed with detailed error
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-files",
-        id: "file-123",
+        id: 789,
         data: {
           status: "failed",
           errorLog: expect.stringMatching(/Geocoding failed for all 2 locations.*Failed locations/s),
@@ -491,7 +491,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     it("should handle large number of unique locations", async () => {
       const mockImportJob = {
         ...createMockImportJob(),
-        id: "import-123",
+        id: 123,
         detectedFieldMappings: {
           locationPath: "address",
         },

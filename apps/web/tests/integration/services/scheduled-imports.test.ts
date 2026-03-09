@@ -759,7 +759,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         data: {
           name: "Custom Headers Import",
           enabled: true,
-          sourceUrl: `${testServerUrl}/content-type-test`,
+          sourceUrl: `${testServerUrl}/custom-headers-test`,
           authConfig: {
             type: "api-key",
             apiKey: "test-key",
@@ -777,7 +777,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       });
 
       // Set up test server endpoint with JSON response
-      testServer.respond("/content-type-test", {
+      testServer.respond("/custom-headers-test", {
         status: 200,
         body: JSON.stringify({ data: "test" }),
         headers: { "Content-Type": "application/json" },
