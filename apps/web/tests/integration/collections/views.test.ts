@@ -23,6 +23,8 @@ import type { User, View } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
 describe.sequential("Views Collection", () => {
+  const collectionsToReset = ["views"];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;
@@ -33,20 +35,10 @@ describe.sequential("Views Collection", () => {
   let otherUser: User;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
-  });
 
-  afterAll(async () => {
-    await cleanup();
-  });
-
-  beforeEach(async () => {
-    await testEnv.seedManager.truncate();
-    clearViewCache();
-
-    // Create test users after truncation
     const { users } = await withUsers(testEnv, {
       admin: { role: "admin" },
       regular: { role: "user" },
@@ -55,6 +47,15 @@ describe.sequential("Views Collection", () => {
     adminUser = users.admin;
     regularUser = users.regular;
     otherUser = users.other;
+  });
+
+  afterAll(async () => {
+    await cleanup();
+  });
+
+  beforeEach(async () => {
+    await testEnv.seedManager.truncate(collectionsToReset);
+    clearViewCache();
   });
 
   describe("CRUD Operations", () => {

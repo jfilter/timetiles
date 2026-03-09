@@ -69,11 +69,8 @@ describe.sequential("Geocoding Cache Integration", () => {
     "import-jobs",
     "datasets",
     "dataset-schemas",
-    "catalogs",
-    "users",
     "user-usage",
     "location-cache",
-    "geocoding-providers",
     "payload-jobs",
   ];
 
@@ -101,39 +98,11 @@ describe.sequential("Geocoding Cache Integration", () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
     fixtureCsvContent = fs.readFileSync(path.join(process.cwd(), "tests/fixtures/geocoding-test.csv"), "utf8");
-  });
 
-  afterAll(async () => {
-    if (testEnv?.cleanup) {
-      await testEnv.cleanup();
-    }
-  });
-
-  beforeEach(async () => {
-    // Clear collections and reset mocks before each test
-    await testEnv.seedManager.truncate(collectionsToReset);
-
-    // Reset mocks completely
-    mockGoogleGeocode.mockReset();
-    mockNominatimGeocode.mockReset();
-
-    // Set up mock to return deterministic results
-    // node-geocoder returns an array of results
-    mockGoogleGeocode.mockImplementation((address: string) => {
-      const result = generateMockGeocodingResult(address);
-      return Promise.resolve([result]);
-    });
-
-    mockNominatimGeocode.mockImplementation((address: string) => {
-      const result = generateMockGeocodingResult(address);
-      return Promise.resolve([result]);
-    });
-
-    // Create geocoding provider in database with unique name
     await payload.create({
       collection: "geocoding-providers",
       data: {
-        name: `Google Maps Test ${Date.now()}`,
+        name: "Google Maps Test Provider",
         type: "google",
         enabled: true,
         priority: 1,
@@ -148,7 +117,6 @@ describe.sequential("Geocoding Cache Integration", () => {
       },
     });
 
-    // Initialize geocoding service
     const { initializeGeocoding } = await import("../../../lib/services/geocoding");
     initializeGeocoding(payload);
 
@@ -157,12 +125,34 @@ describe.sequential("Geocoding Cache Integration", () => {
     });
     testUserId = users.importer.id;
 
-    // Create test catalog with auto-approval settings
     const { catalog } = await withCatalog(testEnv, {
-      name: `Geocoding Test Catalog ${Date.now()}`,
+      name: "Geocoding Test Catalog",
       description: "Catalog for geocoding cache testing",
     });
     testCatalogId = catalog.id;
+  });
+
+  afterAll(async () => {
+    if (testEnv?.cleanup) {
+      await testEnv.cleanup();
+    }
+  });
+
+  beforeEach(async () => {
+    await testEnv.seedManager.truncate(collectionsToReset);
+
+    mockGoogleGeocode.mockReset();
+    mockNominatimGeocode.mockReset();
+
+    mockGoogleGeocode.mockImplementation((address: string) => {
+      const result = generateMockGeocodingResult(address);
+      return Promise.resolve([result]);
+    });
+
+    mockNominatimGeocode.mockImplementation((address: string) => {
+      const result = generateMockGeocodingResult(address);
+      return Promise.resolve([result]);
+    });
   });
 
   describe("Scenario 1: First Import with Unique Locations", () => {
@@ -221,8 +211,8 @@ describe.sequential("Geocoding Cache Integration", () => {
     });
   });
 
-  describe("Scenario 2: Second Import with Same Locations (Cache Hits)", () => {
-    it("should reuse cached locations without calling geocoding API", async () => {
+  describe("Scenario 2: Cache Reuse Across Follow-up Imports", () => {
+    it("should reuse cached locations and geocode only new follow-up locations", async () => {
       // First import - populate cache
       const { importFile: firstImportFile } = await createImportFile(fixtureCsvContent, "geocoding-test-first.csv");
 
@@ -265,36 +255,25 @@ describe.sequential("Geocoding Cache Integration", () => {
 
       // Verify all events (from both imports) were created with coordinates
       // After two imports of 15 events each, we should have 30 events total
-      const allEvents = await payload.find({
+      const allEventsAfterCacheHit = await payload.find({
         collection: "events",
         limit: 100,
       });
 
-      expect(allEvents.docs.length).toBe(30); // 15 from first + 15 from second
+      expect(allEventsAfterCacheHit.docs.length).toBe(30); // 15 from first + 15 from second
 
       // All events should have coordinates from either first geocoding or cache
-      for (const event of allEvents.docs) {
+      for (const event of allEventsAfterCacheHit.docs) {
         expect(event.location).toBeDefined();
         expect(event.location.latitude).toBeTypeOf("number");
         expect(event.location.longitude).toBeTypeOf("number");
         expect(event.coordinateSource.type).toBe("geocoded");
       }
-    }, 60000); // 60 second timeout - runs two full import pipelines
-  });
-
-  describe("Scenario 3: Mixed Cached and Uncached Locations", () => {
-    it("should geocode only new locations and reuse cached ones", async () => {
-      // First import with 10 unique locations
-      const { importFile: firstImportFile } = await createImportFile(fixtureCsvContent, "geocoding-test-first.csv");
-
-      await runJobsUntilComplete(firstImportFile.id);
-
-      expect(mockGoogleGeocode).toHaveBeenCalledTimes(10);
 
       // Clear mock call count
       vi.clearAllMocks();
 
-      // Second import with 5 cached + 5 new locations
+      // Third import with 5 cached + 5 new locations
       const mixedCsvContent = `id,title,date,location
 1,Event at Main St,2024-01-01,123 Main St New York NY
 2,Event at Oak Ave,2024-01-02,456 Oak Ave San Francisco CA
@@ -307,9 +286,9 @@ describe.sequential("Geocoding Cache Integration", () => {
 9,New Event at Michigan,2024-01-09,444 Michigan Ave Chicago IL
 10,New Event at Newbury,2024-01-10,555 Newbury St Boston MA`;
 
-      const { importFile: secondImportFile } = await createImportFile(mixedCsvContent, "geocoding-test-mixed.csv");
+      const { importFile: thirdImportFile } = await createImportFile(mixedCsvContent, "geocoding-test-mixed.csv");
 
-      await runJobsUntilComplete(secondImportFile.id);
+      await runJobsUntilComplete(thirdImportFile.id);
 
       // Verify only 5 new API calls (for new locations)
       expect(mockGoogleGeocode).toHaveBeenCalledTimes(5);
@@ -331,19 +310,19 @@ describe.sequential("Geocoding Cache Integration", () => {
       expect(cacheAfterMixed.docs.length).toBe(15);
 
       // Verify all events created (15 from first + 10 from second = 25 total)
-      const allEvents = await payload.find({
+      const allEventsAfterMixedImport = await payload.find({
         collection: "events",
         limit: 100,
       });
 
-      expect(allEvents.docs.length).toBe(25);
+      expect(allEventsAfterMixedImport.docs.length).toBe(40);
 
       // All events should have coordinates
-      for (const event of allEvents.docs) {
+      for (const event of allEventsAfterMixedImport.docs) {
         expect(event.location).toBeDefined();
         expect(event.coordinateSource.type).toBe("geocoded");
       }
-    }, 60000); // 60 second timeout - runs two full import pipelines
+    }, 60000); // 60 second timeout - runs three full import pipelines
   });
 
   describe("Scenario 4: Duplicate Locations Within Single Import", () => {

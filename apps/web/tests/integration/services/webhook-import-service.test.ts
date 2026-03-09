@@ -138,6 +138,8 @@ const startTestServer = async (): Promise<void> => {
 };
 
 describe.sequential("Webhook Import Service Integration", () => {
+  const collectionsToReset = ["scheduled-imports", "import-files", "user-usage", "payload-jobs"];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
   let cleanup: () => Promise<void>;
@@ -150,7 +152,7 @@ describe.sequential("Webhook Import Service Integration", () => {
     // Start the test server first
     await startTestServer();
 
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
 
@@ -198,6 +200,8 @@ describe.sequential("Webhook Import Service Integration", () => {
   });
 
   beforeEach(async () => {
+    await testEnv.seedManager.truncate(collectionsToReset);
+
     // Create fresh scheduled import using local test server
     const timestamp = Date.now();
     const { scheduledImport } = await withScheduledImport(
@@ -662,23 +666,6 @@ describe.sequential("Webhook Import Service Integration", () => {
   });
 
   describe("Import Name Templates", () => {
-    beforeEach(async () => {
-      // Clear any existing import files to avoid duplicate detection issues
-      const existingFiles = await payload.find({
-        collection: "import-files",
-        where: {
-          catalog: { equals: testCatalog.id },
-        },
-      });
-
-      for (const file of existingFiles.docs) {
-        await payload.delete({
-          collection: "import-files",
-          id: file.id,
-        });
-      }
-    });
-
     it("should generate names from template variables", async () => {
       const templates = [
         {
@@ -785,23 +772,6 @@ describe.sequential("Webhook Import Service Integration", () => {
   });
 
   describe("Multi-Sheet Configuration", () => {
-    beforeEach(async () => {
-      // Clear any existing import files to avoid duplicate detection issues
-      const existingFiles = await payload.find({
-        collection: "import-files",
-        where: {
-          catalog: { equals: testCatalog.id },
-        },
-      });
-
-      for (const file of existingFiles.docs) {
-        await payload.delete({
-          collection: "import-files",
-          id: file.id,
-        });
-      }
-    });
-
     it("should pass multi-sheet config to import file", async () => {
       const multiSheetConfig = {
         enabled: true,

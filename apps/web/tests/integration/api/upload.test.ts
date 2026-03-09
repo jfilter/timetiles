@@ -15,13 +15,18 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createIntegrationTestEnvironment, withCatalog, withImportFile } from "../../setup/integration/environment";
 
 describe.sequential("Import Files Collection", () => {
+  const collectionsToReset = ["import-files", "import-jobs", "datasets", "dataset-schemas", "payload-jobs", "user-usage"];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
+
+    const { catalog } = await withCatalog(testEnv);
+    testCatalogId = catalog.id;
   });
 
   afterAll(async () => {
@@ -31,12 +36,7 @@ describe.sequential("Import Files Collection", () => {
   });
 
   beforeEach(async () => {
-    // Clear collections before each test
-    await testEnv.seedManager.truncate();
-
-    // Create test catalog
-    const { catalog } = await withCatalog(testEnv);
-    testCatalogId = catalog.id;
+    await testEnv.seedManager.truncate(collectionsToReset);
   });
 
   it("should create import file record with file upload", async () => {

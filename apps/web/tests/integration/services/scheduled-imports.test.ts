@@ -41,6 +41,8 @@ interface UrlFetchFailureOutput {
 }
 
 describe.sequential("Scheduled Imports Integration", () => {
+  const collectionsToReset = ["scheduled-imports", "import-files", "user-usage", "payload-jobs"];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testUser: User;
@@ -52,7 +54,7 @@ describe.sequential("Scheduled Imports Integration", () => {
 
   beforeAll(async () => {
     const timestamp = Date.now();
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     const envWithServer = await withTestServer(testEnv);
     payload = envWithServer.payload;
     cleanup = envWithServer.cleanup;
@@ -92,71 +94,9 @@ describe.sequential("Scheduled Imports Integration", () => {
   });
 
   beforeEach(async () => {
-    // Clear mocks
     vi.clearAllMocks();
-
-    // Clean up scheduled imports and import files between tests to ensure isolation
-    try {
-      const allScheduledImports = await payload.find({
-        collection: "scheduled-imports",
-        limit: 1000,
-      });
-
-      for (const scheduledImport of allScheduledImports.docs) {
-        await payload.delete({
-          collection: "scheduled-imports",
-          id: scheduledImport.id,
-        });
-      }
-    } catch {
-      // Ignore if no records to delete
-    }
-
-    try {
-      const allImportFiles = await payload.find({
-        collection: "import-files",
-        limit: 1000,
-      });
-
-      for (const importFile of allImportFiles.docs) {
-        await payload.delete({
-          collection: "import-files",
-          id: importFile.id,
-        });
-      }
-    } catch {
-      // Ignore if no records to delete
-    }
-
-    // Reset user quota/usage to avoid quota exhaustion between tests
-    try {
-      const allUsage = await payload.find({
-        collection: "user-usage",
-        limit: 1000,
-      });
-
-      for (const usage of allUsage.docs) {
-        await payload.update({
-          collection: "user-usage",
-          id: usage.id,
-          data: {
-            fileUploadsToday: 0,
-            urlFetchesToday: 0,
-          },
-        });
-      }
-    } catch {
-      // Ignore if no records to update
-    }
-
-    // Stop current server and create new one with fresh routes
-    if (testServer) {
-      await testServer.stop();
-    }
-    const { TestServer } = await import("../../setup/integration/http-server");
-    // eslint-disable-next-line require-atomic-updates -- Sequential test setup, no race condition
-    testServer = new TestServer();
-    testServerUrl = await testServer.start();
+    await testEnv.seedManager.truncate(collectionsToReset);
+    testServer.reset();
   });
 
   afterEach(async () => {

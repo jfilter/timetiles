@@ -46,12 +46,23 @@ import {
 } from "../../setup/integration/environment";
 
 describe.sequential("Comprehensive File Upload Tests", () => {
+  const collectionsToReset = [
+    "events",
+    "import-files",
+    "import-jobs",
+    "datasets",
+    "dataset-schemas",
+    "user-usage",
+    "payload-jobs",
+  ];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
+  let approverUser: any;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
 
     // Create temp directory for test files
@@ -59,6 +70,17 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     if (!fs.existsSync(filesDir)) {
       fs.mkdirSync(filesDir, { recursive: true });
     }
+
+    const { users } = await withUsers(testEnv, {
+      approver: { role: "admin", email: "test-approver@example.com" },
+    });
+    approverUser = users.approver;
+
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Comprehensive Test Catalog",
+      description: "Catalog for comprehensive file upload testing",
+    });
+    testCatalogId = catalog.id;
   });
 
   afterAll(async () => {
@@ -68,15 +90,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
   });
 
   beforeEach(async () => {
-    // Clear collections before each test
-    await testEnv.seedManager.truncate();
-
-    // Create test catalog
-    const { catalog } = await withCatalog(testEnv, {
-      name: "Comprehensive Test Catalog",
-      description: "Catalog for comprehensive file upload testing",
-    });
-    testCatalogId = catalog.id;
+    await testEnv.seedManager.truncate(collectionsToReset);
   });
 
   // Helper functions
@@ -164,10 +178,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     let testUser = null;
     let testUserId = null;
     if (approved) {
-      const { users } = await withUsers(testEnv, {
-        approver: { role: "admin", email: "test-approver@example.com" },
-      });
-      testUser = users.approver;
+      testUser = approverUser;
       testUserId = testUser.id;
     }
 

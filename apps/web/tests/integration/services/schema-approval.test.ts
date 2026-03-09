@@ -13,6 +13,17 @@ import {
 } from "../../setup/integration/environment";
 
 describe.sequential("Schema Approval Workflow", () => {
+  const collectionsToReset = [
+    "import-files",
+    "import-jobs",
+    "datasets",
+    "dataset-schemas",
+    "catalogs",
+    "users",
+    "user-usage",
+    "payload-jobs",
+  ];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   let adminUser: any;
@@ -36,7 +47,7 @@ describe.sequential("Schema Approval Workflow", () => {
 
   beforeEach(async () => {
     // Clear collections
-    await testEnv.seedManager.truncate();
+    await testEnv.seedManager.truncate(collectionsToReset);
 
     // Create test users
     const { users } = await withUsers(testEnv, ["admin", "editor", "user"]);
@@ -79,6 +90,7 @@ describe.sequential("Schema Approval Workflow", () => {
     const csvContent = "title,date,location\nTest Event,2024-01-01,Test Location";
     const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
       status: "completed",
+      user: adminUser.id,
     });
     testImportFileId = importFile.id;
 

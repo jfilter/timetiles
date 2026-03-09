@@ -58,6 +58,8 @@ import { GeocodingError, GeocodingService } from "../../../lib/services/geocodin
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
 describe("GeocodingService", () => {
+  const collectionsToReset = ["location-cache", "geocoding-providers"];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let geocodingService: GeocodingService;
@@ -80,25 +82,7 @@ describe("GeocodingService", () => {
 
     // Clear collections before each test - this is now isolated per test file
     try {
-      await testEnv.seedManager.truncate();
-      // Also explicitly clear the location cache to avoid interference
-      // Use a more thorough approach to clear the cache
-      const cacheEntries = await payload.find({
-        collection: "location-cache",
-        limit: 1000,
-        depth: 0,
-      });
-
-      for (const entry of cacheEntries.docs) {
-        try {
-          await payload.delete({
-            collection: "location-cache",
-            id: entry.id,
-          });
-        } catch {
-          // Ignore individual delete errors
-        }
-      }
+      await testEnv.seedManager.truncate(collectionsToReset);
     } catch {
       // Cleanup error (non-critical) - explicitly ignore
     }

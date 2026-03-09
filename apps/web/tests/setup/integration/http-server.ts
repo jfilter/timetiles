@@ -252,6 +252,15 @@ export class TestServer {
   }
 
   /**
+   * Clear registered routes without restarting the server.
+   */
+  reset(): this {
+    this.routes.clear();
+    this.defaultHandler = undefined;
+    return this;
+  }
+
+  /**
    * Start the server.
    */
   async start(): Promise<string> {

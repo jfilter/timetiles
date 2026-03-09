@@ -29,9 +29,22 @@ import {
 } from "../../setup/integration/environment";
 
 describe.sequential("Combined Transformations Integration", () => {
+  const collectionsToReset = [
+    "events",
+    "import-files",
+    "import-jobs",
+    "datasets",
+    "dataset-schemas",
+    "catalogs",
+    "users",
+    "user-usage",
+    "payload-jobs",
+  ];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
+  let approverUser: any;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
@@ -45,7 +58,12 @@ describe.sequential("Combined Transformations Integration", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate();
+    await testEnv.seedManager.truncate(collectionsToReset);
+
+    const { users } = await withUsers(testEnv, {
+      approver: { role: "admin" },
+    });
+    approverUser = users.approver;
 
     const { catalog } = await withCatalog(testEnv, {
       name: "Combined Transformations Test Catalog",
@@ -62,12 +80,6 @@ describe.sequential("Combined Transformations Integration", () => {
   };
 
   const simulateSchemaApproval = async (importJobId: string) => {
-    // Create a test user for approval
-    const { users } = await withUsers(testEnv, {
-      approver: { role: "admin" },
-    });
-    const testUser = users.approver;
-
     // Get the current job
     const beforeJob = await payload.findByID({
       collection: "import-jobs",
@@ -78,7 +90,7 @@ describe.sequential("Combined Transformations Integration", () => {
     const updatedSchemaValidation = {
       ...beforeJob.schemaValidation,
       approved: true,
-      approvedBy: testUser.id,
+      approvedBy: approverUser.id,
       approvedAt: new Date().toISOString(),
     };
 
@@ -88,7 +100,7 @@ describe.sequential("Combined Transformations Integration", () => {
       data: {
         schemaValidation: updatedSchemaValidation,
       },
-      user: testUser, // Pass user context for authentication
+      user: approverUser, // Pass user context for authentication
     });
   };
 

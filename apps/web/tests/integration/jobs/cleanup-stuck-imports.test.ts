@@ -18,6 +18,8 @@ import {
 } from "../../setup/integration/environment";
 
 describe.sequential("Cleanup Stuck Imports Job Integration", () => {
+  const collectionsToReset = ["scheduled-imports"];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
   let cleanup: () => Promise<void>;
@@ -25,7 +27,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
   let testCatalog: Catalog;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
 
@@ -45,36 +47,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
   });
 
   beforeEach(async () => {
-    // Clean up ALL scheduled imports before each test to ensure isolation
-    const existingImports = await payload.find({
-      collection: "scheduled-imports",
-      limit: 1000,
-    });
-
-    for (const imp of existingImports.docs) {
-      try {
-        await payload.delete({
-          collection: "scheduled-imports",
-          id: imp.id,
-        });
-      } catch {
-        // If delete fails, at least update to a non-running status
-        // We intentionally ignore the error here as it's a best-effort cleanup
-        try {
-          await payload.update({
-            collection: "scheduled-imports",
-            id: imp.id,
-            data: {
-              lastStatus: "success",
-            },
-          });
-        } catch {
-          // Intentionally ignore - test cleanup best effort
-          // This is a secondary fallback, so we continue regardless
-          continue;
-        }
-      }
-    }
+    await testEnv.seedManager.truncate(collectionsToReset);
   });
 
   describe.sequential("Finding Stuck Imports", () => {

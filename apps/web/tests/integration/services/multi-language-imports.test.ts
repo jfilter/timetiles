@@ -183,158 +183,102 @@ describe.sequential("Multi-Language Import Tests", () => {
     return { importFile, importJob, dataset };
   };
 
-  describe("German Language Detection", () => {
-    it("should detect German field mappings (titel, beschreibung, datum)", async () => {
-      const { importJob } = await importLanguageCSV("events-german.csv", "deu");
+  const assertDetectedFieldMappings = (
+    importJob: any,
+    expectedMappings: {
+      titlePath: string;
+      descriptionPath: string;
+      timestampPath: string;
+    }
+  ) => {
+    expect(importJob.detectedFieldMappings).toBeDefined();
+    expect(importJob.detectedFieldMappings.titlePath).toBe(expectedMappings.titlePath);
+    expect(importJob.detectedFieldMappings.descriptionPath).toBe(expectedMappings.descriptionPath);
+    expect(importJob.detectedFieldMappings.timestampPath).toBe(expectedMappings.timestampPath);
+  };
 
-      // Check that field mappings were detected
-      expect(importJob.detectedFieldMappings).toBeDefined();
-      expect(importJob.detectedFieldMappings.titlePath).toBe("titel");
-      expect(importJob.detectedFieldMappings.descriptionPath).toBe("beschreibung");
-      expect(importJob.detectedFieldMappings.timestampPath).toBe("datum");
+  const assertImportedEvents = async (importJob: any, expectedEventCount: number, expectedFields: string[]) => {
+    const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
+    const events = await payload.find({
+      collection: "events",
+      where: {
+        dataset: { equals: datasetId },
+      },
+      sort: "eventTimestamp",
     });
 
-    it("should create events with German field names", async () => {
-      const { importFile, importJob } = await importLanguageCSV("events-german.csv", "deu");
+    expect(events.docs.length).toBe(expectedEventCount);
 
-      // Approve schema
-      await simulateSchemaApproval(importJob.id);
+    const firstEvent = events.docs[0];
+    expect(firstEvent.data).toBeDefined();
+    for (const field of expectedFields) {
+      expect(firstEvent.data[field]).toBeDefined();
+    }
+    expect(firstEvent.eventTimestamp).toBeDefined();
+  };
 
-      // Complete the import
-      const completed = await runJobsUntilComplete(importFile.id);
-      expect(completed).toBe(true);
+  const languageScenarios = [
+    {
+      description: "German field mappings and event creation",
+      fixtureName: "events-german.csv",
+      language: "deu",
+      expectedMappings: {
+        titlePath: "titel",
+        descriptionPath: "beschreibung",
+        timestampPath: "datum",
+      },
+      expectedEventCount: 3,
+      expectedFields: ["titel", "beschreibung"],
+    },
+    {
+      description: "French field mappings and event creation",
+      fixtureName: "events-french.csv",
+      language: "fra",
+      expectedMappings: {
+        titlePath: "titre",
+        descriptionPath: "description",
+        timestampPath: "date",
+      },
+      expectedEventCount: 3,
+      expectedFields: ["titre", "description"],
+    },
+    {
+      description: "Spanish field mappings and event creation",
+      fixtureName: "events-spanish.csv",
+      language: "spa",
+      expectedMappings: {
+        titlePath: "título",
+        descriptionPath: "descripción",
+        timestampPath: "fecha",
+      },
+      expectedEventCount: 3,
+      expectedFields: ["título", "descripción"],
+    },
+    {
+      description: "English fallback mappings for German datasets",
+      fixtureName: "events-mixed-english-german.csv",
+      language: "deu",
+      expectedMappings: {
+        titlePath: "title",
+        descriptionPath: "description",
+        timestampPath: "datum",
+      },
+      expectedEventCount: 2,
+      expectedFields: ["title", "description"],
+    },
+  ];
 
-      // Check that events were created (for this specific dataset)
-      const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
-      const events = await payload.find({
-        collection: "events",
-        where: {
-          dataset: { equals: datasetId },
-        },
-        sort: "eventTimestamp", // Sort by timestamp for consistent order
-      });
+  describe("Language Import Scenarios", () => {
+    it.each(languageScenarios)("should verify $description", async (scenario) => {
+      const { importFile, importJob } = await importLanguageCSV(scenario.fixtureName, scenario.language);
 
-      expect(events.docs.length).toBe(3);
-
-      // Verify first event (earliest timestamp) has correct data
-      const firstEvent = events.docs[0];
-      expect(firstEvent.data).toBeDefined();
-      expect(firstEvent.data.titel).toBeDefined();
-      expect(firstEvent.data.beschreibung).toBeDefined();
-      expect(firstEvent.eventTimestamp).toBeDefined();
-    });
-  });
-
-  describe("French Language Detection", () => {
-    it("should detect French field mappings (titre, description, date)", async () => {
-      const { importJob } = await importLanguageCSV("events-french.csv", "fra");
-
-      expect(importJob.detectedFieldMappings).toBeDefined();
-      expect(importJob.detectedFieldMappings.titlePath).toBe("titre");
-      expect(importJob.detectedFieldMappings.descriptionPath).toBe("description");
-      expect(importJob.detectedFieldMappings.timestampPath).toBe("date");
-    });
-
-    it("should create events with French field names", async () => {
-      const { importFile, importJob } = await importLanguageCSV("events-french.csv", "fra");
-
-      await simulateSchemaApproval(importJob.id);
-      const completed = await runJobsUntilComplete(importFile.id);
-      expect(completed).toBe(true);
-
-      const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
-      const events = await payload.find({
-        collection: "events",
-        where: {
-          dataset: { equals: datasetId },
-        },
-        sort: "eventTimestamp", // Sort by timestamp for consistent order
-      });
-
-      expect(events.docs.length).toBe(3);
-
-      // Verify first event (earliest timestamp) has correct data
-      const firstEvent = events.docs[0];
-      expect(firstEvent.data).toBeDefined();
-      expect(firstEvent.data.titre).toBeDefined();
-      expect(firstEvent.data.description).toBeDefined();
-      expect(firstEvent.eventTimestamp).toBeDefined();
-    });
-  });
-
-  describe("Spanish Language Detection", () => {
-    it("should detect Spanish field mappings (título, descripción, fecha)", async () => {
-      const { importJob } = await importLanguageCSV("events-spanish.csv", "spa");
-
-      expect(importJob.detectedFieldMappings).toBeDefined();
-      expect(importJob.detectedFieldMappings.titlePath).toBe("título");
-      expect(importJob.detectedFieldMappings.descriptionPath).toBe("descripción");
-      expect(importJob.detectedFieldMappings.timestampPath).toBe("fecha");
-    });
-
-    it("should create events with Spanish field names", async () => {
-      const { importFile, importJob } = await importLanguageCSV("events-spanish.csv", "spa");
-
-      await simulateSchemaApproval(importJob.id);
-      const completed = await runJobsUntilComplete(importFile.id);
-      expect(completed).toBe(true);
-
-      const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
-      const events = await payload.find({
-        collection: "events",
-        where: {
-          dataset: { equals: datasetId },
-        },
-        sort: "eventTimestamp", // Sort by timestamp for consistent order
-      });
-
-      expect(events.docs.length).toBe(3);
-
-      // Verify first event (earliest timestamp) has correct data
-      const firstEvent = events.docs[0];
-      expect(firstEvent.data).toBeDefined();
-      expect(firstEvent.data.título).toBeDefined();
-      expect(firstEvent.data.descripción).toBeDefined();
-      expect(firstEvent.eventTimestamp).toBeDefined();
-    });
-  });
-
-  describe("Language Fallback", () => {
-    it("should fallback to English patterns when German dataset uses English field names", async () => {
-      const { importJob } = await importLanguageCSV("events-mixed-english-german.csv", "deu");
-
-      // Should detect English field names even though language is German
-      expect(importJob.detectedFieldMappings).toBeDefined();
-      expect(importJob.detectedFieldMappings.titlePath).toBe("title");
-      expect(importJob.detectedFieldMappings.descriptionPath).toBe("description");
-      // But should still detect German timestamp field
-      expect(importJob.detectedFieldMappings.timestampPath).toBe("datum");
-    });
-
-    it("should create events with mixed language field names", async () => {
-      const { importFile, importJob } = await importLanguageCSV("events-mixed-english-german.csv", "deu");
+      assertDetectedFieldMappings(importJob, scenario.expectedMappings);
 
       await simulateSchemaApproval(importJob.id);
       const completed = await runJobsUntilComplete(importFile.id);
       expect(completed).toBe(true);
 
-      const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
-      const events = await payload.find({
-        collection: "events",
-        where: {
-          dataset: { equals: datasetId },
-        },
-        sort: "eventTimestamp", // Sort by timestamp for consistent order
-      });
-
-      expect(events.docs.length).toBe(2);
-
-      // Verify first event (earliest timestamp) has correct data
-      const firstEvent = events.docs[0];
-      expect(firstEvent.data).toBeDefined();
-      expect(firstEvent.data.title).toBeDefined();
-      expect(firstEvent.data.description).toBeDefined();
-      expect(firstEvent.eventTimestamp).toBeDefined();
+      await assertImportedEvents(importJob, scenario.expectedEventCount, scenario.expectedFields);
     });
   });
 

@@ -14,27 +14,10 @@ import { userSeeds } from "../../../lib/seed/seeds/users";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
 describe.sequential("Seed System", () => {
+  const seedCollections = ["users", "catalogs", "datasets", "events", "pages"];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
-
-  beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
-    payload = testEnv.payload;
-  });
-
-  afterAll(async () => {
-    try {
-      await testEnv.cleanup();
-    } catch {
-      // Test environment cleanup error (non-critical) - silently continue
-    }
-  }, 60000); // 60 second timeout for cleanup
-
-  // Add beforeEach cleanup for proper test isolation
-  beforeEach(async () => {
-    // Truncate only the collections we're testing for better performance
-    await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events", "pages"]);
-  });
 
   describe.sequential("Seed Data Functions", () => {
     it("should generate user seeds for different environments", () => {
@@ -82,138 +65,6 @@ describe.sequential("Seed System", () => {
     });
 
     // Import seeds test removed - import jobs are created dynamically, not seeded
-  });
-
-  describe.sequential("Seeding Operations", () => {
-    it("should seed all collections in correct order", async () => {
-      // Don't truncate here - the beforeEach already does it
-      // Use test environment for simpler data without file uploads
-      await testEnv.seedManager.seedWithConfig({
-        preset: "testing",
-        collections: ["users", "catalogs", "datasets", "events"],
-      });
-
-      // Check that collections have data (except import-files which we're skipping)
-      const collections = ["users", "catalogs", "datasets", "events"];
-
-      for (const collection of collections) {
-        const result = await payload.find({
-          collection: collection as keyof Config["collections"],
-          limit: 1,
-        });
-
-        expect(result.docs.length).toBeGreaterThan(0);
-      }
-    }, 90000); // 90 second timeout for seeding all collections (increases when running full suite)
-
-    it("should handle specific collection seeding", async () => {
-      // Explicitly truncate specific collections for better performance
-      await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events"]);
-
-      await testEnv.seedManager.seedWithConfig({
-        collections: ["users", "catalogs"],
-        preset: "testing",
-      });
-
-      const users = await payload.find({
-        collection: "users",
-        limit: 100,
-      });
-
-      const catalogs = await payload.find({
-        collection: "catalogs",
-        limit: 100,
-      });
-
-      const datasets = await payload.find({
-        collection: "datasets",
-        limit: 100,
-      });
-
-      expect(users.docs.length).toBeGreaterThan(0);
-      expect(catalogs.docs.length).toBeGreaterThan(0);
-      expect(datasets.docs.length).toBe(0); // Should not be seeded
-    });
-  });
-
-  describe.sequential("Truncation Operations", () => {
-    it("should truncate all collections when no specific collections provided", async () => {
-      await testEnv.seedManager.seedWithConfig({
-        preset: "testing",
-      });
-
-      // Verify we have data before truncation
-      let hasData = false;
-      // Only check collections that are actually seeded
-      const collections = ["users", "catalogs", "datasets", "events"];
-
-      for (const collection of collections) {
-        const result = await payload.find({
-          collection: collection as keyof Config["collections"],
-          limit: 1,
-        });
-        if (result.docs.length > 0) {
-          hasData = true;
-          break;
-        }
-      }
-      expect(hasData).toBe(true); // Ensure we have data to truncate
-
-      // Truncate specific collections to avoid hanging on undefined collections
-      await testEnv.seedManager.truncate(collections);
-
-      // Check that most collections are empty (allowing some that might not clear due to refs)
-      let emptiedCount = 0;
-      for (const collection of collections) {
-        const result = await payload.find({
-          collection: collection as keyof Config["collections"],
-          limit: 100,
-        });
-        if (result.docs.length === 0) {
-          emptiedCount++;
-        }
-      }
-
-      // Expect at least 3 out of 5 collections to be properly truncated
-      expect(emptiedCount).toBeGreaterThanOrEqual(3);
-    }, 90000); // 90 second timeout (increases when running full suite)
-  });
-
-  describe.sequential("Error Handling", () => {
-    it("should handle missing relationships gracefully", async () => {
-      await testEnv.seedManager.truncate();
-      // Try to seed datasets without catalogs - should complete without throwing
-      await expect(
-        testEnv.seedManager.seedWithConfig({
-          collections: ["datasets"],
-          preset: "testing",
-        })
-      ).resolves.toBeUndefined();
-
-      // Verify no datasets were actually created due to missing catalogs
-      const datasetCount = await testEnv.seedManager.getCollectionCount("datasets");
-      expect(datasetCount).toBe(0);
-    });
-
-    it("should handle missing datasets for events", async () => {
-      await testEnv.seedManager.truncate();
-      await testEnv.seedManager.seedWithConfig({
-        collections: ["catalogs"],
-        preset: "testing",
-      });
-
-      // Try to seed events without datasets - should complete without throwing
-      await expect(
-        testEnv.seedManager.seedWithConfig({
-          collections: ["events"],
-          preset: "testing",
-        })
-      ).resolves.toBeUndefined();
-
-      // Verify no events were actually created due to missing datasets
-      const eventCount = await testEnv.seedManager.getCollectionCount("events");
-      expect(eventCount).toBe(0);
-    });
   });
 
   describe.sequential("Configuration System", () => {
@@ -286,7 +137,157 @@ describe.sequential("Seed System", () => {
     });
   });
 
-  describe.sequential("Configuration-Driven Seeding", () => {
+  describe.sequential("Database-backed Seed Operations", () => {
+    beforeAll(async () => {
+      testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
+      payload = testEnv.payload;
+    });
+
+    afterAll(async () => {
+      try {
+        await testEnv.cleanup();
+      } catch {
+        // Test environment cleanup error (non-critical) - silently continue
+      }
+    }, 60000);
+
+    beforeEach(async () => {
+      await testEnv.seedManager.truncate(seedCollections);
+    });
+
+    describe.sequential("Seeding Operations", () => {
+    it("should seed all collections in correct order", async () => {
+      // Don't truncate here - the beforeEach already does it
+      // Use test environment for simpler data without file uploads
+      await testEnv.seedManager.seedWithConfig({
+        preset: "testing",
+        collections: ["users", "catalogs", "datasets", "events"],
+      });
+
+      // Check that collections have data (except import-files which we're skipping)
+      const collections = ["users", "catalogs", "datasets", "events"];
+
+      for (const collection of collections) {
+        const result = await payload.find({
+          collection: collection as keyof Config["collections"],
+          limit: 1,
+        });
+
+        expect(result.docs.length).toBeGreaterThan(0);
+      }
+    }, 90000); // 90 second timeout for seeding all collections (increases when running full suite)
+
+    it("should handle specific collection seeding", async () => {
+      // Explicitly truncate specific collections for better performance
+      await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events"]);
+
+      await testEnv.seedManager.seedWithConfig({
+        collections: ["users", "catalogs"],
+        preset: "testing",
+      });
+
+      const users = await payload.find({
+        collection: "users",
+        limit: 100,
+      });
+
+      const catalogs = await payload.find({
+        collection: "catalogs",
+        limit: 100,
+      });
+
+      const datasets = await payload.find({
+        collection: "datasets",
+        limit: 100,
+      });
+
+      expect(users.docs.length).toBeGreaterThan(0);
+      expect(catalogs.docs.length).toBeGreaterThan(0);
+      expect(datasets.docs.length).toBe(0); // Should not be seeded
+    });
+  });
+
+    describe.sequential("Truncation Operations", () => {
+    it("should truncate all collections when no specific collections provided", async () => {
+      await testEnv.seedManager.seedWithConfig({
+        preset: "testing",
+      });
+
+      // Verify we have data before truncation
+      let hasData = false;
+      // Only check collections that are actually seeded
+      const collections = ["users", "catalogs", "datasets", "events"];
+
+      for (const collection of collections) {
+        const result = await payload.find({
+          collection: collection as keyof Config["collections"],
+          limit: 1,
+        });
+        if (result.docs.length > 0) {
+          hasData = true;
+          break;
+        }
+      }
+      expect(hasData).toBe(true); // Ensure we have data to truncate
+
+      // Truncate specific collections to avoid hanging on undefined collections
+      await testEnv.seedManager.truncate(collections);
+
+      // Check that most collections are empty (allowing some that might not clear due to refs)
+      let emptiedCount = 0;
+      for (const collection of collections) {
+        const result = await payload.find({
+          collection: collection as keyof Config["collections"],
+          limit: 100,
+        });
+        if (result.docs.length === 0) {
+          emptiedCount++;
+        }
+      }
+
+      // Expect at least 3 out of 5 collections to be properly truncated
+      expect(emptiedCount).toBeGreaterThanOrEqual(3);
+    }, 90000); // 90 second timeout (increases when running full suite)
+  });
+
+    describe.sequential("Error Handling", () => {
+    it("should handle missing relationships gracefully", async () => {
+      await testEnv.seedManager.truncate(seedCollections);
+      // Try to seed datasets without catalogs - should complete without throwing
+      await expect(
+        testEnv.seedManager.seedWithConfig({
+          collections: ["datasets"],
+          preset: "testing",
+        })
+      ).resolves.toBeUndefined();
+
+      // Verify no datasets were actually created due to missing catalogs
+      const datasetCount = await testEnv.seedManager.getCollectionCount("datasets");
+      expect(datasetCount).toBe(0);
+    });
+
+    it("should handle missing datasets for events", async () => {
+      await testEnv.seedManager.truncate(seedCollections);
+      await testEnv.seedManager.seedWithConfig({
+        collections: ["catalogs"],
+        preset: "testing",
+      });
+
+      // Try to seed events without datasets - should complete without throwing
+      await expect(
+        testEnv.seedManager.seedWithConfig({
+          collections: ["events"],
+          preset: "testing",
+        })
+      ).resolves.toBeUndefined();
+
+      // Verify no events were actually created due to missing datasets
+      const eventCount = await testEnv.seedManager.getCollectionCount("events");
+      expect(eventCount).toBe(0);
+    });
+  });
+
+    describe.sequential("Configuration-Driven Seeding", () => {
     it("should seed using configuration for development preset", async () => {
       await testEnv.seedManager.seedWithConfig({
         preset: "development",
@@ -421,6 +422,7 @@ describe.sequential("Seed System", () => {
       expect(labels).toContain("Home");
       expect(labels).toContain("Explore");
     });
+  });
   });
 
   describe.sequential("Configuration Validation", () => {

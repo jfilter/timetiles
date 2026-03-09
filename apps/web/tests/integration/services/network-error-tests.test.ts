@@ -52,6 +52,8 @@ type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
 type UrlFetchErrorOutput = UrlFetchFailureOutput;
 
 describe.sequential("Network Error Handling Tests", () => {
+  const collectionsToReset = ["scheduled-imports", "import-files", "payload-jobs"];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;
@@ -91,7 +93,7 @@ describe.sequential("Network Error Handling Tests", () => {
   };
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     const env = testEnv;
     payload = env.payload;
     cleanup = env.cleanup;
@@ -117,6 +119,7 @@ describe.sequential("Network Error Handling Tests", () => {
 
   beforeEach(async () => {
     await closeTestServer();
+    await testEnv.seedManager.truncate(collectionsToReset);
   });
 
   describe("Malformed URL Handling", () => {
