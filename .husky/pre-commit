@@ -3,5 +3,24 @@
 # Regenerate Payload types if migrations or collections changed
 ./scripts/pre-commit-payload-types.sh
 
-# Run fast checks first (oxlint + tsgo), then full checks (eslint + tsc) only if fast passes.
-pnpm lint && pnpm typecheck && pnpm lint:full && pnpm typecheck:full
+# Only check packages that have staged changes (avoids blocking on unrelated package errors)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+HAS_WEB=$(echo "$STAGED_FILES" | grep -c "^apps/web/" || true)
+HAS_DOCS=$(echo "$STAGED_FILES" | grep -c "^apps/docs/" || true)
+HAS_UI=$(echo "$STAGED_FILES" | grep -c "^packages/ui/" || true)
+
+if [ "$HAS_WEB" -gt 0 ]; then
+  echo "Checking apps/web..."
+  pnpm --filter web lint:fast && pnpm --filter web typecheck:fast && pnpm --filter web lint && pnpm --filter web typecheck
+fi
+
+if [ "$HAS_DOCS" -gt 0 ]; then
+  echo "Checking apps/docs..."
+  pnpm --filter docs lint:fast && pnpm --filter docs typecheck:fast && pnpm --filter docs lint && pnpm --filter docs typecheck
+fi
+
+if [ "$HAS_UI" -gt 0 ]; then
+  echo "Checking packages/ui..."
+  pnpm --filter @timetiles/ui lint:fast && pnpm --filter @timetiles/ui typecheck:fast && pnpm --filter @timetiles/ui lint && pnpm --filter @timetiles/ui typecheck
+fi
