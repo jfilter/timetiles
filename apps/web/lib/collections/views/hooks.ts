@@ -10,8 +10,8 @@
  */
 import type { CollectionAfterChangeHook, CollectionBeforeChangeHook } from "payload";
 
-import type { View } from "@/payload-types";
 import { clearViewCache } from "@/lib/services/view-resolver";
+import type { View } from "@/payload-types";
 
 /**
  * Sets the createdBy field to the current user on creation.

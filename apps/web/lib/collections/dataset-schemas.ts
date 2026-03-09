@@ -39,11 +39,7 @@ const DatasetSchemas: CollectionConfig = {
       if (!dataset) return false;
 
       // Get catalog for combined access check
-      const catalogId = dataset.catalog
-        ? typeof dataset.catalog === "object"
-          ? dataset.catalog.id
-          : dataset.catalog
-        : null;
+      const catalogId = extractRelationId(dataset.catalog);
       const catalog = catalogId ? await req.payload.findByID({ collection: "catalogs", id: catalogId }) : null;
 
       // Both dataset AND catalog must be public (matching dataset access rules)
