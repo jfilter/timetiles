@@ -111,6 +111,9 @@ describe("/api/v1/events/geo", () => {
           data: {
             title: `Test Event ${i + 1}`,
             description: `Test event for clustering at ${testLocations[i]?.lat}, ${testLocations[i]?.lng}`,
+            venue: {
+              city: i < 4 ? "Berlin" : "Paris",
+            },
           },
           location: {
             latitude: testLocations[i]?.lat,
@@ -339,6 +342,36 @@ describe("/api/v1/events/geo", () => {
     // let's just verify that we get fewer events with date filtering than without
     expect(totalEvents).toBeGreaterThan(0);
     expect(totalEvents).toBeLessThan(50); // Reasonable upper bound
+  });
+
+  it("should filter clusters by nested field path", async () => {
+    const bounds = {
+      north: 90,
+      south: -90,
+      east: 180,
+      west: -180,
+    };
+    const fieldFilters = JSON.stringify({ "venue.city": ["Berlin"] });
+
+    const request = new NextRequest(
+      `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(
+        JSON.stringify(bounds)
+      )}&zoom=2&datasets=${testDatasetId}&ff=${encodeURIComponent(fieldFilters)}`
+    );
+
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    if (response.status !== 200) {
+      const error = await response.json();
+      throw new Error(`API returned ${response.status}: ${JSON.stringify(error)}`);
+    }
+
+    const data = await response.json();
+    const totalEvents = data.features.reduce((sum: number, feature: MapClusterFeature) => {
+      return sum + (feature.properties.count ?? 1);
+    }, 0);
+
+    expect(totalEvents).toBe(4);
   });
 
   it("should handle missing bounds parameter", async () => {

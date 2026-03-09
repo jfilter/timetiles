@@ -9,6 +9,10 @@
  */
 import { Client } from "pg";
 
+import { migrations } from "@/migrations";
+
+const expectedMigrationNames = migrations.map((migration) => migration.name);
+
 /**
  * Verifies that the database schema has been properly set up with all required tables.
  */
@@ -71,6 +75,24 @@ export const verifyDatabaseSchema = async (connectionString: string): Promise<vo
         `);
         throw new Error(`Required table 'payload.${tableName}' does not exist`);
       }
+    }
+
+    const appliedMigrationsResult = await client.query<{ name: string | null }>(`
+      SELECT name
+      FROM payload.payload_migrations
+      ORDER BY name
+    `);
+
+    const appliedMigrationNames = new Set(
+      appliedMigrationsResult.rows
+        .map((row) => row.name)
+        .filter((name): name is string => typeof name === "string" && name.length > 0)
+    );
+
+    const missingMigrations = expectedMigrationNames.filter((name) => !appliedMigrationNames.has(name));
+
+    if (missingMigrations.length > 0) {
+      throw new Error(`Database is missing migrations: ${missingMigrations.join(", ")}`);
     }
   } finally {
     await client.end();

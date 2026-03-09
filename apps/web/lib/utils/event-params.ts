@@ -66,6 +66,40 @@ export interface MapClusterParameters extends BaseEventParameters {
  */
 export type ClusterStatsParameters = BaseEventParameters;
 
+/** Pattern for valid field path segments: alphanumeric, underscores, hyphens only */
+const FIELD_SEGMENT_PATTERN = /^[a-zA-Z0-9_-]+$/;
+const MAX_FIELD_KEY_LENGTH = 64;
+const MAX_FIELD_FILTERS = 10;
+
+const isValidFieldPath = (fieldPath: string): boolean =>
+  fieldPath.length > 0 &&
+  fieldPath.length <= MAX_FIELD_KEY_LENGTH &&
+  fieldPath.split(".").every((segment) => segment.length > 0 && FIELD_SEGMENT_PATTERN.test(segment));
+
+/**
+ * Sanitize field filter keys to prevent injection via arbitrary paths.
+ * Allows dot-separated field paths with alphanumeric/underscore/hyphen segments,
+ * limited count and overall path length.
+ */
+const sanitizeFieldFilters = (raw: Record<string, unknown>): Record<string, string[]> => {
+  const result: Record<string, string[]> = {};
+  let count = 0;
+
+  for (const [key, values] of Object.entries(raw)) {
+    if (count >= MAX_FIELD_FILTERS) break;
+    if (!isValidFieldPath(key)) continue;
+    if (!Array.isArray(values)) continue;
+
+    const validValues = values.filter((v): v is string => typeof v === "string");
+    if (validValues.length > 0) {
+      result[key] = validValues;
+      count++;
+    }
+  }
+
+  return result;
+};
+
 /**
  * Extract base event parameters from URL search params.
  * These parameters are common to all event API routes.
@@ -86,12 +120,13 @@ export const extractBaseEventParameters = (searchParams: URLSearchParams): BaseE
     .map((d) => d.trim())
     .filter(Boolean);
 
-  // Parse field filters from JSON string
+  // Parse and validate field filters from JSON string
   const ffParam = searchParams.get("ff");
   let fieldFilters: Record<string, string[]> = {};
   if (ffParam) {
     try {
-      fieldFilters = JSON.parse(ffParam) as Record<string, string[]>;
+      const parsed = JSON.parse(ffParam) as Record<string, unknown>;
+      fieldFilters = sanitizeFieldFilters(parsed);
     } catch {
       // Invalid JSON, ignore
     }

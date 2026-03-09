@@ -17,6 +17,7 @@ import type { TestEnvironment } from "../../setup/integration/environment";
 describe("/api/v1/events - field filtering", () => {
   let payload: Payload;
   let testDatasetId: number;
+  let nestedDatasetId: number;
   let testEnv: TestEnvironment;
 
   beforeAll(async () => {
@@ -39,6 +40,12 @@ describe("/api/v1/events - field filtering", () => {
     });
     testDatasetId = dataset.id;
 
+    const { dataset: nestedDataset } = await withDataset(testEnv, catalog.id, {
+      name: "Nested Field Filter Test Dataset",
+      isPublic: true,
+    });
+    nestedDatasetId = nestedDataset.id;
+
     // Create events with different category values
     const categories = ["Music", "Music", "Sports", "Art", "Art"];
     for (let i = 0; i < categories.length; i++) {
@@ -56,6 +63,31 @@ describe("/api/v1/events - field filtering", () => {
             longitude: -74.006 + i * 0.01,
           },
           eventTimestamp: new Date(2024, 0, 15 + i).toISOString(),
+        },
+      });
+    }
+
+    const cities = ["Berlin", "Berlin", "Paris"];
+    for (let i = 0; i < cities.length; i++) {
+      const city = cities[i];
+      if (!city) continue;
+
+      await payload.create({
+        collection: "events",
+        data: {
+          uniqueId: `nested-field-filter-${i + 1}`,
+          dataset: nestedDatasetId,
+          data: {
+            title: `Nested Event ${i + 1}`,
+            venue: {
+              city,
+            },
+          },
+          location: {
+            latitude: 41.7128 + i * 0.01,
+            longitude: -73.006 + i * 0.01,
+          },
+          eventTimestamp: new Date(2024, 1, 15 + i).toISOString(),
         },
       });
     }
@@ -98,6 +130,22 @@ describe("/api/v1/events - field filtering", () => {
     expect(data.events.length).toBe(4);
     for (const event of data.events) {
       expect(["Music", "Art"]).toContain(event.data.category);
+    }
+  });
+
+  it("should filter events by nested field path", async () => {
+    const fieldFilters = JSON.stringify({ "venue.city": ["Berlin"] });
+    const request = new NextRequest(
+      `http://localhost:3000/api/v1/events?datasets=${nestedDatasetId}&ff=${encodeURIComponent(fieldFilters)}`
+    );
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+
+    expect(data.events.length).toBe(2);
+    for (const event of data.events) {
+      expect(event.data.venue.city).toBe("Berlin");
     }
   });
 });

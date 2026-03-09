@@ -50,6 +50,103 @@ describe("event-params", () => {
       const result = extractBaseEventParameters(params);
       expect(result.fieldFilters).toEqual({});
     });
+
+    describe("field filter validation", () => {
+      it("should allow valid alphanumeric field keys", () => {
+        const ff = JSON.stringify({ category: ["A"], event_type: ["B"], my_field_2: ["C"] });
+        const params = new URLSearchParams(`ff=${ff}`);
+        const result = extractBaseEventParameters(params);
+        expect(result.fieldFilters).toEqual({ category: ["A"], event_type: ["B"], my_field_2: ["C"] });
+      });
+
+      it("should allow hyphens in field keys", () => {
+        const ff = JSON.stringify({ "event-type": ["A"] });
+        const params = new URLSearchParams(`ff=${ff}`);
+        const result = extractBaseEventParameters(params);
+        expect(result.fieldFilters).toEqual({ "event-type": ["A"] });
+      });
+
+      it("should allow nested field paths", () => {
+        const ff = JSON.stringify({ "nested.path": ["A"], valid: ["B"] });
+        const params = new URLSearchParams(`ff=${ff}`);
+        const result = extractBaseEventParameters(params);
+        expect(result.fieldFilters).toEqual({ "nested.path": ["A"], valid: ["B"] });
+      });
+
+      it("should strip malformed dotted field paths", () => {
+        const ff = JSON.stringify({
+          ".leading": ["A"],
+          "trailing.": ["B"],
+          "double..dot": ["C"],
+          valid: ["D"],
+        });
+        const params = new URLSearchParams(`ff=${ff}`);
+        const result = extractBaseEventParameters(params);
+        expect(result.fieldFilters).toEqual({ valid: ["D"] });
+      });
+
+      it("should strip field keys with special characters", () => {
+        const ff = JSON.stringify({ "field;DROP TABLE": ["A"], "field<script>": ["B"], ok: ["C"] });
+        const params = new URLSearchParams(`ff=${ff}`);
+        const result = extractBaseEventParameters(params);
+        expect(result.fieldFilters).toEqual({ ok: ["C"] });
+      });
+
+      it("should strip field keys exceeding max length", () => {
+        const longKey = "a".repeat(65);
+        const ff = JSON.stringify({ [longKey]: ["A"], short: ["B"] });
+        const params = new URLSearchParams(`ff=${ff}`);
+        const result = extractBaseEventParameters(params);
+        expect(result.fieldFilters).toEqual({ short: ["B"] });
+      });
+
+      it("should allow field keys at max length (64 chars)", () => {
+        const maxKey = "a".repeat(64);
+        const ff = JSON.stringify({ [maxKey]: ["A"] });
+        const params = new URLSearchParams(`ff=${ff}`);
+        const result = extractBaseEventParameters(params);
+        expect(result.fieldFilters).toHaveProperty(maxKey);
+      });
+
+      it("should limit to 10 field filters", () => {
+        const filters: Record<string, string[]> = {};
+        for (let i = 0; i < 15; i++) {
+          filters[`field${i}`] = ["value"];
+        }
+        const ff = JSON.stringify(filters);
+        const params = new URLSearchParams(`ff=${ff}`);
+        const result = extractBaseEventParameters(params);
+        expect(Object.keys(result.fieldFilters).length).toBe(10);
+      });
+
+      it("should filter out non-string values from arrays", () => {
+        const ff = JSON.stringify({ category: ["A", 123, null, "B"] });
+        const params = new URLSearchParams(`ff=${ff}`);
+        const result = extractBaseEventParameters(params);
+        expect(result.fieldFilters).toEqual({ category: ["A", "B"] });
+      });
+
+      it("should skip keys with non-array values", () => {
+        const ff = JSON.stringify({ category: "not-an-array", valid: ["A"] });
+        const params = new URLSearchParams(`ff=${ff}`);
+        const result = extractBaseEventParameters(params);
+        expect(result.fieldFilters).toEqual({ valid: ["A"] });
+      });
+
+      it("should skip keys with empty valid arrays", () => {
+        const ff = JSON.stringify({ empty: [], noStrings: [1, 2, 3], valid: ["A"] });
+        const params = new URLSearchParams(`ff=${ff}`);
+        const result = extractBaseEventParameters(params);
+        expect(result.fieldFilters).toEqual({ valid: ["A"] });
+      });
+
+      it("should strip empty string keys", () => {
+        const ff = JSON.stringify({ "": ["A"], valid: ["B"] });
+        const params = new URLSearchParams(`ff=${ff}`);
+        const result = extractBaseEventParameters(params);
+        expect(result.fieldFilters).toEqual({ valid: ["B"] });
+      });
+    });
   });
 
   describe("extractListParameters", () => {

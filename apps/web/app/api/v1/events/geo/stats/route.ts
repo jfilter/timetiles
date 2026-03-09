@@ -45,7 +45,7 @@ const buildFieldFiltersSql = (fieldFilters: unknown) => {
   if (fieldFilters != null && typeof fieldFilters === "object" && Object.keys(fieldFilters).length > 0) {
     const fieldConditions = Object.entries(fieldFilters as Record<string, string[]>).map(([fieldKey, values]) => {
       if (!Array.isArray(values) || values.length === 0) return sql`TRUE`;
-      return sql`e.data->>${fieldKey} IN (${sql.join(
+      return sql`(e.data #>> string_to_array(${fieldKey}, '.')) IN (${sql.join(
         values.map((v) => sql`${v}`),
         sql`, `
       )})`;

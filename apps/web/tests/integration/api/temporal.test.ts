@@ -73,6 +73,9 @@ describe("/api/v1/events/temporal", () => {
           data: {
             title: `Test Event ${i + 1}`,
             description: `Test event for histogram on ${testDates[i]?.toISOString()}`,
+            venue: {
+              city: i < 3 ? "Berlin" : "Paris",
+            },
           },
           location: {
             latitude: 37.7749 + i * 0.01,
@@ -159,6 +162,22 @@ describe("/api/v1/events/temporal", () => {
     // topDatasets is not implemented yet - currently returns empty array
     // See route.ts:242 where topDatasets is hardcoded to []
     expect(data.metadata.topDatasets).toEqual([]);
+  });
+
+  it("should filter histogram data by nested field path", async () => {
+    const fieldFilters = JSON.stringify({ "venue.city": ["Berlin"] });
+    const request = new NextRequest(
+      `http://localhost:3000/api/events/histogram?datasets=${testDatasetId}&ff=${encodeURIComponent(fieldFilters)}`
+    );
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+
+    const totalCount = data.histogram.reduce((sum: number, bucket: HistogramBucket) => sum + bucket.count, 0);
+
+    expect(totalCount).toBe(3);
+    expect(data.metadata.total).toBe(3);
   });
 
   it("should filter by date range", async () => {

@@ -134,7 +134,7 @@ export const buildAggregationWhereClause = (
     for (const [fieldKey, values] of Object.entries(filters.fieldFilters)) {
       if (Array.isArray(values) && values.length > 0) {
         clauses.push(
-          sql`e.data->>${fieldKey} IN (${sql.join(
+          sql`(e.data #>> string_to_array(${fieldKey}, '.')) IN (${sql.join(
             values.map((v) => sql`${v}`),
             sql`, `
           )})`
