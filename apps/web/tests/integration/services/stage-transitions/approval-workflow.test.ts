@@ -31,7 +31,7 @@ describe.sequential("Approval Workflow Transition Integration", () => {
   let testCatalogId: string;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
   });
 

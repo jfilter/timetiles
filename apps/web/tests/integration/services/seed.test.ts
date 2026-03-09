@@ -18,7 +18,7 @@ describe.sequential("Seed System", () => {
   let payload: Payload;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
   });
 

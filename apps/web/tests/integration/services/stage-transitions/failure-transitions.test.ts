@@ -27,7 +27,7 @@ describe.sequential("Failure Transitions Integration", () => {
   let testDir: string;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
     testDir = testEnv.tempDir ?? "/tmp";
 

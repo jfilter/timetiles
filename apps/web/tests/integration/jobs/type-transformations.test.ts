@@ -32,7 +32,7 @@ describe.sequential("Type Transformations Integration", () => {
   let testCatalog: Catalog;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
 

@@ -20,7 +20,7 @@ describe.sequential("Import Files Collection", () => {
   let testCatalogId: string;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
   });
 

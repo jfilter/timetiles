@@ -25,7 +25,7 @@ describe.sequential("Import Job Retry API", () => {
   let testUserId: string;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
   });
 

@@ -22,7 +22,7 @@ describe.sequential("Wizard API Endpoints", () => {
   let payload: any;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
   });
 

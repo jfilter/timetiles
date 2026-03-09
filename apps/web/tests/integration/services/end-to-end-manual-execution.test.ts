@@ -34,7 +34,12 @@ vi.mock("@/lib/services/geocoding", () => ({
 }));
 import { logger } from "@/lib/logger";
 
-import { createIntegrationTestEnvironment, withCatalog, withUsers } from "../../setup/integration/environment";
+import {
+  createIntegrationTestEnvironment,
+  runJobsUntilImportSettled,
+  withCatalog,
+  withUsers,
+} from "../../setup/integration/environment";
 
 describe.sequential("End-to-End Job Processing with Manual Execution", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -44,7 +49,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
   let testUser: any;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
     testDir = testEnv.tempDir ?? "/tmp";
 
@@ -119,59 +124,31 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
 
         logger.info(`✓ Created import-files record: ${importFile.id}`);
 
-        // Brief wait for the afterChange hook to queue the first job
-        await new Promise((resolve) => setTimeout(resolve, 200));
-
         logger.info("2. Starting manual job execution loop...");
 
-        // Manual job execution loop - simulates worker/cron process
-        let pipelineComplete = false;
         const maxIterations = 50; // Safety limit
-        let iteration = 0;
+        const pipelineResult = await runJobsUntilImportSettled(payload, importFile.id, {
+          maxIterations,
+          onPending: async ({ iteration, importFile: updatedImportFile }) => {
+            logger.info(`   Iteration ${iteration}: Running queued jobs...`);
 
-        while (!pipelineComplete && iteration < maxIterations) {
-          iteration++;
-          logger.info(`   Iteration ${iteration}: Running queued jobs...`);
-
-          // Execute all queued jobs
-          const jobResults = await payload.jobs.run({
-            allQueues: true,
-            limit: 100,
-          });
-
-          logger.info(`   → Executed ${jobResults?.length ?? 0} jobs`);
-
-          // Check pipeline status
-          const updatedImportFile = await payload.findByID({
-            collection: "import-files",
-            id: importFile.id,
-          });
-
-          // Get all import jobs for this file
-          const importJobs = await payload.find({
-            collection: "import-jobs",
-            where: { importFile: { equals: importFile.id } },
-          });
-
-          logger.info(`   → Import file status: ${updatedImportFile.status}`);
-          logger.info(`   → Found ${importJobs.docs.length} import jobs`);
-
-          if (importJobs.docs.length > 0) {
-            importJobs.docs.forEach((job: any, index: number) => {
-              logger.info(`   → Job ${index + 1}: ${job.stage} (${job.id})`);
+            const importJobs = await payload.find({
+              collection: "import-jobs",
+              where: { importFile: { equals: importFile.id } },
             });
-          }
 
-          // Check if pipeline is complete
-          pipelineComplete = updatedImportFile.status === "completed" || updatedImportFile.status === "failed";
+            logger.info(`   → Import file status: ${updatedImportFile.status}`);
+            logger.info(`   → Found ${importJobs.docs.length} import jobs`);
 
-          if (!pipelineComplete) {
-            // Brief pause before next iteration
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
-        }
+            if (importJobs.docs.length > 0) {
+              importJobs.docs.forEach((job: any, index: number) => {
+                logger.info(`   → Job ${index + 1}: ${job.stage} (${job.id})`);
+              });
+            }
+          },
+        });
 
-        if (!pipelineComplete) {
+        if (!pipelineResult.settled) {
           throw new Error(`Pipeline did not complete after ${maxIterations} iterations`);
         }
 
@@ -288,9 +265,6 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
         // Initial status should be pending
         expect(importFile.status).toBe("pending");
 
-        // Wait longer for hook to trigger and possibly execute first job
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
         // Execute some jobs to allow status progression
         await payload.jobs.run({ allQueues: true });
 
@@ -307,18 +281,11 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
         logger.info(`✓ Status progressed from pending to: ${afterHook.status}`);
 
         // Execute jobs to completion
-        let complete = false;
-        let iterations = 0;
-        while (!complete && iterations < 20) {
-          await payload.jobs.run({ allQueues: true });
-          const current = await payload.findByID({
-            collection: "import-files",
-            id: importFile.id,
-          });
-          complete = current.status === "completed" || current.status === "failed";
-          iterations++;
-          if (!complete) await new Promise((resolve) => setTimeout(resolve, 50));
-        }
+        const completion = await runJobsUntilImportSettled(payload, importFile.id, {
+          maxIterations: 20,
+        });
+
+        expect(completion.settled).toBe(true);
 
         // Final status should be completed
         const final = await payload.findByID({

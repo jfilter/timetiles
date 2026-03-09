@@ -33,7 +33,7 @@ describe.sequential("Views Collection", () => {
   let otherUser: User;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
   });

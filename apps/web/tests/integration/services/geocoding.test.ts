@@ -64,7 +64,7 @@ describe("GeocodingService", () => {
   let testCounter = 0;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
   });
 

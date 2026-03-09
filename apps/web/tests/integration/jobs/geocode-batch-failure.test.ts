@@ -11,6 +11,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import {
   createIntegrationTestEnvironment,
+  runJobsUntilImportJobStage,
   withCatalog,
   withDataset,
   withImportFile,
@@ -28,7 +29,7 @@ describe.sequential("Geocode Batch Job - Failure Handling", () => {
   let testCatalogId: string;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
   });
 
@@ -75,27 +76,23 @@ Event 3,2024-01-03,Hamburg Germany
       },
     });
 
-    // Run jobs through the pipeline until geocode-batch completes or fails
-    let finalStage = "";
-    for (let i = 0; i < 30; i++) {
-      await payload.jobs.run({ allQueues: true, limit: 100 });
-
-      const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
-      });
-
-      if (importJobs.docs.length > 0) {
-        finalStage = importJobs.docs[0].stage;
-        console.log(`[GEOCODE-FAILURE] Iteration ${i}: Stage: ${finalStage}`);
-
-        // Stop if we reached failed, completed, or create-events stage
-        if (finalStage === "failed" || finalStage === "completed" || finalStage === "create-events") {
-          break;
-        }
+    const stageResult = await runJobsUntilImportJobStage(
+      payload,
+      importFile.id,
+      (importJob) =>
+        importJob.stage === "failed" || importJob.stage === "completed" || importJob.stage === "create-events",
+      {
+        maxIterations: 30,
+        onPending: ({ iteration, importJob }) => {
+          if (importJob != null) {
+            console.log(`[GEOCODE-FAILURE] Iteration ${iteration}: Stage: ${importJob.stage}`);
+          }
+        },
       }
+    );
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    if (stageResult.importJob != null) {
+      console.log(`[GEOCODE-FAILURE] Iteration ${stageResult.iterations}: Stage: ${stageResult.importJob.stage}`);
     }
 
     // Verify the import job is marked as failed

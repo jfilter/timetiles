@@ -32,7 +32,7 @@ describe.sequential("Schema Inference Service", () => {
   let testDatasetId: number;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
   });
 

@@ -11,6 +11,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
   createIntegrationTestEnvironment,
+  runJobsUntilImportJobStage,
   withCatalog,
   withDataset,
   withImportFile,
@@ -22,7 +23,7 @@ describe.sequential("Import Pipeline - Job Queueing", () => {
   let testCatalogId: string;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
   });
 
@@ -67,31 +68,31 @@ describe.sequential("Import Pipeline - Job Queueing", () => {
     // Track stages the import-job goes through
     const stagesReached: string[] = [];
 
-    // Run jobs and track pipeline progress
-    for (let i = 0; i < 20; i++) {
-      await payload.jobs.run({ allQueues: true, limit: 100 });
-
-      const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
-      });
-
-      if (importJobs.docs.length > 0) {
-        const currentStage = importJobs.docs[0].stage;
-
-        if (!stagesReached.includes(currentStage)) {
-          stagesReached.push(currentStage);
-          console.log(`[PIPELINE] Iteration ${i}: Reached stage: ${currentStage}`);
-        }
-
-        // Stop if we reached geocode-batch or later
-        if (currentStage === "geocode-batch" || currentStage === "processing" || currentStage === "completed") {
-          console.log(`[PIPELINE] Pipeline progressed to ${currentStage}, stopping`);
-          break;
-        }
+    const recordStage = (stage: string, iteration: number) => {
+      if (!stagesReached.includes(stage)) {
+        stagesReached.push(stage);
+        console.log(`[PIPELINE] Iteration ${iteration}: Reached stage: ${stage}`);
       }
+    };
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    const stageResult = await runJobsUntilImportJobStage(
+      payload,
+      importFile.id,
+      (importJob) =>
+        importJob.stage === "geocode-batch" || importJob.stage === "processing" || importJob.stage === "completed",
+      {
+        maxIterations: 20,
+        onPending: ({ iteration, importJob }) => {
+          if (importJob != null) {
+            recordStage(importJob.stage, iteration);
+          }
+        },
+      }
+    );
+
+    if (stageResult.importJob != null) {
+      recordStage(stageResult.importJob.stage, stageResult.iterations);
+      console.log(`[PIPELINE] Pipeline progressed to ${stageResult.importJob.stage}, stopping`);
     }
 
     console.log("[PIPELINE] Stages reached:", stagesReached);

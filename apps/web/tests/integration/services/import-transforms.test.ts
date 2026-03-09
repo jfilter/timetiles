@@ -26,7 +26,7 @@ describe("Import Transforms - Integration", () => {
   let payload: any;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
   });
 

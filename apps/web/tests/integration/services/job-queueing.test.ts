@@ -19,6 +19,8 @@ import { logger } from "@/lib/logger";
 
 import {
   createIntegrationTestEnvironment,
+  runJobsUntilImportJobStage,
+  runJobsUntilImportSettled,
   withCatalog,
   withImportFile,
   withUsers,
@@ -30,7 +32,7 @@ describe.sequential("Job Queueing Tests", () => {
   let testCatalogId: string;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment();
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
   });
 
@@ -106,34 +108,17 @@ describe.sequential("Job Queueing Tests", () => {
         datasetsProcessed: 0,
       });
 
-      // Run jobs until schema detection completes
-      let schemaDetectionComplete = false;
-      let iteration = 0;
-      const maxIterations = 20;
+      const schemaDetectionResult = await runJobsUntilImportJobStage(
+        payload,
+        importFile.id,
+        (importJob) =>
+          importJob.stage === "validate-schema" ||
+          importJob.stage === "processing" ||
+          importJob.stage === "completed",
+        { maxIterations: 20 }
+      );
 
-      while (!schemaDetectionComplete && iteration < maxIterations) {
-        iteration++;
-        await payload.jobs.run({ allQueues: true, limit: 100 });
-
-        const importJobs = await payload.find({
-          collection: "import-jobs",
-          where: { importFile: { equals: importFile.id } },
-        });
-
-        if (importJobs.docs.length > 0) {
-          const currentJob = importJobs.docs[0];
-          schemaDetectionComplete =
-            currentJob.stage === "validate-schema" ||
-            currentJob.stage === "processing" ||
-            currentJob.stage === "completed";
-        }
-
-        if (!schemaDetectionComplete) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-      }
-
-      expect(schemaDetectionComplete).toBe(true);
+      expect(schemaDetectionResult.matched).toBe(true);
 
       // Get import job
       const importJobs = await payload.find({
@@ -164,26 +149,9 @@ describe.sequential("Job Queueing Tests", () => {
       });
 
       // Complete the import
-      let pipelineComplete = false;
-      iteration = 0;
+      const pipelineResult = await runJobsUntilImportSettled(payload, importFile.id);
 
-      while (!pipelineComplete && iteration < 50) {
-        iteration++;
-        await payload.jobs.run({ allQueues: true, limit: 100 });
-
-        const updatedImportFile = await payload.findByID({
-          collection: "import-files",
-          id: importFile.id,
-        });
-
-        pipelineComplete = updatedImportFile.status === "completed" || updatedImportFile.status === "failed";
-
-        if (!pipelineComplete) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-      }
-
-      expect(pipelineComplete).toBe(true);
+      expect(pipelineResult.settled).toBe(true);
 
       // Check that exactly 3 events were created (matching the 3 rows in events-german.csv)
       const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
