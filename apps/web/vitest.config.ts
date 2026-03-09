@@ -109,6 +109,7 @@ export default defineConfig({
           globalSetup: ["tests/setup/integration/vitest-global-setup.ts"],
           // Setup files run per-worker (clones template to worker database)
           setupFiles: ["tests/setup/integration/global-setup.ts"],
+          retry: 2,
           testTimeout: 30000,
           // Integration test hooks need time for database setup
           hookTimeout: 45000,

@@ -81,6 +81,7 @@ CLAUDE.md
 .claude
 .eslintcache
 uploads/
+.exports/
 scripts/gce/
 AGENTS.md
 
