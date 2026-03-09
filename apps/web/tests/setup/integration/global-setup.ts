@@ -20,6 +20,7 @@ import { vi } from "vitest";
 // Load environment variables from .env.local
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
+import { createDatabaseClient } from "@/lib/database/client";
 import { cloneDatabase, databaseExists, dropDatabase } from "@/lib/database/operations";
 import { checkPostgreSQLConnection } from "@/lib/database/setup";
 import { logger } from "@/lib/logger";
@@ -73,6 +74,9 @@ if (!process.env.NODE_ENV) {
 // Using hardcoded values for test consistency and isolation
 process.env.PAYLOAD_SECRET = "test-secret-key";
 process.env.NEXT_PUBLIC_PAYLOAD_URL = "http://localhost:3000";
+// Allow private/localhost URLs in integration tests (SSRF validation bypass for test servers)
+// eslint-disable-next-line turbo/no-undeclared-env-vars -- Integration test env var for SSRF bypass
+process.env.ALLOW_PRIVATE_URLS = "true";
 
 // Payload logging is now properly controlled via logger and loggingLevels configuration
 
@@ -162,12 +166,26 @@ beforeAll(async () => {
     throw error;
   }
 
+  // Configure idle_in_transaction_session_timeout to auto-kill connections
+  // that Payload's Drizzle adapter leaves idle in a transaction. These hold
+  // locks that block TRUNCATE and other DDL operations.
+  const configureIdleTransactionTimeout = async () => {
+    const client = createDatabaseClient({ connectionString: dbUrl });
+    try {
+      await client.connect();
+      await client.query(`ALTER DATABASE "${testDbName}" SET idle_in_transaction_session_timeout = '3s'`);
+    } finally {
+      await client.end();
+    }
+  };
+
   // With isolate: false, multiple test files share a fork process.
   // Reuse the DB if it already exists and has valid schema (avoids redundant clones).
   const dbExists = await databaseExists(testDbName);
   if (dbExists) {
     try {
       await verifyDatabaseSchema(dbUrl);
+      await configureIdleTransactionTimeout();
       if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
         logger.info(`Reusing existing database ${testDbName} for worker ${workerId}`);
       }
@@ -193,6 +211,7 @@ beforeAll(async () => {
 
       // Verify the cloned database has valid schema
       await verifyDatabaseSchema(dbUrl);
+      await configureIdleTransactionTimeout();
 
       if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
         logger.info(`Database setup completed for worker ${workerId}`, {
@@ -205,6 +224,7 @@ beforeAll(async () => {
       // Clone failed - fall back to original behavior
       logger.warn(`Clone failed for worker ${workerId}, falling back to migrations:`, cloneError);
       await setupDatabaseWithMigrations(testDbName, dbUrl, workerId);
+      await configureIdleTransactionTimeout();
     }
   } else {
     // No template exists - use original behavior
@@ -213,13 +233,31 @@ beforeAll(async () => {
       logger.info(`No template found, using migrations for worker ${workerId}`);
     }
     await setupDatabaseWithMigrations(testDbName, dbUrl, workerId);
+    await configureIdleTransactionTimeout();
   }
 });
 
 // Safety net: restore all spied mocks between tests to prevent leak across files
 // with isolate: false. Individual tests that need spies set them up in beforeAll/beforeEach.
-afterEach(() => {
+afterEach(async () => {
   vi.restoreAllMocks();
+
+  // Clean stale jobs between tests — payload.jobs.run() picks up ALL pending jobs,
+  // so we must clear them to prevent cross-test interference.
+  // payload_jobs has NO FK constraints, so DELETE (ROW EXCLUSIVE) never deadlocks.
+  if (isIntegrationTest) {
+    try {
+      const client = createDatabaseClient({ connectionString: dbUrl });
+      try {
+        await client.connect();
+        await client.query('DELETE FROM payload."payload_jobs"');
+      } finally {
+        await client.end();
+      }
+    } catch {
+      // Ignore — table may not exist during initial setup
+    }
+  }
 });
 
 // Global teardown to clean up

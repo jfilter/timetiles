@@ -52,6 +52,9 @@ const executeTruncateWithPayloadConnection = async (payload: Payload, tableList:
     return false;
   }
 
+  // Set lock_timeout to fail fast instead of waiting for idle-in-transaction
+  // connections that hold locks. The caller's fallback path handles failure.
+  await db.execute(`SET LOCAL lock_timeout = '5s'`);
   await db.execute(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
   return true;
 };
@@ -187,6 +190,7 @@ export class SeedManager extends SeedManagerBase {
       const client = createDatabaseClient({ connectionString: dbUrl });
       try {
         await client.connect();
+        await client.query(`SET LOCAL lock_timeout = '10s'`);
         await client.query(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
         logger.info({ collections }, `Truncated ${collections.length} collections successfully`);
       } finally {

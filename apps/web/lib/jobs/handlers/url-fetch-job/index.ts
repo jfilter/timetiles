@@ -167,11 +167,23 @@ const handleFetchSuccess = async (
   });
 
   // Queue dataset detection job
-  await payload.jobs.queue({
+  const detectionJob = await payload.jobs.queue({
     task: JOB_TYPES.DATASET_DETECTION,
     input: {
       importFileId: importFile.id,
     },
+  });
+
+  // Update status to 'parsing' since we skipped the afterChange hook above.
+  // The hook normally handles this, but we bypass it to prevent double job queueing.
+  await payload.update({
+    collection: COLLECTION_NAMES.IMPORT_FILES,
+    id: importFile.id,
+    data: {
+      status: "parsing",
+      jobId: String(detectionJob.id),
+    },
+    context: { skipImportFileHooks: true },
   });
 
   logger.info("Import file created from URL", {

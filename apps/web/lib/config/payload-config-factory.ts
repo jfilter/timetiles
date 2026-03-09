@@ -150,6 +150,11 @@ const createDbAdapter = (
     pool: {
       connectionString: databaseUrl ?? "",
       max: environment === "test" ? 5 : undefined,
+      // Auto-terminate pool connections that sit idle in a transaction.
+      // Payload's Drizzle adapter can leak idle-in-transaction connections
+      // that hold locks, blocking TRUNCATE and INSERT operations.
+      // This PostgreSQL-level timeout (in ms) auto-kills them.
+      idle_in_transaction_session_timeout: environment === "test" ? 5000 : undefined,
       ...poolConfig,
     },
     prodMigrations: runMigrations ? DEFAULT_DB_CONFIG.prodMigrations : undefined,

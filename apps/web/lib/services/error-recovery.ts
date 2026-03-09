@@ -376,6 +376,7 @@ export class ErrorRecoveryService {
             },
           },
         },
+        context: { skipStageTransition: true },
       });
 
       logger.info("Scheduled job recovery", {
@@ -618,6 +619,7 @@ export class ErrorRecoveryService {
             stage: recoveryStage,
             nextRetryAt: null, // Clear the retry schedule
           },
+          context: { skipStageTransition: true },
         });
 
         // Queue the appropriate recovery job
@@ -739,6 +741,7 @@ export class ErrorRecoveryService {
         collection: IMPORT_JOBS_COLLECTION,
         id: job.id,
         data: updateData,
+        context: { skipStageTransition: true },
       });
 
       logger.info("Manually reset job stage", {

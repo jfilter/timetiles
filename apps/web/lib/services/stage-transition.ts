@@ -38,7 +38,13 @@ const VALID_STAGE_TRANSITIONS: Record<string, string[]> = {
   [PROCESSING_STAGE.GEOCODE_BATCH]: [PROCESSING_STAGE.CREATE_EVENTS],
   [PROCESSING_STAGE.CREATE_EVENTS]: [PROCESSING_STAGE.COMPLETED],
   [PROCESSING_STAGE.COMPLETED]: [], // Terminal state
-  [PROCESSING_STAGE.FAILED]: [], // Terminal state
+  [PROCESSING_STAGE.FAILED]: [
+    // Recovery stages - must match isValidRecoveryStage() in import-jobs/hooks.ts
+    PROCESSING_STAGE.ANALYZE_DUPLICATES,
+    PROCESSING_STAGE.DETECT_SCHEMA,
+    PROCESSING_STAGE.VALIDATE_SCHEMA,
+    PROCESSING_STAGE.GEOCODE_BATCH,
+  ],
 };
 
 export interface StageTransitionResult {
@@ -146,6 +152,13 @@ export class StageTransitionService {
    */
   private static async queueStageJob(payload: Payload, job: ImportJob): Promise<{ queued: boolean; jobType?: string }> {
     switch (job.stage) {
+      case PROCESSING_STAGE.ANALYZE_DUPLICATES:
+        await payload.jobs.queue({
+          task: JOB_TYPES.ANALYZE_DUPLICATES,
+          input: { importJobId: job.id },
+        });
+        return { queued: true, jobType: JOB_TYPES.ANALYZE_DUPLICATES };
+
       case PROCESSING_STAGE.DETECT_SCHEMA:
         await payload.jobs.queue({
           task: JOB_TYPES.DETECT_SCHEMA,

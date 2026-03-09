@@ -128,6 +128,11 @@ export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
 
 export const afterChangeHooks: CollectionAfterChangeHook[] = [
   async ({ doc, previousDoc, req, operation }) => {
+    // Skip stage transition processing when called from recovery service
+    if (req.context?.skipStageTransition) {
+      return doc;
+    }
+
     // Track import job creation for quota
     if (operation === "create") {
       // Get the user who created this import job (from the import file)
