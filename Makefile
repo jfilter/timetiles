@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint lint-full typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai images help
+.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint lint-full typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai images worktree worktree-rm worktree-ls worktree-setup help
 
 all: help
 
@@ -384,6 +384,44 @@ images:
 	fi
 	@echo "✅ Done!"
 
+# =============================================================================
+# Worktrees
+# =============================================================================
+
+## Create a new worktree with env files and dependencies
+## Usage: make worktree NAME=my-feature [BRANCH=branch-name]
+worktree:
+	@if [ -z "$(NAME)" ]; then \
+		echo "Usage: make worktree NAME=my-feature [BRANCH=branch-name]"; \
+		echo ""; \
+		echo "Creates a worktree in .worktrees/<NAME> with env files + deps."; \
+		echo "If BRANCH is given, checks out (or creates) that branch."; \
+		exit 1; \
+	fi
+	@./scripts/worktree.sh create "$(NAME)" "$(BRANCH)"
+
+## Remove a worktree
+## Usage: make worktree-rm NAME=my-feature
+worktree-rm:
+	@if [ -z "$(NAME)" ]; then \
+		echo "Usage: make worktree-rm NAME=my-feature"; \
+		exit 1; \
+	fi
+	@./scripts/worktree.sh remove "$(NAME)"
+
+## List all worktrees and their status
+worktree-ls:
+	@./scripts/worktree.sh list
+
+## Set up env/deps in an existing worktree
+## Usage: make worktree-setup PATH=.worktrees/my-feature
+worktree-setup:
+	@if [ -z "$(PATH_ARG)" ]; then \
+		echo "Usage: make worktree-setup PATH_ARG=.worktrees/my-feature"; \
+		exit 1; \
+	fi
+	@./scripts/worktree.sh setup "$(PATH_ARG)"
+
 # Show help
 help:
 	@printf '%s\n' \
@@ -441,6 +479,14 @@ help:
 		'  db-logs       - View PostgreSQL logs (live tail)' \
 		'  db-reset      - Reset database (removes all data)' \
 		'  db-reset-tests - Reset all test databases (drop + recreate e2e)' '' \
+		'🌿 Worktrees:' \
+		'  worktree       - Create worktree with env files + deps' \
+		'                   Usage: make worktree NAME=my-feature [BRANCH=branch]' \
+		'  worktree-rm    - Remove a worktree' \
+		'                   Usage: make worktree-rm NAME=my-feature' \
+		'  worktree-ls    - List all worktrees and their status' \
+		'  worktree-setup - Set up env/deps in existing worktree' \
+		'                   Usage: make worktree-setup PATH_ARG=.worktrees/foo' '' \
 		'📦 Docker Images:' \
 		'  images         - Build and push Docker images to GHCR' \
 		'                   Usage: make images [IMAGE=main|allinone|both]' \
