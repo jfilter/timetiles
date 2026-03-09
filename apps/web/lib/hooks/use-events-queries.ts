@@ -25,7 +25,7 @@ import type { Event } from "@/payload-types";
 import type { FilterState } from "../filters";
 import { createLogger } from "../logger";
 import type { BoundsType, SimpleBounds } from "../utils/event-params";
-import { buildBaseEventParams, buildEventParams } from "../utils/event-params";
+import { buildBaseEventParams, buildEventParams, parseStrictInteger } from "../utils/event-params";
 
 // Helper function to determine polling interval
 // Returns false to stop polling or number for interval - React Query expects this pattern
@@ -280,9 +280,11 @@ const uploadImport = async (
   // Get other fields and put them in _payload as JSON
   const catalogId = formData.get("catalogId");
   const sessionId = formData.get("sessionId");
+  const normalizedCatalogId =
+    typeof catalogId === "string" && catalogId.trim() !== "" ? (parseStrictInteger(catalogId) ?? undefined) : undefined;
 
   const payloadData = {
-    catalog: catalogId ? parseInt(catalogId as string, 10) : undefined,
+    catalog: normalizedCatalogId,
     sessionId: sessionId ?? undefined,
     status: "pending",
     datasetsCount: 0,

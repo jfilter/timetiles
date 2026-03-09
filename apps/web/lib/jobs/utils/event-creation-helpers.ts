@@ -11,6 +11,7 @@ import { createLogger } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import type { getGeocodingResults } from "@/lib/types/geocoding";
 import { isValidDate } from "@/lib/utils/date";
+import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { Dataset } from "@/payload-types";
 
 const logger = createLogger("event-creation-helpers");
@@ -138,7 +139,7 @@ export const createEventData = (
   transformationChanges: Array<{ path: string; oldValue: unknown; newValue: unknown; error?: string }> | null
 ) => {
   const uniqueId = generateUniqueId(row, dataset.idStrategy);
-  const importJobNum = typeof importJobId === "string" ? parseInt(importJobId, 10) : importJobId;
+  const importJobNum = typeof importJobId === "string" ? parseStrictInteger(importJobId) : importJobId;
 
   const schemaVersionData = job.datasetSchemaVersion;
   let schemaVersion: number | undefined;
@@ -156,7 +157,7 @@ export const createEventData = (
 
   return {
     dataset: dataset.id,
-    importJob: importJobNum,
+    importJob: importJobNum ?? undefined,
     data: row,
     uniqueId,
     eventTimestamp: (extractTimestamp(row, fieldMappings.timestampPath) ?? new Date()).toISOString(),
