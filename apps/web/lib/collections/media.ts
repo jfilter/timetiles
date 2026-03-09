@@ -10,6 +10,8 @@
  */
 import type { CollectionConfig } from "payload";
 
+import { extractRelationId } from "@/lib/utils/relation-id";
+
 import { createCommonConfig } from "./shared-fields";
 
 const Media: CollectionConfig = {
@@ -61,7 +63,7 @@ const Media: CollectionConfig = {
       if (user?.role === "admin" || user?.role === "editor") return true;
 
       if (user && data?.createdBy) {
-        const createdById = typeof data.createdBy === "object" ? data.createdBy.id : data.createdBy;
+        const createdById = extractRelationId(data.createdBy);
         return user.id === createdById;
       }
 
@@ -73,7 +75,7 @@ const Media: CollectionConfig = {
       if (user?.role === "admin" || user?.role === "editor") return true;
 
       if (user && data?.createdBy) {
-        const createdById = typeof data.createdBy === "object" ? data.createdBy.id : data.createdBy;
+        const createdById = extractRelationId(data.createdBy);
         return user.id === createdById;
       }
 

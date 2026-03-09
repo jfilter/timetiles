@@ -11,6 +11,8 @@
  */
 import type { CollectionConfig } from "payload";
 
+import { extractRelationId } from "@/lib/utils/relation-id";
+
 import { createCommonConfig, isEditorOrAdmin } from "./shared-fields";
 
 const DatasetSchemas: CollectionConfig = {
@@ -32,7 +34,7 @@ const DatasetSchemas: CollectionConfig = {
       if (!data?.dataset) return false;
 
       // Get dataset to check access
-      const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
+      const datasetId = extractRelationId(data.dataset)!;
       const dataset = await req.payload.findByID({ collection: "datasets", id: datasetId });
       if (!dataset) return false;
 
@@ -49,7 +51,7 @@ const DatasetSchemas: CollectionConfig = {
 
       // Catalog owner can access their own schemas
       if (!user || !catalog?.createdBy) return false;
-      const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+      const createdById = extractRelationId(catalog.createdBy);
       return user.id === createdById;
     },
 

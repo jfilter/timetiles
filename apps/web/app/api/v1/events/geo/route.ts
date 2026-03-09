@@ -23,8 +23,8 @@ import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { badRequest, createErrorHandler } from "@/lib/utils/api-response";
-import { buildMapClusterFilters } from "@/lib/utils/event-filters";
-import { extractMapClusterParameters, normalizeStrictIntegerList, parseStrictInteger } from "@/lib/utils/event-params";
+import { buildEventFilters, type EventFilters } from "@/lib/utils/event-filters";
+import { extractMapClusterParameters } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 
 const handleError = createErrorHandler("fetching map clusters", logger);
@@ -53,7 +53,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
       });
     }
 
-    const filters = buildMapClusterFilters(parameters, accessibleCatalogIds);
+    const filters = buildEventFilters({ parameters, accessibleCatalogIds, requireLocation: true });
 
     // If user doesn't have access to the requested catalog, return empty result
     if (filters.denyAccess === true || filters.denyResults === true) {
@@ -106,11 +106,9 @@ const executeClusteringQuery = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   bounds: MapBounds,
   zoom: number,
-  filters: Record<string, unknown>
+  filters: EventFilters
 ) => {
-  const { catalog, datasets, startDate, endDate, accessibleCatalogIds, fieldFilters } = filters;
-  const datasetIds = Array.isArray(datasets) && datasets.length > 0 ? normalizeStrictIntegerList(datasets) : [];
-  const catalogId = parseStrictInteger(catalog as string | null | undefined);
+  const { catalogId, catalogIds, datasets, startDate, endDate, fieldFilters } = filters;
 
   return (await payload.db.drizzle.execute(sql`
     SELECT * FROM cluster_events(
@@ -121,12 +119,12 @@ const executeClusteringQuery = async (
       ${zoom}::integer,
       ${JSON.stringify({
         catalogId: catalogId ?? undefined,
-        catalogIds: Array.isArray(accessibleCatalogIds) ? accessibleCatalogIds : undefined,
-        datasetId: datasetIds.length === 1 ? datasetIds[0] : undefined,
-        datasets: datasetIds.length > 1 ? datasetIds : undefined,
+        catalogIds: catalogIds != null && catalogIds.length > 0 ? catalogIds : undefined,
+        datasetId: datasets?.length === 1 ? datasets[0] : undefined,
+        datasets: datasets != null && datasets.length > 1 ? datasets : undefined,
         startDate,
         endDate,
-        fieldFilters: fieldFilters && Object.keys(fieldFilters as object).length > 0 ? fieldFilters : undefined,
+        fieldFilters: fieldFilters && Object.keys(fieldFilters).length > 0 ? fieldFilters : undefined,
       })}::jsonb
     )
   `)) as { rows: Array<Record<string, unknown>> };

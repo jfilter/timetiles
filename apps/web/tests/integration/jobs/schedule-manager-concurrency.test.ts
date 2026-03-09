@@ -5,6 +5,7 @@
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Catalog, ScheduledImport, User } from "@/payload-types";
 
 import {
@@ -70,7 +71,7 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
     expect(testImport).toBeDefined();
     expect(testImport.id).toBeDefined();
     // Catalog can be returned as object or ID depending on Payload depth settings
-    const catalogId = typeof testImport.catalog === "object" ? testImport.catalog.id : testImport.catalog;
+    const catalogId = extractRelationId(testImport.catalog);
     expect(catalogId).toBe(testCatalog.id);
     expect(testImport.enabled).toBe(true);
     expect(testImport.frequency).toBe("hourly");

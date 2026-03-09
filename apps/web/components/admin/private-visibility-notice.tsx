@@ -12,7 +12,9 @@
  */
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
+
+import { useAdminFeatureFlag } from "@/lib/hooks/use-admin-feature-flag";
 
 // Styles defined outside component to satisfy react-perf/jsx-no-new-object-as-prop
 const styles = {
@@ -42,28 +44,8 @@ const styles = {
   },
 } as const;
 
-interface FeatureFlags {
-  allowPrivateImports?: boolean;
-}
-
 export const PrivateVisibilityNotice = () => {
-  const [isEnabled, setIsEnabled] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    const fetchFlags = async () => {
-      try {
-        const response = await fetch("/api/feature-flags");
-        if (response.ok) {
-          const flags = (await response.json()) as FeatureFlags;
-          setIsEnabled(flags.allowPrivateImports ?? true);
-        }
-      } catch {
-        setIsEnabled(true);
-      }
-    };
-
-    void fetchFlags();
-  }, []);
+  const { isEnabled } = useAdminFeatureFlag("allowPrivateImports");
 
   // Don't render anything while loading or if private imports are allowed
   if (isEnabled === null || isEnabled) {

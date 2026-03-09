@@ -10,6 +10,7 @@ import { USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { logger } from "@/lib/logger";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { StageTransitionService } from "@/lib/services/stage-transition";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ImportJob } from "@/payload-types";
 
 import { handleJobCompletion, isJobCompleted } from "./helpers";
@@ -136,14 +137,14 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
     // Track import job creation for quota
     if (operation === "create") {
       // Get the user who created this import job (from the import file)
-      const importFileId = typeof doc.importFile === "object" ? doc.importFile.id : doc.importFile;
+      const importFileId = extractRelationId(doc.importFile)!;
       const importFile = await req.payload.findByID({
         collection: COLLECTION_NAMES.IMPORT_FILES,
         id: importFileId,
       });
 
       if (importFile?.user) {
-        const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
+        const userId = extractRelationId(importFile.user)!;
 
         const quotaService = getQuotaService(req.payload);
         await quotaService.incrementUsage(userId, USAGE_TYPES.IMPORT_JOBS_TODAY, 1, req);

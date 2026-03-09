@@ -18,6 +18,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { AccountDeletionService } from "@/lib/services/account-deletion-service";
 import { DELETION_GRACE_PERIOD_DAYS, getAccountDeletionService } from "@/lib/services/account-deletion-service";
 import { getSystemUserService, SYSTEM_USER_EMAIL } from "@/lib/services/system-user-service";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
@@ -262,8 +263,7 @@ describe.sequential("Account Deletion Service", () => {
         overrideAccess: true,
       });
       // createdBy may be populated as an object or just an ID
-      const catalogCreatedBy =
-        typeof updatedCatalog.createdBy === "object" ? updatedCatalog.createdBy.id : updatedCatalog.createdBy;
+      const catalogCreatedBy = extractRelationId(updatedCatalog.createdBy);
       expect(catalogCreatedBy).toBe(result.transferredToUserId);
 
       // Verify dataset transferred
@@ -273,8 +273,7 @@ describe.sequential("Account Deletion Service", () => {
         overrideAccess: true,
       });
       // createdBy may be populated as an object or just an ID
-      const datasetCreatedBy =
-        typeof updatedDataset.createdBy === "object" ? updatedDataset.createdBy.id : updatedDataset.createdBy;
+      const datasetCreatedBy = extractRelationId(updatedDataset.createdBy);
       expect(datasetCreatedBy).toBe(result.transferredToUserId);
     });
 

@@ -27,6 +27,7 @@ import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { logError, logger } from "@/lib/logger";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { parseStrictInteger } from "@/lib/utils/event-params";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ImportJob } from "@/payload-types";
 
 // Constants
@@ -244,7 +245,7 @@ export class ErrorRecoveryService {
     job: ImportJob,
     retryCount: number
   ): Promise<RecoveryResult | null> {
-    const importFileId = typeof job.importFile === "object" ? job.importFile.id : job.importFile;
+    const importFileId = extractRelationId(job.importFile)!;
     const importFile = await payload.findByID({
       collection: COLLECTION_NAMES.IMPORT_FILES,
       id: importFileId,
@@ -255,7 +256,7 @@ export class ErrorRecoveryService {
       return null; // No quota check needed
     }
 
-    const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
+    const userId = extractRelationId(importFile.user)!;
     const user = await payload.findByID({
       collection: "users",
       id: userId,

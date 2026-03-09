@@ -24,6 +24,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
+import { extractRelationId } from "@/lib/utils/relation-id";
 
 import { createRequestLogger } from "../logger";
 import { getQuotaService } from "../services/quota-service";
@@ -79,7 +80,7 @@ const ImportFiles: CollectionConfig = {
           });
 
           if (file?.user) {
-            const userId = typeof file.user === "object" ? file.user.id : file.user;
+            const userId = extractRelationId(file.user);
             return user.id === userId;
           }
 
@@ -114,7 +115,7 @@ const ImportFiles: CollectionConfig = {
         });
 
         if (existingFile?.user) {
-          const userId = typeof existingFile.user === "object" ? existingFile.user.id : existingFile.user;
+          const userId = extractRelationId(existingFile.user);
           return user.id === userId;
         }
 

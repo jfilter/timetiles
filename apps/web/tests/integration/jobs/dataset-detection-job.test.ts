@@ -11,6 +11,8 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { extractRelationId } from "@/lib/utils/relation-id";
+
 import {
   createIntegrationTestEnvironment,
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
@@ -137,7 +139,7 @@ describe.sequential("Dataset Detection Job", () => {
     const importJob = importJobs.docs[0];
 
     // Dataset-detection should reuse our pre-created dataset
-    const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
+    const datasetId = extractRelationId(importJob.dataset);
     expect(datasetId).toBe(preCreatedDataset.id);
 
     // Fetch the dataset to verify language is preserved
@@ -176,7 +178,7 @@ describe.sequential("Dataset Detection Job", () => {
     });
 
     const importJob = importJobs.docs[0];
-    const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
+    const datasetId = extractRelationId(importJob.dataset);
 
     // Creates a new dataset because originalName is null
     expect(datasetId).not.toBe(preCreatedDataset.id);

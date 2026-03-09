@@ -19,6 +19,7 @@ import {
   getViewDataScopeFilter,
   resolveView,
 } from "@/lib/services/view-resolver";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User, View } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
@@ -102,7 +103,7 @@ describe.sequential("Views Collection", () => {
       expect(view.branding?.domain).toBe("test.example.com");
       expect(view.mapSettings?.defaultZoom).toBe(10);
       // createdBy can be populated (object) or just an ID depending on depth
-      const createdById = typeof view.createdBy === "object" ? view.createdBy?.id : view.createdBy;
+      const createdById = extractRelationId(view.createdBy);
       expect(createdById).toBe(regularUser.id);
     });
 

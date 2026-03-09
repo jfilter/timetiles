@@ -17,6 +17,8 @@ import type { CollectionConfig, PayloadRequest } from "payload";
 import { QUOTA_ERROR_MESSAGES, QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService } from "@/lib/services/quota-service";
 
+import { extractRelationId } from "@/lib/utils/relation-id";
+
 import { basicMetadataFields, createCommonConfig, createSlugField } from "./shared-fields";
 
 /** Validates that private catalogs are allowed if isPublic is false. */
@@ -48,9 +50,8 @@ const detectCatalogChanges = (
   previousDoc: Record<string, unknown> | undefined,
   doc: Record<string, unknown>
 ): { createdByChanged: boolean; isPublicChanged: boolean; newCreatedBy: unknown; newIsPublic: boolean } => {
-  const prevCreatedBy =
-    typeof previousDoc?.createdBy === "object" ? (previousDoc.createdBy as { id: unknown }).id : previousDoc?.createdBy;
-  const newCreatedBy = typeof doc.createdBy === "object" ? (doc.createdBy as { id: unknown }).id : doc.createdBy;
+  const prevCreatedBy = extractRelationId<unknown>(previousDoc?.createdBy as { id: unknown } | unknown);
+  const newCreatedBy = extractRelationId<unknown>(doc.createdBy as { id: unknown } | unknown);
   const prevIsPublic = (previousDoc?.isPublic as boolean) ?? false;
   const newIsPublic = (doc.isPublic as boolean) ?? false;
 
@@ -182,8 +183,7 @@ const Catalogs: CollectionConfig = {
         });
 
         if (existingDoc?.createdBy) {
-          const createdById =
-            typeof existingDoc.createdBy === "object" ? existingDoc.createdBy.id : existingDoc.createdBy;
+          const createdById = extractRelationId(existingDoc.createdBy);
           return user.id === createdById;
         }
 
@@ -208,8 +208,7 @@ const Catalogs: CollectionConfig = {
         });
 
         if (existingDoc?.createdBy) {
-          const createdById =
-            typeof existingDoc.createdBy === "object" ? existingDoc.createdBy.id : existingDoc.createdBy;
+          const createdById = extractRelationId(existingDoc.createdBy);
           return user.id === createdById;
         }
 

@@ -16,6 +16,7 @@ import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { logger } from "@/lib/logger";
+import { extractRelationId } from "@/lib/utils/relation-id";
 
 import {
   createIntegrationTestEnvironment,
@@ -154,7 +155,7 @@ describe.sequential("Job Queueing Tests", () => {
       expect(pipelineResult.settled).toBe(true);
 
       // Check that exactly 3 events were created (matching the 3 rows in events-german.csv)
-      const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
+      const datasetId = extractRelationId(importJob.dataset);
       const events = await payload.find({
         collection: "events",
         where: {

@@ -12,10 +12,14 @@
  */
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
+
+import type { FeatureFlags } from "@/lib/services/feature-flag-service";
+
+import { useAdminFeatureFlag } from "@/lib/hooks/use-admin-feature-flag";
 
 interface FeatureDisabledBannerProps {
-  featureFlag: string;
+  featureFlag: keyof FeatureFlags;
   title: string;
   description: string;
 }
@@ -61,29 +65,8 @@ const styles = {
   },
 } as const;
 
-interface FeatureFlags {
-  [key: string]: boolean;
-}
-
 export const FeatureDisabledBanner = ({ featureFlag, title, description }: FeatureDisabledBannerProps) => {
-  const [isEnabled, setIsEnabled] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    const fetchFlags = async () => {
-      try {
-        const response = await fetch("/api/feature-flags");
-        if (response.ok) {
-          const flags = (await response.json()) as FeatureFlags;
-          setIsEnabled(flags[featureFlag] ?? true);
-        }
-      } catch {
-        // Default to enabled if fetch fails
-        setIsEnabled(true);
-      }
-    };
-
-    void fetchFlags();
-  }, [featureFlag]);
+  const { isEnabled } = useAdminFeatureFlag(featureFlag);
 
   // Don't render anything while loading or if enabled
   if (isEnabled === null || isEnabled) {

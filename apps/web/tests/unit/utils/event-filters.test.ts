@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { buildEventFilters, buildMapClusterFilters } from "@/lib/utils/event-filters";
+import { buildEventFilters } from "@/lib/utils/event-filters";
 
 describe("event-filters", () => {
   it("normalizes date-only end dates in buildEventFilters", () => {
@@ -75,84 +75,38 @@ describe("event-filters", () => {
     expect(filters.datasets).toBeUndefined();
   });
 
-  it("normalizes date-only end dates in buildMapClusterFilters", () => {
-    const filters = buildMapClusterFilters(
-      {
-        catalog: null,
-        datasets: [],
-        startDate: null,
-        endDate: "2024-03-31",
-        fieldFilters: {},
-      },
-      [1, 2]
-    );
-
-    expect(filters.endDate).toBe("2024-03-31T23:59:59.999Z");
-  });
-
-  it("treats an empty catalog as no catalog filter in buildMapClusterFilters", () => {
-    const filters = buildMapClusterFilters(
-      {
+  it("treats an empty catalog as no catalog filter", () => {
+    const filters = buildEventFilters({
+      parameters: {
         catalog: "",
         datasets: [],
         startDate: null,
         endDate: null,
         fieldFilters: {},
       },
-      [1, 2]
-    );
-
-    expect(filters).toMatchObject({
       accessibleCatalogIds: [1, 2],
+      bounds: null,
     });
+
+    expect(filters.catalogIds).toEqual([1, 2]);
     expect(filters).not.toHaveProperty("denyAccess", true);
-    expect(filters).not.toHaveProperty("catalog");
+    expect(filters.catalogId).toBeUndefined();
   });
 
-  it("filters invalid dataset ids in buildMapClusterFilters", () => {
-    const filters = buildMapClusterFilters(
-      {
-        catalog: null,
-        datasets: ["10", "abc", "20"],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      },
-      [1, 2]
-    );
-
-    expect(filters.datasets).toEqual([10, 20]);
-  });
-
-  it("rejects partially numeric catalog ids in buildMapClusterFilters", () => {
-    const filters = buildMapClusterFilters(
-      {
+  it("rejects partially numeric catalog ids", () => {
+    const filters = buildEventFilters({
+      parameters: {
         catalog: "1abc",
         datasets: [],
         startDate: null,
         endDate: null,
         fieldFilters: {},
       },
-      [1, 2]
-    );
+      accessibleCatalogIds: [1, 2],
+      bounds: null,
+    });
 
     expect(filters.denyResults).toBe(true);
-    expect(filters).not.toHaveProperty("catalog");
-  });
-
-  it("returns no results when all dataset ids are invalid in buildMapClusterFilters", () => {
-    const filters = buildMapClusterFilters(
-      {
-        catalog: null,
-        datasets: ["abc", "def"],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      },
-      [1, 2]
-    );
-
-    expect(filters.denyResults).toBe(true);
-    expect(filters.datasets).toBeUndefined();
+    expect(filters.catalogId).toBeUndefined();
   });
 });

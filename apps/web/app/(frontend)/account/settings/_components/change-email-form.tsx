@@ -12,6 +12,8 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Inpu
 import { Check, Loader2, Mail } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { useFormSubmission } from "@/lib/hooks/use-form-submission";
+
 interface ChangeEmailFormProps {
   currentEmail: string;
   onEmailChanged: (newEmail: string) => void;
@@ -20,68 +22,55 @@ interface ChangeEmailFormProps {
 export const ChangeEmailForm = ({ currentEmail, onEmailChanged }: ChangeEmailFormProps) => {
   const [newEmail, setNewEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const { status, error, isLoading, submit, reset } = useFormSubmission();
 
-  const handleNewEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewEmail(e.target.value);
-    setError(null);
-    setSuccess(false);
-  }, []);
+  const handleNewEmailChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setNewEmail(e.target.value);
+      reset();
+    },
+    [reset]
+  );
 
-  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value);
-    setError(null);
-    setSuccess(false);
-  }, []);
+  const handlePasswordChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setPassword(e.target.value);
+      reset();
+    },
+    [reset]
+  );
 
   const handleSubmit = useCallback(
     (e: React.SyntheticEvent<HTMLFormElement>) => {
       e.preventDefault();
 
-      // Validation
-      if (!newEmail || !password) {
-        setError("All fields are required");
-        return;
-      }
+      if (!newEmail || !password) return;
 
-      const emailLower = newEmail.trim().toLowerCase();
-      if (emailLower === currentEmail.toLowerCase()) {
-        setError("New email must be different from current email");
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      void (async () => {
-        try {
-          const response = await fetch("/api/account/change-email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ newEmail: emailLower, password }),
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.error ?? "Failed to change email");
-          }
-
-          setSuccess(true);
-          setNewEmail("");
-          setPassword("");
-          onEmailChanged(data.newEmail);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Failed to change email");
-        } finally {
-          setLoading(false);
+      submit(async () => {
+        const emailLower = newEmail.trim().toLowerCase();
+        if (emailLower === currentEmail.toLowerCase()) {
+          throw new Error("New email must be different from current email");
         }
-      })();
+
+        const response = await fetch("/api/account/change-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ newEmail: emailLower, password }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error ?? "Failed to change email");
+        }
+
+        setNewEmail("");
+        setPassword("");
+        onEmailChanged(data.newEmail);
+      });
     },
-    [newEmail, password, currentEmail, onEmailChanged]
+    [newEmail, password, currentEmail, onEmailChanged, submit]
   );
 
   return (
@@ -97,7 +86,7 @@ export const ChangeEmailForm = ({ currentEmail, onEmailChanged }: ChangeEmailFor
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">{error}</div>}
 
-          {success && (
+          {status === "success" && (
             <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-300">
               <Check className="h-4 w-4" />
               Email changed successfully
@@ -117,7 +106,7 @@ export const ChangeEmailForm = ({ currentEmail, onEmailChanged }: ChangeEmailFor
               value={newEmail}
               onChange={handleNewEmailChange}
               placeholder="Enter new email"
-              disabled={loading}
+              disabled={isLoading}
             />
           </div>
 
@@ -129,13 +118,13 @@ export const ChangeEmailForm = ({ currentEmail, onEmailChanged }: ChangeEmailFor
               value={password}
               onChange={handlePasswordChange}
               placeholder="Confirm with your password"
-              disabled={loading}
+              disabled={isLoading}
             />
             <p className="text-muted-foreground text-xs">Enter your password to confirm this change</p>
           </div>
 
-          <Button type="submit" disabled={loading || !newEmail || !password}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" disabled={isLoading || !newEmail || !password}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Change Email
           </Button>
         </form>

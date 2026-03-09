@@ -20,6 +20,7 @@ import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { logger } from "@/lib/logger";
+import { extractRelationId } from "@/lib/utils/relation-id";
 
 import {
   createIntegrationTestEnvironment,
@@ -195,7 +196,7 @@ describe.sequential("Multi-Language Import Tests", () => {
   };
 
   const assertImportedEvents = async (importJob: any, expectedEventCount: number, expectedFields: string[]) => {
-    const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
+    const datasetId = extractRelationId(importJob.dataset);
     const events = await payload.find({
       collection: "events",
       where: {

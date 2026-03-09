@@ -25,6 +25,7 @@ import { getQuotaService } from "@/lib/services/quota-service";
 import { getGeocodingResults } from "@/lib/types/geocoding";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import { readBatchFromFile } from "@/lib/utils/file-readers";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 
 import type { CreateEventsBatchJobInput } from "../types/job-inputs";
@@ -288,7 +289,7 @@ const markJobCompleted = async (payload: Payload, importJobId: string | number, 
     });
 
     if (importJob?.importFile) {
-      const importFileId = typeof importJob.importFile === "object" ? importJob.importFile.id : importJob.importFile;
+      const importFileId = extractRelationId(importJob.importFile)!;
       const importFile = await payload.findByID({
         collection: COLLECTION_NAMES.IMPORT_FILES,
         id: importFileId,
@@ -297,7 +298,7 @@ const markJobCompleted = async (payload: Payload, importJobId: string | number, 
       if (importFile?.user) {
         const logger = createJobLogger(String(importJobId), "create-events-batch");
 
-        const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
+        const userId = extractRelationId(importFile.user);
 
         const quotaService = getQuotaService(payload);
         await quotaService.incrementUsage(userId, USAGE_TYPES.TOTAL_EVENTS_CREATED, totalEventsCreated);
@@ -326,7 +327,7 @@ const getJobResources = async (payload: Payload, importJobId: string | number) =
   }
 
   // Always fetch dataset by ID to ensure we have all fields including idStrategy
-  const datasetId = typeof job.dataset === "object" ? job.dataset.id : job.dataset;
+  const datasetId = extractRelationId(job.dataset)!;
 
   const dataset = await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: datasetId });
 
@@ -398,8 +399,8 @@ const handleBatchCompletion = async (
 ) => {
   if (!hasMore) {
     await markJobCompleted(payload, importJobId, job);
-    const importFileId = typeof job.importFile === "object" ? job.importFile.id : job.importFile;
-    await updateImportFileStatusIfAllJobsComplete(payload, importFileId);
+    const importFileId = extractRelationId(job.importFile);
+    await updateImportFileStatusIfAllJobsComplete(payload, importFileId!);
     return;
   }
 
@@ -438,7 +439,7 @@ const checkEventQuotaForFirstBatch = async (
     return;
   }
 
-  const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
+  const userId = extractRelationId(importFile.user)!;
   const user =
     typeof importFile.user === "object" ? importFile.user : await payload.findByID({ collection: "users", id: userId });
 
@@ -501,7 +502,7 @@ export const createEventsBatchJob = {
       if (rows.length === 0) {
         await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.CREATE_EVENTS);
         await markJobCompleted(payload, importJobId, job);
-        const importFileId = typeof job.importFile === "object" ? job.importFile.id : job.importFile;
+        const importFileId = extractRelationId(job.importFile)!;
         await updateImportFileStatusIfAllJobsComplete(payload, importFileId);
         return { output: { completed: true } };
       }
@@ -563,7 +564,7 @@ export const createEventsBatchJob = {
           collection: COLLECTION_NAMES.IMPORT_JOBS,
           id: importJobId,
         });
-        const importFileId = typeof failedJob.importFile === "object" ? failedJob.importFile.id : failedJob.importFile;
+        const importFileId = extractRelationId(failedJob.importFile)!;
         await updateImportFileStatusIfAllJobsComplete(payload, importFileId);
       } catch (updateError) {
         logError(updateError, "Failed to update import file status", { importJobId });

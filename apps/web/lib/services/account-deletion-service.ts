@@ -8,6 +8,7 @@ import { sql } from "@payloadcms/db-postgres";
 import { createHash } from "crypto";
 import type { Payload } from "payload";
 
+import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
 import type { User } from "@/payload-types";
 
 import { PROCESSING_STAGE } from "../constants/import-constants";
@@ -127,53 +128,23 @@ export class AccountDeletionService {
    * Get a summary of data that will be affected by deletion.
    */
   async getDeletionSummary(userId: number): Promise<DeletionSummary> {
-    // Count catalogs
-    const [publicCatalogs, privateCatalogs] = await Promise.all([
-      this.payload.count({
-        collection: "catalogs",
-        where: {
-          and: [{ createdBy: { equals: userId } }, { isPublic: { equals: true } }],
-        },
-        overrideAccess: true,
-      }),
-      this.payload.count({
-        collection: "catalogs",
-        where: {
-          and: [{ createdBy: { equals: userId } }, { isPublic: { equals: false } }],
-        },
-        overrideAccess: true,
-      }),
-    ]);
+    const isPublicFilter = [{ isPublic: { equals: true } }];
+    const isPrivateFilter = [{ isPublic: { equals: false } }];
 
-    // Count datasets
-    const [publicDatasets, privateDatasets] = await Promise.all([
-      this.payload.count({
-        collection: "datasets",
-        where: {
-          and: [{ createdBy: { equals: userId } }, { isPublic: { equals: true } }],
-        },
-        overrideAccess: true,
-      }),
-      this.payload.count({
-        collection: "datasets",
-        where: {
-          and: [{ createdBy: { equals: userId } }, { isPublic: { equals: false } }],
-        },
-        overrideAccess: true,
-      }),
+    // Count catalogs and datasets by visibility
+    const [publicCatalogs, privateCatalogs, publicDatasets, privateDatasets] = await Promise.all([
+      countUserDocs(this.payload, "catalogs", userId, { extraWhere: isPublicFilter }),
+      countUserDocs(this.payload, "catalogs", userId, { extraWhere: isPrivateFilter }),
+      countUserDocs(this.payload, "datasets", userId, { extraWhere: isPublicFilter }),
+      countUserDocs(this.payload, "datasets", userId, { extraWhere: isPrivateFilter }),
     ]);
 
     // Count events in public vs private datasets
     // First get all dataset IDs for this user
-    const userDatasets = await this.payload.find({
-      collection: "datasets",
-      where: { createdBy: { equals: userId } },
-      limit: 10000,
-      overrideAccess: true,
-    });
+    const userDatasets = await findUserDocs(this.payload, "datasets", userId, { limit: 10000 });
 
-    const publicDatasetIds = userDatasets.docs.filter((d) => d.isPublic).map((d) => d.id);
-    const privateDatasetIds = userDatasets.docs.filter((d) => !d.isPublic).map((d) => d.id);
+    const publicDatasetIds = userDatasets.filter((d) => d.isPublic).map((d) => d.id);
+    const privateDatasetIds = userDatasets.filter((d) => !d.isPublic).map((d) => d.id);
 
     let eventsInPublic = 0;
     let eventsInPrivate = 0;
@@ -198,51 +169,31 @@ export class AccountDeletionService {
 
     // Count other entities
     const [scheduledImports, importFiles, media, views, dataExports] = await Promise.all([
-      this.payload.count({
-        collection: "scheduled-imports",
-        where: { createdBy: { equals: userId } },
-        overrideAccess: true,
-      }),
-      this.payload.count({
-        collection: "import-files",
-        where: { user: { equals: userId } },
-        overrideAccess: true,
-      }),
-      this.payload.count({
-        collection: "media",
-        where: { createdBy: { equals: userId } },
-        overrideAccess: true,
-      }),
-      this.payload.count({
-        collection: "views",
-        where: { createdBy: { equals: userId } },
-        overrideAccess: true,
-      }),
-      this.payload.count({
-        collection: "data-exports",
-        where: { user: { equals: userId } },
-        overrideAccess: true,
-      }),
+      countUserDocs(this.payload, "scheduled-imports", userId),
+      countUserDocs(this.payload, "import-files", userId, { userField: "user" }),
+      countUserDocs(this.payload, "media", userId),
+      countUserDocs(this.payload, "views", userId),
+      countUserDocs(this.payload, "data-exports", userId, { userField: "user" }),
     ]);
 
     return {
       catalogs: {
-        public: publicCatalogs.totalDocs,
-        private: privateCatalogs.totalDocs,
+        public: publicCatalogs,
+        private: privateCatalogs,
       },
       datasets: {
-        public: publicDatasets.totalDocs,
-        private: privateDatasets.totalDocs,
+        public: publicDatasets,
+        private: privateDatasets,
       },
       events: {
         inPublicDatasets: eventsInPublic,
         inPrivateDatasets: eventsInPrivate,
       },
-      scheduledImports: scheduledImports.totalDocs,
-      importFiles: importFiles.totalDocs,
-      media: media.totalDocs,
-      views: views.totalDocs,
-      dataExports: dataExports.totalDocs,
+      scheduledImports,
+      importFiles,
+      media,
+      views,
+      dataExports,
     };
   }
 
@@ -402,17 +353,14 @@ export class AccountDeletionService {
    * Transfer public catalogs and datasets to system user.
    */
   private async transferPublicData(userId: number, systemUserId: number, result: ExecuteDeletionResult): Promise<void> {
+    const isPublicFilter = [{ isPublic: { equals: true } }];
+
     // Transfer public catalogs
-    const publicCatalogs = await this.payload.find({
-      collection: "catalogs",
-      where: {
-        and: [{ createdBy: { equals: userId } }, { isPublic: { equals: true } }],
-      },
-      pagination: false,
-      overrideAccess: true,
+    const publicCatalogs = await findUserDocs(this.payload, "catalogs", userId, {
+      extraWhere: isPublicFilter,
     });
 
-    for (const catalog of publicCatalogs.docs) {
+    for (const catalog of publicCatalogs) {
       await this.payload.update({
         collection: "catalogs",
         id: catalog.id,
@@ -423,16 +371,11 @@ export class AccountDeletionService {
     }
 
     // Transfer public datasets
-    const publicDatasets = await this.payload.find({
-      collection: "datasets",
-      where: {
-        and: [{ createdBy: { equals: userId } }, { isPublic: { equals: true } }],
-      },
-      pagination: false,
-      overrideAccess: true,
+    const publicDatasets = await findUserDocs(this.payload, "datasets", userId, {
+      extraWhere: isPublicFilter,
     });
 
-    for (const dataset of publicDatasets.docs) {
+    for (const dataset of publicDatasets) {
       await this.payload.update({
         collection: "datasets",
         id: dataset.id,
@@ -447,17 +390,14 @@ export class AccountDeletionService {
    * Delete private datasets, events, and catalogs.
    */
   private async deletePrivateData(userId: number, result: ExecuteDeletionResult): Promise<void> {
+    const isPrivateFilter = [{ isPublic: { equals: false } }];
+
     // Delete private datasets and their events
-    const privateDatasets = await this.payload.find({
-      collection: "datasets",
-      where: {
-        and: [{ createdBy: { equals: userId } }, { isPublic: { equals: false } }],
-      },
-      pagination: false,
-      overrideAccess: true,
+    const privateDatasets = await findUserDocs(this.payload, "datasets", userId, {
+      extraWhere: isPrivateFilter,
     });
 
-    for (const dataset of privateDatasets.docs) {
+    for (const dataset of privateDatasets) {
       // Delete events in this dataset
       const events = await this.payload.find({
         collection: "events",
@@ -485,16 +425,11 @@ export class AccountDeletionService {
     }
 
     // Delete private catalogs
-    const privateCatalogs = await this.payload.find({
-      collection: "catalogs",
-      where: {
-        and: [{ createdBy: { equals: userId } }, { isPublic: { equals: false } }],
-      },
-      pagination: false,
-      overrideAccess: true,
+    const privateCatalogs = await findUserDocs(this.payload, "catalogs", userId, {
+      extraWhere: isPrivateFilter,
     });
 
-    for (const catalog of privateCatalogs.docs) {
+    for (const catalog of privateCatalogs) {
       await this.payload.delete({
         collection: "catalogs",
         id: catalog.id,
@@ -509,14 +444,9 @@ export class AccountDeletionService {
    */
   private async deleteUserResources(userId: number, result: ExecuteDeletionResult): Promise<void> {
     // Delete scheduled imports
-    const scheduledImports = await this.payload.find({
-      collection: "scheduled-imports",
-      where: { createdBy: { equals: userId } },
-      pagination: false,
-      overrideAccess: true,
-    });
+    const scheduledImports = await findUserDocs(this.payload, "scheduled-imports", userId);
 
-    for (const schedule of scheduledImports.docs) {
+    for (const schedule of scheduledImports) {
       await this.payload.delete({
         collection: "scheduled-imports",
         id: schedule.id,
@@ -526,14 +456,11 @@ export class AccountDeletionService {
     }
 
     // Delete import files
-    const importFiles = await this.payload.find({
-      collection: "import-files",
-      where: { user: { equals: userId } },
-      pagination: false,
-      overrideAccess: true,
+    const importFiles = await findUserDocs(this.payload, "import-files", userId, {
+      userField: "user",
     });
 
-    for (const file of importFiles.docs) {
+    for (const file of importFiles) {
       await this.payload.delete({
         collection: "import-files",
         id: file.id,

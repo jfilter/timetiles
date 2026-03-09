@@ -20,6 +20,7 @@ import { geocodeBatchJob } from "@/lib/jobs/handlers/geocode-batch-job";
 import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
 import { validateSchemaJob } from "@/lib/jobs/handlers/validate-schema-job";
 import * as geocodingModule from "@/lib/services/geocoding";
+import { extractRelationId } from "@/lib/utils/relation-id";
 
 import {
   createIntegrationTestEnvironment,
@@ -86,7 +87,7 @@ describe.sequential("Pipeline Workflow Transitions", () => {
       where: { importFile: { equals: importFile.id } },
     });
     const importJob = importJobs.docs[0];
-    const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
+    const datasetId = extractRelationId(importJob.dataset);
 
     await analyzeDuplicatesJob.handler({
       payload,

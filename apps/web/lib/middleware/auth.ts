@@ -18,31 +18,43 @@ export interface AuthenticatedRequest extends NextRequest {
   user?: User;
 }
 
+type RouteHandler<TContext> = (req: AuthenticatedRequest, context: TContext) => Promise<Response> | Response;
+
+const UNAUTHORIZED = { error: "Authentication required" } as const;
+
+/**
+ * Authenticate a request and attach the user to it.
+ * Returns the authenticated request, or null if authentication failed/absent.
+ */
+const authenticateRequest = async (request: NextRequest): Promise<AuthenticatedRequest> => {
+  const payload = await getPayload({ config });
+  const authRequest = request as AuthenticatedRequest;
+
+  try {
+    const { user } = await payload.auth({ headers: request.headers });
+    authRequest.user = user as User;
+  } catch {
+    // Authentication failed — user remains undefined
+  }
+
+  return authRequest;
+};
+
 /**
  * Middleware that requires authentication.
  * Returns 401 if user is not authenticated.
  */
 export const withAuth =
-  <TContext = unknown>(handler: (req: AuthenticatedRequest, context: TContext) => Promise<Response> | Response) =>
+  <TContext = unknown>(handler: RouteHandler<TContext>) =>
   async (request: NextRequest, context: TContext) => {
-    const payload = await getPayload({ config });
+    const authRequest = await authenticateRequest(request);
 
-    try {
-      const { user } = await payload.auth({ headers: request.headers });
-
-      if (!user) {
-        return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-      }
-
-      // Attach user to request
-      const authRequest = request as AuthenticatedRequest;
-      authRequest.user = user as User;
-
-      return await handler(authRequest, context);
-    } catch (error) {
-      logError(error, "Authentication failed in withAuth middleware");
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (!authRequest.user) {
+      logError(null, "Authentication failed in withAuth middleware");
+      return NextResponse.json(UNAUTHORIZED, { status: 401 });
     }
+
+    return handler(authRequest, context);
   };
 
 /**
@@ -50,19 +62,10 @@ export const withAuth =
  * Does not return an error if user is not authenticated.
  */
 export const withOptionalAuth =
-  <TContext = unknown>(handler: (req: AuthenticatedRequest, context: TContext) => Promise<Response> | Response) =>
+  <TContext = unknown>(handler: RouteHandler<TContext>) =>
   async (request: NextRequest, context: TContext) => {
-    const payload = await getPayload({ config });
-
-    try {
-      const { user } = await payload.auth({ headers: request.headers });
-      const authRequest = request as AuthenticatedRequest;
-      authRequest.user = user as User;
-    } catch {
-      // Allow unauthenticated access - no user attached
-    }
-
-    return handler(request as AuthenticatedRequest, context);
+    const authRequest = await authenticateRequest(request);
+    return handler(authRequest, context);
   };
 
 /**
@@ -70,28 +73,18 @@ export const withOptionalAuth =
  * Returns 401 if user is not authenticated and 403 if user is not an admin.
  */
 export const withAdminAuth =
-  <TContext = unknown>(handler: (req: AuthenticatedRequest, context: TContext) => Promise<Response> | Response) =>
+  <TContext = unknown>(handler: RouteHandler<TContext>) =>
   async (request: NextRequest, context: TContext) => {
-    const payload = await getPayload({ config });
+    const authRequest = await authenticateRequest(request);
 
-    try {
-      const { user } = await payload.auth({ headers: request.headers });
-
-      if (!user) {
-        return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-      }
-
-      if (user.role !== "admin") {
-        return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-      }
-
-      // Attach user to request
-      const authRequest = request as AuthenticatedRequest;
-      authRequest.user = user as User;
-
-      return await handler(authRequest, context);
-    } catch (error) {
-      logError(error, "Authentication failed in withAdminAuth middleware");
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (!authRequest.user) {
+      logError(null, "Authentication failed in withAdminAuth middleware");
+      return NextResponse.json(UNAUTHORIZED, { status: 401 });
     }
+
+    if (authRequest.user.role !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
+
+    return handler(authRequest, context);
   };

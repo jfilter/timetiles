@@ -15,6 +15,7 @@ import type { CollectionBeforeChangeHook } from "payload";
 
 import { validateCronExpression } from "@/lib/collections/scheduled-imports/validation";
 import { logger } from "@/lib/logger";
+import { extractRelationId } from "@/lib/utils/relation-id";
 
 /**
  * Calculates the next run time based on frequency.
@@ -194,7 +195,7 @@ export const beforeChangeHook: CollectionBeforeChangeHook = ({ data, operation, 
 
   // Prevent changing createdBy on update - preserve the original value
   if (operation === "update" && originalDoc?.createdBy) {
-    data.createdBy = typeof originalDoc.createdBy === "object" ? originalDoc.createdBy.id : originalDoc.createdBy;
+    data.createdBy = extractRelationId(originalDoc.createdBy);
   }
 
   // Handle webhook token generation

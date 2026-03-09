@@ -85,27 +85,32 @@ export const parseDateInput = (date: string | number | Date | null | undefined):
 
 /**
  * Format a date string or Date object for display.
+ *
+ * By default includes time. Pass `{ includeTime: false }` for date-only format.
  */
-export const formatDate = (date: string | Date | null | undefined): string => {
+export const formatDate = (date: string | Date | null | undefined, options?: { includeTime?: boolean }): string => {
   if (!date) return "N/A";
 
   try {
     const dateObj = parseDateInput(date);
 
-    // Check if date is valid
     if (!dateObj) {
       return "Invalid date";
     }
 
-    // Format as: "Jan 15, 2024 at 3:30 PM"
-    return new Intl.DateTimeFormat("en-US", {
+    const formatOptions: Intl.DateTimeFormatOptions = {
       year: "numeric",
       month: "short",
       day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).format(dateObj);
+    };
+
+    if (options?.includeTime !== false) {
+      formatOptions.hour = "numeric";
+      formatOptions.minute = "2-digit";
+      formatOptions.hour12 = true;
+    }
+
+    return new Intl.DateTimeFormat("en-US", formatOptions).format(dateObj);
   } catch {
     return "Invalid date";
   }
@@ -114,24 +119,5 @@ export const formatDate = (date: string | Date | null | undefined): string => {
 /**
  * Format a date for short display (just the date, no time).
  */
-export const formatDateShort = (date: string | Date | null | undefined): string => {
-  if (!date) return "N/A";
-
-  try {
-    const dateObj = parseDateInput(date);
-
-    // Check if date is valid
-    if (!dateObj) {
-      return "Invalid date";
-    }
-
-    // Format as: "Jan 15, 2024"
-    return new Intl.DateTimeFormat("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(dateObj);
-  } catch {
-    return "Invalid date";
-  }
-};
+export const formatDateShort = (date: string | Date | null | undefined): string =>
+  formatDate(date, { includeTime: false });

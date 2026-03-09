@@ -17,6 +17,7 @@ import { JOB_TYPES } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
 import { getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
 import { internalError, methodNotAllowed, unauthorized } from "@/lib/utils/api-response";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import config from "@/payload.config";
 import type { ScheduledImport } from "@/payload-types";
 
@@ -170,12 +171,9 @@ export const POST = async (_request: NextRequest, { params }: { params: Promise<
           scheduledImportId: scheduledImport.id,
           sourceUrl: scheduledImport.sourceUrl,
           authConfig: scheduledImport.authConfig,
-          catalogId: typeof scheduledImport.catalog === "object" ? scheduledImport.catalog.id : scheduledImport.catalog,
+          catalogId: extractRelationId(scheduledImport.catalog),
           originalName: importName,
-          userId:
-            scheduledImport.createdBy && typeof scheduledImport.createdBy === "object"
-              ? scheduledImport.createdBy.id
-              : scheduledImport.createdBy,
+          userId: extractRelationId(scheduledImport.createdBy),
           triggeredBy: "webhook",
         },
       });

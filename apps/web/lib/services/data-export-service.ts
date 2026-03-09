@@ -15,6 +15,8 @@ import { createWriteStream } from "fs";
 import { mkdir, readFile, stat } from "fs/promises";
 import type { Payload } from "payload";
 
+import { extractRelationId } from "@/lib/utils/relation-id";
+import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
 import type { Catalog, Dataset, Event, ImportFile, ImportJob, Media, ScheduledImport } from "@/payload-types";
 
 import { createLogger } from "../logger";
@@ -55,32 +57,20 @@ export class DataExportService {
    * Get a summary of data that will be exported.
    */
   async getExportSummary(userId: number): Promise<ExportSummary> {
-    // Count catalogs
-    const catalogs = await this.payload.count({
-      collection: "catalogs",
-      where: { createdBy: { equals: userId } },
-      overrideAccess: true,
-    });
+    // Count top-level collections in parallel
+    const [catalogs, datasets, importFilesCount, scheduledImports, mediaFiles] = await Promise.all([
+      countUserDocs(this.payload, "catalogs", userId),
+      countUserDocs(this.payload, "datasets", userId),
+      countUserDocs(this.payload, "import-files", userId, { userField: "user" }),
+      countUserDocs(this.payload, "scheduled-imports", userId),
+      countUserDocs(this.payload, "media", userId),
+    ]);
 
-    // Count datasets
-    const datasets = await this.payload.count({
-      collection: "datasets",
-      where: { createdBy: { equals: userId } },
-      overrideAccess: true,
-    });
+    // Get dataset IDs to count events
+    const userDatasets = await findUserDocs(this.payload, "datasets", userId, { limit: 10000 });
+    const datasetIds = userDatasets.map((d) => d.id);
 
-    // Get dataset IDs to count events - only fetch IDs (id is auto-included)
-    const userDatasets = await this.payload.find({
-      collection: "datasets",
-      where: { createdBy: { equals: userId } },
-      limit: 10000,
-      overrideAccess: true,
-      select: { name: true },
-    });
-
-    const datasetIds = userDatasets.docs.map((d) => d.id);
     let eventsCount = 0;
-
     if (datasetIds.length > 0) {
       const events = await this.payload.count({
         collection: "events",
@@ -90,34 +80,12 @@ export class DataExportService {
       eventsCount = events.totalDocs;
     }
 
-    // Count other collections
-    const [importFiles, scheduledImports, media] = await Promise.all([
-      this.payload.count({
-        collection: "import-files",
-        where: { user: { equals: userId } },
-        overrideAccess: true,
-      }),
-      this.payload.count({
-        collection: "scheduled-imports",
-        where: { createdBy: { equals: userId } },
-        overrideAccess: true,
-      }),
-      this.payload.count({
-        collection: "media",
-        where: { createdBy: { equals: userId } },
-        overrideAccess: true,
-      }),
-    ]);
-
-    // Count import jobs via import files - only fetch IDs (id is auto-included)
-    const userImportFiles = await this.payload.find({
-      collection: "import-files",
-      where: { user: { equals: userId } },
+    // Count import jobs via import files
+    const userImportFiles = await findUserDocs(this.payload, "import-files", userId, {
+      userField: "user",
       limit: 10000,
-      overrideAccess: true,
-      select: { status: true },
     });
-    const importFileIds = userImportFiles.docs.map((f) => f.id);
+    const importFileIds = userImportFiles.map((f) => f.id);
 
     let importJobsCount = 0;
     if (importFileIds.length > 0) {
@@ -130,13 +98,13 @@ export class DataExportService {
     }
 
     return {
-      catalogs: catalogs.totalDocs,
-      datasets: datasets.totalDocs,
+      catalogs,
+      datasets,
       events: eventsCount,
-      importFiles: importFiles.totalDocs,
+      importFiles: importFilesCount,
       importJobs: importJobsCount,
-      scheduledImports: scheduledImports.totalDocs,
-      mediaFiles: media.totalDocs,
+      scheduledImports,
+      mediaFiles,
     };
   }
 
@@ -166,14 +134,9 @@ export class DataExportService {
    * Fetch catalogs for export.
    */
   private async fetchCatalogs(userId: number): Promise<CatalogExportData[]> {
-    const result = await this.payload.find({
-      collection: "catalogs",
-      where: { createdBy: { equals: userId } },
-      limit: 10000,
-      overrideAccess: true,
-    });
+    const docs = await findUserDocs(this.payload, "catalogs", userId, { limit: 10000 });
 
-    return result.docs.map(
+    return docs.map(
       (c: Catalog): CatalogExportData => ({
         id: c.id,
         name: c.name,
@@ -190,14 +153,9 @@ export class DataExportService {
    * Fetch datasets for export.
    */
   private async fetchDatasets(userId: number): Promise<DatasetExportData[]> {
-    const result = await this.payload.find({
-      collection: "datasets",
-      where: { createdBy: { equals: userId } },
-      limit: 10000,
-      overrideAccess: true,
-    });
+    const docs = await findUserDocs(this.payload, "datasets", userId, { limit: 10000 });
 
-    return result.docs.map(
+    return docs.map(
       (d: Dataset): DatasetExportData => ({
         id: d.id,
         name: d.name,
@@ -205,7 +163,7 @@ export class DataExportService {
         slug: d.slug,
         isPublic: d.isPublic ?? false,
         language: d.language,
-        catalogId: typeof d.catalog === "object" ? d.catalog.id : d.catalog,
+        catalogId: extractRelationId(d.catalog)!,
         schemaConfig: d.schemaConfig,
         createdAt: d.createdAt,
         updatedAt: d.updatedAt,
@@ -236,7 +194,7 @@ export class DataExportService {
 
       const events: EventExportData[] = result.docs.map((e: Event) => ({
         id: e.id,
-        datasetId: typeof e.dataset === "object" ? e.dataset.id : e.dataset,
+        datasetId: extractRelationId(e.dataset)!,
         eventTimestamp: e.eventTimestamp,
         data: e.data,
         location: e.location
@@ -263,14 +221,12 @@ export class DataExportService {
    * Fetch import files for export.
    */
   private async fetchImportFiles(userId: number): Promise<ImportFileExportData[]> {
-    const result = await this.payload.find({
-      collection: "import-files",
-      where: { user: { equals: userId } },
+    const docs = await findUserDocs(this.payload, "import-files", userId, {
+      userField: "user",
       limit: 10000,
-      overrideAccess: true,
     });
 
-    return result.docs.map((f: ImportFile) => ({
+    return docs.map((f: ImportFile) => ({
       id: f.id,
       originalName: f.originalName,
       mimeType: f.mimeType,
@@ -295,8 +251,8 @@ export class DataExportService {
 
     return result.docs.map((j: ImportJob) => ({
       id: j.id,
-      importFileId: typeof j.importFile === "object" ? j.importFile.id : j.importFile,
-      datasetId: typeof j.dataset === "object" ? j.dataset.id : j.dataset,
+      importFileId: extractRelationId(j.importFile)!,
+      datasetId: extractRelationId(j.dataset)!,
       stage: j.stage,
       progress: j.progress,
       createdAt: j.createdAt,
@@ -308,14 +264,9 @@ export class DataExportService {
    * Fetch scheduled imports for export.
    */
   private async fetchScheduledImports(userId: number): Promise<ScheduledImportExportData[]> {
-    const result = await this.payload.find({
-      collection: "scheduled-imports",
-      where: { createdBy: { equals: userId } },
-      limit: 10000,
-      overrideAccess: true,
-    });
+    const docs = await findUserDocs(this.payload, "scheduled-imports", userId, { limit: 10000 });
 
-    return result.docs.map((s: ScheduledImport) => ({
+    return docs.map((s: ScheduledImport) => ({
       id: s.id,
       name: s.name,
       sourceUrl: s.sourceUrl,
@@ -334,14 +285,9 @@ export class DataExportService {
    * Fetch media metadata for export.
    */
   private async fetchMedia(userId: number): Promise<MediaExportData[]> {
-    const result = await this.payload.find({
-      collection: "media",
-      where: { createdBy: { equals: userId } },
-      limit: 10000,
-      overrideAccess: true,
-    });
+    const docs = await findUserDocs(this.payload, "media", userId, { limit: 10000 });
 
-    return result.docs.map((m: Media) => ({
+    return docs.map((m: Media) => ({
       id: m.id,
       filename: m.filename ?? "",
       mimeType: m.mimeType,
@@ -505,7 +451,7 @@ export class DataExportService {
       throw new Error(`Export record not found: ${exportId}`);
     }
 
-    const userId = typeof exportRecord.user === "object" ? exportRecord.user.id : exportRecord.user;
+    const userId = extractRelationId(exportRecord.user)!;
 
     logger.info({ exportId, userId }, "Starting data export");
 

@@ -22,6 +22,7 @@ import type { Payload, PayloadRequest } from "payload";
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
 import { parseStrictInteger } from "@/lib/utils/event-params";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Dataset, DatasetSchema } from "@/payload-types";
 
 /**
@@ -111,7 +112,7 @@ export class SchemaVersioningService {
       req?: PayloadRequest;
     }
   ): Promise<DatasetSchema> {
-    const datasetId = typeof dataset === "object" ? dataset.id : dataset;
+    const datasetId = extractRelationId(dataset)!;
     const normalizedDatasetId = this.normalizeRequiredId(datasetId, "dataset");
 
     logger.info("Getting next schema version", { datasetId });

@@ -24,6 +24,7 @@ import type { CollectionConfig, Payload, PayloadRequest } from "payload";
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService } from "@/lib/services/quota-service";
 import type { User } from "@/payload-types";
+import { extractRelationId } from "@/lib/utils/relation-id";
 
 import { createCommonConfig } from "../shared-fields";
 import { authFields } from "./fields/auth-fields";
@@ -111,8 +112,7 @@ const validateCatalogAccess = async (data: unknown, req: PayloadRequest): Promis
   const typedData = data as Record<string, unknown> | undefined;
   if (!typedData?.catalog || !req.user) return;
 
-  const catalogId =
-    typeof typedData.catalog === "object" ? (typedData.catalog as { id: string | number }).id : typedData.catalog;
+  const catalogId = extractRelationId(typedData.catalog as { id: string | number } | string | number);
 
   try {
     const catalog = await req.payload.findByID({
@@ -122,7 +122,7 @@ const validateCatalogAccess = async (data: unknown, req: PayloadRequest): Promis
     });
 
     if (catalog.createdBy) {
-      const createdById = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+      const createdById = extractRelationId(catalog.createdBy);
       if (req.user.role !== "admin" && createdById !== req.user.id && !catalog.isPublic) {
         throw new Error("You do not have permission to access this catalog");
       }
@@ -220,7 +220,7 @@ const ScheduledImports: CollectionConfig = {
         });
 
         if (!existing.createdBy) return false;
-        const createdById = typeof existing.createdBy === "object" ? existing.createdBy.id : existing.createdBy;
+        const createdById = extractRelationId(existing.createdBy);
 
         return createdById === user.id;
       } catch {
@@ -243,7 +243,7 @@ const ScheduledImports: CollectionConfig = {
         });
 
         if (!existing.createdBy) return false;
-        const createdById = typeof existing.createdBy === "object" ? existing.createdBy.id : existing.createdBy;
+        const createdById = extractRelationId(existing.createdBy);
 
         return createdById === user.id;
       } catch {
@@ -266,7 +266,7 @@ const ScheduledImports: CollectionConfig = {
         });
 
         if (!existing.createdBy) return false;
-        const createdById = typeof existing.createdBy === "object" ? existing.createdBy.id : existing.createdBy;
+        const createdById = extractRelationId(existing.createdBy);
 
         return createdById === user.id;
       } catch {
@@ -291,7 +291,7 @@ const ScheduledImports: CollectionConfig = {
     afterChange: [
       async ({ doc, operation, req, previousDoc }) => {
         // Charge quota to the schedule owner, not the acting user (e.g., admin enabling another user's schedule)
-        const ownerId = typeof doc.createdBy === "object" ? doc.createdBy?.id : doc.createdBy;
+        const ownerId = extractRelationId(doc.createdBy);
         if (!ownerId) return doc;
 
         const quotaService = getQuotaService(req.payload);
@@ -321,7 +321,7 @@ const ScheduledImports: CollectionConfig = {
     afterDelete: [
       async ({ doc, req }) => {
         // Decrement usage for the schedule owner when deleted
-        const ownerId = typeof doc.createdBy === "object" ? doc.createdBy?.id : doc.createdBy;
+        const ownerId = extractRelationId(doc.createdBy);
         if (ownerId && doc.enabled) {
           const quotaService = getQuotaService(req.payload);
           await quotaService.decrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);

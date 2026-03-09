@@ -5,6 +5,8 @@
  */
 import type { Access } from "payload";
 
+import { extractRelationId } from "@/lib/utils/relation-id";
+
 export const importJobsAccess = {
   // Import jobs can be read by the import file owner, editors, or admins
   read: (async ({ req }) => {
@@ -59,8 +61,7 @@ export const importJobsAccess = {
         });
 
         if (existingJob?.importFile) {
-          const importFileId =
-            typeof existingJob.importFile === "object" ? existingJob.importFile.id : existingJob.importFile;
+          const importFileId = extractRelationId(existingJob.importFile)!;
           const importFile = await req.payload.findByID({
             collection: "import-files",
             id: importFileId,
@@ -68,7 +69,7 @@ export const importJobsAccess = {
           });
 
           if (importFile?.user) {
-            const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
+            const userId = extractRelationId(importFile.user);
             return user.id === userId;
           }
         }

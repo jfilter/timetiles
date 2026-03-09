@@ -13,7 +13,7 @@ import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { useCallback, useState } from "react";
 
-import type { FormStatus } from "./types";
+import { useFormSubmission } from "@/lib/hooks/use-form-submission";
 
 export interface ForgotPasswordFormProps {
   /** Callback fired on successful submission */
@@ -24,8 +24,7 @@ export interface ForgotPasswordFormProps {
 
 export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPasswordFormProps>) => {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<FormStatus>("idle");
-  const [errorMessage, setErrorMessage] = useState("");
+  const { status, error, isLoading, submit } = useFormSubmission();
 
   const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
@@ -37,27 +36,18 @@ export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPass
 
       if (!email) return;
 
-      setStatus("loading");
-      setErrorMessage("");
+      submit(async () => {
+        await fetch("/api/users/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
 
-      void (async () => {
-        try {
-          await fetch("/api/users/forgot-password", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email }),
-          });
-
-          // Always show success regardless of response to prevent email enumeration
-          setStatus("success");
-          onSuccess?.();
-        } catch {
-          setStatus("error");
-          setErrorMessage("Network error. Please try again.");
-        }
-      })();
+        // Always succeed regardless of response to prevent email enumeration
+        onSuccess?.();
+      });
     },
-    [email, onSuccess]
+    [email, onSuccess, submit]
   );
 
   if (status === "success") {
@@ -92,20 +82,20 @@ export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPass
           value={email}
           onChange={handleEmailChange}
           placeholder="you@example.com"
-          disabled={status === "loading"}
+          disabled={isLoading}
           required
           autoComplete="email"
         />
       </div>
 
-      {errorMessage && (
+      {error && (
         <p className="text-destructive text-sm" role="alert">
-          {errorMessage}
+          {error}
         </p>
       )}
 
-      <Button type="submit" className="w-full" disabled={status === "loading"}>
-        {status === "loading" ? "Sending..." : "Send Reset Link"}
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? "Sending..." : "Send Reset Link"}
       </Button>
     </form>
   );

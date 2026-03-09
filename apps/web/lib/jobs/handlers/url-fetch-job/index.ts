@@ -17,6 +17,7 @@ import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { getQuotaService } from "@/lib/services/quota-service";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ScheduledImport, User } from "@/payload-types";
 
 import { buildAuthHeaders } from "./auth";
@@ -222,14 +223,11 @@ const prepareFetchOptions = (scheduledImport: ScheduledImport | null) => {
 
 const createImportContext = (input: UrlFetchJobInput, scheduledImport: ScheduledImport | null): ImportContext => {
   // Resolve userId from input or scheduled import's creator
-  const createdBy = scheduledImport?.createdBy;
-  const resolvedUserId = input.userId ?? (typeof createdBy === "object" ? createdBy?.id : createdBy);
+  const resolvedUserId = input.userId ?? extractRelationId(scheduledImport?.createdBy);
 
   return {
     originalName: input.originalName,
-    catalogId:
-      input.catalogId ??
-      (typeof scheduledImport?.catalog === "object" ? scheduledImport.catalog.id : scheduledImport?.catalog),
+    catalogId: input.catalogId ?? extractRelationId(scheduledImport?.catalog),
     userId: resolvedUserId,
     scheduledImportId: input.scheduledImportId,
     scheduledImport,
@@ -377,8 +375,7 @@ export const urlFetchJob = {
       }
 
       // Resolve userId from input or scheduled import's creator
-      const createdBy = scheduledImport?.createdBy;
-      const resolvedUserId = input.userId ?? (typeof createdBy === "object" ? createdBy?.id : createdBy);
+      const resolvedUserId = input.userId ?? extractRelationId(scheduledImport?.createdBy);
 
       // Check and track quota (handles undefined userId gracefully)
       await checkAndTrackQuota(payload, resolvedUserId, scheduledImport);

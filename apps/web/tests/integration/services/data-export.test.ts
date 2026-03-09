@@ -18,6 +18,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { DataExportService } from "@/lib/services/data-export-service";
 import { getDataExportService } from "@/lib/services/data-export-service";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
 describe.sequential("Data Export Service", () => {
@@ -278,7 +279,7 @@ describe.sequential("Data Export Service", () => {
       expect(exportRecord.id).toBeDefined();
       expect(exportRecord.status).toBe("pending");
       // User field may be populated as object or just ID
-      const userId = typeof exportRecord.user === "object" ? exportRecord.user.id : exportRecord.user;
+      const userId = extractRelationId(exportRecord.user);
       expect(userId).toBe(users.testUser.id);
     });
 
@@ -346,8 +347,7 @@ describe.sequential("Data Export Service", () => {
 
       expect(user1Exports.docs).toHaveLength(1);
       // User field may be populated as object or just ID
-      const foundUserId =
-        typeof user1Exports.docs[0].user === "object" ? user1Exports.docs[0].user.id : user1Exports.docs[0].user;
+      const foundUserId = extractRelationId(user1Exports.docs[0].user);
       expect(foundUserId).toBe(users.user1.id);
     });
   });

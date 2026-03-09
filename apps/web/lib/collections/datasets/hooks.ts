@@ -13,6 +13,7 @@ import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequ
 
 import { logger } from "@/lib/logger";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Catalog, Dataset, User } from "@/payload-types";
 
 /** Check if private imports are allowed */
@@ -40,7 +41,7 @@ const fetchCatalog = async (req: PayloadRequest, catalogId: number | string): Pr
 /** Get creator ID from catalog */
 const getCatalogCreatorId = (catalog: Catalog): number | null => {
   if (!catalog.createdBy) return null;
-  return typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+  return extractRelationId(catalog.createdBy) ?? null;
 };
 
 /** Validate user can create dataset in this catalog */
@@ -73,7 +74,7 @@ const processCatalogValidation = async (
   isPublic: boolean | undefined,
   operation: "create" | "update"
 ): Promise<CatalogFields> => {
-  const catalogId = typeof catalogRef === "object" ? catalogRef.id : catalogRef;
+  const catalogId = extractRelationId(catalogRef)!;
   const catalog = await fetchCatalog(req, catalogId);
 
   if (!catalog) {

@@ -20,8 +20,7 @@ import { Lock, Mail } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
-
-import type { FormStatus } from "./types";
+import { useFormSubmission } from "@/lib/hooks/use-form-submission";
 
 export interface RegisterFormProps {
   /** Callback fired on successful registration */
@@ -37,8 +36,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [status, setStatus] = useState<FormStatus>("idle");
-  const [errorMessage, setErrorMessage] = useState("");
+  const { status, error, isLoading, submit } = useFormSubmission();
 
   const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
@@ -58,56 +56,35 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
 
       if (!email || !password || !confirmPassword) return;
 
-      // Validate password match
-      // eslint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
-      if (password !== confirmPassword) {
-        setStatus("error");
-        setErrorMessage("Passwords do not match");
-        return;
-      }
-
-      // Validate password strength
-      if (password.length < 8) {
-        setStatus("error");
-        setErrorMessage("Password must be at least 8 characters");
-        return;
-      }
-
-      setStatus("loading");
-      setErrorMessage("");
-
-      void (async () => {
-        try {
-          // Use secure registration endpoint that prevents user enumeration
-          const response = await fetch("/api/auth/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email,
-              password,
-            }),
-          });
-
-          const data = await response.json();
-
-          if (response.ok && data.success) {
-            setStatus("success");
-            onSuccess?.();
-          } else {
-            const message = data.error ?? "Registration failed. Please try again.";
-            setStatus("error");
-            setErrorMessage(message);
-            onError?.(message);
-          }
-        } catch {
-          const message = "Network error. Please try again.";
-          setStatus("error");
-          setErrorMessage(message);
-          onError?.(message);
+      submit(async () => {
+        // eslint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
+        if (password !== confirmPassword) {
+          throw new Error("Passwords do not match");
         }
-      })();
+
+        if (password.length < 8) {
+          throw new Error("Password must be at least 8 characters");
+        }
+
+        // Use secure registration endpoint that prevents user enumeration
+        const response = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          const message = data.error ?? "Registration failed. Please try again.";
+          onError?.(message);
+          throw new Error(message);
+        }
+
+        onSuccess?.();
+      });
     },
-    [email, password, confirmPassword, onSuccess, onError]
+    [email, password, confirmPassword, onSuccess, onError, submit]
   );
 
   // Show loading state while checking feature flags
@@ -160,7 +137,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
           value={email}
           onChange={handleEmailChange}
           placeholder="you@example.com"
-          disabled={status === "loading"}
+          disabled={isLoading}
           required
           autoComplete="email"
         />
@@ -174,7 +151,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
           value={password}
           onChange={handlePasswordChange}
           placeholder="At least 8 characters"
-          disabled={status === "loading"}
+          disabled={isLoading}
           required
           autoComplete="new-password"
           minLength={8}
@@ -189,20 +166,20 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
           value={confirmPassword}
           onChange={handleConfirmPasswordChange}
           placeholder="Repeat your password"
-          disabled={status === "loading"}
+          disabled={isLoading}
           required
           autoComplete="new-password"
         />
       </div>
 
-      {errorMessage && (
+      {error && (
         <p className="text-destructive text-sm" role="alert">
-          {errorMessage}
+          {error}
         </p>
       )}
 
-      <Button type="submit" className="w-full" disabled={status === "loading"}>
-        {status === "loading" ? "Creating account..." : "Create Account"}
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? "Creating account..." : "Create Account"}
       </Button>
 
       <p className="text-muted-foreground text-center text-xs">

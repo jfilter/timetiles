@@ -13,6 +13,7 @@ import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { badRequest, forbidden, internalError, notFound } from "@/lib/utils/api-response";
 import { parseStrictInteger } from "@/lib/utils/event-params";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import config from "@/payload.config";
 
 const COLLECTION_SCHEDULED_IMPORTS = "scheduled-imports";
@@ -47,7 +48,7 @@ export const GET = withAuth(async (_request: AuthenticatedRequest, context: Rout
     }
 
     // Check ownership
-    const createdById = typeof schedule.createdBy === "object" ? schedule.createdBy?.id : schedule.createdBy;
+    const createdById = extractRelationId(schedule.createdBy);
     if (user.role !== "admin" && user.role !== "editor" && createdById !== user.id) {
       return forbidden();
     }
@@ -84,8 +85,7 @@ export const PATCH = withAuth(async (request: AuthenticatedRequest, context: Rou
       return notFound("Schedule not found");
     }
 
-    const createdById =
-      typeof existingSchedule.createdBy === "object" ? existingSchedule.createdBy?.id : existingSchedule.createdBy;
+    const createdById = extractRelationId(existingSchedule.createdBy);
     if (user.role !== "admin" && user.role !== "editor" && createdById !== user.id) {
       return forbidden();
     }
@@ -134,8 +134,7 @@ export const DELETE = withAuth(async (_request: AuthenticatedRequest, context: R
       return notFound("Schedule not found");
     }
 
-    const createdById =
-      typeof existingSchedule.createdBy === "object" ? existingSchedule.createdBy?.id : existingSchedule.createdBy;
+    const createdById = extractRelationId(existingSchedule.createdBy);
     if (user.role !== "admin" && user.role !== "editor" && createdById !== user.id) {
       return forbidden();
     }

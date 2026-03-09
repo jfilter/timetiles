@@ -14,6 +14,7 @@ import { Readable } from "stream";
 
 import { logError, logger } from "@/lib/logger";
 import { parseStrictInteger } from "@/lib/utils/event-params";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import config from "@/payload.config";
 
 /**
@@ -53,7 +54,7 @@ export const GET = async (
     }
 
     // Verify ownership
-    const ownerId = typeof exportRecord.user === "object" ? exportRecord.user.id : exportRecord.user;
+    const ownerId = extractRelationId(exportRecord.user);
 
     if (user.id !== ownerId && user.role !== "admin") {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });

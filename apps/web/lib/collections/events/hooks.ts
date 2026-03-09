@@ -12,6 +12,7 @@ import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequ
 
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService } from "@/lib/services/quota-service";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Dataset, Event } from "@/payload-types";
 
 /** Extract denormalized access control fields from dataset/catalog */
@@ -27,7 +28,7 @@ const extractAccessControlFields = (
   // Get catalog creator ID (owner)
   let catalogOwnerId: number | undefined;
   if (catalog?.createdBy) {
-    catalogOwnerId = typeof catalog.createdBy === "object" ? catalog.createdBy.id : catalog.createdBy;
+    catalogOwnerId = extractRelationId(catalog.createdBy);
   }
 
   return { datasetIsPublic, catalogOwnerId };
@@ -71,7 +72,7 @@ const checkEventQuota = async (req: PayloadRequest): Promise<void> => {
 export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async ({ data, operation, req }) => {
   // Set denormalized access control fields
   if (data?.dataset) {
-    const datasetId = typeof data.dataset === "object" ? data.dataset.id : data.dataset;
+    const datasetId = extractRelationId(data.dataset)!;
     const dataset = await fetchDatasetWithCatalog(req, datasetId);
 
     if (dataset) {

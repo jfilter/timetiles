@@ -13,7 +13,7 @@ import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { useCallback, useState } from "react";
 
-import type { FormStatus } from "./types";
+import { useFormSubmission } from "@/lib/hooks/use-form-submission";
 
 export interface ResetPasswordFormProps {
   /** Reset token from the email link */
@@ -27,8 +27,7 @@ export interface ResetPasswordFormProps {
 export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<ResetPasswordFormProps>) => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [status, setStatus] = useState<FormStatus>("idle");
-  const [errorMessage, setErrorMessage] = useState("");
+  const { status, error, isLoading, submit } = useFormSubmission();
 
   const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value);
@@ -44,49 +43,35 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
 
       if (!password || !confirmPassword) return;
 
-      // eslint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
-      if (password !== confirmPassword) {
-        setStatus("error");
-        setErrorMessage("Passwords do not match");
-        return;
-      }
-
-      if (password.length < 8) {
-        setStatus("error");
-        setErrorMessage("Password must be at least 8 characters");
-        return;
-      }
-
-      setStatus("loading");
-      setErrorMessage("");
-
-      void (async () => {
-        try {
-          const response = await fetch("/api/users/reset-password", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token, password }),
-          });
-
-          if (response.ok) {
-            setStatus("success");
-            onSuccess?.();
-          } else {
-            const data = await response.json().catch(() => ({}));
-            const message =
-              typeof data === "object" && data !== null && "message" in data
-                ? String(data.message)
-                : "Failed to reset password. The link may have expired.";
-            setStatus("error");
-            setErrorMessage(message);
-          }
-        } catch {
-          setStatus("error");
-          setErrorMessage("Network error. Please try again.");
+      submit(async () => {
+        // eslint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
+        if (password !== confirmPassword) {
+          throw new Error("Passwords do not match");
         }
-      })();
+
+        if (password.length < 8) {
+          throw new Error("Password must be at least 8 characters");
+        }
+
+        const response = await fetch("/api/users/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, password }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          const message =
+            typeof data === "object" && data !== null && "message" in data
+              ? String(data.message)
+              : "Failed to reset password. The link may have expired.";
+          throw new Error(message);
+        }
+
+        onSuccess?.();
+      });
     },
-    [password, confirmPassword, token, onSuccess]
+    [password, confirmPassword, token, onSuccess, submit]
   );
 
   if (status === "success") {
@@ -103,7 +88,7 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
           value={password}
           onChange={handlePasswordChange}
           placeholder="At least 8 characters"
-          disabled={status === "loading"}
+          disabled={isLoading}
           required
           autoComplete="new-password"
           minLength={8}
@@ -118,20 +103,20 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
           value={confirmPassword}
           onChange={handleConfirmPasswordChange}
           placeholder="Repeat your password"
-          disabled={status === "loading"}
+          disabled={isLoading}
           required
           autoComplete="new-password"
         />
       </div>
 
-      {errorMessage && (
+      {error && (
         <p className="text-destructive text-sm" role="alert">
-          {errorMessage}
+          {error}
         </p>
       )}
 
-      <Button type="submit" className="w-full" disabled={status === "loading"}>
-        {status === "loading" ? "Resetting..." : "Reset Password"}
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? "Resetting..." : "Reset Password"}
       </Button>
     </form>
   );

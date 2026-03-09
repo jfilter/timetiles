@@ -22,33 +22,28 @@ import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { createErrorHandler } from "@/lib/utils/api-response";
-import { buildMapClusterFilters } from "@/lib/utils/event-filters";
-import {
-  extractClusterStatsParameters,
-  normalizeStrictIntegerList,
-  parseStrictInteger,
-} from "@/lib/utils/event-params";
+import { buildEventFilters, type EventFilters } from "@/lib/utils/event-filters";
+import { extractClusterStatsParameters } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 
 const handleError = createErrorHandler("calculating cluster stats", logger);
 
-const buildCatalogFilterSql = (catalog: unknown, accessibleCatalogIds: unknown) => {
-  const catalogId = parseStrictInteger(catalog as string | null | undefined);
+const buildCatalogFilterSql = (catalogId?: number, catalogIds?: number[]) => {
   if (catalogId != null) {
     return sql`AND d.catalog_id = ${catalogId}`;
   }
-  if (accessibleCatalogIds != null && Array.isArray(accessibleCatalogIds) && accessibleCatalogIds.length > 0) {
+  if (catalogIds != null && catalogIds.length > 0) {
     return sql`AND d.catalog_id IN (${sql.join(
-      accessibleCatalogIds.map((id) => sql`${id}`),
+      catalogIds.map((id) => sql`${id}`),
       sql`, `
     )})`;
   }
   return sql``;
 };
 
-const buildFieldFiltersSql = (fieldFilters: unknown) => {
-  if (fieldFilters != null && typeof fieldFilters === "object" && Object.keys(fieldFilters).length > 0) {
-    const fieldConditions = Object.entries(fieldFilters as Record<string, string[]>).map(([fieldKey, values]) => {
+const buildFieldFiltersSql = (fieldFilters?: Record<string, string[]>) => {
+  if (fieldFilters != null && Object.keys(fieldFilters).length > 0) {
+    const fieldConditions = Object.entries(fieldFilters).map(([fieldKey, values]) => {
       if (!Array.isArray(values) || values.length === 0) return sql`TRUE`;
       return sql`(e.data #>> string_to_array(${fieldKey}, '.')) IN (${sql.join(
         values.map((v) => sql`${v}`),
@@ -75,7 +70,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
       return NextResponse.json(DEFAULT_CLUSTER_STATS);
     }
 
-    const filters = buildMapClusterFilters(parameters, accessibleCatalogIds);
+    const filters = buildEventFilters({ parameters, accessibleCatalogIds, requireLocation: true });
 
     // If user doesn't have access to the requested catalog, return default stats
     if (filters.denyAccess === true || filters.denyResults === true) {
@@ -90,13 +85,10 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
   }
 });
 
-const calculateGlobalStats = async (
-  payload: Awaited<ReturnType<typeof getPayload>>,
-  filters: Record<string, unknown>
-) => {
-  const { catalog, datasets, startDate, endDate, accessibleCatalogIds, fieldFilters } = filters;
+const calculateGlobalStats = async (payload: Awaited<ReturnType<typeof getPayload>>, filters: EventFilters) => {
+  const { catalogId, catalogIds, datasets, startDate, endDate, fieldFilters } = filters;
 
-  const catalogFilter = buildCatalogFilterSql(catalog, accessibleCatalogIds);
+  const catalogFilter = buildCatalogFilterSql(catalogId, catalogIds);
   const fieldFiltersSql = buildFieldFiltersSql(fieldFilters);
 
   // Query to get event counts grouped by location (simulating clustering at high zoom)
@@ -113,15 +105,15 @@ const calculateGlobalStats = async (
         AND e.location_latitude IS NOT NULL
         ${catalogFilter}
         ${
-          Array.isArray(datasets) && datasets.length > 0
+          datasets != null && datasets.length > 0
             ? sql`AND e.dataset_id IN (${sql.join(
-                normalizeStrictIntegerList(datasets).map((d) => sql`${d}`),
+                datasets.map((d) => sql`${d}`),
                 sql`, `
               )})`
             : sql``
         }
-        ${startDate != null ? sql`AND e.event_timestamp >= ${startDate as string}::timestamp` : sql``}
-        ${endDate != null ? sql`AND e.event_timestamp <= ${endDate as string}::timestamp` : sql``}
+        ${startDate != null ? sql`AND e.event_timestamp >= ${startDate}::timestamp` : sql``}
+        ${endDate != null ? sql`AND e.event_timestamp <= ${endDate}::timestamp` : sql``}
         ${fieldFiltersSql}
     ),
     location_clusters AS (

@@ -12,84 +12,74 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Inpu
 import { Check, Key, Loader2 } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { useFormSubmission } from "@/lib/hooks/use-form-submission";
+
 const MIN_PASSWORD_LENGTH = 8;
 
 export const ChangePasswordForm = () => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const { status, error, isLoading, submit, reset } = useFormSubmission();
 
-  const handleCurrentPasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setCurrentPassword(e.target.value);
-    setError(null);
-    setSuccess(false);
-  }, []);
+  const handleCurrentPasswordChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setCurrentPassword(e.target.value);
+      reset();
+    },
+    [reset]
+  );
 
-  const handleNewPasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewPassword(e.target.value);
-    setError(null);
-    setSuccess(false);
-  }, []);
+  const handleNewPasswordChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setNewPassword(e.target.value);
+      reset();
+    },
+    [reset]
+  );
 
-  const handleConfirmPasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setConfirmPassword(e.target.value);
-    setError(null);
-    setSuccess(false);
-  }, []);
+  const handleConfirmPasswordChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setConfirmPassword(e.target.value);
+      reset();
+    },
+    [reset]
+  );
 
   const handleSubmit = useCallback(
     (e: React.SyntheticEvent<HTMLFormElement>) => {
       e.preventDefault();
 
-      // Validation
-      if (!currentPassword || !newPassword || !confirmPassword) {
-        setError("All fields are required");
-        return;
-      }
+      if (!currentPassword || !newPassword || !confirmPassword) return;
 
-      if (newPassword.length < MIN_PASSWORD_LENGTH) {
-        setError(`New password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-        return;
-      }
-
-      if (newPassword !== confirmPassword) {
-        setError("New passwords do not match");
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      void (async () => {
-        try {
-          const response = await fetch("/api/account/change-password", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ currentPassword, newPassword }),
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.error ?? "Failed to change password");
-          }
-
-          setSuccess(true);
-          setCurrentPassword("");
-          setNewPassword("");
-          setConfirmPassword("");
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Failed to change password");
-        } finally {
-          setLoading(false);
+      submit(async () => {
+        if (newPassword.length < MIN_PASSWORD_LENGTH) {
+          throw new Error(`New password must be at least ${MIN_PASSWORD_LENGTH} characters`);
         }
-      })();
+
+        // eslint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
+        if (newPassword !== confirmPassword) {
+          throw new Error("New passwords do not match");
+        }
+        const response = await fetch("/api/account/change-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ currentPassword, newPassword }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error ?? "Failed to change password");
+        }
+
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      });
     },
-    [currentPassword, newPassword, confirmPassword]
+    [currentPassword, newPassword, confirmPassword, submit]
   );
 
   return (
@@ -105,7 +95,7 @@ export const ChangePasswordForm = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">{error}</div>}
 
-          {success && (
+          {status === "success" && (
             <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-300">
               <Check className="h-4 w-4" />
               Password changed successfully
@@ -120,7 +110,7 @@ export const ChangePasswordForm = () => {
               value={currentPassword}
               onChange={handleCurrentPasswordChange}
               placeholder="Enter current password"
-              disabled={loading}
+              disabled={isLoading}
             />
           </div>
 
@@ -132,7 +122,7 @@ export const ChangePasswordForm = () => {
               value={newPassword}
               onChange={handleNewPasswordChange}
               placeholder="Enter new password"
-              disabled={loading}
+              disabled={isLoading}
             />
             <p className="text-muted-foreground text-xs">Must be at least {MIN_PASSWORD_LENGTH} characters</p>
           </div>
@@ -145,12 +135,12 @@ export const ChangePasswordForm = () => {
               value={confirmPassword}
               onChange={handleConfirmPasswordChange}
               placeholder="Confirm new password"
-              disabled={loading}
+              disabled={isLoading}
             />
           </div>
 
-          <Button type="submit" disabled={loading || !currentPassword || !newPassword || !confirmPassword}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" disabled={isLoading || !currentPassword || !newPassword || !confirmPassword}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Change Password
           </Button>
         </form>

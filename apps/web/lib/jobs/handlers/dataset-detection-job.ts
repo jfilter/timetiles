@@ -21,6 +21,7 @@ import { read, utils } from "xlsx";
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
 import { parseStrictInteger } from "@/lib/utils/event-params";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Dataset } from "@/payload-types";
 
 import type { DatasetDetectionJobInput } from "../types/job-inputs";
@@ -116,10 +117,7 @@ const handleSingleSheet = async (
   let dataset;
 
   if (datasetMapping?.mappingType === "single" && datasetMapping.singleDataset) {
-    const datasetId =
-      typeof datasetMapping.singleDataset === "object" && datasetMapping.singleDataset != null
-        ? (datasetMapping.singleDataset as { id: string }).id
-        : (datasetMapping.singleDataset as string);
+    const datasetId = extractRelationId<string>(datasetMapping.singleDataset as { id: string } | string)!;
 
     dataset = await payload.findByID({
       collection: COLLECTION_NAMES.DATASETS,
@@ -195,7 +193,7 @@ const processSheetWithMapping = async (
     );
 
     if (mapping) {
-      const datasetId = typeof mapping.dataset === "object" ? (mapping.dataset as { id: string }).id : mapping.dataset;
+      const datasetId = extractRelationId<string>(mapping.dataset as { id: string } | string);
 
       dataset = await payload.findByID({
         collection: COLLECTION_NAMES.DATASETS,
@@ -291,8 +289,7 @@ export const datasetDetectionJob = {
         | undefined;
 
       // Extract userId from import file for setting createdBy on auto-created catalogs/datasets
-      const userId =
-        typeof importFile.user === "object" && importFile.user ? importFile.user.id : (importFile.user as number);
+      const userId = extractRelationId(importFile.user) as number;
 
       const createdJobs =
         sheets.length === 1

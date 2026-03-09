@@ -25,6 +25,7 @@ import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { ErrorRecoveryService } from "@/lib/services/error-recovery";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { badRequest, forbidden, internalError, notFound } from "@/lib/utils/api-response";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import config from "@/payload.config";
 
 export const POST = withRateLimit(
@@ -68,7 +69,7 @@ export const POST = withRateLimit(
         }
 
         // Get import file for quota check
-        const importFileId = typeof importJob.importFile === "object" ? importJob.importFile.id : importJob.importFile;
+        const importFileId = extractRelationId(importJob.importFile)!;
         const importFile = await payload.findByID({
           collection: "import-files",
           id: importFileId,
@@ -77,7 +78,7 @@ export const POST = withRateLimit(
 
         // Check quota before allowing retry
         if (importFile.user) {
-          const userId = typeof importFile.user === "object" ? importFile.user.id : importFile.user;
+          const userId = extractRelationId(importFile.user)!;
 
           // Get full user object for quota checking
           const user = await payload.findByID({

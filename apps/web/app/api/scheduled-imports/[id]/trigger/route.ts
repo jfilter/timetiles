@@ -11,6 +11,7 @@ import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { apiError, badRequest, forbidden, internalError, notFound } from "@/lib/utils/api-response";
 import { parseStrictInteger } from "@/lib/utils/event-params";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import config from "@/payload.config";
 
 interface RouteContext {
@@ -43,8 +44,7 @@ export const POST = withAuth(async (_request: AuthenticatedRequest, context: Rou
       return notFound("Schedule not found");
     }
 
-    const createdById =
-      typeof existingSchedule.createdBy === "object" ? existingSchedule.createdBy?.id : existingSchedule.createdBy;
+    const createdById = extractRelationId(existingSchedule.createdBy);
     if (user.role !== "admin" && createdById !== user.id) {
       return forbidden();
     }
