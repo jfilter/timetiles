@@ -68,6 +68,7 @@ export type ClusterStatsParameters = BaseEventParameters;
 
 /** Pattern for valid field path segments: alphanumeric, underscores, hyphens only */
 const FIELD_SEGMENT_PATTERN = /^[a-zA-Z0-9_-]+$/;
+const INTEGER_PATTERN = /^-?\d+$/;
 const MAX_FIELD_KEY_LENGTH = 64;
 const MAX_FIELD_FILTERS = 10;
 
@@ -75,6 +76,29 @@ const isValidFieldPath = (fieldPath: string): boolean =>
   fieldPath.length > 0 &&
   fieldPath.length <= MAX_FIELD_KEY_LENGTH &&
   fieldPath.split(".").every((segment) => segment.length > 0 && FIELD_SEGMENT_PATTERN.test(segment));
+
+const parseIntegerParam = (value: string | null, fallback: number): number => {
+  if (value == null) {
+    return fallback;
+  }
+
+  const trimmedValue = value.trim();
+  if (!INTEGER_PATTERN.test(trimmedValue)) {
+    return fallback;
+  }
+
+  return parseInt(trimmedValue, 10);
+};
+
+const readOptionalParam = (searchParams: URLSearchParams, key: string): string | null => {
+  const value = searchParams.get(key);
+  if (value == null) {
+    return null;
+  }
+
+  const trimmedValue = value.trim();
+  return trimmedValue === "" ? null : trimmedValue;
+};
 
 /**
  * Sanitize field filter keys to prevent injection via arbitrary paths.
@@ -133,10 +157,10 @@ export const extractBaseEventParameters = (searchParams: URLSearchParams): BaseE
   }
 
   return {
-    catalog: searchParams.get("catalog"),
+    catalog: readOptionalParam(searchParams, "catalog"),
     datasets,
-    startDate: searchParams.get("startDate"),
-    endDate: searchParams.get("endDate"),
+    startDate: readOptionalParam(searchParams, "startDate"),
+    endDate: readOptionalParam(searchParams, "endDate"),
     fieldFilters,
   };
 };
@@ -150,9 +174,9 @@ export const extractBaseEventParameters = (searchParams: URLSearchParams): BaseE
 export const extractListParameters = (searchParams: URLSearchParams): ListParameters => ({
   ...extractBaseEventParameters(searchParams),
   boundsParam: searchParams.get("bounds"),
-  page: Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1),
-  limit: Math.min(Math.max(1, parseInt(searchParams.get("limit") ?? "100", 10) || 100), 1000),
-  sort: searchParams.get("sort") ?? "-eventTimestamp",
+  page: Math.max(1, parseIntegerParam(searchParams.get("page"), 1)),
+  limit: Math.min(Math.max(1, parseIntegerParam(searchParams.get("limit"), 100)), 1000),
+  sort: readOptionalParam(searchParams, "sort") ?? "-eventTimestamp",
 });
 
 /**
@@ -163,7 +187,7 @@ export const extractListParameters = (searchParams: URLSearchParams): ListParame
  */
 export const extractHistogramParameters = (searchParams: URLSearchParams): HistogramParameters => {
   const clampBuckets = (value: string | null, fallback: number) =>
-    Math.min(Math.max(1, parseInt(value ?? String(fallback), 10) || fallback), 500);
+    Math.min(Math.max(1, parseIntegerParam(value, fallback)), 500);
 
   return {
     ...extractBaseEventParameters(searchParams),
@@ -183,7 +207,7 @@ export const extractHistogramParameters = (searchParams: URLSearchParams): Histo
 export const extractMapClusterParameters = (searchParams: URLSearchParams): MapClusterParameters => ({
   ...extractBaseEventParameters(searchParams),
   boundsParam: searchParams.get("bounds"),
-  zoom: Math.min(Math.max(0, parseInt(searchParams.get("zoom") ?? "10", 10) || 10), 28),
+  zoom: Math.min(Math.max(0, parseIntegerParam(searchParams.get("zoom"), 10)), 28),
 });
 
 /**

@@ -51,6 +51,14 @@ describe("event-params", () => {
       expect(result.fieldFilters).toEqual({});
     });
 
+    it("treats blank catalog and date params as absent", () => {
+      const params = new URLSearchParams("catalog=&startDate=&endDate=");
+      const result = extractBaseEventParameters(params);
+      expect(result.catalog).toBeNull();
+      expect(result.startDate).toBeNull();
+      expect(result.endDate).toBeNull();
+    });
+
     describe("field filter validation", () => {
       it("should allow valid alphanumeric field keys", () => {
         const ff = JSON.stringify({ category: ["A"], event_type: ["B"], my_field_2: ["C"] });
@@ -165,6 +173,12 @@ describe("event-params", () => {
       expect(result.sort).toBe("-eventTimestamp");
     });
 
+    it("should fall back to the default sort when sort is blank", () => {
+      const params = new URLSearchParams("sort=");
+      const result = extractListParameters(params);
+      expect(result.sort).toBe("-eventTimestamp");
+    });
+
     it("should cap limit at 1000", () => {
       const params = new URLSearchParams("limit=5000");
       const result = extractListParameters(params);
@@ -200,6 +214,13 @@ describe("event-params", () => {
       const result = extractListParameters(params);
       expect(result.limit).toBe(1);
     });
+
+    it("should reject partially numeric page and limit values", () => {
+      const params = new URLSearchParams("page=2abc&limit=50xyz");
+      const result = extractListParameters(params);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(100);
+    });
   });
 
   describe("extractHistogramParameters", () => {
@@ -228,6 +249,14 @@ describe("event-params", () => {
       const result = extractHistogramParameters(params);
       expect(result.targetBuckets).toBe(1);
     });
+
+    it("should reject partially numeric bucket values", () => {
+      const params = new URLSearchParams("targetBuckets=42abc&minBuckets=7xyz&maxBuckets=88oops");
+      const result = extractHistogramParameters(params);
+      expect(result.targetBuckets).toBe(30);
+      expect(result.minBuckets).toBe(20);
+      expect(result.maxBuckets).toBe(50);
+    });
   });
 
   describe("extractMapClusterParameters", () => {
@@ -253,6 +282,12 @@ describe("event-params", () => {
       const params = new URLSearchParams("zoom=-5");
       const result = extractMapClusterParameters(params);
       expect(result.zoom).toBe(0);
+    });
+
+    it("should reject partially numeric zoom values", () => {
+      const params = new URLSearchParams("zoom=5abc");
+      const result = extractMapClusterParameters(params);
+      expect(result.zoom).toBe(10);
     });
   });
 

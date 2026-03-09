@@ -30,6 +30,14 @@ export interface AggregationFilters {
   fieldFilters?: Record<string, string[]> | null;
 }
 
+const buildLongitudeBoundsClause = (bounds: SimpleBounds): ReturnType<typeof sql> => {
+  if (bounds.west <= bounds.east) {
+    return sql`e.location_longitude >= ${bounds.west} AND e.location_longitude <= ${bounds.east}`;
+  }
+
+  return sql`(e.location_longitude >= ${bounds.west} OR e.location_longitude <= ${bounds.east})`;
+};
+
 /**
  * Build SQL WHERE clause fragments from filter parameters.
  *
@@ -68,19 +76,8 @@ export const buildAggregationWhereClause = (
     if (accessibleCatalogIds.includes(catalogId)) {
       clauses.push(sql`d.catalog_id = ${catalogId}`);
     } else {
-      // User trying to access catalog they don't have permission for
-      // Fall back to all accessible catalogs instead
-      if (accessibleCatalogIds.length > 0) {
-        clauses.push(
-          sql`d.catalog_id IN (${sql.join(
-            accessibleCatalogIds.map((id) => sql`${id}`),
-            sql`, `
-          )})`
-        );
-      } else {
-        // No accessible catalogs - query will return empty result
-        clauses.push(sql`FALSE`);
-      }
+      // A requested but inaccessible/invalid catalog should not broaden results.
+      clauses.push(sql`FALSE`);
     }
   } else {
     // No specific catalog requested, filter by all accessible catalogs
@@ -125,8 +122,7 @@ export const buildAggregationWhereClause = (
   if (filters.bounds) {
     clauses.push(sql`e.location_latitude >= ${filters.bounds.south}`);
     clauses.push(sql`e.location_latitude <= ${filters.bounds.north}`);
-    clauses.push(sql`e.location_longitude >= ${filters.bounds.west}`);
-    clauses.push(sql`e.location_longitude <= ${filters.bounds.east}`);
+    clauses.push(buildLongitudeBoundsClause(filters.bounds));
   }
 
   // 6. Field Filters (OPTIONAL) - for categorical filtering by enum values

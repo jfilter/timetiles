@@ -105,4 +105,85 @@ describe.sequential("GET /api/v1/events", () => {
       })
     );
   });
+
+  it("uses an OR longitude filter for antimeridian-crossing bounds", async () => {
+    mocks.mockExtractListParameters.mockReturnValue({
+      catalog: null,
+      datasets: [],
+      startDate: null,
+      endDate: null,
+      fieldFilters: {},
+      boundsParam: '{"west":170,"east":-170,"south":-10,"north":10}',
+      page: 1,
+      limit: 100,
+      sort: "-eventTimestamp",
+    });
+    mocks.mockParseBoundsParameter.mockReturnValue({
+      bounds: {
+        west: 170,
+        east: -170,
+        south: -10,
+        north: 10,
+      },
+    });
+
+    const response = await GET(createRequest(""), undefined);
+
+    expect(response.status).toBe(200);
+    expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
+    expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          and: expect.arrayContaining([
+            {
+              or: [
+                {
+                  "location.longitude": {
+                    greater_than_equal: 170,
+                  },
+                },
+                {
+                  "location.longitude": {
+                    less_than_equal: -170,
+                  },
+                },
+              ],
+            },
+          ]),
+        }),
+      })
+    );
+  });
+
+  it("returns no results when the catalog filter is invalid", async () => {
+    mocks.mockExtractListParameters.mockReturnValue({
+      catalog: "abc",
+      datasets: [],
+      startDate: null,
+      endDate: null,
+      fieldFilters: {},
+      boundsParam: null,
+      page: 1,
+      limit: 100,
+      sort: "-eventTimestamp",
+    });
+
+    const response = await GET(createRequest("?catalog=abc"), undefined);
+
+    expect(response.status).toBe(200);
+    expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
+    expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          and: expect.arrayContaining([
+            {
+              id: {
+                equals: -1,
+              },
+            },
+          ]),
+        }),
+      })
+    );
+  });
 });

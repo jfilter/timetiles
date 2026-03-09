@@ -143,8 +143,20 @@ export const parseBoundsParameter = (boundsParam: string | null): ParseBoundsRes
 export const isWithinBounds = (point: Coordinates, bounds: MapBounds): boolean =>
   point.latitude >= bounds.south &&
   point.latitude <= bounds.north &&
-  point.longitude >= bounds.west &&
-  point.longitude <= bounds.east;
+  (bounds.west <= bounds.east
+    ? point.longitude >= bounds.west && point.longitude <= bounds.east
+    : point.longitude >= bounds.west || point.longitude <= bounds.east);
+
+const clampLatitude = (latitude: number): number => Math.max(-90, Math.min(90, latitude));
+
+const normalizeLongitude = (longitude: number): number => {
+  if (longitude >= -180 && longitude <= 180) {
+    return longitude;
+  }
+
+  const normalized = ((((longitude + 180) % 360) + 360) % 360) - 180;
+  return normalized === -180 && longitude > 0 ? 180 : normalized;
+};
 
 /**
  * Create a bounding box around a center point with given radius.
@@ -170,9 +182,9 @@ export const createBoundingBox = (center: Coordinates, radiusKm: number): MapBou
   const radiusDeg = radiusKm / 111; // Rough conversion: 1 degree ≈ 111 km
 
   return {
-    north: center.latitude + radiusDeg,
-    south: center.latitude - radiusDeg,
-    east: center.longitude + radiusDeg,
-    west: center.longitude - radiusDeg,
+    north: clampLatitude(center.latitude + radiusDeg),
+    south: clampLatitude(center.latitude - radiusDeg),
+    east: normalizeLongitude(center.longitude + radiusDeg),
+    west: normalizeLongitude(center.longitude - radiusDeg),
   };
 };

@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { isValidBounds } from "@/lib/geospatial/bounds";
+import { createBoundingBox, isValidBounds, isWithinBounds } from "@/lib/geospatial/bounds";
 
 describe("isValidBounds", () => {
   describe("valid bounds", () => {
@@ -115,5 +115,42 @@ describe("isValidBounds", () => {
     it("should return false when west < -180", () => {
       expect(isValidBounds({ north: 41, south: 40, east: -73, west: -181 })).toBe(false);
     });
+  });
+});
+
+describe("isWithinBounds", () => {
+  it("returns true for points inside antimeridian-crossing bounds", () => {
+    expect(
+      isWithinBounds(
+        { latitude: 0, longitude: 175 },
+        { north: 10, south: -10, west: 170, east: -170 }
+      )
+    ).toBe(true);
+
+    expect(
+      isWithinBounds(
+        { latitude: 0, longitude: -175 },
+        { north: 10, south: -10, west: 170, east: -170 }
+      )
+    ).toBe(true);
+  });
+});
+
+describe("createBoundingBox", () => {
+  it("wraps longitudes that cross the antimeridian", () => {
+    const bounds = createBoundingBox({ latitude: 0, longitude: 179.8 }, 50);
+
+    expect(bounds.east).toBeLessThanOrEqual(180);
+    expect(bounds.east).toBeCloseTo(-179.7495, 3);
+    expect(bounds.west).toBeCloseTo(179.3495, 3);
+    expect(isValidBounds(bounds)).toBe(true);
+  });
+
+  it("clamps latitudes that would extend past the poles", () => {
+    const bounds = createBoundingBox({ latitude: 89.9, longitude: 0 }, 50);
+
+    expect(bounds.north).toBe(90);
+    expect(bounds.south).toBeLessThan(90);
+    expect(isValidBounds(bounds)).toBe(true);
   });
 });

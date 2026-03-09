@@ -4,9 +4,47 @@
  * @module
  * @category Tests
  */
-import { describe, expect, it } from "vitest";
+const mocks = vi.hoisted(() => ({
+  mockSqlJoin: vi.fn((parts: unknown[], separator: unknown) => ({
+    type: "join",
+    parts,
+    separator,
+  })),
+}));
 
-import { normalizeEndDate } from "@/lib/services/aggregation-filters";
+vi.mock("@payloadcms/db-postgres", () => ({
+  sql: Object.assign(
+    (strings: TemplateStringsArray, ...values: unknown[]) => ({
+      type: "sql",
+      strings: Array.from(strings),
+      values,
+    }),
+    {
+      join: mocks.mockSqlJoin,
+      raw: vi.fn((value: string) => ({ type: "raw", value })),
+    }
+  ),
+}));
+
+import { describe, expect, it, vi } from "vitest";
+
+import { buildAggregationWhereClause, normalizeEndDate } from "@/lib/services/aggregation-filters";
+
+const collectQueryStrings = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => collectQueryStrings(item));
+  }
+
+  if (typeof value === "string") {
+    return [value];
+  }
+
+  if (value != null && typeof value === "object") {
+    return Object.values(value).flatMap((item) => collectQueryStrings(item));
+  }
+
+  return [];
+};
 
 describe("aggregation-filters", () => {
   describe("normalizeEndDate", () => {
@@ -28,6 +66,42 @@ describe("aggregation-filters", () => {
 
     it("should pass through dates with any time component", () => {
       expect(normalizeEndDate("2024-01-01T00:00:00.000Z")).toBe("2024-01-01T00:00:00.000Z");
+    });
+  });
+
+  describe("buildAggregationWhereClause", () => {
+    it("builds an OR longitude clause for antimeridian-crossing bounds", () => {
+      const clause = buildAggregationWhereClause(
+        {
+          bounds: {
+            north: 10,
+            south: -10,
+            west: 170,
+            east: -170,
+          },
+        },
+        [1]
+      );
+
+      const queryText = collectQueryStrings(clause).join(" ");
+
+      expect(queryText).toContain("e.location_longitude >= ");
+      expect(queryText).toContain(" OR ");
+      expect(queryText).toContain("e.location_longitude <= ");
+    });
+
+    it("returns no results instead of broadening when the requested catalog is inaccessible", () => {
+      const clause = buildAggregationWhereClause(
+        {
+          catalog: "999",
+        },
+        [1, 2]
+      );
+
+      const queryText = collectQueryStrings(clause).join(" ");
+
+      expect(queryText).toContain("FALSE");
+      expect(queryText).not.toContain("d.catalog_id IN (");
     });
   });
 });

@@ -23,7 +23,10 @@ import type { Event, User } from "@/payload-types";
 
 const addCatalogFilter = (where: Where, catalog: string) => {
   const catalogId = parseInt(catalog, 10);
-  if (isNaN(catalogId)) return;
+  if (isNaN(catalogId)) {
+    where.and = [...(Array.isArray(where.and) ? where.and : []), { id: { equals: -1 } }];
+    return;
+  }
 
   where.and = [
     ...(Array.isArray(where.and) ? where.and : []),
@@ -55,6 +58,37 @@ const addDatasetFilter = (where: Where, datasets: string[]) => {
 };
 
 const addBoundsFilter = (where: Where, bounds: MapBounds) => {
+  const longitudeFilter =
+    bounds.west <= bounds.east
+      ? [
+          {
+            "location.longitude": {
+              greater_than_equal: bounds.west,
+            },
+          },
+          {
+            "location.longitude": {
+              less_than_equal: bounds.east,
+            },
+          },
+        ]
+      : [
+          {
+            or: [
+              {
+                "location.longitude": {
+                  greater_than_equal: bounds.west,
+                },
+              },
+              {
+                "location.longitude": {
+                  less_than_equal: bounds.east,
+                },
+              },
+            ],
+          },
+        ];
+
   where.and = [
     ...(Array.isArray(where.and) ? where.and : []),
     {
@@ -67,16 +101,7 @@ const addBoundsFilter = (where: Where, bounds: MapBounds) => {
         less_than_equal: bounds.north,
       },
     },
-    {
-      "location.longitude": {
-        greater_than_equal: bounds.west,
-      },
-    },
-    {
-      "location.longitude": {
-        less_than_equal: bounds.east,
-      },
-    },
+    ...longitudeFilter,
   ];
 };
 
