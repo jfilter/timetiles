@@ -11,7 +11,7 @@
 import type { MapBounds } from "@/lib/geospatial";
 import { normalizeEndDate } from "@/lib/services/aggregation-filters";
 
-import { normalizeStrictIntegerList, parseStrictInteger, type BaseEventParameters } from "./event-params";
+import { type BaseEventParameters, normalizeStrictIntegerList, parseStrictInteger } from "./event-params";
 
 /**
  * Event filters for SQL/Drizzle queries.

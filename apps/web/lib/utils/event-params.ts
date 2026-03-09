@@ -95,9 +95,7 @@ export const parseStrictInteger = (value: string | number | null | undefined): n
 };
 
 export const normalizeStrictIntegerList = (values: Array<string | number>): number[] =>
-  values
-    .map((value) => parseStrictInteger(value))
-    .filter((value): value is number => value != null);
+  values.map((value) => parseStrictInteger(value)).filter((value): value is number => value != null);
 
 const parseIntegerParam = (value: string | null, fallback: number): number => parseStrictInteger(value) ?? fallback;
 

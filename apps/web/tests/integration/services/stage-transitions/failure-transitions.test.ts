@@ -18,7 +18,15 @@ import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
 import { createIntegrationTestEnvironment, withCatalog, withImportFile } from "../../../setup/integration/environment";
 
 describe.sequential("Failure Transitions Integration", () => {
-  const collectionsToReset = ["events", "import-files", "import-jobs", "datasets", "dataset-schemas", "payload-jobs", "user-usage"];
+  const collectionsToReset = [
+    "events",
+    "import-files",
+    "import-jobs",
+    "datasets",
+    "dataset-schemas",
+    "payload-jobs",
+    "user-usage",
+  ];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;

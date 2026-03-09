@@ -42,6 +42,30 @@ export interface BoundsResponse {
 
 const handleError = createErrorHandler("fetching event bounds", logger);
 
+const buildCatalogConditions = (
+  hasCatalogFilter: boolean,
+  catalog: string | null,
+  accessibleCatalogIds: number[]
+): { deny: boolean; conditions: Array<ReturnType<typeof sql>> } => {
+  if (hasCatalogFilter) {
+    const catalogId = parseStrictInteger(catalog);
+    if (catalogId != null && accessibleCatalogIds.includes(catalogId)) {
+      return { deny: false, conditions: [sql`d.catalog_id = ${catalogId}`] };
+    }
+    return { deny: true, conditions: [] };
+  }
+
+  if (accessibleCatalogIds.length === 0) {
+    return { deny: false, conditions: [sql`FALSE`] };
+  }
+
+  const catalogIdList = sql.join(
+    accessibleCatalogIds.map((id) => sql`${id}`),
+    sql`, `
+  );
+  return { deny: false, conditions: [sql`d.catalog_id IN (${catalogIdList})`] };
+};
+
 const buildFieldFilterConditions = (fieldFilters: Record<string, string[]>): Array<ReturnType<typeof sql>> => {
   const conditions: Array<ReturnType<typeof sql>> = [];
 
@@ -101,30 +125,14 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
     ];
 
     // Apply catalog access control
-    if (hasCatalogFilter) {
-      const catalogId = parseStrictInteger(parameters.catalog!);
-      // Only include if user has access to this catalog
-      if (catalogId != null && accessibleCatalogIds.includes(catalogId)) {
-        conditions.push(sql`d.catalog_id = ${catalogId}`);
-      } else {
-        // User trying to access catalog they don't have permission for - deny access
-        return NextResponse.json<BoundsResponse>({
-          bounds: null,
-          count: 0,
-        });
-      }
-    } else {
-      // No specific catalog requested, filter by all accessible catalogs
-      if (accessibleCatalogIds.length === 0) {
-        conditions.push(sql`FALSE`);
-      } else {
-        const catalogIdList = sql.join(
-          accessibleCatalogIds.map((id) => sql`${id}`),
-          sql`, `
-        );
-        conditions.push(sql`d.catalog_id IN (${catalogIdList})`);
-      }
+    const catalogResult = buildCatalogConditions(hasCatalogFilter, parameters.catalog, accessibleCatalogIds);
+    if (catalogResult.deny) {
+      return NextResponse.json<BoundsResponse>({
+        bounds: null,
+        count: 0,
+      });
     }
+    conditions.push(...catalogResult.conditions);
 
     // Apply dataset filter
     if (parameters.datasets.length > 0 && parameters.datasets[0] !== "") {

@@ -233,8 +233,7 @@ export class TestEnvironmentBuilder {
     };
 
     sharedWorkerEnvironmentDbUrl = dbUrl;
-    let environmentPromise: Promise<SharedWorkerEnvironment>;
-    environmentPromise = loadEnvironment().catch((error) => {
+    const environmentPromise = loadEnvironment().catch((error) => {
       if (sharedWorkerEnvironmentPromise === environmentPromise) {
         sharedWorkerEnvironmentPromise = null;
         sharedWorkerEnvironmentDbUrl = null;
@@ -559,8 +558,7 @@ export const runJobsUntilImportJobExists = async (
   payload: any,
   importFileId: string | number,
   options: RunImportJobStageOptions = {}
-): Promise<RunImportJobStageResult> =>
-  runJobsUntilImportJobStage(payload, importFileId, () => true, options);
+): Promise<RunImportJobStageResult> => runJobsUntilImportJobStage(payload, importFileId, () => true, options);
 
 /**
  * Create a test catalog with smart defaults.

@@ -6,9 +6,9 @@
  */
 import "@/tests/mocks/services/logger";
 
-import React, { type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
+import React, { type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useImportUploadMutation } from "@/lib/hooks/use-events-queries";
@@ -37,7 +37,7 @@ describe.sequential("useImportUploadMutation", () => {
     globalThis.fetch = fetchMock;
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ id: "import-123" }),
+      json: () => Promise.resolve({ id: "import-123" }),
     } as Response);
   });
 

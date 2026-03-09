@@ -39,13 +39,15 @@ export class SchemaVersioningService {
     return normalizedValue;
   }
 
-  private static normalizeOptionalId(value: string | number | null | undefined, label: string): number | null | undefined {
+  private static normalizeOptionalId(
+    value: string | number | null | undefined,
+    label: string
+  ): number | null | undefined {
     if (value == null) {
       return value;
     }
 
-    const normalizedValue = this.normalizeRequiredId(value, label);
-    return normalizedValue;
+    return this.normalizeRequiredId(value, label);
   }
 
   /**

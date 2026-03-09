@@ -23,7 +23,11 @@ import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/au
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { createErrorHandler } from "@/lib/utils/api-response";
 import { buildMapClusterFilters } from "@/lib/utils/event-filters";
-import { extractClusterStatsParameters, normalizeStrictIntegerList, parseStrictInteger } from "@/lib/utils/event-params";
+import {
+  extractClusterStatsParameters,
+  normalizeStrictIntegerList,
+  parseStrictInteger,
+} from "@/lib/utils/event-params";
 import config from "@/payload.config";
 
 const handleError = createErrorHandler("calculating cluster stats", logger);
@@ -74,7 +78,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
     const filters = buildMapClusterFilters(parameters, accessibleCatalogIds);
 
     // If user doesn't have access to the requested catalog, return default stats
-    if (filters.denyAccess || filters.denyResults) {
+    if (filters.denyAccess === true || filters.denyResults === true) {
       return NextResponse.json(DEFAULT_CLUSTER_STATS);
     }
 

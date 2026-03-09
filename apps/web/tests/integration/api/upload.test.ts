@@ -15,7 +15,14 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createIntegrationTestEnvironment, withCatalog, withImportFile } from "../../setup/integration/environment";
 
 describe.sequential("Import Files Collection", () => {
-  const collectionsToReset = ["import-files", "import-jobs", "datasets", "dataset-schemas", "payload-jobs", "user-usage"];
+  const collectionsToReset = [
+    "import-files",
+    "import-jobs",
+    "datasets",
+    "dataset-schemas",
+    "payload-jobs",
+    "user-usage",
+  ];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;

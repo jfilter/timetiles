@@ -276,23 +276,28 @@ describe.sequential("Network Error Handling Tests", () => {
           // The connection is established but no data is sent
         });
 
-        const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/slow-file.csv`, {
-          user: testUser,
-          name: "Timeout Import",
-          frequency: "daily",
-          maxRetries: 0, // No retries for timeout test to avoid exceeding test timeout
-          retryDelayMinutes: 1, // Minimum allowed
-          additionalData: {
-            advancedOptions: {
-              timeoutMinutes: 1, // Minimum allowed (overridden to 300ms for this test)
+        const { scheduledImport } = await withScheduledImport(
+          testEnv,
+          testCatalogId,
+          `${testServerUrl}/slow-file.csv`,
+          {
+            user: testUser,
+            name: "Timeout Import",
+            frequency: "daily",
+            maxRetries: 0, // No retries for timeout test to avoid exceeding test timeout
+            retryDelayMinutes: 1, // Minimum allowed
+            additionalData: {
+              advancedOptions: {
+                timeoutMinutes: 1, // Minimum allowed (overridden to 300ms for this test)
+              },
+              retryConfig: {
+                maxRetries: 0, // No retries for timeout test to avoid exceeding test timeout
+                retryDelayMinutes: 1, // Minimum allowed
+                exponentialBackoff: false,
+              },
             },
-            retryConfig: {
-              maxRetries: 0, // No retries for timeout test to avoid exceeding test timeout
-              retryDelayMinutes: 1, // Minimum allowed
-              exponentialBackoff: false,
-            },
-          },
-        });
+          }
+        );
 
         // Execute the job - should timeout quickly via the test override
         const result = await urlFetchJob.handler({

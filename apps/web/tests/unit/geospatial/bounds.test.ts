@@ -120,19 +120,13 @@ describe("isValidBounds", () => {
 
 describe("isWithinBounds", () => {
   it("returns true for points inside antimeridian-crossing bounds", () => {
-    expect(
-      isWithinBounds(
-        { latitude: 0, longitude: 175 },
-        { north: 10, south: -10, west: 170, east: -170 }
-      )
-    ).toBe(true);
+    expect(isWithinBounds({ latitude: 0, longitude: 175 }, { north: 10, south: -10, west: 170, east: -170 })).toBe(
+      true
+    );
 
-    expect(
-      isWithinBounds(
-        { latitude: 0, longitude: -175 },
-        { north: 10, south: -10, west: 170, east: -170 }
-      )
-    ).toBe(true);
+    expect(isWithinBounds({ latitude: 0, longitude: -175 }, { north: 10, south: -10, west: 170, east: -170 })).toBe(
+      true
+    );
   });
 });
 

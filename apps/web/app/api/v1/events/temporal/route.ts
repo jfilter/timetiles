@@ -51,7 +51,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
     });
 
     // If user doesn't have access to the requested catalog, return empty result
-    if (filters.denyAccess || filters.denyResults) {
+    if (filters.denyAccess === true || filters.denyResults === true) {
       return NextResponse.json(buildEmptyHistogramResponse());
     }
 

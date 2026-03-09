@@ -106,7 +106,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     return dataset;
   };
 
-  const getImportJobs = async (importFileId: string | number) =>
+  const getImportJobs = (importFileId: string | number) =>
     payload.find({
       collection: "import-jobs",
       where: { importFile: { equals: importFileId } },
@@ -146,12 +146,9 @@ describe.sequential("Comprehensive File Upload Tests", () => {
   };
 
   const waitForImportJobStage = async (importFileId: string | number, stage: string, maxIterations = 50) => {
-    const result = await runJobsUntilImportJobStage(
-      payload,
-      importFileId,
-      (importJob) => importJob.stage === stage,
-      { maxIterations }
-    );
+    const result = await runJobsUntilImportJobStage(payload, importFileId, (importJob) => importJob.stage === stage, {
+      maxIterations,
+    });
 
     if (!result.matched || !result.importJob) {
       throw new Error(`Import job did not reach ${stage} for import file ${String(importFileId)}`);
