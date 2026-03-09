@@ -8,6 +8,13 @@ import "@/tests/mocks/services/logger";
 
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/services/audit-log-service", () => ({
+  AUDIT_ACTIONS: { DATASET_VISIBILITY_CHANGED: "data.dataset_visibility_changed" },
+  auditLog: vi.fn(),
+}));
+
+vi.mock("@/lib/utils/relation-id", () => ({ extractRelationId: vi.fn(() => null) }));
+
 import { syncIsPublicToEvents } from "@/lib/collections/datasets/hooks";
 
 const createMockContext = (
@@ -20,7 +27,7 @@ const createMockContext = (
     doc,
     previousDoc,
     operation,
-    req: { payload: { update: mockUpdate } } as any,
+    req: { payload: { update: mockUpdate, findByID: vi.fn() } } as any,
     collection: {} as any,
     context: {} as any,
     mockUpdate,
@@ -29,73 +36,49 @@ const createMockContext = (
 
 describe("syncIsPublicToEvents", () => {
   it("should skip if operation is not update", async () => {
-    const ctx = createMockContext(
-      { id: 1, isPublic: true, catalogIsPublic: true },
-      { isPublic: false },
-      "create"
-    );
+    const ctx = createMockContext({ id: 1, isPublic: true, catalogIsPublic: true }, { isPublic: false }, "create");
     await syncIsPublicToEvents(ctx as any);
     expect(ctx.mockUpdate).not.toHaveBeenCalled();
   });
 
   it("should skip if isPublic did not change", async () => {
-    const ctx = createMockContext(
-      { id: 1, isPublic: true, catalogIsPublic: true },
-      { isPublic: true }
-    );
+    const ctx = createMockContext({ id: 1, isPublic: true, catalogIsPublic: true }, { isPublic: true });
     await syncIsPublicToEvents(ctx as any);
     expect(ctx.mockUpdate).not.toHaveBeenCalled();
   });
 
   it("should sync true when both dataset and catalog are public", async () => {
-    const ctx = createMockContext(
-      { id: 1, isPublic: true, catalogIsPublic: true },
-      { isPublic: false }
-    );
+    const ctx = createMockContext({ id: 1, isPublic: true, catalogIsPublic: true }, { isPublic: false });
     await syncIsPublicToEvents(ctx as any);
     expect(ctx.mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: { datasetIsPublic: true },
-      })
+      expect.objectContaining({ collection: "events", data: { datasetIsPublic: true } })
+    );
+    expect(ctx.mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "dataset-schemas", data: { datasetIsPublic: true } })
     );
   });
 
   it("should sync false when dataset is public but catalog is private", async () => {
-    const ctx = createMockContext(
-      { id: 1, isPublic: true, catalogIsPublic: false },
-      { isPublic: false }
-    );
+    const ctx = createMockContext({ id: 1, isPublic: true, catalogIsPublic: false }, { isPublic: false });
     await syncIsPublicToEvents(ctx as any);
     expect(ctx.mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: { datasetIsPublic: false },
-      })
+      expect.objectContaining({ collection: "events", data: { datasetIsPublic: false } })
     );
   });
 
   it("should sync false when dataset is private regardless of catalog", async () => {
-    const ctx = createMockContext(
-      { id: 1, isPublic: false, catalogIsPublic: true },
-      { isPublic: true }
-    );
+    const ctx = createMockContext({ id: 1, isPublic: false, catalogIsPublic: true }, { isPublic: true });
     await syncIsPublicToEvents(ctx as any);
     expect(ctx.mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: { datasetIsPublic: false },
-      })
+      expect.objectContaining({ collection: "events", data: { datasetIsPublic: false } })
     );
   });
 
   it("should treat null catalogIsPublic as false", async () => {
-    const ctx = createMockContext(
-      { id: 1, isPublic: true, catalogIsPublic: null },
-      { isPublic: false }
-    );
+    const ctx = createMockContext({ id: 1, isPublic: true, catalogIsPublic: null }, { isPublic: false });
     await syncIsPublicToEvents(ctx as any);
     expect(ctx.mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: { datasetIsPublic: false },
-      })
+      expect.objectContaining({ collection: "events", data: { datasetIsPublic: false } })
     );
   });
 });

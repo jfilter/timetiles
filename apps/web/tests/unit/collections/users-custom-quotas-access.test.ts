@@ -4,15 +4,13 @@
  * @module
  * @category Tests
  */
+import type { FieldAccess } from "payload";
 import { describe, expect, it } from "vitest";
 
 import Users from "@/lib/collections/users";
-import type { FieldAccess } from "payload";
 
 // Extract the customQuotas field from the Users collection
-const customQuotasField = Users.fields.find(
-  (f) => "name" in f && f.name === "customQuotas"
-);
+const customQuotasField = Users.fields.find((f) => "name" in f && f.name === "customQuotas");
 const access = customQuotasField && "access" in customQuotasField ? customQuotasField.access : undefined;
 
 describe("customQuotas field access", () => {
