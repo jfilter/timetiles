@@ -37,7 +37,14 @@ describe("Import Transforms - Integration", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate();
+    await testEnv.seedManager.truncate([
+      "catalogs",
+      "datasets",
+      "dataset-schemas",
+      "import-files",
+      "import-jobs",
+      "payload-jobs",
+    ]);
   });
 
   describe("Schema Detection with Transforms", () => {

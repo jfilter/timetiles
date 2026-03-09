@@ -31,7 +31,8 @@ describe.sequential("Data Export Service", () => {
     const env = await createIntegrationTestEnvironment();
     payload = env.payload;
     cleanup = env.cleanup;
-    truncate = env.seedManager.truncate.bind(env.seedManager);
+    truncate = () =>
+      env.seedManager.truncate(["users", "catalogs", "datasets", "events", "data-exports", "payload-jobs"]);
     testExportDir = path.join(process.cwd(), ".exports-test");
   });
 

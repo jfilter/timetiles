@@ -37,7 +37,7 @@ describe.sequential("Schema Maintenance Job", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate();
+    await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events", "dataset-schemas"]);
     await withUsers(testEnv, ["admin"]);
 
     const { catalog } = await withCatalog(testEnv, {

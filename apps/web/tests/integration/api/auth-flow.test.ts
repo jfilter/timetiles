@@ -30,7 +30,7 @@ describe.sequential("Authentication Flow", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate();
+    await testEnv.seedManager.truncate(["users", "user-usage"]);
   });
 
   describe("Self-Registration", () => {

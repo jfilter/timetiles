@@ -43,8 +43,8 @@ describe.sequential("Schema Inference Service", () => {
   });
 
   beforeEach(async () => {
-    // Clear collections
-    await testEnv.seedManager.truncate();
+    // Clear collections used by this test
+    await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events", "dataset-schemas"]);
 
     // Create test users (required for proper environment setup)
     await withUsers(testEnv, ["admin"]);

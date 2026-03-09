@@ -36,7 +36,14 @@ describe.sequential("Import Job Retry API", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate();
+    await testEnv.seedManager.truncate([
+      "users",
+      "catalogs",
+      "datasets",
+      "import-files",
+      "import-jobs",
+      "payload-jobs",
+    ]);
 
     // Create test catalog
     const { catalog } = await withCatalog(testEnv, {

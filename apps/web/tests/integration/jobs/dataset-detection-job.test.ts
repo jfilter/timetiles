@@ -1,12 +1,11 @@
 /**
- * Integration test for dataset-detection job.
+ * Integration tests for dataset-detection job.
  *
- * This test verifies that dataset-detection:
+ * Tests that dataset-detection:
  * 1. Creates import-jobs for each sheet/dataset
- * 2. QUEUES the first processing job (analyze-duplicates) to start the pipeline
- *
- * Bug discovered: dataset-detection creates import-jobs but doesn't queue any jobs,
- * leaving the import stuck at "analyze-duplicates" stage with no processing.
+ * 2. Queues the first processing job (analyze-duplicates) to start the pipeline
+ * 3. Reuses existing datasets by name when originalName matches
+ * 4. Creates new datasets when originalName is missing
  *
  * @module
  */
@@ -16,6 +15,7 @@ import {
   createIntegrationTestEnvironment,
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
   withCatalog,
+  withDataset,
   withImportFile,
   withUsers,
 } from "../../setup/integration/environment";
@@ -97,5 +97,95 @@ describe.sequential("Dataset Detection Job", () => {
 
     expect(updatedJob.stage).not.toBe("analyze-duplicates");
     expect(updatedJob.stage).toBe("detect-schema"); // Should be at next stage
+  });
+
+  it("should reuse existing dataset with matching name instead of creating new one", async () => {
+    const csvContent = "name,date\nEvent 1,2024-01-01\n";
+    const filename = "test-reuse.csv";
+
+    // Pre-create a dataset with specific language
+    const { dataset: preCreatedDataset } = await withDataset(testEnv, testCatalogId, {
+      name: filename, // Name must match for dataset-detection to find it
+      language: "deu", // German
+      schemaConfig: {
+        locked: false,
+        autoGrow: true,
+      },
+    });
+
+    // Create import file with matching originalName
+    const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), csvContent, {
+      filename,
+      mimeType: "text/csv",
+      user: uploadUserId,
+      additionalData: {
+        originalName: filename, // KEY: This must be set for dataset-detection to match
+      },
+    });
+
+    // Run dataset-detection job (automatically queued by import-files hook)
+    await payload.jobs.run({ allQueues: true, limit: 10 });
+
+    // Find the import-job created by dataset-detection
+    const importJobs = await payload.find({
+      collection: "import-jobs",
+      where: { importFile: { equals: importFile.id } },
+      depth: 1,
+    });
+
+    expect(importJobs.docs.length).toBe(1);
+    const importJob = importJobs.docs[0];
+
+    // Dataset-detection should reuse our pre-created dataset
+    const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
+    expect(datasetId).toBe(preCreatedDataset.id);
+
+    // Fetch the dataset to verify language is preserved
+    const usedDataset = await payload.findByID({
+      collection: "datasets",
+      id: datasetId,
+    });
+    expect(usedDataset.language).toBe("deu");
+  });
+
+  it("should create new dataset when originalName is missing", async () => {
+    const csvContent = "name,date\nEvent 1,2024-01-01\n";
+
+    // Pre-create a dataset
+    const { dataset: preCreatedDataset } = await withDataset(testEnv, testCatalogId, {
+      name: "test.csv",
+      language: "deu",
+    });
+
+    // Create import file WITHOUT originalName
+    const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), csvContent, {
+      filename: "different-name.csv", // Different from dataset name
+      mimeType: "text/csv",
+      user: uploadUserId,
+      // NO originalName set
+    });
+
+    // Run dataset-detection job (automatically queued by import-files hook)
+    await payload.jobs.run({ allQueues: true, limit: 10 });
+
+    // Find the import-job
+    const importJobs = await payload.find({
+      collection: "import-jobs",
+      where: { importFile: { equals: importFile.id } },
+      depth: 1,
+    });
+
+    const importJob = importJobs.docs[0];
+    const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
+
+    // Creates a new dataset because originalName is null
+    expect(datasetId).not.toBe(preCreatedDataset.id);
+
+    const usedDataset = await payload.findByID({
+      collection: "datasets",
+      id: datasetId,
+    });
+    // New dataset has default language "eng"
+    expect(usedDataset.language).toBe("eng");
   });
 });
