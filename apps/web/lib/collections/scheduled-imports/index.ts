@@ -321,7 +321,6 @@ const ScheduledImports: CollectionConfig = {
         // Decrement usage when schedule is deleted
         if (req.user && doc.enabled) {
           const quotaService = getQuotaService(req.payload);
-
           await quotaService.decrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
         }
 
