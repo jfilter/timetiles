@@ -270,6 +270,101 @@ describe("applyTransforms", () => {
     expect(getByPath(result, "event.date")).toBeUndefined();
     expect(getByPath(result, "event.location.coords.lat")).toBeUndefined();
   });
+
+  it("should leave blank strings unchanged when parsing numbers", () => {
+    const data = { count: "" };
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "type-cast",
+        from: "count",
+        fromType: "string",
+        toType: "number",
+        strategy: "parse",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+
+    const result = applyTransforms(data, transforms);
+    expect(result.count).toBe("");
+  });
+
+  it("should trim boolean strings before parsing", () => {
+    const data = { active: " yes " };
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "type-cast",
+        from: "active",
+        fromType: "string",
+        toType: "boolean",
+        strategy: "parse",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+
+    const result = applyTransforms(data, transforms);
+    expect(result.active).toBe(true);
+  });
+
+  it("should leave impossible ISO dates unchanged", () => {
+    const data = { date: "2024-02-30" };
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "date-parse",
+        from: "date",
+        inputFormat: "YYYY-MM-DD",
+        outputFormat: "YYYY-MM-DD",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+
+    const result = applyTransforms(data, transforms);
+    expect(result.date).toBe("2024-02-30");
+  });
+
+  it("should parse custom boolean helpers consistently", () => {
+    const data = { active: "false" };
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "type-cast",
+        from: "active",
+        fromType: "string",
+        toType: "boolean",
+        strategy: "custom",
+        customFunction: "return context.parse.boolean(value);",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+
+    const result = applyTransforms(data, transforms);
+    expect(result.active).toBe(false);
+  });
+
+  it("should leave impossible dates unchanged when type-casting to date", () => {
+    const data = { date: "2024-02-30" };
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "type-cast",
+        from: "date",
+        fromType: "string",
+        toType: "date",
+        strategy: "parse",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+
+    const result = applyTransforms(data, transforms);
+    expect(result.date).toBe("2024-02-30");
+  });
 });
 
 describe("applyTransformsBatch", () => {

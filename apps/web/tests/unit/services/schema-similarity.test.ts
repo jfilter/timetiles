@@ -391,6 +391,27 @@ describe("Schema Similarity Service", () => {
       expect(result.breakdown.typeCompatibility).toBe(100);
     });
 
+    it("does not infer blank strings as numeric strings", () => {
+      const uploadedSchema: UploadedSchema = {
+        headers: ["amount"],
+        sampleData: [{ amount: "" }, { amount: "   " }],
+        rowCount: 2,
+      };
+
+      const datasetSchema: DatasetSchema = {
+        datasetId: 1,
+        datasetName: "Numeric Dataset",
+        language: "eng",
+        fields: ["amount"],
+        fieldTypes: { amount: "number" },
+        hasGeoFields: false,
+        hasDateFields: false,
+      };
+
+      const result = calculateSchemaSimilarity(uploadedSchema, datasetSchema);
+      expect(result.breakdown.typeCompatibility).toBe(0);
+    });
+
     it("handles various value types in type inference", () => {
       const uploadedSchema: UploadedSchema = {
         headers: ["arr", "obj", "num", "bool", "date"],
