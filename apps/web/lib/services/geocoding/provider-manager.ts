@@ -54,6 +54,7 @@ export class ProviderManager {
         collection: COLLECTION_NAMES.GEOCODING_PROVIDERS,
         where: whereClause,
         limit: 100,
+        pagination: false,
       });
 
       if (providerResults.docs.length == 0) {

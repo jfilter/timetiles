@@ -36,7 +36,8 @@ export default async function SchedulesPage() {
       createdBy: { equals: user.id },
     },
     sort: "-updatedAt",
-    limit: 50,
+    limit: 200,
+    pagination: false,
     depth: 1,
   });
 

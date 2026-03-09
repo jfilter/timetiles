@@ -103,11 +103,21 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
       throw createError;
     }
 
-    // Queue background job
-    await payload.jobs.queue({
-      task: "data-export",
-      input: { exportId: exportRecord.id },
-    });
+    // Queue background job — if queueing fails, mark the record as failed
+    try {
+      await payload.jobs.queue({
+        task: "data-export",
+        input: { exportId: exportRecord.id },
+      });
+    } catch (queueError) {
+      await payload.update({
+        collection: "data-exports",
+        id: exportRecord.id,
+        data: { status: "failed", errorLog: "Failed to queue export job" },
+        overrideAccess: true,
+      });
+      throw queueError;
+    }
 
     logger.info({ userId: user.id, exportId: exportRecord.id }, "Data export requested");
 

@@ -141,6 +141,7 @@ export const cleanupStuckScheduledImportsJob = {
           },
         },
         limit: 1000,
+        pagination: false,
       });
 
       logger.info("Found running scheduled imports", {

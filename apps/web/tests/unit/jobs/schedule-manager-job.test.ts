@@ -94,6 +94,7 @@ describe.sequential("scheduleManagerJob", () => {
           },
         },
         limit: 1000,
+        pagination: false,
       });
 
       expect(result.output).toEqual({

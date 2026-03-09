@@ -209,11 +209,15 @@ const executeAggregationQuery = async (
     // Fetch dataset names for any missing datasets
     const missingDatasetIds = selectedDatasetIds.filter((id) => !resultMap.has(id));
 
-    if (missingDatasetIds.length > 0) {
+    if (missingDatasetIds.length > 0 && accessibleCatalogIds.length > 0) {
       const missingDatasetsResult = (await payload.db.drizzle.execute(sql`
-        SELECT id, name FROM payload.datasets
-        WHERE id IN (${sql.join(
+        SELECT d.id, d.name FROM payload.datasets d
+        WHERE d.id IN (${sql.join(
           missingDatasetIds.map((id) => sql`${id}`),
+          sql`, `
+        )})
+        AND d.catalog_id IN (${sql.join(
+          accessibleCatalogIds.map((id) => sql`${id}`),
           sql`, `
         )})
       `)) as {

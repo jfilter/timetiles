@@ -47,32 +47,34 @@ export const dataExportCleanupJob = {
 
       for (const exportRecord of expiredExports.docs) {
         try {
-          // Delete the file from disk if it exists
-          if (exportRecord.filePath) {
-            try {
-              await unlink(exportRecord.filePath);
-              filesDeleted++;
-              logger.debug({ exportId: exportRecord.id, filePath: exportRecord.filePath }, "Deleted export file");
-            } catch (fileError) {
-              // File may already be deleted or not exist
-              logger.warn(
-                { exportId: exportRecord.id, filePath: exportRecord.filePath, error: fileError },
-                "Could not delete export file (may already be deleted)"
-              );
-            }
-          }
+          const oldFilePath = exportRecord.filePath;
 
-          // Update status to expired
+          // Mark as expired first to prevent download attempts during cleanup
           await payload.update({
             collection: "data-exports",
             id: exportRecord.id,
             data: {
               status: "expired",
-              filePath: null, // Clear file path
+              filePath: null,
             },
             overrideAccess: true,
           });
           recordsUpdated++;
+
+          // Then delete the file from disk
+          if (oldFilePath) {
+            try {
+              await unlink(oldFilePath);
+              filesDeleted++;
+              logger.debug({ exportId: exportRecord.id, filePath: oldFilePath }, "Deleted export file");
+            } catch (fileError) {
+              // File may already be deleted — record is already updated so no orphan risk
+              logger.warn(
+                { exportId: exportRecord.id, filePath: oldFilePath, error: fileError },
+                "Could not delete export file (may already be deleted)"
+              );
+            }
+          }
         } catch (error) {
           errors++;
           logError(error, "Failed to clean up export", { exportId: exportRecord.id });

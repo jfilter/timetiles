@@ -116,6 +116,9 @@ export const GeocodingProviders: CollectionConfig = {
               type: "text",
               label: "API Key",
               required: true,
+              access: {
+                read: ({ req: { user } }) => user?.role === "admin",
+              },
               admin: {
                 description: "Google Maps Geocoding API key",
                 placeholder: "Enter your Google Maps API key",
@@ -220,6 +223,9 @@ export const GeocodingProviders: CollectionConfig = {
               type: "text",
               label: "API Key",
               required: true,
+              access: {
+                read: ({ req: { user } }) => user?.role === "admin",
+              },
               admin: {
                 description: "OpenCage Geocoding API key",
                 placeholder: "Enter your OpenCage API key",

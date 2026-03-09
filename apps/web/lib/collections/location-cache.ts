@@ -27,7 +27,7 @@ const LocationCache: CollectionConfig = {
     },
   },
   access: {
-    read: () => true,
+    read: ({ req: { user } }) => !!user,
     create: () => false,
     update: () => false,
     delete: isEditorOrAdmin,

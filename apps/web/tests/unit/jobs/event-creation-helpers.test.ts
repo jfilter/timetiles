@@ -5,7 +5,7 @@
  */
 import "@/tests/mocks/services/logger";
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Use vi.hoisted to prevent thread-pool mock contamination from other test files
 const mocks = vi.hoisted(() => ({
@@ -17,6 +17,11 @@ vi.mock("@/lib/services/id-generation", () => ({
 }));
 
 import { createEventData, extractCoordinates, extractTimestamp } from "@/lib/jobs/utils/event-creation-helpers";
+
+// Reset mock before each test to guard against thread-pool contamination
+beforeEach(() => {
+  mocks.generateUniqueId.mockReturnValue("generated-id");
+});
 
 describe("extractCoordinates", () => {
   describe("with import coordinates", () => {

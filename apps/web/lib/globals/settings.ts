@@ -37,6 +37,10 @@ export const Settings: GlobalConfig = {
           name: "authHeader",
           type: "text",
           label: "Authorization Header",
+          access: {
+            read: ({ req: { user } }) => user?.role === "admin",
+            update: ({ req: { user } }) => user?.role === "admin",
+          },
           admin: {
             description:
               "Optional: Authorization header for the newsletter service (e.g., 'Bearer YOUR_TOKEN' or 'Basic BASE64_CREDENTIALS'). Leave empty if not required.",

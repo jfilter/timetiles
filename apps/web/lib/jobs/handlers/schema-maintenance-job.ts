@@ -65,6 +65,7 @@ const getDatasetsToCheck = async (
     collection: COLLECTION_NAMES.DATASETS,
     where: specificIds?.length ? { id: { in: specificIds } } : {},
     limit: maxDatasets,
+    pagination: false,
     overrideAccess: true,
   });
 

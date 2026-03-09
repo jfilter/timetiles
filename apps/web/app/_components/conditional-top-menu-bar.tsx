@@ -35,6 +35,7 @@ const getCatalogs = async (): Promise<Catalog[]> => {
   const result = await payload.find({
     collection: "catalogs",
     limit: 100,
+    pagination: false,
     sort: "name",
     where: { isPublic: { equals: true } },
   });
@@ -46,6 +47,7 @@ const getDatasets = async (): Promise<Dataset[]> => {
   const result = await payload.find({
     collection: "datasets",
     limit: 500,
+    pagination: false,
     sort: "name",
     where: { isPublic: { equals: true } },
   });

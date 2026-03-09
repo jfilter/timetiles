@@ -108,6 +108,7 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
           },
         },
         limit: 1000,
+        pagination: false,
       });
 
       expect(mockPayload.update).toHaveBeenCalledWith({
@@ -188,6 +189,7 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
           },
         },
         limit: 1000,
+        pagination: false,
       });
 
       // Should process all 100 stuck imports

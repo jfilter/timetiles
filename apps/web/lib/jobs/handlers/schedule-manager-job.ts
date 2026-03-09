@@ -470,6 +470,7 @@ export const scheduleManagerJob = {
           },
         },
         limit: 1000,
+        pagination: false,
       });
 
       logger.info("Found scheduled imports", {

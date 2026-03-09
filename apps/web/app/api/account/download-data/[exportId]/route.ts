@@ -107,6 +107,13 @@ export const GET = async (
     try {
       fileStats = await stat(filePath);
     } catch {
+      // File is missing — mark export as failed so users don't see a broken download
+      await payload.update({
+        collection: "data-exports",
+        id: normalizedExportId,
+        data: { status: "failed", errorLog: "Export file missing from disk" },
+        overrideAccess: true,
+      });
       return NextResponse.json({ error: "Export file not found on disk" }, { status: 404 });
     }
 

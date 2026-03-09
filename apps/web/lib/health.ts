@@ -87,7 +87,8 @@ const checkUploadsDirectory = async (): Promise<HealthCheckResult> => {
     currentDir = path.dirname(currentDir);
   }
 
-  const uploadsDir = path.join(projectRoot, "uploads");
+  const uploadDirEnv = process.env.UPLOAD_DIR ?? "uploads";
+  const uploadsDir = path.isAbsolute(uploadDirEnv) ? uploadDirEnv : path.join(projectRoot, uploadDirEnv);
 
   try {
     await fs.access(uploadsDir, fs.constants.W_OK);

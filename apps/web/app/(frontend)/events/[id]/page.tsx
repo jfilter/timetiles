@@ -96,7 +96,7 @@ export default async function EventDetailsPage({ params }: Readonly<EventDetails
     },
     depth: 2, // Include related data like dataset
     draft: isDraftMode,
-    overrideAccess: isDraftMode, // Allow access to drafts in preview mode
+    overrideAccess: false, // Never bypass access control on public pages
     limit: 1,
   });
 
