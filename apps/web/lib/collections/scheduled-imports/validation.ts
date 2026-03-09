@@ -23,13 +23,22 @@ export const validateUrl = (val: string | null | undefined): string | true => {
 /**
  * Validates a cron expression field range.
  */
+const parseStrictCronNumber = (value: string): number | null => {
+  const trimmedValue = value.trim();
+  if (!/^\d+$/.test(trimmedValue)) {
+    return null;
+  }
+
+  return parseInt(trimmedValue, 10);
+};
+
 const validateRange = (field: string, min: number, max: number, name: string): string | true => {
   const parts = field.split("-");
   if (parts.length !== 2) {
     return `Invalid ${name} range in cron expression`;
   }
-  const [start, end] = parts.map((p) => parseInt(p));
-  if (!start || !end || Number.isNaN(start) || Number.isNaN(end) || start < min || end > max || start > end) {
+  const [start, end] = parts.map((p) => parseStrictCronNumber(p));
+  if (start == null || end == null || start < min || end > max || start > end) {
     return `Invalid ${name} range in cron expression (must be ${min}-${max})`;
   }
   return true;
@@ -39,8 +48,8 @@ const validateRange = (field: string, min: number, max: number, name: string): s
  * Validates a cron expression step value.
  */
 const validateStep = (field: string, name: string): string | true => {
-  const step = parseInt(field.substring(2));
-  if (Number.isNaN(step) || step <= 0) {
+  const step = parseStrictCronNumber(field.substring(2));
+  if (step == null || step <= 0) {
     return `Invalid ${name} step value in cron expression`;
   }
   return true;
@@ -52,8 +61,8 @@ const validateStep = (field: string, name: string): string | true => {
 const validateList = (field: string, min: number, max: number, name: string): string | true => {
   const values = field.split(",");
   for (const v of values) {
-    const num = parseInt(v);
-    if (Number.isNaN(num) || num < min || num > max) {
+    const num = parseStrictCronNumber(v);
+    if (num == null || num < min || num > max) {
       return `Invalid ${name} value ${v} in cron expression (must be ${min}-${max})`;
     }
   }
@@ -78,8 +87,8 @@ const validateField = (field: string, min: number, max: number, name: string): s
   }
 
   // Simple numeric value
-  const num = parseInt(field);
-  if (Number.isNaN(num) || num < min || num > max) {
+  const num = parseStrictCronNumber(field);
+  if (num == null || num < min || num > max) {
     return `The following field is invalid: Cron expression - invalid ${name} value (must be ${min}-${max})`;
   }
   return true;
