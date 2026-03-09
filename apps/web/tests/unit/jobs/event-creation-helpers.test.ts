@@ -7,8 +7,13 @@ import "@/tests/mocks/services/logger";
 
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/services/id-generation", () => ({
+// Use vi.hoisted to prevent thread-pool mock contamination from other test files
+const mocks = vi.hoisted(() => ({
   generateUniqueId: vi.fn(() => "generated-id"),
+}));
+
+vi.mock("@/lib/services/id-generation", () => ({
+  generateUniqueId: mocks.generateUniqueId,
 }));
 
 import { createEventData, extractCoordinates, extractTimestamp } from "@/lib/jobs/utils/event-creation-helpers";
