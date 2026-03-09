@@ -36,7 +36,12 @@ const addCatalogFilter = (where: Where, catalog: string) => {
 
 const addDatasetFilter = (where: Where, datasets: string[]) => {
   const datasetIds = datasets.map((d) => parseInt(d, 10)).filter((id) => !isNaN(id));
-  if (datasetIds.length === 0) return;
+
+  if (datasetIds.length === 0) {
+    // All provided IDs were invalid — return no results instead of all events
+    where.and = [...(Array.isArray(where.and) ? where.and : []), { id: { equals: -1 } }];
+    return;
+  }
 
   where.and = [
     ...(Array.isArray(where.and) ? where.and : []),

@@ -60,12 +60,13 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
     const parameters = extractBaseEventParameters(request.nextUrl.searchParams);
+    const hasCatalogFilter = parameters.catalog != null && parameters.catalog !== "";
 
     // Get accessible catalog IDs for this user
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, request.user);
 
     // If no accessible catalogs and no catalog filter specified, return empty result
-    if (accessibleCatalogIds.length === 0 && parameters.catalog == null) {
+    if (accessibleCatalogIds.length === 0 && !hasCatalogFilter) {
       return NextResponse.json<BoundsResponse>({
         bounds: null,
         count: 0,
@@ -79,9 +80,8 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
     ];
 
     // Apply catalog access control
-    // Note: Arrays must be formatted as PostgreSQL array literals for raw SQL
-    if (parameters.catalog != null && parameters.catalog !== "") {
-      const catalogId = parseInt(parameters.catalog);
+    if (hasCatalogFilter) {
+      const catalogId = parseInt(parameters.catalog!, 10);
       // Only include if user has access to this catalog
       if (accessibleCatalogIds.includes(catalogId)) {
         conditions.push(sql`d.catalog_id = ${catalogId}`);
@@ -94,16 +94,29 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
       }
     } else {
       // No specific catalog requested, filter by all accessible catalogs
-      const catalogArray = `{${accessibleCatalogIds.join(",")}}`;
-      conditions.push(sql`d.catalog_id = ANY(${catalogArray}::int[])`);
+      if (accessibleCatalogIds.length === 0) {
+        conditions.push(sql`FALSE`);
+      } else {
+        const catalogIdList = sql.join(
+          accessibleCatalogIds.map((id) => sql`${id}`),
+          sql`, `
+        );
+        conditions.push(sql`d.catalog_id IN (${catalogIdList})`);
+      }
     }
 
     // Apply dataset filter
     if (parameters.datasets.length > 0 && parameters.datasets[0] !== "") {
-      const datasetIds = parameters.datasets.map((d) => parseInt(d)).filter((id) => !isNaN(id));
+      const datasetIds = parameters.datasets.map((d) => parseInt(d, 10)).filter((id) => !isNaN(id));
       if (datasetIds.length > 0) {
-        const datasetArray = `{${datasetIds.join(",")}}`;
-        conditions.push(sql`e.dataset_id = ANY(${datasetArray}::int[])`);
+        const datasetIdList = sql.join(
+          datasetIds.map((id) => sql`${id}`),
+          sql`, `
+        );
+        conditions.push(sql`e.dataset_id IN (${datasetIdList})`);
+      } else {
+        // All provided IDs were invalid — return no results instead of all events
+        conditions.push(sql`FALSE`);
       }
     }
 
