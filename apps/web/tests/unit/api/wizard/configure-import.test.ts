@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
   mockExistsSync: vi.fn(),
   mockReadFileSync: vi.fn(),
   mockUnlinkSync: vi.fn(),
+  mockValidateQuota: vi.fn(),
+  mockCheckQuota: vi.fn(),
 }));
 
 // 3. vi.mock calls
@@ -44,6 +46,33 @@ vi.mock("@/lib/middleware/auth", () => ({
   withAdminAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
 }));
 
+vi.mock("@/lib/services/quota-service", () => {
+  class QuotaExceededError extends Error {
+    statusCode = 429;
+    quotaType: string;
+    current: number;
+    limit: number;
+    constructor(quotaType: string, current: number, limit: number) {
+      super(`Quota exceeded: ${quotaType}`);
+      this.name = "QuotaExceededError";
+      this.quotaType = quotaType;
+      this.current = current;
+      this.limit = limit;
+    }
+  }
+  return {
+    getQuotaService: () => ({
+      validateQuota: mocks.mockValidateQuota,
+      checkQuota: mocks.mockCheckQuota,
+    }),
+    QuotaExceededError,
+  };
+});
+
+vi.mock("@/lib/constants/quota-constants", () => ({
+  QUOTA_TYPES: { ACTIVE_SCHEDULES: "active-schedules" },
+}));
+
 // 4. Vitest imports and source code AFTER mocks
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -56,6 +85,7 @@ import { TEST_EMAILS } from "@/tests/constants/test-credentials";
 const VALID_UUID = "12345678-1234-4123-8123-123456789abc";
 
 const mockUser = { id: 1, email: TEST_EMAILS.user, role: "user" };
+const mockAdminUser = { id: 2, email: TEST_EMAILS.admin, role: "admin" };
 
 const basePreviewMeta = {
   previewId: VALID_UUID,
@@ -66,7 +96,7 @@ const basePreviewMeta = {
   mimeType: "text/csv",
   fileSize: 1024,
   createdAt: "2024-01-01T00:00:00Z",
-  expiresAt: "2024-01-02T00:00:00Z",
+  expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour from now
 };
 
 const baseSheetMapping = {
@@ -98,9 +128,9 @@ const baseBody = {
 
 // --- Helpers ---
 
-const createRequest = (body: Record<string, unknown>) => {
+const createRequest = (body: Record<string, unknown>, user: Record<string, unknown> = mockUser) => {
   return {
-    user: mockUser,
+    user,
     json: vi.fn().mockResolvedValue(body),
   } as unknown as AuthenticatedRequest;
 };
@@ -139,6 +169,12 @@ describe.sequential("POST /api/wizard/configure-import", () => {
     let createId = 100;
     mocks.mockPayload.create.mockImplementation(() => Promise.resolve({ id: createId++ }));
     mocks.mockPayload.update.mockResolvedValue({ id: 1 });
+
+    // Default: catalog ownership check passes (Bug 13)
+    mocks.mockPayload.find.mockResolvedValue({ docs: [{ id: 1 }], totalDocs: 1 });
+
+    // Default: quota check passes (Bug 15)
+    mocks.mockValidateQuota.mockResolvedValue(undefined);
 
     // Default: preview metadata exists and is valid
     setupPreviewMetadata(basePreviewMeta);
@@ -239,6 +275,21 @@ describe.sequential("POST /api/wizard/configure-import", () => {
       expect(response.status).toBe(400);
       expect(body.error).toContain("Preview file not found");
     });
+
+    it("should return 400 when preview has expired (Bug 27)", async () => {
+      const expiredMeta = {
+        ...basePreviewMeta,
+        expiresAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+      };
+      setupPreviewMetadata(expiredMeta);
+      const req = createRequest(baseBody);
+
+      const response = await POST(req, {} as never);
+      const body = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(body.error).toContain("Preview has expired");
+    });
   });
 
   describe("Catalog Handling", () => {
@@ -279,6 +330,41 @@ describe.sequential("POST /api/wizard/configure-import", () => {
       expect(response.status).toBe(400);
       expect(body.error).toBe("New catalog name is required");
     });
+
+    it("should return 403 when user does not own the catalog (Bug 13)", async () => {
+      // Catalog ownership check fails
+      mocks.mockPayload.find.mockResolvedValue({ docs: [], totalDocs: 0 });
+
+      const req = createRequest({ ...baseBody, catalogId: 999 });
+
+      const response = await POST(req, {} as never);
+      const body = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(body.error).toContain("You do not have access to this catalog");
+    });
+
+    it("should allow admin to use any catalog (Bug 13)", async () => {
+      // Catalog ownership check should be skipped for admins
+      mocks.mockPayload.find.mockResolvedValue({ docs: [], totalDocs: 0 });
+
+      const adminPreviewMeta = { ...basePreviewMeta, userId: mockAdminUser.id };
+      setupPreviewMetadata(adminPreviewMeta);
+
+      const req = createRequest({ ...baseBody, catalogId: 999 }, mockAdminUser);
+
+      const response = await POST(req, {} as never);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.success).toBe(true);
+
+      // Verify find was NOT called for admin (ownership check bypassed)
+      const findCalls = mocks.mockPayload.find.mock.calls.filter(
+        (call: unknown[]) => (call[0] as Record<string, unknown>).collection === "catalogs"
+      );
+      expect(findCalls).toHaveLength(0);
+    });
   });
 
   describe("Dataset Processing", () => {
@@ -308,6 +394,35 @@ describe.sequential("POST /api/wizard/configure-import", () => {
           }),
         })
       );
+    });
+
+    it("should pass req to dataset create calls (Bug 14)", async () => {
+      const req = createRequest(baseBody);
+
+      await POST(req, {} as never);
+
+      // Verify that req was passed to the dataset create call
+      const datasetCreateCalls = mocks.mockPayload.create.mock.calls.filter(
+        (call: unknown[]) => (call[0] as Record<string, unknown>).collection === "datasets"
+      );
+      expect(datasetCreateCalls).toHaveLength(1);
+      expect(datasetCreateCalls[0]![0]).toHaveProperty("req", req);
+    });
+
+    it("should pass req to dataset update calls (Bug 14)", async () => {
+      const req = createRequest({
+        ...baseBody,
+        sheetMappings: [{ sheetIndex: 0, datasetId: 42, newDatasetName: "" }],
+      });
+
+      await POST(req, {} as never);
+
+      // Verify that req was passed to the dataset update call
+      const datasetUpdateCalls = mocks.mockPayload.update.mock.calls.filter(
+        (call: unknown[]) => (call[0] as Record<string, unknown>).collection === "datasets"
+      );
+      expect(datasetUpdateCalls).toHaveLength(1);
+      expect(datasetUpdateCalls[0]![0]).toHaveProperty("req", req);
     });
 
     it("should update an existing dataset when datasetId is numeric", async () => {
@@ -368,8 +483,33 @@ describe.sequential("POST /api/wizard/configure-import", () => {
         })
       );
 
-      // Verify cleanup was called
+      // Verify cleanup was called (Bug 26: should clean up data files too)
       expect(mocks.mockUnlinkSync).toHaveBeenCalled();
+    });
+  });
+
+  describe("Cleanup (Bug 26)", () => {
+    it("should clean up both meta file and data files during cleanup", async () => {
+      const req = createRequest(baseBody);
+
+      await POST(req, {} as never);
+
+      // cleanupPreview should attempt to delete meta + all data extensions
+      // With existsSync returning true by default, it will try to unlink all matches
+      const unlinkCalls = mocks.mockUnlinkSync.mock.calls;
+      // At minimum, the meta file should be cleaned up
+      const metaCleanup = unlinkCalls.some(
+        (call: unknown[]) => typeof call[0] === "string" && call[0].endsWith(".meta.json")
+      );
+      expect(metaCleanup).toBe(true);
+
+      // Data file extensions should also be checked
+      const dataFileCleanups = unlinkCalls.filter(
+        (call: unknown[]) =>
+          typeof call[0] === "string" &&
+          [".csv", ".xls", ".xlsx", ".ods"].some((ext) => (call[0] as string).endsWith(ext))
+      );
+      expect(dataFileCleanups.length).toBeGreaterThan(0);
     });
   });
 
@@ -423,6 +563,49 @@ describe.sequential("POST /api/wizard/configure-import", () => {
           }),
         })
       );
+    });
+
+    it("should check quota before creating scheduled import (Bug 15)", async () => {
+      const req = createRequest({
+        ...baseBody,
+        createSchedule: {
+          enabled: true,
+          sourceUrl: "https://example.com/data.csv",
+          name: "Daily Import",
+          scheduleType: "frequency",
+          frequency: "daily",
+          schemaMode: "additive",
+        },
+      });
+
+      await POST(req, {} as never);
+
+      // Verify quota was checked
+      expect(mocks.mockValidateQuota).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }), "active-schedules", 1);
+    });
+
+    it("should return 429 when scheduled import quota is exceeded (Bug 15)", async () => {
+      // Import the mock QuotaExceededError from the mocked module
+      const { QuotaExceededError } = await import("@/lib/services/quota-service");
+      mocks.mockValidateQuota.mockRejectedValue(new QuotaExceededError("active-schedules", 5, 5));
+
+      const req = createRequest({
+        ...baseBody,
+        createSchedule: {
+          enabled: true,
+          sourceUrl: "https://example.com/data.csv",
+          name: "Daily Import",
+          scheduleType: "frequency",
+          frequency: "daily",
+          schemaMode: "additive",
+        },
+      });
+
+      const response = await POST(req, {} as never);
+      const body = await response.json();
+
+      expect(response.status).toBe(429);
+      expect(body.code).toBe("QUOTA_EXCEEDED");
     });
 
     it("should not create scheduled import when createSchedule is not provided", async () => {

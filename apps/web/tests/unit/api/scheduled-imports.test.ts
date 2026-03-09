@@ -197,6 +197,57 @@ describe.sequential("POST /api/scheduled-imports/[id]/trigger", () => {
     expect(mockPayload.findByID).not.toHaveBeenCalled();
     expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
   });
+
+  it("should return 409 when import is already running (atomic claim)", async () => {
+    vi.clearAllMocks();
+    setupAuthenticatedUser();
+    mockPayload.findByID.mockResolvedValue({
+      ...mockSchedule,
+      lastStatus: "running",
+      sourceUrl: "https://example.com/data.csv",
+      name: "Test",
+    });
+    // Atomic update returns no docs when lastStatus is already "running"
+    mockPayload.update.mockResolvedValue({ docs: [], errors: [] });
+
+    const response = await POST(createRequest("POST"), createContext("1"));
+
+    expect(response.status).toBe(409);
+    const data = await response.json();
+    expect(data.error).toBe("Import is already running");
+    expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+  });
+
+  it("should trigger import when not already running (atomic claim succeeds)", async () => {
+    vi.clearAllMocks();
+    setupAuthenticatedUser();
+    mockPayload.findByID.mockResolvedValue({
+      ...mockSchedule,
+      lastStatus: "idle",
+      sourceUrl: "https://example.com/data.csv",
+      name: "Test Import",
+    });
+    // Atomic update succeeds - returns the claimed doc
+    mockPayload.update.mockResolvedValue({ docs: [{ ...mockSchedule, lastStatus: "running" }], errors: [] });
+    mockPayload.jobs.queue.mockResolvedValue({ id: "job-123" });
+
+    const response = await POST(createRequest("POST"), createContext("1"));
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.success).toBe(true);
+    expect(data.message).toBe("Import triggered");
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "scheduled-imports",
+        where: {
+          id: { equals: 1 },
+          lastStatus: { not_equals: "running" },
+        },
+      })
+    );
+    expect(mockPayload.jobs.queue).toHaveBeenCalled();
+  });
 });
 
 describe.sequential("PATCH /api/scheduled-imports/[id]", () => {

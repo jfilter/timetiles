@@ -42,6 +42,7 @@ export const GET = async (): Promise<NextResponse<DataSourcesResponse | { error:
         limit: 500,
         pagination: false,
         select: { id: true, name: true },
+        where: { isPublic: { equals: true } },
       }),
       payload.find({
         collection: "datasets",
@@ -49,6 +50,7 @@ export const GET = async (): Promise<NextResponse<DataSourcesResponse | { error:
         pagination: false,
         depth: 1, // Need depth to get catalog relationship
         select: { id: true, name: true, catalog: true },
+        where: { isPublic: { equals: true } },
       }),
     ]);
 

@@ -6,7 +6,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
-import { clearFeatureFlagCache } from "@/lib/services/feature-flag-service";
 
 // Mock dependencies
 vi.mock("@/lib/logger", () => ({
@@ -19,10 +18,13 @@ vi.mock("@/lib/logger", () => ({
   logError: vi.fn(),
 }));
 
+vi.mock("@/lib/services/feature-flag-service", () => ({
+  isFeatureEnabled: vi.fn().mockResolvedValue(true),
+}));
+
 describe.sequential("scheduleManagerJob", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    clearFeatureFlagCache();
     vi.useFakeTimers();
   });
 
@@ -36,12 +38,6 @@ describe.sequential("scheduleManagerJob", () => {
       const mockPayload = {
         find: vi.fn(),
         findByID: vi.fn(),
-        findGlobal: vi.fn().mockResolvedValue({
-          featureFlags: {
-            enableScheduledJobExecution: true,
-            enableScheduledImports: true,
-          },
-        }),
         update: vi.fn(),
         jobs: {
           queue: vi.fn().mockResolvedValue({ id: "url-fetch-job-123" }),
@@ -346,18 +342,20 @@ describe.sequential("scheduleManagerJob", () => {
           currentRetries: 0,
           statistics: {
             totalRuns: 6,
-            successfulRuns: 5,
+            successfulRuns: 4,
             failedRuns: 1,
             averageDuration: 2.5,
           },
-          executionHistory: expect.arrayContaining([
-            expect.objectContaining({
-              executedAt: currentTime.toISOString(),
-              status: "success",
-            }),
-          ]),
         }),
       });
+
+      // Execution history should NOT be recorded at queue time.
+      // It's added by the job handler on completion.
+      const metadataUpdate = mockPayload.update.mock.calls.find(
+        (call: unknown[]) => (call[0] as { data: Record<string, unknown> }).data?.nextRun
+      );
+      expect(metadataUpdate).toBeDefined();
+      expect((metadataUpdate![0] as { data: Record<string, unknown> }).data.executionHistory).toBeUndefined();
     });
 
     it("should handle errors gracefully", async () => {
@@ -521,7 +519,7 @@ describe.sequential("scheduleManagerJob", () => {
       });
     });
 
-    it("should maintain execution history limit", async () => {
+    it("should not record execution history at queue time", async () => {
       const { mockPayload, mockJob, mockReq } = createMockContext();
 
       const existingHistory = Array.from({ length: 15 }, (_, i) => ({
@@ -554,24 +552,13 @@ describe.sequential("scheduleManagerJob", () => {
         req: mockReq,
       });
 
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "scheduled-imports",
-        id: "history-import",
-        data: expect.objectContaining({
-          executionHistory: expect.arrayContaining([
-            expect.objectContaining({
-              status: "success",
-            }),
-          ]),
-        }),
-      });
-
-      // Check that history is limited to 10 items (if present)
-      const updateCall = mockPayload.update.mock.calls[0];
-      if (updateCall?.[0]?.data?.executionHistory) {
-        expect(updateCall?.[0]?.data?.executionHistory).toHaveLength(10);
-      }
-      // If no execution history in update, that's acceptable - it might be handled differently
+      // Execution history should NOT be included in the update at queue time.
+      // It's managed by the url-fetch job handler on completion.
+      const metadataUpdate = mockPayload.update.mock.calls.find(
+        (call: unknown[]) => (call[0] as { data: Record<string, unknown> }).data?.nextRun
+      );
+      expect(metadataUpdate).toBeDefined();
+      expect((metadataUpdate![0] as { data: Record<string, unknown> }).data.executionHistory).toBeUndefined();
     });
   });
 });

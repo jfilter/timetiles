@@ -14,7 +14,6 @@ import type { Payload } from "payload";
 import { validateCronExpression } from "@/lib/collections/scheduled-imports/validation";
 import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
-import { parseDateInput } from "@/lib/utils/date";
 import type { ScheduledImport } from "@/payload-types";
 
 // Unused but kept for future expansion
@@ -239,17 +238,14 @@ const shouldRunNow = (scheduledImport: ScheduledImport, currentTime: Date): bool
 
   // Check if there's a nextRun time set and if it's time to run
   if (scheduledImport.nextRun) {
-    const nextRun = parseDateInput(scheduledImport.nextRun);
-    if (nextRun) {
-      return currentTime >= nextRun;
-    }
+    const nextRun = new Date(scheduledImport.nextRun);
+    return currentTime >= nextRun;
   }
 
   // If no nextRun is set, calculate if it should run based on lastRun
   if (scheduledImport.lastRun) {
     try {
-      const lastRun = parseDateInput(scheduledImport.lastRun);
-      const nextRun = getNextExecutionTime(scheduledImport, lastRun ?? undefined);
+      const nextRun = getNextExecutionTime(scheduledImport, new Date(scheduledImport.lastRun));
       return currentTime >= nextRun;
     } catch (error) {
       logger.warn("Invalid schedule configuration", {
@@ -311,27 +307,9 @@ const calculateNextRun = (scheduledImport: ScheduledImport, currentTime: Date): 
   }
 };
 
-// Helper to update execution history
-const updateExecutionHistory = (
-  scheduledImport: ScheduledImport,
-  currentTime: Date,
-  _jobId: string,
-  startTime: number
-) => {
-  const executionHistory = scheduledImport.executionHistory ?? [];
-  executionHistory.unshift({
-    executedAt: currentTime.toISOString(),
-    status: "success",
-    duration: Date.now() - startTime,
-  });
-
-  // Keep only last 10 executions
-  if (executionHistory.length > 10) {
-    executionHistory.splice(10);
-  }
-
-  return executionHistory;
-};
+// NOTE: Execution history is NOT recorded at queue time.
+// The actual success/failure entry is added by the url-fetch job handler
+// (in scheduled-import-utils.ts) when processing completes.
 
 // Helper to process a single scheduled import
 const processScheduledImport = async (
@@ -352,7 +330,6 @@ const processScheduledImport = async (
     return false;
   }
 
-  const startTime = Date.now();
   const importName = generateImportName(scheduledImport.importNameTemplate, scheduledImport, currentTime);
 
   // CRITICAL: Set status to "running" BEFORE queuing job
@@ -388,9 +365,9 @@ const processScheduledImport = async (
   });
 
   const nextRun = calculateNextRun(scheduledImport, currentTime);
-  const executionHistory = updateExecutionHistory(scheduledImport, currentTime, urlFetchJob.id.toString(), startTime);
 
-  // Update statistics
+  // Update statistics - only increment totalRuns at queue time.
+  // successfulRuns/failedRuns are updated by the job handler on completion.
   const stats = scheduledImport.statistics ?? {
     totalRuns: 0,
     successfulRuns: 0,
@@ -398,9 +375,10 @@ const processScheduledImport = async (
     averageDuration: 0,
   };
   stats.totalRuns = (stats.totalRuns ?? 0) + 1;
-  stats.successfulRuns = (stats.successfulRuns ?? 0) + 1;
 
-  // Update the scheduled import record with next run and history
+  // Update the scheduled import record with next run time and statistics.
+  // Execution history is NOT recorded here - it's added by the url-fetch
+  // job handler when processing completes with actual success/failure status.
   await payload.update({
     collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
     id: scheduledImport.id,
@@ -409,7 +387,6 @@ const processScheduledImport = async (
       nextRun: nextRun.toISOString(),
       lastStatus: "running",
       currentRetries: 0,
-      executionHistory,
       statistics: stats,
     },
   });

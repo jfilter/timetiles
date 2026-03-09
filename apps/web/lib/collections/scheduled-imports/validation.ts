@@ -9,6 +9,8 @@
  * @category Collections/ScheduledImports
  */
 
+import { isPrivateUrl } from "@/lib/utils/url-validation";
+
 /**
  * Validates a URL string.
  */
@@ -16,6 +18,9 @@ export const validateUrl = (val: string | null | undefined): string | true => {
   if (!val) return "The following field is invalid: Source URL - URL is required";
   if (!/^https?:\/\/.+/.exec(val)) {
     return "The following field is invalid: Source URL - must start with http:// or https://";
+  }
+  if (isPrivateUrl(val)) {
+    return "The following field is invalid: Source URL - URLs pointing to private or internal addresses are not allowed";
   }
   return true;
 };

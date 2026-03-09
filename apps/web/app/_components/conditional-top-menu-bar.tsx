@@ -36,6 +36,7 @@ const getCatalogs = async (): Promise<Catalog[]> => {
     collection: "catalogs",
     limit: 100,
     sort: "name",
+    where: { isPublic: { equals: true } },
   });
   return result.docs;
 };
@@ -46,6 +47,7 @@ const getDatasets = async (): Promise<Dataset[]> => {
     collection: "datasets",
     limit: 500,
     sort: "name",
+    where: { isPublic: { equals: true } },
   });
   return result.docs;
 };

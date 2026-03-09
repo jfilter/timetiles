@@ -9,7 +9,7 @@ import { getPayload } from "payload";
 
 import { logError } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
-import { badRequest, forbidden, internalError, notFound } from "@/lib/utils/api-response";
+import { apiError, badRequest, forbidden, internalError, notFound } from "@/lib/utils/api-response";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 
@@ -49,9 +49,23 @@ export const POST = withAuth(async (_request: AuthenticatedRequest, context: Rou
       return forbidden();
     }
 
-    // Prevent duplicate triggers if already running
-    if (existingSchedule.lastStatus === "running") {
-      return badRequest("Import is already running");
+    // Atomically claim the import by updating only if not already running.
+    // This prevents a race condition where two concurrent trigger requests
+    // could both start an import.
+    const claimResult = await payload.update({
+      collection: "scheduled-imports",
+      where: {
+        id: { equals: scheduleId },
+        lastStatus: { not_equals: "running" },
+      },
+      data: {
+        lastRun: new Date().toISOString(),
+        lastStatus: "running",
+      },
+    });
+
+    if (claimResult.docs.length === 0) {
+      return apiError("Import is already running", 409, "CONFLICT");
     }
 
     // Queue the URL fetch job for manual trigger
@@ -63,16 +77,6 @@ export const POST = withAuth(async (_request: AuthenticatedRequest, context: Rou
         authConfig: existingSchedule.authConfig,
         originalName: existingSchedule.name,
         triggeredBy: "manual",
-      },
-    });
-
-    // Update the schedule with lastRun timestamp
-    await payload.update({
-      collection: "scheduled-imports",
-      id: scheduleId,
-      data: {
-        lastRun: new Date().toISOString(),
-        lastStatus: "running",
       },
     });
 

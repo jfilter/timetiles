@@ -131,9 +131,9 @@ describe.sequential("Webhook Trigger API Integration", () => {
       expect(timeDiff).toBeLessThan(1000); // Within 1 second
     });
 
-    it("should add entry to execution history", async () => {
+    it("should not add premature execution history at trigger time", async () => {
       const response = await callWebhook(testScheduledImport.webhookToken!);
-      const data = await response.json();
+      expect(response.status).toBe(200);
 
       // Wait a moment for the update to complete
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -143,13 +143,9 @@ describe.sequential("Webhook Trigger API Integration", () => {
         id: testScheduledImport.id,
       });
 
-      expect(updatedImport.executionHistory).toHaveLength(1);
-      expect(updatedImport.executionHistory![0]).toMatchObject({
-        executedAt: expect.any(String),
-        status: "success",
-        jobId: data.jobId,
-        triggeredBy: "webhook",
-      });
+      // Execution history should NOT be recorded at trigger time.
+      // The actual success/failure entry is added by the job handler on completion.
+      expect(updatedImport.executionHistory ?? []).toHaveLength(0);
     });
 
     it("should increment statistics", async () => {
@@ -441,7 +437,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
   });
 
   describe("Execution History Management", () => {
-    it("should limit execution history to 10 entries", async () => {
+    it("should not modify execution history at trigger time", async () => {
       // Create initial history
       const initialHistory = Array.from({ length: 10 }, (_, i) => ({
         executedAt: new Date(Date.now() - i * 60000).toISOString(),
@@ -459,7 +455,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       });
 
       const response = await callWebhook(testScheduledImport.webhookToken!);
-      const data = await response.json();
+      expect(response.status).toBe(200);
 
       // Wait a moment for the update to complete
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -469,10 +465,10 @@ describe.sequential("Webhook Trigger API Integration", () => {
         id: testScheduledImport.id,
       });
 
+      // Webhook trigger should not add entries to execution history.
+      // History is managed by the job handler on completion.
       expect(updatedImport.executionHistory).toHaveLength(10);
-      expect(updatedImport.executionHistory?.[0]?.triggeredBy).toBe("webhook");
-      expect(updatedImport.executionHistory?.[0]?.jobId).toBe(data.jobId);
-      expect(updatedImport.executionHistory?.[9]?.jobId).toBe("old-job-8");
+      expect(updatedImport.executionHistory?.[0]?.jobId).toBe("old-job-0");
     });
 
     it("should handle invalid scheduled import configurations", async () => {
@@ -502,19 +498,17 @@ describe.sequential("Webhook Trigger API Integration", () => {
       expect(data.success).toBe(true);
       expect(data.jobId).toBeDefined();
 
-      // The execution history should record this trigger
+      // Execution history is NOT recorded at trigger time - it's managed by the
+      // job handler on completion. Verify the import status is set to "running".
       await new Promise((resolve) => setTimeout(resolve, 10));
       const updatedImport = await payload.findByID({
         collection: "scheduled-imports",
         id: invalidImport.id,
       });
 
-      expect(updatedImport.executionHistory).toBeDefined();
-      expect(updatedImport.executionHistory?.[0]?.triggeredBy).toBe("webhook");
-      expect(updatedImport.executionHistory?.[0]?.jobId).toBe(data.jobId);
-
-      // Note: The actual job execution failure would be recorded when the job runs
-      // This test verifies the webhook trigger is recorded regardless of job outcome
+      expect(updatedImport.lastStatus).toBe("running");
+      // Execution history should be empty since no job has completed yet
+      expect(updatedImport.executionHistory ?? []).toHaveLength(0);
     });
   });
 });

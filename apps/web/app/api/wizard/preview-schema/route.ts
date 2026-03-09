@@ -29,6 +29,7 @@ import {
   type LanguageDetectionResult,
 } from "@/lib/services/schema-builder/language-detection";
 import { badRequest, internalError } from "@/lib/utils/api-response";
+import { isPrivateUrl } from "@/lib/utils/url-validation";
 
 const logger = createLogger("api-wizard-preview-schema");
 
@@ -308,16 +309,20 @@ const parseExcelPreview = (filePath: string): SheetInfo[] => {
 
 /**
  * Validates and parses a URL string.
+ * Rejects non-HTTP(S) protocols and private/internal URLs (SSRF protection).
  */
-const validateUrl = (urlString: string): URL | null => {
+const validateUrl = (urlString: string): { url: URL } | { error: string } => {
   try {
     const url = new URL(urlString);
     if (!["http:", "https:"].includes(url.protocol)) {
-      return null;
+      return { error: "Invalid URL. Please provide a valid HTTP or HTTPS URL." };
     }
-    return url;
+    if (isPrivateUrl(urlString)) {
+      return { error: "URLs pointing to private or internal networks are not allowed." };
+    }
+    return { url };
   } catch {
-    return null;
+    return { error: "Invalid URL. Please provide a valid HTTP or HTTPS URL." };
   }
 };
 
@@ -388,10 +393,11 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
 
     if (sourceUrl) {
       // URL-based fetch
-      const parsedUrl = validateUrl(sourceUrl);
-      if (!parsedUrl) {
-        return badRequest("Invalid URL. Please provide a valid HTTP or HTTPS URL.");
+      const urlResult = validateUrl(sourceUrl);
+      if ("error" in urlResult) {
+        return badRequest(urlResult.error);
       }
+      const parsedUrl = urlResult.url;
 
       // Parse auth config from form data
       const authConfig = parseAuthConfig(formData);
@@ -493,7 +499,7 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
       return badRequest("Failed to parse file. Please check the file format.");
     }
 
-    // Store preview metadata
+    // Store preview metadata (intentionally omit authConfig to avoid persisting secrets to disk)
     const previewMetaPath = path.join(previewDir, `${previewId}.meta.json`);
     fs.writeFileSync(
       previewMetaPath,
@@ -505,7 +511,6 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
         mimeType,
         fileSize,
         sourceUrl: sourceUrl ?? undefined, // Store source URL if provided
-        authConfig: sourceUrl ? parseAuthConfig(formData) : undefined, // Store auth config for URL sources
         createdAt: new Date().toISOString(),
         expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour expiry
       })

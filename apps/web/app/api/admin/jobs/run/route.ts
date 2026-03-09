@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { createLogger } from "@/lib/logger";
+import { withAdminAuth } from "@/lib/middleware/auth";
 import config from "@/payload.config";
 
 const logger = createLogger("api-admin-jobs-run");
@@ -47,7 +48,7 @@ const mapJobStages = (docs: Array<{ id: number; stage?: string | null }>) =>
  * This endpoint is primarily for E2E testing where we need to
  * process jobs synchronously rather than via cron.
  */
-export const POST = async (req: Request) => {
+export const POST = withAdminAuth(async (req) => {
   try {
     if (process.env.NODE_ENV === "production") {
       return NextResponse.json({ error: "Not available in production" }, { status: 403 });
@@ -106,4 +107,4 @@ export const POST = async (req: Request) => {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: "Failed to run jobs", details: errorMessage }, { status: 500 });
   }
-};
+});

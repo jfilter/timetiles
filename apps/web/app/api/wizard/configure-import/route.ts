@@ -8,7 +8,7 @@
  * @module
  * @category API Routes
  */
-/* eslint-disable sonarjs/max-lines-per-function -- Import configuration requires many sequential setup steps */
+/* eslint-disable sonarjs/max-lines, sonarjs/max-lines-per-function -- Import configuration requires many sequential setup steps with security checks */
 
 import fs from "node:fs";
 import os from "node:os";
@@ -19,9 +19,11 @@ import { NextResponse } from "next/server";
 import type { Payload } from "payload";
 import { getPayload } from "payload";
 
+import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
-import { badRequest, unauthorized } from "@/lib/utils/api-response";
+import { getQuotaService, QuotaExceededError } from "@/lib/services/quota-service";
+import { badRequest, forbidden, unauthorized } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 import type { User } from "@/payload-types";
 
@@ -129,11 +131,25 @@ const loadPreviewMetadata = (previewId: string): PreviewMetadata | null => {
   }
 };
 
+/** Known data file extensions that the preview may have created. */
+const DATA_FILE_EXTENSIONS = [".csv", ".xls", ".xlsx", ".ods"];
+
 const cleanupPreview = (previewId: string) => {
+  // Security: previewId is already validated as a UUID before this is called
   const previewDir = getPreviewDir();
+
+  // Remove the metadata file
   const metaPath = path.join(previewDir, `${previewId}.meta.json`);
   if (fs.existsSync(metaPath)) {
     fs.unlinkSync(metaPath);
+  }
+
+  // Remove any associated data files (Bug 26 fix: previously only meta was cleaned up)
+  for (const ext of DATA_FILE_EXTENSIONS) {
+    const dataPath = path.join(previewDir, `${previewId}${ext}`);
+    if (fs.existsSync(dataPath)) {
+      fs.unlinkSync(dataPath);
+    }
   }
 };
 
@@ -175,6 +191,7 @@ const buildGeoFieldDetection = (fieldMapping: FieldMapping | undefined, geocodin
 // Create or update dataset with wizard configuration
 const processDataset = async (
   payload: Payload,
+  req: NextRequest,
   sheetMapping: SheetMapping,
   fieldMapping: FieldMapping | undefined,
   catalogId: number,
@@ -191,6 +208,7 @@ const processDataset = async (
   const schemaConfig = { autoApproveNonBreaking: true };
 
   if (sheetMapping.datasetId === "new") {
+    // Bug 14 fix: pass req so Payload hooks and access control know the acting user
     const newDataset = await payload.create({
       collection: "datasets",
       data: {
@@ -204,6 +222,7 @@ const processDataset = async (
         geoFieldDetection,
         schemaConfig,
       },
+      req,
     });
 
     logger.info("Created new dataset with wizard config", {
@@ -215,10 +234,12 @@ const processDataset = async (
     return newDataset.id;
   }
 
+  // Bug 14 fix: pass req so Payload hooks and access control know the acting user
   await payload.update({
     collection: "datasets",
     id: sheetMapping.datasetId,
     data: { fieldMappingOverrides, idStrategy, deduplicationConfig, geoFieldDetection, schemaConfig },
+    req,
   });
 
   logger.info("Updated existing dataset with wizard config", {
@@ -229,47 +250,39 @@ const processDataset = async (
   return sheetMapping.datasetId;
 };
 
-// Process all sheet mappings and return dataset mapping entries
+// Process all sheet mappings and return dataset mapping entries.
+// Bug 28 fix: process sequentially instead of in parallel to prevent race conditions
+// when multiple sheets target the same dataset.
 const processSheetMappings = async (
   payload: Payload,
+  req: NextRequest,
   sheetMappings: SheetMapping[],
   fieldMappings: FieldMapping[],
   catalogId: number,
   deduplicationStrategy: ConfigureImportRequest["deduplicationStrategy"],
   geocodingEnabled: boolean
 ): Promise<{ datasetIdMap: Map<number, number>; datasetMappingEntries: DatasetMappingEntry[] }> => {
-  // Process all sheet mappings in parallel for better performance
-  const results = await Promise.all(
-    sheetMappings.map(async (sheetMapping) => {
-      const fieldMapping = fieldMappings.find((fm) => fm.sheetIndex === sheetMapping.sheetIndex);
-      const datasetId = await processDataset(
-        payload,
-        sheetMapping,
-        fieldMapping,
-        catalogId,
-        deduplicationStrategy,
-        geocodingEnabled
-      );
-
-      return {
-        sheetIndex: sheetMapping.sheetIndex,
-        datasetId,
-        entry: {
-          sheetIdentifier: String(sheetMapping.sheetIndex),
-          dataset: datasetId,
-          skipIfMissing: false,
-        } as DatasetMappingEntry,
-      };
-    })
-  );
-
-  // Build maps from parallel results
   const datasetIdMap = new Map<number, number>();
   const datasetMappingEntries: DatasetMappingEntry[] = [];
 
-  for (const result of results) {
-    datasetIdMap.set(result.sheetIndex, result.datasetId);
-    datasetMappingEntries.push(result.entry);
+  for (const sheetMapping of sheetMappings) {
+    const fieldMapping = fieldMappings.find((fm) => fm.sheetIndex === sheetMapping.sheetIndex);
+    const datasetId = await processDataset(
+      payload,
+      req,
+      sheetMapping,
+      fieldMapping,
+      catalogId,
+      deduplicationStrategy,
+      geocodingEnabled
+    );
+
+    datasetIdMap.set(sheetMapping.sheetIndex, datasetId);
+    datasetMappingEntries.push({
+      sheetIdentifier: String(sheetMapping.sheetIndex),
+      dataset: datasetId,
+      skipIfMissing: false,
+    });
   }
 
   return { datasetIdMap, datasetMappingEntries };
@@ -301,19 +314,24 @@ const translateSchemaMode = (mode: CreateScheduleConfig["schemaMode"]) => {
 
 /**
  * Create scheduled import from wizard configuration.
+ * Checks the active-schedules quota before creation to prevent bypass (Bug 15).
  */
 const createScheduledImport = async (
   payload: Payload,
   scheduleConfig: CreateScheduleConfig,
   catalogId: number,
   datasetMappingEntries: DatasetMappingEntry[],
-  userId: number,
+  user: User,
   importFileId: number,
   previewMeta: PreviewMetadata
 ): Promise<number | null> => {
   if (!scheduleConfig.enabled || !scheduleConfig.sourceUrl) {
     return null;
   }
+
+  // Bug 15 fix: enforce scheduled-import quota before creation
+  const quotaService = getQuotaService(payload);
+  await quotaService.validateQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
 
   // Determine if single or multi-sheet
   const isSingleSheet = datasetMappingEntries.length === 1;
@@ -345,7 +363,7 @@ const createScheduledImport = async (
     name: scheduleConfig.name,
     sourceUrl: scheduleConfig.sourceUrl,
     catalog: catalogId,
-    createdBy: userId,
+    createdBy: user.id,
     enabled: true,
     scheduleType: scheduleConfig.scheduleType,
     schemaMode: scheduleConfig.schemaMode,
@@ -389,15 +407,26 @@ const createScheduledImport = async (
   return scheduledImport.id;
 };
 
-// Create catalog if needed
+// Create catalog if needed, verifying ownership for existing catalogs
 const getOrCreateCatalog = async (
   payload: Payload,
   req: NextRequest,
   catalogId: number | "new",
   newCatalogName: string | undefined,
-  userId: number
-): Promise<number | null> => {
+  user: User
+): Promise<number | null | "forbidden"> => {
   if (catalogId !== "new") {
+    // Bug 13 fix: verify the user owns this catalog (admins bypass)
+    if (user.role !== "admin") {
+      const catalog = await payload.find({
+        collection: "catalogs",
+        where: { id: { equals: catalogId }, createdBy: { equals: user.id } },
+        limit: 1,
+      });
+      if (catalog.docs.length === 0) {
+        return "forbidden";
+      }
+    }
     return catalogId;
   }
 
@@ -414,7 +443,7 @@ const getOrCreateCatalog = async (
     req,
   });
 
-  logger.info("Created new catalog", { catalogId: newCatalog.id, name: newCatalogName, userId });
+  logger.info("Created new catalog", { catalogId: newCatalog.id, name: newCatalogName, userId: user.id });
   return newCatalog.id;
 };
 
@@ -442,6 +471,11 @@ const validateRequest = (
 
   if (!previewMeta) {
     return badRequest("Preview not found or expired. Please upload the file again.");
+  }
+
+  // Bug 27 fix: reject expired previews
+  if (previewMeta.expiresAt && new Date(previewMeta.expiresAt) < new Date()) {
+    return badRequest("Preview has expired. Please upload the file again.");
   }
 
   if (previewMeta.userId !== user.id) {
@@ -499,7 +533,10 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
 
     // Get or create catalog
     logger.debug("Getting or creating catalog", { catalogId: body.catalogId, newCatalogName: body.newCatalogName });
-    const finalCatalogId = await getOrCreateCatalog(payload, req, body.catalogId, body.newCatalogName, user.id);
+    const finalCatalogId = await getOrCreateCatalog(payload, req, body.catalogId, body.newCatalogName, user);
+    if (finalCatalogId === "forbidden") {
+      return forbidden("You do not have access to this catalog");
+    }
     if (finalCatalogId === null) {
       return badRequest("New catalog name is required");
     }
@@ -509,6 +546,7 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
     logger.debug("Processing sheet mappings", { sheetMappings: body.sheetMappings });
     const { datasetIdMap, datasetMappingEntries } = await processSheetMappings(
       payload,
+      req,
       body.sheetMappings,
       body.fieldMappings,
       finalCatalogId,
@@ -571,7 +609,7 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
         body.createSchedule,
         finalCatalogId,
         datasetMappingEntries,
-        user.id,
+        user,
         importFile.id,
         previewMeta!
       );
@@ -587,6 +625,11 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
       scheduledImportId: scheduledImportId ?? undefined, // Include if schedule was created
     });
   } catch (error) {
+    // Bug 15: surface quota-exceeded as 429 rather than 500
+    if (error instanceof QuotaExceededError) {
+      return NextResponse.json({ error: error.message, code: "QUOTA_EXCEEDED" }, { status: error.statusCode });
+    }
+
     logger.error("Failed to configure import", {
       error,
       message: error instanceof Error ? error.message : "Unknown error",

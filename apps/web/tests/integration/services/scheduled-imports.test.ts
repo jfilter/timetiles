@@ -260,7 +260,9 @@ describe.sequential("Scheduled Imports Integration", () => {
       expect(new Date(updatedSchedule.nextRun)).toEqual(new Date("2024-01-16T00:00:00.000Z"));
       expect(updatedSchedule.lastStatus).toBe("running");
       expect(updatedSchedule.statistics.totalRuns).toBe(1);
-      expect(updatedSchedule.statistics.successfulRuns).toBe(1);
+      // successfulRuns is NOT incremented at queue time - it's updated by the
+      // job handler when processing completes with actual success/failure status.
+      expect(updatedSchedule.statistics.successfulRuns).toBe(0);
 
       vi.useRealTimers();
     });
@@ -292,13 +294,16 @@ describe.sequential("Scheduled Imports Integration", () => {
       vi.setSystemTime(new Date("2024-01-15T10:30:00.000Z"));
 
       // Create multiple schedules - use ISO format with Z for UTC
+      // Explicitly set nextRun so the beforeChange hook doesn't compute it
+      // from the current fake time (which would set it in the future).
       await withScheduledImport(testEnv, testCatalog.id, `${testServerUrl}/schedule1.csv`, {
         name: "Hourly Import",
         scheduleType: "cron",
         cronExpression: "0 * * * *", // Every hour
         authConfig: { type: "none" },
         additionalData: {
-          lastRun: new Date("2024-01-15T09:00:00.000Z"), // 1.5 hours ago - should trigger
+          lastRun: new Date("2024-01-15T09:00:00.000Z"), // 1.5 hours ago
+          nextRun: new Date("2024-01-15T10:00:00.000Z"), // Past due - should trigger
         },
         user: testUser,
       });
@@ -309,7 +314,8 @@ describe.sequential("Scheduled Imports Integration", () => {
         cronExpression: "0 0 * * *", // Daily at midnight
         authConfig: { type: "none" },
         additionalData: {
-          lastRun: new Date("2024-01-15T00:00:00.000Z"), // Today - should not trigger
+          lastRun: new Date("2024-01-15T00:00:00.000Z"), // Today
+          nextRun: new Date("2024-01-16T00:00:00.000Z"), // Tomorrow - should NOT trigger
         },
         user: testUser,
       });
@@ -320,7 +326,8 @@ describe.sequential("Scheduled Imports Integration", () => {
         cronExpression: "0 * * * *", // Every hour
         authConfig: { type: "none" },
         additionalData: {
-          lastRun: new Date("2024-01-15T08:00:00.000Z"), // 2.5 hours ago - should trigger
+          lastRun: new Date("2024-01-15T08:00:00.000Z"), // 2.5 hours ago
+          nextRun: new Date("2024-01-15T09:00:00.000Z"), // Past due - should trigger
         },
         user: testUser,
       });
@@ -1064,7 +1071,8 @@ describe.sequential("Scheduled Imports Integration", () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2024-01-15 10:00:00"));
 
-      // Create scheduled import
+      // Create scheduled import with explicit nextRun in the past so
+      // the schedule manager triggers it at the current fake time.
       const scheduledImport = await payload.create({
         collection: "scheduled-imports",
         data: {
@@ -1076,6 +1084,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           scheduleType: "cron",
           cronExpression: "0 * * * *", // Hourly
           lastRun: new Date("2024-01-15 08:00:00"), // 2 hours ago
+          nextRun: new Date("2024-01-15 09:00:00"), // Past due
           importNameTemplate: "Products - {{date}} {{time}}",
         },
         user: testUser,

@@ -261,6 +261,39 @@ describe.sequential("POST /api/wizard/preview-schema", () => {
       // Verify file was written to temp directory
       expect(mocks.mockWriteFileSync).toHaveBeenCalled();
     });
+
+    it("should not persist authConfig to metadata file on disk (Bug 20)", async () => {
+      const csvHeaders = ["title", "date"];
+      const csvRow = { title: "Event 1", date: "2024-01-01" };
+
+      mocks.mockPapaParse
+        .mockReturnValueOnce({
+          data: [csvRow],
+          meta: { fields: csvHeaders },
+          errors: [],
+        })
+        .mockReturnValueOnce({
+          data: [csvRow],
+          meta: { fields: csvHeaders },
+          errors: [],
+        });
+      mocks.mockReadFileSync.mockReturnValue("title,date\nEvent 1,2024-01-01");
+
+      const formData = createFileFormData("events.csv", "csv-content", "text/csv");
+      const request = createMockRequest(formData);
+
+      await POST(request, {} as never);
+
+      // Find the metadata write call (the one writing .meta.json content)
+      const writeFileSyncCalls = mocks.mockWriteFileSync.mock.calls;
+      const metaWriteCall = writeFileSyncCalls.find(
+        (call: unknown[]) => typeof call[0] === "string" && call[0].endsWith(".meta.json")
+      );
+
+      expect(metaWriteCall).toBeDefined();
+      const metaContent = JSON.parse(metaWriteCall![1] as string);
+      expect(metaContent).not.toHaveProperty("authConfig");
+    });
   });
 
   describe("Excel blank-column header mapping", () => {
@@ -329,6 +362,28 @@ describe.sequential("POST /api/wizard/preview-schema", () => {
 
       expect(response.status).toBe(400);
       expect(body.error).toContain("Invalid URL");
+    });
+
+    it("should return 400 for private/internal URLs (Bug 19 - SSRF)", async () => {
+      const privateUrls = [
+        "http://localhost/data.csv",
+        "http://127.0.0.1/data.csv",
+        "http://10.0.0.1/data.csv",
+        "http://192.168.1.1/data.csv",
+        "http://172.16.0.1/data.csv",
+      ];
+
+      for (const privateUrl of privateUrls) {
+        const formData = new FormData();
+        formData.append("sourceUrl", privateUrl);
+        const request = createMockRequest(formData);
+
+        const response = await POST(request, {} as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(400);
+        expect(body.error).toContain("private or internal networks");
+      }
     });
 
     it("should return 400 for unsupported file type from URL", async () => {
@@ -406,6 +461,54 @@ describe.sequential("POST /api/wizard/preview-schema", () => {
       expect(body.sheets).toHaveLength(1);
       expect(body.sheets[0].headers).toEqual(["title", "date"]);
       expect(body.sheets[0].suggestedMappings.mappings.titlePath.path).toBe("title");
+    });
+
+    it("should not persist auth config to metadata for URL sources (Bug 20)", async () => {
+      const csvContent = "title,date\nEvent 1,2024-01-01";
+      const fetchedData = Buffer.from(csvContent);
+
+      mocks.mockFetchUrlData.mockResolvedValue({
+        data: fetchedData,
+        contentType: "text/csv",
+      });
+      mocks.mockDetectFileTypeFromResponse.mockReturnValue({
+        fileExtension: ".csv",
+        mimeType: "text/csv",
+      });
+
+      mocks.mockReadFileSync.mockReturnValue(csvContent);
+      mocks.mockPapaParse
+        .mockReturnValueOnce({
+          data: [{ title: "Event 1", date: "2024-01-01" }],
+          meta: { fields: ["title", "date"] },
+          errors: [],
+        })
+        .mockReturnValueOnce({
+          data: [{ title: "Event 1", date: "2024-01-01" }],
+          meta: { fields: ["title", "date"] },
+          errors: [],
+        });
+
+      const formData = new FormData();
+      formData.append("sourceUrl", "https://example.com/events.csv");
+      formData.append("authType", "bearer");
+      formData.append("bearerToken", "secret-token-value");
+      const request = createMockRequest(formData);
+
+      await POST(request, {} as never);
+
+      // Find the metadata write call
+      const writeFileSyncCalls = mocks.mockWriteFileSync.mock.calls;
+      const metaWriteCall = writeFileSyncCalls.find(
+        (call: unknown[]) => typeof call[0] === "string" && call[0].endsWith(".meta.json")
+      );
+
+      expect(metaWriteCall).toBeDefined();
+      const metaContent = JSON.parse(metaWriteCall![1] as string);
+      // Auth config must NOT be persisted to disk
+      expect(metaContent).not.toHaveProperty("authConfig");
+      // Source URL should still be stored
+      expect(metaContent.sourceUrl).toBe("https://example.com/events.csv");
     });
   });
 });

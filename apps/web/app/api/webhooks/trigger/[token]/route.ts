@@ -63,24 +63,13 @@ const generateImportName = (scheduledImport: ScheduledImport, currentTime: Date)
     .replace("{{url}}", new URL(scheduledImport.sourceUrl).hostname);
 };
 
-const updateExecutionHistory = async (
-  payload: Payload,
-  scheduledImport: ScheduledImport,
-  currentTime: Date,
-  jobId: string
-): Promise<void> => {
-  const executionHistory = scheduledImport.executionHistory ?? [];
-  executionHistory.unshift({
-    executedAt: currentTime.toISOString(),
-    status: "success",
-    jobId: jobId,
-    triggeredBy: "webhook",
-  });
-
-  if (executionHistory.length > 10) {
-    executionHistory.splice(10);
-  }
-
+/**
+ * Update statistics when a webhook triggers an import.
+ * Execution history is NOT recorded here because the import has only been queued,
+ * not completed. The actual success/failure entry is added by the job handler
+ * when processing finishes.
+ */
+const updateStatisticsOnTrigger = async (payload: Payload, scheduledImport: ScheduledImport): Promise<void> => {
   const stats = scheduledImport.statistics ?? {
     totalRuns: 0,
     successfulRuns: 0,
@@ -93,7 +82,6 @@ const updateExecutionHistory = async (
     collection: "scheduled-imports",
     id: scheduledImport.id,
     data: {
-      executionHistory,
       statistics: stats,
     },
   });
@@ -163,6 +151,7 @@ export const POST = async (_request: NextRequest, { params }: { params: Promise<
     const importName = generateImportName(scheduledImport, currentTime);
 
     // CRITICAL: Set status to "running" BEFORE queuing job
+    const previousStatus = scheduledImport.lastStatus ?? null;
     await payload.update({
       collection: "scheduled-imports",
       id: scheduledImport.id,
@@ -172,25 +161,42 @@ export const POST = async (_request: NextRequest, { params }: { params: Promise<
       },
     });
 
-    // Queue URL fetch job
-    const urlFetchJob = await payload.jobs.queue({
-      task: JOB_TYPES.URL_FETCH,
-      input: {
+    // Queue URL fetch job - wrapped in try/catch to revert status on failure
+    let urlFetchJob;
+    try {
+      urlFetchJob = await payload.jobs.queue({
+        task: JOB_TYPES.URL_FETCH,
+        input: {
+          scheduledImportId: scheduledImport.id,
+          sourceUrl: scheduledImport.sourceUrl,
+          authConfig: scheduledImport.authConfig,
+          catalogId: typeof scheduledImport.catalog === "object" ? scheduledImport.catalog.id : scheduledImport.catalog,
+          originalName: importName,
+          userId:
+            scheduledImport.createdBy && typeof scheduledImport.createdBy === "object"
+              ? scheduledImport.createdBy.id
+              : scheduledImport.createdBy,
+          triggeredBy: "webhook",
+        },
+      });
+    } catch (queueError) {
+      // Revert lastStatus so the import doesn't get stuck as "running"
+      logError(queueError, "Failed to queue webhook job, reverting status", {
         scheduledImportId: scheduledImport.id,
-        sourceUrl: scheduledImport.sourceUrl,
-        authConfig: scheduledImport.authConfig,
-        catalogId: typeof scheduledImport.catalog === "object" ? scheduledImport.catalog.id : scheduledImport.catalog,
-        originalName: importName,
-        userId:
-          scheduledImport.createdBy && typeof scheduledImport.createdBy === "object"
-            ? scheduledImport.createdBy.id
-            : scheduledImport.createdBy,
-        triggeredBy: "webhook",
-      },
-    });
+        previousStatus,
+      });
+      await payload.update({
+        collection: "scheduled-imports",
+        id: scheduledImport.id,
+        data: {
+          lastStatus: previousStatus,
+        },
+      });
+      return internalError("Failed to queue import job");
+    }
 
-    // Update execution history and statistics
-    await updateExecutionHistory(payload, scheduledImport, currentTime, urlFetchJob.id.toString());
+    // Update statistics (execution history is recorded by the job handler on completion)
+    await updateStatisticsOnTrigger(payload, scheduledImport);
 
     logger.info("Webhook triggered import successfully", {
       scheduledImportId: scheduledImport.id,
