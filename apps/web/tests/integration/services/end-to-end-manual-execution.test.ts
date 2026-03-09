@@ -49,7 +49,7 @@ describe.sequential("End-to-End Job Processing with Manual Execution", () => {
   let testUser: any;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: true });
     payload = testEnv.payload;
     testDir = testEnv.tempDir ?? "/tmp";
 

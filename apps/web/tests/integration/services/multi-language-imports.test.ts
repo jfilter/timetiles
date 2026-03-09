@@ -20,10 +20,10 @@ import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { logger } from "@/lib/logger";
-import type { PayloadJob } from "@/payload-types";
 
 import {
   createIntegrationTestEnvironment,
+  runJobsUntilImportJobStage,
   runJobsUntilImportSettled,
   withCatalog,
   withDataset,
@@ -32,13 +32,29 @@ import {
 } from "../../setup/integration/environment";
 
 describe.sequential("Multi-Language Import Tests", () => {
+  const collectionsToReset = [
+    "events",
+    "import-files",
+    "import-jobs",
+    "datasets",
+    "dataset-schemas",
+    "catalogs",
+    "users",
+    "user-usage",
+    "payload-jobs",
+  ];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
+  let importerUserId: string | number;
+  let approverUser: any;
+  let fixtureCache: Map<string, Buffer>;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
+    fixtureCache = new Map();
   });
 
   afterAll(async () => {
@@ -49,7 +65,14 @@ describe.sequential("Multi-Language Import Tests", () => {
 
   beforeEach(async () => {
     // Clear collections before each test
-    await testEnv.seedManager.truncate();
+    await testEnv.seedManager.truncate(collectionsToReset);
+
+    const { users } = await withUsers(testEnv, {
+      importer: { role: "user" },
+      approver: { role: "admin" },
+    });
+    importerUserId = users.importer.id;
+    approverUser = users.approver;
 
     // Create test catalog
     const { catalog } = await withCatalog(testEnv, {
@@ -75,11 +98,6 @@ describe.sequential("Multi-Language Import Tests", () => {
   };
 
   const simulateSchemaApproval = async (importJobId: string) => {
-    const { users } = await withUsers(testEnv, {
-      approver: { role: "admin" },
-    });
-    const testUser = users.approver;
-
     const beforeJob = await payload.findByID({
       collection: "import-jobs",
       id: importJobId,
@@ -88,7 +106,7 @@ describe.sequential("Multi-Language Import Tests", () => {
     const updatedSchemaValidation = {
       ...beforeJob.schemaValidation,
       approved: true,
-      approvedBy: testUser.id,
+      approvedBy: approverUser.id,
       approvedAt: new Date().toISOString(),
     };
 
@@ -98,13 +116,14 @@ describe.sequential("Multi-Language Import Tests", () => {
       data: {
         schemaValidation: updatedSchemaValidation,
       },
-      user: testUser, // Pass user context for authentication
+      user: approverUser, // Pass user context for authentication
     });
   };
 
   const importLanguageCSV = async (fixtureName: string, language: string) => {
     const fixturePath = path.join(__dirname, "../../fixtures", fixtureName);
-    const fileBuffer = fs.readFileSync(fixturePath);
+    const fileBuffer = fixtureCache.get(fixtureName) ?? fs.readFileSync(fixturePath);
+    fixtureCache.set(fixtureName, fileBuffer);
 
     // Create dataset with language setting - name must match the CSV filename for dataset-detection to find it
     const { dataset } = await withDataset(testEnv, testCatalogId, {
@@ -121,73 +140,34 @@ describe.sequential("Multi-Language Import Tests", () => {
     const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
       filename: fixtureName,
       mimeType: "text/csv",
+      user: importerUserId,
       datasetsCount: 0,
       datasetsProcessed: 0,
     });
 
-    // NOTE: The import-files collection afterChange hook automatically queues dataset-detection
-    // So we just need to run the jobs, not queue manually
+    const schemaDetectionResult = await runJobsUntilImportJobStage(
+      payload,
+      importFile.id,
+      (importJob) =>
+        importJob.stage === "validate-schema" ||
+        importJob.stage === "processing" ||
+        importJob.stage === "completed",
+      {
+        maxIterations: 20,
+        onPending: ({ iteration, importJob }) => {
+          if (iteration % 5 !== 0) {
+            return;
+          }
 
-    console.log("[TEST] Starting job processing loop");
-
-    // Run jobs until schema detection completes
-    let schemaDetectionComplete = false;
-    let iteration = 0;
-    const maxIterations = 20;
-
-    while (!schemaDetectionComplete && iteration < maxIterations) {
-      iteration++;
-      console.log(`[TEST] Iteration ${iteration}: Running jobs`);
-
-      // Check queued jobs before running
-      const queuedJobs = await payload.find({
-        collection: "payload-jobs",
-        where: {
-          completedAt: { exists: false },
+          logger.debug("Waiting for language import schema detection", {
+            fixtureName,
+            iteration,
+            stage: importJob?.stage ?? "missing",
+          });
         },
-        limit: 10,
-      });
-      console.log(
-        `[TEST] Queued jobs before run:`,
-        queuedJobs.docs.map((j: PayloadJob) => ({ id: j.id, taskSlug: j.taskSlug, completedAt: j.completedAt }))
-      );
-
-      const jobsRun = await payload.jobs.run({ allQueues: true, limit: 100 });
-      console.log(`[TEST] Jobs run result:`, jobsRun);
-
-      // Find import job created by dataset-detection
-      const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
-        sort: "createdAt",
-        depth: 2,
-      });
-
-      console.log(`[TEST] Iteration ${iteration}: Found ${importJobs.docs.length} import jobs`);
-
-      if (importJobs.docs.length > 0) {
-        const currentJob = importJobs.docs[0];
-        console.log(
-          `[TEST] Iteration ${iteration}: stage=${currentJob.stage}, detectedFieldMappings=${JSON.stringify(currentJob.detectedFieldMappings)}`
-        );
-
-        // Schema detection is complete when stage is validate-schema or later
-        schemaDetectionComplete =
-          currentJob.stage === "validate-schema" ||
-          currentJob.stage === "processing" ||
-          currentJob.stage === "completed";
-
-        if (iteration % 5 === 0) {
-          console.log(`[TEST] Iteration ${iteration}: stage=${currentJob.stage}, jobs=${importJobs.docs.length}`);
-        }
-      } else {
-        console.log(`[TEST] Iteration ${iteration}: No import jobs found yet`);
       }
-
-      if (!schemaDetectionComplete) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
+    );
+    expect(schemaDetectionResult.matched).toBe(true);
 
     // Get the final import job with related data
     const importJobs = await payload.find({

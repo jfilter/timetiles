@@ -40,6 +40,7 @@ import {
   runJobsUntilImportSettled,
   withCatalog,
   withImportFile,
+  withUsers,
 } from "../../setup/integration/environment";
 
 /**
@@ -62,11 +63,25 @@ const generateMockGeocodingResult = (address: string) => {
 };
 
 describe.sequential("Geocoding Cache Integration", () => {
+  const collectionsToReset = [
+    "events",
+    "import-files",
+    "import-jobs",
+    "datasets",
+    "dataset-schemas",
+    "catalogs",
+    "users",
+    "user-usage",
+    "location-cache",
+    "geocoding-providers",
+    "payload-jobs",
+  ];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
-  let testDir: string;
-  let testCounter = 0;
+  let testUserId: string | number;
+  let fixtureCsvContent: string;
 
   /**
    * Helper to run all jobs until import file reaches completed/failed status.
@@ -76,16 +91,16 @@ describe.sequential("Geocoding Cache Integration", () => {
     return result.settled;
   };
 
-  beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
-    payload = testEnv.payload;
-    testDir = testEnv.tempDir ?? "/tmp";
+  const createImportFile = async (csvContent: string | Buffer, filename: string) =>
+    withImportFile(testEnv, testCatalogId, csvContent, {
+      filename,
+      user: testUserId,
+    });
 
-    // Create temp directory for CSV files
-    const csvDir = path.join(testDir, "csv-files");
-    if (!fs.existsSync(csvDir)) {
-      fs.mkdirSync(csvDir, { recursive: true });
-    }
+  beforeAll(async () => {
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
+    payload = testEnv.payload;
+    fixtureCsvContent = fs.readFileSync(path.join(process.cwd(), "tests/fixtures/geocoding-test.csv"), "utf8");
   });
 
   afterAll(async () => {
@@ -95,35 +110,8 @@ describe.sequential("Geocoding Cache Integration", () => {
   });
 
   beforeEach(async () => {
-    // Increment counter for unique names
-    testCounter++;
-
     // Clear collections and reset mocks before each test
-    await testEnv.seedManager.truncate();
-
-    // Clear location cache explicitly
-    const cacheEntries = await payload.find({
-      collection: "location-cache",
-      limit: 1000,
-    });
-    for (const entry of cacheEntries.docs) {
-      await payload.delete({
-        collection: "location-cache",
-        id: entry.id,
-      });
-    }
-
-    // Clear geocoding providers from previous tests
-    const existingProviders = await payload.find({
-      collection: "geocoding-providers",
-      limit: 1000,
-    });
-    for (const provider of existingProviders.docs) {
-      await payload.delete({
-        collection: "geocoding-providers",
-        id: provider.id,
-      });
-    }
+    await testEnv.seedManager.truncate(collectionsToReset);
 
     // Reset mocks completely
     mockGoogleGeocode.mockReset();
@@ -145,7 +133,7 @@ describe.sequential("Geocoding Cache Integration", () => {
     await payload.create({
       collection: "geocoding-providers",
       data: {
-        name: `Google Maps Test ${testCounter}`,
+        name: `Google Maps Test ${Date.now()}`,
         type: "google",
         enabled: true,
         priority: 1,
@@ -164,57 +152,36 @@ describe.sequential("Geocoding Cache Integration", () => {
     const { initializeGeocoding } = await import("../../../lib/services/geocoding");
     initializeGeocoding(payload);
 
+    const { users } = await withUsers(testEnv, {
+      importer: { role: "user" },
+    });
+    testUserId = users.importer.id;
+
     // Create test catalog with auto-approval settings
     const { catalog } = await withCatalog(testEnv, {
-      name: `Geocoding Test Catalog ${testCounter}`,
+      name: `Geocoding Test Catalog ${Date.now()}`,
       description: "Catalog for geocoding cache testing",
     });
     testCatalogId = catalog.id;
   });
 
-  describe("Debug: Pipeline Stages", () => {
-    it("should reach geocode stage and detect location field", async () => {
-      const csvContent = fs.readFileSync(path.join(process.cwd(), "tests/fixtures/geocoding-test.csv"), "utf8");
-
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
-        filename: "geocoding-test.csv",
-      });
+  describe("Scenario 1: First Import with Unique Locations", () => {
+    it("should geocode unique locations and populate cache", async () => {
+      // Create CSV with 15 rows, 10 unique locations (5 duplicates)
+      const { importFile } = await createImportFile(fixtureCsvContent, "geocoding-test.csv");
 
       // Run complete import pipeline
       await runJobsUntilComplete(importFile.id);
 
-      // Get the import job to check stages
+      // Verify location field was detected
       const importJobs = await payload.find({
         collection: "import-jobs",
         where: {
           importFile: { equals: importFile.id },
         },
       });
-
       expect(importJobs.docs.length).toBeGreaterThan(0);
-      const importJob = importJobs.docs[0];
-
-      // Debug: Check detected field mappings
-      console.log("Import Job Stage:", importJob.stage);
-      console.log("Detected Field Mappings:", JSON.stringify(importJob.detectedFieldMappings, null, 2));
-      console.log("Geocoding Results:", JSON.stringify(importJob.geocodingResults, null, 2));
-
-      // Verify location field was detected
-      expect(importJob.detectedFieldMappings?.locationPath).toBeDefined();
-    });
-  });
-
-  describe("Scenario 1: First Import with Unique Locations", () => {
-    it("should geocode unique locations and populate cache", async () => {
-      // Create CSV with 15 rows, 10 unique locations (5 duplicates)
-      const csvContent = fs.readFileSync(path.join(process.cwd(), "tests/fixtures/geocoding-test.csv"), "utf8");
-
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
-        filename: "geocoding-test.csv",
-      });
-
-      // Run complete import pipeline
-      await runJobsUntilComplete(importFile.id);
+      expect(importJobs.docs[0].detectedFieldMappings?.locationPath).toBeDefined();
 
       // Verify location-cache was populated with 10 unique locations
       const locationCache = await payload.find({
@@ -257,11 +224,7 @@ describe.sequential("Geocoding Cache Integration", () => {
   describe("Scenario 2: Second Import with Same Locations (Cache Hits)", () => {
     it("should reuse cached locations without calling geocoding API", async () => {
       // First import - populate cache
-      const csvContent = fs.readFileSync(path.join(process.cwd(), "tests/fixtures/geocoding-test.csv"), "utf8");
-
-      const { importFile: firstImportFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
-        filename: "geocoding-test-first.csv",
-      });
+      const { importFile: firstImportFile } = await createImportFile(fixtureCsvContent, "geocoding-test-first.csv");
 
       await runJobsUntilComplete(firstImportFile.id);
 
@@ -280,9 +243,7 @@ describe.sequential("Geocoding Cache Integration", () => {
       vi.clearAllMocks();
 
       // Second import - same CSV, should use cache
-      const { importFile: secondImportFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
-        filename: "geocoding-test-second.csv",
-      });
+      const { importFile: secondImportFile } = await createImportFile(fixtureCsvContent, "geocoding-test-second.csv");
 
       await runJobsUntilComplete(secondImportFile.id);
 
@@ -324,11 +285,7 @@ describe.sequential("Geocoding Cache Integration", () => {
   describe("Scenario 3: Mixed Cached and Uncached Locations", () => {
     it("should geocode only new locations and reuse cached ones", async () => {
       // First import with 10 unique locations
-      const csvContent = fs.readFileSync(path.join(process.cwd(), "tests/fixtures/geocoding-test.csv"), "utf8");
-
-      const { importFile: firstImportFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
-        filename: "geocoding-test-first.csv",
-      });
+      const { importFile: firstImportFile } = await createImportFile(fixtureCsvContent, "geocoding-test-first.csv");
 
       await runJobsUntilComplete(firstImportFile.id);
 
@@ -350,9 +307,7 @@ describe.sequential("Geocoding Cache Integration", () => {
 9,New Event at Michigan,2024-01-09,444 Michigan Ave Chicago IL
 10,New Event at Newbury,2024-01-10,555 Newbury St Boston MA`;
 
-      const { importFile: secondImportFile } = await withImportFile(testEnv, testCatalogId, mixedCsvContent, {
-        filename: "geocoding-test-mixed.csv",
-      });
+      const { importFile: secondImportFile } = await createImportFile(mixedCsvContent, "geocoding-test-mixed.csv");
 
       await runJobsUntilComplete(secondImportFile.id);
 
@@ -406,9 +361,7 @@ describe.sequential("Geocoding Cache Integration", () => {
 9,Event 9,2024-01-09,Third Location Blvd
 10,Event 10,2024-01-10,Third Location Blvd`;
 
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvWithDuplicates, {
-        filename: "geocoding-test-duplicates.csv",
-      });
+      const { importFile } = await createImportFile(csvWithDuplicates, "geocoding-test-duplicates.csv");
 
       await runJobsUntilComplete(importFile.id);
 
@@ -473,9 +426,7 @@ describe.sequential("Geocoding Cache Integration", () => {
 3,Event 3,2024-01-03,123 MAIN ST
 4,Event 4,2024-01-04,456 Oak Ave`;
 
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvWithVariations, {
-        filename: "geocoding-test-variations.csv",
-      });
+      const { importFile } = await createImportFile(csvWithVariations, "geocoding-test-variations.csv");
 
       await runJobsUntilComplete(importFile.id);
 
@@ -501,9 +452,7 @@ describe.sequential("Geocoding Cache Integration", () => {
 2,Event 2,2024-01-02,Test Location
 3,Event 3,2024-01-03,Test Location`;
 
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
-        filename: "geocoding-test-hitcount.csv",
-      });
+      const { importFile } = await createImportFile(csvContent, "geocoding-test-hitcount.csv");
 
       await runJobsUntilComplete(importFile.id);
 

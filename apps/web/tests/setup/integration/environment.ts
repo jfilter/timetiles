@@ -44,6 +44,7 @@ interface SharedWorkerEnvironment {
 
 let sharedWorkerEnvironmentPromise: Promise<SharedWorkerEnvironment> | null = null;
 let sharedWorkerEnvironmentDbUrl: string | null = null;
+const defaultImportUserCache = new WeakMap<object, { id: string | number }>();
 
 export interface TestEnvironmentOptions {
   /** Collections to include in the test environment */
@@ -137,6 +138,39 @@ const createSeedManager = async (payload: any): Promise<SeedManager> => {
 
   await seedManager.initialize();
   return seedManager;
+};
+
+const getOrCreateDefaultImportUser = async (testEnv: TestEnvironment): Promise<any> => {
+  const cacheKey = testEnv.payload as object;
+  const workerId = process.env.VITEST_WORKER_ID ?? "1";
+  const cachedUser = defaultImportUserCache.get(cacheKey);
+
+  if (cachedUser) {
+    try {
+      return await testEnv.payload.findByID({
+        collection: "users",
+        id: cachedUser.id,
+      });
+    } catch {
+      // User was likely removed by a test reset. Fall through and recreate it.
+    }
+  }
+
+  const user = await testEnv.payload.create({
+    collection: "users",
+    data: {
+      email: `import-test-default-${workerId}-${randomUUID()}@test.local`,
+      password: TEST_CREDENTIALS.basic.strongPassword,
+      role: "user",
+    },
+    disableVerificationEmail: true,
+  });
+
+  defaultImportUserCache.set(cacheKey, {
+    id: user.id,
+  });
+
+  return user;
 };
 
 export class TestEnvironmentBuilder {
@@ -312,7 +346,7 @@ export class TestEnvironmentBuilder {
   async createIntegrationTestEnvironment(options: TestEnvironmentOptions = {}): Promise<TestEnvironment> {
     return this.createTestEnvironment({
       collections: Object.keys(COLLECTIONS) as CollectionName[],
-      createTempDir: true, // Enable temp directory for file operations
+      createTempDir: false,
       ...options,
     });
   }
@@ -394,7 +428,7 @@ export class TestEnvironmentBuilder {
  * This is the standard way to set up integration tests. It provides:
  * - Isolated PostgreSQL database (one per worker)
  * - Full Payload CMS with all collections
- * - Temp directory for file operations
+ * - Optional temp directory for file operations
  * - Automatic cleanup after tests
  *
  * DO NOT use this for unit tests. Unit tests should:
@@ -967,14 +1001,14 @@ const createImportFileWithUpload = async (
  * @param options.filename - Custom filename (default: auto-generated)
  * @param options.mimeType - MIME type (default: "text/csv")
  * @param options.status - Import status (default: "pending")
- * @param options.user - User ID to associate with the import (auto-creates temp user if not provided)
+ * @param options.user - User ID to associate with the import (auto-creates or reuses a shared test user if not provided)
  * @param options.datasetsCount - Number of datasets (for state tracking)
  * @param options.datasetsProcessed - Number of datasets processed
  * @param options.additionalData - Any additional fields to include in the import file data
  *
  * @example
  * ```typescript
- * // Basic usage (auto-creates a temp user)
+ * // Basic usage (auto-creates or reuses a shared test user)
  * const csvContent = "title,date\\nTest Event,2024-01-01";
  * const { importFile } = await withImportFile(testEnv, catalogId, csvContent);
  *
@@ -1023,20 +1057,9 @@ export const withImportFile = async (
       // User might not exist, just use ID
     }
   } else {
-    // Create a temporary test user for this import
-    // Use both timestamp and random suffix to avoid collisions when tests run in parallel
-    const randomSuffix = Math.random().toString(36).substring(2, 10);
-    const tempUser = await testEnv.payload.create({
-      collection: "users",
-      data: {
-        email: `import-test-${Date.now()}-${randomSuffix}@test.local`,
-        password: "TestPassword123!",
-        role: "user",
-      },
-      disableVerificationEmail: true,
-    });
-    data.user = tempUser.id;
-    userContext = tempUser;
+    const defaultUser = await getOrCreateDefaultImportUser(testEnv);
+    data.user = defaultUser.id;
+    userContext = defaultUser;
   }
   if (options?.datasetsCount !== undefined) {
     data.datasetsCount = options.datasetsCount;
