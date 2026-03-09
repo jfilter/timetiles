@@ -16,7 +16,6 @@ import type { CollectionConfig, PayloadRequest } from "payload";
 
 import { QUOTA_ERROR_MESSAGES, QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService } from "@/lib/services/quota-service";
-
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 import { basicMetadataFields, createCommonConfig, createSlugField } from "./shared-fields";
@@ -50,8 +49,8 @@ const detectCatalogChanges = (
   previousDoc: Record<string, unknown> | undefined,
   doc: Record<string, unknown>
 ): { createdByChanged: boolean; isPublicChanged: boolean; newCreatedBy: unknown; newIsPublic: boolean } => {
-  const prevCreatedBy = extractRelationId<unknown>(previousDoc?.createdBy as { id: unknown } | unknown);
-  const newCreatedBy = extractRelationId<unknown>(doc.createdBy as { id: unknown } | unknown);
+  const prevCreatedBy = extractRelationId<unknown>(previousDoc?.createdBy);
+  const newCreatedBy = extractRelationId<unknown>(doc.createdBy);
   const prevIsPublic = (previousDoc?.isPublic as boolean) ?? false;
   const newIsPublic = (doc.isPublic as boolean) ?? false;
 

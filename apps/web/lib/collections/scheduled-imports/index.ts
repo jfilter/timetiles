@@ -23,8 +23,8 @@ import type { CollectionConfig, Payload, PayloadRequest } from "payload";
 
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService } from "@/lib/services/quota-service";
-import type { User } from "@/payload-types";
 import { extractRelationId } from "@/lib/utils/relation-id";
+import type { User } from "@/payload-types";
 
 import { createCommonConfig } from "../shared-fields";
 import { authFields } from "./fields/auth-fields";

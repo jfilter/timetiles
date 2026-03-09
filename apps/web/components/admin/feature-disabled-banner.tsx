@@ -14,9 +14,8 @@
 
 import React from "react";
 
-import type { FeatureFlags } from "@/lib/services/feature-flag-service";
-
 import { useAdminFeatureFlag } from "@/lib/hooks/use-admin-feature-flag";
+import type { FeatureFlags } from "@/lib/services/feature-flag-service";
 
 interface FeatureDisabledBannerProps {
   featureFlag: keyof FeatureFlags;
