@@ -38,8 +38,6 @@ describe.sequential("Multi-Language Import Tests", () => {
     "import-jobs",
     "datasets",
     "dataset-schemas",
-    "catalogs",
-    "users",
     "user-usage",
     "payload-jobs",
   ];
@@ -55,6 +53,21 @@ describe.sequential("Multi-Language Import Tests", () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
     fixtureCache = new Map();
+
+    // Create test users (stable across tests)
+    const { users } = await withUsers(testEnv, {
+      importer: { role: "user" },
+      approver: { role: "admin" },
+    });
+    importerUserId = users.importer.id;
+    approverUser = users.approver;
+
+    // Create test catalog (stable across tests)
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Multi-Language Test Catalog",
+      description: "Catalog for testing multi-language field detection",
+    });
+    testCatalogId = catalog.id;
   });
 
   afterAll(async () => {
@@ -64,22 +77,8 @@ describe.sequential("Multi-Language Import Tests", () => {
   });
 
   beforeEach(async () => {
-    // Clear collections before each test
+    // Clear mutable collections only (users and catalog are stable in beforeAll)
     await testEnv.seedManager.truncate(collectionsToReset);
-
-    const { users } = await withUsers(testEnv, {
-      importer: { role: "user" },
-      approver: { role: "admin" },
-    });
-    importerUserId = users.importer.id;
-    approverUser = users.approver;
-
-    // Create test catalog
-    const { catalog } = await withCatalog(testEnv, {
-      name: "Multi-Language Test Catalog",
-      description: "Catalog for testing multi-language field detection",
-    });
-    testCatalogId = catalog.id;
   });
 
   // Helper functions

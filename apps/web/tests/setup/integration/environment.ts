@@ -487,7 +487,7 @@ export const runJobsUntilImportSettled = async (
   importFileId: string | number,
   options: RunImportJobsOptions = {}
 ): Promise<RunImportJobsResult> => {
-  const { maxIterations = 50, delayMs = 10, queueLimit = 100, onPending } = options;
+  const { maxIterations = 50, delayMs = 0, queueLimit = 100, onPending } = options;
 
   let importFile: any = null;
 
@@ -528,7 +528,7 @@ export const runJobsUntilImportJobStage = async (
   isDone: (importJob: any) => boolean,
   options: RunImportJobStageOptions = {}
 ): Promise<RunImportJobStageResult> => {
-  const { maxIterations = 50, delayMs = 10, queueLimit = 100, onPending } = options;
+  const { maxIterations = 50, delayMs = 0, queueLimit = 100, onPending } = options;
 
   let importJob: any | null = null;
 
