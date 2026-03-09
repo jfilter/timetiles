@@ -19,6 +19,7 @@ import { logger } from "@/lib/logger";
 
 import {
   createIntegrationTestEnvironment,
+  IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
   runJobsUntilImportJobStage,
   runJobsUntilImportSettled,
   withCatalog,
@@ -27,13 +28,27 @@ import {
 } from "../../setup/integration/environment";
 
 describe.sequential("Job Queueing Tests", () => {
+  const collectionsToReset = [...IMPORT_PIPELINE_COLLECTIONS_TO_RESET];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
+  let approverUserId: number | string;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
+
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Job Queueing Test Catalog",
+      description: "Catalog for testing job queueing behavior",
+    });
+    testCatalogId = catalog.id;
+
+    const { users } = await withUsers(testEnv, {
+      approver: { role: "admin" },
+    });
+    approverUserId = users.approver.id;
   });
 
   afterAll(async () => {
@@ -43,15 +58,7 @@ describe.sequential("Job Queueing Tests", () => {
   });
 
   beforeEach(async () => {
-    // Clear collections before each test
-    await testEnv.seedManager.truncate();
-
-    // Create test catalog
-    const { catalog } = await withCatalog(testEnv, {
-      name: "Job Queueing Test Catalog",
-      description: "Catalog for testing job queueing behavior",
-    });
-    testCatalogId = catalog.id;
+    await testEnv.seedManager.truncate(collectionsToReset);
   });
 
   describe("Import Job Creation", () => {
@@ -128,11 +135,6 @@ describe.sequential("Job Queueing Tests", () => {
       const importJob = importJobs.docs[0];
 
       // Approve schema
-      const { users } = await withUsers(testEnv, {
-        approver: { role: "admin" },
-      });
-      const testUser = users.approver;
-
       await payload.update({
         collection: "import-jobs",
         id: importJob.id,
@@ -140,7 +142,7 @@ describe.sequential("Job Queueing Tests", () => {
           schemaValidation: {
             ...importJob.schemaValidation,
             approved: true,
-            approvedBy: testUser.id,
+            approvedBy: approverUserId,
             approvedAt: new Date().toISOString(),
           },
         },

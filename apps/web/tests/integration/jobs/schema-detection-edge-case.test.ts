@@ -29,6 +29,7 @@ import { BATCH_SIZES } from "@/lib/constants/import-constants";
 
 import {
   createIntegrationTestEnvironment,
+  IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
   runJobsUntilImportJobStage,
   withCatalog,
   withDataset,
@@ -58,14 +59,28 @@ const runJobsUntilSchemaComplete = async (
 };
 
 describe.sequential("Schema Detection - Edge Cases", () => {
+  const collectionsToReset = [...IMPORT_PIPELINE_COLLECTIONS_TO_RESET];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   let testCatalogId: number;
   let _testDatasetId: number;
+  let uploadUserId: string | number;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
+
+    const { users } = await withUsers(testEnv, {
+      uploader: { role: "user" },
+    });
+    uploadUserId = users.uploader.id;
+
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Edge Case Test Catalog",
+      description: "Catalog for schema detection edge case tests",
+    });
+    testCatalogId = catalog.id;
   });
 
   afterAll(async () => {
@@ -75,14 +90,7 @@ describe.sequential("Schema Detection - Edge Cases", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate();
-    await withUsers(testEnv, ["admin"]);
-
-    const { catalog } = await withCatalog(testEnv, {
-      name: "Edge Case Test Catalog",
-      description: "Catalog for schema detection edge case tests",
-    });
-    testCatalogId = catalog.id;
+    await testEnv.seedManager.truncate(collectionsToReset);
 
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: TEST_FILENAME,
@@ -110,6 +118,7 @@ Event 3,2024-01-03,active`;
     const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
       filename: TEST_FILENAME,
       mimeType: "text/csv",
+      user: uploadUserId,
       additionalData: { originalName: TEST_FILENAME },
     });
 
@@ -157,6 +166,7 @@ Event 6,2024-01-06,B`;
     const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
       filename: TEST_FILENAME,
       mimeType: "text/csv",
+      user: uploadUserId,
       additionalData: { originalName: TEST_FILENAME },
     });
 

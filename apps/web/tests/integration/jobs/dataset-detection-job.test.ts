@@ -12,16 +12,36 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createIntegrationTestEnvironment, withCatalog, withImportFile } from "../../setup/integration/environment";
+import {
+  createIntegrationTestEnvironment,
+  IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
+  withCatalog,
+  withImportFile,
+  withUsers,
+} from "../../setup/integration/environment";
 
 describe.sequential("Dataset Detection Job", () => {
+  const collectionsToReset = [...IMPORT_PIPELINE_COLLECTIONS_TO_RESET];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
+  let uploadUserId: string | number;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
+
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Test Catalog",
+      description: "Catalog for testing dataset detection",
+    });
+    testCatalogId = catalog.id;
+
+    const { users } = await withUsers(testEnv, {
+      uploader: { role: "user" },
+    });
+    uploadUserId = users.uploader.id;
   });
 
   afterAll(async () => {
@@ -31,13 +51,7 @@ describe.sequential("Dataset Detection Job", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate();
-
-    const { catalog } = await withCatalog(testEnv, {
-      name: "Test Catalog",
-      description: "Catalog for testing dataset detection",
-    });
-    testCatalogId = catalog.id;
+    await testEnv.seedManager.truncate(collectionsToReset);
   });
 
   it("should queue analyze-duplicates job after creating import-job", async () => {
@@ -48,6 +62,7 @@ describe.sequential("Dataset Detection Job", () => {
     const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), csvContent, {
       filename: "test.csv",
       mimeType: "text/csv",
+      user: uploadUserId,
       datasetsCount: 0,
       datasetsProcessed: 0,
     });
@@ -56,8 +71,7 @@ describe.sequential("Dataset Detection Job", () => {
     // So we just need to run the jobs, not queue manually
 
     // Run the dataset-detection job (automatically queued by import-files hook)
-    const result1 = await payload.jobs.run({ allQueues: true, limit: 10 });
-    console.log("First job run:", result1);
+    await payload.jobs.run({ allQueues: true, limit: 10 });
 
     // Check that import-job was created
     const importJobs = await payload.find({
@@ -71,7 +85,6 @@ describe.sequential("Dataset Detection Job", () => {
 
     // After dataset-detection, analyze-duplicates job should be queued
     const result2 = await payload.jobs.run({ allQueues: true, limit: 10 });
-    console.log("Second job run (analyze-duplicates):", result2);
 
     // Verify analyze-duplicates job ran
     expect(Object.keys(result2.jobStatus).length).toBeGreaterThan(0);

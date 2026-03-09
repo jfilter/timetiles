@@ -60,16 +60,14 @@ describe.sequential("Comprehensive File Upload Tests", () => {
   let payload: any;
   let testCatalogId: string;
   let approverUser: any;
+  let multiSheetFixture: Buffer;
+  let odsFixture: Buffer;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
-
-    // Create temp directory for test files
-    const filesDir = path.join(testEnv.uploadDir, "test-files");
-    if (!fs.existsSync(filesDir)) {
-      fs.mkdirSync(filesDir, { recursive: true });
-    }
+    multiSheetFixture = fs.readFileSync(path.join(__dirname, "../../fixtures", "multi-sheet.xlsx"));
+    odsFixture = fs.readFileSync(path.join(__dirname, "../../fixtures", "events.ods"));
 
     const { users } = await withUsers(testEnv, {
       approver: { role: "admin", email: "test-approver@example.com" },
@@ -211,15 +209,12 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     it("should process Excel file with multiple sheets", async () => {
       logger.info("Testing Excel file with multiple sheets...");
 
-      // Use existing fixture file
-      const fixturePath = path.join(__dirname, "../../fixtures", "multi-sheet.xlsx");
-      const fileBuffer = fs.readFileSync(fixturePath);
       const fileName = "multi-sheet.xlsx";
 
-      logger.debug(`✓ Using fixture file: ${fixturePath} (${fileBuffer.length} bytes)`);
+      logger.debug(`✓ Using cached fixture buffer (${multiSheetFixture.length} bytes)`);
 
       // Use the helper function that properly handles file uploads
-      const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+      const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), multiSheetFixture, {
         filename: fileName,
         mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         datasetsCount: 0,
@@ -289,15 +284,12 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     it("should process ODS (OpenDocument Spreadsheet) file", async () => {
       logger.info("Testing ODS file upload...");
 
-      // Use the ODS fixture file
-      const fixturePath = path.join(__dirname, "../../fixtures", "events.ods");
-      const fileBuffer = fs.readFileSync(fixturePath);
       const fileName = "events.ods";
 
-      logger.debug(`✓ Using ODS fixture file: ${fixturePath} (${fileBuffer.length} bytes)`);
+      logger.debug(`✓ Using cached ODS fixture buffer (${odsFixture.length} bytes)`);
 
       // Use the helper function that properly handles file uploads
-      const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+      const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), odsFixture, {
         filename: fileName,
         mimeType: "application/vnd.oasis.opendocument.spreadsheet",
         datasetsCount: 0,

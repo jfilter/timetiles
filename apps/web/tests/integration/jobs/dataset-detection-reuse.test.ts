@@ -10,23 +10,37 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import type { ImportJob } from "@/payload-types";
-
 import {
   createIntegrationTestEnvironment,
+  IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
   withCatalog,
   withDataset,
   withImportFile,
+  withUsers,
 } from "../../setup/integration/environment";
 
 describe.sequential("Dataset Detection - Dataset Reuse", () => {
+  const collectionsToReset = [...IMPORT_PIPELINE_COLLECTIONS_TO_RESET];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
+  let uploadUserId: string | number;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
+
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Test Catalog",
+      description: "Catalog for testing dataset reuse",
+    });
+    testCatalogId = catalog.id;
+
+    const { users } = await withUsers(testEnv, {
+      uploader: { role: "user" },
+    });
+    uploadUserId = users.uploader.id;
   });
 
   afterAll(async () => {
@@ -36,13 +50,7 @@ describe.sequential("Dataset Detection - Dataset Reuse", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate();
-
-    const { catalog } = await withCatalog(testEnv, {
-      name: "Test Catalog",
-      description: "Catalog for testing dataset reuse",
-    });
-    testCatalogId = catalog.id;
+    await testEnv.seedManager.truncate(collectionsToReset);
   });
 
   it("should reuse existing dataset with matching name instead of creating new one", async () => {
@@ -59,25 +67,14 @@ describe.sequential("Dataset Detection - Dataset Reuse", () => {
       },
     });
 
-    console.log("Pre-created dataset:", {
-      id: preCreatedDataset.id,
-      name: preCreatedDataset.name,
-      language: preCreatedDataset.language,
-    });
-
     // Create import file with matching originalName
     const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), csvContent, {
       filename,
       mimeType: "text/csv",
+      user: uploadUserId,
       additionalData: {
         originalName: filename, // KEY: This must be set for dataset-detection to match
       },
-    });
-
-    console.log("Import file:", {
-      id: importFile.id,
-      filename: importFile.filename,
-      originalName: importFile.originalName,
     });
 
     // NOTE: The import-files collection afterChange hook automatically queues dataset-detection
@@ -86,17 +83,6 @@ describe.sequential("Dataset Detection - Dataset Reuse", () => {
     // Run dataset-detection job (automatically queued by import-files hook)
     await payload.jobs.run({ allQueues: true, limit: 10 });
 
-    // Check import file after dataset-detection
-    const updatedImportFile = await payload.findByID({
-      collection: "import-files",
-      id: importFile.id,
-    });
-
-    console.log("Import file after dataset-detection:", {
-      datasetsCount: updatedImportFile.datasetsCount,
-      sheetMetadata: updatedImportFile.sheetMetadata,
-    });
-
     // Find the import-job created by dataset-detection
     const importJobs = await payload.find({
       collection: "import-jobs",
@@ -104,24 +90,11 @@ describe.sequential("Dataset Detection - Dataset Reuse", () => {
       depth: 1,
     });
 
-    console.log("Import jobs found:", importJobs.docs.length);
-    importJobs.docs.forEach((job: ImportJob, idx: number) => {
-      console.log(`Job ${idx}:`, {
-        id: job.id,
-        stage: job.stage,
-        datasetId: typeof job.dataset === "object" ? job.dataset.id : job.dataset,
-        datasetName: typeof job.dataset === "object" ? job.dataset.name : "unknown",
-      });
-    });
-
     expect(importJobs.docs.length).toBe(1);
     const importJob = importJobs.docs[0];
 
     // THE BUG TEST: Dataset-detection should reuse our pre-created dataset
     const datasetId = typeof importJob.dataset === "object" ? importJob.dataset.id : importJob.dataset;
-
-    console.log("Import job dataset ID:", datasetId);
-    console.log("Pre-created dataset ID:", preCreatedDataset.id);
 
     // EXPECTED: Should reuse the pre-created dataset
     expect(datasetId).toBe(preCreatedDataset.id);
@@ -131,8 +104,6 @@ describe.sequential("Dataset Detection - Dataset Reuse", () => {
       collection: "datasets",
       id: datasetId,
     });
-
-    console.log("Used dataset language:", usedDataset.language);
 
     // EXPECTED: Language should be "deu" from our pre-created dataset
     expect(usedDataset.language).toBe("deu");
@@ -151,10 +122,9 @@ describe.sequential("Dataset Detection - Dataset Reuse", () => {
     const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), csvContent, {
       filename: "different-name.csv", // Different from dataset name
       mimeType: "text/csv",
+      user: uploadUserId,
       // NO originalName set - this is the bug!
     });
-
-    console.log("Import file originalName:", importFile.originalName);
 
     // Run dataset-detection job (automatically queued by import-files hook)
     await payload.jobs.run({ allQueues: true, limit: 10 });

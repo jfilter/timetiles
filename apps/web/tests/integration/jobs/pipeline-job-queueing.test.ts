@@ -11,20 +11,36 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
   createIntegrationTestEnvironment,
+  IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
   runJobsUntilImportJobStage,
   withCatalog,
   withDataset,
   withImportFile,
+  withUsers,
 } from "../../setup/integration/environment";
 
 describe.sequential("Import Pipeline - Job Queueing", () => {
+  const collectionsToReset = [...IMPORT_PIPELINE_COLLECTIONS_TO_RESET];
+
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
+  let uploadUserId: string | number;
 
   beforeAll(async () => {
-    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
+    testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
+
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Test Catalog",
+      description: "Catalog for testing pipeline job queueing",
+    });
+    testCatalogId = catalog.id;
+
+    const { users } = await withUsers(testEnv, {
+      uploader: { role: "user" },
+    });
+    uploadUserId = users.uploader.id;
   });
 
   afterAll(async () => {
@@ -34,13 +50,7 @@ describe.sequential("Import Pipeline - Job Queueing", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate();
-
-    const { catalog } = await withCatalog(testEnv, {
-      name: "Test Catalog",
-      description: "Catalog for testing pipeline job queueing",
-    });
-    testCatalogId = catalog.id;
+    await testEnv.seedManager.truncate(collectionsToReset);
   });
 
   it("should queue jobs through the entire pipeline: dataset-detection → analyze-duplicates → detect-schema → validate-schema → geocode-batch", async () => {
@@ -60,6 +70,7 @@ describe.sequential("Import Pipeline - Job Queueing", () => {
     const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), csvContent, {
       filename: "pipeline-test.csv",
       mimeType: "text/csv",
+      user: uploadUserId,
       additionalData: {
         originalName: "pipeline-test.csv", // Match dataset name
       },
@@ -68,10 +79,9 @@ describe.sequential("Import Pipeline - Job Queueing", () => {
     // Track stages the import-job goes through
     const stagesReached: string[] = [];
 
-    const recordStage = (stage: string, iteration: number) => {
+    const recordStage = (stage: string) => {
       if (!stagesReached.includes(stage)) {
         stagesReached.push(stage);
-        console.log(`[PIPELINE] Iteration ${iteration}: Reached stage: ${stage}`);
       }
     };
 
@@ -82,20 +92,17 @@ describe.sequential("Import Pipeline - Job Queueing", () => {
         importJob.stage === "geocode-batch" || importJob.stage === "processing" || importJob.stage === "completed",
       {
         maxIterations: 20,
-        onPending: ({ iteration, importJob }) => {
+        onPending: ({ importJob }) => {
           if (importJob != null) {
-            recordStage(importJob.stage, iteration);
+            recordStage(importJob.stage);
           }
         },
       }
     );
 
     if (stageResult.importJob != null) {
-      recordStage(stageResult.importJob.stage, stageResult.iterations);
-      console.log(`[PIPELINE] Pipeline progressed to ${stageResult.importJob.stage}, stopping`);
+      recordStage(stageResult.importJob.stage);
     }
-
-    console.log("[PIPELINE] Stages reached:", stagesReached);
 
     // Verify the pipeline progressed through all expected stages
     expect(stagesReached).toContain("analyze-duplicates");

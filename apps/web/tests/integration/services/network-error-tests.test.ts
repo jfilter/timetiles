@@ -17,9 +17,6 @@
  *
  * @module
  */
-
-import type { Server } from "http";
-import { createServer } from "http";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
@@ -28,8 +25,10 @@ import {
   createIntegrationTestEnvironment,
   withCatalog,
   withScheduledImport,
+  withTestServer,
   withUsers,
 } from "@/tests/setup/integration/environment";
+import type { TestServer } from "@/tests/setup/integration/http-server";
 
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
@@ -52,60 +51,32 @@ type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
 type UrlFetchErrorOutput = UrlFetchFailureOutput;
 
 describe.sequential("Network Error Handling Tests", () => {
-  const collectionsToReset = ["scheduled-imports", "import-files", "payload-jobs"];
+  const collectionsToReset = ["scheduled-imports", "import-files", "payload-jobs", "user-usage"];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;
   let testUser: any;
   let testCatalogId: string;
-  let testServer: Server;
-  let testServerPort: number;
+  let testServer: TestServer;
   let testServerUrl: string;
-
-  // Helper to get a random port
-  const getRandomPort = () => Math.floor(Math.random() * 10000) + 40000;
-
-  // Helper to create test server with specific behavior
-  const createTestServer = (handler: (req: any, res: any) => void): Promise<void> => {
-    return new Promise((resolve) => {
-      testServer = createServer(handler);
-      testServerPort = getRandomPort();
-      testServer.listen(testServerPort, "127.0.0.1", () => {
-        testServerUrl = `http://127.0.0.1:${testServerPort}`;
-        resolve();
-      });
-    });
-  };
-
-  // Helper to close test server
-  const closeTestServer = (): Promise<void> => {
-    return new Promise((resolve) => {
-      if (testServer) {
-        testServer.close(() => {
-          testServer = undefined as any;
-          resolve();
-        });
-      } else {
-        resolve();
-      }
-    });
-  };
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
-    const env = testEnv;
-    payload = env.payload;
-    cleanup = env.cleanup;
+    const envWithServer = await withTestServer(testEnv);
+    payload = envWithServer.payload;
+    cleanup = envWithServer.cleanup;
+    testServer = envWithServer.testServer;
+    testServerUrl = envWithServer.testServerUrl;
 
     // Create test user
-    const { users } = await withUsers(env, {
+    const { users } = await withUsers(envWithServer, {
       testUser: { role: "admin", email: TEST_EMAILS.network },
     });
     testUser = users.testUser;
 
     // Create test catalog
-    const { catalog } = await withCatalog(env, {
+    const { catalog } = await withCatalog(envWithServer, {
       name: "Network Test Catalog",
       description: "Catalog for network error tests",
     });
@@ -113,12 +84,11 @@ describe.sequential("Network Error Handling Tests", () => {
   }, 60000);
 
   afterAll(async () => {
-    await closeTestServer();
     await cleanup();
   });
 
   beforeEach(async () => {
-    await closeTestServer();
+    testServer.reset();
     await testEnv.seedManager.truncate(collectionsToReset);
   });
 
@@ -156,16 +126,17 @@ describe.sequential("Network Error Handling Tests", () => {
     });
 
     it("should handle URLs with spaces (encoded properly)", async () => {
-      // Create a test server that returns 404 for paths with spaces
-      await createTestServer((req, res) => {
-        if (req.url?.includes("file%20with%20spaces.csv") ?? req.url?.includes("file with spaces.csv")) {
-          res.writeHead(404, { "Content-Type": "text/plain" });
-          res.end("Not Found");
-        } else {
-          res.writeHead(200, { "Content-Type": "text/csv" });
-          res.end("test,data\n1,2");
-        }
-      });
+      testServer
+        .respond("/file%20with%20spaces.csv", {
+          status: 404,
+          body: "Not Found",
+          headers: { "Content-Type": "text/plain" },
+        })
+        .respond("/file with spaces.csv", {
+          status: 404,
+          body: "Not Found",
+          headers: { "Content-Type": "text/plain" },
+        });
 
       const { scheduledImport } = await withScheduledImport(
         testEnv,
@@ -270,10 +241,8 @@ describe.sequential("Network Error Handling Tests", () => {
       process.env.URL_FETCH_TEST_TIMEOUT_MS = "300";
 
       try {
-        // Create a server that accepts connections but never responds
-        await createTestServer(() => {
-          // Don't respond, causing a timeout
-          // The connection is established but no data is sent
+        testServer.route("/slow-file.csv", () => {
+          // Keep the connection open without responding to trigger a fetch timeout.
         });
 
         const { scheduledImport } = await withScheduledImport(
@@ -331,10 +300,10 @@ describe.sequential("Network Error Handling Tests", () => {
 
   describe("HTTP Error Responses", () => {
     it("should handle 404 Not Found", async () => {
-      // Create test server that returns 404
-      await createTestServer((_req, res) => {
-        res.writeHead(404, { "Content-Type": "text/plain" });
-        res.end("Not Found");
+      testServer.respond("/missing.csv", {
+        status: 404,
+        body: "Not Found",
+        headers: { "Content-Type": "text/plain" },
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/missing.csv`, {
@@ -365,10 +334,10 @@ describe.sequential("Network Error Handling Tests", () => {
     });
 
     it("should handle 500 Internal Server Error", async () => {
-      // Create test server that returns 500
-      await createTestServer((_req, res) => {
-        res.writeHead(500, { "Content-Type": "text/plain" });
-        res.end("Internal Server Error");
+      testServer.respond("/error.csv", {
+        status: 500,
+        body: "Internal Server Error",
+        headers: { "Content-Type": "text/plain" },
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/error.csv`, {
@@ -399,8 +368,7 @@ describe.sequential("Network Error Handling Tests", () => {
     });
 
     it("should handle authentication failures", async () => {
-      // Create test server that checks for authorization header
-      await createTestServer((req, res) => {
+      testServer.route("/protected.csv", (req, res) => {
         const authHeader = req.headers.authorization;
         if (authHeader !== "Bearer valid-token") {
           res.writeHead(401, { "Content-Type": "text/plain" });
@@ -445,8 +413,7 @@ describe.sequential("Network Error Handling Tests", () => {
 
   describe("Partial Download Handling", () => {
     it("should handle connection drops mid-download", async () => {
-      // Create test server that sends partial data then closes connection
-      await createTestServer((_req, res) => {
+      testServer.route("/partial.csv", (_req, res) => {
         res.writeHead(200, {
           "Content-Type": "text/csv",
           "Content-Length": "1000", // Claim 1000 bytes but send less
@@ -484,10 +451,10 @@ describe.sequential("Network Error Handling Tests", () => {
 
   describe("Content Type Mismatches", () => {
     it("should handle wrong content type when expecting CSV", async () => {
-      // Create test server that returns HTML instead of CSV
-      await createTestServer((_req, res) => {
-        res.writeHead(200, { "Content-Type": "text/html" });
-        res.end("<html><body>Not a CSV</body></html>");
+      testServer.respond("/wrong-type.csv", {
+        status: 200,
+        body: "<html><body>Not a CSV</body></html>",
+        headers: { "Content-Type": "text/html" },
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/wrong-type.csv`, {
@@ -525,11 +492,10 @@ describe.sequential("Network Error Handling Tests", () => {
     });
 
     it("should handle binary data when expecting text", async () => {
-      // Create test server that returns binary data
-      await createTestServer((_req, res) => {
-        const binaryData = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]); // PNG header
-        res.writeHead(200, { "Content-Type": "image/png" });
-        res.end(binaryData);
+      testServer.respond("/binary.csv", {
+        status: 200,
+        body: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        headers: { "Content-Type": "image/png" },
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/binary.csv`, {
@@ -570,14 +536,14 @@ describe.sequential("Network Error Handling Tests", () => {
 
   describe("File Size Handling", () => {
     it("should reject files exceeding max size limit", async () => {
-      // Create test server that returns large data
-      await createTestServer((_req, res) => {
-        const largeData = "x".repeat(2 * 1024 * 1024); // 2MB of data
-        res.writeHead(200, {
+      const largeData = "x".repeat(2 * 1024 * 1024);
+      testServer.respond("/large.csv", {
+        status: 200,
+        body: largeData,
+        headers: {
           "Content-Type": "text/csv",
           "Content-Length": String(largeData.length),
-        });
-        res.end(largeData);
+        },
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/large.csv`, {
@@ -617,18 +583,15 @@ describe.sequential("Network Error Handling Tests", () => {
   describe("Redirect Handling", () => {
     it("should follow redirects", async () => {
       let requestCount = 0;
-      // Create test server that redirects then returns data
-      await createTestServer((_req, res) => {
+      testServer.route("/redirect1.csv", (_req, res) => {
         requestCount++;
-        if (requestCount === 1) {
-          // First request: redirect
-          res.writeHead(302, { Location: `${testServerUrl}/final.csv` });
-          res.end();
-        } else {
-          // Second request: return data
-          res.writeHead(200, { "Content-Type": "text/csv" });
-          res.end("test,data\n1,2");
-        }
+        res.writeHead(302, { Location: `${testServerUrl}/final.csv` });
+        res.end();
+      });
+      testServer.route("/final.csv", (_req, res) => {
+        requestCount++;
+        res.writeHead(200, { "Content-Type": "text/csv" });
+        res.end("test,data\n1,2");
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/redirect1.csv`, {
@@ -652,11 +615,11 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       expect(result.output.success).toBe(true);
+      expect(requestCount).toBe(2);
     });
 
     it("should handle too many redirects", async () => {
-      // Create test server that always redirects (infinite loop)
-      await createTestServer((req, res) => {
+      testServer.setDefaultHandler((req, res) => {
         // Always redirect to a slightly different URL
         const currentPath = req.url ?? "/";
         const nextPath = currentPath + "x";
@@ -696,11 +659,7 @@ describe.sequential("Network Error Handling Tests", () => {
 
   describe("Real Job Queue Integration", () => {
     it("should queue follow-up jobs using real payload.jobs.queue", async () => {
-      // Create test server that returns valid CSV
-      await createTestServer((_req, res) => {
-        res.writeHead(200, { "Content-Type": "text/csv" });
-        res.end("name,date,location\nEvent 1,2024-01-01,San Francisco\n");
-      });
+      testServer.respondWithCSV("/data.csv", "name,date,location\nEvent 1,2024-01-01,San Francisco\n");
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/data.csv`, {
         user: testUser,

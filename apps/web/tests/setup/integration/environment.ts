@@ -113,6 +113,16 @@ export interface RunImportJobStageResult {
   importJob: any | null;
 }
 
+export const IMPORT_PIPELINE_COLLECTIONS_TO_RESET = [
+  "events",
+  "import-files",
+  "import-jobs",
+  "datasets",
+  "dataset-schemas",
+  "payload-jobs",
+  "user-usage",
+];
+
 const wait = async (delayMs: number): Promise<void> => {
   if (delayMs <= 0) {
     return;

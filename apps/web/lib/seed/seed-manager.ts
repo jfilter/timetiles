@@ -15,6 +15,9 @@
  *
  * @module
  */
+import type { Payload } from "payload";
+
+import { createDatabaseClient } from "../database/client";
 import { truncateTables } from "../database/operations";
 import { getDatabaseUrl } from "../database/url";
 import { createLogger } from "../logger";
@@ -25,6 +28,63 @@ import type { CollectionConfig } from "./seed.config";
 import type { SeedOptions } from "./types";
 
 const logger = createLogger("seed");
+const truncatableTableCache = new Map<string, string[]>();
+
+const assertSafeIdentifier = (value: string, pattern: RegExp, type: string): void => {
+  if (!pattern.test(value)) {
+    throw new Error(`Invalid ${type}: ${value}`);
+  }
+};
+
+const toQualifiedCollectionTableName = (collection: string): string => {
+  assertSafeIdentifier(collection, /^[a-z0-9-]+$/, "collection name");
+  return `payload."${collection.replace(/-/g, "_")}"`;
+};
+
+const toQualifiedTableName = (tableName: string): string => {
+  assertSafeIdentifier(tableName, /^[a-z0-9_]+$/, "table name");
+  return `payload."${tableName}"`;
+};
+
+const executeTruncateWithPayloadConnection = async (payload: Payload, tableList: string): Promise<boolean> => {
+  const db = payload.db as { execute?: (query: string) => Promise<unknown> };
+  if (typeof db.execute !== "function") {
+    return false;
+  }
+
+  await db.execute(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
+  return true;
+};
+
+const getTruncatableTableNames = async (connectionString: string): Promise<string[]> => {
+  const cachedTableNames = truncatableTableCache.get(connectionString);
+  if (cachedTableNames) {
+    return cachedTableNames;
+  }
+
+  const client = createDatabaseClient({ connectionString });
+  try {
+    await client.connect();
+
+    const result = await client.query(
+      `
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = $1
+          AND table_type = 'BASE TABLE'
+          AND table_name NOT LIKE $2
+        ORDER BY table_name
+      `,
+      ["payload", "payload_migrations%"]
+    );
+
+    const tableNames = result.rows.map((row) => row.table_name as string);
+    truncatableTableCache.set(connectionString, tableNames);
+    return tableNames;
+  } finally {
+    await client.end();
+  }
+};
 
 export class SeedManager extends SeedManagerBase {
   private readonly configDrivenSeeding: ConfigDrivenSeeding;
@@ -75,9 +135,31 @@ export class SeedManager extends SeedManagerBase {
       throw new Error("DATABASE_URL is required for truncation");
     }
 
+    const payload = this.payload!;
+
     if (collections.length === 0) {
       // Truncate all tables
       logger.info("Truncating all tables");
+
+      try {
+        const tableNames = await getTruncatableTableNames(dbUrl);
+        if (tableNames.length === 0) {
+          return;
+        }
+
+        const tableList = tableNames.map(toQualifiedTableName).join(", ");
+        const usedPayloadConnection = await executeTruncateWithPayloadConnection(payload, tableList);
+
+        if (usedPayloadConnection) {
+          logger.info(`Truncated ${tableNames.length} tables successfully`);
+          return;
+        }
+      } catch (error) {
+        logger.warn("Falling back to direct truncateTables()", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+
       const tableCount = await truncateTables(dbUrl, {
         schema: "payload",
         excludePatterns: ["payload_migrations%"],
@@ -87,19 +169,25 @@ export class SeedManager extends SeedManagerBase {
       // Truncate specific collections using direct SQL with CASCADE
       logger.info({ collections }, "Truncating specific collections");
 
-      const client = await import("../database/client").then((m) =>
-        m.createDatabaseClient({ connectionString: dbUrl })
-      );
+      const tableList = collections.map(toQualifiedCollectionTableName).join(", ");
+
+      try {
+        const usedPayloadConnection = await executeTruncateWithPayloadConnection(payload, tableList);
+        if (usedPayloadConnection) {
+          logger.info({ collections }, `Truncated ${collections.length} collections successfully`);
+          return;
+        }
+      } catch (error) {
+        logger.warn("Falling back to dedicated truncate client for collections", {
+          collections,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      const client = createDatabaseClient({ connectionString: dbUrl });
       try {
         await client.connect();
-
-        // Build table list with proper schema qualification
-        // Convert collection names (kebab-case) to table names (snake_case)
-        const tableList = collections.map((name) => `payload."${name.replace(/-/g, "_")}"`).join(", ");
-
-        // TRUNCATE CASCADE automatically handles dependent tables (e.g., events when truncating datasets)
         await client.query(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
-
         logger.info({ collections }, `Truncated ${collections.length} collections successfully`);
       } finally {
         await client.end();
