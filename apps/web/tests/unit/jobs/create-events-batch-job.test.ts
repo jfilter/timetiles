@@ -422,6 +422,9 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         return Promise.resolve(null);
       });
 
+      // Mock find for updateImportFileStatusIfAllJobsComplete - no pending jobs
+      mockPayload.find.mockResolvedValue({ docs: [] });
+
       // Mock empty batch (no more data)
       mocks.readBatchFromFile.mockReturnValueOnce([]);
 
@@ -523,6 +526,9 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         if (collection === "import-files") return Promise.resolve(mockImportFile);
         return Promise.resolve(null);
       });
+
+      // Mock find for updateImportFileStatusIfAllJobsComplete
+      mockPayload.find.mockResolvedValue({ docs: [] });
 
       // Mock empty file
       mocks.readBatchFromFile.mockReturnValueOnce([]);
@@ -675,8 +681,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
           validationStatus: "transformed",
           transformations: expect.arrayContaining([
             expect.objectContaining({
-              type: "type-cast",
-              from: "age",
+              path: "age",
             }),
           ]),
         }),
@@ -804,8 +809,8 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
             active: true,
           }),
           transformations: expect.arrayContaining([
-            expect.objectContaining({ type: "type-cast", from: "age" }),
-            expect.objectContaining({ type: "type-cast", from: "active" }),
+            expect.objectContaining({ path: "age" }),
+            expect.objectContaining({ path: "active" }),
           ]),
         }),
       });
@@ -932,7 +937,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         data: expect.objectContaining({
           data: expect.objectContaining({ age: "not-a-number" }), // Original value preserved
           validationStatus: "transformed", // Marks as transformed (attempted)
-          transformations: expect.arrayContaining([expect.objectContaining({ type: "type-cast", from: "age" })]),
+          transformations: expect.arrayContaining([expect.objectContaining({ path: "age" })]),
         }),
       });
     });

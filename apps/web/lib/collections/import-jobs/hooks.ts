@@ -159,7 +159,25 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
     }
 
     // Handle stage transitions
-    await StageTransitionService.processStageTransition(req.payload, doc, previousDoc);
+    const transitionResult = await StageTransitionService.processStageTransition(req.payload, doc, previousDoc);
+    if (!transitionResult.success && transitionResult.error) {
+      logger.error("Stage transition failed, marking job as FAILED", {
+        importJobId: doc.id,
+        error: transitionResult.error,
+      });
+      await req.payload.update({
+        collection: COLLECTION_NAMES.IMPORT_JOBS,
+        id: doc.id,
+        data: {
+          stage: PROCESSING_STAGE.FAILED,
+          errorLog: {
+            error: transitionResult.error,
+            context: "stage transition",
+            timestamp: new Date().toISOString(),
+          },
+        },
+      });
+    }
 
     // Handle job completion status updates
     if (isJobCompleted(doc)) {

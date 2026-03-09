@@ -519,16 +519,10 @@ const ImportFiles: CollectionConfig = {
         if (operation !== "create") return doc;
         const { payload } = req;
 
-        // Track file upload usage (authentication is required)
-        const quotaService = getQuotaService(req.payload);
-        await quotaService.incrementUsage(req.user!.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
+        // Skip hook processing for programmatic creation (e.g., url-fetch-job handles its own pipeline)
+        if (req.context?.skipImportFileHooks) return doc;
 
-        // Skip processing for duplicate imports (they're already marked as completed)
-        if (doc.metadata?.urlFetch?.isDuplicate === true) {
-          return doc;
-        }
-
-        // Check file type - reject JSON files (using Payload's auto-generated mimeType field)
+        // Check file type first - reject JSON files BEFORE consuming quota
         if (doc.mimeType?.includes("json")) {
           // Update the record immediately for JSON rejection
           try {
@@ -549,6 +543,15 @@ const ImportFiles: CollectionConfig = {
           } catch (error) {
             logger.error("Failed to update import-files record for JSON rejection", error);
           }
+          return doc;
+        }
+
+        // Track file upload usage (authentication is required)
+        const quotaService = getQuotaService(req.payload);
+        await quotaService.incrementUsage(req.user!.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
+
+        // Skip processing for duplicate imports (they're already marked as completed)
+        if (doc.metadata?.urlFetch?.isDuplicate === true) {
           return doc;
         }
 
@@ -592,6 +595,23 @@ const ImportFiles: CollectionConfig = {
           }
         } catch (error) {
           logger.error("Failed to queue dataset detection job", error);
+          try {
+            await payload.update({
+              collection: COLLECTION_NAMES.IMPORT_FILES,
+              id: String(doc.id),
+              req,
+              data: {
+                status: "failed",
+                errorLog: `Failed to queue processing: ${error instanceof Error ? error.message : "Unknown error"}`,
+              },
+              context: {
+                ...req.context,
+                skipImportFileHooks: true,
+              },
+            });
+          } catch (updateError) {
+            logger.error("Failed to update import-file status after queue failure", updateError);
+          }
         }
 
         return doc;

@@ -393,7 +393,7 @@ export class DataExportService {
     summary: ExportSummary
   ): Promise<{ filePath: string; fileSize: number }> {
     // Ensure export directory exists
-    const exportDir = path.join(process.cwd(), EXPORT_DIR);
+    const exportDir = path.isAbsolute(EXPORT_DIR) ? EXPORT_DIR : path.join(process.cwd(), EXPORT_DIR);
     await mkdir(exportDir, { recursive: true });
 
     const timestamp = new Date().toISOString().split("T")[0];

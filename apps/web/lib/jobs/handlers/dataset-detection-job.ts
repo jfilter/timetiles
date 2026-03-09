@@ -110,7 +110,8 @@ const handleSingleSheet = async (
   importFile: { id: string | number; originalName?: string | null; metadata?: unknown },
   _sheet: SheetInfo,
   catalogId?: string | number,
-  datasetMapping?: { mappingType: string; singleDataset?: unknown }
+  datasetMapping?: { mappingType: string; singleDataset?: unknown },
+  userId?: number
 ) => {
   let dataset;
 
@@ -129,8 +130,8 @@ const handleSingleSheet = async (
       throw new Error(`Configured dataset not found: ${datasetId}`);
     }
   } else {
-    const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId);
-    dataset = await findOrCreateDataset(payload, resolvedCatalogId, importFile.originalName ?? "Imported Data");
+    const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId, userId);
+    dataset = await findOrCreateDataset(payload, resolvedCatalogId, importFile.originalName ?? "Imported Data", userId);
   }
 
   return payload.create({
@@ -154,13 +155,14 @@ const handleMultipleSheets = async (
   importFile: { id: string | number },
   sheets: SheetInfo[],
   catalogId?: string | number,
-  datasetMapping?: { mappingType: string; sheetMappings?: unknown[] }
+  datasetMapping?: { mappingType: string; sheetMappings?: unknown[] },
+  userId?: number
 ) => {
   const createdJobs = [];
 
   for (const sheet of sheets) {
     const sheetName = sheet.name?.toString() ?? `Sheet_${sheet.index?.toString() ?? "Unknown"}`;
-    const job = await processSheetWithMapping(payload, importFile, sheet, sheetName, catalogId, datasetMapping);
+    const job = await processSheetWithMapping(payload, importFile, sheet, sheetName, catalogId, datasetMapping, userId);
 
     if (job) {
       createdJobs.push(job);
@@ -176,7 +178,8 @@ const processSheetWithMapping = async (
   sheet: SheetInfo,
   sheetName: string,
   catalogId?: string | number,
-  datasetMapping?: { mappingType: string; sheetMappings?: unknown[] }
+  datasetMapping?: { mappingType: string; sheetMappings?: unknown[] },
+  userId?: number
 ) => {
   let dataset;
   let skipSheet = false;
@@ -210,8 +213,8 @@ const processSheetWithMapping = async (
       return null;
     }
   } else {
-    const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId);
-    dataset = await findOrCreateDataset(payload, resolvedCatalogId, sheetName);
+    const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId, userId);
+    dataset = await findOrCreateDataset(payload, resolvedCatalogId, sheetName, userId);
   }
 
   if (skipSheet || !dataset) {
@@ -287,10 +290,14 @@ export const datasetDetectionJob = {
         | { mappingType: string; singleDataset?: unknown; sheetMappings?: unknown[] }
         | undefined;
 
+      // Extract userId from import file for setting createdBy on auto-created catalogs/datasets
+      const userId =
+        typeof importFile.user === "object" && importFile.user ? importFile.user.id : (importFile.user as number);
+
       const createdJobs =
         sheets.length === 1
-          ? [await handleSingleSheet(payload, importFile, sheets[0]!, catalogId, datasetMapping)]
-          : await handleMultipleSheets(payload, importFile, sheets, catalogId, datasetMapping);
+          ? [await handleSingleSheet(payload, importFile, sheets[0]!, catalogId, datasetMapping, userId)]
+          : await handleMultipleSheets(payload, importFile, sheets, catalogId, datasetMapping, userId);
 
       logger.info("Created import jobs", {
         importFileId,
@@ -322,7 +329,7 @@ export const datasetDetectionJob = {
 };
 
 // Helper function to get or create catalog
-const getOrCreateCatalog = async (payload: Payload, catalogId?: string | number): Promise<number> => {
+const getOrCreateCatalog = async (payload: Payload, catalogId?: string | number, userId?: number): Promise<number> => {
   if (typeof catalogId === "number") {
     return catalogId;
   }
@@ -358,6 +365,7 @@ const getOrCreateCatalog = async (payload: Payload, catalogId?: string | number)
         },
       },
       _status: "published",
+      ...(userId ? { createdBy: userId } : {}),
     },
   });
 
@@ -374,7 +382,12 @@ const getOrCreateCatalog = async (payload: Payload, catalogId?: string | number)
 };
 
 // Helper function to find or create dataset
-const findOrCreateDataset = async (payload: Payload, catalogId: number, datasetName: string): Promise<Dataset> => {
+const findOrCreateDataset = async (
+  payload: Payload,
+  catalogId: number,
+  datasetName: string,
+  userId?: number
+): Promise<Dataset> => {
   // Try to find existing dataset in catalog
   const existingDatasets = await payload.find({
     collection: COLLECTION_NAMES.DATASETS,
@@ -433,6 +446,7 @@ const findOrCreateDataset = async (payload: Payload, catalogId: number, datasetN
         duplicateStrategy: "skip",
       },
       _status: "published" as const,
+      ...(userId ? { createdBy: userId } : {}),
     },
   });
 

@@ -70,7 +70,7 @@ vi.mock("@/lib/services/quota-service", () => {
 });
 
 vi.mock("@/lib/constants/quota-constants", () => ({
-  QUOTA_TYPES: { ACTIVE_SCHEDULES: "active-schedules" },
+  QUOTA_TYPES: { ACTIVE_SCHEDULES: "maxActiveSchedules" },
 }));
 
 // 4. Vitest imports and source code AFTER mocks
@@ -581,13 +581,13 @@ describe.sequential("POST /api/wizard/configure-import", () => {
       await POST(req, {} as never);
 
       // Verify quota was checked
-      expect(mocks.mockValidateQuota).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }), "active-schedules", 1);
+      expect(mocks.mockValidateQuota).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }), "maxActiveSchedules", 1);
     });
 
     it("should return 429 when scheduled import quota is exceeded (Bug 15)", async () => {
       // Import the mock QuotaExceededError from the mocked module
       const { QuotaExceededError } = await import("@/lib/services/quota-service");
-      mocks.mockValidateQuota.mockRejectedValue(new QuotaExceededError("active-schedules", 5, 5));
+      mocks.mockValidateQuota.mockRejectedValue(new QuotaExceededError("maxActiveSchedules", 5, 5));
 
       const req = createRequest({
         ...baseBody,

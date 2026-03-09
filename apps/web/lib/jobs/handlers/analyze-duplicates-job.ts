@@ -216,7 +216,8 @@ const performDuplicateAnalysis = async (
   );
 
   const externalDuplicates = await analyzeExternalDuplicates(payload, dataset, uniqueIdMap);
-  const uniqueRows = uniqueIdMap.size;
+  // Subtract external duplicates from unique count since they'll be skipped during event creation
+  const uniqueRows = uniqueIdMap.size - externalDuplicates.length;
 
   await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES);
   await ProgressTrackingService.updatePostDeduplicationTotals(payload, importJobId, uniqueRows);

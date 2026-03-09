@@ -395,7 +395,7 @@ export class AccountDeletionService {
       where: {
         and: [{ createdBy: { equals: userId } }, { isPublic: { equals: true } }],
       },
-      limit: 10000,
+      pagination: false,
       overrideAccess: true,
     });
 
@@ -415,7 +415,7 @@ export class AccountDeletionService {
       where: {
         and: [{ createdBy: { equals: userId } }, { isPublic: { equals: true } }],
       },
-      limit: 10000,
+      pagination: false,
       overrideAccess: true,
     });
 
@@ -440,7 +440,7 @@ export class AccountDeletionService {
       where: {
         and: [{ createdBy: { equals: userId } }, { isPublic: { equals: false } }],
       },
-      limit: 10000,
+      pagination: false,
       overrideAccess: true,
     });
 
@@ -449,7 +449,7 @@ export class AccountDeletionService {
       const events = await this.payload.find({
         collection: "events",
         where: { dataset: { equals: dataset.id } },
-        limit: 10000,
+        pagination: false,
         overrideAccess: true,
       });
 
@@ -477,7 +477,7 @@ export class AccountDeletionService {
       where: {
         and: [{ createdBy: { equals: userId } }, { isPublic: { equals: false } }],
       },
-      limit: 10000,
+      pagination: false,
       overrideAccess: true,
     });
 
@@ -499,7 +499,7 @@ export class AccountDeletionService {
     const scheduledImports = await this.payload.find({
       collection: "scheduled-imports",
       where: { createdBy: { equals: userId } },
-      limit: 10000,
+      pagination: false,
       overrideAccess: true,
     });
 
@@ -516,7 +516,7 @@ export class AccountDeletionService {
     const importFiles = await this.payload.find({
       collection: "import-files",
       where: { user: { equals: userId } },
-      limit: 10000,
+      pagination: false,
       overrideAccess: true,
     });
 

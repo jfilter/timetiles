@@ -71,17 +71,37 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     const exportService = getDataExportService(payload);
     const summary = await exportService.getExportSummary(user.id);
 
-    // Create export record
-    const exportRecord = await payload.create({
-      collection: "data-exports",
-      data: {
-        user: user.id,
-        status: "pending",
-        requestedAt: new Date().toISOString(),
-        summary: summary as unknown as Record<string, unknown>,
-      },
-      overrideAccess: true,
-    });
+    // Create export record (re-check for duplicates to handle race condition)
+    let exportRecord;
+    try {
+      exportRecord = await payload.create({
+        collection: "data-exports",
+        data: {
+          user: user.id,
+          status: "pending",
+          requestedAt: new Date().toISOString(),
+          summary: summary as unknown as Record<string, unknown>,
+        },
+        overrideAccess: true,
+      });
+    } catch (createError) {
+      // Re-check for existing exports in case of race condition
+      const raceCheck = await payload.find({
+        collection: "data-exports",
+        where: {
+          and: [{ user: { equals: user.id } }, { status: { in: ["pending", "processing"] } }],
+        },
+        limit: 1,
+        overrideAccess: true,
+      });
+      if (raceCheck.docs.length > 0) {
+        return NextResponse.json(
+          { error: "Export already in progress", exportId: raceCheck.docs[0]?.id },
+          { status: 409 }
+        );
+      }
+      throw createError;
+    }
 
     // Queue background job
     await payload.jobs.queue({

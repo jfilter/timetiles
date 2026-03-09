@@ -290,13 +290,15 @@ const ScheduledImports: CollectionConfig = {
     ],
     afterChange: [
       async ({ doc, operation, req, previousDoc }) => {
-        if (!req.user) return doc;
+        // Charge quota to the schedule owner, not the acting user (e.g., admin enabling another user's schedule)
+        const ownerId = typeof doc.createdBy === "object" ? doc.createdBy?.id : doc.createdBy;
+        if (!ownerId) return doc;
 
         const quotaService = getQuotaService(req.payload);
 
         // Track usage after successful creation of enabled schedule
         if (operation === "create" && doc.enabled !== false) {
-          await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
+          await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
         }
 
         // Handle update operations (enabling/disabling)
@@ -306,10 +308,10 @@ const ScheduledImports: CollectionConfig = {
 
           if (!wasEnabled && isEnabled) {
             // Schedule was enabled - increment usage
-            await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
+            await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
           } else if (wasEnabled && !isEnabled) {
             // Schedule was disabled - decrement usage
-            await quotaService.decrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
+            await quotaService.decrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
           }
         }
 
@@ -318,10 +320,11 @@ const ScheduledImports: CollectionConfig = {
     ],
     afterDelete: [
       async ({ doc, req }) => {
-        // Decrement usage when schedule is deleted
-        if (req.user && doc.enabled) {
+        // Decrement usage for the schedule owner when deleted
+        const ownerId = typeof doc.createdBy === "object" ? doc.createdBy?.id : doc.createdBy;
+        if (ownerId && doc.enabled) {
           const quotaService = getQuotaService(req.payload);
-          await quotaService.decrementUsage(req.user.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
+          await quotaService.decrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
         }
 
         return doc;

@@ -404,7 +404,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       expect(result).toEqual({
         output: {
           totalRows: 2,
-          uniqueRows: 2,
+          uniqueRows: 1, // 2 unique IDs minus 1 external duplicate
           internalDuplicates: 0,
           externalDuplicates: 1,
         },

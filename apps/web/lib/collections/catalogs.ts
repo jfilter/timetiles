@@ -286,7 +286,7 @@ const Catalogs: CollectionConfig = {
         const datasets = await req.payload.find({
           collection: "datasets",
           where: { catalog: { equals: doc.id } },
-          limit: 1000,
+          pagination: false,
           depth: 0,
           overrideAccess: true,
           req,

@@ -207,7 +207,13 @@ const processEventBatch = async (
 
       // Track if any transforms were applied
       const transformationChanges =
-        transforms.length > 0 ? transforms.map((t) => ({ type: t.type, from: "from" in t ? t.from : "" })) : null;
+        transforms.length > 0
+          ? transforms.map((t) => ({
+              path: "from" in t ? t.from : "fromFields" in t ? String(t.fromFields) : "",
+              oldValue: "from" in t ? (row[t.from] ?? null) : (null as unknown),
+              newValue: "from" in t ? (transformedRow[t.from] ?? null) : (null as unknown),
+            }))
+          : null;
 
       if (transformationChanges) {
         logger.debug("Applied transforms", { transformCount: transforms.length });
@@ -220,7 +226,7 @@ const processEventBatch = async (
         importJobId,
         job,
         geocodingResults,
-        transformationChanges as Array<{ path: string; oldValue: unknown; newValue: unknown }> | null
+        transformationChanges
       );
 
       await payload.create({
@@ -242,7 +248,13 @@ const processEventBatch = async (
   return { eventsCreated, eventsSkipped, errors };
 };
 
-const markJobCompleted = async (payload: Payload, importJobId: string | number, job: ImportJob) => {
+const markJobCompleted = async (payload: Payload, importJobId: string | number, _job: ImportJob) => {
+  // Re-query job for current state (errors may have accumulated across batches)
+  const currentJob = await payload.findByID({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: importJobId,
+  });
+
   // Count actual events created for this import job (reliable source of truth)
   const eventsResult = await payload.count({
     collection: COLLECTION_NAMES.EVENTS,
@@ -251,7 +263,8 @@ const markJobCompleted = async (payload: Payload, importJobId: string | number, 
   const totalEventsCreated = eventsResult.totalDocs;
 
   const duplicatesSkipped =
-    (job.duplicates?.summary?.internalDuplicates ?? 0) + (job.duplicates?.summary?.externalDuplicates ?? 0);
+    (currentJob.duplicates?.summary?.internalDuplicates ?? 0) +
+    (currentJob.duplicates?.summary?.externalDuplicates ?? 0);
 
   await payload.update({
     collection: COLLECTION_NAMES.IMPORT_JOBS,
@@ -261,8 +274,8 @@ const markJobCompleted = async (payload: Payload, importJobId: string | number, 
       results: {
         totalEvents: totalEventsCreated,
         duplicatesSkipped,
-        geocoded: Object.keys(getGeocodingResults(job)).length,
-        errors: job.errors?.length ?? 0,
+        geocoded: Object.keys(getGeocodingResults(currentJob)).length,
+        errors: currentJob.errors?.length ?? 0,
       },
     },
   });
@@ -488,13 +501,14 @@ export const createEventsBatchJob = {
       if (rows.length === 0) {
         await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.CREATE_EVENTS);
         await markJobCompleted(payload, importJobId, job);
+        const importFileId = typeof job.importFile === "object" ? job.importFile.id : job.importFile;
+        await updateImportFileStatusIfAllJobsComplete(payload, importFileId);
         return { output: { completed: true } };
       }
 
-      // Calculate cumulative events created
-      const rowsProcessedSoFar =
-        (batchNumber + 1) * BATCH_SIZES.EVENT_CREATION -
-        (rows.length < BATCH_SIZES.EVENT_CREATION ? BATCH_SIZES.EVENT_CREATION - rows.length : 0);
+      // Calculate cumulative rows processed (created + skipped + errored)
+      const batchRowsProcessed = eventsCreated + eventsSkipped + errors.length;
+      const rowsProcessedSoFar = batchNumber * BATCH_SIZES.EVENT_CREATION + batchRowsProcessed;
 
       // Update stage progress
       await ProgressTrackingService.updateStageProgress(
@@ -502,7 +516,7 @@ export const createEventsBatchJob = {
         importJobId,
         PROCESSING_STAGE.CREATE_EVENTS,
         rowsProcessedSoFar,
-        eventsCreated
+        batchRowsProcessed
       );
 
       // Complete this batch

@@ -139,7 +139,12 @@ export const dataExportJob = {
       });
 
       // Generate download URL
-      const downloadUrl = `${process.env.NEXT_PUBLIC_PAYLOAD_URL}/api/account/download-data/${exportId}`;
+      const baseUrl =
+        process.env.NEXT_PUBLIC_PAYLOAD_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+      if (!process.env.NEXT_PUBLIC_PAYLOAD_URL) {
+        logger.warn("NEXT_PUBLIC_PAYLOAD_URL not set, using fallback for export download URL");
+      }
+      const downloadUrl = `${baseUrl}/api/account/download-data/${exportId}`;
 
       // Calculate file size in MB for email
       const fileSizeMB = result.fileSize / (1024 * 1024);

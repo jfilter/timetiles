@@ -194,7 +194,7 @@ export const GET = withRateLimit(
               equals: importId,
             },
           },
-          limit: 100,
+          pagination: false,
           depth: 1, // Include dataset details
           user: request.user,
           overrideAccess: false,

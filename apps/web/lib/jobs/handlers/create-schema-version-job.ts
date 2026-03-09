@@ -102,6 +102,14 @@ export const createSchemaVersionJob = {
       if (skipCheck.skip) {
         logger.info("Skipping schema version creation", { importJobId, reason: skipCheck.reason });
         await ProgressTrackingService.skipStage(payload, importJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
+
+        // Transition to next stage so the import doesn't get stranded
+        await payload.update({
+          collection: COLLECTION_NAMES.IMPORT_JOBS,
+          id: importJobId,
+          data: { stage: PROCESSING_STAGE.GEOCODE_BATCH },
+        });
+
         return { output: { skipped: true } };
       }
 

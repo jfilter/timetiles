@@ -48,7 +48,7 @@ export const GET = withAuth(async (_request: AuthenticatedRequest, context: Rout
 
     // Check ownership
     const createdById = typeof schedule.createdBy === "object" ? schedule.createdBy?.id : schedule.createdBy;
-    if (user.role !== "admin" && createdById !== user.id) {
+    if (user.role !== "admin" && user.role !== "editor" && createdById !== user.id) {
       return forbidden();
     }
 
@@ -86,7 +86,7 @@ export const PATCH = withAuth(async (request: AuthenticatedRequest, context: Rou
 
     const createdById =
       typeof existingSchedule.createdBy === "object" ? existingSchedule.createdBy?.id : existingSchedule.createdBy;
-    if (user.role !== "admin" && createdById !== user.id) {
+    if (user.role !== "admin" && user.role !== "editor" && createdById !== user.id) {
       return forbidden();
     }
 
@@ -136,7 +136,7 @@ export const DELETE = withAuth(async (_request: AuthenticatedRequest, context: R
 
     const createdById =
       typeof existingSchedule.createdBy === "object" ? existingSchedule.createdBy?.id : existingSchedule.createdBy;
-    if (user.role !== "admin" && createdById !== user.id) {
+    if (user.role !== "admin" && user.role !== "editor" && createdById !== user.id) {
       return forbidden();
     }
 

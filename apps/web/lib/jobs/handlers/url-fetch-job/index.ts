@@ -162,6 +162,8 @@ const handleFetchSuccess = async (
     },
     // Pass user context for proper access control and audit trail
     user,
+    // Skip afterChange hook to prevent double dataset-detection (we queue it below)
+    context: { skipImportFileHooks: true },
   });
 
   // Queue dataset detection job
@@ -348,6 +350,19 @@ export const urlFetchJob = {
 
     try {
       scheduledImport = await loadScheduledImportConfig(payload, input.scheduledImportId);
+
+      // Abort if scheduled import was requested but is disabled or not found
+      if (input.scheduledImportId && !scheduledImport) {
+        logger.info("Scheduled import disabled or not found, aborting", {
+          scheduledImportId: input.scheduledImportId,
+        });
+        return {
+          output: {
+            success: false,
+            error: "Scheduled import is disabled or not found",
+          },
+        };
+      }
 
       // Resolve userId from input or scheduled import's creator
       const createdBy = scheduledImport?.createdBy;

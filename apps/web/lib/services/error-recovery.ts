@@ -814,7 +814,7 @@ export class ErrorRecoveryService {
       where: {
         stage: { equals: PROCESSING_STAGE.FAILED },
       },
-      limit: 100,
+      pagination: false,
     });
 
     return failedJobs.docs.map((job) => {
