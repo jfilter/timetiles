@@ -464,3 +464,55 @@ describe("date-parse inputFormat handling", () => {
     );
   });
 });
+
+describe("date-parse timezone and outputFormat handling", () => {
+  it("should apply timezone offset when configured", () => {
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "date-parse",
+        from: "date",
+        inputFormat: "YYYY-MM-DD",
+        outputFormat: "ISO 8601",
+        timezone: "America/New_York",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ date: "2024-06-15" }, transforms);
+    // UTC midnight interpreted as midnight Eastern (UTC-4 in June) should shift
+    expect(result.date).toMatch(/^2024-06-15T04:00:00/);
+  });
+
+  it("should produce full ISO 8601 output when outputFormat is ISO 8601", () => {
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "date-parse",
+        from: "date",
+        inputFormat: "DD/MM/YYYY",
+        outputFormat: "ISO 8601",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ date: "15/03/2024" }, transforms);
+    expect(result.date).toBe("2024-03-15T00:00:00.000Z");
+  });
+
+  it("should default to date-only output when outputFormat is not ISO 8601", () => {
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "date-parse",
+        from: "date",
+        inputFormat: "DD/MM/YYYY",
+        outputFormat: "YYYY-MM-DD",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ date: "15/03/2024" }, transforms);
+    expect(result.date).toBe("2024-03-15");
+  });
+});

@@ -174,6 +174,32 @@ const parseDateWithFormat = (value: string, inputFormat: string): Date | null =>
  * handling ambiguous formats like DD/MM/YYYY vs MM/DD/YYYY.
  * Falls back to new Date() for unrecognized formats.
  */
+/**
+ * Adjust a UTC date to account for a source timezone.
+ *
+ * When the input date "2024-06-15" is parsed as UTC midnight but actually
+ * represents midnight in "America/New_York", we need to shift it so that
+ * the resulting UTC timestamp corresponds to the correct instant.
+ */
+const adjustForTimezone = (date: Date, timezone: string): Date => {
+  // Format the UTC date in the target timezone to find the offset
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? "0", 10);
+  const tzLocal = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  const offsetMs = tzLocal - date.getTime();
+  return new Date(date.getTime() - offsetMs);
+};
+
 const applyDateParseTransform = (data: Record<string, unknown>, transform: DateParseTransform): void => {
   const value = getByPath(data, transform.from);
 
@@ -183,11 +209,22 @@ const applyDateParseTransform = (data: Record<string, unknown>, transform: DateP
     const trimmedValue = value.trim();
     const parsed = parseDateWithFormat(trimmedValue, transform.inputFormat);
     if (parsed && !isNaN(parsed.getTime())) {
-      const isoDate = parsed.toISOString().split("T")[0];
-      if (ISO_DATE_ONLY_REGEX.test(trimmedValue) && isoDate !== trimmedValue) {
+      // Apply timezone if configured
+      const adjusted = transform.timezone ? adjustForTimezone(parsed, transform.timezone) : parsed;
+
+      // Format output based on outputFormat
+      let output: string;
+      if (transform.outputFormat === "ISO 8601") {
+        output = adjusted.toISOString();
+      } else {
+        // Default: date-only ISO format
+        output = adjusted.toISOString().split("T")[0]!;
+      }
+
+      if (ISO_DATE_ONLY_REGEX.test(trimmedValue) && output !== trimmedValue && !transform.timezone) {
         return;
       }
-      setByPath(data, transform.from, isoDate);
+      setByPath(data, transform.from, output);
     }
   } catch {
     // Keep original value if parsing fails

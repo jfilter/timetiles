@@ -110,11 +110,16 @@ export const GET = async (
       return NextResponse.json({ error: "Export file not found on disk" }, { status: 404 });
     }
 
-    // Increment download count
+    // Increment download count — re-read to minimize race window
+    const freshExport = await payload.findByID({
+      collection: "data-exports",
+      id: normalizedExportId,
+      overrideAccess: true,
+    });
     await payload.update({
       collection: "data-exports",
       id: normalizedExportId,
-      data: { downloadCount: (exportRecord.downloadCount ?? 0) + 1 },
+      data: { downloadCount: (freshExport.downloadCount ?? 0) + 1 },
       overrideAccess: true,
     });
 

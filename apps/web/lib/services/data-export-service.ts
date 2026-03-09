@@ -473,8 +473,10 @@ export class DataExportService {
     // Add actual media files if they exist
     for (const mediaItem of baseData.media) {
       try {
-        // Media files are stored in the uploads directory
-        const mediaPath = path.join(process.cwd(), "uploads", mediaItem.filename);
+        // Media files are stored in the uploads directory (respect UPLOAD_DIR env var)
+        const uploadDir = process.env.UPLOAD_DIR ?? "uploads";
+        const baseDir = path.isAbsolute(uploadDir) ? uploadDir : path.join(process.cwd(), uploadDir);
+        const mediaPath = path.join(baseDir, "media", mediaItem.filename);
         const fileExists = await stat(mediaPath).catch(() => null);
 
         if (fileExists) {
