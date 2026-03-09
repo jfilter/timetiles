@@ -22,66 +22,143 @@ import type { ScheduledImport } from "@/payload-types";
 //   scanAll?: boolean; // Optionally scan all schedules instead of just due ones
 // }
 
+const getTimeZoneDateParts = (date: Date, timeZone: string) => {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+    weekday: "short",
+  });
+
+  const parts = formatter.formatToParts(date);
+  const getPart = (type: Intl.DateTimeFormatPartTypes): string => parts.find((part) => part.type === type)?.value ?? "";
+  const weekdayMap: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+
+  return {
+    year: Number.parseInt(getPart("year"), 10),
+    month: Number.parseInt(getPart("month"), 10),
+    day: Number.parseInt(getPart("day"), 10),
+    hour: Number.parseInt(getPart("hour"), 10),
+    minute: Number.parseInt(getPart("minute"), 10),
+    second: Number.parseInt(getPart("second"), 10),
+    weekday: weekdayMap[getPart("weekday")] ?? 0,
+  };
+};
+
+const getTimeZoneOffset = (date: Date, timeZone: string): number => {
+  const parts = getTimeZoneDateParts(date, timeZone);
+  const utcTimestamp = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  return utcTimestamp - date.getTime();
+};
+
+const zonedTimeToUtc = (
+  parts: {
+    year: number;
+    month: number;
+    day: number;
+    hour?: number;
+    minute?: number;
+    second?: number;
+  },
+  timeZone: string
+): Date => {
+  const utcGuess = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour ?? 0,
+    parts.minute ?? 0,
+    parts.second ?? 0,
+    0
+  );
+  const guessDate = new Date(utcGuess);
+  const offset = getTimeZoneOffset(guessDate, timeZone);
+  return new Date(utcGuess - offset);
+};
+
+const getScheduleTimeZone = (scheduledImport: ScheduledImport): string => {
+  const maybeTimezone = (scheduledImport as ScheduledImport & { timezone?: string | null }).timezone;
+  return maybeTimezone || "UTC";
+};
+
 /**
- * Gets the next execution time based on frequency (UTC).
+ * Gets the next execution time based on frequency.
  */
-const getNextFrequencyExecution = (frequency: string, fromDate?: Date): Date => {
+const getNextFrequencyExecution = (frequency: string, fromDate?: Date, timeZone = "UTC"): Date => {
   const now = fromDate ?? new Date();
-  const next = new Date(now);
-  next.setUTCSeconds(0);
-  next.setUTCMilliseconds(0);
+  const nowParts = getTimeZoneDateParts(now, timeZone);
 
   switch (frequency) {
-    case "hourly": {
-      // Calculate the next full hour
-      next.setUTCMinutes(0);
-
-      // Move to next hour
-      const currentHour = next.getUTCHours();
-      next.setUTCHours(currentHour + 1);
-
-      // Make sure we're actually in the future (handles edge cases)
-      while (next <= now) {
-        next.setUTCHours(next.getUTCHours() + 1);
-      }
-
-      break;
-    }
+    case "hourly":
+      return zonedTimeToUtc(
+        {
+          year: nowParts.year,
+          month: nowParts.month,
+          day: nowParts.day,
+          hour: nowParts.hour + 1,
+          minute: 0,
+          second: 0,
+        },
+        timeZone
+      );
 
     case "daily":
-      // Next day at midnight UTC
-      next.setUTCMinutes(0);
-      next.setUTCHours(0);
-      next.setUTCDate(next.getUTCDate() + 1);
-
-      // Make sure we're actually in the future (in case it's already past midnight)
-      while (next <= now) {
-        next.setUTCDate(next.getUTCDate() + 1);
-      }
-      break;
+      return zonedTimeToUtc(
+        {
+          year: nowParts.year,
+          month: nowParts.month,
+          day: nowParts.day + 1,
+          hour: 0,
+          minute: 0,
+          second: 0,
+        },
+        timeZone
+      );
 
     case "weekly": {
-      // Next Sunday at midnight UTC
-      next.setUTCMinutes(0);
-      next.setUTCHours(0);
-      const daysUntilSunday = 7 - next.getUTCDay() || 7;
-      next.setUTCDate(next.getUTCDate() + daysUntilSunday);
-      break;
+      const daysUntilSunday = (7 - nowParts.weekday) || 7;
+      return zonedTimeToUtc(
+        {
+          year: nowParts.year,
+          month: nowParts.month,
+          day: nowParts.day + daysUntilSunday,
+          hour: 0,
+          minute: 0,
+          second: 0,
+        },
+        timeZone
+      );
     }
 
     case "monthly":
-      // First of next month at midnight UTC
-      next.setUTCMinutes(0);
-      next.setUTCHours(0);
-      next.setUTCDate(1);
-      next.setUTCMonth(next.getUTCMonth() + 1);
-      break;
+      return zonedTimeToUtc(
+        {
+          year: nowParts.year,
+          month: nowParts.month + 1,
+          day: 1,
+          hour: 0,
+          minute: 0,
+          second: 0,
+        },
+        timeZone
+      );
 
     default:
       throw new Error(`Invalid frequency: ${frequency}`);
   }
-
-  return next;
 };
 
 const parseValidatedCronExpression = (cronExpression: string) => {
@@ -125,18 +202,17 @@ const matchesCronPart = (field: string, value: number): boolean => {
   });
 };
 
-const matchesCronDayOfWeek = (field: string, date: Date): boolean => {
-  const dayOfWeek = date.getUTCDay();
-
+const matchesCronDayOfWeek = (field: string, weekday: number): boolean => {
   if (field === "*") {
     return true;
   }
 
-  return matchesCronPart(field, dayOfWeek) || (dayOfWeek === 0 && matchesCronPart(field, 7));
+  return matchesCronPart(field, weekday) || (weekday === 0 && matchesCronPart(field, 7));
 };
 
 const matchesCronDate = (
   date: Date,
+  timeZone: string,
   {
     minute,
     hour,
@@ -151,20 +227,22 @@ const matchesCronDate = (
     dayOfWeek: string;
   }
 ): boolean => {
-  if (!matchesCronPart(minute, date.getUTCMinutes())) {
+  const zonedParts = getTimeZoneDateParts(date, timeZone);
+
+  if (!matchesCronPart(minute, zonedParts.minute)) {
     return false;
   }
 
-  if (!matchesCronPart(hour, date.getUTCHours())) {
+  if (!matchesCronPart(hour, zonedParts.hour)) {
     return false;
   }
 
-  if (!matchesCronPart(month, date.getUTCMonth() + 1)) {
+  if (!matchesCronPart(month, zonedParts.month)) {
     return false;
   }
 
-  const dayOfMonthMatches = matchesCronPart(dayOfMonth, date.getUTCDate());
-  const dayOfWeekMatches = matchesCronDayOfWeek(dayOfWeek, date);
+  const dayOfMonthMatches = matchesCronPart(dayOfMonth, zonedParts.day);
+  const dayOfWeekMatches = matchesCronDayOfWeek(dayOfWeek, zonedParts.weekday);
   const usesDayOfMonth = dayOfMonth !== "*";
   const usesDayOfWeek = dayOfWeek !== "*";
 
@@ -184,9 +262,9 @@ const matchesCronDate = (
 };
 
 /**
- * Parses a cron expression and returns the next execution time (UTC).
+ * Parses a cron expression and returns the next execution time.
  */
-const getNextCronExecution = (cronExpression: string, fromDate?: Date): Date => {
+const getNextCronExecution = (cronExpression: string, fromDate?: Date, timeZone = "UTC"): Date => {
   const parts = parseValidatedCronExpression(cronExpression);
   const next = new Date(fromDate ?? new Date());
   next.setUTCSeconds(0);
@@ -195,7 +273,7 @@ const getNextCronExecution = (cronExpression: string, fromDate?: Date): Date => 
 
   const maxIterations = 366 * 24 * 60;
   for (let i = 0; i < maxIterations; i++) {
-    if (matchesCronDate(next, parts)) {
+    if (matchesCronDate(next, timeZone, parts)) {
       return next;
     }
 
@@ -206,13 +284,15 @@ const getNextCronExecution = (cronExpression: string, fromDate?: Date): Date => 
 };
 
 /**
- * Gets the next execution time based on schedule type (UTC).
+ * Gets the next execution time based on schedule type.
  */
 const getNextExecutionTime = (scheduledImport: ScheduledImport, fromDate?: Date): Date => {
+  const timeZone = getScheduleTimeZone(scheduledImport);
+
   if (scheduledImport.scheduleType === "frequency" && scheduledImport.frequency) {
-    return getNextFrequencyExecution(scheduledImport.frequency, fromDate);
+    return getNextFrequencyExecution(scheduledImport.frequency, fromDate, timeZone);
   } else if (scheduledImport.scheduleType === "cron" && scheduledImport.cronExpression) {
-    return getNextCronExecution(scheduledImport.cronExpression, fromDate);
+    return getNextCronExecution(scheduledImport.cronExpression, fromDate, timeZone);
   }
 
   throw new Error("Invalid schedule configuration");
@@ -286,11 +366,14 @@ const generateImportName = (
   currentTime: Date
 ): string => {
   const importName = template ?? "{{name}} - {{date}}";
-  const timeString = `${currentTime.getUTCHours().toString().padStart(2, "0")}:${currentTime.getUTCMinutes().toString().padStart(2, "0")}:${currentTime.getUTCSeconds().toString().padStart(2, "0")}`;
+  const timeZone = getScheduleTimeZone(scheduledImport);
+  const zonedParts = getTimeZoneDateParts(currentTime, timeZone);
+  const timeString = `${zonedParts.hour.toString().padStart(2, "0")}:${zonedParts.minute.toString().padStart(2, "0")}:${zonedParts.second.toString().padStart(2, "0")}`;
+  const dateString = `${zonedParts.year.toString().padStart(4, "0")}-${zonedParts.month.toString().padStart(2, "0")}-${zonedParts.day.toString().padStart(2, "0")}`;
 
   return importName
     .replace("{{name}}", scheduledImport.name)
-    .replace("{{date}}", currentTime.toISOString().split("T")[0] ?? "")
+    .replace("{{date}}", dateString)
     .replace("{{time}}", timeString)
     .replace("{{url}}", new URL(scheduledImport.sourceUrl).hostname);
 };
