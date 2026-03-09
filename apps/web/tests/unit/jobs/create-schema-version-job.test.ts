@@ -235,7 +235,13 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
       // Verify no schema version creation was attempted
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
-      expect(mockPayload.update).not.toHaveBeenCalled();
+
+      // Bug 6 fix: should transition to next stage to avoid stranding imports
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "import-jobs",
+        id: "import-123",
+        data: { stage: "geocode-batch" },
+      });
     });
 
     it("should skip when schema is not approved", async () => {

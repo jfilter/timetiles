@@ -44,7 +44,7 @@ describe.sequential("scheduled-imports quota hooks", () => {
 
     await expect(
       afterChangeHook({
-        doc: { enabled: true },
+        doc: { enabled: true, createdBy: 1 },
         operation: "create",
         req: { user: { id: 1 }, payload: {} },
       } as never)
@@ -56,7 +56,7 @@ describe.sequential("scheduled-imports quota hooks", () => {
 
     await expect(
       afterDeleteHook({
-        doc: { enabled: true },
+        doc: { enabled: true, createdBy: 1 },
         req: { user: { id: 1 }, payload: {} },
       } as never)
     ).rejects.toThrow("quota decrement failed");
