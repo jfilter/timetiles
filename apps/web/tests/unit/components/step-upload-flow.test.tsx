@@ -65,10 +65,10 @@ vi.mock("@/app/(frontend)/import/_components/wizard-context", () => ({
 // ---------------------------------------------------------------------------
 let fetchMock: ReturnType<typeof vi.fn<typeof globalThis.fetch>>;
 
- 
+// oxlint-disable promise/prefer-await-to-then -- Mock response factory
 const jsonResponse = (data: unknown, ok = true) =>
   Promise.resolve({ ok, status: ok ? 200 : 400, json: () => Promise.resolve(data) } as Response);
- 
+// oxlint-enable promise/prefer-await-to-then
 
 const apiSuccess = {
   sheets: [{ index: 0, name: "Sheet1", rowCount: 42, headers: ["col1", "col2"], sampleData: [] }],

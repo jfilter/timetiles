@@ -129,7 +129,8 @@ const createGetRequest = (url: string) => {
 };
 
 const createExportContext = (exportId: string) => ({
-  params: Promise.resolve({ exportId }),  
+  // oxlint-disable-next-line promise/prefer-await-to-then -- Next.js async route params
+  params: Promise.resolve({ exportId }),
 });
 
 beforeEach(() => {
