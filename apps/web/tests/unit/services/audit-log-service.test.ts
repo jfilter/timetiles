@@ -263,7 +263,7 @@ describe.sequential("auditLog", () => {
         action: AUDIT_ACTIONS.PASSWORD_VERIFY_FAILED,
         userId: 2,
         userEmail: "user@example.com",
-        // eslint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
+         
         ipAddress: "10.0.0.1",
       });
 
@@ -437,7 +437,7 @@ describe.sequential("auditFieldChanges", () => {
         userId: 42,
         userEmail: "user@example.com",
         performedBy: 1,
-        // eslint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
+         
         ipAddress: "10.0.0.1",
       },
       [{ action: AUDIT_ACTIONS.TRUST_LEVEL_CHANGED, fieldPath: "trustLevel" }]

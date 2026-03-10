@@ -129,7 +129,8 @@ describe.sequential("GET /api/v1/events/stats", () => {
     it("should return error when bounds parameter is invalid", async () => {
       const mockErrorResponse = {
         status: 400,
-        json: () => Promise.resolve({ error: "Invalid bounds" }), // eslint-disable-line promise/prefer-await-to-then -- Mock response object
+         
+        json: () => Promise.resolve({ error: "Invalid bounds" }),
       };
       mocks.mockParseBoundsParameter.mockReturnValue({ error: mockErrorResponse });
 

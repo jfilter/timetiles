@@ -38,7 +38,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
     });
 
     if (method === "POST") {
-      // eslint-disable-next-line promise/prefer-await-to-then -- Next.js async route params
+       
       return POST(request, { params: Promise.resolve({ token }) });
     } else {
       return GET();

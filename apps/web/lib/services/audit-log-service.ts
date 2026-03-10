@@ -16,7 +16,7 @@ import { hashEmail, hashIpAddress } from "@/lib/utils/hash";
 const logger = createLogger("audit-log-service");
 
 /** Action type constants for type safety (not credentials). */
-// eslint-disable-next-line sonarjs/no-hardcoded-passwords -- audit action type identifiers, not passwords
+ 
 export const AUDIT_ACTIONS = {
   // Account actions
   EMAIL_CHANGED: "account.email_changed",
